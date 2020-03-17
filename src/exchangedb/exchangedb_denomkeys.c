@@ -241,7 +241,7 @@ TALER_EXCHANGEDB_denomination_key_write (
        (wrote != (ssize_t) wsize) )
     goto cleanup;
   {
-    char *priv_enc;
+    void *priv_enc;
     size_t priv_enc_size;
 
     priv_enc_size

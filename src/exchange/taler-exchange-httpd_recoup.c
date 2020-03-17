@@ -422,7 +422,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   const struct TALER_EXCHANGEDB_DenominationKey *dki;
   struct TALER_RecoupRequestPS pr;
   struct GNUNET_HashCode c_hash;
-  char *coin_ev;
+  void *coin_ev;
   size_t coin_ev_size;
   enum TALER_ErrorCode ec;
   unsigned int hc;

@@ -455,7 +455,7 @@ struct TALER_PlanchetDetail
   /**
    * Blinded coin (see GNUNET_CRYPTO_rsa_blind()).  Note: is malloc()'ed!
    */
-  char *coin_ev;
+  void *coin_ev;
 
   /**
    * Number of bytes in @a coin_ev.
@@ -683,7 +683,7 @@ struct TALER_RefreshCoinData
   /**
    * The envelope with the blinded coin.
    */
-  char *coin_ev;
+  void *coin_ev;
 
   /**
    * Number of bytes in @a coin_ev

@@ -329,7 +329,7 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
      hash_context */
   for (unsigned int i = 0; i<num_new_coins; i++)
   {
-    char *buf;
+    void *buf;
     size_t buf_size;
 
     /* The denomination keys should / must all be identical regardless

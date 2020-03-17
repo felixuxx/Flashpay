@@ -45,7 +45,7 @@
 
 
 /**
- * Send a response for "/refresh/reveal".
+ * Send a response for "/refreshes/$RCH/reveal".
  *
  * @param connection the connection to send the response to
  * @param num_freshcoins number of new coins for which we reveal data
@@ -53,9 +53,9 @@
  * @return a MHD result code
  */
 static int
-reply_refresh_reveal_success (struct MHD_Connection *connection,
-                              unsigned int num_freshcoins,
-                              const struct TALER_DenominationSignature *sigs)
+reply_refreshes_reveal_success (struct MHD_Connection *connection,
+                                unsigned int num_freshcoins,
+                                const struct TALER_DenominationSignature *sigs)
 {
   json_t *list;
   int ret;
@@ -102,8 +102,8 @@ reply_refresh_reveal_success (struct MHD_Connection *connection,
  * @return a MHD result code
  */
 static int
-reply_refresh_reveal_mismatch (struct MHD_Connection *connection,
-                               const struct TALER_RefreshCommitmentP *rc)
+reply_refreshes_reveal_mismatch (struct MHD_Connection *connection,
+                                 const struct TALER_RefreshCommitmentP *rc)
 {
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_CONFLICT,
@@ -236,10 +236,10 @@ check_exists_cb (void *cls,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-refresh_reveal_preflight (void *cls,
-                          struct MHD_Connection *connection,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          int *mhd_ret)
+refreshes_reveal_preflight (void *cls,
+                            struct MHD_Connection *connection,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            int *mhd_ret)
 {
   struct RevealContext *rctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -293,10 +293,10 @@ refresh_reveal_preflight (void *cls,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-refresh_reveal_transaction (void *cls,
-                            struct MHD_Connection *connection,
-                            struct TALER_EXCHANGEDB_Session *session,
-                            int *mhd_ret)
+refreshes_reveal_transaction (void *cls,
+                              struct MHD_Connection *connection,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              int *mhd_ret)
 {
   struct RevealContext *rctx = cls;
   struct TALER_EXCHANGEDB_Melt melt;
@@ -411,8 +411,8 @@ refresh_reveal_transaction (void *cls,
                             &rc_expected))
     {
       GNUNET_break_op (0);
-      *mhd_ret = reply_refresh_reveal_mismatch (connection,
-                                                &rc_expected);
+      *mhd_ret = reply_refreshes_reveal_mismatch (connection,
+                                                  &rc_expected);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   } /* end of checking "rc_expected" */
@@ -475,10 +475,10 @@ refresh_reveal_transaction (void *cls,
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-refresh_reveal_persist (void *cls,
-                        struct MHD_Connection *connection,
-                        struct TALER_EXCHANGEDB_Session *session,
-                        int *mhd_ret)
+refreshes_reveal_persist (void *cls,
+                          struct MHD_Connection *connection,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          int *mhd_ret)
 {
   struct RevealContext *rctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -529,16 +529,16 @@ refresh_reveal_persist (void *cls,
  * @return MHD result code
  */
 static int
-resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
-                                      struct MHD_Connection *connection,
-                                      struct RevealContext *rctx,
-                                      const json_t *link_sigs_json,
-                                      const json_t *new_denoms_h_json,
-                                      const json_t *coin_evs)
+resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
+                                        struct MHD_Connection *connection,
+                                        struct RevealContext *rctx,
+                                        const json_t *link_sigs_json,
+                                        const json_t *new_denoms_h_json,
+                                        const json_t *coin_evs)
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
-  const struct
-  TALER_EXCHANGEDB_DenominationKey *dkis[num_fresh_coins];
+  /* We know num_fresh_coins is bounded by #MAX_FRESH_COINS, so this is safe */
+  const struct TALER_EXCHANGEDB_DenominationKey *dkis[num_fresh_coins];
   struct GNUNET_HashCode dki_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
@@ -577,6 +577,8 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
                                          ec,
                                          "failed to find denomination key");
     }
+    /* #TEH_KS_DKU_WITHDRAW should warrant that we only get denomination
+       keys where we did not yet forget the private key */
     GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);
   }
 
@@ -586,7 +588,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
     struct TALER_RefreshCoinData *rcd = &rcds[i];
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_varsize (NULL,
-                                (void **) &rcd->coin_ev,
+                                &rcd->coin_ev,
                                 &rcd->coin_ev_size),
       GNUNET_JSON_spec_end ()
     };
@@ -723,15 +725,15 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
           TEH_DB_run_transaction (connection,
                                   "reveal pre-check",
                                   &res,
-                                  &refresh_reveal_preflight,
+                                  &refreshes_reveal_preflight,
                                   rctx)) &&
          (GNUNET_YES == rctx->preflight_ok) )
     {
       /* Generate final (positive) response */
       GNUNET_assert (NULL != rctx->ev_sigs);
-      res = reply_refresh_reveal_success (connection,
-                                          num_fresh_coins,
-                                          rctx->ev_sigs);
+      res = reply_refreshes_reveal_success (connection,
+                                            num_fresh_coins,
+                                            rctx->ev_sigs);
       GNUNET_break (MHD_NO != res);
       goto cleanup;   /* aka 'break' */
     }
@@ -744,7 +746,7 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         TEH_DB_run_transaction (connection,
                                 "run reveal",
                                 &res,
-                                &refresh_reveal_transaction,
+                                &refreshes_reveal_transaction,
                                 rctx))
     {
       /* reveal failed, too bad */
@@ -755,14 +757,14 @@ resolve_refresh_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         TEH_DB_run_transaction (connection,
                                 "persist reveal",
                                 &res,
-                                &refresh_reveal_persist,
+                                &refreshes_reveal_persist,
                                 rctx))
     {
       /* Generate final (positive) response */
       GNUNET_assert (NULL != rctx->ev_sigs);
-      res = reply_refresh_reveal_success (connection,
-                                          num_fresh_coins,
-                                          rctx->ev_sigs);
+      res = reply_refreshes_reveal_success (connection,
+                                            num_fresh_coins,
+                                            rctx->ev_sigs);
       break;
     }
   }   /* end for (retries...) */
@@ -785,9 +787,9 @@ cleanup:
 
 
 /**
- * Handle a "/refresh/reveal" request.   Parses the given JSON
+ * Handle a "/refreshes/$RCH/reveal" request.   Parses the given JSON
  * transfer private keys and if successful, passes everything to
- * #resolve_refresh_reveal_denominations() which will verify that the
+ * #resolve_refreshes_reveal_denominations() which will verify that the
  * revealed information is valid then returns the signed refreshed
  * coins.
  *
@@ -800,17 +802,17 @@ cleanup:
  * @return MHD result code
  */
 static int
-handle_refresh_reveal_json (struct MHD_Connection *connection,
-                            struct RevealContext *rctx,
-                            const json_t *tp_json,
-                            const json_t *link_sigs_json,
-                            const json_t *new_denoms_h_json,
-                            const json_t *coin_evs)
+handle_refreshes_reveal_json (struct MHD_Connection *connection,
+                              struct RevealContext *rctx,
+                              const json_t *tp_json,
+                              const json_t *link_sigs_json,
+                              const json_t *new_denoms_h_json,
+                              const json_t *coin_evs)
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   unsigned int num_tprivs = json_array_size (tp_json);
 
-  GNUNET_assert (num_tprivs == TALER_CNC_KAPPA - 1);
+  GNUNET_assert (num_tprivs == TALER_CNC_KAPPA - 1); /* checked just earlier */
   if ( (num_fresh_coins >= MAX_FRESH_COINS) ||
        (0 == num_fresh_coins) )
   {
@@ -871,12 +873,12 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
                                          TALER_EC_REFRESH_REVEAL_KEYS_MISSING,
                                          "exchange lacks keys");
     }
-    ret = resolve_refresh_reveal_denominations (key_state,
-                                                connection,
-                                                rctx,
-                                                link_sigs_json,
-                                                new_denoms_h_json,
-                                                coin_evs);
+    ret = resolve_refreshes_reveal_denominations (key_state,
+                                                  connection,
+                                                  rctx,
+                                                  link_sigs_json,
+                                                  new_denoms_h_json,
+                                                  coin_evs);
     TEH_KS_release (key_state);
     return ret;
   }
@@ -887,9 +889,9 @@ handle_refresh_reveal_json (struct MHD_Connection *connection,
  * Handle a "/refreshes/$RCH/reveal" request. This time, the client reveals the
  * private transfer keys except for the cut-and-choose value returned from
  * "/coins/$COIN_PUB/melt".  This function parses the revealed keys and secrets and
- * ultimately passes everything to #resolve_refresh_reveal_denominations()
+ * ultimately passes everything to #resolve_refreshes_reveal_denominations()
  * which will verify that the revealed information is valid then runs the
- * transaction in #refresh_reveal_transaction() and finally returns the signed
+ * transaction in #refreshes_reveal_transaction() and finally returns the signed
  * refreshed coins.
  *
  * @param rh context of the handler
@@ -904,7 +906,6 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
                     const json_t *root,
                     const char *const args[2])
 {
-  int res;
   json_t *coin_evs;
   json_t *transfer_privs;
   json_t *link_sigs;
@@ -923,7 +924,6 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
   memset (&rctx,
           0,
           sizeof (rctx));
-
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
@@ -945,13 +945,18 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
                                        TALER_EC_OPERATION_INVALID,
                                        "expected 'reveal' operation");
   }
-  res = TALER_MHD_parse_json_data (connection,
-                                   root,
-                                   spec);
-  if (GNUNET_OK != res)
+
   {
-    GNUNET_break_op (0);
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+    int res;
+
+    res = TALER_MHD_parse_json_data (connection,
+                                     root,
+                                     spec);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break_op (0);
+      return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+    }
   }
 
   /* Check we got enough transfer private keys */
@@ -965,15 +970,20 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
                                        TALER_EC_REFRESH_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID,
                                        "transfer_privs");
   }
-  res = handle_refresh_reveal_json (connection,
-                                    &rctx,
-                                    transfer_privs,
-                                    link_sigs,
-                                    new_denoms_h,
-                                    coin_evs);
-  GNUNET_JSON_parse_free (spec);
-  return res;
+
+  {
+    int res;
+
+    res = handle_refreshes_reveal_json (connection,
+                                        &rctx,
+                                        transfer_privs,
+                                        link_sigs,
+                                        new_denoms_h,
+                                        coin_evs);
+    GNUNET_JSON_parse_free (spec);
+    return res;
+  }
 }
 
 
-/* end of taler-exchange-httpd_refresh_reveal.c */
+/* end of taler-exchange-httpd_refreshes_reveal.c */

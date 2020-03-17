@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_melt.c
- * @brief Handle /refresh/melt requests
+ * @brief Handle melt requests
  * @author Florian Dold
  * @author Benedikt Mueller
  * @author Christian Grothoff
@@ -33,7 +33,7 @@
 
 
 /**
- * Send a response for a failed "/refresh/melt" request.  The
+ * Send a response for a failed "melt" request.  The
  * transaction history of the given coin demonstrates that the
  * @a residual value of the coin is below the @a requested
  * contribution of the coin for the melt.  Thus, the exchange
@@ -48,14 +48,13 @@
  * @return a MHD result code
  */
 static int
-reply_melt_insufficient_funds (struct MHD_Connection *connection,
-                               const struct
-                               TALER_CoinSpendPublicKeyP *coin_pub,
-                               const struct TALER_Amount *coin_value,
-                               struct TALER_EXCHANGEDB_TransactionList *
-                               tl,
-                               const struct TALER_Amount *requested,
-                               const struct TALER_Amount *residual)
+reply_melt_insufficient_funds (
+  struct MHD_Connection *connection,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *coin_value,
+  struct TALER_EXCHANGEDB_TransactionList *tl,
+  const struct TALER_Amount *requested,
+  const struct TALER_Amount *residual)
 {
   json_t *history;
 
@@ -88,7 +87,7 @@ reply_melt_insufficient_funds (struct MHD_Connection *connection,
 
 
 /**
- * Send a response to a "/refresh/melt" request.
+ * Send a response to a "melt" request.
  *
  * @param connection the connection to send the response to
  * @param rc value the client commited to
@@ -100,15 +99,15 @@ reply_melt_success (struct MHD_Connection *connection,
                     const struct TALER_RefreshCommitmentP *rc,
                     uint32_t noreveal_index)
 {
-  struct TALER_RefreshMeltConfirmationPS body;
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
-  json_t *sig_json;
+  struct TALER_RefreshMeltConfirmationPS body = {
+    .purpose.size = htonl (sizeof (body)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT),
+    .rc = *rc,
+    .noreveal_index = htonl (noreveal_index)
+  };
 
-  body.purpose.size = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
-  body.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT);
-  body.rc = *rc;
-  body.noreveal_index = htonl (noreveal_index);
   if (GNUNET_OK !=
       TEH_KS_sign (&body.purpose,
                    &pub,
@@ -119,22 +118,20 @@ reply_melt_success (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                        "no keys");
   }
-  sig_json = GNUNET_JSON_from_data_auto (&sig);
-  GNUNET_assert (NULL != sig_json);
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:i, s:o, s:o}",
-                                    "noreveal_index", (int) noreveal_index,
-                                    "exchange_sig", sig_json,
-                                    "exchange_pub",
-                                    GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (
+    connection,
+    MHD_HTTP_OK,
+    "{s:i, s:o, s:o}",
+    "noreveal_index", (int) noreveal_index,
+    "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
+    "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
 }
 
 
 /**
- * Context for the /refresh/melt operation.
+ * Context for the melt operation.
  */
-struct RefreshMeltContext
+struct MeltContext
 {
 
   /**
@@ -176,7 +173,7 @@ struct RefreshMeltContext
 static enum GNUNET_DB_QueryStatus
 refresh_check_melt (struct MHD_Connection *connection,
                     struct TALER_EXCHANGEDB_Session *session,
-                    struct RefreshMeltContext *rmc,
+                    struct MeltContext *rmc,
                     int *mhd_ret)
 {
   struct TALER_EXCHANGEDB_TransactionList *tl;
@@ -186,7 +183,7 @@ refresh_check_melt (struct MHD_Connection *connection,
   /* Start with cost of this melt transaction */
   spent = rmc->refresh_session.amount_with_fee;
 
-  /* add historic transaction costs of this coin, including recoups as
+  /* get historic transaction costs of this coin, including recoups as
      we might be a zombie coin */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
                                           session,
@@ -204,20 +201,23 @@ refresh_check_melt (struct MHD_Connection *connection,
   }
   if (rmc->zombie_required)
   {
+    /* The denomination key is only usable for a melt if this is a true
+       zombie coin, i.e. it was refreshed and the resulting fresh coin was
+       then recouped. Check that this is truly the case. */
     for (struct TALER_EXCHANGEDB_TransactionList *tp = tl;
          NULL != tp;
          tp = tp->next)
     {
       if (TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP == tp->type)
       {
-        rmc->zombie_required = GNUNET_NO; /* was satisfied! */
+        rmc->zombie_required = GNUNET_NO; /* clear flag: was satisfied! */
         break;
       }
     }
-    if (rmc->zombie_required)
+    if (GNUNET_YES == rmc->zombie_required)
     {
       /* zombie status not satisfied */
-      GNUNET_break (0);
+      GNUNET_break_op (0);
       TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                               tl);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -244,8 +244,8 @@ refresh_check_melt (struct MHD_Connection *connection,
 
   /* Refuse to refresh when the coin's value is insufficient
      for the cost of all transactions. */
-  if (TALER_amount_cmp (&rmc->coin_value,
-                        &spent) < 0)
+  if (0 > TALER_amount_cmp (&rmc->coin_value,
+                            &spent))
   {
     struct TALER_Amount coin_residual;
 
@@ -253,14 +253,13 @@ refresh_check_melt (struct MHD_Connection *connection,
                    TALER_amount_subtract (&coin_residual,
                                           &spent,
                                           &rmc->refresh_session.amount_with_fee));
-    *mhd_ret = reply_melt_insufficient_funds (connection,
-                                              &rmc->refresh_session.coin
-                                              .coin_pub,
-                                              &rmc->coin_value,
-                                              tl,
-                                              &rmc->refresh_session.
-                                              amount_with_fee,
-                                              &coin_residual);
+    *mhd_ret = reply_melt_insufficient_funds (
+      connection,
+      &rmc->refresh_session.coin.coin_pub,
+      &rmc->coin_value,
+      tl,
+      &rmc->refresh_session.amount_with_fee,
+      &coin_residual);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -274,7 +273,7 @@ refresh_check_melt (struct MHD_Connection *connection,
 
 
 /**
- * Execute a "/refresh/melt".  We have been given a list of valid
+ * Execute a "melt".  We have been given a list of valid
  * coins and a request to melt them into the given @a
  * refresh_session_pub.  Check that the coins all have the required
  * value left and if so, store that they have been melted and confirm
@@ -286,7 +285,7 @@ refresh_check_melt (struct MHD_Connection *connection,
  * the soft error code, the function MAY be called again to retry and
  * MUST not queue a MHD response.
  *
- * @param cls our `struct RefreshMeltContext`
+ * @param cls our `struct MeltContext`
  * @param connection MHD request which triggered the transaction
  * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
@@ -299,18 +298,18 @@ melt_transaction (void *cls,
                   struct TALER_EXCHANGEDB_Session *session,
                   int *mhd_ret)
 {
-  struct RefreshMeltContext *rmc = cls;
+  struct MeltContext *rmc = cls;
   enum GNUNET_DB_QueryStatus qs;
   uint32_t noreveal_index;
 
-  /* Check if we already created such a session */
+  /* Check if we already created a matching refresh_session */
   qs = TEH_plugin->get_melt_index (TEH_plugin->cls,
                                    session,
                                    &rmc->refresh_session.rc,
                                    &noreveal_index);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    TALER_LOG_DEBUG ("Found already-melted coin\n");
+    TALER_LOG_DEBUG ("Coin was previously melted, returning old reply\n");
     *mhd_ret = reply_melt_success (connection,
                                    &rmc->refresh_session.rc,
                                    noreveal_index);
@@ -335,13 +334,12 @@ melt_transaction (void *cls,
                            rmc,
                            mhd_ret);
   if (0 > qs)
-    return qs;
+    return qs; /* if we failed, tell caller */
 
   /* pick challenge and persist it */
   rmc->refresh_session.noreveal_index
     = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
                                 TALER_CNC_KAPPA);
-
   if (0 >=
       (qs = TEH_plugin->insert_melt (TEH_plugin->cls,
                                      session,
@@ -362,7 +360,7 @@ melt_transaction (void *cls,
 
 
 /**
- * Handle a "/refresh/melt" request after the first parsing has
+ * Handle a "melt" request after the first parsing has
  * happened.  We now need to validate the coins being melted and the
  * session signature and then hand things of to execute the melt
  * operation.  This function parses the JSON arrays and then passes
@@ -374,9 +372,8 @@ melt_transaction (void *cls,
  */
 static int
 handle_melt (struct MHD_Connection *connection,
-             struct RefreshMeltContext *rmc)
+             struct MeltContext *rmc)
 {
-
   /* verify signature of coin for melt operation */
   {
     struct TALER_RefreshMeltCoinAffirmationPS body;
@@ -392,12 +389,11 @@ handle_melt (struct MHD_Connection *connection,
     body.coin_pub = rmc->refresh_session.coin.coin_pub;
 
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                    &body.purpose,
-                                    &rmc->refresh_session.coin_sig.
-                                    eddsa_signature,
-                                    &rmc->refresh_session.coin.coin_pub.
-                                    eddsa_pub))
+        GNUNET_CRYPTO_eddsa_verify (
+          TALER_SIGNATURE_WALLET_COIN_MELT,
+          &body.purpose,
+          &rmc->refresh_session.coin_sig.eddsa_signature,
+          &rmc->refresh_session.coin.coin_pub.eddsa_pub))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (connection,
@@ -407,7 +403,7 @@ handle_melt (struct MHD_Connection *connection,
     }
   }
 
-  /* run transaction */
+  /* run database transaction */
   {
     int mhd_ret;
 
@@ -420,7 +416,7 @@ handle_melt (struct MHD_Connection *connection,
       return mhd_ret;
   }
 
-  /* generate ordinary response */
+  /* Success. Generate ordinary response. */
   return reply_melt_success (connection,
                              &rmc->refresh_session.rc,
                              rmc->refresh_session.noreveal_index);
@@ -437,9 +433,10 @@ handle_melt (struct MHD_Connection *connection,
  */
 static int
 check_for_denomination_key (struct MHD_Connection *connection,
-                            struct RefreshMeltContext *rmc)
+                            struct MeltContext *rmc)
 {
   struct TEH_KS_StateHandle *key_state;
+  int coin_is_dirty = GNUNET_NO;
 
   key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
@@ -458,40 +455,46 @@ check_for_denomination_key (struct MHD_Connection *connection,
     unsigned int hc;
     enum TALER_ErrorCode ec;
 
-    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                  &rmc->refresh_session.coin.
-                                                  denom_pub_hash,
-                                                  TEH_KS_DKU_DEPOSIT,
-                                                  &ec,
-                                                  &hc);
+    dki = TEH_KS_denomination_key_lookup_by_hash (
+      key_state,
+      &rmc->refresh_session.coin.denom_pub_hash,
+      TEH_KS_DKU_DEPOSIT,
+      &ec,
+      &hc);
     /* Consider case that denomination was revoked but
        this coin was already seen and thus refresh is OK. */
     if (NULL == dki)
     {
-      dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                    &rmc->refresh_session.coin.
-                                                    denom_pub_hash,
-                                                    TEH_KS_DKU_RECOUP,
-                                                    &ec,
-                                                    &hc);
+      dki = TEH_KS_denomination_key_lookup_by_hash (
+        key_state,
+        &rmc->refresh_session.coin.denom_pub_hash,
+        TEH_KS_DKU_RECOUP,
+        &ec,
+        &hc);
       if (NULL != dki)
       {
         struct GNUNET_HashCode denom_hash;
         enum GNUNET_DB_QueryStatus qs;
 
-        qs = TEH_plugin->get_coin_denomination (TEH_plugin->cls,
-                                                NULL,
-                                                &rmc->refresh_session.coin.
-                                                coin_pub,
-                                                &denom_hash);
+        /* Check that the coin is dirty (we have seen it before), as we will
+           not just allow melting of a *fresh* coin where the denomination was
+           revoked (those must be recouped) */
+        qs = TEH_plugin->get_coin_denomination (
+          TEH_plugin->cls,
+          NULL,
+          &rmc->refresh_session.coin.coin_pub,
+          &denom_hash);
         if (0 > qs)
         {
           TEH_KS_release (key_state);
+          /* There is no good reason for a serialization failure here: */
+          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
           return TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_REFRESH_MELT_DB_FETCH_ERROR,
                                              "failed to find information about old coin");
         }
+        /* sanity check */
         GNUNET_break (0 ==
                       GNUNET_memcmp (&denom_hash,
                                      &rmc->refresh_session.coin.denom_pub_hash));
@@ -500,11 +503,17 @@ check_for_denomination_key (struct MHD_Connection *connection,
           /* We never saw this coin before, so _this_ justification is not OK */
           dki = NULL;
         }
+        else
+        {
+          /* Minor optimization: no need to run the
+             #TEH_DB_know_coin_transaction below */
+          coin_is_dirty = GNUNET_YES;
+        }
       }
     }
 
-    /* Consider the case that the denomination expired for deposits,
-       but /refresh/recoup refilled the balance of the 'zombie' coin
+    /* Consider the case that the denomination expired for deposits, but
+       recoup of a refreshed coin refilled the balance of the 'zombie' coin
        and we should thus allow the refresh during the legal period. */
     if (NULL == dki)
     {
@@ -515,21 +524,35 @@ check_for_denomination_key (struct MHD_Connection *connection,
                                                     &ec,
                                                     &hc);
       if (NULL != dki)
-        rmc->zombie_required = GNUNET_YES;
+        rmc->zombie_required = GNUNET_YES; /* check later that zombie is satisfied */
     }
     if (NULL == dki)
     {
       TEH_KS_release (key_state);
-      TALER_LOG_WARNING ("Unknown denomination key in /refresh/melt request\n");
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
                                          "unknown denomination");
     }
+
     TALER_amount_ntoh (&rmc->coin_refresh_fee,
                        &dki->issue.properties.fee_refresh);
     TALER_amount_ntoh (&rmc->coin_value,
                        &dki->issue.properties.value);
+    /* check client used sane currency */
+    if (GNUNET_YES !=
+        TALER_amount_cmp_currency (&rmc->refresh_session.amount_with_fee,
+                                   &rmc->coin_value) )
+    {
+      GNUNET_break_op (0);
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_MELT_CURRENCY_MISSMATCH,
+                                         "value_with_fee");
+
+    }
+    /* check coin is actually properly signed */
     if (GNUNET_OK !=
         TALER_test_coin_valid (&rmc->refresh_session.coin,
                                &dki->denom_pub))
@@ -545,7 +568,8 @@ check_for_denomination_key (struct MHD_Connection *connection,
   TEH_KS_release (key_state);
 
   /* run actual logic, now that the request was parsed */
-  /* make sure coin is 'known' in database */
+  /* First, make sure coin is 'known' in database */
+  if (GNUNET_NO == coin_is_dirty)
   {
     struct TEH_DB_KnowCoinContext kcc;
     int mhd_ret;
@@ -554,7 +578,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
     kcc.connection = connection;
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
-                                "know coin for refresh-melt",
+                                "know coin for melt",
                                 &mhd_ret,
                                 &TEH_DB_know_coin_transaction,
                                 &kcc))
@@ -562,8 +586,9 @@ check_for_denomination_key (struct MHD_Connection *connection,
   }
 
   /* sanity-check that "total melt amount > melt fee" */
-  if (TALER_amount_cmp (&rmc->coin_refresh_fee,
-                        &rmc->refresh_session.amount_with_fee) > 0)
+  if (0 <
+      TALER_amount_cmp (&rmc->coin_refresh_fee,
+                        &rmc->refresh_session.amount_with_fee))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
@@ -592,7 +617,7 @@ TEH_handler_melt (struct MHD_Connection *connection,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   const json_t *root)
 {
-  struct RefreshMeltContext rmc;
+  struct MeltContext rmc;
   int res;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_denomination_signature ("denom_sig",

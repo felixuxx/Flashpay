@@ -108,23 +108,24 @@ enum TEH_KS_DenominationKeyUse
 {
 
   /**
-   * The key is to be used for a /reserve/withdraw or /refresh (exchange)
+   * The  denomination key is to be used for a withdraw or reveal (exchange)
    * operation.
    */
   TEH_KS_DKU_WITHDRAW,
 
   /**
-   * The key is to be used for a /deposit or /refresh (melt) operation.
+   * The denomination key is to be used for a deposit or melt operation.
    */
   TEH_KS_DKU_DEPOSIT,
 
   /**
-   * The key is to be used for a /recoup operation.
+   * The denomination key is to be used for a recoup operation, or to
+   * melt a coin that was deposited (or melted) before the revocation.
    */
   TEH_KS_DKU_RECOUP,
 
   /**
-   * The key is to be used for a /refresh/recoup operation,
+   * The key is to be used for a refresh + recoup operation,
    * i.e. it is an old coin that regained value from a
    * recoup on a new coin derived from the old coin.
    */
