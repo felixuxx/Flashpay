@@ -164,9 +164,9 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_WithdrawHandle *wh,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
-reserve_withdraw_payment_required (struct
-                                   TALER_EXCHANGE_WithdrawHandle *wh,
-                                   const json_t *json)
+reserve_withdraw_payment_required (
+  struct TALER_EXCHANGE_WithdrawHandle *wh,
+  const json_t *json)
 {
   struct TALER_Amount balance;
   struct TALER_Amount balance_from_history;
@@ -472,14 +472,13 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
  *         In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_WithdrawHandle *
-TALER_EXCHANGE_withdraw (struct TALER_EXCHANGE_Handle *exchange,
-                         const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                         const struct
-                         TALER_ReservePrivateKeyP *reserve_priv,
-                         const struct TALER_PlanchetSecretsP *ps,
-                         TALER_EXCHANGE_WithdrawCallback
-                         res_cb,
-                         void *res_cb_cls)
+TALER_EXCHANGE_withdraw (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  const struct TALER_PlanchetSecretsP *ps,
+  TALER_EXCHANGE_WithdrawCallback res_cb,
+  void *res_cb_cls)
 {
   struct TALER_Amount amount_with_fee;
   struct TALER_ReserveSignatureP reserve_sig;
@@ -556,17 +555,14 @@ TALER_EXCHANGE_withdraw (struct TALER_EXCHANGE_Handle *exchange,
  *         In this case, the callback is not called.
  */
 struct TALER_EXCHANGE_WithdrawHandle *
-TALER_EXCHANGE_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
-                          const struct
-                          TALER_EXCHANGE_DenomPublicKey *pk,
-                          const struct
-                          TALER_ReserveSignatureP *reserve_sig,
-                          const struct
-                          TALER_ReservePublicKeyP *reserve_pub,
-                          const struct TALER_PlanchetSecretsP *ps,
-                          TALER_EXCHANGE_WithdrawCallback
-                          res_cb,
-                          void *res_cb_cls)
+TALER_EXCHANGE_withdraw2 (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_ReserveSignatureP *reserve_sig,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_PlanchetSecretsP *ps,
+  TALER_EXCHANGE_WithdrawCallback res_cb,
+  void *res_cb_cls)
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh;
   struct TALER_PlanchetDetail pd;

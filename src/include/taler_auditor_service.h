@@ -114,11 +114,11 @@ enum TALER_AUDITOR_VersionCompatibility
  * @param compat protocol compatibility information
  */
 typedef void
-(*TALER_AUDITOR_VersionCallback) (void *cls,
-                                  const struct
-                                  TALER_AUDITOR_VersionInformation *vi,
-                                  enum TALER_AUDITOR_VersionCompatibility
-                                  compat);
+(*TALER_AUDITOR_VersionCallback) (
+  void *cls,
+  const struct
+  TALER_AUDITOR_VersionInformation *vi,
+  enum TALER_AUDITOR_VersionCompatibility compat);
 
 
 /**
@@ -214,32 +214,24 @@ typedef void
  *         signatures fail to verify).  In this case, the callback is not called.
  */
 struct TALER_AUDITOR_DepositConfirmationHandle *
-TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
-                                    const struct GNUNET_HashCode *h_wire,
-                                    const struct
-                                    GNUNET_HashCode *h_contract_terms,
-                                    struct GNUNET_TIME_Absolute timestamp,
-                                    struct GNUNET_TIME_Absolute refund_deadline,
-                                    const struct
-                                    TALER_Amount *amount_without_fee,
-                                    const struct
-                                    TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const struct
-                                    TALER_MerchantPublicKeyP *merchant_pub,
-                                    const struct
-                                    TALER_ExchangePublicKeyP *exchange_pub,
-                                    const struct
-                                    TALER_ExchangeSignatureP *exchange_sig,
-                                    const struct
-                                    TALER_MasterPublicKeyP *master_pub,
-                                    struct GNUNET_TIME_Absolute ep_start,
-                                    struct GNUNET_TIME_Absolute ep_expire,
-                                    struct GNUNET_TIME_Absolute ep_end,
-                                    const struct
-                                    TALER_MasterSignatureP *master_sig,
-                                    TALER_AUDITOR_DepositConfirmationResultCallback
-                                    cb,
-                                    void *cb_cls);
+TALER_AUDITOR_deposit_confirmation (
+  struct TALER_AUDITOR_Handle *auditor,
+  const struct GNUNET_HashCode *h_wire,
+  const struct GNUNET_HashCode *h_contract_terms,
+  struct GNUNET_TIME_Absolute timestamp,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct GNUNET_TIME_Absolute ep_start,
+  struct GNUNET_TIME_Absolute ep_expire,
+  struct GNUNET_TIME_Absolute ep_end,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_AUDITOR_DepositConfirmationResultCallback cb,
+  void *cb_cls);
 
 
 /**
@@ -249,9 +241,8 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
  * @param deposit_confirmation the deposit-confirmation permission request handle
  */
 void
-TALER_AUDITOR_deposit_confirmation_cancel (struct
-                                           TALER_AUDITOR_DepositConfirmationHandle
-                                           *deposit_confirmation);
+TALER_AUDITOR_deposit_confirmation_cancel (
+  struct TALER_AUDITOR_DepositConfirmationHandle *deposit_confirmation);
 
 
 /**
@@ -290,13 +281,13 @@ struct TALER_AUDITOR_ExchangeInfo
  * @param raw_response raw JSON response
  */
 typedef void
-(*TALER_AUDITOR_ListExchangesResultCallback)(void *cls,
-                                             unsigned int http_status,
-                                             enum TALER_ErrorCode ec,
-                                             unsigned int num_exchanges,
-                                             const struct
-                                             TALER_AUDITOR_ExchangeInfo *ei,
-                                             const json_t *raw_response);
+(*TALER_AUDITOR_ListExchangesResultCallback)(
+  void *cls,
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  unsigned int num_exchanges,
+  const struct TALER_AUDITOR_ExchangeInfo *ei,
+  const json_t *raw_response);
 
 /**
  * Submit an /exchanges request to the auditor and get the
@@ -322,8 +313,8 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
  * @param leh the list exchanges request handle
  */
 void
-TALER_AUDITOR_list_exchanges_cancel (struct
-                                     TALER_AUDITOR_ListExchangesHandle *leh);
+TALER_AUDITOR_list_exchanges_cancel (
+  struct TALER_AUDITOR_ListExchangesHandle *leh);
 
 
 #endif  /* _TALER_AUDITOR_SERVICE_H */

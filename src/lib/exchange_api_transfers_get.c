@@ -80,9 +80,9 @@ struct TALER_EXCHANGE_TransfersGetHandle
  *         #GNUNET_SYSERR if the response was bogus
  */
 static int
-check_transfers_get_response_ok (struct
-                                 TALER_EXCHANGE_TransfersGetHandle *wdh,
-                                 const json_t *json)
+check_transfers_get_response_ok (
+  struct TALER_EXCHANGE_TransfersGetHandle *wdh,
+  const json_t *json)
 {
   json_t *details_j;
   struct GNUNET_HashCode h_wire;
@@ -326,11 +326,11 @@ handle_transfers_get_finished (void *cls,
  * @return handle to cancel operation
  */
 struct TALER_EXCHANGE_TransfersGetHandle *
-TALER_EXCHANGE_transfers_get (struct TALER_EXCHANGE_Handle *exchange,
-                              const struct
-                              TALER_WireTransferIdentifierRawP *wtid,
-                              TALER_EXCHANGE_TransfersGetCallback cb,
-                              void *cb_cls)
+TALER_EXCHANGE_transfers_get (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_WireTransferIdentifierRawP *wtid,
+  TALER_EXCHANGE_TransfersGetCallback cb,
+  void *cb_cls)
 {
   struct TALER_EXCHANGE_TransfersGetHandle *wdh;
   struct GNUNET_CURL_Context *ctx;
@@ -391,8 +391,8 @@ TALER_EXCHANGE_transfers_get (struct TALER_EXCHANGE_Handle *exchange,
  * @param wdh the wire deposits request handle
  */
 void
-TALER_EXCHANGE_transfers_get_cancel (struct
-                                     TALER_EXCHANGE_TransfersGetHandle *wdh)
+TALER_EXCHANGE_transfers_get_cancel (
+  struct TALER_EXCHANGE_TransfersGetHandle *wdh)
 {
   if (NULL != wdh->job)
   {
@@ -404,4 +404,4 @@ TALER_EXCHANGE_transfers_get_cancel (struct
 }
 
 
-/* end of exchange_api_wire_deposits.c */
+/* end of exchange_api_transfers_get.c */

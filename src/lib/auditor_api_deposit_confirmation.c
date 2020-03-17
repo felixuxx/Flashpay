@@ -261,32 +261,24 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
  *         signatures fail to verify).  In this case, the callback is not called.
  */
 struct TALER_AUDITOR_DepositConfirmationHandle *
-TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
-                                    const struct GNUNET_HashCode *h_wire,
-                                    const struct
-                                    GNUNET_HashCode *h_contract_terms,
-                                    struct GNUNET_TIME_Absolute timestamp,
-                                    struct GNUNET_TIME_Absolute refund_deadline,
-                                    const struct
-                                    TALER_Amount *amount_without_fee,
-                                    const struct
-                                    TALER_CoinSpendPublicKeyP *coin_pub,
-                                    const struct
-                                    TALER_MerchantPublicKeyP *merchant_pub,
-                                    const struct
-                                    TALER_ExchangePublicKeyP *exchange_pub,
-                                    const struct
-                                    TALER_ExchangeSignatureP *exchange_sig,
-                                    const struct
-                                    TALER_MasterPublicKeyP *master_pub,
-                                    struct GNUNET_TIME_Absolute ep_start,
-                                    struct GNUNET_TIME_Absolute ep_expire,
-                                    struct GNUNET_TIME_Absolute ep_end,
-                                    const struct
-                                    TALER_MasterSignatureP *master_sig,
-                                    TALER_AUDITOR_DepositConfirmationResultCallback
-                                    cb,
-                                    void *cb_cls)
+TALER_AUDITOR_deposit_confirmation (
+  struct TALER_AUDITOR_Handle *auditor,
+  const struct GNUNET_HashCode *h_wire,
+  const struct GNUNET_HashCode *h_contract_terms,
+  struct GNUNET_TIME_Absolute timestamp,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct GNUNET_TIME_Absolute ep_start,
+  struct GNUNET_TIME_Absolute ep_expire,
+  struct GNUNET_TIME_Absolute ep_end,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_AUDITOR_DepositConfirmationResultCallback cb,
+  void *cb_cls)
 {
   struct TALER_AUDITOR_DepositConfirmationHandle *dh;
   struct GNUNET_CURL_Context *ctx;
@@ -398,9 +390,8 @@ TALER_AUDITOR_deposit_confirmation (struct TALER_AUDITOR_Handle *auditor,
  * @param deposit_confirmation the deposit-confirmation permission request handle
  */
 void
-TALER_AUDITOR_deposit_confirmation_cancel (struct
-                                           TALER_AUDITOR_DepositConfirmationHandle
-                                           *deposit_confirmation)
+TALER_AUDITOR_deposit_confirmation_cancel (
+  struct TALER_AUDITOR_DepositConfirmationHandle *deposit_confirmation)
 {
   if (NULL != deposit_confirmation->job)
   {

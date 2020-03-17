@@ -665,8 +665,8 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
  * @param compat protocol compatibility information
  */
 static void
-auditor_version_cb
-  (void *cls,
+auditor_version_cb (
+  void *cls,
   const struct TALER_AUDITOR_VersionInformation *vi,
   enum TALER_AUDITOR_VersionCompatibility compat)
 {
@@ -1635,8 +1635,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
  *         otherwise JSON object owned by the caller
  */
 json_t *
-TALER_EXCHANGE_serialize_data
-  (struct TALER_EXCHANGE_Handle *exchange)
+TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
 {
   const struct TALER_EXCHANGE_Keys *kd = &exchange->key_data;
   struct GNUNET_TIME_Absolute now;
@@ -1886,8 +1885,8 @@ TALER_EXCHANGE_serialize_data
  * @return the exchange handle; NULL upon error
  */
 struct TALER_EXCHANGE_Handle *
-TALER_EXCHANGE_connect
-  (struct GNUNET_CURL_Context *ctx,
+TALER_EXCHANGE_connect (
+  struct GNUNET_CURL_Context *ctx,
   const char *url,
   TALER_EXCHANGE_CertificationCallback cert_cb,
   void *cert_cb_cls,
@@ -2126,9 +2125,9 @@ TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange)
  * not found
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
-TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
-                                     const struct
-                                     TALER_DenominationPublicKey *pk)
+TALER_EXCHANGE_get_denomination_key (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_DenominationPublicKey *pk)
 {
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
     if (0 == GNUNET_CRYPTO_rsa_public_key_cmp (pk->rsa_public_key,
@@ -2146,8 +2145,8 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
  * @returns a copy, must be freed with #TALER_EXCHANGE_destroy_denomination_key
  */
 struct TALER_EXCHANGE_DenomPublicKey *
-TALER_EXCHANGE_copy_denomination_key (const struct
-                                      TALER_EXCHANGE_DenomPublicKey *key)
+TALER_EXCHANGE_copy_denomination_key (
+  const struct TALER_EXCHANGE_DenomPublicKey *key)
 {
   struct TALER_EXCHANGE_DenomPublicKey *copy;
 
@@ -2167,8 +2166,8 @@ TALER_EXCHANGE_copy_denomination_key (const struct
  * @param key key to destroy.
  */
 void
-TALER_EXCHANGE_destroy_denomination_key (struct
-                                         TALER_EXCHANGE_DenomPublicKey *key)
+TALER_EXCHANGE_destroy_denomination_key (
+  struct TALER_EXCHANGE_DenomPublicKey *key)
 {
   GNUNET_CRYPTO_rsa_public_key_free (key->key.rsa_public_key);;
   GNUNET_free (key);
@@ -2183,9 +2182,9 @@ TALER_EXCHANGE_destroy_denomination_key (struct
  * @return details about the given denomination key
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
-TALER_EXCHANGE_get_denomination_key_by_hash (const struct
-                                             TALER_EXCHANGE_Keys *keys,
-                                             const struct GNUNET_HashCode *hc)
+TALER_EXCHANGE_get_denomination_key_by_hash (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct GNUNET_HashCode *hc)
 {
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
     if (0 == GNUNET_memcmp (hc,

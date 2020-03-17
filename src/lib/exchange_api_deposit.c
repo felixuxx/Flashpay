@@ -241,9 +241,9 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_deposit_signature_forbidden (const struct
-                                    TALER_EXCHANGE_DepositHandle *dh,
-                                    const json_t *json)
+verify_deposit_signature_forbidden (
+  const struct TALER_EXCHANGE_DepositHandle *dh,
+  const json_t *json)
 {
   json_t *history;
   struct TALER_Amount total;

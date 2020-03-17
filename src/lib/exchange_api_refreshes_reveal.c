@@ -294,13 +294,13 @@ handle_refresh_reveal_finished (void *cls,
  *         In this case, neither callback will be called.
  */
 struct TALER_EXCHANGE_RefreshesRevealHandle *
-TALER_EXCHANGE_refreshes_reveal (struct TALER_EXCHANGE_Handle *exchange,
-                                 size_t refresh_data_length,
-                                 const char *refresh_data,
-                                 uint32_t noreveal_index,
-                                 TALER_EXCHANGE_RefreshesRevealCallback
-                                 reveal_cb,
-                                 void *reveal_cb_cls)
+TALER_EXCHANGE_refreshes_reveal (
+  struct TALER_EXCHANGE_Handle *exchange,
+  size_t refresh_data_length,
+  const char *refresh_data,
+  uint32_t noreveal_index,
+  TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
+  void *reveal_cb_cls)
 {
   struct TALER_EXCHANGE_RefreshesRevealHandle *rrh;
   json_t *transfer_privs;
@@ -494,9 +494,8 @@ TALER_EXCHANGE_refreshes_reveal (struct TALER_EXCHANGE_Handle *exchange,
  * @param rrh the refresh reval handle
  */
 void
-TALER_EXCHANGE_refreshes_reveal_cancel (struct
-                                        TALER_EXCHANGE_RefreshesRevealHandle *
-                                        rrh)
+TALER_EXCHANGE_refreshes_reveal_cancel (
+  struct TALER_EXCHANGE_RefreshesRevealHandle *rrh)
 {
   if (NULL != rrh->job)
   {

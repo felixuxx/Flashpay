@@ -88,10 +88,9 @@ serialize_melted_coin (const struct MeltedCoin *mc,
                        size_t off)
 {
   struct MeltedCoinP mcp;
-  unsigned int i;
-  char *pbuf;
+  void *pbuf;
   size_t pbuf_size;
-  char *sbuf;
+  void *sbuf;
   size_t sbuf_size;
 
   sbuf_size = GNUNET_CRYPTO_rsa_signature_encode (mc->sig.rsa_signature,
@@ -117,7 +116,7 @@ serialize_melted_coin (const struct MeltedCoin *mc,
                      &mc->fee_melt);
   TALER_amount_hton (&mcp.original_value,
                      &mc->original_value);
-  for (i = 0; i<TALER_CNC_KAPPA; i++)
+  for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
     mcp.transfer_priv[i] = mc->transfer_priv[i];
   mcp.expire_deposit = GNUNET_TIME_absolute_hton (mc->expire_deposit);
   mcp.pbuf_size = htons ((uint16_t) pbuf_size);
@@ -153,7 +152,6 @@ deserialize_melted_coin (struct MeltedCoin *mc,
                          int *ok)
 {
   struct MeltedCoinP mcp;
-  unsigned int i;
   size_t pbuf_size;
   size_t sbuf_size;
   size_t off;
@@ -199,7 +197,7 @@ deserialize_melted_coin (struct MeltedCoin *mc,
                      &mcp.fee_melt);
   TALER_amount_ntoh (&mc->original_value,
                      &mcp.original_value);
-  for (i = 0; i<TALER_CNC_KAPPA; i++)
+  for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
     mc->transfer_priv[i] = mcp.transfer_priv[i];
   mc->expire_deposit = GNUNET_TIME_absolute_ntoh (mcp.expire_deposit);
   return off;
@@ -221,7 +219,7 @@ serialize_denomination_key (const struct TALER_DenominationPublicKey *dk,
                             char *buf,
                             size_t off)
 {
-  char *pbuf;
+  void *pbuf;
   size_t pbuf_size;
   uint32_t be;
 
@@ -498,17 +496,14 @@ TALER_EXCHANGE_deserialize_melt_data_ (const char *buf,
  *         Non-null results should be freed using GNUNET_free().
  */
 char *
-TALER_EXCHANGE_refresh_prepare (const struct
-                                TALER_CoinSpendPrivateKeyP *melt_priv,
-                                const struct TALER_Amount *melt_amount,
-                                const struct
-                                TALER_DenominationSignature *melt_sig,
-                                const struct
-                                TALER_EXCHANGE_DenomPublicKey *melt_pk,
-                                unsigned int fresh_pks_len,
-                                const struct
-                                TALER_EXCHANGE_DenomPublicKey *fresh_pks,
-                                size_t *res_size)
+TALER_EXCHANGE_refresh_prepare (
+  const struct TALER_CoinSpendPrivateKeyP *melt_priv,
+  const struct TALER_Amount *melt_amount,
+  const struct TALER_DenominationSignature *melt_sig,
+  const struct TALER_EXCHANGE_DenomPublicKey *melt_pk,
+  unsigned int fresh_pks_len,
+  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks,
+  size_t *res_size)
 {
   struct MeltData md;
   char *buf;

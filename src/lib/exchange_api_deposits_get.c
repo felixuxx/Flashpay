@@ -88,10 +88,10 @@ struct TALER_EXCHANGE_DepositGetHandle
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_deposit_wtid_signature_ok (const struct
-                                  TALER_EXCHANGE_DepositGetHandle *dwh,
-                                  const json_t *json,
-                                  struct TALER_ExchangePublicKeyP *exchange_pub)
+verify_deposit_wtid_signature_ok (
+  const struct TALER_EXCHANGE_DepositGetHandle *dwh,
+  const json_t *json,
+  struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
   const struct TALER_EXCHANGE_Keys *key_state;
@@ -277,16 +277,14 @@ handle_deposit_wtid_finished (void *cls,
  * @return handle to abort request
  */
 struct TALER_EXCHANGE_DepositGetHandle *
-TALER_EXCHANGE_deposits_get (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct
-                             TALER_MerchantPrivateKeyP *merchant_priv,
-                             const struct GNUNET_HashCode *h_wire,
-                             const struct
-                             GNUNET_HashCode *h_contract_terms,
-                             const struct
-                             TALER_CoinSpendPublicKeyP *coin_pub,
-                             TALER_EXCHANGE_DepositGetCallback cb,
-                             void *cb_cls)
+TALER_EXCHANGE_deposits_get (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+  const struct GNUNET_HashCode *h_wire,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  TALER_EXCHANGE_DepositGetCallback cb,
+  void *cb_cls)
 {
   struct TALER_DepositTrackPS dtp;
   struct TALER_MerchantSignatureP merchant_sig;

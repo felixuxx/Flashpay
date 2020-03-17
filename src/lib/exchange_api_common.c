@@ -43,15 +43,14 @@
  *         #GNUNET_SYSERR if there was a protocol violation in @a history
  */
 int
-TALER_EXCHANGE_parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
-                                      const json_t *history,
-                                      const struct
-                                      TALER_ReservePublicKeyP *reserve_pub,
-                                      const char *currency,
-                                      struct TALER_Amount *balance,
-                                      unsigned int history_length,
-                                      struct TALER_EXCHANGE_ReserveHistory *
-                                      rhistory)
+TALER_EXCHANGE_parse_reserve_history (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const json_t *history,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const char *currency,
+  struct TALER_Amount *balance,
+  unsigned int history_length,
+  struct TALER_EXCHANGE_ReserveHistory *rhistory)
 {
   struct GNUNET_HashCode uuid[history_length];
   unsigned int uuid_off;
@@ -417,9 +416,9 @@ TALER_EXCHANGE_parse_reserve_history (struct TALER_EXCHANGE_Handle *exchange,
  * @param len number of entries in @a rhistory
  */
 void
-TALER_EXCHANGE_free_reserve_history (struct
-                                     TALER_EXCHANGE_ReserveHistory *rhistory,
-                                     unsigned int len)
+TALER_EXCHANGE_free_reserve_history (
+  struct TALER_EXCHANGE_ReserveHistory *rhistory,
+  unsigned int len)
 {
   for (unsigned int i = 0; i<len; i++)
   {
@@ -452,13 +451,12 @@ TALER_EXCHANGE_free_reserve_history (struct
  * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
  */
 int
-TALER_EXCHANGE_verify_coin_history (const struct
-                                    TALER_EXCHANGE_DenomPublicKey *dk,
-                                    const char *currency,
-                                    const struct
-                                    TALER_CoinSpendPublicKeyP *coin_pub,
-                                    json_t *history,
-                                    struct TALER_Amount *total)
+TALER_EXCHANGE_verify_coin_history (
+  const struct TALER_EXCHANGE_DenomPublicKey *dk,
+  const char *currency,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  json_t *history,
+  struct TALER_Amount *total)
 {
   size_t len;
   struct TALER_Amount rtotal;
@@ -797,11 +795,9 @@ TALER_EXCHANGE_verify_coin_history (const struct
  * @return NULL on error (@a exchange_pub not known)
  */
 const struct TALER_EXCHANGE_SigningPublicKey *
-TALER_EXCHANGE_get_signing_key_info (const struct
-                                     TALER_EXCHANGE_Keys *keys,
-                                     const struct
-                                     TALER_ExchangePublicKeyP *
-                                     exchange_pub)
+TALER_EXCHANGE_get_signing_key_info (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   for (unsigned int i = 0; i<keys->num_sign_keys; i++)
   {

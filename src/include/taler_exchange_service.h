@@ -517,9 +517,9 @@ TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange);
  * found
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
-TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
-                                     const struct
-                                     TALER_DenominationPublicKey *pk);
+TALER_EXCHANGE_get_denomination_key (
+  const struct TALER_EXCHANGE_Keys *keys,
+  const struct TALER_DenominationPublicKey *pk);
 
 
 /**
@@ -529,8 +529,8 @@ TALER_EXCHANGE_get_denomination_key (const struct TALER_EXCHANGE_Keys *keys,
  * @returns a copy, must be freed with #TALER_EXCHANGE_destroy_denomination_key
  */
 struct TALER_EXCHANGE_DenomPublicKey *
-TALER_EXCHANGE_copy_denomination_key (const struct
-                                      TALER_EXCHANGE_DenomPublicKey *key);
+TALER_EXCHANGE_copy_denomination_key (
+  const struct TALER_EXCHANGE_DenomPublicKey *key);
 
 
 /**
@@ -540,8 +540,8 @@ TALER_EXCHANGE_copy_denomination_key (const struct
  * @param key key to destroy.
  */
 void
-TALER_EXCHANGE_destroy_denomination_key (struct
-                                         TALER_EXCHANGE_DenomPublicKey *key);
+TALER_EXCHANGE_destroy_denomination_key (
+  struct TALER_EXCHANGE_DenomPublicKey *key);
 
 
 /**
