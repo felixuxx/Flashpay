@@ -392,6 +392,8 @@ destroy_response_factory (struct ResponseFactoryContext *rfc)
 
 /**
  * Release memory used by @a rbc.
+ *
+ * @param rbc memory to release, excluding @a rbc itself
  */
 static void
 destroy_response_builder (struct ResponseBuilderContext *rbc)
@@ -412,9 +414,9 @@ destroy_response_builder (struct ResponseBuilderContext *rbc)
 /**
  * Iterator for freeing denomination keys.
  *
- * @param cls closure with the `struct TEH_KS_StateHandle`
- * @param key key for the denomination key
- * @param value coin details
+ * @param cls closure with the `struct TEH_KS_StateHandle` (unused)
+ * @param key hash of the denomination key (unused)
+ * @param value coin details, a `struct TALER_EXCHANGEDB_DenominationKey`
  * @return #GNUNET_OK to continue to iterate,
  *  #GNUNET_NO to stop iteration with no error,
  *  #GNUNET_SYSERR to abort iteration with error!
@@ -528,9 +530,9 @@ handle_signal (int signal_number)
  * @return a JSON object describing the denomination key isue (public part)
  */
 static json_t *
-denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
-                         const struct
-                         TALER_EXCHANGEDB_DenominationKeyInformationP *dki)
+denom_key_issue_to_json (
+  const struct TALER_DenominationPublicKey *pk,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dki)
 {
   struct TALER_Amount value;
   struct TALER_Amount fee_withdraw;
@@ -589,8 +591,7 @@ denom_key_issue_to_json (const struct TALER_DenominationPublicKey *pk,
  */
 static int
 store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
-              const struct
-              TALER_EXCHANGEDB_DenominationKey *dki)
+              const struct TALER_EXCHANGEDB_DenominationKey *dki)
 {
   struct TALER_EXCHANGEDB_DenominationKey *d2;
   int res;
@@ -670,7 +671,7 @@ struct AddRevocationContext
  * @return the provide duration
  */
 static struct GNUNET_TIME_Relative
-TALER_EXCHANGE_conf_duration_provide ()
+TALER_EXCHANGE_conf_duration_provide (void)
 {
   struct GNUNET_TIME_Relative rel;
 
@@ -779,8 +780,7 @@ add_denomination_transaction (void *cls,
 static int
 reload_keys_denom_iter (void *cls,
                         const char *alias,
-                        const struct
-                        TALER_EXCHANGEDB_DenominationKey *dki)
+                        const struct TALER_EXCHANGEDB_DenominationKey *dki)
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
@@ -974,10 +974,10 @@ sign_key_issue_to_json (const struct TALER_ExchangeSigningKeyValidityPS *ski,
  *  #GNUNET_SYSERR to abort iteration with error!
  */
 static int
-reload_keys_sign_iter (void *cls,
-                       const char *filename,
-                       const struct
-                       TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
+reload_keys_sign_iter (
+  void *cls,
+  const char *filename,
+  const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *ski)
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TEH_KS_StateHandle *key_state = rfc->key_state;
@@ -1203,7 +1203,7 @@ denomkey_array_sort_comparator (const void *k1,
  */
 static void
 get_date_string (struct GNUNET_TIME_Absolute at,
-                 char *date)
+                 char date[128])
 {
   static const char *const days[] =
   { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -1651,10 +1651,10 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
  * @param issue detailed information about the denomination (value, expiration times, fees)
  */
 static void
-reload_public_denoms_cb (void *cls,
-                         const struct TALER_DenominationPublicKey *denom_pub,
-                         const struct
-                         TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+reload_public_denoms_cb (
+  void *cls,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct ResponseFactoryContext *rfc = cls;
   struct TALER_EXCHANGEDB_DenominationKey dki;
@@ -2031,13 +2031,12 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
 struct TALER_EXCHANGEDB_DenominationKey *
-TEH_KS_denomination_key_lookup_by_hash (const struct
-                                        TEH_KS_StateHandle *key_state,
-                                        const struct
-                                        GNUNET_HashCode *denom_pub_hash,
-                                        enum TEH_KS_DenominationKeyUse use,
-                                        enum TALER_ErrorCode *ec,
-                                        unsigned int *hc)
+TEH_KS_denomination_key_lookup_by_hash (
+  const struct TEH_KS_StateHandle *key_state,
+  const struct GNUNET_HashCode *denom_pub_hash,
+  enum TEH_KS_DenominationKeyUse use,
+  enum TALER_ErrorCode *ec,
+  unsigned int *hc)
 {
   struct TALER_EXCHANGEDB_DenominationKey *dki;
   struct GNUNET_TIME_Absolute now;
@@ -2169,7 +2168,7 @@ TEH_KS_denomination_key_lookup_by_hash (const struct
  * the control pipe.
  */
 static void
-handle_sigusr1 ()
+handle_sigusr1 (void)
 {
   handle_signal (SIGUSR1);
 }
@@ -2180,7 +2179,7 @@ handle_sigusr1 ()
  * the control pipe.
  */
 static void
-handle_sigint ()
+handle_sigint (void)
 {
   handle_signal (SIGINT);
 }
@@ -2191,7 +2190,7 @@ handle_sigint ()
  * the control pipe.
  */
 static void
-handle_sigterm ()
+handle_sigterm (void)
 {
   handle_signal (SIGTERM);
 }
@@ -2202,7 +2201,7 @@ handle_sigterm ()
  * the control pipe.
  */
 static void
-handle_sighup ()
+handle_sighup (void)
 {
   handle_signal (SIGHUP);
 }
@@ -2213,7 +2212,7 @@ handle_sighup ()
  * the control pipe.
  */
 static void
-handle_sigchld ()
+handle_sigchld (void)
 {
   handle_signal (SIGCHLD);
 }
@@ -2316,6 +2315,7 @@ static struct GNUNET_SIGNAL_Context *sigint;
 static struct GNUNET_SIGNAL_Context *sighup;
 static struct GNUNET_SIGNAL_Context *sigchld;
 
+
 /**
  * Setup initial #internal_key_state.
  */
@@ -2355,7 +2355,7 @@ TEH_KS_init (void)
  * Finally release #internal_key_state.
  */
 void
-TEH_KS_free ()
+TEH_KS_free (void)
 {
   struct TEH_KS_StateHandle *ks;
 

@@ -108,8 +108,7 @@ enum TEH_KS_DenominationKeyUse
 {
 
   /**
-   * The  denomination key is to be used for a withdraw or reveal (exchange)
-   * operation.
+   * The denomination key is to be used for a withdraw or reveal operation.
    */
   TEH_KS_DKU_WITHDRAW,
 
@@ -147,13 +146,12 @@ enum TEH_KS_DenominationKeyUse
  *         or NULL if denom_pub could not be found (or is not valid at this time for the given @a use)
  */
 struct TALER_EXCHANGEDB_DenominationKey *
-TEH_KS_denomination_key_lookup_by_hash (const struct
-                                        TEH_KS_StateHandle *key_state,
-                                        const struct
-                                        GNUNET_HashCode *denom_pub_hash,
-                                        enum TEH_KS_DenominationKeyUse use,
-                                        enum TALER_ErrorCode *ec,
-                                        unsigned int *hc);
+TEH_KS_denomination_key_lookup_by_hash (
+  const struct TEH_KS_StateHandle *key_state,
+  const struct GNUNET_HashCode *denom_pub_hash,
+  enum TEH_KS_DenominationKeyUse use,
+  enum TALER_ErrorCode *ec,
+  unsigned int *hc);
 
 
 /**
