@@ -118,13 +118,6 @@ struct DenominationParameters
   struct GNUNET_TIME_Relative duration_withdraw;
 
   /**
-   * How much should coin creation (@e duration_withdraw) duration overlap
-   * with the next denomination?  Basically, the starting time of two
-   * denominations is always @e duration_withdraw - @e duration_overlap apart.
-   */
-  struct GNUNET_TIME_Relative duration_overlap;
-
-  /**
    * What is the value of each coin?
    */
   struct TALER_Amount value;
@@ -160,6 +153,13 @@ struct DenominationParameters
   uint32_t rsa_keysize;
 };
 
+
+/**
+ * How much should coin creation (@e duration_withdraw) duration overlap
+ * with the next denomination?  Basically, the starting time of two
+ * denominations is always @e duration_withdraw - #duration_overlap apart.
+ */
+static struct GNUNET_TIME_Relative duration_overlap;
 
 /**
  * The configured currency.
@@ -233,6 +233,13 @@ static struct GNUNET_TIME_Relative max_duration_spend;
  * Revoke denomination key identified by this hash (if non-zero).
  */
 static struct GNUNET_HashCode revoke_dkh;
+
+/**
+ * Which RSA key size should we use for replacment keys after revocation?
+ * (Useful because maybe that's the one option one might usefully want to
+ * change when replacing a key.)
+ */
+static unsigned int replacement_key_size = 2048;
 
 /**
  * Return value from main().
@@ -641,23 +648,11 @@ get_denomination_type_params (const char *ct,
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&params->duration_legal);
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           ct,
-                                           "DURATION_OVERLAP",
-                                           &params->duration_overlap))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "DURATION_OVERLAP");
-    return GNUNET_SYSERR;
-  }
-  GNUNET_TIME_round_rel (&params->duration_overlap);
-  if (params->duration_overlap.rel_value_us >=
+  if (duration_overlap.rel_value_us >=
       params->duration_withdraw.rel_value_us)
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
+                               "exchangedb",
                                "DURATION_OVERLAP",
                                "Value given for DURATION_OVERLAP must be smaller than value for DURATION_WITHDRAW!");
     return GNUNET_SYSERR;
@@ -741,7 +736,7 @@ get_denomination_type_params (const char *ct,
   dir = get_denomination_dir (params);
   get_anchor (dir,
               params->duration_withdraw,
-              params->duration_overlap,
+              duration_overlap,
               &params->anchor);
 
   /**
@@ -809,6 +804,45 @@ create_denomkey_issue (
 
 
 /**
+ * Write the @a denomkey_issue to file @a dkf and also (if applicable)
+ * dump the properties to the #auditor_output_file.
+ *
+ * @param dkf where to write the @a denomkey_issue
+ * @param denomkey_issue data to write
+ * @return #GNUNET_OK on success
+ */
+static int
+write_denomkey_issue (
+  const char *dkf,
+  const struct TALER_EXCHANGEDB_DenominationKey *denomkey_issue)
+{
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_denomination_key_write (dkf,
+                                               denomkey_issue))
+  {
+    fprintf (stderr,
+             "Failed to write denomination key information to file `%s'.\n",
+             dkf);
+    return GNUNET_SYSERR;
+  }
+  if ( (NULL != auditor_output_file) &&
+       (1 !=
+        fwrite (&denomkey_issue->issue.properties,
+                sizeof (struct TALER_DenominationKeyValidityPS),
+                1,
+                auditor_output_file)) )
+  {
+    fprintf (stderr,
+             "Failed to write denomination key information to %s: %s\n",
+             auditorrequestfile,
+             strerror (errno));
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Generate new denomination signing keys for the denomination type of the given @a
  * denomination_alias.
  *
@@ -862,48 +896,19 @@ exchange_keys_update_denominationtype (void *cls,
                 denomination_alias,
                 GNUNET_STRINGS_absolute_time_to_string (p.anchor),
                 dkf);
-
     create_denomkey_issue (&p,
                            &denomkey_issue);
-    if (GNUNET_OK !=
-        TALER_EXCHANGEDB_denomination_key_write (dkf,
-                                                 &denomkey_issue))
-    {
-      fprintf (stderr,
-               "Failed to write denomination key information to file `%s'.\n",
-               dkf);
-      *ret = GNUNET_SYSERR;
-      GNUNET_CRYPTO_rsa_private_key_free (
-        denomkey_issue.denom_priv.rsa_private_key);
-      GNUNET_CRYPTO_rsa_public_key_free (
-        denomkey_issue.denom_pub.rsa_public_key);
-      return;
-    }
-    if ( (NULL != auditor_output_file) &&
-         (1 !=
-          fwrite (&denomkey_issue.issue.properties,
-                  sizeof (struct TALER_DenominationKeyValidityPS),
-                  1,
-                  auditor_output_file)) )
-    {
-      fprintf (stderr,
-               "Failed to write denomination key information to %s: %s\n",
-               auditorrequestfile,
-               strerror (errno));
-      *ret = GNUNET_SYSERR;
-      GNUNET_CRYPTO_rsa_private_key_free (
-        denomkey_issue.denom_priv.rsa_private_key);
-      GNUNET_CRYPTO_rsa_public_key_free (
-        denomkey_issue.denom_pub.rsa_public_key);
-      return;
-    }
+    *ret = write_denomkey_issue (dkf,
+                                 &denomkey_issue);
     GNUNET_CRYPTO_rsa_private_key_free (
       denomkey_issue.denom_priv.rsa_private_key);
     GNUNET_CRYPTO_rsa_public_key_free (denomkey_issue.denom_pub.rsa_public_key);
+    if (GNUNET_OK != *ret)
+      return; /* stop loop, hard error */
     p.anchor = GNUNET_TIME_absolute_add (p.anchor,
                                          p.duration_withdraw);
     p.anchor = GNUNET_TIME_absolute_subtract (p.anchor,
-                                              p.duration_overlap);
+                                              duration_overlap);
   }
 }
 
@@ -1115,6 +1120,105 @@ create_wire_fees (void)
 
 
 /**
+ * Check if the denomination that we just revoked is currently active,
+ * and if so, generate a replacement key.
+ *
+ * @param cls closure with the revoked denomination key hash, a `struct GNUNET_HashCode *`
+ * @param alias coin alias
+ * @param dki the denomination key
+ * @return #GNUNET_OK to continue to iterate,
+ *  #GNUNET_NO to stop iteration with no error,
+ *  #GNUNET_SYSERR to abort iteration with error!
+ */
+static int
+check_revocation_regeneration (
+  void *cls,
+  const char *alias,
+  const struct TALER_EXCHANGEDB_DenominationKey *dki)
+{
+  const struct GNUNET_HashCode *denom_hash = cls;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute withdraw_end;
+
+  if (0 !=
+      GNUNET_memcmp (denom_hash,
+                     &dki->issue.properties.denom_hash))
+    return GNUNET_OK; /* does not match */
+  now = GNUNET_TIME_absolute_get ();
+  withdraw_end = GNUNET_TIME_absolute_ntoh (
+    dki->issue.properties.expire_withdraw);
+  if (now.abs_value_us >= withdraw_end.abs_value_us)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Revoked denomination key has expired, no need to create a replacment\n");
+    return GNUNET_NO;
+  }
+
+  {
+    struct GNUNET_TIME_Absolute anchor
+      = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
+    struct TALER_EXCHANGEDB_DenominationKey dki_new;
+    const char *dkf;
+    int ret;
+    struct DenominationParameters dp = {
+      .duration_legal
+        = GNUNET_TIME_absolute_get_difference
+            (anchor,
+            GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_legal)),
+      .duration_spend
+        = GNUNET_TIME_absolute_get_difference
+            (anchor,
+            GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_deposit)),
+      .duration_withdraw
+        = GNUNET_TIME_absolute_get_difference
+            (anchor,
+            GNUNET_TIME_absolute_ntoh (dki->issue.properties.expire_withdraw)),
+      .anchor = anchor,
+      .rsa_keysize = replacement_key_size
+    };
+    char *dkfi;
+
+    TALER_amount_ntoh (&dp.value,
+                       &dki->issue.properties.value);
+    TALER_amount_ntoh (&dp.fee_withdraw,
+                       &dki->issue.properties.fee_withdraw);
+    TALER_amount_ntoh (&dp.fee_deposit,
+                       &dki->issue.properties.fee_deposit);
+    TALER_amount_ntoh (&dp.fee_refresh,
+                       &dki->issue.properties.fee_refresh);
+    TALER_amount_ntoh (&dp.fee_refund,
+                       &dki->issue.properties.fee_refund);
+
+    /* find unused file name for revocation file by appending -%u */
+    dkf = get_denomination_type_file (&dp,
+                                      dp.anchor);
+    for (unsigned int i = 1;; i++)
+    {
+      GNUNET_asprintf (&dkfi,
+                       "%s-%u",
+                       dkf,
+                       i);
+      if (GNUNET_YES != GNUNET_DISK_file_test (dkfi))
+        break;
+      GNUNET_free (dkfi);
+    }
+
+    create_denomkey_issue (&dp,
+                           &dki_new);
+    ret = write_denomkey_issue (dkfi,
+                                &dki_new);
+    GNUNET_free (dkfi);
+    GNUNET_CRYPTO_rsa_private_key_free (dki_new.denom_priv.rsa_private_key);
+    GNUNET_CRYPTO_rsa_public_key_free (dki_new.denom_pub.rsa_public_key);
+    if (GNUNET_OK != ret)
+      return GNUNET_SYSERR;
+  }
+
+  return GNUNET_NO;
+}
+
+
+/**
  * Revoke the denomination key matching @a hc and request /recoup to be
  * initiated.
  *
@@ -1126,29 +1230,41 @@ create_wire_fees (void)
 static int
 revoke_denomination (const struct GNUNET_HashCode *hc)
 {
-  char *basedir;
+  {
+    char *basedir;
 
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (kcfg,
-                                               "exchange",
-                                               "REVOCATION_DIR",
-                                               &basedir))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "REVOCATION_DIR");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_EXCHANGEDB_denomination_key_revoke (basedir,
-                                                hc,
-                                                &master_priv))
-  {
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                                 "exchange",
+                                                 "REVOCATION_DIR",
+                                                 &basedir))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "REVOCATION_DIR");
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        TALER_EXCHANGEDB_denomination_key_revoke (basedir,
+                                                  hc,
+                                                  &master_priv))
+    {
+      GNUNET_free (basedir);
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
     GNUNET_free (basedir);
-    GNUNET_break (0);
+  }
+
+  if (GNUNET_SYSERR ==
+      TALER_EXCHANGEDB_denomination_keys_iterate (exchange_directory,
+                                                  &check_revocation_regeneration,
+                                                  (void *) hc))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Might have failed to generate replacement for revoked denomination key!\n");
     return GNUNET_SYSERR;
   }
-  GNUNET_free (basedir);
   return GNUNET_OK;
 }
 
@@ -1186,6 +1302,19 @@ run (void *cls,
     now = now_tmp;
   }
   GNUNET_TIME_round_abs (&now);
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           "exchangedb",
+                                           "DURATION_OVERLAP",
+                                           &duration_overlap))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "DURATION_OVERLAP");
+    global_ret = 1;
+    return;
+  }
+  GNUNET_TIME_round_rel (&duration_overlap);
 
   if (NULL == feedir)
   {
@@ -1336,6 +1465,11 @@ main (int argc,
                                    "DIRNAME",
                                    "directory where to write wire transfer fee structure",
                                    &feedir),
+    GNUNET_GETOPT_option_uint ('k',
+                               "replacement-keysize",
+                               "BITS",
+                               "when creating a replacement key in a revocation operation, which key size should be used for the new denomination key",
+                               &replacement_key_size),
     GNUNET_GETOPT_option_filename ('o',
                                    "output",
                                    "FILENAME",
