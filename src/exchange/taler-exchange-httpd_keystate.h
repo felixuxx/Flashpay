@@ -83,7 +83,7 @@ TEH_KS_release_ (const char *location,
 
 
 /**
- * Setup initial #internal_key_state.
+ * Setup initial #internal_key_state and our signal handlers.
  *
  * @return #GNUNET_OK on success
  */
@@ -92,7 +92,7 @@ TEH_KS_init (void);
 
 
 /**
- * Finally, release #internal_key_state.
+ * Finally, release #internal_key_state and our signal handlers.
  */
 void
 TEH_KS_free (void);
