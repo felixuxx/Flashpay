@@ -44,6 +44,14 @@ extern struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 extern char *TEH_exchange_directory;
 
 /**
+ * Are clients allowed to request /keys for times other than the
+ * current time? Allowing this could be abused in a DoS-attack
+ * as building new /keys responses is expensive. Should only be
+ * enabled for testcases, development and test systems.
+ */
+extern int TEH_allow_keys_timetravel;
+
+/**
  * Main directory with revocation data.
  */
 extern char *TEH_revocation_directory;

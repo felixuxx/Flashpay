@@ -121,7 +121,7 @@ struct KeysResponseData
 {
 
   /**
-   * Response to return if the client supports (gzip) compression.
+   * Response to return if the client supports (deflate) compression.
    */
   struct MHD_Response *response_compressed;
 
@@ -212,14 +212,14 @@ struct ResponseFactoryContext
   struct TEH_KS_StateHandle *key_state;
 
   /**
-   * Length of the @e denomkey_array.
-   */
-  unsigned int denomkey_array_length;
-
-  /**
    * Time stamp used as "now".
    */
   struct GNUNET_TIME_Absolute now;
+
+  /**
+   * Length of the @e denomkey_array.
+   */
+  unsigned int denomkey_array_length;
 };
 
 
@@ -249,7 +249,7 @@ struct TEH_KS_StateHandle
   struct GNUNET_CONTAINER_MultiHashMap *revoked_map;
 
   /**
-   * Sorted array of responses to /keys (sorted by cherry-picking date) of
+   * Sorted array of responses to /keys (MUST be sorted by cherry-picking date) of
    * length @e krd_array_length;
    */
   struct KeysResponseData *krd_array;
@@ -309,6 +309,12 @@ static struct TEH_KS_StateHandle *internal_key_state;
  */
 static pthread_mutex_t internal_key_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/**
+ * Configuration value LOOKAHEAD_PROVIDE that says for how far in the
+ * future we want to provide exchange key information to clients.
+ */
+static struct GNUNET_TIME_Relative conf_duration_provide;
+
 
 /* ************************** Clean up logic *********************** */
 
@@ -367,6 +373,11 @@ destroy_response_builder (struct ResponseBuilderContext *rbc)
   {
     json_decref (rbc->auditors_array);
     rbc->auditors_array = NULL;
+  }
+  if (NULL != rbc->hash_context)
+  {
+    GNUNET_CRYPTO_hash_context_abort (rbc->hash_context);
+    rbc->hash_context = NULL;
   }
 }
 
@@ -447,7 +458,7 @@ ks_free (struct TEH_KS_StateHandle *key_state)
 /**
  * Pipe used for signaling reloading of our key state.
  */
-static int reload_pipe[2];
+static int reload_pipe[2] = { -1, -1 };
 
 
 /**
@@ -458,23 +469,15 @@ static int reload_pipe[2];
 static void
 handle_signal (int signal_number)
 {
-  ssize_t res;
-  char c = signal_number;
+  char c = (char) signal_number; /* never seen a signal_number > 127 on any platform */
 
-  res = write (reload_pipe[1],
-               &c,
-               1);
-  if ( (res < 0) &&
-       (EINTR != errno) )
-  {
-    GNUNET_break (0);
-    return;
-  }
-  if (0 == res)
-  {
-    GNUNET_break (0);
-    return;
-  }
+  (void) ! write (reload_pipe[1],
+                  &c,
+                  1);
+  /* While one might like to "handle errors" here, even logging via fprintf()
+     isn't safe inside of a signal handler. So there is nothing we safely CAN
+     do. OTOH, also very little that can go wrong in pratice. Calling _exit()
+     on errors might be a possibility, but that might do more harm than good. *///
 }
 
 
@@ -482,11 +485,10 @@ handle_signal (int signal_number)
 
 
 /**
- * Convert the public part of a denomination key issue to a JSON
- * object.
+ * Convert the public part of denomination key data to a JSON object.
  *
- * @param pk public key of the denomination key
- * @param dki the denomination key issue
+ * @param pk public key of the denomination
+ * @param dki the denomination key issue information
  * @return a JSON object describing the denomination key isue (public part)
  */
 static json_t *
@@ -511,7 +513,9 @@ denom_key_issue_to_json (
   TALER_amount_ntoh (&fee_refund,
                      &dki->properties.fee_refund);
   return
-    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+    json_pack ("{s:o, s:o, s:o, s:o, s:o,"
+               " s:o, s:o, s:o, s:o, s:o,"
+               " s:o}",
                "master_sig",
                GNUNET_JSON_from_data_auto (&dki->signature),
                "stamp_start",
@@ -526,6 +530,7 @@ denom_key_issue_to_json (
                "stamp_expire_legal",
                GNUNET_JSON_from_time_abs (GNUNET_TIME_absolute_ntoh (
                                             dki->properties.expire_legal)),
+               /* 5 entries until here */
                "denom_pub",
                GNUNET_JSON_from_rsa_public_key (pk->rsa_public_key),
                "value",
@@ -536,6 +541,7 @@ denom_key_issue_to_json (
                TALER_JSON_from_amount (&fee_deposit),
                "fee_refresh",
                TALER_JSON_from_amount (&fee_refresh),
+               /* 10 entries until here */
                "fee_refund",
                TALER_JSON_from_amount (&fee_refund));
 }
@@ -553,20 +559,37 @@ static int
 store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
               const struct TALER_EXCHANGEDB_DenominationKey *dki)
 {
-  struct TALER_EXCHANGEDB_DenominationKey *d2;
-  int res;
-
+  /* First, we verify that the @a dki is actually well-formed.  While it comes
+     from our own hard disk, there is the possibility of missconfiguration
+     (i.e. bogus file in the directory), or that the administrator used the
+     wrong master public key, and we should not accept entries that are not
+     well-formed. *///
   {
     const struct TALER_EXCHANGEDB_DenominationKeyInformationP *dkip;
     struct TALER_DenominationKeyValidityPS denom_key_issue;
 
     dkip = &dki->issue;
     denom_key_issue = dkip->properties;
+    /* The above is straight from our disk. We should not trust
+       that it is well-formed, so we setup crucial fields ourselves. */
     denom_key_issue.purpose.purpose
       = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
     denom_key_issue.purpose.size
       = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
     denom_key_issue.master = TEH_master_public_key;
+
+    /* Check that the data we read matches our expectations */
+    if (0 !=
+        GNUNET_memcmp (&denom_key_issue,
+                       &dkip->properties))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid fields in denomination key `%s'\n",
+                  GNUNET_h2s (&dkip->properties.denom_hash));
+      return GNUNET_SYSERR;
+    }
+
+    /* Also check the signature by the master public key */
     if (GNUNET_SYSERR ==
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
@@ -581,27 +604,36 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
     }
   }
 
-  d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKey);
-  d2->issue = dki->issue;
-  if (NULL != dki->denom_priv.rsa_private_key)
-    d2->denom_priv.rsa_private_key
-      = GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
-  d2->denom_pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
-  res = GNUNET_CONTAINER_multihashmap_put (map,
+  /* We need to make a deep copy of the @a dki, as the original was allocated
+     elsewhere and will be freed by the caller. */
+  {
+    struct TALER_EXCHANGEDB_DenominationKey *d2;
+
+    d2 = GNUNET_new (struct TALER_EXCHANGEDB_DenominationKey);
+    d2->issue = dki->issue;
+    if (GNUNET_OK !=
+        GNUNET_CONTAINER_multihashmap_put (map,
                                            &d2->issue.properties.denom_hash,
                                            d2,
-                                           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
-  if (GNUNET_OK != res)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Duplicate denomination key `%s'\n",
-                GNUNET_h2s (&d2->issue.properties.denom_hash));
-    if (NULL != d2->denom_priv.rsa_private_key)
-      GNUNET_CRYPTO_rsa_private_key_free (d2->denom_priv.rsa_private_key);
-    GNUNET_CRYPTO_rsa_public_key_free (d2->denom_pub.rsa_public_key);
-    GNUNET_free (d2);
-    return GNUNET_NO;
+                                           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Duplicate denomination key `%s'\n",
+                  GNUNET_h2s (&d2->issue.properties.denom_hash));
+      GNUNET_free (d2);
+      return GNUNET_NO;
+    }
+
+    /* finish *deep* part of deep copy */
+    if (NULL != dki->denom_priv.rsa_private_key)
+    {
+      /* we might be past the withdraw period, so private key could have been deleted,
+         so only try to (deep) copy if non-NULL. */
+      d2->denom_priv.rsa_private_key
+        = GNUNET_CRYPTO_rsa_private_key_dup (dki->denom_priv.rsa_private_key);
+    }
+    d2->denom_pub.rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_dup (dki->denom_pub.rsa_public_key);
   }
   return GNUNET_OK;
 }
@@ -622,33 +654,6 @@ struct AddRevocationContext
    */
   const struct TALER_MasterSignatureP *revocation_master_sig;
 };
-
-
-/**
- * Get the relative time value that describes how
- * far in the future do we want to provide coin keys.
- *
- * @return the provide duration
- */
-static struct GNUNET_TIME_Relative
-TALER_EXCHANGE_conf_duration_provide (void)
-{
-  struct GNUNET_TIME_Relative rel;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
-                                           "exchange",
-                                           "LOOKAHEAD_PROVIDE",
-                                           &rel))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "LOOKAHEAD_PROVIDE",
-                               "time value required");
-    GNUNET_assert (0);
-  }
-  return rel;
-}
 
 
 /**
@@ -771,7 +776,7 @@ reload_keys_denom_iter (void *cls,
   }
 
   horizon = GNUNET_TIME_absolute_add (rfc->now,
-                                      TALER_EXCHANGE_conf_duration_provide ());
+                                      conf_duration_provide);
   start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
   if (start.abs_value_us > horizon.abs_value_us)
   {
@@ -944,8 +949,7 @@ reload_keys_sign_iter (
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute horizon;
 
-  horizon = GNUNET_TIME_relative_to_absolute (
-    TALER_EXCHANGE_conf_duration_provide ());
+  horizon = GNUNET_TIME_relative_to_absolute (conf_duration_provide);
   if (GNUNET_TIME_absolute_ntoh (ski->issue.start).abs_value_us >
       horizon.abs_value_us)
   {
@@ -1127,7 +1131,9 @@ initialize_denomkey_array (void *cls,
 
 /**
  * Comparator used to sort the `struct DenominationKeyEntry` array
- * by the validity period's starting time of the keys.
+ * by the validity period's starting time of the keys.  Must match
+ * the expected sorting by cherry_pick_date (which is based on the
+ * issue.properties.start) used in #krd_search_comparator.
  *
  * @param k1 a `struct DenominationKeyEntry *`
  * @param k2 a `struct DenominationKeyEntry *`
@@ -1460,7 +1466,6 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
                                                  &free_auditor_entry,
                                                  NULL);
           GNUNET_CONTAINER_multihashmap_destroy (auditors);
-          GNUNET_CRYPTO_hash_context_abort (rbc.hash_context);
           return GNUNET_SYSERR;
         }
       }
@@ -1822,6 +1827,8 @@ make_fresh_key_state (struct GNUNET_TIME_Absolute now)
 
     if (last.abs_value_us == d.abs_value_us)
       continue;
+    /* must be monotonically increasing as per qsort() call above: */
+    GNUNET_assert (last.abs_value_us < d.abs_value_us);
     last = d;
     off++;
   }
@@ -2277,11 +2284,31 @@ static struct GNUNET_SIGNAL_Context *sigchld;
 
 
 /**
- * Setup initial #internal_key_state.
+ * Setup initial #internal_key_state and our signal handlers.
  */
 int
 TEH_KS_init (void)
 {
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
+                                           "exchange",
+                                           "LOOKAHEAD_PROVIDE",
+                                           &conf_duration_provide))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "LOOKAHEAD_PROVIDE",
+                               "time value required");
+    return GNUNET_SYSERR;
+  }
+  if (0 == conf_duration_provide.rel_value_us)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "LOOKAHEAD_PROVIDE",
+                               "value cannot be zero");
+    return GNUNET_SYSERR;
+  }
   if (0 != pipe (reload_pipe))
   {
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
@@ -2312,7 +2339,7 @@ TEH_KS_init (void)
 
 
 /**
- * Finally release #internal_key_state.
+ * Finally release #internal_key_state and our signal handlers.
  */
 void
 TEH_KS_free (void)
@@ -2322,18 +2349,43 @@ TEH_KS_free (void)
   /* Note: locking is no longer be required, as we are again
      single-threaded. */
   ks = internal_key_state;
-  if (NULL == ks)
-    return;
-  GNUNET_assert (1 == ks->refcnt);
-  ks->refcnt--;
-  ks_free (ks);
-  GNUNET_SIGNAL_handler_uninstall (sigusr1);
-  GNUNET_SIGNAL_handler_uninstall (sigterm);
-  GNUNET_SIGNAL_handler_uninstall (sigint);
-  GNUNET_SIGNAL_handler_uninstall (sighup);
-  GNUNET_SIGNAL_handler_uninstall (sigchld);
-  GNUNET_break (0 == close (reload_pipe[0]));
-  GNUNET_break (0 == close (reload_pipe[1]));
+  if (NULL != ks)
+  {
+    GNUNET_assert (1 == ks->refcnt);
+    ks->refcnt--;
+    ks_free (ks);
+  }
+  if (NULL != sigusr1)
+  {
+    GNUNET_SIGNAL_handler_uninstall (sigusr1);
+    sigusr1 = NULL;
+  }
+  if (NULL != sigterm)
+  {
+    GNUNET_SIGNAL_handler_uninstall (sigterm);
+    sigterm = NULL;
+  }
+  if (NULL != sigint)
+  {
+    GNUNET_SIGNAL_handler_uninstall (sigint);
+    sigint = NULL;
+  }
+  if (NULL != sighup)
+  {
+    GNUNET_SIGNAL_handler_uninstall (sighup);
+    sighup = NULL;
+  }
+  if (NULL != sigchld)
+  {
+    GNUNET_SIGNAL_handler_uninstall (sigchld);
+    sigchld = NULL;
+  }
+  if (-1 != reload_pipe[0])
+  {
+    GNUNET_break (0 == close (reload_pipe[0]));
+    GNUNET_break (0 == close (reload_pipe[1]));
+    reload_pipe[0] = reload_pipe[1] = -1;
+  }
 }
 
 
@@ -2356,10 +2408,11 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
   key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
   {
-    /* This *can* happen if the exchange's keys are
-       not properly maintained. */
+    /* This *can* happen if the exchange's keys are not properly maintained
+       (i.e. administrator forgets to provision us with non-expired signing
+       keys or to send signal to reload keys after provisioning). */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Cannot sign request, no valid keys available\n");
+                "Cannot sign request, no valid signing keys available. Were they properly provisioned and did you signal the exchange to reload the keys?\n");
     return GNUNET_SYSERR;
   }
   *pub = key_state->current_sign_key_issue.issue.signkey_pub;
@@ -2374,8 +2427,8 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
 
 
 /**
- * Comparator used for a binary search for @a key in the
- * `struct KeysResponseData` array.
+ * Comparator used for a binary search by cherry_pick_date for @a key in the
+ * `struct KeysResponseData` array. See libc's qsort() and bsearch() functions.
  *
  * @param key pointer to a `struct GNUNET_TIME_Absolute`
  * @param value pointer to a `struct KeysResponseData` array entry
@@ -2437,6 +2490,10 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
                                          TALER_EC_KEYS_HAVE_NOT_NUMERIC,
                                          "last_issue_date");
     }
+    /* The following multiplication may overflow; but this should not really
+       be a problem, as giving back 'older' data than what the client asks for
+       (given that the client asks for data in the distant future) is not
+       problematic */
     last_issue_date.abs_value_us = (uint64_t) cherrypickn * 1000000LLU;
   }
   else
@@ -2458,11 +2515,26 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
+                                         MHD_HTTP_FORBIDDEN,
                                          TALER_EC_KEYS_HAVE_NOT_NUMERIC,
                                          "now");
     }
-    now.abs_value_us = (uint64_t) fakenown * 1000000LLU;
+    if (TEH_allow_keys_timetravel)
+    {
+      /* The following multiplication may overflow; but this should not really
+         be a problem, as giving back 'older' data than what the client asks for
+         (given that the client asks for data in the distant future) is not
+         problematic */
+      now.abs_value_us = (uint64_t) fakenown * 1000000LLU;
+    }
+    else
+    {
+      /* Option not allowed by configuration */
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_KEYS_TIMETRAVEL_FORBIDDEN,
+                                         "timetravel not allowed by this exchange");
+    }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Handling request for /keys (%s/%s)\n",
@@ -2474,11 +2546,14 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
     key_state = TEH_KS_acquire (now);
     if (NULL == key_state)
     {
-      TALER_LOG_ERROR ("Lacking keys to operate\n");
+      /* Maybe client picked time stamp too far in the future?  In that case,
+         #MHD_HTTP_INTERNAL_SERVER_ERROR might be missleading, could be more like a
+         NOT_FOUND situation. But, OTOH, for 'sane' clients it is more likely
+         to be our fault, so let's speculatively assume we are to blame ;-) */
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                         "no keys");
+                                         "no keys for requested time");
     }
     krd = bsearch (&last_issue_date,
                    key_state->krd_array,
@@ -2501,6 +2576,10 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
     }
     if (NULL == krd)
     {
+      /* Maybe client picked time stamp too far in the future?  In that case,
+         "INTERNAL_SERVER_ERROR" might be missleading, could be more like a
+         NOT_FOUND situation. But, OTOH, for 'sane' clients it is more likely
+         to be our fault, so let's speculatively assume we are to blame ;-) *///
       GNUNET_break (0);
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,

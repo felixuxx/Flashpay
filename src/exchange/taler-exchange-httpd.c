@@ -83,6 +83,14 @@ char *TEH_exchange_directory;
 char *TEH_revocation_directory;
 
 /**
+ * Are clients allowed to request /keys for times other than the
+ * current time? Allowing this could be abused in a DoS-attack
+ * as building new /keys responses is expensive. Should only be
+ * enabled for testcases, development and test systems.
+ */
+int TEH_allow_keys_timetravel;
+
+/**
  * The exchange's configuration (global)
  */
 struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
@@ -1183,6 +1191,10 @@ main (int argc,
   char *logfile = NULL;
   int connection_close = GNUNET_NO;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_flag ('a',
+                               "allow-timetravel",
+                               "allow clients to request /keys for arbitrary timestamps (for testing and development only)",
+                               &TEH_allow_keys_timetravel),
     GNUNET_GETOPT_option_flag ('C',
                                "connection-close",
                                "force HTTP connections to be closed after each request",

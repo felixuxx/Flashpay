@@ -1052,6 +1052,13 @@ enum TALER_ErrorCode
   TALER_EC_KEYS_MISSING = 1901,
 
   /**
+   * This exchange does not allow clients to request /keys for times
+   * other than the current (exchange) time. This reponse is provied
+   * with an HTTP status code of MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_KEYS_TIMETRAVEL_FORBIDDEN = 1902,
+
+  /**
    * The backend could not find the merchant instance specified in the
    * request.   This response is provided with HTTP status code
    * MHD_HTTP_NOT_FOUND.
