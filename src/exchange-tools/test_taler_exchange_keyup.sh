@@ -33,8 +33,11 @@ function exit_skip() {
 }
 
 # test required commands exist
-echo "Testing for jq"
+echo -n "Testing for jq ..."
 jq -h > /dev/null || exit_skip "jq required"
+echo " OK"
+
+CONF="-c test_taler_exchange_httpd.conf"
 
 echo -n "Launching exchange ..."
 PREFIX=
@@ -42,13 +45,13 @@ PREFIX=
 # PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
 # Setup database
-taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null
+taler-exchange-dbinit $CONF &> /dev/null
 # Setup keys.
-taler-exchange-keyup -c test_taler_exchange_httpd.conf || exit 1
+taler-exchange-keyup $CONF &> /dev/null || exit 1
 # Setup wire accounts.
-taler-exchange-wire -c test_taler_exchange_httpd.conf > /dev/null || exit 1
+taler-exchange-wire $CONF > /dev/null || exit 1
 # Run Exchange HTTPD (in background)
-$PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf 2> test-exchange.log &
+$PREFIX taler-exchange-httpd $CONF 2> test-exchange.log &
 
 # Give HTTP time to start
 
@@ -71,15 +74,69 @@ fi
 echo " DONE"
 
 # Finally run test...
-echo -n "Running tests ..."
+echo -n "Running tests ... "
 
 # Revoke active denomination key
+REVOKE_DENOM_HASH=`taler-exchange-keycheck $CONF -i EUR:1 | sort | head -n1 | awk '{print $2}'`
+REVOKE_DENOM_TIME=`taler-exchange-keycheck $CONF -i EUR:1 | sort | head -n1 | awk '{print $1}'`
 
+taler-exchange-keyup $CONF -r "$REVOKE_DENOM_HASH" -k 1024
 
+# check revocation file exists
+RDIR=`taler-config $CONF -f -s exchange -o REVOCATION_DIR`
+if [ -f "$RDIR"/$REVOKE_DENOM_HASH.rev ]
+then
+    echo -n "REV-OK "
+else
+    echo -n "REV-FAIL ($RDIR) "
+    RET=1
+fi
+
+# Check we now have two keys for that timestamp
+CNT=`taler-exchange-keycheck $CONF -i EUR:1 | awk '{print $1}' | grep -- "$REVOKE_DENOM_TIME" | wc -l`
+
+if [ x2 != x${CNT} ]
+then
+    echo -n "CNT-FAIL (${CNT}) "
+    RET=1
+else
+    echo -n "CNT-OK "
+fi
+
+# Reload keys (and revocation data) at the exchange
+kill -SIGUSR1 $!
+
+# Give exchange chance to parse and reload keys
+sleep 5
+
+# Download (updated) keys
+wget http://localhost:8081/keys -O keys.json -o /dev/null >/dev/null
+
+RK=`jq -er .recoup[0].h_denom_pub < keys.json`
+if [ x$RK != x$REVOKE_DENOM_HASH ]
+then
+    echo -n "KEYS-FAIL ($RK vs $REVOKE_DENOM_HASH)"
+    RET=1
+else
+    echo -n "KEYS-OK"
+fi
 
 echo " DONE"
 # $! is the last backgrounded process, hence the exchange
 kill -TERM $!
 wait $!
-# Return status code from exchange for this script
-exit $?
+if [ 0 != $? ]
+then
+    RET=4
+fi
+
+echo "Final cleanup"
+# Can't leave revocations around, would mess up next test run
+rm -r "$RDIR"
+# Also cleaning up live keys, as otherwise we have two for the revoked denomination type next time
+KDIR=`taler-config $CONF -f -s exchange -o KEYDIR`
+rm -r "$KDIR"
+# Clean up our temporary file
+rm keys.json
+
+exit $RET
