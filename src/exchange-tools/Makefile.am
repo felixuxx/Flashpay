@@ -67,6 +67,20 @@ taler_exchange_dbinit_CPPFLAGS = \
   $(POSTGRESQL_CPPFLAGS)
 
 
+# Testcases
+
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+
+check_SCRIPTS = \
+  test_taler_exchange_keyup.sh
+
+TESTS = \
+  $(check_SCRIPTS)
+
+# Distribution
+
 EXTRA_DIST = \
-  $(pkgcfg_DATA) \
-  key-helper.c
+  test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
+  test_taler_exchange_httpd.conf \
+  $(check_SCRIPTS) \
+  $(pkgcfg_DATA)

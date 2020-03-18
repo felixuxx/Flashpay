@@ -41,6 +41,12 @@ static const struct GNUNET_CONFIGURATION_Handle *kcfg;
  */
 static int global_ret;
 
+/**
+ * Option -i used to print full denomination key hashes for
+ * denominations of certain amounts.
+ */
+static struct TALER_Amount print_dk_amount;
+
 
 /**
  * Function called on each signing key.
@@ -136,6 +142,7 @@ denomkeys_iter (void *cls,
                 TALER_EXCHANGEDB_DenominationKey *dki)
 {
   struct GNUNET_HashCode hc;
+  struct TALER_Amount value;
 
   (void) cls;
   if (ntohl (dki->issue.properties.purpose.size) !=
@@ -187,6 +194,29 @@ denomkeys_iter (void *cls,
               "Denomination key `%s' (%s) is valid\n",
               alias,
               GNUNET_h2s (&hc));
+  TALER_amount_ntoh (&value,
+                     &dki->issue.properties.value);
+  if ( (GNUNET_OK ==
+        TALER_amount_cmp_currency (&print_dk_amount,
+                                   &value)) &&
+       (0 ==
+        TALER_amount_cmp (&print_dk_amount,
+                          &value)) )
+  {
+    char *dh;
+    struct GNUNET_TIME_Absolute start;
+
+    start = GNUNET_TIME_absolute_ntoh (dki->issue.properties.start);
+    dh = GNUNET_STRINGS_data_to_string_alloc (&dki->issue.properties.denom_hash,
+                                              sizeof (struct GNUNET_HashCode));
+    /* output start time first for easy numeric sorting, then
+       the denomination hash, and finally the human-readable start time */
+    printf ("%020llu %s %s\n",
+            (unsigned long long) start.abs_value_us,
+            dh,
+            GNUNET_STRINGS_absolute_time_to_string (start));
+    GNUNET_free (dh);
+  }
   return GNUNET_OK;
 }
 
@@ -275,6 +305,11 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    TALER_getopt_get_amount ('i',
+                             "denomination-info-hash",
+                             "AMOUNT",
+                             "print full denomination hashes of all denominations with the given AMOUNT value",
+                             &print_dk_amount),
     GNUNET_GETOPT_OPTION_END
   };
 
