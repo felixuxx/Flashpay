@@ -28,6 +28,6 @@
  */
 #define EXCHANGE_LIB_BACKOFF(r) GNUNET_TIME_randomized_backoff ( \
     (r), \
-    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 2));
+    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, 2))
 
 #endif
