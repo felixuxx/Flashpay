@@ -33,6 +33,12 @@
 
 
 /**
+ * How often do we retry before giving up?
+ */
+#define NUM_RETRIES 5
+
+
+/**
  * State for a "fakebank transfer" CMD.
  */
 struct AdminAddIncomingState
@@ -120,9 +126,9 @@ struct AdminAddIncomingState
   /**
    * Was this command modified via
    * #TALER_TESTING_cmd_admin_add_incoming_with_retry to
-   * enable retries?
+   * enable retries? If so, how often should we still retry?
    */
-  int do_retry;
+  unsigned int do_retry;
 };
 
 
@@ -184,8 +190,9 @@ confirmation_cb (void *cls,
   fts->aih = NULL;
   if (MHD_HTTP_OK != http_status)
   {
-    if (GNUNET_YES == fts->do_retry)
+    if (0 != fts->do_retry)
     {
+      fts->do_retry--;
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
@@ -588,7 +595,7 @@ TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd)
 
   GNUNET_assert (&admin_add_incoming_run == cmd.run);
   fts = cmd.cls;
-  fts->do_retry = GNUNET_YES;
+  fts->do_retry = NUM_RETRIES;
   return cmd;
 }
 

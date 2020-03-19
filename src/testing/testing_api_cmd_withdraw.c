@@ -32,6 +32,17 @@
 
 
 /**
+ * How often do we retry before giving up?
+ */
+#define NUM_RETRIES 15
+
+/**
+ * How long do we wait AT LEAST if the exchange says the reserve is unknown?
+ */
+#define UNKNOWN_MIN_BACKOFF GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+
+/**
  * State for a "withdraw" CMD.
  */
 struct WithdrawState
@@ -100,9 +111,9 @@ struct WithdrawState
   /**
    * Was this command modified via
    * #TALER_TESTING_cmd_withdraw_with_retry to
-   * enable retries?
+   * enable retries? How often should we still retry?
    */
-  int do_retry;
+  unsigned int do_retry;
 };
 
 
@@ -160,8 +171,10 @@ reserve_withdraw_cb (void *cls,
   ws->wsh = NULL;
   if (ws->expected_response_code != http_status)
   {
-    if (GNUNET_YES == ws->do_retry)
+    if (0 != ws->do_retry)
     {
+      if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != ec)
+        ws->do_retry--; /* we don't count reserve unknown as failures here */
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
            (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == ec) ||
@@ -175,8 +188,11 @@ reserve_withdraw_cb (void *cls,
         /* on DB conflicts, do not use backoff */
         if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
           ws->backoff = GNUNET_TIME_UNIT_ZERO;
-        else
+        else if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != ec)
           ws->backoff = EXCHANGE_LIB_BACKOFF (ws->backoff);
+        else
+          ws->backoff = GNUNET_TIME_relative_max (UNKNOWN_MIN_BACKOFF,
+                                                  ws->backoff);
         ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
                                                        &do_retry,
                                                        ws);
@@ -526,7 +542,7 @@ TALER_TESTING_cmd_withdraw_with_retry (struct TALER_TESTING_Command cmd)
 
   GNUNET_assert (&withdraw_run == cmd.run);
   ws = cmd.cls;
-  ws->do_retry = GNUNET_YES;
+  ws->do_retry = NUM_RETRIES;
   return cmd;
 }
 

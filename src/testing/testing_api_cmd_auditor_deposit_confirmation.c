@@ -29,6 +29,11 @@
 #include "taler_signatures.h"
 #include "backoff.h"
 
+/**
+ * How often do we retry before giving up?
+ */
+#define NUM_RETRIES 5
+
 
 /**
  * State for a "deposit confirmation" CMD.
@@ -83,9 +88,9 @@ struct DepositConfirmationState
   unsigned int expected_response_code;
 
   /**
-   * Should we retry on (transient) failures?
+   * How often should we retry on (transient) failures?
    */
-  int do_retry;
+  unsigned int do_retry;
 
 };
 
@@ -140,8 +145,9 @@ deposit_confirmation_cb (void *cls,
   dcs->dc = NULL;
   if (dcs->expected_response_code != http_status)
   {
-    if (GNUNET_YES == dcs->do_retry)
+    if (0 != dcs->do_retry)
     {
+      dcs->do_retry--;
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
@@ -436,7 +442,7 @@ TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command
 
   GNUNET_assert (&deposit_confirmation_run == cmd.run);
   dcs = cmd.cls;
-  dcs->do_retry = GNUNET_YES;
+  dcs->do_retry = NUM_RETRIES;
   return cmd;
 }
 

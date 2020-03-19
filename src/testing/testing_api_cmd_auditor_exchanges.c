@@ -31,6 +31,12 @@
 
 
 /**
+ * How often do we retry before giving up?
+ */
+#define NUM_RETRIES 5
+
+
+/**
  * State for a "deposit confirmation" CMD.
  */
 struct ExchangesState
@@ -72,9 +78,9 @@ struct ExchangesState
   const char *exchange_url;
 
   /**
-   * Should we retry on (transient) failures?
+   * How often should we retry on (transient) failures?
    */
-  int do_retry;
+  unsigned int do_retry;
 
 };
 
@@ -132,8 +138,9 @@ exchanges_cb (void *cls,
   es->leh = NULL;
   if (es->expected_response_code != http_status)
   {
-    if (GNUNET_YES == es->do_retry)
+    if (0 != es->do_retry)
     {
+      es->do_retry--;
       if ( (0 == http_status) ||
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
@@ -353,7 +360,7 @@ TALER_TESTING_cmd_exchanges_with_retry (struct TALER_TESTING_Command cmd)
 
   GNUNET_assert (&exchanges_run == cmd.run);
   es = cmd.cls;
-  es->do_retry = GNUNET_YES;
+  es->do_retry = NUM_RETRIES;
   return cmd;
 }
 
