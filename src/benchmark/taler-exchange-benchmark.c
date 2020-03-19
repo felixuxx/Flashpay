@@ -952,6 +952,7 @@ main (int argc,
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_prepare_exchange (cfg_filename,
+                                                   GNUNET_NO,
                                                    &ec));
   }
   else

@@ -73,6 +73,7 @@ TALER_JSON_get_error_code (const json_t *json)
 
   if (NULL == json)
   {
+    abort ();
     GNUNET_break_op (0);
     return TALER_EC_INVALID_RESPONSE;
   }

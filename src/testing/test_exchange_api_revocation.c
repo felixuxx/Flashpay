@@ -212,6 +212,7 @@ main (int argc,
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+                                          GNUNET_YES,
                                           &ec))
   {
   case GNUNET_SYSERR:

@@ -490,12 +490,14 @@ fail:
  * launch the exchange process itself.
  *
  * @param config_filename configuration file to use
+ * @param reset_db should we reset the database?
  * @param[out] ec will be set to the exchange configuration data
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */
 int
 TALER_TESTING_prepare_exchange (const char *config_filename,
+                                int reset_db,
                                 struct TALER_TESTING_ExchangeConfiguration *ec)
 {
   struct SignInfo si = {
@@ -508,12 +510,15 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
       TALER_TESTING_run_keyup (config_filename,
                                si.auditor_sign_input_filename))
     return GNUNET_NO;
-  if (GNUNET_OK !=
-      TALER_TESTING_exchange_db_reset (config_filename))
-    return GNUNET_NO;
-  if (GNUNET_OK !=
-      TALER_TESTING_auditor_db_reset (config_filename))
-    return GNUNET_NO;
+  if (GNUNET_YES == reset_db)
+  {
+    if (GNUNET_OK !=
+        TALER_TESTING_exchange_db_reset (config_filename))
+      return GNUNET_NO;
+    if (GNUNET_OK !=
+        TALER_TESTING_auditor_db_reset (config_filename))
+      return GNUNET_NO;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse_and_run (config_filename,
                                           &sign_keys_for_exchange,
