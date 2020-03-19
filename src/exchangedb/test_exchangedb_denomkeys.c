@@ -110,13 +110,13 @@ main (int argc,
       const char *const argv[])
 {
   struct TALER_EXCHANGEDB_DenominationKey dki;
-  char *enc;
+  void *enc;
   size_t enc_size;
   struct TALER_EXCHANGEDB_DenominationKey dki_read;
   struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
   struct TALER_MasterPrivateKeyP master_priv;
   struct TALER_MasterPublicKeyP master_pub;
-  char *enc_read;
+  void *enc_read;
   size_t enc_read_size;
   char *tmpfile;
   char *tmpdir;
