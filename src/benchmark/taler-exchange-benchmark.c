@@ -475,6 +475,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   pid_t cpids[howmany_clients];
   pid_t fakebank = -1;
   int wstatus;
+  struct GNUNET_OS_Process *auditord = NULL;
   struct GNUNET_OS_Process *exchanged = NULL;
   struct GNUNET_OS_Process *wirewatch = NULL;
   struct GNUNET_OS_Process *exchange_slave = NULL;
@@ -522,6 +523,30 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                0);
       return 77;
     }
+    /* start auditor */
+    auditord = GNUNET_OS_start_process (GNUNET_NO,
+                                        GNUNET_OS_INHERIT_STD_ALL,
+                                        NULL, NULL, NULL,
+                                        "taler-auditor-httpd",
+                                        "taler-auditor-httpd",
+                                        "-c", config_file,
+                                        NULL);
+    if (NULL == auditord)
+    {
+      GNUNET_OS_process_kill (exchanged,
+                              SIGTERM);
+      if (MODE_BOTH == mode)
+      {
+        GNUNET_assert (-1 != fakebank);
+        kill (fakebank,
+              SIGTERM);
+        waitpid (fakebank,
+                 &wstatus,
+                 0);
+      }
+      GNUNET_OS_process_destroy (exchanged);
+      return 77;
+    }
     /* start exchange wirewatch */
     wirewatch = GNUNET_OS_start_process (GNUNET_NO,
                                          GNUNET_OS_INHERIT_STD_ALL,
@@ -532,6 +557,8 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                                          NULL);
     if (NULL == wirewatch)
     {
+      GNUNET_OS_process_kill (auditord,
+                              SIGTERM);
       GNUNET_OS_process_kill (exchanged,
                               SIGTERM);
       if (MODE_BOTH == mode)
@@ -606,6 +633,13 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                               SIGTERM);
       GNUNET_OS_process_wait (wirewatch);
       GNUNET_OS_process_destroy (wirewatch);
+    }
+    if (NULL != auditord)
+    {
+      GNUNET_OS_process_kill (auditord,
+                              SIGTERM);
+      GNUNET_OS_process_wait (auditord);
+      GNUNET_OS_process_destroy (auditord);
     }
     return 77;
   }
@@ -696,6 +730,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   {
     GNUNET_assert (NULL != wirewatch);
     GNUNET_assert (NULL != exchanged);
+    GNUNET_assert (NULL != auditord);
     /* stop wirewatch */
     GNUNET_break (0 ==
                   GNUNET_OS_process_kill (wirewatch,
@@ -703,6 +738,13 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
     GNUNET_break (GNUNET_OK ==
                   GNUNET_OS_process_wait (wirewatch));
     GNUNET_OS_process_destroy (wirewatch);
+    /* stop auditor */
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (auditord,
+                                          SIGTERM));
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (auditord));
+    GNUNET_OS_process_destroy (auditord);
     /* stop exchange */
     GNUNET_break (0 ==
                   GNUNET_OS_process_kill (exchanged,

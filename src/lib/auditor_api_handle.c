@@ -470,6 +470,7 @@ request_version (void *cls)
   struct VersionRequest *vr;
   CURL *eh;
 
+  abort ();
   auditor->retry_task = NULL;
   GNUNET_assert (NULL == auditor->vr);
   vr = GNUNET_new (struct VersionRequest);
