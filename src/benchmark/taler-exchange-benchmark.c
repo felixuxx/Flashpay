@@ -111,9 +111,19 @@ static struct GNUNET_TIME_Relative duration;
 static struct TALER_TESTING_Command *all_commands;
 
 /**
+ * Name of our configuration file.
+ */
+static char *cfg_filename;
+
+/**
  * Exit code.
  */
 static int result;
+
+/**
+ * Use the fakebank instead of the Python bank.
+ */
+static int use_fakebank;
 
 /**
  * How many coins we want to create per client and reserve.
@@ -134,6 +144,11 @@ static unsigned int refresh_rate = 10;
  * How many clients we want to create.
  */
 static unsigned int howmany_clients = 1;
+
+/**
+ * Bank configuration to use.
+ */
+static struct TALER_TESTING_BankConfiguration bc;
 
 /**
  * Log level used during the run.
@@ -475,6 +490,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   pid_t cpids[howmany_clients];
   pid_t fakebank = -1;
   int wstatus;
+  struct GNUNET_OS_Process *bankd = NULL;
   struct GNUNET_OS_Process *auditord = NULL;
   struct GNUNET_OS_Process *exchanged = NULL;
   struct GNUNET_OS_Process *wirewatch = NULL;
@@ -483,22 +499,41 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
 
   if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
   {
-    /* start fakebank */
-    fakebank = fork ();
-    if (0 == fakebank)
+    if (use_fakebank)
     {
-      GNUNET_log_setup ("benchmark-fakebank",
-                        NULL == loglev ? "INFO" : loglev,
-                        logfile);
-      GNUNET_SCHEDULER_run (&launch_fakebank,
-                            NULL);
-      exit (0);
+      /* start fakebank */
+      fakebank = fork ();
+      if (0 == fakebank)
+      {
+        GNUNET_log_setup ("benchmark-fakebank",
+                          NULL == loglev ? "INFO" : loglev,
+                          logfile);
+        GNUNET_SCHEDULER_run (&launch_fakebank,
+                              NULL);
+        exit (0);
+      }
+      if (-1 == fakebank)
+      {
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "fork");
+        return GNUNET_SYSERR;
+      }
     }
-    if (-1 == fakebank)
+    else
     {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "fork");
-      return GNUNET_SYSERR;
+      /* start bank */
+      if (GNUNET_OK !=
+          TALER_TESTING_prepare_bank (cfg_filename,
+                                      GNUNET_NO,
+                                      "exchange-account-2",
+                                      &bc))
+      {
+        return 1;
+      }
+      bankd = TALER_TESTING_run_bank (cfg_filename,
+                                      "http://localhost:8082/");
+      if (NULL == bankd)
+        return 77;
     }
   }
 
@@ -515,12 +550,20 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                                          NULL);
     if ( (NULL == exchanged) && (MODE_BOTH == mode) )
     {
-      GNUNET_assert (-1 != fakebank);
-      kill (fakebank,
-            SIGTERM);
-      waitpid (fakebank,
-               &wstatus,
-               0);
+      if (-1 != fakebank)
+      {
+        kill (fakebank,
+              SIGTERM);
+        waitpid (fakebank,
+                 &wstatus,
+                 0);
+      }
+      if (NULL != bankd)
+      {
+        GNUNET_OS_process_kill (bankd,
+                                SIGTERM);
+        GNUNET_OS_process_destroy (bankd);
+      }
       return 77;
     }
     /* start auditor */
@@ -537,12 +580,20 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                               SIGTERM);
       if (MODE_BOTH == mode)
       {
-        GNUNET_assert (-1 != fakebank);
-        kill (fakebank,
-              SIGTERM);
-        waitpid (fakebank,
-                 &wstatus,
-                 0);
+        if (-1 != fakebank)
+        {
+          kill (fakebank,
+                SIGTERM);
+          waitpid (fakebank,
+                   &wstatus,
+                   0);
+        }
+        if (NULL != bankd)
+        {
+          GNUNET_OS_process_kill (bankd,
+                                  SIGTERM);
+          GNUNET_OS_process_destroy (bankd);
+        }
       }
       GNUNET_OS_process_destroy (exchanged);
       return 77;
@@ -563,12 +614,20 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                               SIGTERM);
       if (MODE_BOTH == mode)
       {
-        GNUNET_assert (-1 != fakebank);
-        kill (fakebank,
-              SIGTERM);
-        waitpid (fakebank,
-                 &wstatus,
-                 0);
+        if (-1 != fakebank)
+        {
+          kill (fakebank,
+                SIGTERM);
+          waitpid (fakebank,
+                   &wstatus,
+                   0);
+        }
+        if (NULL != bankd)
+        {
+          GNUNET_OS_process_kill (bankd,
+                                  SIGTERM);
+          GNUNET_OS_process_destroy (bankd);
+        }
       }
       GNUNET_OS_process_destroy (exchanged);
       return 77;
@@ -618,12 +677,20 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                             SIGTERM);
     if ( (MODE_BOTH == mode) || (MODE_CLIENT == mode))
     {
-      GNUNET_assert (-1 != fakebank);
-      kill (fakebank,
-            SIGTERM);
-      waitpid (fakebank,
-               &wstatus,
-               0);
+      if (-1 != fakebank)
+      {
+        kill (fakebank,
+              SIGTERM);
+        waitpid (fakebank,
+                 &wstatus,
+                 0);
+      }
+      if (NULL != bankd)
+      {
+        GNUNET_OS_process_kill (bankd,
+                                SIGTERM);
+        GNUNET_OS_process_destroy (bankd);
+      }
     }
     GNUNET_OS_process_wait (exchanged);
     GNUNET_OS_process_destroy (exchanged);
@@ -757,19 +824,25 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
   {
     /* stop fakebank */
-    GNUNET_assert (-1 != fakebank);
-    if (0 != kill (fakebank,
-                   SIGTERM))
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                           "kill");
-    waitpid (fakebank,
-             &wstatus,
-             0);
-    if ( (! WIFEXITED (wstatus)) ||
-         (0 != WEXITSTATUS (wstatus)) )
+    if (-1 != fakebank)
     {
-      GNUNET_break (0);
-      result = GNUNET_SYSERR;
+      kill (fakebank,
+            SIGTERM);
+      waitpid (fakebank,
+               &wstatus,
+               0);
+      if ( (! WIFEXITED (wstatus)) ||
+           (0 != WEXITSTATUS (wstatus)) )
+      {
+        GNUNET_break (0);
+        result = GNUNET_SYSERR;
+      }
+    }
+    if (NULL != bankd)
+    {
+      GNUNET_OS_process_kill (bankd,
+                              SIGTERM);
+      GNUNET_OS_process_destroy (bankd);
     }
   }
   return result;
@@ -787,7 +860,6 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *cfg_filename = NULL;
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_mandatory
       (GNUNET_GETOPT_option_cfgfile (&cfg_filename)),
@@ -824,6 +896,10 @@ main (int argc,
                                  "LF",
                                  "will log to file LF",
                                  &logfile),
+    GNUNET_GETOPT_option_flag ('f',
+                               "fakebank",
+                               "start a fakebank instead of the Python bank",
+                               &use_fakebank),
     GNUNET_GETOPT_option_flag ('K',
                                "linger",
                                "linger around until key press",
@@ -949,10 +1025,13 @@ main (int argc,
     }
     GNUNET_OS_process_wait (compute_wire_response);
     GNUNET_OS_process_destroy (compute_wire_response);
-
+    /* If we use the fakebank, we MUST reset the database as the fakebank
+       will have forgotten everything... */
     GNUNET_assert (GNUNET_OK ==
                    TALER_TESTING_prepare_exchange (cfg_filename,
-                                                   GNUNET_NO,
+                                                   (GNUNET_YES == use_fakebank)
+                                                   ? GNUNET_YES
+                                                   : GNUNET_NO,
                                                    &ec));
   }
   else

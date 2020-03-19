@@ -169,7 +169,7 @@ TALER_TESTING_run_bank (const char *config_filename,
   GNUNET_free (serve_cfg);
   bank_proc = GNUNET_OS_start_process
                 (GNUNET_NO,
-                GNUNET_OS_INHERIT_STD_ALL,
+                GNUNET_OS_INHERIT_STD_NONE,
                 NULL, NULL, NULL,
                 "taler-bank-manage-testing",
                 "taler-bank-manage-testing",
@@ -222,6 +222,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  * and reset database.
  *
  * @param config_filename configuration file name.
+ * @param reset_db should we reset the bank's database
  * @param config_section section of the configuration with the exchange's account
  * @param[out] bc set to the bank's configuration data
  * @return the base url, or NULL upon errors.  Must be freed
@@ -229,6 +230,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  */
 int
 TALER_TESTING_prepare_bank (const char *config_filename,
+                            int reset_db,
                             const char *config_section,
                             struct TALER_TESTING_BankConfiguration *bc)
 {
@@ -305,56 +307,59 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   }
 
   /* DB preparation */
-  if (NULL ==
-      (dbreset_proc = GNUNET_OS_start_process (
-         GNUNET_NO,
-         GNUNET_OS_INHERIT_STD_ALL,
-         NULL, NULL, NULL,
-         "taler-bank-manage",
-         "taler-bank-manage",
-         "-c", config_filename,
-         "--with-db", database,
-         "django",
-         "flush",
-         "--no-input", NULL)))
+  if (GNUNET_YES == reset_db)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to flush the bank db.\n");
+    if (NULL ==
+        (dbreset_proc = GNUNET_OS_start_process (
+           GNUNET_NO,
+           GNUNET_OS_INHERIT_STD_NONE,
+           NULL, NULL, NULL,
+           "taler-bank-manage",
+           "taler-bank-manage",
+           "-c", config_filename,
+           "--with-db", database,
+           "django",
+           "flush",
+           "--no-input", NULL)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to flush the bank db.\n");
+      GNUNET_free (database);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
     GNUNET_free (database);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (database);
 
-  if (GNUNET_SYSERR ==
-      GNUNET_OS_process_wait_status (dbreset_proc,
-                                     &type,
-                                     &code))
-  {
+    if (GNUNET_SYSERR ==
+        GNUNET_OS_process_wait_status (dbreset_proc,
+                                       &type,
+                                       &code))
+    {
+      GNUNET_OS_process_destroy (dbreset_proc);
+      GNUNET_break (0);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    if ( (type == GNUNET_OS_PROCESS_EXITED) &&
+         (0 != code) )
+    {
+      fprintf (stderr,
+               "Failed to setup database\n");
+      GNUNET_break (0);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    if ( (type != GNUNET_OS_PROCESS_EXITED) ||
+         (0 != code) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected error running `taler-bank-manage django flush'!\n");
+      GNUNET_break (0);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
     GNUNET_OS_process_destroy (dbreset_proc);
-    GNUNET_break (0);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return GNUNET_SYSERR;
   }
-  if ( (type == GNUNET_OS_PROCESS_EXITED) &&
-       (0 != code) )
-  {
-    fprintf (stderr,
-             "Failed to setup database\n");
-    GNUNET_break (0);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return GNUNET_SYSERR;
-  }
-  if ( (type != GNUNET_OS_PROCESS_EXITED) ||
-       (0 != code) )
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected error running `taler-bank-manage django flush'!\n");
-    GNUNET_break (0);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_OS_process_destroy (dbreset_proc);
   if (GNUNET_OK !=
       TALER_BANK_auth_parse_cfg (cfg,
                                  config_section,

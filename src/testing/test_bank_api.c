@@ -171,6 +171,7 @@ main (int argc,
     cfgfilename = CONFIG_FILE_PYBANK;
     if (GNUNET_OK !=
         TALER_TESTING_prepare_bank (CONFIG_FILE_PYBANK,
+                                    GNUNET_YES,
                                     "exchange-account-2",
                                     &bc))
     {
