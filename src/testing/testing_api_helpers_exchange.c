@@ -368,6 +368,11 @@ struct SignInfo
    * calling #TALER_TESTING_sign_keys_for_exchange.
    */
   const char *auditor_sign_input_filename;
+
+  /**
+   * Did we reset the database?
+   */
+  int db_reset;
 };
 
 
@@ -448,23 +453,25 @@ sign_keys_for_exchange (void *cls,
     ret = GNUNET_SYSERR;
     goto fail;
   }
-  if (GNUNET_OK !=
-      TALER_TESTING_run_auditor_exchange (si->config_filename,
-                                          exchange_master_pub,
-                                          si->ec->exchange_url,
-                                          GNUNET_NO))
+  if ( (GNUNET_OK !=
+        TALER_TESTING_run_auditor_exchange (si->config_filename,
+                                            exchange_master_pub,
+                                            si->ec->exchange_url,
+                                            GNUNET_NO)) &&
+       (GNUNET_YES == si->db_reset) )
   {
     GNUNET_free (signed_keys_out);
     ret = GNUNET_NO;
     goto fail;
   }
 
-  if (GNUNET_OK !=
-      TALER_TESTING_run_auditor_sign (si->config_filename,
-                                      exchange_master_pub,
-                                      si->ec->auditor_url,
-                                      si->auditor_sign_input_filename,
-                                      signed_keys_out))
+  if ( (GNUNET_OK !=
+        TALER_TESTING_run_auditor_sign (si->config_filename,
+                                        exchange_master_pub,
+                                        si->ec->auditor_url,
+                                        si->auditor_sign_input_filename,
+                                        signed_keys_out)) &&
+       (GNUNET_YES == si->db_reset) )
   {
     GNUNET_free (signed_keys_out);
     GNUNET_free (exchange_master_pub);
@@ -503,7 +510,8 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
   struct SignInfo si = {
     .config_filename = config_filename,
     .ec = ec,
-    .auditor_sign_input_filename = "auditor.in"
+    .auditor_sign_input_filename = "auditor.in",
+    .db_reset = reset_db
   };
 
   if (GNUNET_OK !=

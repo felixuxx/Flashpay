@@ -352,21 +352,22 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
     {
       unsigned int i;
       const char *fin;
+      char *sp;
 
-      /* make a copy of 'url' because 'strtok()' will modify */
+      /* make a copy of 'url' because 'strtok_r()' will modify */
       memcpy (d,
               url,
               ulen);
       i = 0;
-      args[i++] = strtok (d, "/");
+      args[i++] = strtok_r (d, "/", &sp);
       while ( (NULL != args[i - 1]) &&
               (i < rh->nargs) )
-        args[i++] = strtok (NULL, "/");
+        args[i++] = strtok_r (NULL, "/", &sp);
       /* make sure above loop ran nicely until completion, and also
          that there is no excess data in 'd' afterwards */
       if ( (i != rh->nargs) ||
            (NULL == args[i - 1]) ||
-           (NULL != (fin = strtok (NULL, "/"))) )
+           (NULL != (fin = strtok_r (NULL, "/", &sp))) )
       {
         char emsg[128 + 512];
 
