@@ -510,7 +510,6 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                                          "taler-exchange-httpd",
                                          "taler-exchange-httpd",
                                          "-c", config_file,
-                                         "-i",
                                          "-C",
                                          NULL);
     if ( (NULL == exchanged) && (MODE_BOTH == mode) )
