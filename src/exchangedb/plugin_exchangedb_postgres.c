@@ -1160,7 +1160,7 @@ postgres_get_session (void *cls)
                               ") VALUES "
                               "($1, $2, $3, $4, $5, $6, $7);",
                               7),
-      /* Used in #postgres_insert_recoup_request() to store recoup-refresh
+      /* Used in #postgres_insert_recoup_refresh_request() to store recoup-refresh
          information */
       GNUNET_PQ_make_prepare ("recoup_refresh_insert",
                               "INSERT INTO recoup_refresh "
@@ -1349,7 +1349,7 @@ postgres_get_session (void *cls)
                               ",recoup_refresh_uuid"
                               " FROM recoup_refresh"
                               "    JOIN refresh_revealed_coins rrc"
-                              "      ON (rrc.coin_ev = h_blind_ev)"
+                              "      ON (rrc.h_coin_ev = h_blind_ev)"
                               "    JOIN refresh_commitments rc"
                               "      ON (rrc.rc = rc.rc)"
                               "    JOIN known_coins coins"
