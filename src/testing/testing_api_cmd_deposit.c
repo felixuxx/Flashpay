@@ -164,6 +164,8 @@ do_retry (void *cls)
   struct DepositState *ds = cls;
 
   ds->retry_task = NULL;
+  ds->is->commands[ds->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   deposit_run (ds,
                NULL,
                ds->is);
@@ -213,6 +215,7 @@ deposit_cb (void *cls,
         else
           ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff,
                                                         MAX_BACKOFF);
+        ds->is->commands[ds->is->ip].num_tries++;
         ds->retry_task
           = GNUNET_SCHEDULER_add_delayed (ds->backoff,
                                           &do_retry,

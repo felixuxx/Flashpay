@@ -315,6 +315,8 @@ do_reveal_retry (void *cls)
   struct RefreshRevealState *rrs = cls;
 
   rrs->retry_task = NULL;
+  rrs->is->commands[rrs->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   refresh_reveal_run (rrs,
                       NULL,
                       rrs->is);
@@ -372,6 +374,7 @@ reveal_cb (void *cls,
                                                          MAX_BACKOFF);
         rrs->total_backoff = GNUNET_TIME_relative_add (rrs->total_backoff,
                                                        rrs->backoff);
+        rrs->is->commands[rrs->is->ip].num_tries++;
         rrs->retry_task = GNUNET_SCHEDULER_add_delayed (rrs->backoff,
                                                         &do_reveal_retry,
                                                         rrs);
@@ -545,6 +548,8 @@ do_link_retry (void *cls)
   struct RefreshLinkState *rls = cls;
 
   rls->retry_task = NULL;
+  rls->is->commands[rls->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   refresh_link_run (rls,
                     NULL,
                     rls->is);
@@ -610,6 +615,7 @@ link_cb (void *cls,
                                                          MAX_BACKOFF);
         rls->total_backoff = GNUNET_TIME_relative_add (rls->total_backoff,
                                                        rls->backoff);
+        rls->is->commands[rls->is->ip].num_tries++;
         rls->retry_task = GNUNET_SCHEDULER_add_delayed (rls->backoff,
                                                         &do_link_retry,
                                                         rls);
@@ -853,6 +859,8 @@ do_melt_retry (void *cls)
   struct RefreshMeltState *rms = cls;
 
   rms->retry_task = NULL;
+  rms->is->commands[rms->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   melt_run (rms,
             NULL,
             rms->is);
@@ -904,6 +912,7 @@ melt_cb (void *cls,
                                                          MAX_BACKOFF);
         rms->total_backoff = GNUNET_TIME_relative_add (rms->total_backoff,
                                                        rms->backoff);
+        rms->is->commands[rms->is->ip].num_tries++;
         rms->retry_task = GNUNET_SCHEDULER_add_delayed
                             (rms->backoff,
                             &do_melt_retry,

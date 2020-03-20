@@ -79,6 +79,7 @@ stat_cmd (struct TALER_TESTING_Timer *timings,
           const struct TALER_TESTING_Command *cmd)
 {
   struct GNUNET_TIME_Relative duration;
+  struct GNUNET_TIME_Relative lat;
 
   if (cmd->start_time.abs_value_us > cmd->finish_time.abs_value_us)
   {
@@ -87,6 +88,8 @@ stat_cmd (struct TALER_TESTING_Timer *timings,
   }
   duration = GNUNET_TIME_absolute_get_difference (cmd->start_time,
                                                   cmd->finish_time);
+  lat = GNUNET_TIME_absolute_get_difference (cmd->last_req_time,
+                                             cmd->finish_time);
   for (unsigned int i = 0;
        NULL != timings[i].prefix;
        i++)
@@ -98,7 +101,11 @@ stat_cmd (struct TALER_TESTING_Timer *timings,
       timings[i].total_duration
         = GNUNET_TIME_relative_add (duration,
                                     timings[i].total_duration);
+      timings[i].success_latency
+        = GNUNET_TIME_relative_add (lat,
+                                    timings[i].success_latency);
       timings[i].num_commands++;
+      timings[i].num_retries += cmd->num_tries;
       break;
     }
   }

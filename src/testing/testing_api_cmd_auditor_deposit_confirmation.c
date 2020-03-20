@@ -125,6 +125,8 @@ do_retry (void *cls)
   struct DepositConfirmationState *dcs = cls;
 
   dcs->retry_task = NULL;
+  dcs->is->commands[dcs->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   deposit_confirmation_run (dcs,
                             NULL,
                             dcs->is);
@@ -168,6 +170,7 @@ deposit_confirmation_cb (void *cls,
         else
           dcs->backoff = GNUNET_TIME_randomized_backoff (dcs->backoff,
                                                          MAX_BACKOFF);
+        dcs->is->commands[dcs->is->ip].num_tries++;
         dcs->retry_task = GNUNET_SCHEDULER_add_delayed (dcs->backoff,
                                                         &do_retry,
                                                         dcs);
@@ -442,8 +445,8 @@ TALER_TESTING_cmd_deposit_confirmation (const char *label,
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command
-                                                   cmd)
+TALER_TESTING_cmd_deposit_confirmation_with_retry (
+  struct TALER_TESTING_Command cmd)
 {
   struct DepositConfirmationState *dcs;
 

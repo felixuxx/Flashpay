@@ -39,6 +39,12 @@
 #define AUTO_EXPLAIN 1
 
 /**
+ * Should we explicitly lock certain individual tables prior to SELECT+INSERT
+ * combis?
+ */
+#define EXPLICIT_LOCKS 0
+
+/**
  * Wrapper macro to add the currency from the plugin's state
  * when fetching amounts from the database.
  *
@@ -568,7 +574,8 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " denom_pub_hash"
                               " FROM known_coins"
-                              " WHERE coin_pub=$1",
+                              " WHERE coin_pub=$1"
+                              " FOR SHARE;",
                               1),
       /* Lock deposit table; NOTE: we may want to eventually shard the
          deposit table to avoid this lock being the main point of
@@ -2056,9 +2063,6 @@ postgres_get_withdraw_info (
   struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam no_params[] = {
-    GNUNET_PQ_query_param_end
-  };
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_blind),
     GNUNET_PQ_query_param_end
@@ -2078,12 +2082,17 @@ postgres_get_withdraw_info (
                                  &collectable->withdraw_fee),
     GNUNET_PQ_result_spec_end
   };
+#if EXPLICIT_LOCKS
+  struct GNUNET_PQ_QueryParam no_params[] = {
+    GNUNET_PQ_query_param_end
+  };
   enum GNUNET_DB_QueryStatus qs;
 
   if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
                                                     "lock_withdraw",
                                                     no_params)))
     return qs;
+#endif
   collectable->h_coin_envelope = *h_blind;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "get_withdraw_info",
@@ -2576,9 +2585,6 @@ postgres_have_deposit (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
     GNUNET_PQ_query_param_end
   };
-  struct GNUNET_PQ_QueryParam no_params[] = {
-    GNUNET_PQ_query_param_end
-  };
   struct TALER_EXCHANGEDB_Deposit deposit2;
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -2594,11 +2600,16 @@ postgres_have_deposit (void *cls,
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
+#if EXPLICIT_LOCKS
+  struct GNUNET_PQ_QueryParam no_params[] = {
+    GNUNET_PQ_query_param_end
+  };
 
   if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
                                                     "lock_deposit",
                                                     no_params)))
     return qs;
+#endif
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting deposits for coin %s\n",
               TALER_B2S (&deposit->coin.coin_pub));
@@ -3149,6 +3160,7 @@ postgres_ensure_coin_known (void *cls,
   struct PostgresClosure *pc = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_CoinPublicInfo known_coin;
+#if EXPLICIT_LOCKS
   struct GNUNET_PQ_QueryParam no_params[] = {
     GNUNET_PQ_query_param_end
   };
@@ -3157,6 +3169,7 @@ postgres_ensure_coin_known (void *cls,
                                                     "lock_known_coins",
                                                     no_params)))
     return qs;
+#endif
 
   /* check if the coin is already known */
   qs = postgres_get_known_coin (pc,

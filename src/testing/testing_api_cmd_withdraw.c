@@ -152,6 +152,8 @@ do_retry (void *cls)
   struct WithdrawState *ws = cls;
 
   ws->retry_task = NULL;
+  ws->is->commands[ws->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   withdraw_run (ws,
                 NULL,
                 ws->is);
@@ -208,6 +210,7 @@ reserve_withdraw_cb (void *cls,
                                                 UNKNOWN_MAX_BACKOFF);
         ws->total_backoff = GNUNET_TIME_relative_add (ws->total_backoff,
                                                       ws->backoff);
+        ws->is->commands[ws->is->ip].num_tries++;
         ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
                                                        &do_retry,
                                                        ws);

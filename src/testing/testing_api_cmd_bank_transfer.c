@@ -149,6 +149,8 @@ do_retry (void *cls)
   struct TransferState *fts = cls;
 
   fts->retry_task = NULL;
+  fts->is->commands[fts->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   transfer_run (fts,
                 NULL,
                 fts->is);
@@ -197,10 +199,11 @@ confirmation_cb (void *cls,
           fts->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
-        fts->retry_task = GNUNET_SCHEDULER_add_delayed
-                            (fts->backoff,
-                            &do_retry,
-                            fts);
+        fts->is->commands[fts->is->ip].num_tries++;
+        fts->retry_task
+          = GNUNET_SCHEDULER_add_delayed (fts->backoff,
+                                          &do_retry,
+                                          fts);
         return;
       }
     }

@@ -162,6 +162,8 @@ do_retry (void *cls)
   struct AdminAddIncomingState *fts = cls;
 
   fts->retry_task = NULL;
+  fts->is->commands[fts->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   admin_add_incoming_run (fts,
                           NULL,
                           fts->is);
@@ -214,6 +216,7 @@ confirmation_cb (void *cls,
         else
           fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff,
                                                          MAX_BACKOFF);
+        fts->is->commands[fts->is->ip].num_tries++;
         fts->retry_task = GNUNET_SCHEDULER_add_delayed
                             (fts->backoff,
                             &do_retry,

@@ -176,6 +176,11 @@ static enum BenchmarkMode mode;
 static struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
+ * Should we create all of the reserves at the beginning?
+ */
+static int reserves_first;
+
+/**
  * Currency used.
  */
 static char *currency;
@@ -295,9 +300,6 @@ eval_probability (float probability)
   random_01 = (double) random / UINT64_MAX;
   return (random_01 <= probability) ? GNUNET_OK : GNUNET_NO;
 }
-
-
-static int reserves_first = 1;
 
 
 /**
@@ -467,14 +469,27 @@ static void
 print_stats (void)
 {
   for (unsigned int i = 0; NULL != timings[i].prefix; i++)
+  {
+    char *total;
+    char *latency;
+
+    total = GNUNET_strdup (
+      GNUNET_STRINGS_relative_time_to_string (timings[i].total_duration,
+                                              GNUNET_YES));
+    latency = GNUNET_strdup (
+      GNUNET_STRINGS_relative_time_to_string (timings[i].success_latency,
+                                              GNUNET_YES));
     fprintf (stderr,
-             "%s-%d took %s in total for %u executions\n",
+             "%s-%d took %s in total with %s for latency for %u executions (%u repeats)\n",
              timings[i].prefix,
              (int) getpid (),
-             GNUNET_STRINGS_relative_time_to_string (
-               timings[i].total_duration,
-               GNUNET_YES),
-             timings[i].num_commands);
+             total,
+             latency,
+             timings[i].num_commands,
+             timings[i].num_retries);
+    GNUNET_free (total);
+    GNUNET_free (latency);
+  }
 }
 
 
@@ -959,6 +974,10 @@ main (int argc,
                                "fakebank",
                                "start a fakebank instead of the Python bank",
                                &use_fakebank),
+    GNUNET_GETOPT_option_flag ('F',
+                               "reserves-first",
+                               "should all reserves be created first, before starting normal operations",
+                               &reserves_first),
     GNUNET_GETOPT_option_flag ('K',
                                "linger",
                                "linger around until key press",

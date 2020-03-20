@@ -505,6 +505,19 @@ struct TALER_TESTING_Command
    */
   struct GNUNET_TIME_Absolute finish_time;
 
+  /**
+   * When did we start the last request of this command?
+   * Delta to @e finish_time gives the latency for the last
+   * successful request.
+   */
+  struct GNUNET_TIME_Absolute last_req_time;
+
+  /**
+   * How often did we try to execute this command? (In case
+   * it is a request that is repated.)
+   */
+  unsigned int num_tries;
+
 };
 
 
@@ -1847,9 +1860,20 @@ struct TALER_TESTING_Timer
   struct GNUNET_TIME_Relative total_duration;
 
   /**
+   * Total time spend waiting for the *successful* exeuction
+   * in all commands of this type.
+   */
+  struct GNUNET_TIME_Relative success_latency;
+
+  /**
    * Number of commands summed up.
    */
   unsigned int num_commands;
+
+  /**
+   * Number of retries summed up.
+   */
+  unsigned int num_retries;
 };
 
 

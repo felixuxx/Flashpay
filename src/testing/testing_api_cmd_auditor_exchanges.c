@@ -115,6 +115,8 @@ do_retry (void *cls)
   struct ExchangesState *es = cls;
 
   es->retry_task = NULL;
+  es->is->commands[es->is->ip].last_req_time
+    = GNUNET_TIME_absolute_get ();
   exchanges_run (es,
                  NULL,
                  es->is);
@@ -161,6 +163,7 @@ exchanges_cb (void *cls,
         else
           es->backoff = GNUNET_TIME_randomized_backoff (es->backoff,
                                                         MAX_BACKOFF);
+        es->is->commands[es->is->ip].num_tries++;
         es->retry_task = GNUNET_SCHEDULER_add_delayed (es->backoff,
                                                        &do_retry,
                                                        es);

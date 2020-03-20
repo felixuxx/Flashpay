@@ -70,7 +70,10 @@ batch_run (void *cls,
     TALER_TESTING_interpreter_next (is);
     return;
   }
-  bs->batch[bs->batch_ip].start_time = GNUNET_TIME_absolute_get ();
+  bs->batch[bs->batch_ip].start_time
+    = bs->batch[bs->batch_ip].last_req_time
+      = GNUNET_TIME_absolute_get ();
+  bs->batch[bs->batch_ip].num_tries = 1;
   bs->batch[bs->batch_ip].run (bs->batch[bs->batch_ip].cls,
                                &bs->batch[bs->batch_ip],
                                is);
