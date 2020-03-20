@@ -169,9 +169,14 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
   if (GNUNET_SYSERR == is->result)
     return; /* ignore, we already failled! */
   if (TALER_TESTING_cmd_is_batch (cmd))
+  {
     TALER_TESTING_cmd_batch_next (is);
+  }
   else
+  {
+    cmd->finish_time = GNUNET_TIME_absolute_get ();
     is->ip++;
+  }
   if (0 == (ipc % 1000))
   {
     if (0 != ipc)
@@ -267,7 +272,7 @@ interpreter_run (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Running command `%s'\n",
               cmd->label);
-
+  cmd->start_time = GNUNET_TIME_absolute_get ();
   cmd->run (cmd->cls,
             cmd,
             is);

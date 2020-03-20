@@ -40,6 +40,12 @@
  * How long do we wait AT LEAST if the exchange says the reserve is unknown?
  */
 #define UNKNOWN_MIN_BACKOFF GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MILLISECONDS, 10)
+
+/**
+ * How long do we wait AT MOST if the exchange says the reserve is unknown?
+ */
+#define UNKNOWN_MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
     GNUNET_TIME_UNIT_MILLISECONDS, 100)
 
 /**
@@ -102,6 +108,11 @@ struct WithdrawState
    * How long do we wait until we retry?
    */
   struct GNUNET_TIME_Relative backoff;
+
+  /**
+   * Total withdraw backoff applied.
+   */
+  struct GNUNET_TIME_Relative total_backoff;
 
   /**
    * Expected HTTP response code to the request.
@@ -193,6 +204,10 @@ reserve_withdraw_cb (void *cls,
         else
           ws->backoff = GNUNET_TIME_relative_max (UNKNOWN_MIN_BACKOFF,
                                                   ws->backoff);
+        ws->backoff = GNUNET_TIME_relative_min (ws->backoff,
+                                                UNKNOWN_MAX_BACKOFF);
+        ws->total_backoff = GNUNET_TIME_relative_add (ws->total_backoff,
+                                                      ws->backoff);
         ws->retry_task = GNUNET_SCHEDULER_add_delayed (ws->backoff,
                                                        &do_retry,
                                                        ws);
@@ -224,6 +239,14 @@ reserve_withdraw_cb (void *cls,
     }
     ws->sig.rsa_signature
       = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+    if (0 != ws->total_backoff.rel_value_us)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Total withdraw backoff for %s was %s\n",
+                  is->commands[is->ip].label,
+                  GNUNET_STRINGS_relative_time_to_string (ws->total_backoff,
+                                                          GNUNET_YES));
+    }
     break;
   case MHD_HTTP_FORBIDDEN:
     /* nothing to check */

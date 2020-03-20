@@ -31,6 +31,12 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
+/**
+ * How long do we wait AT MOST when retrying?
+ */
+#define MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+
 
 /**
  * How often do we retry before giving up?
@@ -206,7 +212,8 @@ confirmation_cb (void *cls,
         if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
           fts->backoff = GNUNET_TIME_UNIT_ZERO;
         else
-          fts->backoff = EXCHANGE_LIB_BACKOFF (fts->backoff);
+          fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff,
+                                                         MAX_BACKOFF);
         fts->retry_task = GNUNET_SCHEDULER_add_delayed
                             (fts->backoff,
                             &do_retry,

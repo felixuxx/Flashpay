@@ -206,18 +206,22 @@ handle_recoup_finished (void *cls,
 {
   struct TALER_EXCHANGE_RecoupHandle *ph = cls;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   ph->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
+    ec = TALER_EC_NONE;
     if (GNUNET_OK !=
         verify_recoup_signature_ok (ph,
                                     j))
     {
       GNUNET_break_op (0);
+      ec = TALER_EC_RECOUP_REPLY_MALFORMED;
       response_code = 0;
       break;
     }
@@ -226,6 +230,7 @@ handle_recoup_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
     {
@@ -247,9 +252,10 @@ handle_recoup_finished (void *cls,
         GNUNET_break_op (0);
         response_code = 0;
       }
+      ec = TALER_JSON_get_error_code (j);
       ph->cb (ph->cb_cls,
               response_code,
-              TALER_JSON_get_error_code (j),
+              ec,
               &total,
               GNUNET_TIME_UNIT_FOREVER_ABS,
               NULL,
@@ -262,21 +268,26 @@ handle_recoup_finished (void *cls,
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_GONE:
     /* Kind of normal: the money was already sent to the merchant
        (it was too late for the refund). */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */
+    ec = TALER_JSON_get_error_code (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
@@ -286,7 +297,7 @@ handle_recoup_finished (void *cls,
   }
   ph->cb (ph->cb_cls,
           response_code,
-          TALER_JSON_get_error_code (j),
+          ec,
           NULL,
           GNUNET_TIME_UNIT_FOREVER_ABS,
           NULL,

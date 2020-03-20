@@ -211,6 +211,19 @@ static unsigned int label_off;
  */
 static int linger;
 
+/**
+ * Performance counters.
+ */
+static struct TALER_TESTING_Timer timings[] = {
+  { .prefix = "createreserve" },
+  { .prefix = "withdraw" },
+  { .prefix = "deposit" },
+  { .prefix = "melt" },
+  { .prefix = "reveal" },
+  { .prefix = "link" },
+  { .prefix = NULL }
+};
+
 
 /**
  * Add label to the #labels table and return it.
@@ -304,6 +317,7 @@ run (void *cls,
   (void) cls;
   all_commands = GNUNET_new_array (howmany_reserves * (1     /* Withdraw block */
                                                        + howmany_coins)   /* All units */
+                                   + 1 /* stat CMD */
                                    + 1 /* End CMD */,
                                    struct TALER_TESTING_Command);
   GNUNET_asprintf (&amount_5, "%s:5", currency);
@@ -328,7 +342,7 @@ run (void *cls,
     char *create_reserve_label;
 
     GNUNET_asprintf (&create_reserve_label,
-                     "create-reserve-%u",
+                     "createreserve-%u",
                      j);
     {
       struct TALER_TESTING_Command make_reserve[] = {
@@ -351,24 +365,26 @@ run (void *cls,
       char *order_enc;
       struct TALER_TESTING_Command unit[UNITY_SIZE];
       char *unit_label;
+      const char *wl;
 
       GNUNET_asprintf (&withdraw_label,
                        "withdraw-%u-%u",
                        i,
                        j);
+      wl = add_label (withdraw_label);
       GNUNET_asprintf (&order_enc,
                        "{\"nonce\": %llu}",
                        i + (howmany_coins * j));
       unit[0] =
         TALER_TESTING_cmd_withdraw_with_retry
-          (TALER_TESTING_cmd_withdraw_amount (add_label (withdraw_label),
+          (TALER_TESTING_cmd_withdraw_amount (wl,
                                               create_reserve_label,
                                               amount_5,
                                               MHD_HTTP_OK));
       unit[1] =
         TALER_TESTING_cmd_deposit_with_retry
           (TALER_TESTING_cmd_deposit ("deposit",
-                                      add_label (withdraw_label),
+                                      wl,
                                       0, /* Index of the one withdrawn coin in the traits.  */
                                       user_payto_uri,
                                       add_label (order_enc),
@@ -379,34 +395,35 @@ run (void *cls,
       {
         char *melt_label;
         char *reveal_label;
+        const char *ml;
+        const char *rl;
 
         GNUNET_asprintf (&melt_label,
-                         "refresh-melt-%u-%u",
+                         "melt-%u-%u",
                          i,
                          j);
+        ml = add_label (melt_label);
         GNUNET_asprintf (&reveal_label,
-                         "refresh-reveal-%u-%u",
+                         "reveal-%u-%u",
                          i,
                          j);
+        rl = add_label (reveal_label);
         unit[2] =
           TALER_TESTING_cmd_melt_with_retry
-            (TALER_TESTING_cmd_melt
-              (add_label (melt_label),
-              withdraw_label,
-              MHD_HTTP_OK,
-              NULL));
+            (TALER_TESTING_cmd_melt (ml,
+                                     wl,
+                                     MHD_HTTP_OK,
+                                     NULL));
         unit[3] =
           TALER_TESTING_cmd_refresh_reveal_with_retry
-            (TALER_TESTING_cmd_refresh_reveal
-              (add_label (reveal_label),
-              melt_label,
-              MHD_HTTP_OK));
+            (TALER_TESTING_cmd_refresh_reveal (rl,
+                                               ml,
+                                               MHD_HTTP_OK));
         unit[4] =
           TALER_TESTING_cmd_refresh_link_with_retry
-            (TALER_TESTING_cmd_refresh_link
-              ("refresh-link",
-              reveal_label,
-              MHD_HTTP_OK));
+            (TALER_TESTING_cmd_refresh_link ("link",
+                                             rl,
+                                             MHD_HTTP_OK));
         unit[5] = TALER_TESTING_cmd_end ();
       }
       else
@@ -422,6 +439,8 @@ run (void *cls,
     }
   }
   all_commands[howmany_reserves * (1 + howmany_coins)]
+    = TALER_TESTING_cmd_stat (timings);
+  all_commands[howmany_reserves * (1 + howmany_coins) + 1]
     = TALER_TESTING_cmd_end ();
   TALER_TESTING_run2 (is,
                       all_commands,
@@ -431,6 +450,24 @@ run (void *cls,
   GNUNET_free (amount_5);
   GNUNET_free (withdraw_fee_str);
   result = 1;
+}
+
+
+/**
+ * Print performance statistics for this process.
+ */
+static void
+print_stats (void)
+{
+  for (unsigned int i = 0; NULL != timings[i].prefix; i++)
+    fprintf (stderr,
+             "%s-%d took %s in total for %u executions\n",
+             timings[i].prefix,
+             (int) getpid (),
+             GNUNET_STRINGS_relative_time_to_string (
+               timings[i].total_duration,
+               GNUNET_YES),
+             timings[i].num_commands);
 }
 
 
@@ -712,53 +749,68 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   }
   if ( (MODE_CLIENT == mode) || (MODE_BOTH == mode) )
   {
-    sleep (1); /* make sure fakebank process is ready before continuing */
+    if (-1 != fakebank)
+      sleep (1); /* make sure fakebank process is ready before continuing */
 
     start_time = GNUNET_TIME_absolute_get ();
     result = GNUNET_OK;
-    for (unsigned int i = 0; i<howmany_clients; i++)
-    {
-      if (0 == (cpids[i] = fork ()))
-      {
-        /* I am the child, do the work! */
-        GNUNET_log_setup ("benchmark-worker",
-                          NULL == loglev ? "INFO" : loglev,
-                          logfile);
 
-        result = TALER_TESTING_setup (main_cb,
-                                      main_cb_cls,
-                                      cfg,
-                                      exchanged,
-                                      GNUNET_YES);
-        if (GNUNET_OK != result)
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "Failure in child process test suite!\n");
-        if (GNUNET_OK == result)
-          exit (0);
-        else
-          exit (1);
-      }
-      if (-1 == cpids[i])
-      {
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "fork");
-        howmany_clients = i;
-        result = GNUNET_SYSERR;
-        break;
-      }
-      /* fork() success, continue starting more processes! */
-    }
-    /* collect all children */
-    for (unsigned int i = 0; i<howmany_clients; i++)
+    if (1 == howmany_clients)
     {
-      waitpid (cpids[i],
-               &wstatus,
-               0);
-      if ( (! WIFEXITED (wstatus)) ||
-           (0 != WEXITSTATUS (wstatus)) )
+      result = TALER_TESTING_setup (main_cb,
+                                    main_cb_cls,
+                                    cfg,
+                                    exchanged,
+                                    GNUNET_YES);
+      print_stats ();
+    }
+    else
+    {
+      for (unsigned int i = 0; i<howmany_clients; i++)
       {
-        GNUNET_break (0);
-        result = GNUNET_SYSERR;
+        if (0 == (cpids[i] = fork ()))
+        {
+          /* I am the child, do the work! */
+          GNUNET_log_setup ("benchmark-worker",
+                            NULL == loglev ? "INFO" : loglev,
+                            logfile);
+
+          result = TALER_TESTING_setup (main_cb,
+                                        main_cb_cls,
+                                        cfg,
+                                        exchanged,
+                                        GNUNET_YES);
+          print_stats ();
+          if (GNUNET_OK != result)
+            GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                        "Failure in child process test suite!\n");
+          if (GNUNET_OK == result)
+            exit (0);
+          else
+            exit (1);
+        }
+        if (-1 == cpids[i])
+        {
+          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                               "fork");
+          howmany_clients = i;
+          result = GNUNET_SYSERR;
+          break;
+        }
+        /* fork() success, continue starting more processes! */
+      }
+      /* collect all children */
+      for (unsigned int i = 0; i<howmany_clients; i++)
+      {
+        waitpid (cpids[i],
+                 &wstatus,
+                 0);
+        if ( (! WIFEXITED (wstatus)) ||
+             (0 != WEXITSTATUS (wstatus)) )
+        {
+          GNUNET_break (0);
+          result = GNUNET_SYSERR;
+        }
       }
     }
   }

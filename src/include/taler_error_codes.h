@@ -389,6 +389,13 @@ enum TALER_ErrorCode
   TALER_EC_WITHDRAW_RESERVE_BALANCE_CORRUPT = 1117,
 
   /**
+   * The exchange responded with a reply that did not satsify the
+   * protocol. This error is not used in the protocol but created
+   * client-side.
+   */
+  TALER_EC_WITHDRAW_REPLY_MALFORMED = 1118,
+
+  /**
    * The exchange failed to obtain the transaction history of the given
    * reserve from the database. This response is provided with HTTP
    * status code MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -400,6 +407,13 @@ enum TALER_ErrorCode
    * returned with 404 Not Found.
    */
   TALER_EC_RESERVE_STATUS_UNKNOWN = 1151,
+
+  /**
+   * The exchange responded with a reply that did not satsify the
+   * protocol. This error is not used in the protocol but created
+   * client-side.
+   */
+  TALER_EC_RESERVE_STATUS_REPLY_MALFORMED = 1152,
 
   /**
    * The respective coin did not have sufficient residual value for the
@@ -753,10 +767,24 @@ enum TALER_ErrorCode
   TALER_EC_REFRESHES_INVALID_RCH = 1384,
 
   /**
+   * The exchange responded with a reply that did not satsify the
+   * protocol. This error is not used in the protocol but created
+   * client-side.
+   */
+  TALER_EC_REFRESH_REVEAL_REPLY_MALFORMED = 1385,
+
+  /**
    * The coin specified in the link request is unknown to the exchange.
    * This response is provided with HTTP status code MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_REFRESH_LINK_COIN_UNKNOWN = 1400,
+
+  /**
+   * The exchange responded with a reply that did not satsify the
+   * protocol. This error is not used in the protocol but created
+   * client-side.
+   */
+  TALER_EC_REFRESH_LINK_REPLY_MALFORMED = 1401,
 
   /**
    * The exchange knows literally nothing about the coin we were asked
@@ -929,6 +957,13 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT = 1704,
 
   /**
+   * The exchange responded with a reply that did not satsify the
+   * protocol. This error is not used in the protocol but created
+   * client-side.
+   */
+  TALER_EC_TRACK_TRANSFER_REPLY_MALFORMED = 1705,
+
+  /**
    * The exchange found internally inconsistent fee data when resolving
    * a transaction in the database.  This response is provided with HTTP
    * status code MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -1038,6 +1073,13 @@ enum TALER_ErrorCode
    * with an HTTP status of #MHD_HTTP_PRECONDITION_FAILED.
    */
   TALER_EC_RECOUP_DENOMINATION_VALIDITY_IN_FUTURE = 1860,
+
+  /**
+   * The exchange responded with a reply that did not satsify the
+   * protocol. This error is not used in the protocol but created
+   * client-side.
+   */
+  TALER_EC_RECOUP_REPLY_MALFORMED = 1861,
 
   /**
    * The "have" parameter was not a natural number. This reponse is
@@ -1731,6 +1773,13 @@ enum TALER_ErrorCode
    * MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR = 3003,
+
+  /**
+   * The auditor (!) responded with a reply that did not satsify the
+   * protocol. This error is not used in the protocol but created
+   * client-side.
+   */
+  TALER_EC_AUDITOR_EXCHANGES_REPLY_MALFORMED = 3004,
 
   /**
    * The exchange failed to compute ECDH.  This response is provided

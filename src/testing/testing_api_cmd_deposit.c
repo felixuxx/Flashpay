@@ -34,6 +34,12 @@
  */
 #define NUM_RETRIES 5
 
+/**
+ * How long do we wait AT MOST when retrying?
+ */
+#define MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+
 
 /**
  * State for a "deposit" CMD.
@@ -205,7 +211,8 @@ deposit_cb (void *cls,
         if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
           ds->backoff = GNUNET_TIME_UNIT_ZERO;
         else
-          ds->backoff = EXCHANGE_LIB_BACKOFF (ds->backoff);
+          ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff,
+                                                        MAX_BACKOFF);
         ds->retry_task
           = GNUNET_SCHEDULER_add_delayed (ds->backoff,
                                           &do_retry,
@@ -355,7 +362,6 @@ deposit_run (void *cls,
                                    &coin_sig,
                                    &deposit_cb,
                                    ds);
-
   if (NULL == ds->dh)
   {
     GNUNET_break (0);

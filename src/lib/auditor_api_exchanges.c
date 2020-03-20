@@ -89,11 +89,13 @@ handle_exchanges_finished (void *cls,
   const json_t *ja;
   unsigned int ja_len;
   struct TALER_AUDITOR_ListExchangesHandle *leh = cls;
+  enum TALER_ErrorCode ec;
 
   leh->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     ja = json_object_get (json,
@@ -102,6 +104,7 @@ handle_exchanges_finished (void *cls,
          (! json_is_array (ja)) )
     {
       GNUNET_break (0);
+      ec = TALER_EC_AUDITOR_EXCHANGES_REPLY_MALFORMED;
       response_code = 0;
       break;
     }
@@ -110,6 +113,7 @@ handle_exchanges_finished (void *cls,
     if (ja_len > MAX_EXCHANGES)
     {
       GNUNET_break (0);
+      ec = TALER_EC_AUDITOR_EXCHANGES_REPLY_MALFORMED;
       response_code = 0;
       break;
     }
@@ -134,6 +138,7 @@ handle_exchanges_finished (void *cls,
         {
           GNUNET_break_op (0);
           ok = GNUNET_NO;
+          ec = TALER_EC_AUDITOR_EXCHANGES_REPLY_MALFORMED;
           break;
         }
       }
@@ -145,26 +150,31 @@ handle_exchanges_finished (void *cls,
                ja_len,
                ei,
                json);
-      leh->cb = NULL;
+      TALER_AUDITOR_list_exchanges_cancel (leh);
+      return;
     }
-    break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the auditor is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_JSON_get_error_code (json);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (json);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_JSON_get_error_code (json);
     break;
   default:
     /* unexpected response code */
+    ec = TALER_JSON_get_error_code (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) ec);
     GNUNET_break (0);
     response_code = 0;
     break;

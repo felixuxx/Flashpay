@@ -277,11 +277,13 @@ handle_reserve_withdraw_finished (void *cls,
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh = cls;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   wh->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -290,11 +292,16 @@ handle_reserve_withdraw_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_WITHDRAW_REPLY_MALFORMED;
+      break;
     }
-    break;
+    GNUNET_assert (NULL == wh->cb);
+    TALER_EXCHANGE_withdraw_cancel (wh);
+    return;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* The exchange says that the reserve has insufficient funds;
@@ -305,6 +312,11 @@ handle_reserve_withdraw_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_WITHDRAW_REPLY_MALFORMED;
+    }
+    else
+    {
+      ec = TALER_JSON_get_error_code (j);
     }
     break;
   case MHD_HTTP_FORBIDDEN:
@@ -312,22 +324,27 @@ handle_reserve_withdraw_finished (void *cls,
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, the exchange basically just says
        that it doesn't know this reserve.  Can happen if we
        query before the wire transfer went through.
        We should simply pass the JSON reply to the application. */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */
+    ec = TALER_JSON_get_error_code (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) ec);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -336,7 +353,7 @@ handle_reserve_withdraw_finished (void *cls,
   {
     wh->cb (wh->cb_cls,
             response_code,
-            TALER_JSON_get_error_code (j),
+            ec,
             NULL,
             j);
     wh->cb = NULL;

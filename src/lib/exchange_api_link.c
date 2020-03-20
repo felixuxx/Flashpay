@@ -365,8 +365,12 @@ handle_link_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
+      ec = TALER_EC_REFRESH_LINK_REPLY_MALFORMED;
+      break;
     }
-    break;
+    GNUNET_assert (NULL == lh->link_cb);
+    TALER_EXCHANGE_link_cancel (lh);
+    return;
   case MHD_HTTP_BAD_REQUEST:
     ec = TALER_JSON_get_error_code (j);
     /* This should never happen, either us or the exchange is buggy

@@ -38,10 +38,10 @@
  * 1:#AUDITOR_CHANCE is the probability that we report deposits
  * to the auditor.
  *
- * 2==50% of going to auditor. This is way too high, but set
+ * 20==5% of going to auditor. This is possibly still too high, but set
  * deliberately this high for testing
  */
-#define AUDITOR_CHANCE 2
+#define AUDITOR_CHANCE 20
 
 /**
  * @brief A Deposit Handle

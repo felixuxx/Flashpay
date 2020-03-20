@@ -213,10 +213,10 @@ handle_wire_finished (void *cls,
 
   TALER_LOG_DEBUG ("Checking raw /wire response\n");
   wh->job = NULL;
-  ec = TALER_EC_NONE;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -261,6 +261,7 @@ handle_wire_finished (void *cls,
         break;
       }
 
+      ec = TALER_EC_NONE;
       key_state = TALER_EXCHANGE_get_keys (wh->exchange);
       /* parse accounts */
       {
@@ -325,7 +326,7 @@ handle_wire_finished (void *cls,
         {
           wh->cb (wh->cb_cls,
                   response_code,
-                  TALER_EC_NONE,
+                  ec,
                   num_accounts,
                   was);
           wh->cb = NULL;
@@ -338,20 +339,25 @@ handle_wire_finished (void *cls,
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */
+    ec = TALER_JSON_get_error_code (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) ec);
     GNUNET_break (0);
     response_code = 0;
     break;
@@ -359,7 +365,7 @@ handle_wire_finished (void *cls,
   if (NULL != wh->cb)
     wh->cb (wh->cb_cls,
             response_code,
-            (0 == response_code) ? ec : TALER_JSON_get_error_code (j),
+            ec,
             0,
             NULL);
   TALER_EXCHANGE_wire_cancel (wh);

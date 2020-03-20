@@ -62,6 +62,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_serialize_keys.c \
   testing_api_cmd_signal.c \
   testing_api_cmd_sleep.c \
+  testing_api_cmd_stat.c \
   testing_api_cmd_status.c \
   testing_api_cmd_track.c \
   testing_api_cmd_wait.c \

@@ -495,6 +495,16 @@ struct TALER_TESTING_Command
             const char *trait,
             unsigned int index);
 
+  /**
+   * When did the execution of this command start?
+   */
+  struct GNUNET_TIME_Absolute start_time;
+
+  /**
+   * When did the execution of this command finish?
+   */
+  struct GNUNET_TIME_Absolute finish_time;
+
 };
 
 
@@ -1821,6 +1831,39 @@ TALER_TESTING_cmd_insert_deposit (const char *label,
                                   struct GNUNET_TIME_Relative wire_deadline,
                                   const char *amount_with_fee,
                                   const char *deposit_fee);
+
+
+/**
+ * Performance counter.
+ */
+struct TALER_TESTING_Timer
+{
+  /**
+   * For which type of commands.
+   */
+  const char *prefix;
+
+  /**
+   * Total time spend in all commands of this type.
+   */
+  struct GNUNET_TIME_Relative total_duration;
+
+  /**
+   * Number of commands summed up.
+   */
+  unsigned int num_commands;
+};
+
+
+/**
+ * Obtain performance data from the interpreter.
+ *
+ * @param timers what commands (by label) to obtain runtimes for
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_stat (struct TALER_TESTING_Timer *timers);
+
 
 /* *** Generic trait logic for implementing traits ********* */
 

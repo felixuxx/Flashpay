@@ -304,9 +304,9 @@ handle_melt_finished (void *cls,
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
-    ec = TALER_JSON_get_error_code (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
@@ -322,20 +322,20 @@ handle_melt_finished (void *cls,
       ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_FORBIDDEN:
-    ec = TALER_JSON_get_error_code (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; assuming we checked them, this should never happen, we
        should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_NOT_FOUND:
-    ec = TALER_JSON_get_error_code (j);
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */

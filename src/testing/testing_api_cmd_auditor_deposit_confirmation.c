@@ -30,6 +30,12 @@
 #include "backoff.h"
 
 /**
+ * How long do we wait AT MOST when retrying?
+ */
+#define MAX_BACKOFF GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MILLISECONDS, 100)
+
+/**
  * How often do we retry before giving up?
  */
 #define NUM_RETRIES 5
@@ -160,7 +166,8 @@ deposit_confirmation_cb (void *cls,
         if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
           dcs->backoff = GNUNET_TIME_UNIT_ZERO;
         else
-          dcs->backoff = EXCHANGE_LIB_BACKOFF (dcs->backoff);
+          dcs->backoff = GNUNET_TIME_randomized_backoff (dcs->backoff,
+                                                         MAX_BACKOFF);
         dcs->retry_task = GNUNET_SCHEDULER_add_delayed (dcs->backoff,
                                                         &do_retry,
                                                         dcs);

@@ -202,11 +202,13 @@ handle_refresh_reveal_finished (void *cls,
 {
   struct TALER_EXCHANGE_RefreshesRevealHandle *rrh = cls;
   const json_t *j = response;
+  enum TALER_ErrorCode ec;
 
   rrh->job = NULL;
   switch (response_code)
   {
   case 0:
+    ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -220,12 +222,14 @@ handle_refresh_reveal_finished (void *cls,
       if (GNUNET_OK != ret)
       {
         response_code = 0;
+        ec = TALER_EC_REFRESH_REVEAL_REPLY_MALFORMED;
       }
       else
       {
+        ec = TALER_EC_NONE;
         rrh->reveal_cb (rrh->reveal_cb_cls,
                         MHD_HTTP_OK,
-                        TALER_EC_NONE,
+                        ec,
                         rrh->md->num_fresh_coins,
                         rrh->md->fresh_coins[rrh->noreveal_index],
                         sigs,
@@ -235,20 +239,23 @@ handle_refresh_reveal_finished (void *cls,
       for (unsigned int i = 0; i<rrh->md->num_fresh_coins; i++)
         if (NULL != sigs[i].rsa_signature)
           GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
+      return;
     }
-    break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Nothing really to verify, exchange says our reveal is inconsitent
        with our commitment, so either side is buggy; we
        should pass the JSON reply to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
+    ec = TALER_JSON_get_error_code (j);
     break;
   default:
     /* unexpected response code */
@@ -257,12 +264,13 @@ handle_refresh_reveal_finished (void *cls,
                 (unsigned int) response_code);
     GNUNET_break (0);
     response_code = 0;
+    ec = TALER_JSON_get_error_code (j);
     break;
   }
   if (NULL != rrh->reveal_cb)
     rrh->reveal_cb (rrh->reveal_cb_cls,
                     response_code,
-                    TALER_JSON_get_error_code (j),
+                    ec,
                     0,
                     NULL,
                     NULL,
