@@ -88,9 +88,7 @@ struct TALER_EXCHANGE_RecoupHandle
 
 
 /**
- * Verify that the signature on the "200 OK" response
- * from the exchange is valid. If it is, call the
- * callback.
+ * Parse a recoup response.  If it is valid, call the callback.
  *
  * @param ph recoup handle
  * @param json json reply with the signature
@@ -98,30 +96,20 @@ struct TALER_EXCHANGE_RecoupHandle
  *         #GNUNET_SYSERR if not (callback must still be called)
  */
 static int
-verify_recoup_signature_ok (const struct TALER_EXCHANGE_RecoupHandle *ph,
-                            const json_t *json)
+process_recoup_response (const struct TALER_EXCHANGE_RecoupHandle *ph,
+                         const json_t *json)
 {
-  struct TALER_RecoupConfirmationPS pc;
-  struct TALER_RecoupRefreshConfirmationPS pr;
-  struct TALER_ExchangePublicKeyP exchange_pub;
-  struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_Amount amount;
-  struct GNUNET_TIME_Absolute timestamp;
-  const struct TALER_EXCHANGE_Keys *key_state;
+  int refreshed;
+  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_CoinSpendPublicKeyP old_coin_pub;
   struct GNUNET_JSON_Specification spec_withdraw[] = {
-    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
-    TALER_JSON_spec_amount ("amount", &amount),
-    GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
-    GNUNET_JSON_spec_fixed_auto ("reserve_pub", &pc.reserve_pub),
+    GNUNET_JSON_spec_boolean ("refreshed", &refreshed),
+    GNUNET_JSON_spec_fixed_auto ("reserve_pub", &reserve_pub),
     GNUNET_JSON_spec_end ()
   };
   struct GNUNET_JSON_Specification spec_refresh[] = {
-    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
-    TALER_JSON_spec_amount ("amount", &amount),
-    GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
-    GNUNET_JSON_spec_fixed_auto ("old_coin_pub", &pr.old_coin_pub),
+    GNUNET_JSON_spec_boolean ("refreshed", &refreshed),
+    GNUNET_JSON_spec_fixed_auto ("old_coin_pub", &old_coin_pub),
     GNUNET_JSON_spec_end ()
   };
 
@@ -133,59 +121,16 @@ verify_recoup_signature_ok (const struct TALER_EXCHANGE_RecoupHandle *ph,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  key_state = TALER_EXCHANGE_get_keys (ph->exchange);
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_test_signing_key (key_state,
-                                       &exchange_pub))
+  if (ph->was_refreshed != refreshed)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (ph->was_refreshed)
-  {
-    pr.purpose.purpose = htonl (
-      TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH);
-    pr.purpose.size = htonl (sizeof (pr));
-    pr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-    TALER_amount_hton (&pr.recoup_amount,
-                       &amount);
-    pr.coin_pub = ph->coin_pub;
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH,
-          &pr.purpose,
-          &exchange_sig.eddsa_signature,
-          &exchange_pub.eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-  }
-  else
-  {
-    pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
-    pc.purpose.size = htonl (sizeof (pc));
-    pc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-    TALER_amount_hton (&pc.recoup_amount,
-                       &amount);
-    pc.coin_pub = ph->coin_pub;
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
-                                    &pc.purpose,
-                                    &exchange_sig.eddsa_signature,
-                                    &exchange_pub.eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-  }
   ph->cb (ph->cb_cls,
           MHD_HTTP_OK,
           TALER_EC_NONE,
-          &amount,
-          timestamp,
-          ph->was_refreshed ? NULL : &pc.reserve_pub,
-          ph->was_refreshed ? &pr.old_coin_pub : NULL,
+          ph->was_refreshed ? NULL : &reserve_pub,
+          ph->was_refreshed ? &old_coin_pub : NULL,
           json);
   return GNUNET_OK;
 }
@@ -217,8 +162,8 @@ handle_recoup_finished (void *cls,
   case MHD_HTTP_OK:
     ec = TALER_EC_NONE;
     if (GNUNET_OK !=
-        verify_recoup_signature_ok (ph,
-                                    j))
+        process_recoup_response (ph,
+                                 j))
     {
       GNUNET_break_op (0);
       ec = TALER_EC_RECOUP_REPLY_MALFORMED;
@@ -256,8 +201,6 @@ handle_recoup_finished (void *cls,
       ph->cb (ph->cb_cls,
               response_code,
               ec,
-              &total,
-              GNUNET_TIME_UNIT_FOREVER_ABS,
               NULL,
               NULL,
               j);
@@ -298,8 +241,6 @@ handle_recoup_finished (void *cls,
   ph->cb (ph->cb_cls,
           response_code,
           ec,
-          NULL,
-          GNUNET_TIME_UNIT_FOREVER_ABS,
           NULL,
           NULL,
           j);

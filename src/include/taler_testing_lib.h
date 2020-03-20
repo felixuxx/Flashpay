@@ -1611,7 +1611,6 @@ TALER_TESTING_cmd_refund (const char *label,
  *        offers a coin and reserve private key.  May specify
  *        the index of the coin using "$LABEL#$INDEX" syntax.
  *        Here, $INDEX must be a non-negative number.
- * @param amount denomination to pay back.
  * @param melt_reference NULL if coin was not refreshed, otherwise label of the melt operation
  * @return the command.
  */
@@ -1619,7 +1618,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_recoup (const char *label,
                           unsigned int expected_response_code,
                           const char *coin_reference,
-                          const char *amount,
                           const char *melt_reference);
 
 

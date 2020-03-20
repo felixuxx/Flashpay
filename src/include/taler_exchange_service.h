@@ -1757,8 +1757,6 @@ typedef void
   void *cls,
   unsigned int http_status,
   enum TALER_ErrorCode ec,
-  const struct TALER_Amount *amount,
-  struct GNUNET_TIME_Absolute timestamp,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   const json_t *full_response);

@@ -87,11 +87,6 @@ struct RecoupState
   struct TALER_TESTING_Interpreter *is;
 
   /**
-   * Amount expected to be paid back.
-   */
-  const char *amount;
-
-  /**
    * Handle to the ongoing operation.
    */
   struct TALER_EXCHANGE_RecoupHandle *ph;
@@ -157,9 +152,6 @@ parse_coin_reference (const char *coin_reference,
  * @param cls closure
  * @param http_status HTTP response code.
  * @param ec taler-specific error code.
- * @param amount amount the exchange will wire back for this coin.
- * @param timestamp what time did the exchange receive the
- *        /recoup request
  * @param reserve_pub public key of the reserve receiving the recoup, NULL if refreshed or on error
  * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
  * @param full_response raw response from the exchange.
@@ -168,8 +160,6 @@ static void
 recoup_cb (void *cls,
            unsigned int http_status,
            enum TALER_ErrorCode ec,
-           const struct TALER_Amount *amount,
-           struct GNUNET_TIME_Absolute timestamp,
            const struct TALER_ReservePublicKeyP *reserve_pub,
            const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
            const json_t *full_response)
@@ -219,28 +209,7 @@ recoup_cb (void *cls,
   switch (http_status)
   {
   case MHD_HTTP_OK:
-    /* first, check amount */
-    {
-      struct TALER_Amount expected_amount;
-
-      if (GNUNET_OK !=
-          TALER_string_to_amount (ps->amount, &expected_amount))
-      {
-        GNUNET_break (0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-      if (0 != TALER_amount_cmp (amount, &expected_amount))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Total amount mismatch to command %s\n",
-                    cmd->label);
-        json_dumpf (full_response, stderr, 0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-    }
-    /* now, check old_coin_pub or reserve_pub, respectively */
+    /* check old_coin_pub or reserve_pub, respectively */
     if (NULL != ps->melt_reference)
     {
       const struct TALER_TESTING_Command *melt_cmd;
@@ -559,7 +528,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_recoup (const char *label,
                           unsigned int expected_response_code,
                           const char *coin_reference,
-                          const char *amount,
                           const char *melt_reference)
 {
   struct RecoupState *ps;
@@ -567,7 +535,6 @@ TALER_TESTING_cmd_recoup (const char *label,
   ps = GNUNET_new (struct RecoupState);
   ps->expected_response_code = expected_response_code;
   ps->coin_reference = coin_reference;
-  ps->amount = amount;
   ps->melt_reference = melt_reference;
   {
     struct TALER_TESTING_Command cmd = {
