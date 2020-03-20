@@ -12,3 +12,4 @@ test-audit-inc.json
 test-wire-audit-inc.json
 wirefees/
 bank.err
+libauditor.a

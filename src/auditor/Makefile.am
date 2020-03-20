@@ -13,11 +13,21 @@ pkgcfg_DATA = \
 
 bin_PROGRAMS = \
   taler-auditor \
+  taler-auditor-reserves \
+  taler-auditor-coins \
+  taler-auditor-aggregation \
+  taler-auditor-deposits \
+  taler-wire-auditor \
   taler-auditor-exchange \
   taler-auditor-httpd \
-  taler-wire-auditor \
   taler-auditor-sign \
   taler-auditor-dbinit
+
+noinst_LIBRARIES = \
+  libauditor.a
+
+libauditor_a_SOURCES = \
+  report-lib.c report-lib.h
 
 taler_auditor_dbinit_SOURCES = \
   taler-auditor-dbinit.c
@@ -34,6 +44,62 @@ taler_auditor_dbinit_CPPFLAGS = \
   -I$(top_srcdir)/src/pq/ \
   $(POSTGRESQL_CPPFLAGS)
 
+taler_auditor_reserves_SOURCES = \
+  taler-auditor-reserves.c
+taler_auditor_reserves_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  libauditor.a \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil
+
+taler_auditor_coins_SOURCES = \
+  taler-auditor-coins.c
+taler_auditor_coins_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  libauditor.a \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil
+
+taler_auditor_aggregation_SOURCES = \
+  taler-auditor-aggregation.c
+taler_auditor_aggregation_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  libauditor.a \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil
+
+taler_auditor_deposits_SOURCES = \
+  taler-auditor-deposits.c
+taler_auditor_deposits_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  libauditor.a \
+  -ljansson \
+  -lgnunetjson \
+  -lgnunetutil
+
 taler_auditor_SOURCES = \
   taler-auditor.c
 taler_auditor_LDADD = \
@@ -46,6 +112,7 @@ taler_auditor_LDADD = \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil
+
 
 taler_auditor_httpd_SOURCES = \
   taler-auditor-httpd.c taler-auditor-httpd.h \
