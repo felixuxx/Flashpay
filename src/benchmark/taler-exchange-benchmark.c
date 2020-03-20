@@ -297,6 +297,9 @@ eval_probability (float probability)
 }
 
 
+static int reserves_first = 1;
+
+
 /**
  * Actual commands construction and execution.
  *
@@ -355,7 +358,9 @@ run (void *cls,
       GNUNET_asprintf (&batch_label,
                        "batch-start-%u",
                        j);
-      all_commands[j * (howmany_coins + 1)]
+      all_commands[reserves_first
+                   ? j
+                   : j * (howmany_coins + 1)]
         = TALER_TESTING_cmd_batch (add_label (batch_label),
                                    make_reserve);
     }
@@ -433,7 +438,9 @@ run (void *cls,
                        "unit-%u-%u",
                        i,
                        j);
-      all_commands[j * (howmany_coins + 1) + (1 + i)]
+      all_commands[reserves_first
+                   ? howmany_reserves + j * howmany_coins + i
+                   : j * (howmany_coins + 1) + (1 + i)]
         = TALER_TESTING_cmd_batch (add_label (unit_label),
                                    unit);
     }
