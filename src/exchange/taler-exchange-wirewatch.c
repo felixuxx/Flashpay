@@ -455,8 +455,8 @@ history_cb (void *cls,
   }
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Got DB soft error for reserve_in_insert\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Got DB soft error for reserves_in_insert. Rolling back.\n");
     db_plugin->rollback (db_plugin->cls,
                          session);
     /* try again */
