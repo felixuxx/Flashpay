@@ -113,12 +113,18 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    hh->hcb (hh->hcb_cls,
-             MHD_HTTP_OK,
-             TALER_EC_NONE,
-             row_id,
-             &td,
-             transaction);
+    if (GNUNET_OK !=
+        hh->hcb (hh->hcb_cls,
+                 MHD_HTTP_OK,
+                 TALER_EC_NONE,
+                 row_id,
+                 &td,
+                 transaction))
+    {
+      hh->hcb = NULL;
+      GNUNET_JSON_parse_free (hist_spec);
+      return GNUNET_OK;
+    }
     GNUNET_JSON_parse_free (hist_spec);
   }
   return GNUNET_OK;
@@ -195,12 +201,13 @@ handle_credit_history_finished (void *cls,
     response_code = 0;
     break;
   }
-  hh->hcb (hh->hcb_cls,
-           response_code,
-           ec,
-           0LLU,
-           NULL,
-           j);
+  if (NULL != hh->hcb)
+    hh->hcb (hh->hcb_cls,
+             response_code,
+             ec,
+             0LLU,
+             NULL,
+             j);
   TALER_BANK_credit_history_cancel (hh);
 }
 
