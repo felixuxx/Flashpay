@@ -409,7 +409,6 @@ run (void *cls,
     TALER_TESTING_cmd_recoup ("recoup-1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
-                              "EUR:5",
                               NULL),
     /**
      * Re-withdraw from this reserve
@@ -469,7 +468,6 @@ run (void *cls,
     TALER_TESTING_cmd_recoup ("recoup-2",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
-                              "EUR:0.5",
                               NULL),
     TALER_TESTING_cmd_end ()
   };
