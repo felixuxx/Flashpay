@@ -314,8 +314,6 @@ main (int argc,
   kv.master = master_public_key;
   dki = GNUNET_new_array (dki_len,
                           struct TALER_DenominationKeyValidityPS);
-  sigs = GNUNET_new_array (dki_len,
-                           struct TALER_AuditorSignatureP);
   if (in_size !=
       GNUNET_DISK_file_read (fh,
                              dki,
@@ -327,12 +325,13 @@ main (int argc,
              strerror (errno));
     TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_DISK_file_close (fh);
-    GNUNET_free (sigs);
     GNUNET_free (dki);
     GNUNET_free (eddsa_priv);
     return 1;
   }
   GNUNET_DISK_file_close (fh);
+  sigs = GNUNET_new_array (dki_len,
+                           struct TALER_AuditorSignatureP);
   for (unsigned int i = 0; i<dki_len; i++)
   {
     struct TALER_DenominationKeyValidityPS *dk = &dki[i];
