@@ -34,11 +34,16 @@ taler-auditor: taler-auditor.in
 	chmod a-w+x $@.tmp && \
 	mv $@.tmp $@
 
-noinst_LIBRARIES = \
-  libauditor.a
+lib_LTLIBRARIES = \
+  libauditorreport.la
 
-libauditor_a_SOURCES = \
+libauditorreport_la_SOURCES = \
   report-lib.c report-lib.h
+libauditorreport_la_LIBADD = \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  -lgnunetutil $(XLIB)
 
 taler_auditor_dbinit_SOURCES = \
   taler-auditor-dbinit.c
@@ -64,7 +69,7 @@ taler_helper_auditor_reserves_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  libauditor.a \
+  libauditorreport.la \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil
@@ -78,7 +83,7 @@ taler_helper_auditor_coins_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  libauditor.a \
+  libauditorreport.la \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil
@@ -92,7 +97,7 @@ taler_helper_auditor_aggregation_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  libauditor.a \
+  libauditorreport.la \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil
@@ -106,7 +111,7 @@ taler_helper_auditor_deposits_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  libauditor.a \
+  libauditorreport.la \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil
@@ -120,7 +125,7 @@ taler_helper_auditor_wire_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  libauditor.a \
+  libauditorreport.la \
   -ljansson \
   -lgnunetjson \
   -lgnunetcurl \
