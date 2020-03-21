@@ -39,7 +39,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_auditor_exchanges.c \
   testing_api_cmd_auditor_exec_auditor.c \
   testing_api_cmd_auditor_exec_auditor_dbinit.c \
-  testing_api_cmd_auditor_exec_wire_auditor.c \
   testing_api_cmd_bank_admin_add_incoming.c \
   testing_api_cmd_bank_check.c \
   testing_api_cmd_bank_admin_check.c \

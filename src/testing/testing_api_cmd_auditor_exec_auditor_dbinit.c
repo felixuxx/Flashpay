@@ -18,7 +18,7 @@
 */
 /**
  * @file testing/testing_api_cmd_auditor_exec_auditor_dbinit.c
- * @brief run the taler-auditor-dbinit "-r" command
+ * @brief run the taler-auditor-dbinit "-R" command
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
@@ -68,7 +68,7 @@ auditor_dbinit_run (void *cls,
                                "taler-auditor-dbinit",
                                "taler-auditor-dbinit",
                                "-c", ks->config_filename,
-                               "-r",
+                               "-R",
                                NULL);
   if (NULL == ks->auditor_dbinit_proc)
   {
