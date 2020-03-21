@@ -610,9 +610,6 @@ do_shutdown (void *cls)
 }
 
 
-/* ***************************** Report logic **************************** */
-
-
 /**
  * Detect any entries in #reserve_closures that were not yet
  * observed on the wire transfer side and update the progress
@@ -681,11 +678,8 @@ hash_rc (const char *receiver_account,
 }
 
 
-/* *************************** General transaction logic ****************** */
-
 /**
- * Commit the transaction, checkpointing our progress in the auditor
- * DB.
+ * Commit the transaction, checkpointing our progress in the auditor DB.
  *
  * @param qs transaction status so far
  * @return transaction status code
@@ -735,8 +729,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
       qs = TALER_ARL_adb->update_wire_auditor_account_progress (
         TALER_ARL_adb->cls,
         TALER_ARL_asession,
-        &
-        TALER_ARL_master_pub,
+        &TALER_ARL_master_pub,
         wa->section_name,
         &wa->pp,
         wa->in_wire_off,
@@ -745,8 +738,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
       qs = TALER_ARL_adb->insert_wire_auditor_account_progress (
         TALER_ARL_adb->cls,
         TALER_ARL_asession,
-        &
-        TALER_ARL_master_pub,
+        &TALER_ARL_master_pub,
         wa->section_name,
         &wa->pp,
         wa->in_wire_off,
@@ -913,7 +905,7 @@ check_for_required_transfers (void)
  * Clean up after processing wire out data.
  */
 static void
-conclude_wire_out ()
+conclude_wire_out (void)
 {
   GNUNET_CONTAINER_multihashmap_destroy (out_map);
   out_map = NULL;
