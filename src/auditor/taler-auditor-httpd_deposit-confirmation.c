@@ -57,19 +57,25 @@ static pthread_mutex_t lock;
  * @return MHD result code
  */
 static int
-verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
-                                         const struct
-                                         TALER_AUDITORDB_DepositConfirmation *dc,
-                                         const struct
-                                         TALER_AUDITORDB_ExchangeSigningKey *es)
+verify_and_execute_deposit_confirmation (
+  struct MHD_Connection *connection,
+  const struct TALER_AUDITORDB_DepositConfirmation *dc,
+  const struct TALER_AUDITORDB_ExchangeSigningKey *es)
 {
-  struct TALER_ExchangeSigningKeyValidityPS skv;
-  struct TALER_DepositConfirmationPS dcs;
   struct TALER_AUDITORDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_HashCode h;
   int cached;
+  struct TALER_ExchangeSigningKeyValidityPS skv = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
+    .purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS)),
+    .master_public_key = es->master_public_key,
+    .start = GNUNET_TIME_absolute_hton (es->ep_start),
+    .expire = GNUNET_TIME_absolute_hton (es->ep_expire),
+    .end = GNUNET_TIME_absolute_hton (es->ep_end),
+    .signkey_pub = es->exchange_pub
+  };
 
   now = GNUNET_TIME_absolute_get ();
   if ( (es->ep_start.abs_value_us > now.abs_value_us) ||
@@ -82,15 +88,6 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
                                        TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                        "master_sig (expired)");
   }
-
-  /* check exchange signing key signature */
-  skv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-  skv.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
-  skv.master_public_key = es->master_public_key;
-  skv.start = GNUNET_TIME_absolute_hton (es->ep_start);
-  skv.expire = GNUNET_TIME_absolute_hton (es->ep_expire);
-  skv.end = GNUNET_TIME_absolute_hton (es->ep_end);
-  skv.signkey_pub = es->exchange_pub;
 
   /* check our cache */
   GNUNET_CRYPTO_hash (&skv,
@@ -152,27 +149,33 @@ verify_and_execute_deposit_confirmation (struct MHD_Connection *connection,
   }
 
   /* check deposit confirmation signature */
-  dcs.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
-  dcs.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
-  dcs.h_contract_terms = dc->h_contract_terms;
-  dcs.h_wire = dc->h_wire;
-  dcs.timestamp = GNUNET_TIME_absolute_hton (dc->timestamp);
-  dcs.refund_deadline = GNUNET_TIME_absolute_hton (dc->refund_deadline);
-  TALER_amount_hton (&dcs.amount_without_fee,
-                     &dc->amount_without_fee);
-  dcs.coin_pub = dc->coin_pub;
-  dcs.merchant = dc->merchant;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
-                                  &dcs.purpose,
-                                  &dc->exchange_sig.eddsa_signature,
-                                  &dc->exchange_pub.eddsa_pub))
   {
-    TALER_LOG_WARNING ("Invalid signature on /deposit-confirmation request\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                       "exchange_sig");
+    struct TALER_DepositConfirmationPS dcs = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT),
+      .purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS)),
+      .h_contract_terms = dc->h_contract_terms,
+      .h_wire = dc->h_wire,
+      .timestamp = GNUNET_TIME_absolute_hton (dc->timestamp),
+      .refund_deadline = GNUNET_TIME_absolute_hton (dc->refund_deadline),
+      .coin_pub = dc->coin_pub,
+      .merchant = dc->merchant
+    };
+
+    TALER_amount_hton (&dcs.amount_without_fee,
+                       &dc->amount_without_fee);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
+                                    &dcs.purpose,
+                                    &dc->exchange_sig.eddsa_signature,
+                                    &dc->exchange_pub.eddsa_pub))
+    {
+      TALER_LOG_WARNING (
+        "Invalid signature on /deposit-confirmation request\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                         "exchange_sig");
+    }
   }
 
   /* execute transaction */
@@ -216,8 +219,6 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                   const char *upload_data,
                                   size_t *upload_data_size)
 {
-  json_t *json;
-  int res;
   struct TALER_AUDITORDB_DepositConfirmation dc;
   struct TALER_AUDITORDB_ExchangeSigningKey es;
   struct GNUNET_JSON_Specification spec[] = {
@@ -242,33 +243,41 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   (void) connection_cls;
   (void) upload_data;
   (void) upload_data_size;
-  res = TALER_MHD_parse_post_json (connection,
-                                   connection_cls,
-                                   upload_data,
-                                   upload_data_size,
-                                   &json);
-  if (GNUNET_SYSERR == res)
-    return MHD_NO;
-  if ( (GNUNET_NO == res) ||
-       (NULL == json) )
-    return MHD_YES;
-  res = TALER_MHD_parse_json_data (connection,
-                                   json,
-                                   spec);
-  json_decref (json);
+  {
+    json_t *json;
+    int res;
+
+    res = TALER_MHD_parse_post_json (connection,
+                                     connection_cls,
+                                     upload_data,
+                                     upload_data_size,
+                                     &json);
+    if (GNUNET_SYSERR == res)
+      return MHD_NO;
+    if ( (GNUNET_NO == res) ||
+         (NULL == json) )
+      return MHD_YES;
+    res = TALER_MHD_parse_json_data (connection,
+                                     json,
+                                     spec);
+    json_decref (json);
+    if (GNUNET_SYSERR == res)
+      return MHD_NO; /* hard failure */
+    if (GNUNET_NO == res)
+      return MHD_YES; /* failure */
+  }
+
   es.exchange_pub = dc.exchange_pub; /* used twice! */
   dc.master_public_key = es.master_public_key;
+  {
+    int res;
 
-  if (GNUNET_SYSERR == res)
-    return MHD_NO; /* hard failure */
-  if (GNUNET_NO == res)
-    return MHD_YES; /* failure */
-
-  res = verify_and_execute_deposit_confirmation (connection,
-                                                 &dc,
-                                                 &es);
-  GNUNET_JSON_parse_free (spec);
-  return res;
+    res = verify_and_execute_deposit_confirmation (connection,
+                                                   &dc,
+                                                   &es);
+    GNUNET_JSON_parse_free (spec);
+    return res;
+  }
 }
 
 

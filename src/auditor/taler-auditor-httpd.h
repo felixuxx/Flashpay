@@ -26,15 +26,6 @@
 #include <microhttpd.h>
 #include "taler_auditordb_plugin.h"
 
-/**
- * Should we return "Connection: close" in each response?
- */
-extern int TAH_auditor_connection_close;
-
-/**
- * The exchange's configuration.
- */
-extern struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Our DB plugin.

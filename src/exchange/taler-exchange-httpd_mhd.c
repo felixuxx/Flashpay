@@ -48,35 +48,17 @@ TEH_handler_static_response (const struct TEH_RequestHandler *rh,
                              struct MHD_Connection *connection,
                              const char *const args[])
 {
-  struct MHD_Response *response;
   size_t dlen;
 
   (void) args;
   dlen = (0 == rh->data_size)
          ? strlen ((const char *) rh->data)
          : rh->data_size;
-  response = MHD_create_response_from_buffer (dlen,
-                                              (void *) rh->data,
-                                              MHD_RESPMEM_PERSISTENT);
-  if (NULL == response)
-  {
-    GNUNET_break (0);
-    return MHD_NO;
-  }
-  TALER_MHD_add_global_headers (response);
-  if (NULL != rh->mime_type)
-    (void) MHD_add_response_header (response,
-                                    MHD_HTTP_HEADER_CONTENT_TYPE,
-                                    rh->mime_type);
-  {
-    int ret;
-
-    ret = MHD_queue_response (connection,
-                              rh->response_code,
-                              response);
-    MHD_destroy_response (response);
-    return ret;
-  }
+  return TALER_MHD_reply_static (connection,
+                                 rh->response_code,
+                                 rh->mime_type,
+                                 rh->data,
+                                 dlen);
 }
 
 
@@ -98,28 +80,6 @@ TEH_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
   (void) args;
   return TALER_MHD_reply_agpl (connection,
                                "http://www.git.taler.net/?p=exchange.git");
-}
-
-
-/**
- * Function to call to handle the request by building a JSON
- * reply with an error message from @a rh.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
-int
-TEH_handler_send_json_pack_error (const struct TEH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  const char *const args[])
-{
-  (void) args;
-  return TALER_MHD_reply_with_error (connection,
-                                     rh->response_code,
-                                     TALER_EC_METHOD_INVALID,
-                                     rh->data);
 }
 
 

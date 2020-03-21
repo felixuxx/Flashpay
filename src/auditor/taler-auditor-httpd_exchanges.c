@@ -50,10 +50,10 @@ add_exchange (void *cls,
                    GNUNET_JSON_from_data_auto (master_pub),
                    "exchange_url",
                    exchange_url);
-  GNUNET_assert (NULL != obj);
-  GNUNET_assert (0 ==
-                 json_array_append_new (list,
-                                        obj));
+  GNUNET_break (NULL != obj);
+  GNUNET_break (0 ==
+                json_array_append_new (list,
+                                       obj));
 
 }
 
@@ -93,6 +93,7 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
                                        "failed to establish session with database");
   }
   ja = json_array ();
+  GNUNET_break (NULL != ja);
   qs = TAH_plugin->list_exchanges (TAH_plugin->cls,
                                    session,
                                    &add_exchange,

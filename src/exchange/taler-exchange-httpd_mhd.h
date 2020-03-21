@@ -58,19 +58,4 @@ TEH_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
                            const char *const args[]);
 
 
-/**
- * Function to call to handle the request by building a JSON
- * reply with an error message from @a rh.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
-int
-TEH_handler_send_json_pack_error (const struct TEH_RequestHandler *rh,
-                                  struct MHD_Connection *connection,
-                                  const char *const args[]);
-
-
 #endif

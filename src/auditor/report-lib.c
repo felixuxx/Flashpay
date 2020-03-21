@@ -130,13 +130,12 @@ static int
 add_denomination (void *cls,
                   const struct TALER_DenominationKeyValidityPS *issue)
 {
-  struct TALER_DenominationKeyValidityPS *i;
-
   (void) cls;
   if (NULL !=
       GNUNET_CONTAINER_multihashmap_get (denominations,
                                          &issue->denom_hash))
     return GNUNET_OK; /* value already known */
+#if GNUNET_EXTRA_LOGGING >= 1
   {
     struct TALER_Amount value;
 
@@ -148,25 +147,30 @@ add_denomination (void *cls,
                 TALER_amount2s (&value));
     TALER_amount_ntoh (&value,
                        &issue->fee_withdraw);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Withdraw fee is %s\n",
                 TALER_amount2s (&value));
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Start time is %s\n",
                 GNUNET_STRINGS_absolute_time_to_string
                   (GNUNET_TIME_absolute_ntoh (issue->start)));
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Expire deposit time is %s\n",
                 GNUNET_STRINGS_absolute_time_to_string
                   (GNUNET_TIME_absolute_ntoh (issue->expire_deposit)));
   }
-  i = GNUNET_new (struct TALER_DenominationKeyValidityPS);
-  *i = *issue;
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONTAINER_multihashmap_put (denominations,
-                                                    &issue->denom_hash,
-                                                    i,
-                                                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+#endif
+  {
+    struct TALER_DenominationKeyValidityPS *i;
+
+    i = GNUNET_new (struct TALER_DenominationKeyValidityPS);
+    *i = *issue;
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CONTAINER_multihashmap_put (denominations,
+                                                      &issue->denom_hash,
+                                                      i,
+                                                      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  }
   return GNUNET_OK;
 }
 
@@ -184,7 +188,6 @@ TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
                                          const struct
                                          TALER_DenominationKeyValidityPS **issue)
 {
-  const struct TALER_DenominationKeyValidityPS *i;
   enum GNUNET_DB_QueryStatus qs;
 
   if (NULL == denominations)
@@ -202,13 +205,17 @@ TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
       return qs;
     }
   }
-  i = GNUNET_CONTAINER_multihashmap_get (denominations,
-                                         dh);
-  if (NULL != i)
   {
-    /* cache hit */
-    *issue = i;
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    const struct TALER_DenominationKeyValidityPS *i;
+
+    i = GNUNET_CONTAINER_multihashmap_get (denominations,
+                                           dh);
+    if (NULL != i)
+    {
+      /* cache hit */
+      *issue = i;
+      return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    }
   }
   /* maybe database changed since we last iterated, give it one more shot */
   qs = TALER_ARL_adb->select_denomination_info (TALER_ARL_adb->cls,
@@ -224,13 +231,17 @@ TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
                   TALER_B2S (dh));
     return qs;
   }
-  i = GNUNET_CONTAINER_multihashmap_get (denominations,
-                                         dh);
-  if (NULL != i)
   {
-    /* cache hit */
-    *issue = i;
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    const struct TALER_DenominationKeyValidityPS *i;
+
+    i = GNUNET_CONTAINER_multihashmap_get (denominations,
+                                           dh);
+    if (NULL != i)
+    {
+      /* cache hit */
+      *issue = i;
+      return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+    }
   }
   /* We found more keys, but not the denomination we are looking for :-( */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -250,11 +261,10 @@ TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TALER_ARL_get_denomination_info (const struct
-                                 TALER_DenominationPublicKey *denom_pub,
-                                 const struct
-                                 TALER_DenominationKeyValidityPS **issue,
-                                 struct GNUNET_HashCode *dh)
+TALER_ARL_get_denomination_info (
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_DenominationKeyValidityPS **issue,
+  struct GNUNET_HashCode *dh)
 {
   struct GNUNET_HashCode hc;
 
@@ -299,6 +309,8 @@ transact (TALER_ARL_Analysis analysis,
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
+    TALER_ARL_edb->rollback (TALER_ARL_edb->cls,
+                             TALER_ARL_esession);
     return GNUNET_SYSERR;
   }
   qs = analysis (analysis_cls);
@@ -364,15 +376,15 @@ TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
   TALER_ARL_esession = TALER_ARL_edb->get_session (TALER_ARL_edb->cls);
   if (NULL == TALER_ARL_esession)
   {
-    fprintf (stderr,
-             "Failed to initialize exchange session.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize exchange session.\n");
     return GNUNET_SYSERR;
   }
   TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
   if (NULL == TALER_ARL_asession)
   {
-    fprintf (stderr,
-             "Failed to initialize auditor session.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize auditor session.\n");
     return GNUNET_SYSERR;
   }
 
@@ -414,9 +426,6 @@ test_master_present (void *cls,
 int
 TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 {
-  int found;
-  struct TALER_AUDITORDB_Session *as;
-
   TALER_ARL_cfg = c;
   start_time = GNUNET_TIME_absolute_get ();
   if (0 == GNUNET_is_zero (&TALER_ARL_master_pub))
@@ -430,8 +439,8 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
                                                "MASTER_PUBLIC_KEY",
                                                &TALER_ARL_master_public_key_str))
     {
-      fprintf (stderr,
-               "Pass option -m or set it in the configuration!\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Pass option -m or set MASTER_PUBLIC_KEY in the configuration!\n");
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
                                  "MASTER_PUBLIC_KEY");
@@ -445,8 +454,8 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
           &TALER_ARL_master_pub.
           eddsa_pub))
     {
-      fprintf (stderr,
-               "Invalid master public key given in configuration file.");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Malformed master public key given in configuration file.");
       GNUNET_free (TALER_ARL_master_public_key_str);
       return GNUNET_SYSERR;
     }
@@ -478,40 +487,43 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
   if (NULL ==
       (TALER_ARL_edb = TALER_EXCHANGEDB_plugin_load (TALER_ARL_cfg)))
   {
-    fprintf (stderr,
-             "Failed to initialize exchange database plugin.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize exchange database plugin.\n");
     return GNUNET_SYSERR;
   }
   if (NULL ==
       (TALER_ARL_adb = TALER_AUDITORDB_plugin_load (TALER_ARL_cfg)))
   {
-    fprintf (stderr,
-             "Failed to initialize auditor database plugin.\n");
-    TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize auditor database plugin.\n");
+    TALER_ARL_done (NULL);
     return GNUNET_SYSERR;
   }
-  found = GNUNET_NO;
-  as = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
-  if (NULL == as)
   {
-    fprintf (stderr,
-             "Failed to start session with auditor database.\n");
-    TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
-    TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
-    return GNUNET_SYSERR;
-  }
-  (void) TALER_ARL_adb->list_exchanges (TALER_ARL_adb->cls,
-                                        as,
-                                        &test_master_present,
-                                        &found);
-  if (GNUNET_NO == found)
-  {
-    fprintf (stderr,
-             "Exchange's master public key `%s' not known to auditor DB. Did you forget to run `taler-auditor-exchange`?\n",
-             GNUNET_p2s (&TALER_ARL_master_pub.eddsa_pub));
-    TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
-    TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
-    return GNUNET_SYSERR;
+    struct TALER_AUDITORDB_Session *as;
+    int found;
+
+    as = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
+    if (NULL == as)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to start session with auditor database.\n");
+      TALER_ARL_done (NULL);
+      return GNUNET_SYSERR;
+    }
+    found = GNUNET_NO;
+    (void) TALER_ARL_adb->list_exchanges (TALER_ARL_adb->cls,
+                                          as,
+                                          &test_master_present,
+                                          &found);
+    if (GNUNET_NO == found)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Exchange's master public key `%s' not known to auditor DB. Did you forget to run `taler-auditor-exchange`?\n",
+                  GNUNET_p2s (&TALER_ARL_master_pub.eddsa_pub));
+      TALER_ARL_done (NULL);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }
@@ -527,10 +539,16 @@ TALER_ARL_done (json_t *report)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
-  TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
-  TALER_ARL_adb = NULL;
-  TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
-  TALER_ARL_edb = NULL;
+  if (NULL != TALER_ARL_adb)
+  {
+    TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
+    TALER_ARL_adb = NULL;
+  }
+  if (NULL != TALER_ARL_edb)
+  {
+    TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
+    TALER_ARL_edb = NULL;
+  }
   if (NULL != report)
   {
     json_dumpf (report,
@@ -539,3 +557,6 @@ TALER_ARL_done (json_t *report)
     json_decref (report);
   }
 }
+
+
+/* end of report-lib.c */

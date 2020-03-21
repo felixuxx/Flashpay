@@ -57,12 +57,12 @@
 /**
  * Should we return "Connection: close" in each response?
  */
-int TAH_auditor_connection_close;
+static int auditor_connection_close;
 
 /**
  * The auditor's configuration (global)
  */
-struct GNUNET_CONFIGURATION_Handle *cfg;
+static struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Our DB plugin.
@@ -107,7 +107,7 @@ static char *currency;
 /**
  * Pipe used for signaling reloading of our key state.
  */
-static int reload_pipe[2];
+static int reload_pipe[2] = { -1, -1 };
 
 
 /**
@@ -118,23 +118,15 @@ static int reload_pipe[2];
 static void
 handle_signal (int signal_number)
 {
-  ssize_t res;
   char c = signal_number;
 
-  res = write (reload_pipe[1],
-               &c,
-               1);
-  if ( (res < 0) &&
-       (EINTR != errno) )
-  {
-    GNUNET_break (0);
-    return;
-  }
-  if (0 == res)
-  {
-    GNUNET_break (0);
-    return;
-  }
+  (void) ! write (reload_pipe[1],
+                  &c,
+                  1);
+  /* While one might like to "handle errors" here, even logging via fprintf()
+     isn't safe inside of a signal handler. So there is nothing we safely CAN
+     do. OTOH, also very little that can go wrong in pratice. Calling _exit()
+     on errors might be a possibility, but that might do more harm than good. *///
 }
 
 
@@ -143,7 +135,7 @@ handle_signal (int signal_number)
  * the control pipe.
  */
 static void
-handle_sigint ()
+handle_sigint (void)
 {
   handle_signal (SIGINT);
 }
@@ -154,7 +146,7 @@ handle_sigint ()
  * the control pipe.
  */
 static void
-handle_sigterm ()
+handle_sigterm (void)
 {
   handle_signal (SIGTERM);
 }
@@ -165,7 +157,7 @@ handle_sigterm ()
  * the control pipe.
  */
 static void
-handle_sighup ()
+handle_sighup (void)
 {
   handle_signal (SIGHUP);
 }
@@ -176,7 +168,7 @@ handle_sighup ()
  * the control pipe.
  */
 static void
-handle_sigchld ()
+handle_sigchld (void)
 {
   handle_signal (SIGCHLD);
 }
@@ -199,8 +191,6 @@ signal_loop (void)
   struct GNUNET_SIGNAL_Context *sighup;
   struct GNUNET_SIGNAL_Context *sigchld;
   int ret;
-  char c;
-  ssize_t res;
 
   if (0 != pipe (reload_pipe))
   {
@@ -220,11 +210,15 @@ signal_loop (void)
   ret = 2;
   while (2 == ret)
   {
+    char c;
+    ssize_t res;
+
     errno = 0;
     res = read (reload_pipe[0],
                 &c,
                 1);
-    if ((res < 0) && (EINTR != errno))
+    if ( (res < 0) &&
+         (EINTR != errno))
     {
       GNUNET_break (0);
       ret = GNUNET_SYSERR;
@@ -393,7 +387,6 @@ handle_mhd_request (void *cls,
       &TAH_MHD_handler_agpl_redirect, MHD_HTTP_FOUND },
     { NULL, NULL, NULL, NULL, 0, NULL, 0 }
   };
-  struct TAH_RequestHandler *rh;
 
   (void) cls;
   (void) version;
@@ -405,7 +398,8 @@ handle_mhd_request (void *cls,
     method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
   for (unsigned int i = 0; NULL != handlers[i].url; i++)
   {
-    rh = &handlers[i];
+    struct TAH_RequestHandler *rh = &handlers[i];
+
     if ( (0 == strcasecmp (url,
                            rh->url)) &&
          ( (NULL == rh->method) ||
@@ -434,15 +428,13 @@ handle_mhd_request (void *cls,
  * @return #GNUNET_OK on success
  */
 static int
-auditor_serve_process_config ()
+auditor_serve_process_config (void)
 {
-  char *pub;
-
   if (NULL ==
       (TAH_plugin = TALER_AUDITORDB_plugin_load (cfg)))
   {
-    fprintf (stderr,
-             "Failed to initialize DB subsystem\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -460,11 +452,30 @@ auditor_serve_process_config ()
   {
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "AUDITOR",
-                                             "PUBLIC_KEY",
-                                             &pub))
+  {
+    char *pub;
+
+    if (GNUNET_OK ==
+        GNUNET_CONFIGURATION_get_value_string (cfg,
+                                               "AUDITOR",
+                                               "PUBLIC_KEY",
+                                               &pub))
+    {
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_public_key_from_string (pub,
+                                                      strlen (pub),
+                                                      &auditor_pub.eddsa_pub))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Invalid public key given in auditor configuration.");
+        GNUNET_free (pub);
+        return GNUNET_SYSERR;
+      }
+      GNUNET_free (pub);
+      return GNUNET_OK;
+    }
+  }
+
   {
     /* Fall back to trying to read private key */
     char *auditor_key_file;
@@ -491,9 +502,9 @@ auditor_serve_process_config ()
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "AUDITOR",
                                  "PUBLIC_KEY");
-      fprintf (stderr,
-               "Failed to initialize auditor key from file `%s'\n",
-               auditor_key_file);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to initialize auditor key from file `%s'\n",
+                  auditor_key_file);
       GNUNET_free (auditor_key_file);
       return 1;
     }
@@ -501,20 +512,6 @@ auditor_serve_process_config ()
     GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
                                         &auditor_pub.eddsa_pub);
     GNUNET_free (eddsa_priv);
-  }
-  else
-  {
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_public_key_from_string (pub,
-                                                    strlen (pub),
-                                                    &auditor_pub.eddsa_pub))
-    {
-      fprintf (stderr,
-               "Invalid public key given in auditor configuration.");
-      GNUNET_free (pub);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_free (pub);
   }
   return GNUNET_OK;
 }
@@ -538,7 +535,7 @@ main (int argc,
     GNUNET_GETOPT_option_flag ('C',
                                "connection-close",
                                "force HTTP connections to be closed after each request",
-                               &TAH_auditor_connection_close),
+                               &auditor_connection_close),
     GNUNET_GETOPT_option_cfgfile (&cfgfile),
     GNUNET_GETOPT_option_uint ('t',
                                "timeout",
@@ -564,7 +561,7 @@ main (int argc,
                          argc, argv))
     return 1;
   go = TALER_MHD_GO_NONE;
-  if (TAH_auditor_connection_close)
+  if (auditor_connection_close)
     go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
   TALER_MHD_setup (go);
   GNUNET_assert (GNUNET_OK ==
@@ -610,8 +607,8 @@ main (int argc,
     if ( (-1 == flags) &&
          (EBADF == errno) )
     {
-      fprintf (stderr,
-               "Bad listen socket passed, ignored\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Bad listen socket passed, ignored\n");
       fh = -1;
     }
     flags |= FD_CLOEXEC;
@@ -636,27 +633,26 @@ main (int argc,
     }
   }
 
-  mhd
-    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
-                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                        | MHD_USE_INTERNAL_POLLING_THREAD
-                        | MHD_USE_TCP_FASTOPEN,
-                        (-1 == fh) ? serve_port : 0,
-                        NULL, NULL,
-                        &handle_mhd_request, NULL,
-                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 32,
-                        MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
-                        MHD_OPTION_LISTEN_SOCKET, fh,
-                        MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
-                        NULL,
-                        MHD_OPTION_NOTIFY_COMPLETED,
-                        &handle_mhd_completion_callback, NULL,
-                        MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
-                        MHD_OPTION_END);
+  mhd = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
+                          | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                          | MHD_USE_INTERNAL_POLLING_THREAD
+                          | MHD_USE_TCP_FASTOPEN,
+                          (-1 == fh) ? serve_port : 0,
+                          NULL, NULL,
+                          &handle_mhd_request, NULL,
+                          MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 32,
+                          MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
+                          MHD_OPTION_LISTEN_SOCKET, fh,
+                          MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
+                          NULL,
+                          MHD_OPTION_NOTIFY_COMPLETED,
+                          &handle_mhd_completion_callback, NULL,
+                          MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
+                          MHD_OPTION_END);
   if (NULL == mhd)
   {
-    fprintf (stderr,
-             "Failed to start HTTP server.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to start HTTP server.\n");
     TEAH_DEPOSIT_CONFIRMATION_done ();
     return 1;
   }
@@ -731,6 +727,7 @@ main (int argc,
     break;
   }
   TALER_AUDITORDB_plugin_unload (TAH_plugin);
+  TAH_plugin = NULL;
   TEAH_DEPOSIT_CONFIRMATION_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }

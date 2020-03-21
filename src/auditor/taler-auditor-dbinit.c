@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Taler Systems SA
+  Copyright (C) 2014, 2015, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -44,6 +44,7 @@ static int reset_db;
  */
 static int gc_db;
 
+
 /**
  * Main function that will be run.
  *
@@ -73,13 +74,19 @@ run (void *cls,
   }
   if (reset_db)
   {
-    (void) plugin->drop_tables (plugin->cls,
-                                GNUNET_YES);
+    if (GNUNET_OK !=
+        plugin->drop_tables (plugin->cls,
+                             GNUNET_YES))
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to reset database\n");
   }
   else if (restart_db)
   {
-    (void) plugin->drop_tables (plugin->cls,
-                                GNUNET_NO);
+    if (GNUNET_OK !=
+        plugin->drop_tables (plugin->cls,
+                             GNUNET_NO))
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to restart audits\n");
   }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
@@ -102,7 +109,7 @@ run (void *cls,
 
 /**
  * The main function of the database initialization tool.
- * Used to initialize the Taler Exchange's database.
+ * Used to initialize the Taler auditor's database.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
