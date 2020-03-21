@@ -30,49 +30,49 @@
 
 
 /**
- * Command-line option "-r": restart audit from scratch
+ * Command-line option "-r": TALER_ARL_restart audit from scratch
  */
-extern int restart;
+extern int TALER_ARL_restart;
 
 /**
  * Handle to access the exchange's database.
  */
-extern struct TALER_EXCHANGEDB_Plugin *edb;
+extern struct TALER_EXCHANGEDB_Plugin *TALER_ARL_edb;
 
 /**
- * Which currency are we doing the audit for?
+ * Which TALER_ARL_currency are we doing the audit for?
  */
-extern char *currency;
+extern char *TALER_ARL_currency;
 
 /**
- * How many fractional digits does the currency use?
+ * How many fractional digits does the TALER_ARL_currency use?
  */
-extern struct TALER_Amount currency_round_unit;
+extern struct TALER_Amount TALER_ARL_currency_round_unit;
 
 /**
  * Our configuration.
  */
-extern const struct GNUNET_CONFIGURATION_Handle *cfg;
+extern const struct GNUNET_CONFIGURATION_Handle *TALER_ARL_cfg;
 
 /**
- * Our session with the #edb.
+ * Our session with the #TALER_ARL_edb.
  */
-extern struct TALER_EXCHANGEDB_Session *esession;
+extern struct TALER_EXCHANGEDB_Session *TALER_ARL_esession;
 
 /**
  * Handle to access the auditor's database.
  */
-extern struct TALER_AUDITORDB_Plugin *adb;
+extern struct TALER_AUDITORDB_Plugin *TALER_ARL_adb;
 
 /**
- * Our session with the #adb.
+ * Our session with the #TALER_ARL_adb.
  */
-extern struct TALER_AUDITORDB_Session *asession;
+extern struct TALER_AUDITORDB_Session *TALER_ARL_asession;
 
 /**
  * Master public key of the exchange to audit.
  */
-extern struct TALER_MasterPublicKeyP master_pub;
+extern struct TALER_MasterPublicKeyP TALER_ARL_master_pub;
 
 /**
  * At what time did the auditor process start?
@@ -87,7 +87,7 @@ extern struct GNUNET_TIME_Absolute start_time;
  * @return human-readable string representing the time
  */
 json_t *
-json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at);
+TALER_ARL_TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at);
 
 
 /**
@@ -97,18 +97,18 @@ json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at);
  * @return human-readable string representing the time
  */
 json_t *
-json_from_time_abs (struct GNUNET_TIME_Absolute at);
+TALER_ARL_json_from_time_abs (struct GNUNET_TIME_Absolute at);
 
 
 /**
- * Add @a object to the report @a array.  Fail hard if this fails.
+ * Add @a object to the TALER_ARL_report @a array.  Fail hard if this fails.
  *
- * @param array report array to append @a object to
+ * @param array TALER_ARL_report array to append @a object to
  * @param object object to append, should be check that it is not NULL
  */
 void
-report (json_t *array,
-        json_t *object);
+TALER_ARL_report (json_t *array,
+                  json_t *object);
 
 
 /**
@@ -117,10 +117,10 @@ report (json_t *array,
  * @param dh hash of the denomination public key to look up
  * @param[out] issue set to detailed information about @a denom_pub, NULL if not found, must
  *                 NOT be freed by caller
- * @return transaction status code
+ * @return TALER_ARL_transaction status code
  */
 enum GNUNET_DB_QueryStatus
-get_denomination_info_by_hash (
+TALER_ARL_get_denomination_info_by_hash (
   const struct GNUNET_HashCode *dh,
   const struct TALER_DenominationKeyValidityPS **issue);
 
@@ -132,13 +132,14 @@ get_denomination_info_by_hash (
  * @param[out] issue set to detailed information about @a denom_pub, NULL if not found, must
  *                 NOT be freed by caller
  * @param[out] dh set to the hash of @a denom_pub, may be NULL
- * @return transaction status code
+ * @return TALER_ARL_transaction status code
  */
 enum GNUNET_DB_QueryStatus
-get_denomination_info (
+TALER_ARL_get_denomination_info (
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_DenominationKeyValidityPS **issue,
   struct GNUNET_HashCode *dh);
+
 
 /**
  * Type of an analysis function.  Each analysis function runs in
@@ -148,22 +149,7 @@ get_denomination_info (
  * @return transaction status code
  */
 typedef enum GNUNET_DB_QueryStatus
-(*Analysis)(void *cls);
-
-
-/**
- * Perform the given @a analysis within a transaction scope.
- * Commit on success.
- *
- * @param analysis analysis to run
- * @param analysis_cls closure for @a analysis
- * @return #GNUNET_OK if @a analysis succeessfully committed,
- *         #GNUNET_NO if we had an error on commit (retry may help)
- *         #GNUNET_SYSERR on hard errors
- */
-int
-transact (Analysis analysis,
-          void *analysis_cls);
+(*TALER_ARL_Analysis)(void *cls);
 
 
 /**
@@ -174,15 +160,26 @@ transact (Analysis analysis,
  * @return #GNUNET_OK on success
  */
 int
-setup_sessions_and_run (Analysis ana,
-                        void *ana_cls);
+TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
+                                  void *ana_cls);
 
 
+/**
+ * Setup global variables based on configuration.
+ *
+ * @param c configuration to use
+ * @return #GNUNET_OK on success
+ */
 int
-setup_globals (const struct GNUNET_CONFIGURATION_Handle *c);
+TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c);
 
 
+/**
+ * Generate the report and close connectios to the database.
+ *
+ * @param report the report to output, may be NULL for no report
+ */
 void
-finish_report (json_t *report);
+TALER_ARL_done (json_t *report);
 
 #endif

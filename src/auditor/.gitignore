@@ -13,3 +13,8 @@ test-wire-audit-inc.json
 wirefees/
 bank.err
 libauditor.a
+taler-helper-auditor-aggregation
+taler-helper-auditor-coins
+taler-helper-auditor-deposits
+taler-helper-auditor-reserves
+taler-helper-auditor-wire

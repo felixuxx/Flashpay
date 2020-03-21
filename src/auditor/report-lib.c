@@ -22,49 +22,49 @@
 #include "report-lib.h"
 
 /**
- * Command-line option "-r": restart audit from scratch
+ * Command-line option "-r": TALER_ARL_restart audit from scratch
  */
-int restart;
+int TALER_ARL_restart;
 
 /**
  * Handle to access the exchange's database.
  */
-struct TALER_EXCHANGEDB_Plugin *edb;
+struct TALER_EXCHANGEDB_Plugin *TALER_ARL_edb;
 
 /**
- * Which currency are we doing the audit for?
+ * Which TALER_ARL_currency are we doing the audit for?
  */
-char *currency;
+char *TALER_ARL_currency;
 
 /**
- * How many fractional digits does the currency use?
+ * How many fractional digits does the TALER_ARL_currency use?
  */
-struct TALER_Amount currency_round_unit;
+struct TALER_Amount TALER_ARL_currency_round_unit;
 
 /**
  * Our configuration.
  */
-const struct GNUNET_CONFIGURATION_Handle *cfg;
+const struct GNUNET_CONFIGURATION_Handle *TALER_ARL_cfg;
 
 /**
- * Our session with the #edb.
+ * Our session with the #TALER_ARL_edb.
  */
-struct TALER_EXCHANGEDB_Session *esession;
+struct TALER_EXCHANGEDB_Session *TALER_ARL_esession;
 
 /**
  * Handle to access the auditor's database.
  */
-struct TALER_AUDITORDB_Plugin *adb;
+struct TALER_AUDITORDB_Plugin *TALER_ARL_adb;
 
 /**
- * Our session with the #adb.
+ * Our session with the #TALER_ARL_adb.
  */
-struct TALER_AUDITORDB_Session *asession;
+struct TALER_AUDITORDB_Session *TALER_ARL_asession;
 
 /**
  * Master public key of the exchange to audit.
  */
-struct TALER_MasterPublicKeyP master_pub;
+struct TALER_MasterPublicKeyP TALER_ARL_master_pub;
 
 /**
  * At what time did the auditor process start?
@@ -85,7 +85,7 @@ static struct GNUNET_CONTAINER_MultiHashMap *denominations;
  * @return human-readable string representing the time
  */
 json_t *
-json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at)
+TALER_ARL_TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at)
 {
   return json_string
            (GNUNET_STRINGS_absolute_time_to_string
@@ -100,7 +100,7 @@ json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at)
  * @return human-readable string representing the time
  */
 json_t *
-json_from_time_abs (struct GNUNET_TIME_Absolute at)
+TALER_ARL_json_from_time_abs (struct GNUNET_TIME_Absolute at)
 {
   return json_string
            (GNUNET_STRINGS_absolute_time_to_string (at));
@@ -108,14 +108,14 @@ json_from_time_abs (struct GNUNET_TIME_Absolute at)
 
 
 /**
- * Add @a object to the report @a array.  Fail hard if this fails.
+ * Add @a object to the TALER_ARL_report @a array.  Fail hard if this fails.
  *
- * @param array report array to append @a object to
+ * @param array TALER_ARL_report array to append @a object to
  * @param object object to append, should be check that it is not NULL
  */
 void
-report (json_t *array,
-        json_t *object)
+TALER_ARL_report (json_t *array,
+                  json_t *object)
 {
   GNUNET_assert (NULL != object);
   GNUNET_assert (0 ==
@@ -185,9 +185,9 @@ add_denomination (void *cls,
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
-                               const struct
-                               TALER_DenominationKeyValidityPS **issue)
+TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
+                                         const struct
+                                         TALER_DenominationKeyValidityPS **issue)
 {
   const struct TALER_DenominationKeyValidityPS *i;
   enum GNUNET_DB_QueryStatus qs;
@@ -196,11 +196,11 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
   {
     denominations = GNUNET_CONTAINER_multihashmap_create (256,
                                                           GNUNET_NO);
-    qs = adb->select_denomination_info (adb->cls,
-                                        asession,
-                                        &master_pub,
-                                        &add_denomination,
-                                        NULL);
+    qs = TALER_ARL_adb->select_denomination_info (TALER_ARL_adb->cls,
+                                                  TALER_ARL_asession,
+                                                  &TALER_ARL_master_pub,
+                                                  &add_denomination,
+                                                  NULL);
     if (0 > qs)
     {
       *issue = NULL;
@@ -216,11 +216,11 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
   /* maybe database changed since we last iterated, give it one more shot */
-  qs = adb->select_denomination_info (adb->cls,
-                                      asession,
-                                      &master_pub,
-                                      &add_denomination,
-                                      NULL);
+  qs = TALER_ARL_adb->select_denomination_info (TALER_ARL_adb->cls,
+                                                TALER_ARL_asession,
+                                                &TALER_ARL_master_pub,
+                                                &add_denomination,
+                                                NULL);
   if (qs <= 0)
   {
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -255,10 +255,11 @@ get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
-                       const struct
-                       TALER_DenominationKeyValidityPS **issue,
-                       struct GNUNET_HashCode *dh)
+TALER_ARL_get_denomination_info (const struct
+                                 TALER_DenominationPublicKey *denom_pub,
+                                 const struct
+                                 TALER_DenominationKeyValidityPS **issue,
+                                 struct GNUNET_HashCode *dh)
 {
   struct GNUNET_HashCode hc;
 
@@ -266,8 +267,8 @@ get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
     dh = &hc;
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      dh);
-  return get_denomination_info_by_hash (dh,
-                                        issue);
+  return TALER_ARL_get_denomination_info_by_hash (dh,
+                                                  issue);
 }
 
 
@@ -281,25 +282,25 @@ get_denomination_info (const struct TALER_DenominationPublicKey *denom_pub,
  *         #GNUNET_NO if we had an error on commit (retry may help)
  *         #GNUNET_SYSERR on hard errors
  */
-int
-transact (Analysis analysis,
+static int
+transact (TALER_ARL_Analysis analysis,
           void *analysis_cls)
 {
   int ret;
   enum GNUNET_DB_QueryStatus qs;
 
-  ret = adb->start (adb->cls,
-                    asession);
+  ret = TALER_ARL_adb->start (TALER_ARL_adb->cls,
+                              TALER_ARL_asession);
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  edb->preflight (edb->cls,
-                  esession);
-  ret = edb->start (edb->cls,
-                    esession,
-                    "auditor");
+  TALER_ARL_edb->preflight (TALER_ARL_edb->cls,
+                            TALER_ARL_esession);
+  ret = TALER_ARL_edb->start (TALER_ARL_edb->cls,
+                              TALER_ARL_esession,
+                              "auditor");
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
@@ -308,20 +309,20 @@ transact (Analysis analysis,
   qs = analysis (analysis_cls);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    qs = edb->commit (edb->cls,
-                      esession);
+    qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls,
+                                TALER_ARL_esession);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Exchange DB commit failed, rolling back transaction\n");
-      adb->rollback (adb->cls,
-                     asession);
+      TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
+                               TALER_ARL_asession);
     }
     else
     {
-      qs = adb->commit (adb->cls,
-                        asession);
+      qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls,
+                                  TALER_ARL_asession);
       if (0 > qs)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -334,10 +335,10 @@ transact (Analysis analysis,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Processing failed (or no changes), rolling back transaction\n");
-    adb->rollback (adb->cls,
-                   asession);
-    edb->rollback (edb->cls,
-                   esession);
+    TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
+                             TALER_ARL_asession);
+    TALER_ARL_edb->rollback (TALER_ARL_edb->cls,
+                             TALER_ARL_esession);
   }
   switch (qs)
   {
@@ -362,18 +363,18 @@ transact (Analysis analysis,
  * @return #GNUNET_OK on success
  */
 int
-setup_sessions_and_run (Analysis ana,
-                        void *ana_cls)
+TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
+                                  void *ana_cls)
 {
-  esession = edb->get_session (edb->cls);
-  if (NULL == esession)
+  TALER_ARL_esession = TALER_ARL_edb->get_session (TALER_ARL_edb->cls);
+  if (NULL == TALER_ARL_esession)
   {
     fprintf (stderr,
              "Failed to initialize exchange session.\n");
     return GNUNET_SYSERR;
   }
-  asession = adb->get_session (adb->cls);
-  if (NULL == asession)
+  TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
+  if (NULL == TALER_ARL_asession)
   {
     fprintf (stderr,
              "Failed to initialize auditor session.\n");
@@ -388,7 +389,7 @@ setup_sessions_and_run (Analysis ana,
 
 
 /**
- * Test if the given @a mpub matches the #master_pub.
+ * Test if the given @a mpub matches the #TALER_ARL_master_pub.
  * If so, set "found" to GNUNET_YES.
  *
  * @param cls a `int *` pointing to "found"
@@ -404,29 +405,35 @@ test_master_present (void *cls,
 
   (void) exchange_url;
   if (0 == GNUNET_memcmp (mpub,
-                          &master_pub))
+                          &TALER_ARL_master_pub))
     *found = GNUNET_YES;
 }
 
 
+/**
+ * Setup global variables based on configuration.
+ *
+ * @param c configuration to use
+ * @return #GNUNET_OK on success
+ */
 int
-setup_globals (const struct GNUNET_CONFIGURATION_Handle *c)
+TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 {
   int found;
   struct TALER_AUDITORDB_Session *as;
 
-  cfg = c;
+  TALER_ARL_cfg = c;
   start_time = GNUNET_TIME_absolute_get ();
-  if (0 == GNUNET_is_zero (&master_pub))
+  if (0 == GNUNET_is_zero (&TALER_ARL_master_pub))
   {
     /* -m option not given, try configuration */
-    char *master_public_key_str;
+    char *TALER_ARL_master_public_key_str;
 
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (cfg,
+        GNUNET_CONFIGURATION_get_value_string (TALER_ARL_cfg,
                                                "exchange",
                                                "MASTER_PUBLIC_KEY",
-                                               &master_public_key_str))
+                                               &TALER_ARL_master_public_key_str))
     {
       fprintf (stderr,
                "Pass option -m or set it in the configuration!\n");
@@ -436,35 +443,37 @@ setup_globals (const struct GNUNET_CONFIGURATION_Handle *c)
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_public_key_from_string (master_public_key_str,
-                                                    strlen (
-                                                      master_public_key_str),
-                                                    &master_pub.eddsa_pub))
+        GNUNET_CRYPTO_eddsa_public_key_from_string (
+          TALER_ARL_master_public_key_str,
+          strlen (
+            TALER_ARL_master_public_key_str),
+          &TALER_ARL_master_pub.
+          eddsa_pub))
     {
       fprintf (stderr,
                "Invalid master public key given in configuration file.");
-      GNUNET_free (master_public_key_str);
+      GNUNET_free (TALER_ARL_master_public_key_str);
       return GNUNET_SYSERR;
     }
-    GNUNET_free (master_public_key_str);
+    GNUNET_free (TALER_ARL_master_public_key_str);
   } /* end of -m not given */
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Taler auditor running for exchange master public key %s\n",
-              TALER_B2S (&master_pub));
+              TALER_B2S (&TALER_ARL_master_pub));
 
   if (GNUNET_OK !=
-      TALER_config_get_currency (cfg,
-                                 &currency))
+      TALER_config_get_currency (TALER_ARL_cfg,
+                                 &TALER_ARL_currency))
   {
     return GNUNET_SYSERR;
   }
   {
     if (GNUNET_OK !=
-        TALER_config_get_amount (cfg,
+        TALER_config_get_amount (TALER_ARL_cfg,
                                  "taler",
                                  "CURRENCY_ROUND_UNIT",
-                                 &currency_round_unit))
+                                 &TALER_ARL_currency_round_unit))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid or missing amount in `TALER' under `CURRENCY_ROUND_UNIT'\n");
@@ -472,78 +481,86 @@ setup_globals (const struct GNUNET_CONFIGURATION_Handle *c)
     }
   }
   if (NULL ==
-      (edb = TALER_EXCHANGEDB_plugin_load (cfg)))
+      (TALER_ARL_edb = TALER_EXCHANGEDB_plugin_load (TALER_ARL_cfg)))
   {
     fprintf (stderr,
              "Failed to initialize exchange database plugin.\n");
     return GNUNET_SYSERR;
   }
   if (NULL ==
-      (adb = TALER_AUDITORDB_plugin_load (cfg)))
+      (TALER_ARL_adb = TALER_AUDITORDB_plugin_load (TALER_ARL_cfg)))
   {
     fprintf (stderr,
              "Failed to initialize auditor database plugin.\n");
-    TALER_EXCHANGEDB_plugin_unload (edb);
+    TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
     return GNUNET_SYSERR;
   }
   found = GNUNET_NO;
-  as = adb->get_session (adb->cls);
+  as = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
   if (NULL == as)
   {
     fprintf (stderr,
              "Failed to start session with auditor database.\n");
-    TALER_AUDITORDB_plugin_unload (adb);
-    TALER_EXCHANGEDB_plugin_unload (edb);
+    TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
+    TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
     return GNUNET_SYSERR;
   }
-  (void) adb->list_exchanges (adb->cls,
-                              as,
-                              &test_master_present,
-                              &found);
+  (void) TALER_ARL_adb->list_exchanges (TALER_ARL_adb->cls,
+                                        as,
+                                        &test_master_present,
+                                        &found);
   if (GNUNET_NO == found)
   {
     fprintf (stderr,
              "Exchange's master public key `%s' not known to auditor DB. Did you forget to run `taler-auditor-exchange`?\n",
-             GNUNET_p2s (&master_pub.eddsa_pub));
-    TALER_AUDITORDB_plugin_unload (adb);
-    TALER_EXCHANGEDB_plugin_unload (edb);
+             GNUNET_p2s (&TALER_ARL_master_pub.eddsa_pub));
+    TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
+    TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
     return GNUNET_SYSERR;
   }
-  if (restart)
+  if (TALER_ARL_restart)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Full audit restart requested, dropping old audit data.\n");
+                "Full audit TALER_ARL_restart requested, dropping old audit data.\n");
     GNUNET_break (GNUNET_OK ==
-                  adb->drop_tables (adb->cls,
-                                    GNUNET_NO));
-    TALER_AUDITORDB_plugin_unload (adb);
+                  TALER_ARL_adb->drop_tables (TALER_ARL_adb->cls,
+                                              GNUNET_NO));
+    TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
     if (NULL ==
-        (adb = TALER_AUDITORDB_plugin_load (cfg)))
+        (TALER_ARL_adb = TALER_AUDITORDB_plugin_load (TALER_ARL_cfg)))
     {
       fprintf (stderr,
                "Failed to initialize auditor database plugin after drop.\n");
-      TALER_EXCHANGEDB_plugin_unload (edb);
+      TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
       return GNUNET_SYSERR;
     }
     GNUNET_break (GNUNET_OK ==
-                  adb->create_tables (adb->cls));
+                  TALER_ARL_adb->create_tables (TALER_ARL_adb->cls));
   }
 
   return GNUNET_OK;
 }
 
 
+/**
+ * Generate the report and close connectios to the database.
+ *
+ * @param report the report to output, may be NULL for no report
+ */
 void
-finish_report (json_t *report)
+TALER_ARL_done (json_t *report)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
-  TALER_AUDITORDB_plugin_unload (adb);
-  adb = NULL;
-  TALER_EXCHANGEDB_plugin_unload (edb);
-  edb = NULL;
-  json_dumpf (report,
-              stdout,
-              JSON_INDENT (2));
-  json_decref (report);
+  TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
+  TALER_ARL_adb = NULL;
+  TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
+  TALER_ARL_edb = NULL;
+  if (NULL != report)
+  {
+    json_dumpf (report,
+                stdout,
+                JSON_INDENT (2));
+    json_decref (report);
+  }
 }

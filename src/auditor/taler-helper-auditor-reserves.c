@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor/taler-auditor-reserves.c
+ * @file auditor/taler-helper-auditor-reserves.c
  * @brief audits the reserves of an exchange database
  * @author Christian Grothoff
  */
@@ -162,8 +162,10 @@ static struct TALER_Amount total_bad_sig_loss;
 static void
 report_amount_arithmetic_inconsistency (const char *operation,
                                         uint64_t rowid,
-                                        const struct TALER_Amount *exchange,
-                                        const struct TALER_Amount *auditor,
+                                        const struct
+                                        TALER_Amount *exchange,
+                                        const struct
+                                        TALER_Amount *auditor,
                                         int profitable)
 {
   struct TALER_Amount delta;
@@ -187,13 +189,13 @@ report_amount_arithmetic_inconsistency (const char *operation,
                                          auditor,
                                          exchange));
   }
-  report (report_amount_arithmetic_inconsistencies,
-          json_pack ("{s:s, s:I, s:o, s:o, s:I}",
-                     "operation", operation,
-                     "rowid", (json_int_t) rowid,
-                     "exchange", TALER_JSON_from_amount (exchange),
-                     "auditor", TALER_JSON_from_amount (auditor),
-                     "profitable", (json_int_t) profitable));
+  TALER_ARL_report (report_amount_arithmetic_inconsistencies,
+                    json_pack ("{s:s, s:I, s:o, s:o, s:I}",
+                               "operation", operation,
+                               "rowid", (json_int_t) rowid,
+                               "exchange", TALER_JSON_from_amount (exchange),
+                               "auditor", TALER_JSON_from_amount (auditor),
+                               "profitable", (json_int_t) profitable));
   if (0 != profitable)
   {
     target = (1 == profitable)
@@ -219,11 +221,11 @@ report_row_inconsistency (const char *table,
                           uint64_t rowid,
                           const char *diagnostic)
 {
-  report (report_row_inconsistencies,
-          json_pack ("{s:s, s:I, s:s}",
-                     "table", table,
-                     "row", (json_int_t) rowid,
-                     "diagnostic", diagnostic));
+  TALER_ARL_report (report_row_inconsistencies,
+                    json_pack ("{s:s, s:I, s:s}",
+                               "table", table,
+                               "row", (json_int_t) rowid,
+                               "diagnostic", diagnostic));
 }
 
 
@@ -306,15 +308,15 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
   enum GNUNET_DB_QueryStatus qs;
   uint64_t rowid;
 
-  qs = adb->get_reserve_info (adb->cls,
-                              asession,
-                              &rs->reserve_pub,
-                              &master_pub,
-                              &rowid,
-                              &rs->a_balance,
-                              &rs->a_withdraw_fee_balance,
-                              &rs->a_expiration_date,
-                              &rs->sender_account);
+  qs = TALER_ARL_adb->get_reserve_info (TALER_ARL_adb->cls,
+                                        TALER_ARL_asession,
+                                        &rs->reserve_pub,
+                                        &TALER_ARL_master_pub,
+                                        &rowid,
+                                        &rs->a_balance,
+                                        &rs->a_withdraw_fee_balance,
+                                        &rs->a_expiration_date,
+                                        &rs->sender_account);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -502,9 +504,9 @@ handle_reserve_out (void *cls,
   ppr.last_reserve_out_serial_id = rowid + 1;
 
   /* lookup denomination pub data (make sure denom_pub is valid, establish fees) */
-  qs = get_denomination_info (denom_pub,
-                              &issue,
-                              &wsrd.h_denomination_pub);
+  qs = TALER_ARL_get_denomination_info (denom_pub,
+                                        &issue,
+                                        &wsrd.h_denomination_pub);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -535,14 +537,15 @@ handle_reserve_out (void *cls,
   if ( (valid_start.abs_value_us > execution_date.abs_value_us) ||
        (expire_withdraw.abs_value_us < execution_date.abs_value_us) )
   {
-    report (denomination_key_validity_withdraw_inconsistencies,
-            json_pack ("{s:I, s:o, s:o, s:o}",
-                       "row", (json_int_t) rowid,
-                       "execution_date",
-                       json_from_time_abs (execution_date),
-                       "reserve_pub", GNUNET_JSON_from_data_auto (reserve_pub),
-                       "denompub_h", GNUNET_JSON_from_data_auto (
-                         &wsrd.h_denomination_pub)));
+    TALER_ARL_report (denomination_key_validity_withdraw_inconsistencies,
+                      json_pack ("{s:I, s:o, s:o, s:o}",
+                                 "row", (json_int_t) rowid,
+                                 "execution_date",
+                                 TALER_ARL_json_from_time_abs (execution_date),
+                                 "reserve_pub", GNUNET_JSON_from_data_auto (
+                                   reserve_pub),
+                                 "denompub_h", GNUNET_JSON_from_data_auto (
+                                   &wsrd.h_denomination_pub)));
   }
 
   /* check reserve_sig */
@@ -559,12 +562,14 @@ handle_reserve_out (void *cls,
                                   &reserve_sig->eddsa_signature,
                                   &reserve_pub->eddsa_pub))
   {
-    report (report_bad_sig_losses,
-            json_pack ("{s:s, s:I, s:o, s:o}",
-                       "operation", "withdraw",
-                       "row", (json_int_t) rowid,
-                       "loss", TALER_JSON_from_amount (amount_with_fee),
-                       "key_pub", GNUNET_JSON_from_data_auto (reserve_pub)));
+    TALER_ARL_report (report_bad_sig_losses,
+                      json_pack ("{s:s, s:I, s:o, s:o}",
+                                 "operation", "withdraw",
+                                 "row", (json_int_t) rowid,
+                                 "loss", TALER_JSON_from_amount (
+                                   amount_with_fee),
+                                 "key_pub", GNUNET_JSON_from_data_auto (
+                                   reserve_pub)));
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_bad_sig_loss,
                                     &total_bad_sig_loss,
@@ -682,13 +687,13 @@ handle_recoup_by_reserve (void *cls,
                                   &coin_sig->eddsa_signature,
                                   &coin->coin_pub.eddsa_pub))
   {
-    report (report_bad_sig_losses,
-            json_pack ("{s:s, s:I, s:o, s:o}",
-                       "operation", "recoup",
-                       "row", (json_int_t) rowid,
-                       "loss", TALER_JSON_from_amount (amount),
-                       "key_pub", GNUNET_JSON_from_data_auto (
-                         &coin->coin_pub)));
+    TALER_ARL_report (report_bad_sig_losses,
+                      json_pack ("{s:s, s:I, s:o, s:o}",
+                                 "operation", "recoup",
+                                 "row", (json_int_t) rowid,
+                                 "loss", TALER_JSON_from_amount (amount),
+                                 "key_pub", GNUNET_JSON_from_data_auto (
+                                   &coin->coin_pub)));
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_bad_sig_loss,
                                     &total_bad_sig_loss,
@@ -700,11 +705,11 @@ handle_recoup_by_reserve (void *cls,
                                            &pr.h_denom_pub);
   if (NULL == rev)
   {
-    qs = edb->get_denomination_revocation (edb->cls,
-                                           esession,
-                                           &pr.h_denom_pub,
-                                           &msig,
-                                           &rev_rowid);
+    qs = TALER_ARL_edb->get_denomination_revocation (TALER_ARL_edb->cls,
+                                                     TALER_ARL_esession,
+                                                     &pr.h_denom_pub,
+                                                     &msig,
+                                                     &rev_rowid);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -735,7 +740,7 @@ handle_recoup_by_reserve (void *cls,
             TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
             &kr.purpose,
             &msig.eddsa_signature,
-            &master_pub.eddsa_pub))
+            &TALER_ARL_master_pub.eddsa_pub))
       {
         rev = "master signature invalid";
       }
@@ -757,12 +762,13 @@ handle_recoup_by_reserve (void *cls,
   if ( (NULL != rev) &&
        (0 == strcmp (rev, "master signature invalid")) )
   {
-    report (report_bad_sig_losses,
-            json_pack ("{s:s, s:I, s:o, s:o}",
-                       "operation", "recoup-master",
-                       "row", (json_int_t) rev_rowid,
-                       "loss", TALER_JSON_from_amount (amount),
-                       "key_pub", GNUNET_JSON_from_data_auto (&master_pub)));
+    TALER_ARL_report (report_bad_sig_losses,
+                      json_pack ("{s:s, s:I, s:o, s:o}",
+                                 "operation", "recoup-master",
+                                 "row", (json_int_t) rev_rowid,
+                                 "loss", TALER_JSON_from_amount (amount),
+                                 "key_pub", GNUNET_JSON_from_data_auto (
+                                   &TALER_ARL_master_pub)));
     GNUNET_break (GNUNET_OK ==
                   TALER_amount_add (&total_bad_sig_loss,
                                     &total_bad_sig_loss,
@@ -843,15 +849,15 @@ get_closing_fee (const char *receiver_account,
               "Method is `%s'\n",
               method);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      edb->get_wire_fee (edb->cls,
-                         esession,
-                         method,
-                         atime,
-                         &start_date,
-                         &end_date,
-                         &wire_fee,
-                         fee,
-                         &master_sig))
+      TALER_ARL_edb->get_wire_fee (TALER_ARL_edb->cls,
+                                   TALER_ARL_esession,
+                                   method,
+                                   atime,
+                                   &start_date,
+                                   &end_date,
+                                   &wire_fee,
+                                   fee,
+                                   &master_sig))
   {
     report_row_inconsistency ("closing-fee",
                               atime.abs_value_us,
@@ -950,11 +956,12 @@ handle_reserve_closed (void *cls,
     else if (0 != TALER_amount_cmp (&expected_fee,
                                     closing_fee))
     {
-      report_amount_arithmetic_inconsistency ("closing aggregation fee",
-                                              rowid,
-                                              closing_fee,
-                                              &expected_fee,
-                                              1);
+      report_amount_arithmetic_inconsistency (
+        "closing aggregation fee",
+        rowid,
+        closing_fee,
+        &expected_fee,
+        1);
     }
   }
   if (NULL == rs->sender_account)
@@ -1006,9 +1013,9 @@ verify_reserve_balance (void *cls,
 
   ret = GNUNET_OK;
   reserve.pub = rs->reserve_pub;
-  qs = edb->reserves_get (edb->cls,
-                          esession,
-                          &reserve);
+  qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
+                                    TALER_ARL_esession,
+                                    &reserve);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     char *diag;
@@ -1053,12 +1060,13 @@ verify_reserve_balance (void *cls,
                   TALER_amount_add (&total_balance_insufficient_loss,
                                     &total_balance_insufficient_loss,
                                     &loss));
-    report (report_reserve_balance_insufficient_inconsistencies,
-            json_pack ("{s:o, s:o}",
-                       "reserve_pub",
-                       GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                       "loss",
-                       TALER_JSON_from_amount (&loss)));
+    TALER_ARL_report (
+      report_reserve_balance_insufficient_inconsistencies,
+      json_pack ("{s:o, s:o}",
+                 "reserve_pub",
+                 GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                 "loss",
+                 TALER_JSON_from_amount (&loss)));
     goto cleanup;
   }
   if (0 != TALER_amount_cmp (&nbalance,
@@ -1091,14 +1099,15 @@ verify_reserve_balance (void *cls,
                                        &total_balance_summary_delta_minus,
                                        &delta));
     }
-    report (report_reserve_balance_summary_wrong_inconsistencies,
-            json_pack ("{s:o, s:o, s:o}",
-                       "reserve_pub",
-                       GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                       "exchange",
-                       TALER_JSON_from_amount (&reserve.balance),
-                       "auditor",
-                       TALER_JSON_from_amount (&nbalance)));
+    TALER_ARL_report (
+      report_reserve_balance_summary_wrong_inconsistencies,
+      json_pack ("{s:o, s:o, s:o}",
+                 "reserve_pub",
+                 GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                 "exchange",
+                 TALER_JSON_from_amount (&reserve.balance),
+                 "auditor",
+                 TALER_JSON_from_amount (&nbalance)));
     goto cleanup;
   }
 
@@ -1120,14 +1129,16 @@ verify_reserve_balance (void *cls,
                        TALER_amount_add (&total_balance_reserve_not_closed,
                                          &total_balance_reserve_not_closed,
                                          &nbalance));
-        report (report_reserve_not_closed_inconsistencies,
-                json_pack ("{s:o, s:o, s:o}",
-                           "reserve_pub",
-                           GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                           "balance",
-                           TALER_JSON_from_amount (&nbalance),
-                           "expiration_time",
-                           json_from_time_abs (rs->a_expiration_date)));
+        TALER_ARL_report (report_reserve_not_closed_inconsistencies,
+                          json_pack ("{s:o, s:o, s:o}",
+                                     "reserve_pub",
+                                     GNUNET_JSON_from_data_auto (
+                                       &rs->reserve_pub),
+                                     "balance",
+                                     TALER_JSON_from_amount (&nbalance),
+                                     "expiration_time",
+                                     TALER_ARL_json_from_time_abs (
+                                       rs->a_expiration_date)));
       }
     }
     else
@@ -1136,16 +1147,18 @@ verify_reserve_balance (void *cls,
                      TALER_amount_add (&total_balance_reserve_not_closed,
                                        &total_balance_reserve_not_closed,
                                        &nbalance));
-      report (report_reserve_not_closed_inconsistencies,
-              json_pack ("{s:o, s:o, s:o, s:s}",
-                         "reserve_pub",
-                         GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                         "balance",
-                         TALER_JSON_from_amount (&nbalance),
-                         "expiration_time",
-                         json_from_time_abs (rs->a_expiration_date),
-                         "diagnostic",
-                         "could not determine closing fee"));
+      TALER_ARL_report (report_reserve_not_closed_inconsistencies,
+                        json_pack ("{s:o, s:o, s:o, s:s}",
+                                   "reserve_pub",
+                                   GNUNET_JSON_from_data_auto (
+                                     &rs->reserve_pub),
+                                   "balance",
+                                   TALER_JSON_from_amount (&nbalance),
+                                   "expiration_time",
+                                   TALER_ARL_json_from_time_abs (
+                                     rs->a_expiration_date),
+                                   "diagnostic",
+                                   "could not determine closing fee"));
     }
   }
 
@@ -1191,10 +1204,10 @@ verify_reserve_balance (void *cls,
                   "Final balance of reserve `%s' is %s, dropping it\n",
                   TALER_B2S (&rs->reserve_pub),
                   TALER_amount2s (&nbalance));
-      qs = adb->del_reserve_info (adb->cls,
-                                  asession,
-                                  &rs->reserve_pub,
-                                  &master_pub);
+      qs = TALER_ARL_adb->del_reserve_info (TALER_ARL_adb->cls,
+                                            TALER_ARL_asession,
+                                            &rs->reserve_pub,
+                                            &TALER_ARL_master_pub);
       if (0 >= qs)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1220,22 +1233,22 @@ verify_reserve_balance (void *cls,
               TALER_amount2s (&nbalance));
 
   if (rs->had_ri)
-    qs = adb->update_reserve_info (adb->cls,
-                                   asession,
-                                   &rs->reserve_pub,
-                                   &master_pub,
-                                   &nbalance,
-                                   &rs->a_withdraw_fee_balance,
-                                   rs->a_expiration_date);
+    qs = TALER_ARL_adb->update_reserve_info (TALER_ARL_adb->cls,
+                                             TALER_ARL_asession,
+                                             &rs->reserve_pub,
+                                             &TALER_ARL_master_pub,
+                                             &nbalance,
+                                             &rs->a_withdraw_fee_balance,
+                                             rs->a_expiration_date);
   else
-    qs = adb->insert_reserve_info (adb->cls,
-                                   asession,
-                                   &rs->reserve_pub,
-                                   &master_pub,
-                                   &nbalance,
-                                   &rs->a_withdraw_fee_balance,
-                                   rs->a_expiration_date,
-                                   rs->sender_account);
+    qs = TALER_ARL_adb->insert_reserve_info (TALER_ARL_adb->cls,
+                                             TALER_ARL_asession,
+                                             &rs->reserve_pub,
+                                             &TALER_ARL_master_pub,
+                                             &nbalance,
+                                             &rs->a_withdraw_fee_balance,
+                                             rs->a_expiration_date,
+                                             rs->sender_account);
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1270,10 +1283,10 @@ analyze_reserves (void *cls)
   (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing reserves\n");
-  qsp = adb->get_auditor_progress_reserve (adb->cls,
-                                           asession,
-                                           &master_pub,
-                                           &ppr);
+  qsp = TALER_ARL_adb->get_auditor_progress_reserve (TALER_ARL_adb->cls,
+                                                     TALER_ARL_asession,
+                                                     &TALER_ARL_master_pub,
+                                                     &ppr);
   if (0 > qsp)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
@@ -1296,11 +1309,11 @@ analyze_reserves (void *cls)
                 (unsigned long long) ppr.last_reserve_close_serial_id);
   }
   rc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  qsx = adb->get_reserve_summary (adb->cls,
-                                  asession,
-                                  &master_pub,
-                                  &total_escrow_balance,
-                                  &total_withdraw_fee_income);
+  qsx = TALER_ARL_adb->get_reserve_summary (TALER_ARL_adb->cls,
+                                            TALER_ARL_asession,
+                                            &TALER_ARL_master_pub,
+                                            &total_escrow_balance,
+                                            &total_withdraw_fee_income);
   if (qsx < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -1311,42 +1324,46 @@ analyze_reserves (void *cls)
   rc.revoked = GNUNET_CONTAINER_multihashmap_create (4,
                                                      GNUNET_NO);
 
-  qs = edb->select_reserves_in_above_serial_id (edb->cls,
-                                                esession,
-                                                ppr.last_reserve_in_serial_id,
-                                                &handle_reserve_in,
-                                                &rc);
+  qs = TALER_ARL_edb->select_reserves_in_above_serial_id (TALER_ARL_edb->cls,
+                                                          TALER_ARL_esession,
+                                                          ppr.
+                                                          last_reserve_in_serial_id,
+                                                          &handle_reserve_in,
+                                                          &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  qs = edb->select_withdrawals_above_serial_id (edb->cls,
-                                                esession,
-                                                ppr.last_reserve_out_serial_id,
-                                                &handle_reserve_out,
-                                                &rc);
+  qs = TALER_ARL_edb->select_withdrawals_above_serial_id (TALER_ARL_edb->cls,
+                                                          TALER_ARL_esession,
+                                                          ppr.
+                                                          last_reserve_out_serial_id,
+                                                          &handle_reserve_out,
+                                                          &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  qs = edb->select_recoup_above_serial_id (edb->cls,
-                                           esession,
-                                           ppr.last_reserve_recoup_serial_id,
-                                           &handle_recoup_by_reserve,
-                                           &rc);
+  qs = TALER_ARL_edb->select_recoup_above_serial_id (TALER_ARL_edb->cls,
+                                                     TALER_ARL_esession,
+                                                     ppr.
+                                                     last_reserve_recoup_serial_id,
+                                                     &handle_recoup_by_reserve,
+                                                     &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  qs = edb->select_reserve_closed_above_serial_id (edb->cls,
-                                                   esession,
-                                                   ppr.
-                                                   last_reserve_close_serial_id,
-                                                   &handle_reserve_closed,
-                                                   &rc);
+  qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (TALER_ARL_edb->cls,
+                                                             TALER_ARL_esession,
+                                                             ppr.
+                                                             last_reserve_close_serial_id,
+                                                             &
+                                                             handle_reserve_closed,
+                                                             &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1366,19 +1383,19 @@ analyze_reserves (void *cls)
 
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
   {
-    qs = adb->insert_reserve_summary (adb->cls,
-                                      asession,
-                                      &master_pub,
-                                      &total_escrow_balance,
-                                      &total_withdraw_fee_income);
+    qs = TALER_ARL_adb->insert_reserve_summary (TALER_ARL_adb->cls,
+                                                TALER_ARL_asession,
+                                                &TALER_ARL_master_pub,
+                                                &total_escrow_balance,
+                                                &total_withdraw_fee_income);
   }
   else
   {
-    qs = adb->update_reserve_summary (adb->cls,
-                                      asession,
-                                      &master_pub,
-                                      &total_escrow_balance,
-                                      &total_withdraw_fee_income);
+    qs = TALER_ARL_adb->update_reserve_summary (TALER_ARL_adb->cls,
+                                                TALER_ARL_asession,
+                                                &TALER_ARL_master_pub,
+                                                &total_escrow_balance,
+                                                &total_withdraw_fee_income);
   }
   if (0 >= qs)
   {
@@ -1386,15 +1403,15 @@ analyze_reserves (void *cls)
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
-    qs = adb->update_auditor_progress_reserve (adb->cls,
-                                               asession,
-                                               &master_pub,
-                                               &ppr);
+    qs = TALER_ARL_adb->update_auditor_progress_reserve (TALER_ARL_adb->cls,
+                                                         TALER_ARL_asession,
+                                                         &TALER_ARL_master_pub,
+                                                         &ppr);
   else
-    qs = adb->insert_auditor_progress_reserve (adb->cls,
-                                               asession,
-                                               &master_pub,
-                                               &ppr);
+    qs = TALER_ARL_adb->insert_auditor_progress_reserve (TALER_ARL_adb->cls,
+                                                         TALER_ARL_asession,
+                                                         &TALER_ARL_master_pub,
+                                                         &ppr);
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1417,36 +1434,34 @@ analyze_reserves (void *cls)
  *
  * @param cls closure
  * @param args remaining command-line arguments
- * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param TALER_ARL_cfgfile name of the configuration file used (for saving, can be NULL!)
  * @param c configuration
  */
 static void
 run (void *cls,
      char *const *args,
-     const char *cfgfile,
+     const char *TALER_ARL_cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
-  json_t *report;
-
   (void) cls;
   (void) args;
-  (void) cfgfile;
+  (void) TALER_ARL_cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   if (GNUNET_OK !=
-      setup_globals (cfg))
+      TALER_ARL_init (TALER_ARL_cfg))
   {
     global_ret = 1;
     return;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (cfg,
-                                           "exchangedb",
+      GNUNET_CONFIGURATION_get_value_time (TALER_ARL_cfg,
+                                           "exchangTALER_ARL_edb",
                                            "IDLE_RESERVE_EXPIRATION_TIME",
                                            &idle_reserve_expiration_time))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchangedb",
+                               "exchangTALER_ARL_edb",
                                "IDLE_RESERVE_EXPIRATION_TIME");
     global_ret = 1;
     return;
@@ -1454,34 +1469,34 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_escrow_balance));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_irregular_recoups));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_withdraw_fee_income));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_balance_insufficient_loss));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_balance_summary_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_balance_summary_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_balance_reserve_not_closed));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_bad_sig_loss));
   GNUNET_assert (NULL !=
                  (report_row_inconsistencies = json_array ()));
@@ -1489,104 +1504,122 @@ run (void *cls,
                  (denomination_key_validity_withdraw_inconsistencies =
                     json_array ()));
   GNUNET_assert (NULL !=
-                 (report_reserve_balance_summary_wrong_inconsistencies =
+                 (report_reserve_balance_summary_wrong_inconsistencies
+                    =
+                      json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_reserve_balance_insufficient_inconsistencies
+                    =
+                      json_array ()));
+  GNUNET_assert (NULL !=
+                 (report_reserve_not_closed_inconsistencies =
                     json_array ()));
   GNUNET_assert (NULL !=
-                 (report_reserve_balance_insufficient_inconsistencies =
+                 (report_amount_arithmetic_inconsistencies =
                     json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_reserve_not_closed_inconsistencies = json_array ()));
-  GNUNET_assert (NULL !=
-                 (report_amount_arithmetic_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
                  (report_bad_sig_losses = json_array ()));
   if (GNUNET_OK !=
-      setup_sessions_and_run (&analyze_reserves,
-                              NULL))
+      TALER_ARL_setup_sessions_and_run (&analyze_reserves,
+                                        NULL))
   {
     global_ret = 1;
     return;
   }
-  report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:I,"
-                      " s:I, s:I, s:I, s:I, s:I,"
-                      " s:I, s:I }",
-                      /* blocks #1 */
-                      "reserve_balance_insufficient_inconsistencies",
-                      report_reserve_balance_insufficient_inconsistencies,
-                      /* Tested in test-auditor.sh #3 */
-                      "total_loss_balance_insufficient",
-                      TALER_JSON_from_amount (&total_balance_insufficient_loss),
-                      /* Tested in test-auditor.sh #3 */
-                      "reserve_balance_summary_wrong_inconsistencies",
-                      report_reserve_balance_summary_wrong_inconsistencies,
-                      "total_balance_summary_delta_plus",
-                      TALER_JSON_from_amount (
-                        &total_balance_summary_delta_plus),
-                      "total_balance_summary_delta_minus",
-                      TALER_JSON_from_amount (
-                        &total_balance_summary_delta_minus),
-                      /* blocks #2 */
-                      "total_escrow_balance",
-                      TALER_JSON_from_amount (&total_escrow_balance),
-                      "total_withdraw_fee_income",
-                      TALER_JSON_from_amount (&total_withdraw_fee_income),
-                      /* Tested in test-auditor.sh #21 */
-                      "reserve_not_closed_inconsistencies",
-                      report_reserve_not_closed_inconsistencies,
-                      /* Tested in test-auditor.sh #21 */
-                      "total_balance_reserve_not_closed",
-                      TALER_JSON_from_amount (
-                        &total_balance_reserve_not_closed),
-                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
-                      "bad_sig_losses",
-                      report_bad_sig_losses,
-                      /* blocks #3 */
-                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
-                      "total_bad_sig_loss",
-                      TALER_JSON_from_amount (&total_bad_sig_loss),
-                      /* Tested in test-auditor.sh #14/#15 */
-                      "row_inconsistencies",
-                      report_row_inconsistencies,
-                      /* Tested in test-auditor.sh #23 */
-                      "denomination_key_validity_withdraw_inconsistencies",
-                      denomination_key_validity_withdraw_inconsistencies,
-                      "amount_arithmetic_inconsistencies",
-                      report_amount_arithmetic_inconsistencies,
-                      "total_arithmetic_delta_plus",
-                      TALER_JSON_from_amount (&total_arithmetic_delta_plus),
-                      /* blocks #4 */
-                      "total_arithmetic_delta_minus",
-                      TALER_JSON_from_amount (&total_arithmetic_delta_minus),
-                      "auditor_start_time",
-                      json_from_time_abs (start_time),
-                      "auditor_end_time",
-                      json_from_time_abs (GNUNET_TIME_absolute_get ()),
-                      "total_irregular_recoups",
-                      TALER_JSON_from_amount (&total_irregular_recoups),
-                      "start_ppr_reserve_in_serial_id",
-                      (json_int_t) ppr_start.last_reserve_in_serial_id,
-                      /* blocks #5 */
-                      "start_ppr_reserve_out_serial_id",
-                      (json_int_t) ppr_start.last_reserve_out_serial_id,
-                      "start_ppr_reserve_recoup_serial_id",
-                      (json_int_t) ppr_start.last_reserve_recoup_serial_id,
-                      "start_ppr_reserve_close_serial_id",
-                      (json_int_t) ppr_start.last_reserve_close_serial_id,
-                      "end_ppr_reserve_in_serial_id",
-                      (json_int_t) ppr.last_reserve_in_serial_id,
-                      "end_ppr_reserve_out_serial_id",
-                      (json_int_t) ppr.last_reserve_out_serial_id,
-                      /* blocks #6 */
-                      "end_ppr_reserve_recoup_serial_id",
-                      (json_int_t) ppr.last_reserve_recoup_serial_id,
-                      "end_ppr_reserve_close_serial_id",
-                      (json_int_t) ppr.last_reserve_close_serial_id
-                      );
-  GNUNET_break (NULL != report);
-  finish_report (report);
+  {
+    json_t *report;
+
+    report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
+                        " s:o, s:o, s:o, s:o, s:o,"
+                        " s:o, s:o, s:o, s:o, s:o,"
+                        " s:o, s:o, s:o, s:o, s:I,"
+                        " s:I, s:I, s:I, s:I, s:I,"
+                        " s:I, s:I }",
+                        /* blocks #1 */
+                        "reserve_balance_insufficient_inconsistencies",
+                        report_reserve_balance_insufficient_inconsistencies,
+                        /* Tested in test-auditor.sh #3 */
+                        "total_loss_balance_insufficient",
+                        TALER_JSON_from_amount (
+                          &total_balance_insufficient_loss),
+                        /* Tested in test-auditor.sh #3 */
+                        "reserve_balance_summary_wrong_inconsistencies",
+                        report_reserve_balance_summary_wrong_inconsistencies,
+                        "total_balance_summary_delta_plus",
+                        TALER_JSON_from_amount (
+                          &total_balance_summary_delta_plus),
+                        "total_balance_summary_delta_minus",
+                        TALER_JSON_from_amount (
+                          &total_balance_summary_delta_minus),
+                        /* blocks #2 */
+                        "total_escrow_balance",
+                        TALER_JSON_from_amount (&total_escrow_balance),
+                        "total_withdraw_fee_income",
+                        TALER_JSON_from_amount (
+                          &total_withdraw_fee_income),
+                        /* Tested in test-auditor.sh #21 */
+                        "reserve_not_closed_inconsistencies",
+                        report_reserve_not_closed_inconsistencies,
+                        /* Tested in test-auditor.sh #21 */
+                        "total_balance_reserve_not_closed",
+                        TALER_JSON_from_amount (
+                          &total_balance_reserve_not_closed),
+                        /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                        "bad_sig_losses",
+                        report_bad_sig_losses,
+                        /* blocks #3 */
+                        /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                        "total_bad_sig_loss",
+                        TALER_JSON_from_amount (&total_bad_sig_loss),
+                        /* Tested in test-auditor.sh #14/#15 */
+                        "row_inconsistencies",
+                        report_row_inconsistencies,
+                        /* Tested in test-auditor.sh #23 */
+                        "denomination_key_validity_withdraw_inconsistencies",
+                        denomination_key_validity_withdraw_inconsistencies,
+                        "amount_arithmetic_inconsistencies",
+                        report_amount_arithmetic_inconsistencies,
+                        "total_arithmetic_delta_plus",
+                        TALER_JSON_from_amount (
+                          &total_arithmetic_delta_plus),
+                        /* blocks #4 */
+                        "total_arithmetic_delta_minus",
+                        TALER_JSON_from_amount (
+                          &total_arithmetic_delta_minus),
+                        "auditor_start_time",
+                        TALER_ARL_json_from_time_abs (
+                          start_time),
+                        "auditor_end_time",
+                        TALER_ARL_json_from_time_abs (
+                          GNUNET_TIME_absolute_get ()),
+                        "total_irregular_recoups",
+                        TALER_JSON_from_amount (
+                          &total_irregular_recoups),
+                        "start_ppr_reserve_in_serial_id",
+                        (json_int_t) ppr_start.last_reserve_in_serial_id,
+                        /* blocks #5 */
+                        "start_ppr_reserve_out_serial_id",
+                        (json_int_t) ppr_start.
+                        last_reserve_out_serial_id,
+                        "start_ppr_reserve_recoup_serial_id",
+                        (json_int_t) ppr_start.
+                        last_reserve_recoup_serial_id,
+                        "start_ppr_reserve_close_serial_id",
+                        (json_int_t) ppr_start.
+                        last_reserve_close_serial_id,
+                        "end_ppr_reserve_in_serial_id",
+                        (json_int_t) ppr.last_reserve_in_serial_id,
+                        "end_ppr_reserve_out_serial_id",
+                        (json_int_t) ppr.last_reserve_out_serial_id,
+                        /* blocks #6 */
+                        "end_ppr_reserve_recoup_serial_id",
+                        (json_int_t) ppr.last_reserve_recoup_serial_id,
+                        "end_ppr_reserve_close_serial_id",
+                        (json_int_t) ppr.last_reserve_close_serial_id
+                        );
+    GNUNET_break (NULL != report);
+    TALER_ARL_done (report);
+  }
 }
 
 
@@ -1607,11 +1640,11 @@ main (int argc,
                                       "exchange-key",
                                       "KEY",
                                       "public key of the exchange (Crockford base32 encoded)",
-                                      &master_pub),
+                                      &TALER_ARL_master_pub),
     GNUNET_GETOPT_option_flag ('r',
-                               "restart",
-                               "restart audit from the beginning (required on first run)",
-                               &restart),
+                               "TALER_ARL_restart",
+                               "TALER_ARL_restart audit from the beginning (required on first run)",
+                               &TALER_ARL_restart),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END

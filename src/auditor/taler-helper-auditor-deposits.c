@@ -34,7 +34,7 @@
 static int global_ret;
 
 /**
- * Array of reports about missing deposit confirmations.
+ * Array of TALER_ARL_reports about missing deposit confirmations.
  */
 static json_t *report_deposit_confirmation_inconsistencies;
 
@@ -58,7 +58,7 @@ struct DepositConfirmationContext
 {
 
   /**
-   * How many deposit confirmations did we NOT find in the #edb?
+   * How many deposit confirmations did we NOT find in the #TALER_ARL_edb?
    */
   unsigned long long missed_count;
 
@@ -89,8 +89,8 @@ struct DepositConfirmationContext
 
 
 /**
- * Given a deposit confirmation from #adb, check that it is also
- * in #edb.  Update the deposit confirmation context accordingly.
+ * Given a deposit confirmation from #TALER_ARL_adb, check that it is also
+ * in #TALER_ARL_edb.  Update the deposit confirmation context accordingly.
  *
  * @param cls our `struct DepositConfirmationContext`
  * @param serial_id row of the @a dc in the database
@@ -115,10 +115,10 @@ test_dc (void *cls,
   dep.h_wire = dc->h_wire;
   dep.refund_deadline = dc->refund_deadline;
 
-  qs = edb->have_deposit (edb->cls,
-                          esession,
-                          &dep,
-                          GNUNET_NO /* do not check refund deadline */);
+  qs = TALER_ARL_edb->have_deposit (TALER_ARL_edb->cls,
+                                    TALER_ARL_esession,
+                                    &dep,
+                                    GNUNET_NO /* do not check refund deadline */);
   if (qs > 0)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -132,17 +132,17 @@ test_dc (void *cls,
     dcc->qs = qs;
     return;
   }
-  /* deposit confirmation missing! report! */
-  report (report_deposit_confirmation_inconsistencies,
-          json_pack ("{s:o, s:o, s:I, s:o}",
-                     "timestamp",
-                     json_from_time_abs (dc->timestamp),
-                     "amount",
-                     TALER_JSON_from_amount (&dc->amount_without_fee),
-                     "rowid",
-                     (json_int_t) serial_id,
-                     "account",
-                     GNUNET_JSON_from_data_auto (&dc->h_wire)));
+  /* deposit confirmation missing! TALER_ARL_report! */
+  TALER_ARL_report (report_deposit_confirmation_inconsistencies,
+                    json_pack ("{s:o, s:o, s:I, s:o}",
+                               "timestamp",
+                               TALER_ARL_json_from_time_abs (dc->timestamp),
+                               "amount",
+                               TALER_JSON_from_amount (&dc->amount_without_fee),
+                               "rowid",
+                               (json_int_t) serial_id,
+                               "account",
+                               GNUNET_JSON_from_data_auto (&dc->h_wire)));
   dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial,
                                               serial_id);
   dcc->missed_count++;
@@ -154,7 +154,7 @@ test_dc (void *cls,
 
 
 /**
- * Check that the deposit-confirmations that were reported to
+ * Check that the deposit-confirmations that were TALER_ARL_reported to
  * us by merchants are also in the exchange's database.
  *
  * @param cls closure
@@ -173,10 +173,12 @@ analyze_deposit_confirmations (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing deposit confirmations\n");
   ppdc.last_deposit_confirmation_serial_id = 0;
-  qsp = adb->get_auditor_progress_deposit_confirmation (adb->cls,
-                                                        asession,
-                                                        &master_pub,
-                                                        &ppdc);
+  qsp = TALER_ARL_adb->get_auditor_progress_deposit_confirmation (
+    TALER_ARL_adb->cls,
+    TALER_ARL_asession,
+    &
+    TALER_ARL_master_pub,
+    &ppdc);
   if (0 > qsp)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsp);
@@ -197,17 +199,18 @@ analyze_deposit_confirmations (void *cls)
 
   /* setup 'cc' */
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_get_zero (TALER_ARL_currency,
                                         &dcc.missed_amount));
   dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   dcc.missed_count = 0LLU;
   dcc.first_missed_coin_serial = UINT64_MAX;
-  qsx = adb->get_deposit_confirmations (adb->cls,
-                                        asession,
-                                        &master_pub,
-                                        ppdc.last_deposit_confirmation_serial_id,
-                                        &test_dc,
-                                        &dcc);
+  qsx = TALER_ARL_adb->get_deposit_confirmations (TALER_ARL_adb->cls,
+                                                  TALER_ARL_asession,
+                                                  &TALER_ARL_master_pub,
+                                                  ppdc.
+                                                  last_deposit_confirmation_serial_id,
+                                                  &test_dc,
+                                                  &dcc);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);
@@ -229,15 +232,19 @@ analyze_deposit_confirmations (void *cls)
 
   /* sync 'cc' back to disk */
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
-    qs = adb->update_auditor_progress_deposit_confirmation (adb->cls,
-                                                            asession,
-                                                            &master_pub,
-                                                            &ppdc);
+    qs = TALER_ARL_adb->update_auditor_progress_deposit_confirmation (
+      TALER_ARL_adb->cls,
+      TALER_ARL_asession,
+      &
+      TALER_ARL_master_pub,
+      &ppdc);
   else
-    qs = adb->insert_auditor_progress_deposit_confirmation (adb->cls,
-                                                            asession,
-                                                            &master_pub,
-                                                            &ppdc);
+    qs = TALER_ARL_adb->insert_auditor_progress_deposit_confirmation (
+      TALER_ARL_adb->cls,
+      TALER_ARL_asession,
+      &
+      TALER_ARL_master_pub,
+      &ppdc);
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -260,24 +267,22 @@ analyze_deposit_confirmations (void *cls)
  *
  * @param cls closure
  * @param args remaining command-line arguments
- * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param TALER_ARL_cfgfile name of the configuration file used (for saving, can be NULL!)
  * @param c configuration
  */
 static void
 run (void *cls,
      char *const *args,
-     const char *cfgfile,
+     const char *TALER_ARL_cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
-  json_t *report;
-
   (void) cls;
   (void) args;
-  (void) cfgfile;
+  (void) TALER_ARL_cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   if (GNUNET_OK !=
-      setup_globals (c))
+      TALER_ARL_init (c))
   {
     global_ret = 1;
     return;
@@ -287,25 +292,29 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_deposit_confirmation_inconsistencies = json_array ()));
   if (GNUNET_OK !=
-      setup_sessions_and_run (&analyze_deposit_confirmations,
-                              NULL))
+      TALER_ARL_setup_sessions_and_run (&analyze_deposit_confirmations,
+                                        NULL))
   {
     global_ret = 1;
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
-  report = json_pack ("{s:o, s:o, s:I}",
-                      "deposit_confirmation_inconsistencies",
-                      report_deposit_confirmation_inconsistencies,
-                      "missing_deposit_confirmation_count",
-                      (json_int_t) number_missed_deposit_confirmations,
-                      "missing_deposit_confirmation_total",
-                      TALER_JSON_from_amount (
-                        &total_missed_deposit_confirmations)
-                      );
-  GNUNET_break (NULL != report);
-  finish_report (report);
+  {
+    json_t *report;
+
+    report = json_pack ("{s:o, s:o, s:I}",
+                        "deposit_confirmation_inconsistencies",
+                        report_deposit_confirmation_inconsistencies,
+                        "missing_deposit_confirmation_count",
+                        (json_int_t) number_missed_deposit_confirmations,
+                        "missing_deposit_confirmation_total",
+                        TALER_JSON_from_amount (
+                          &total_missed_deposit_confirmations)
+                        );
+    GNUNET_break (NULL != report);
+    TALER_ARL_done (report);
+  }
 }
 
 
@@ -326,11 +335,11 @@ main (int argc,
                                       "exchange-key",
                                       "KEY",
                                       "public key of the exchange (Crockford base32 encoded)",
-                                      &master_pub),
+                                      &TALER_ARL_master_pub),
     GNUNET_GETOPT_option_flag ('r',
-                               "restart",
-                               "restart audit from the beginning (required on first run)",
-                               &restart),
+                               "TALER_ARL_restart",
+                               "TALER_ARL_restart audit from the beginning (required on first run)",
+                               &TALER_ARL_restart),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END

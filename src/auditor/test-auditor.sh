@@ -84,10 +84,10 @@ function audit_only () {
     # Also do incremental run
     $VALGRIND taler-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
     echo -n "."
-    $VALGRIND taler-wire-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
+    $VALGRIND taler-helper-auditor-wire -L DEBUG -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
     # Also do incremental run
     echo -n "."
-    $VALGRIND taler-wire-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
+    $VALGRIND taler-helper-auditor-wire -L DEBUG -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
     echo " DONE"
 }
 
@@ -255,7 +255,7 @@ echo -n "Check for lag detection... "
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
     jq -e .lag_details[0] < test-wire-audit.json > /dev/null || exit_fail "Lag not detected in run without aggregator at age $DELTA"
@@ -893,7 +893,7 @@ echo "===========15: deposit wire hash wrong================="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
@@ -930,7 +930,7 @@ echo "===========16: incorrect wire_out amount================="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
@@ -1023,7 +1023,7 @@ echo "===========17: incorrect wire_out timestamp================="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
@@ -1115,7 +1115,7 @@ echo "===========19: reserve closure done properly ================="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
@@ -1193,7 +1193,7 @@ echo "===========21: reserve closure missreported ================="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
@@ -1279,7 +1279,7 @@ echo "===========23: wire out calculations ================="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
@@ -1400,7 +1400,7 @@ echo "=========25: inconsistent coin history========="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
@@ -1493,7 +1493,7 @@ echo "===========27: duplicate WTID detection ================="
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
-# taler-wire-auditor.c)
+# taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
 
