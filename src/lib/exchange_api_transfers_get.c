@@ -275,7 +275,7 @@ handle_transfers_get_finished (void *cls,
                                          j))
       return;
     GNUNET_break_op (0);
-    ec = TALER_EC_TRACK_TRANSFER_REPLY_MALFORMED;
+    ec = TALER_EC_TRANSFERS_GET_REPLY_MALFORMED;
     response_code = 0;
     break;
   case MHD_HTTP_BAD_REQUEST:

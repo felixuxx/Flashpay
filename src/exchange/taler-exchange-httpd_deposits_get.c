@@ -233,7 +233,7 @@ deposits_get_transaction (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_TRACK_TRANSACTION_DB_FETCH_FAILED,
+                                             TALER_EC_DEPOSITS_GET_DB_FETCH_FAILED,
                                              "failed to fetch transaction data");
     }
     return qs;
@@ -242,7 +242,7 @@ deposits_get_transaction (void *cls,
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_TRACK_TRANSACTION_NOT_FOUND,
+                                           TALER_EC_DEPOSITS_GET_NOT_FOUND,
                                            "transaction unknown");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -288,7 +288,7 @@ handle_track_transaction_request (
   if (GNUNET_SYSERR == ctx.pending)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_TRACK_TRANSACTION_DB_FEE_INCONSISTENT,
+                                       TALER_EC_DEPOSITS_GET_DB_FEE_INCONSISTENT,
                                        "fees are inconsistent");
   return reply_deposit_details (connection,
                                 &tps->h_contract_terms,
@@ -387,7 +387,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_TRACK_TRANSACTION_MERCHANT_SIGNATURE_INVALID,
+                                       TALER_EC_DEPOSITS_GET_MERCHANT_SIGNATURE_INVALID,
                                        "merchant_sig");
   }
 

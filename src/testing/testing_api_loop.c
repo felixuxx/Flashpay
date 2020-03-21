@@ -274,7 +274,7 @@ interpreter_run (void *cls)
               cmd->label);
   cmd->start_time
     = cmd->last_req_time
-      = GNUNET_TIME_absolute_get ();
+        = GNUNET_TIME_absolute_get ();
   cmd->num_tries = 1;
   cmd->run (cmd->cls,
             cmd,

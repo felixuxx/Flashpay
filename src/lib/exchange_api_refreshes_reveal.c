@@ -222,7 +222,7 @@ handle_refresh_reveal_finished (void *cls,
       if (GNUNET_OK != ret)
       {
         response_code = 0;
-        ec = TALER_EC_REFRESH_REVEAL_REPLY_MALFORMED;
+        ec = TALER_EC_REVEAL_REPLY_MALFORMED;
       }
       else
       {

@@ -164,7 +164,7 @@ link_transaction (void *cls,
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_REFRESH_LINK_COIN_UNKNOWN,
+                                           TALER_EC_LINK_COIN_UNKNOWN,
                                            "coin_pub");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }

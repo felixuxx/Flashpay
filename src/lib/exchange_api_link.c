@@ -365,7 +365,7 @@ handle_link_finished (void *cls,
     {
       GNUNET_break_op (0);
       response_code = 0;
-      ec = TALER_EC_REFRESH_LINK_REPLY_MALFORMED;
+      ec = TALER_EC_LINK_REPLY_MALFORMED;
       break;
     }
     GNUNET_assert (NULL == lh->link_cb);

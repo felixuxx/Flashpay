@@ -445,7 +445,7 @@ get_transfer_deposits (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_TRACK_TRANSFER_DB_FETCH_FAILED,
+                                             TALER_EC_TRANSFERS_GET_DB_FETCH_FAILED,
                                              "failed to fetch transaction data");
     }
     return qs;
@@ -455,7 +455,7 @@ get_transfer_deposits (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_TRACK_TRANSFER_DB_INCONSISTENT,
+                                           TALER_EC_TRANSFERS_GET_DB_INCONSISTENT,
                                            "exchange database internally inconsistent");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -463,7 +463,7 @@ get_transfer_deposits (void *cls,
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_TRACK_TRANSFER_WTID_NOT_FOUND,
+                                           TALER_EC_TRANSFERS_GET_WTID_NOT_FOUND,
                                            "wtid");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -484,7 +484,7 @@ get_transfer_deposits (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_TRACK_TRANSFER_WIRE_FEE_NOT_FOUND,
+                                             TALER_EC_TRANSFERS_GET_WIRE_FEE_NOT_FOUND,
                                              "did not find wire fee");
     }
     return qs;
@@ -497,7 +497,7 @@ get_transfer_deposits (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_TRACK_TRANSFER_WIRE_FEE_INCONSISTENT,
+                                           TALER_EC_TRANSFERS_GET_WIRE_FEE_INCONSISTENT,
                                            "could not subtract wire fee");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
