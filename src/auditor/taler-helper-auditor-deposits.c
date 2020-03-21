@@ -17,6 +17,9 @@
  * @file auditor/taler-helper-auditor-deposits.c
  * @brief audits an exchange database for deposit confirmation consistency
  * @author Christian Grothoff
+ *
+ * We simply check that all of the deposit confirmations reported to us
+ * by merchants were also reported to us by the exchange.
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -48,8 +51,6 @@ static json_int_t number_missed_deposit_confirmations;
  */
 static struct TALER_Amount total_missed_deposit_confirmations;
 
-
-/* *************************** Analysis of deposit-confirmations ********** */
 
 /**
  * Closure for #test_dc.
@@ -276,7 +277,7 @@ run (void *cls,
   (void) args;
   (void) cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Launching auditor\n");
+              "Launching deposit auditor\n");
   if (GNUNET_OK !=
       TALER_ARL_init (c))
   {
@@ -284,7 +285,7 @@ run (void *cls,
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting audit\n");
+              "Starting deposit audit\n");
   GNUNET_assert (NULL !=
                  (report_deposit_confirmation_inconsistencies = json_array ()));
   if (GNUNET_OK !=
@@ -295,7 +296,7 @@ run (void *cls,
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Audit complete\n");
+              "Deposit audit complete\n");
   {
     json_t *report;
 
