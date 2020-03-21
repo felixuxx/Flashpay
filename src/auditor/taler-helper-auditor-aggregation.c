@@ -131,13 +131,12 @@ static struct TALER_Amount total_bad_sig_loss;
  *           profitable for the exchange, and 0 if it is unclear
  */
 static void
-report_amount_arithmetic_inconsistency (const char *operation,
-                                        uint64_t rowid,
-                                        const struct
-                                        TALER_Amount *exchange,
-                                        const struct
-                                        TALER_Amount *auditor,
-                                        int profitable)
+report_amount_arithmetic_inconsistency (
+  const char *operation,
+  uint64_t rowid,
+  const struct TALER_Amount *exchange,
+  const struct TALER_Amount *auditor,
+  int profitable)
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
@@ -194,15 +193,12 @@ report_amount_arithmetic_inconsistency (const char *operation,
  *           profitable for the exchange, and 0 if it is unclear
  */
 static void
-report_coin_arithmetic_inconsistency (const char *operation,
-                                      const struct
-                                      TALER_CoinSpendPublicKeyP *
-                                      coin_pub,
-                                      const struct
-                                      TALER_Amount *exchange,
-                                      const struct
-                                      TALER_Amount *auditor,
-                                      int profitable)
+report_coin_arithmetic_inconsistency (
+  const char *operation,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *exchange,
+  const struct TALER_Amount *auditor,
+  int profitable)
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
@@ -384,25 +380,14 @@ struct WireCheckContext
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static int
-check_transaction_history_for_deposit (const struct
-                                       TALER_CoinSpendPublicKeyP *
-                                       coin_pub,
-                                       const struct
-                                       GNUNET_HashCode *
-                                       h_contract_terms,
-                                       const struct
-                                       TALER_MerchantPublicKeyP *
-                                       merchant_pub,
-                                       const struct
-                                       TALER_DenominationKeyValidityPS
-                                       *issue,
-                                       const struct
-                                       TALER_EXCHANGEDB_TransactionList
-                                       *tl_head,
-                                       struct TALER_Amount *
-                                       merchant_gain,
-                                       struct TALER_Amount *
-                                       deposit_gain)
+check_transaction_history_for_deposit (
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_DenominationKeyValidityPS *issue,
+  const struct TALER_EXCHANGEDB_TransactionList *tl_head,
+  struct TALER_Amount *merchant_gain,
+  struct TALER_Amount *deposit_gain)
 {
   struct TALER_Amount expenditures;
   struct TALER_Amount refunds;
@@ -1272,14 +1257,13 @@ analyze_aggregations (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                _ (
-                  "First analysis using this auditor, starting audit from scratch\n"));
+                "First analysis using this auditor, starting audit from scratch\n");
   }
   else
   {
     ppa_start = ppa;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _ ("Resuming aggregation audit at %llu\n"),
+                "Resuming aggregation audit at %llu\n",
                 (unsigned long long) ppa.last_wire_out_serial_id);
   }
 
@@ -1373,20 +1357,20 @@ analyze_aggregations (void *cls)
  *
  * @param cls closure
  * @param args remaining command-line arguments
- * @param TALER_ARL_cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
  * @param c configuration
  */
 static void
 run (void *cls,
      char *const *args,
-     const char *TALER_ARL_cfgfile,
+     const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
   json_t *report;
 
   (void) cls;
   (void) args;
-  (void) TALER_ARL_cfgfile;
+  (void) cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   if (GNUNET_OK !=

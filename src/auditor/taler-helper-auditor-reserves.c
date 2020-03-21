@@ -160,13 +160,12 @@ static struct TALER_Amount total_bad_sig_loss;
  *           profitable for the exchange, and 0 if it is unclear
  */
 static void
-report_amount_arithmetic_inconsistency (const char *operation,
-                                        uint64_t rowid,
-                                        const struct
-                                        TALER_Amount *exchange,
-                                        const struct
-                                        TALER_Amount *auditor,
-                                        int profitable)
+report_amount_arithmetic_inconsistency (
+  const char *operation,
+  uint64_t rowid,
+  const struct TALER_Amount *exchange,
+  const struct TALER_Amount *auditor,
+  int profitable)
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
@@ -649,16 +648,16 @@ handle_reserve_out (void *cls,
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static int
-handle_recoup_by_reserve (void *cls,
-                          uint64_t rowid,
-                          struct GNUNET_TIME_Absolute timestamp,
-                          const struct TALER_Amount *amount,
-                          const struct TALER_ReservePublicKeyP *reserve_pub,
-                          const struct TALER_CoinPublicInfo *coin,
-                          const struct TALER_DenominationPublicKey *denom_pub,
-                          const struct TALER_CoinSpendSignatureP *coin_sig,
-                          const struct
-                          TALER_DenominationBlindingKeyP *coin_blind)
+handle_recoup_by_reserve (
+  void *cls,
+  uint64_t rowid,
+  struct GNUNET_TIME_Absolute timestamp,
+  const struct TALER_Amount *amount,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  const struct TALER_DenominationBlindingKeyP *coin_blind)
 {
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
@@ -885,15 +884,15 @@ get_closing_fee (const char *receiver_account,
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
 static int
-handle_reserve_closed (void *cls,
-                       uint64_t rowid,
-                       struct GNUNET_TIME_Absolute execution_date,
-                       const struct TALER_Amount *amount_with_fee,
-                       const struct TALER_Amount *closing_fee,
-                       const struct TALER_ReservePublicKeyP *reserve_pub,
-                       const char *receiver_account,
-                       const struct
-                       TALER_WireTransferIdentifierRawP *transfer_details)
+handle_reserve_closed (
+  void *cls,
+  uint64_t rowid,
+  struct GNUNET_TIME_Absolute execution_date,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *closing_fee,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const char *receiver_account,
+  const struct TALER_WireTransferIdentifierRawP *transfer_details)
 {
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
@@ -1295,14 +1294,13 @@ analyze_reserves (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                _ (
-                  "First analysis using this auditor, starting audit from scratch\n"));
+                "First analysis using this auditor, starting audit from scratch\n");
   }
   else
   {
     ppr_start = ppr;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _ ("Resuming reserve audit at %llu/%llu/%llu/%llu\n"),
+                "Resuming reserve audit at %llu/%llu/%llu/%llu\n",
                 (unsigned long long) ppr.last_reserve_in_serial_id,
                 (unsigned long long) ppr.last_reserve_out_serial_id,
                 (unsigned long long) ppr.last_reserve_recoup_serial_id,
@@ -1420,7 +1418,7 @@ analyze_reserves (void *cls)
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              _ ("Concluded reserve audit step at %llu/%llu/%llu/%llu\n"),
+              "Concluded reserve audit step at %llu/%llu/%llu/%llu\n",
               (unsigned long long) ppr.last_reserve_in_serial_id,
               (unsigned long long) ppr.last_reserve_out_serial_id,
               (unsigned long long) ppr.last_reserve_recoup_serial_id,
@@ -1434,18 +1432,18 @@ analyze_reserves (void *cls)
  *
  * @param cls closure
  * @param args remaining command-line arguments
- * @param TALER_ARL_cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
  * @param c configuration
  */
 static void
 run (void *cls,
      char *const *args,
-     const char *TALER_ARL_cfgfile,
+     const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
   (void) cls;
   (void) args;
-  (void) TALER_ARL_cfgfile;
+  (void) cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   if (GNUNET_OK !=
@@ -1501,22 +1499,20 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
-                 (denomination_key_validity_withdraw_inconsistencies =
-                    json_array ()));
+                 (denomination_key_validity_withdraw_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
                  (report_reserve_balance_summary_wrong_inconsistencies
-                    =
-                      json_array ()));
+                    = json_array ()));
   GNUNET_assert (NULL !=
                  (report_reserve_balance_insufficient_inconsistencies
-                    =
-                      json_array ()));
+                    = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_reserve_not_closed_inconsistencies =
-                    json_array ()));
+                 (report_reserve_not_closed_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_amount_arithmetic_inconsistencies =
-                    json_array ()));
+                 (report_amount_arithmetic_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
                  (report_bad_sig_losses = json_array ()));
   if (GNUNET_OK !=

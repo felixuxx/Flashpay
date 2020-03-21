@@ -2116,20 +2116,20 @@ analyze_coins (void *cls)
  *
  * @param cls closure
  * @param args remaining command-line arguments
- * @param TALER_ARL_cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
  * @param c configuration
  */
 static void
 run (void *cls,
      char *const *args,
-     const char *TALER_ARL_cfgfile,
+     const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
   json_t *report;
 
   (void) cls;
   (void) args;
-  (void) TALER_ARL_cfgfile;
+  (void) cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   if (GNUNET_OK !=
