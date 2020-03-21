@@ -290,7 +290,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
 
 
 /**
- * Run `taler-auditor-dbinit -r` (reset auditor database).
+ * Run `taler-auditor-dbinit -R` (reset auditor database).
  *
  * @param config_filename configuration file to use
  * @return #GNUNET_OK on success
@@ -308,7 +308,7 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
                                   "taler-auditor-dbinit",
                                   "taler-auditor-dbinit",
                                   "-c", config_filename,
-                                  "-r",
+                                  "-R",
                                   NULL);
   if (NULL == proc)
   {
