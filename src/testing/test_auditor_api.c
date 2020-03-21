@@ -94,14 +94,6 @@ static struct TALER_TESTING_BankConfiguration bc;
 #define CMD_RUN_AUDITOR(label) \
   TALER_TESTING_cmd_exec_auditor (label, CONFIG_FILE)
 
-/**
- * Run the taler-wire-auditor.
- *
- * @param label label to use for the command.
- */
-#define CMD_RUN_WIRE_AUDITOR(label) \
-  TALER_TESTING_cmd_exec_wire_auditor (label, CONFIG_FILE)
-
 
 /**
  * Main function that will tell the interpreter what commands to
@@ -629,7 +621,6 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
     CMD_RUN_AUDITOR ("virgin-auditor"),
-    CMD_RUN_WIRE_AUDITOR ("virgin-wire-auditor"),
     TALER_TESTING_cmd_exchanges_with_url ("check-exchange",
                                           MHD_HTTP_OK,
                                           "http://localhost:8081/"),
@@ -650,7 +641,6 @@ run (void *cls,
     TALER_TESTING_cmd_batch ("recoup",
                              recoup),
     CMD_RUN_AUDITOR ("normal-auditor"),
-    CMD_RUN_WIRE_AUDITOR ("normal-wire-auditor"),
     TALER_TESTING_cmd_end ()
   };
 
