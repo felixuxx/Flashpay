@@ -1624,8 +1624,7 @@ run (void *cls,
 
 
 /**
- * The main function of the database initialization tool.
- * Used to initialize the Taler Exchange's database.
+ * The main function to check the database's handling of reserves.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
@@ -1667,4 +1666,4 @@ main (int argc,
 }
 
 
-/* end of taler-auditor-reserves.c */
+/* end of taler-helper-auditor-reserves.c */

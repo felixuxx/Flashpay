@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor/taler-auditor-deposits.c
+ * @file auditor/taler-helper-auditor-deposits.c
  * @brief audits an exchange database for deposit confirmation consistency
  * @author Christian Grothoff
  */
@@ -102,37 +102,37 @@ test_dc (void *cls,
          const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
   struct DepositConfirmationContext *dcc = cls;
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_EXCHANGEDB_Deposit dep;
 
   dcc->last_seen_coin_serial = serial_id;
-  memset (&dep,
-          0,
-          sizeof (dep));
-  dep.coin.coin_pub = dc->coin_pub;
-  dep.h_contract_terms = dc->h_contract_terms;
-  dep.merchant_pub = dc->merchant;
-  dep.h_wire = dc->h_wire;
-  dep.refund_deadline = dc->refund_deadline;
+  {
+    enum GNUNET_DB_QueryStatus qs;
+    struct TALER_EXCHANGEDB_Deposit dep = {
+      .coin.coin_pub = dc->coin_pub,
+      .h_contract_terms = dc->h_contract_terms,
+      .merchant_pub = dc->merchant,
+      .h_wire = dc->h_wire,
+      .refund_deadline = dc->refund_deadline
+    };
 
-  qs = TALER_ARL_edb->have_deposit (TALER_ARL_edb->cls,
-                                    TALER_ARL_esession,
-                                    &dep,
-                                    GNUNET_NO /* do not check refund deadline */);
-  if (qs > 0)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Found deposit %s in exchange database\n",
-                GNUNET_h2s (&dc->h_contract_terms));
-    return;   /* found, all good */
+    qs = TALER_ARL_edb->have_deposit (TALER_ARL_edb->cls,
+                                      TALER_ARL_esession,
+                                      &dep,
+                                      GNUNET_NO /* do not check refund deadline */);
+    if (qs > 0)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Found deposit %s in exchange database\n",
+                  GNUNET_h2s (&dc->h_contract_terms));
+      return; /* found, all good */
+    }
+    if (qs < 0)
+    {
+      GNUNET_break (0); /* DB error, complain */
+      dcc->qs = qs;
+      return;
+    }
   }
-  if (qs < 0)
-  {
-    GNUNET_break (0); /* DB error, complain */
-    dcc->qs = qs;
-    return;
-  }
-  /* deposit confirmation missing! TALER_ARL_report! */
+  /* deposit confirmation missing! report! */
   TALER_ARL_report (report_deposit_confirmation_inconsistencies,
                     json_pack ("{s:o, s:o, s:I, s:o}",
                                "timestamp",
@@ -176,8 +176,7 @@ analyze_deposit_confirmations (void *cls)
   qsp = TALER_ARL_adb->get_auditor_progress_deposit_confirmation (
     TALER_ARL_adb->cls,
     TALER_ARL_asession,
-    &
-    TALER_ARL_master_pub,
+    &TALER_ARL_master_pub,
     &ppdc);
   if (0 > qsp)
   {
@@ -187,13 +186,12 @@ analyze_deposit_confirmations (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsp)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                _ (
-                  "First analysis using this auditor, starting audit from scratch\n"));
+                "First analysis using deposit auditor, starting audit from scratch\n");
   }
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _ ("Resuming deposit confirmation audit at %llu\n"),
+                "Resuming deposit confirmation audit at %llu\n",
                 (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
   }
 
@@ -235,15 +233,13 @@ analyze_deposit_confirmations (void *cls)
     qs = TALER_ARL_adb->update_auditor_progress_deposit_confirmation (
       TALER_ARL_adb->cls,
       TALER_ARL_asession,
-      &
-      TALER_ARL_master_pub,
+      &TALER_ARL_master_pub,
       &ppdc);
   else
     qs = TALER_ARL_adb->insert_auditor_progress_deposit_confirmation (
       TALER_ARL_adb->cls,
       TALER_ARL_asession,
-      &
-      TALER_ARL_master_pub,
+      &TALER_ARL_master_pub,
       &ppdc);
   if (0 >= qs)
   {
@@ -256,7 +252,7 @@ analyze_deposit_confirmations (void *cls)
   total_missed_deposit_confirmations = dcc.missed_amount;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              _ ("Concluded deposit confirmation audit step at %llu\n"),
+              "Concluded deposit confirmation audit step at %llu\n",
               (unsigned long long) ppdc.last_deposit_confirmation_serial_id);
   return qs;
 }
@@ -267,18 +263,18 @@ analyze_deposit_confirmations (void *cls)
  *
  * @param cls closure
  * @param args remaining command-line arguments
- * @param TALER_ARL_cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
  * @param c configuration
  */
 static void
 run (void *cls,
      char *const *args,
-     const char *TALER_ARL_cfgfile,
+     const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
   (void) cls;
   (void) args;
-  (void) TALER_ARL_cfgfile;
+  (void) cfgfile;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   if (GNUNET_OK !=
@@ -325,8 +321,7 @@ run (void *cls,
 
 
 /**
- * The main function of the database initialization tool.
- * Used to initialize the Taler Exchange's database.
+ * The main function of the deposit auditing helper tool.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments

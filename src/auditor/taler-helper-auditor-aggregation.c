@@ -1502,8 +1502,7 @@ run (void *cls,
 
 
 /**
- * The main function of the database initialization tool.
- * Used to initialize the Taler Exchange's database.
+ * The main function to audit the exchange's aggregation processing.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments

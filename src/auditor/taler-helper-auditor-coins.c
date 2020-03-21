@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file auditor/taler-helper-auditor0coins.c
+ * @file auditor/taler-helper-auditor-coins.c
  * @brief audits coins in an exchange database.
  * @author Christian Grothoff
  *
@@ -2325,8 +2325,7 @@ run (void *cls,
 
 
 /**
- * The main function of the database initialization tool.
- * Used to initialize the Taler Exchange's database.
+ * The main function to audit operations on coins.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
@@ -2368,4 +2367,4 @@ main (int argc,
 }
 
 
-/* end of taler-auditor.c */
+/* end of taler-helper-auditor-coins.c */
