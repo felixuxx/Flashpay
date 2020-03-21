@@ -1519,10 +1519,6 @@ main (int argc,
                                       "KEY",
                                       "public key of the exchange (Crockford base32 encoded)",
                                       &TALER_ARL_master_pub),
-    GNUNET_GETOPT_option_flag ('r',
-                               "TALER_ARL_restart",
-                               "TALER_ARL_restart audit from the beginning (required on first run)",
-                               &TALER_ARL_restart),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END
@@ -1533,13 +1529,13 @@ main (int argc,
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-auditor-aggregation",
+                 GNUNET_log_setup ("taler-helper-auditor-aggregation",
                                    "MESSAGE",
                                    NULL));
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc,
                           argv,
-                          "taler-auditor-aggregation",
+                          "taler-helper-auditor-aggregation",
                           "Audit Taler exchange aggregation activity",
                           options,
                           &run,
@@ -1549,4 +1545,4 @@ main (int argc,
 }
 
 
-/* end of taler-auditor-aggregation.c */
+/* end of taler-helper-auditor-aggregation.c */

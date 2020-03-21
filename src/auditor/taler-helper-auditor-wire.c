@@ -451,17 +451,6 @@ do_shutdown (void *cls)
   struct WireAccount *wa;
 
   (void) cls;
-  if (NULL != ctx)
-  {
-    GNUNET_CURL_fini (ctx);
-    ctx = NULL;
-  }
-  if (NULL != rc)
-  {
-    GNUNET_CURL_gnunet_rc_destroy (rc);
-    rc = NULL;
-  }
-
   if (NULL != report_row_inconsistencies)
   {
     json_t *report;
@@ -607,6 +596,16 @@ do_shutdown (void *cls)
     TALER_BANK_auth_free (&wa->auth);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa);
+  }
+  if (NULL != ctx)
+  {
+    GNUNET_CURL_fini (ctx);
+    ctx = NULL;
+  }
+  if (NULL != rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (rc);
+    rc = NULL;
   }
 }
 
@@ -874,7 +873,7 @@ wire_missing_cb (void *cls,
  * (based on deposits) have indeed happened.
  */
 static void
-check_for_required_transfers ()
+check_for_required_transfers (void)
 {
   struct GNUNET_TIME_Absolute next_timestamp;
   enum GNUNET_DB_QueryStatus qs;
@@ -1932,11 +1931,24 @@ reserve_closed_cb (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-begin_transaction (void *cls)
+begin_transaction (void)
 {
   int ret;
 
-  (void) cls;
+  TALER_ARL_esession = TALER_ARL_edb->get_session (TALER_ARL_edb->cls);
+  if (NULL == TALER_ARL_esession)
+  {
+    fprintf (stderr,
+             "Failed to initialize exchange session.\n");
+    return GNUNET_SYSERR;
+  }
+  TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
+  if (NULL == TALER_ARL_asession)
+  {
+    fprintf (stderr,
+             "Failed to initialize auditor session.\n");
+    return GNUNET_SYSERR;
+  }
   ret = TALER_ARL_adb->start (TALER_ARL_adb->cls,
                               TALER_ARL_asession);
   if (GNUNET_OK != ret)
@@ -1987,14 +1999,13 @@ begin_transaction (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx_gwap)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                _ (
-                  "First analysis using this auditor, starting audit from scratch\n"));
+                "First analysis of with wire auditor, starting audit from scratch\n");
   }
   else
   {
     start_pp = pp;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Resuming audit at %s / %llu\n",
+                "Resuming wire audit at %s / %llu\n",
                 GNUNET_STRINGS_absolute_time_to_string (pp.last_timestamp),
                 (unsigned long long) pp.last_reserve_close_uuid);
   }
@@ -2168,9 +2179,8 @@ run (void *cls,
   TALER_EXCHANGEDB_find_accounts (TALER_ARL_cfg,
                                   &process_account_cb,
                                   NULL);
-  if (GNUNET_OK !=
-      TALER_ARL_setup_sessions_and_run (&begin_transaction,
-                                        NULL))
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+      begin_transaction ())
   {
     global_ret = 1;
     GNUNET_SCHEDULER_shutdown ();
@@ -2179,8 +2189,9 @@ run (void *cls,
 
 
 /**
- * The main function of the database initialization tool.
- * Used to initialize the Taler Exchange's database.
+ * The main function of the wire auditing tool. Checks that
+ * the exchange's records of wire transfers match that of
+ * the wire gateway.
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
@@ -2196,10 +2207,6 @@ main (int argc,
                                       "KEY",
                                       "public key of the exchange (Crockford base32 encoded)",
                                       &TALER_ARL_master_pub),
-    GNUNET_GETOPT_option_flag ('r',
-                               "TALER_ARL_restart",
-                               "TALER_ARL_restart audit from the beginning (required on first run)",
-                               &TALER_ARL_restart),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END
@@ -2210,13 +2217,13 @@ main (int argc,
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-wire-auditor",
+                 GNUNET_log_setup ("taler-helper-auditor-wire",
                                    "MESSAGE",
                                    NULL));
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc,
                           argv,
-                          "taler-wire-auditor",
+                          "taler-helper-auditor-wire",
                           "Audit exchange database for consistency with the bank's wire transfers",
                           options,
                           &run,

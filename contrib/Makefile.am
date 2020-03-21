@@ -6,6 +6,8 @@ tosendir=$(pkgdatadir)/tos/en
 # English (en)
 ppendir=$(pkgdatadir)/pp/en
 
+rdatadir=$(pkgdatadir)
+
 tosen_DATA = \
   tos/en/0.txt \
   tos/en/0.pdf \
@@ -19,6 +21,9 @@ ppen_DATA = \
   pp/en/0.epub \
   pp/en/0.xml \
   pp/en/0.html
+
+rdata_DATA = \
+  auditor-report.tex.j2
 
 bin_SCRIPTS = \
   taler-bank-manage-testing \
@@ -39,11 +44,10 @@ EXTRA_DIST = \
   pp/tos.rst \
   pp/conf.py \
   pp/locale/pp/LC_MESSAGES/pp.po \
-  auditor-report.tex.j2 \
+  $(data_DATA) \
   coverage.sh \
   gnunet.tag \
-  microhttpd.tag \
-  render.py
+  microhttpd.tag
 
 # Change the set of supported languages here. You should
 # also update tos'XX'data and EXTRA_DIST accordingly.

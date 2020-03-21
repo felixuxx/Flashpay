@@ -30,7 +30,12 @@
 static int global_ret;
 
 /**
- * -r option: do full DB reset
+ * -r option: do restart audits
+ */
+static int restart_db;
+
+/**
+ * -R option: do full DB reset
  */
 static int reset_db;
 
@@ -71,6 +76,11 @@ run (void *cls,
     (void) plugin->drop_tables (plugin->cls,
                                 GNUNET_YES);
   }
+  else if (restart_db)
+  {
+    (void) plugin->drop_tables (plugin->cls,
+                                GNUNET_NO);
+  }
   if (GNUNET_OK !=
       plugin->create_tables (plugin->cls))
   {
@@ -104,6 +114,10 @@ main (int argc,
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('r',
+                               "restart",
+                               "restart audits (DANGEROUS: all audits resume from scratch)",
+                               &restart_db),
+    GNUNET_GETOPT_option_flag ('R',
                                "reset",
                                "reset database (DANGEROUS: all existing data is lost!)",
                                &reset_db),

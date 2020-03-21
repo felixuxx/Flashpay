@@ -12,16 +12,27 @@ pkgcfg_DATA = \
   auditor.conf
 
 bin_PROGRAMS = \
-  taler-auditor \
-  taler-helper-auditor-reserves \
-  taler-helper-auditor-coins \
-  taler-helper-auditor-aggregation \
-  taler-helper-auditor-deposits \
-  taler-helper-auditor-wire \
+  taler-auditor-dbinit \
   taler-auditor-exchange \
   taler-auditor-httpd \
   taler-auditor-sign \
-  taler-auditor-dbinit
+  taler-helper-auditor-aggregation \
+  taler-helper-auditor-coins \
+  taler-helper-auditor-deposits \
+  taler-helper-auditor-reserves \
+  taler-helper-auditor-wire
+
+bin_SCRIPTS = \
+  taler-auditor \
+  taler-helper-auditor-render.py
+
+edit_script = $(SED) -e 's,%pkgdatadir%,$(pkgdatadir),'g $(NULL)
+
+taler-auditor: taler-auditor.in
+	rm -f $@ $@.tmp && \
+	$(edit_script) $< >$@.tmp && \
+	chmod a-w+x $@.tmp && \
+	mv $@.tmp $@
 
 noinst_LIBRARIES = \
   libauditor.a
@@ -113,20 +124,6 @@ taler_helper_auditor_wire_LDADD = \
   -ljansson \
   -lgnunetjson \
   -lgnunetcurl \
-  -lgnunetutil
-
-
-taler_auditor_SOURCES = \
-  taler-auditor.c
-taler_auditor_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  -ljansson \
-  -lgnunetjson \
   -lgnunetutil
 
 

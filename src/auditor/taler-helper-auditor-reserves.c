@@ -529,7 +529,7 @@ handle_reserve_out (void *cls,
   /* check that execution date is within withdraw range for denom_pub  */
   valid_start = GNUNET_TIME_absolute_ntoh (issue->start);
   expire_withdraw = GNUNET_TIME_absolute_ntoh (issue->expire_withdraw);
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking withdraw timing: %llu, expire: %llu, timing: %llu\n",
               (unsigned long long) valid_start.abs_value_us,
               (unsigned long long) expire_withdraw.abs_value_us,
@@ -1641,10 +1641,6 @@ main (int argc,
                                       "KEY",
                                       "public key of the exchange (Crockford base32 encoded)",
                                       &TALER_ARL_master_pub),
-    GNUNET_GETOPT_option_flag ('r',
-                               "TALER_ARL_restart",
-                               "TALER_ARL_restart audit from the beginning (required on first run)",
-                               &TALER_ARL_restart),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END
@@ -1655,13 +1651,13 @@ main (int argc,
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-auditor-reserves",
+                 GNUNET_log_setup ("taler-helper-auditor-reserves",
                                    "MESSAGE",
                                    NULL));
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc,
                           argv,
-                          "taler-auditor-reserves",
+                          "taler-helper-auditor-reserves",
                           "Audit Taler exchange reserve handling",
                           options,
                           &run,

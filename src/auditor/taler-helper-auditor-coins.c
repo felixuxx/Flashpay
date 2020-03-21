@@ -185,10 +185,10 @@ static struct TALER_Amount total_refresh_hanging;
  * @param loss actual losses already (actualized before denomination was revoked)
  */
 static void
-report_emergency_by_amount (const struct
-                            TALER_DenominationKeyValidityPS *issue,
-                            const struct TALER_Amount *risk,
-                            const struct TALER_Amount *loss)
+report_emergency_by_amount (
+  const struct TALER_DenominationKeyValidityPS *issue,
+  const struct TALER_Amount *risk,
+  const struct TALER_Amount *loss)
 {
   TALER_ARL_report (report_emergencies,
                     json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
@@ -232,11 +232,11 @@ report_emergency_by_amount (const struct
  * @param risk amount that is at risk
  */
 static void
-report_emergency_by_count (const struct
-                           TALER_DenominationKeyValidityPS *issue,
-                           uint64_t num_issued,
-                           uint64_t num_known,
-                           const struct TALER_Amount *risk)
+report_emergency_by_count (
+  const struct TALER_DenominationKeyValidityPS *issue,
+  uint64_t num_issued,
+  uint64_t num_known,
+  const struct TALER_Amount *risk)
 {
   struct TALER_Amount denom_value;
 
@@ -288,13 +288,12 @@ report_emergency_by_count (const struct
  *           profitable for the exchange, and 0 if it is unclear
  */
 static void
-report_amount_arithmetic_inconsistency (const char *operation,
-                                        uint64_t rowid,
-                                        const struct
-                                        TALER_Amount *exchange,
-                                        const struct
-                                        TALER_Amount *auditor,
-                                        int profitable)
+report_amount_arithmetic_inconsistency (
+  const char *operation,
+  uint64_t rowid,
+  const struct TALER_Amount *exchange,
+  const struct TALER_Amount *auditor,
+  int profitable)
 {
   struct TALER_Amount delta;
   struct TALER_Amount *target;
@@ -1427,6 +1426,9 @@ deposit_cb (void *cls,
   dr.deposit_fee = issue->fee_deposit;
   dr.merchant = *merchant_pub;
   dr.coin_pub = *coin_pub;
+  /* NOTE: This is one of the operations we might eventually
+     want to do in parallel in the background to improve
+     auditor performance! */
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                   &dr.purpose,
@@ -2032,10 +2034,8 @@ analyze_coins (void *cls)
       (qs = TALER_ARL_edb->select_recoup_refresh_above_serial_id (
          TALER_ARL_edb->cls,
          TALER_ARL_esession,
-         ppc.
-         last_recoup_refresh_serial_id,
-         &
-         recoup_refresh_cb,
+         ppc.last_recoup_refresh_serial_id,
+         &recoup_refresh_cb,
          &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -2342,10 +2342,6 @@ main (int argc,
                                       "KEY",
                                       "public key of the exchange (Crockford base32 encoded)",
                                       &TALER_ARL_master_pub),
-    GNUNET_GETOPT_option_flag ('r',
-                               "TALER_ARL_restart",
-                               "TALER_ARL_restart audit from the beginning (required on first run)",
-                               &TALER_ARL_restart),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END
@@ -2356,14 +2352,14 @@ main (int argc,
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-auditor",
+                 GNUNET_log_setup ("taler-helper-auditor-coins",
                                    "MESSAGE",
                                    NULL));
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc,
                           argv,
-                          "taler-auditor",
-                          "Audit Taler exchange database",
+                          "taler-helper-auditor-coins",
+                          "Audit Taler coin processing",
                           options,
                           &run,
                           NULL))

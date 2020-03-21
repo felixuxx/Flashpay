@@ -80,30 +80,25 @@ function audit_only () {
     # Run the auditor!
     echo -n "Running audit(s) ..."
 
-    # NOTE: this should be removed soon...
-    $VALGRIND taler-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
-    echo -n "."
-    # Also do incremental run
-    $VALGRIND taler-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
-    echo -n "."
-
-    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-aggregation.json 2> test-audit-aggregation.log || exit_fail "aggregation audit failed"
+    # Restart so that first run is always fresh, and second one is incremental
+    taler-auditor-dbinit -r -c $CONF
+    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-aggregation.json 2> test-audit-aggregation.log || exit_fail "aggregation audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-aggregation -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-aggregation-inc.json 2> test-audit-aggregation-inc.log || exit_fail "incremental aggregation audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-coins -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-coins.json 2> test-audit-coins.log || exit_fail "coin audit failed"
+    $VALGRIND taler-helper-auditor-coins -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-coins.json 2> test-audit-coins.log || exit_fail "coin audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-coins -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-coins-inc.json 2> test-audit-coins-inc.log || exit_fail "incremental coin audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-deposits -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-deposits.json 2> test-audit-deposits.log || exit_fail "deposits audit failed"
+    $VALGRIND taler-helper-auditor-deposits -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-deposits.json 2> test-audit-deposits.log || exit_fail "deposits audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-deposits -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-deposits-inc.json 2> test-audit-deposits-inc.log || exit_fail "incremental deposits audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-reserves -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-reserves.json 2> test-audit-reserves.log || exit_fail "reserves audit failed"
+    $VALGRIND taler-helper-auditor-reserves -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves.json 2> test-audit-reserves.log || exit_fail "reserves audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-reserves -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves-inc.json 2> test-audit-reserves-inc.log || exit_fail "incremental reserves audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-wire -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-wire.json 2> test-wire-audit.log || exit_fail "wire audit failed"
+    $VALGRIND taler-helper-auditor-wire -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire.json 2> test-wire-audit.log || exit_fail "wire audit failed"
     echo -n "."
     $VALGRIND taler-helper-auditor-wire -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire-inc.json 2> test-wire-audit-inc.log || exit_fail "wire audit failed"
     echo -n "."
@@ -119,7 +114,7 @@ function post_audit () {
     wait
     echo "DONE"
     echo -n "TeXing ."
-    ../../contrib/render.py test-audit.json test-audit-wire.json test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
+    taler-helper-auditor-render.py test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json test-audit-wire.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
     echo -n "."
     timeout 10 pdflatex test-report.tex >/dev/null || exit_fail "pdflatex failed"

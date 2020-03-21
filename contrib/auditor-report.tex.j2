@@ -467,9 +467,16 @@ the financial damage done to the customer).
 Note that the deltas only sum up the issues where $P \not= 0$ as only
 then we can tell if the problem lead to a profit or loss.
 
-% Table generation tested by testcase #18 in test-auditor.sh
+The {\bf P} colum is set to "1" if the arithmetic problem was be determined to be
+profitable for the exchange, "-1" if the problem resulted in a net loss for
+the exchange, and "0" if this is unclear or at least the gain/loss is not
+easily determined from the amounts and thus not included in the totals.
 
-{% if data.amount_arithmetic_inconsistencies|length() == 0 %}
+\subsubsection{For aggregation}
+
+% Table generation tested by testcase #XX in test-auditor.sh
+
+{% if aggregation.amount_arithmetic_inconsistencies|length() == 0 %}
   {\bf No arithmetic problems detected.}
 {% else %}
   \begin{longtable}{p{3.5cm}|r|r|r|c}
@@ -483,12 +490,12 @@ then we can tell if the problem lead to a profit or loss.
 \endfoot
   \hline \hline
   \multicolumn{2}{l|}{ {\bf $\sum$ Deltas (Auditor-Exchange)} } &
-  + {{ data.total_arithmetic_delta_plus }} &
-  - {{ data.total_arithmetic_delta_minus }} & \\
+  + {{ aggregation.total_arithmetic_delta_plus }} &
+  - {{ aggregation.total_arithmetic_delta_minus }} & \\
     \caption{Arithmetic inconsistencies.}
-    \label{table:amount:arithmetic:inconsistencies}
+    \label{table:amount:arithmetic:inconsistencies:aggregation}
 \endlastfoot
-{% for item in data.amount_arithmetic_inconsistencies %}
+{% for item in aggregation.amount_arithmetic_inconsistencies %}
   \truncate{3.3cm}{ {\tiny {{ item.operation }} } } &
   {{ item.rowid }} &
   {{ item.exchange }} &
@@ -496,11 +503,72 @@ then we can tell if the problem lead to a profit or loss.
   {{ item.profitable }} \\ \hline
 {% endfor %}
   \end{longtable}
+{% endif %}
 
-The {\bf P} colum is set to "1" if the arithmetic problem was be determined to be
-profitable for the exchange, "-1" if the problem resulted in a net loss for
-the exchange, and "0" if this is unclear or at least the gain/loss is not
-easily determined from the amounts and thus not included in the totals.
+\subsubsection{For coins}
+
+% Table generation tested by testcase #18 in test-auditor.sh
+
+{% if coins.amount_arithmetic_inconsistencies|length() == 0 %}
+  {\bf No arithmetic problems detected.}
+{% else %}
+  \begin{longtable}{p{3.5cm}|r|r|r|c}
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\
+  \hline \hline
+\endfirsthead
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\
+\endfoot
+  \hline \hline
+  \multicolumn{2}{l|}{ {\bf $\sum$ Deltas (Auditor-Exchange)} } &
+  + {{ coins.total_arithmetic_delta_plus }} &
+  - {{ coins.total_arithmetic_delta_minus }} & \\
+    \caption{Arithmetic inconsistencies.}
+    \label{table:amount:arithmetic:inconsistencies:coins}
+\endlastfoot
+{% for item in coins.amount_arithmetic_inconsistencies %}
+  \truncate{3.3cm}{ {\tiny {{ item.operation }} } } &
+  {{ item.rowid }} &
+  {{ item.exchange }} &
+  {{ item.auditor }} &
+  {{ item.profitable }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
+\subsubsection{For reserves}
+
+% Table generation tested by testcase #XX in test-auditor.sh
+
+{% if reserves.amount_arithmetic_inconsistencies|length() == 0 %}
+  {\bf No arithmetic problems detected.}
+{% else %}
+  \begin{longtable}{p{3.5cm}|r|r|r|c}
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\
+  \hline \hline
+\endfirsthead
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Operation} & {\bf Row} & {\bf Exchange} & {\bf Auditor} & {\bf P} \\
+\endfoot
+  \hline \hline
+  \multicolumn{2}{l|}{ {\bf $\sum$ Deltas (Auditor-Exchange)} } &
+  + {{ reserves.total_arithmetic_delta_plus }} &
+  - {{ reserves.total_arithmetic_delta_minus }} & \\
+    \caption{Arithmetic inconsistencies.}
+    \label{table:amount:arithmetic:inconsistencies:reserves}
+\endlastfoot
+{% for item in reserves.amount_arithmetic_inconsistencies %}
+  \truncate{3.3cm}{ {\tiny {{ item.operation }} } } &
+  {{ item.rowid }} &
+  {{ item.exchange }} &
+  {{ item.auditor }} &
+  {{ item.profitable }} \\ \hline
+{% endfor %}
+  \end{longtable}
 {% endif %}
 
 

@@ -4,6 +4,7 @@ SUBDIRS = . doxygen
 
 man_MANS = \
   prebuilt/man/taler-auditor.1 \
+  prebuilt/man/taler-auditor-dbinit.1 \
   prebuilt/man/taler-auditor-exchange.1 \
   prebuilt/man/taler-auditor-sign.1 \
   prebuilt/man/taler-bank-transfer.1 \

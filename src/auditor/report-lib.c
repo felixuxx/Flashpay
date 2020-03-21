@@ -22,11 +22,6 @@
 #include "report-lib.h"
 
 /**
- * Command-line option "-r": TALER_ARL_restart audit from scratch
- */
-int TALER_ARL_restart;
-
-/**
  * Handle to access the exchange's database.
  */
 struct TALER_EXCHANGEDB_Plugin *TALER_ARL_edb;
@@ -518,26 +513,6 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
     return GNUNET_SYSERR;
   }
-  if (TALER_ARL_restart)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Full audit TALER_ARL_restart requested, dropping old audit data.\n");
-    GNUNET_break (GNUNET_OK ==
-                  TALER_ARL_adb->drop_tables (TALER_ARL_adb->cls,
-                                              GNUNET_NO));
-    TALER_AUDITORDB_plugin_unload (TALER_ARL_adb);
-    if (NULL ==
-        (TALER_ARL_adb = TALER_AUDITORDB_plugin_load (TALER_ARL_cfg)))
-    {
-      fprintf (stderr,
-               "Failed to initialize auditor database plugin after drop.\n");
-      TALER_EXCHANGEDB_plugin_unload (TALER_ARL_edb);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_break (GNUNET_OK ==
-                  TALER_ARL_adb->create_tables (TALER_ARL_adb->cls));
-  }
-
   return GNUNET_OK;
 }
 

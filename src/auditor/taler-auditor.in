@@ -1,0 +1,23 @@
+#!/bin/sh
+
+set -eu
+
+DIR=`mktemp -d reportXXXXXX`
+for n in aggregation coins deposits reserves wire
+do
+  taler-helper-auditor-$n "$@" > ${DIR}/$n.json
+done
+
+taler-helper-auditor-render.py \
+    ${DIR}/aggregation.json \
+    ${DIR}/coins.json \
+    ${DIR}/deposits.json \
+    ${DIR}/reserves.json \
+    ${DIR}/wire.json < %pkgdatadir%/auditor-report.tex.j2 > ${DIR}/auditor-report.tex
+cd ${DIR}
+pdflatex auditor-report.tex < /dev/null
+pdflatex auditor-report.tex < /dev/null
+pdflatex auditor-report.tex < /dev/null
+cd ..
+
+echo "Result is in ${DIR}/auditor-report.pdf"
