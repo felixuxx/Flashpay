@@ -85,7 +85,7 @@ static struct GNUNET_CONTAINER_MultiHashMap *denominations;
  * @return human-readable string representing the time
  */
 json_t *
-TALER_ARL_TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at)
+TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at)
 {
   return json_string
            (GNUNET_STRINGS_absolute_time_to_string

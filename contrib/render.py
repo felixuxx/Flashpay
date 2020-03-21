@@ -36,6 +36,18 @@ jsonData1 = json.load(jsonFile1)
 jsonFile2 = open (sys.argv[2], 'r')
 jsonData2 = json.load(jsonFile2)
 
+jsonFile3 = open (sys.argv[3], 'r')
+jsonData3 = json.load(jsonFile3)
+
+jsonFile4 = open (sys.argv[4], 'r')
+jsonData4 = json.load(jsonFile4)
+
+jsonFile5 = open (sys.argv[5], 'r')
+jsonData5 = json.load(jsonFile5)
+
+jsonFile6 = open (sys.argv[6], 'r')
+jsonData6 = json.load(jsonFile6)
+
 jinjaEnv = jinja2.Environment(loader=StdinLoader(),
                               lstrip_blocks=True,
                               trim_blocks=True,
@@ -43,4 +55,4 @@ jinjaEnv = jinja2.Environment(loader=StdinLoader(),
                               autoescape=False)
 tmpl = jinjaEnv.get_template('stdin');
 
-print(tmpl.render(data = jsonData1, wire = jsonData2))
+print(tmpl.render(data = jsonData1, wire = jsonData2, aggregation = jsonData3, coins = jsonData4, deposits = jsonData5, reserves = jsonData6))

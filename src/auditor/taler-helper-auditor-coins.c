@@ -199,10 +199,10 @@ report_emergency_by_amount (const struct
                                "denom_loss",
                                TALER_JSON_from_amount (loss),
                                "start",
-                               TALER_ARL_TALER_ARL_json_from_time_abs_nbo (
+                               TALER_ARL_json_from_time_abs_nbo (
                                  issue->start),
                                "deposit_end",
-                               TALER_ARL_TALER_ARL_json_from_time_abs_nbo (
+                               TALER_ARL_json_from_time_abs_nbo (
                                  issue->expire_deposit),
                                "value",
                                TALER_JSON_from_amount_nbo (&issue->value)));
@@ -251,10 +251,10 @@ report_emergency_by_count (const struct
                                "denom_risk",
                                TALER_JSON_from_amount (risk),
                                "start",
-                               TALER_ARL_TALER_ARL_json_from_time_abs_nbo (
+                               TALER_ARL_json_from_time_abs_nbo (
                                  issue->start),
                                "deposit_end",
-                               TALER_ARL_TALER_ARL_json_from_time_abs_nbo (
+                               TALER_ARL_json_from_time_abs_nbo (
                                  issue->expire_deposit),
                                "value",
                                TALER_JSON_from_amount_nbo (&issue->value)));
@@ -2238,16 +2238,17 @@ run (void *cls,
                       "emergencies_risk_by_amount",
                       TALER_JSON_from_amount (
                         &reported_emergency_risk_by_amount),
-                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                      /* Tested in test-auditor.sh #4/#5/#6/#13/#26 */
                       "bad_sig_losses",
                       report_bad_sig_losses,
-                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                      /* Tested in test-auditor.sh #4/#5/#6/#13/#26 */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
-                      /* Tested in test-auditor.sh #14/#15 */
+                      /* FIXME: Tested in test-auditor.sh #?? */
                       "row_inconsistencies",
                       report_row_inconsistencies,
                       /* Block #3 */
+                      /* Tested in test-auditor.sh #18 */
                       "amount_arithmetic_inconsistencies",
                       report_amount_arithmetic_inconsistencies,
                       "total_arithmetic_delta_plus",
@@ -2308,12 +2309,12 @@ run (void *cls,
                       (json_int_t) ppc.last_recoup_serial_id,
                       "end_ppc_recoup_refresh_serial_id",
                       (json_int_t) ppc.last_recoup_refresh_serial_id,
-                      "auditor_start_time", json_string (
-                        GNUNET_STRINGS_absolute_time_to_string (
-                          start_time)),
-                      "auditor_end_time", json_string (
-                        GNUNET_STRINGS_absolute_time_to_string (
-                          GNUNET_TIME_absolute_get ())),
+                      "auditor_start_time",
+                      TALER_ARL_json_from_time_abs (
+                        start_time),
+                      "auditor_end_time",
+                      TALER_ARL_json_from_time_abs (
+                        GNUNET_TIME_absolute_get ()),
                       "total_irregular_recoups",
                       TALER_JSON_from_amount (
                         &total_irregular_recoups)

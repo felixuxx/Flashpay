@@ -79,15 +79,35 @@ function pre_audit () {
 function audit_only () {
     # Run the auditor!
     echo -n "Running audit(s) ..."
+
+    # NOTE: this should be removed soon...
     $VALGRIND taler-auditor -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit.json 2> test-audit.log || exit_fail "auditor failed"
     echo -n "."
     # Also do incremental run
     $VALGRIND taler-auditor -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-inc.json 2> test-audit-inc.log || exit_fail "auditor failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-wire -L DEBUG -r -c $CONF -m $MASTER_PUB > test-wire-audit.json 2> test-wire-audit.log || exit_fail "wire auditor failed"
-    # Also do incremental run
+
+    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-aggregation.json 2> test-audit-aggregation.log || exit_fail "aggregation audit failed"
     echo -n "."
-    $VALGRIND taler-helper-auditor-wire -L DEBUG -c $CONF -m $MASTER_PUB > test-wire-audit-inc.json 2> test-wire-audit-inc.log || exit_fail "wire auditor failed"
+    $VALGRIND taler-helper-auditor-aggregation -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-aggregation-inc.json 2> test-audit-aggregation-inc.log || exit_fail "incremental aggregation audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-coins -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-coins.json 2> test-audit-coins.log || exit_fail "coin audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-coins -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-coins-inc.json 2> test-audit-coins-inc.log || exit_fail "incremental coin audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-deposits -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-deposits.json 2> test-audit-deposits.log || exit_fail "deposits audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-deposits -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-deposits-inc.json 2> test-audit-deposits-inc.log || exit_fail "incremental deposits audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-reserves -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-reserves.json 2> test-audit-reserves.log || exit_fail "reserves audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-reserves -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-reserves-inc.json 2> test-audit-reserves-inc.log || exit_fail "incremental reserves audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-wire -L DEBUG -r -c $CONF -m $MASTER_PUB > test-audit-wire.json 2> test-wire-audit.log || exit_fail "wire audit failed"
+    echo -n "."
+    $VALGRIND taler-helper-auditor-wire -L DEBUG -c $CONF -m $MASTER_PUB > test-audit-wire-inc.json 2> test-wire-audit-inc.log || exit_fail "wire audit failed"
+    echo -n "."
+
     echo " DONE"
 }
 
@@ -99,7 +119,7 @@ function post_audit () {
     wait
     echo "DONE"
     echo -n "TeXing ."
-    ../../contrib/render.py test-audit.json test-wire-audit.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
+    ../../contrib/render.py test-audit.json test-audit-wire.json test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
     echo -n "."
     timeout 10 pdflatex test-report.tex >/dev/null || exit_fail "pdflatex failed"
@@ -141,21 +161,21 @@ run_audit aggregator
 echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
-jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
 echo -n "Test for deposit confirmation emergencies... "
-jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
+jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null && exit_fail "Unexpected deposit confirmation inconsistency detected" || echo PASS
 echo -n "Test for emergencies by count... "
-jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
 echo -n "Test for wire inconsistencies... "
-jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-jq -e .reserve_in_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .missattribution_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
-jq -e .row_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
-jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
-jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-jq -e .lag_details[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
-jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
+jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
+jq -e .missattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
+jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected denomination key withdraw inconsistency detected in ordinary run"
+jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
+jq -e .lag_details[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected lag detected in ordinary run"
+jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
 
 # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
@@ -163,34 +183,44 @@ jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit
 
 echo PASS
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+LOSS=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
 if test $LOSS != "TESTKUDOS:0"
 then
-    exit_fail "Wrong total bad sig loss, got unexpected loss of $LOSS"
+    exit_fail "Wrong total bad sig loss from aggregation, got unexpected loss of $LOSS"
+fi
+LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong total bad sig loss from coins, got unexpected loss of $LOSS"
+fi
+LOSS=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong total bad sig loss from reserves, got unexpected loss of $LOSS"
 fi
 
 echo -n "Test for wire amounts... "
-WIRED=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta plus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta minus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta plus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta minus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_missattribution_in < test-wire-audit.json`
+WIRED=`jq -r .total_missattribution_in < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total missattribution in wrong, got $WIRED"
@@ -198,22 +228,44 @@ fi
 echo PASS
 
 echo -n "Checking for unexpected arithmetic differences "
-LOSS=`jq -r .total_arithmetic_delta_plus < test-audit.json`
+LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-aggregation.json`
 if test $LOSS != "TESTKUDOS:0"
 then
-    exit_fail "Wrong arithmetic delta, got unexpected plus of $LOSS"
+    exit_fail "Wrong arithmetic delta from aggregations, got unexpected plus of $LOSS"
 fi
-LOSS=`jq -r .total_arithmetic_delta_minus < test-audit.json`
+LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-aggregation.json`
 if test $LOSS != "TESTKUDOS:0"
 then
-    exit_fail "Wrong arithmetic delta, got unexpected minus of $LOSS"
+    exit_fail "Wrong arithmetic delta from aggregation, got unexpected minus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-coins.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from coins, got unexpected plus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-coins.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from coins, got unexpected minus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_plus < test-audit-reserves.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from reserves, got unexpected plus of $LOSS"
+fi
+LOSS=`jq -r .total_arithmetic_delta_minus < test-audit-reserves.json`
+if test $LOSS != "TESTKUDOS:0"
+then
+    exit_fail "Wrong arithmetic delta from reserves, got unexpected minus of $LOSS"
 fi
 
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies detected in ordinary run"
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from aggregations detected in ordinary run"
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from coins detected in ordinary run"
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected arithmetic inconsistencies from reserves detected in ordinary run"
 echo PASS
 
 echo -n "Checking for unexpected wire out differences "
-jq -e .wire_out_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
+jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null && exit_fail "Unexpected wire out inconsistencies detected in ordinary run"
 echo PASS
 
 # cannot easily undo aggregator, hence full reload
@@ -232,17 +284,17 @@ run_audit
 echo "Checking output"
 # if an emergency was detected, that is a bug and we should fail
 echo -n "Test for emergencies... "
-jq -e .emergencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
+jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run" || echo PASS
 echo -n "Test for emergencies by count... "
-jq -e .emergencies_by_count[0] < test-audit.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
+jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency by count detected in ordinary run" || echo PASS
 
 echo -n "Test for wire inconsistencies... "
-jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
-jq -e .reserve_in_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
-jq -e .missattribution_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
-jq -e .row_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
-jq -e .row_minor_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
-jq -e .wire_format_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
+jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in ordinary run"
+jq -e .reserve_in_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected reserve in inconsistency detected in ordinary run"
+jq -e .missattribution_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected missattribution inconsistency detected in ordinary run"
+jq -e .row_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected row inconsistency detected in ordinary run"
+jq -e .row_minor_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected minor row inconsistency detected in ordinary run"
+jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire format inconsistencies detected in ordinary run"
 
 # TODO: check operation balances are correct (once we have all transaction types and wallet is deterministic)
 # TODO: check revenue summaries are correct (once we have all transaction types and wallet is deterministic)
@@ -258,9 +310,9 @@ echo -n "Check for lag detection... "
 # taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
-    jq -e .lag_details[0] < test-wire-audit.json > /dev/null || exit_fail "Lag not detected in run without aggregator at age $DELTA"
+    jq -e .lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Lag not detected in run without aggregator at age $DELTA"
 
-    LAG=`jq -r .total_amount_lag < test-wire-audit.json`
+    LAG=`jq -r .total_amount_lag < test-audit-wire.json`
     if test $LAG = "TESTKUDOS:0"
     then
         exit_fail "Expected total lag to be non-zero"
@@ -272,27 +324,27 @@ fi
 
 
 echo -n "Test for wire amounts... "
-WIRED=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta plus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta minus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta plus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total wire delta minus wrong, got $WIRED"
 fi
-WIRED=`jq -r .total_missattribution_in < test-wire-audit.json`
+WIRED=`jq -r .total_missattribution_in < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total missattribution in wrong, got $WIRED"
@@ -311,28 +363,28 @@ echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -
 run_audit
 
 echo -n "Testing inconsistency detection... "
-ROW=`jq .reserve_in_amount_inconsistencies[0].row < test-wire-audit.json`
+ROW=`jq .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json`
 if test $ROW != 1
 then
     exit_fail "Row wrong"
 fi
-WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:10"
 then
     exit_fail "Amount wrong"
 fi
-EXPECTED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-wire-audit.json`
+EXPECTED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
 if test $EXPECTED != "TESTKUDOS:5"
 then
     exit_fail "Expected amount wrong"
 fi
 
-WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
 fi
-DELTA=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+DELTA=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
 if test $DELTA != "TESTKUDOS:5"
 then
     exit_fail "Expected total wire delta plus wrong, got $DELTA"
@@ -354,49 +406,49 @@ echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql 
 
 run_audit
 
-EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit.json`
+EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit-reserves.json`
 if test $EXPECTED != "TESTKUDOS:5.01"
 then
     exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (auditor)"
 fi
 
-EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit.json`
+EXPECTED=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit-reserves.json`
 if test $EXPECTED != "TESTKUDOS:0.01"
 then
     exit_fail "Expected reserve balance summary amount wrong, got $EXPECTED (exchange)"
 fi
 
-WIRED=`jq -r .total_loss_balance_insufficient < test-audit.json`
+WIRED=`jq -r .total_loss_balance_insufficient < test-audit-reserves.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Wrong total loss from insufficient balance, got $WIRED"
 fi
 
-ROW=`jq -e .reserve_in_amount_inconsistencies[0].row < test-wire-audit.json`
+ROW=`jq -e .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json`
 if test $ROW != 1
 then
     exit_fail "Row wrong, got $ROW"
 fi
 
-WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-wire-audit.json`
+WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:15"
 then
     exit_fail "Wrong amount_exchange_expected, got $WIRED"
 fi
 
-WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:10"
 then
     exit_fail "Wrong amount_wired, got $WIRED"
 fi
 
-WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:5"
 then
     exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
 fi
 
-WIRED=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Wrong total wire_in_delta_plus, got $WIRED"
@@ -422,27 +474,27 @@ run_audit
 
 echo -n "Testing inconsistency detection... "
 
-jq -e .bad_sig_losses[0] < test-audit.json > /dev/null || exit_fail "Bad signature not detected"
+jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
 
-ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
 if test $ROW != ${SERIAL}
 then
     exit_fail "Row wrong, got $ROW"
 fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
 if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
 if test $OP != "deposit"
 then
     exit_fail "Wrong operation, got $OP"
 fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
 if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -468,25 +520,25 @@ echo "UPDATE deposits SET h_contract_terms='\x12bb676444955c98789f219148aa31899d
 run_audit
 
 echo -n "Checking bad signature detection... "
-ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
 if test $ROW != $SERIAL
 then
     exit_fail "Row wrong, got $ROW"
 fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
 if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
 if test $OP != "deposit"
 then
     exit_fail "Wrong operation, got $OP"
 fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
 if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -510,25 +562,25 @@ echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020
 
 run_audit
 
-ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
 if test $ROW != "-1"
 then
     exit_fail "Row wrong, got $ROW"
 fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
 if test $LOSS == "TESTKUDOS:0"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
 if test $OP != "known-coin"
 then
     exit_fail "Wrong operation, got $OP"
 fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
 if test $LOSS == "TESTKUDOS:0"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -555,14 +607,14 @@ echo "UPDATE reserves_out SET reserve_sig='\x9ef381a84aff252646a157d88eded50f708
 
 run_audit
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+OP=`jq -r .bad_sig_losses[0].operation < test-audit-reserves.json`
 if test $OP != "withdraw"
 then
     exit_fail "Wrong operation, got $OP"
 fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
-LOSS_TOTAL=`jq -r .total_bad_sig_loss < test-audit.json`
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-reserves.json`
+LOSS_TOTAL=`jq -r .total_bad_sig_loss < test-audit-reserves.json`
 if test $LOSS != $LOSS_TOTAL
 then
     exit_fail "Expected loss $LOSS and total loss $LOSS_TOTAL do not match"
@@ -604,17 +656,17 @@ echo "UPDATE app_banktransaction SET subject='$NEW_WTID' WHERE id='$OLD_ID';" | 
 run_audit
 
 echo -n "Testing inconsistency detection... "
-DIAG=`jq -r .reserve_in_amount_inconsistencies[0].diagnostic < test-wire-audit.json`
+DIAG=`jq -r .reserve_in_amount_inconsistencies[0].diagnostic < test-audit-wire.json`
 if test "x$DIAG" != "xwire subject does not match"
 then
     exit_fail "Diagnostic wrong: $DIAG (0)"
 fi
-WTID=`jq -r .reserve_in_amount_inconsistencies[0].reserve_pub < test-wire-audit.json`
+WTID=`jq -r .reserve_in_amount_inconsistencies[0].reserve_pub < test-audit-wire.json`
 if test x$WTID != x"$OLD_WTID" -a x$WTID != x"$NEW_WTID"
 then
     exit_fail "WTID reported wrong: $WTID"
 fi
-EX_A=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-wire-audit.json`
+EX_A=`jq -r .reserve_in_amount_inconsistencies[0].amount_exchange_expected < test-audit-wire.json`
 if test x$WTID = x$OLD_WTID -a x$EX_A != x"TESTKUDOS:10"
 then
     exit_fail "Amount reported wrong: $EX_A"
@@ -623,17 +675,17 @@ if test x$WTID = x$NEW_WTID -a x$EX_A != x"TESTKUDOS:0"
 then
     exit_fail "Amount reported wrong: $EX_A"
 fi
-DIAG=`jq -r .reserve_in_amount_inconsistencies[1].diagnostic < test-wire-audit.json`
+DIAG=`jq -r .reserve_in_amount_inconsistencies[1].diagnostic < test-audit-wire.json`
 if test "x$DIAG" != "xwire subject does not match"
 then
     exit_fail "Diagnostic wrong: $DIAG (1)"
 fi
-WTID=`jq -r .reserve_in_amount_inconsistencies[1].reserve_pub < test-wire-audit.json`
+WTID=`jq -r .reserve_in_amount_inconsistencies[1].reserve_pub < test-audit-wire.json`
 if test $WTID != "$OLD_WTID" -a $WTID != "$NEW_WTID"
 then
     exit_fail "WTID reported wrong: $WTID (wanted: $NEW_WTID or $OLD_WTID)"
 fi
-EX_A=`jq -r .reserve_in_amount_inconsistencies[1].amount_exchange_expected < test-wire-audit.json`
+EX_A=`jq -r .reserve_in_amount_inconsistencies[1].amount_exchange_expected < test-audit-wire.json`
 if test $WTID = "$OLD_WTID" -a $EX_A != "TESTKUDOS:10"
 then
     exit_fail "Amount reported wrong: $EX_A"
@@ -643,12 +695,12 @@ then
     exit_fail "Amount reported wrong: $EX_A"
 fi
 
-WIRED=`jq -r .total_wire_in_delta_minus < test-wire-audit.json`
+WIRED=`jq -r .total_wire_in_delta_minus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:10"
 then
     exit_fail "Wrong total wire_in_delta_minus, got $WIRED"
 fi
-DELTA=`jq -r .total_wire_in_delta_plus < test-wire-audit.json`
+DELTA=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
 if test $DELTA != "TESTKUDOS:10"
 then
     exit_fail "Expected total wire delta plus wrong, got $DELTA"
@@ -673,12 +725,12 @@ echo "UPDATE app_banktransaction SET debit_account_id=1 WHERE id='$OLD_ID';" | p
 run_audit
 
 echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .missattribution_in_inconsistencies[0].amount < test-wire-audit.json`
+AMOUNT=`jq -r .missattribution_in_inconsistencies[0].amount < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
     exit_fail "Reported amount wrong: $AMOUNT"
 fi
-AMOUNT=`jq -r .total_missattribution_in < test-wire-audit.json`
+AMOUNT=`jq -r .total_missattribution_in < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
     exit_fail "Reported total amount wrong: $AMOUNT"
@@ -702,12 +754,12 @@ echo "UPDATE app_banktransaction SET date=NOW() WHERE id=$OLD_ID;" | psql -Aqt $
 run_audit
 
 echo -n "Testing inconsistency detection... "
-DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
+DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-audit-wire.json`
 if test "x$DIAG" != "xexecution date mismatch"
 then
     exit_fail "Reported diagnostic wrong: $DIAG"
 fi
-TABLE=`jq -r .row_minor_inconsistencies[0].table < test-wire-audit.json`
+TABLE=`jq -r .row_minor_inconsistencies[0].table < test-audit-wire.json`
 if test "x$TABLE" != "xreserves_in"
 then
     exit_fail "Reported table wrong: $TABLE"
@@ -737,27 +789,27 @@ echo -e "UPDATE app_banktransaction SET debit_account_id=2,credit_account_id=1,s
 run_audit
 
 echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
     exit_fail "Reported wired amount wrong: $AMOUNT"
 fi
-AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:10"
 then
     exit_fail "Reported total plus amount wrong: $AMOUNT"
 fi
-AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:0"
 then
     exit_fail "Reported total minus amount wrong: $AMOUNT"
 fi
-AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
+AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json`
 if test "x$AMOUNT" != "xTESTKUDOS:0"
 then
     exit_fail "Reported justified amount wrong: $AMOUNT"
 fi
-DIAG=`jq -r .wire_out_amount_inconsistencies[0].diagnostic < test-wire-audit.json`
+DIAG=`jq -r .wire_out_amount_inconsistencies[0].diagnostic < test-audit-wire.json`
 if test "x$DIAG" != "xjustification for wire transfer not found"
 then
     exit_fail "Reported diagnostic wrong: $DIAG"
@@ -781,8 +833,8 @@ run_audit
 
 echo -n "Testing hung refresh detection... "
 
-HANG=`jq -er .refresh_hanging[0].amount < test-audit.json`
-TOTAL_HANG=`jq -er .total_refresh_hanging < test-audit.json`
+HANG=`jq -er .refresh_hanging[0].amount < test-audit-coins.json`
+TOTAL_HANG=`jq -er .total_refresh_hanging < test-audit-coins.json`
 if test x$HANG = TESTKUDOS:0
 then
     exit_fail "Hanging amount zero"
@@ -815,14 +867,14 @@ run_audit
 
 echo -n "Testing inconsistency detection... "
 
-OP=`jq -er .bad_sig_losses[0].operation < test-audit.json`
+OP=`jq -er .bad_sig_losses[0].operation < test-audit-coins.json`
 if test x$OP != xmelt
 then
     exit_fail "Operation wrong, got $OP"
 fi
 
-LOSS=`jq -er .bad_sig_losses[0].loss < test-audit.json`
-TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit.json`
+LOSS=`jq -er .bad_sig_losses[0].loss < test-audit-coins.json`
+TOTAL_LOSS=`jq -er .total_bad_sig_loss < test-audit-coins.json`
 if test x$LOSS != x$TOTAL_LOSS
 then
     exit_fail "Loss inconsistent, got $LOSS and $TOTAL_LOSS"
@@ -861,12 +913,12 @@ then
     post_audit
 
     echo -n "Testing inconsistency detection... "
-    TABLE=`jq -r .row_inconsistencies[0].table < test-audit.json`
+    TABLE=`jq -r .row_inconsistencies[0].table < test-audit-aggregation.json`
     if test "x$TABLE" != "xwire-fee"
     then
         exit_fail "Reported table wrong: $TABLE"
     fi
-    DIAG=`jq -r .row_inconsistencies[0].diagnostic < test-audit.json`
+    DIAG=`jq -r .row_inconsistencies[0].diagnostic < test-audit-aggregation.json`
     if test "x$DIAG" != "xwire fee signature invalid at given time"
     then
         exit_fail "Reported diagnostic wrong: $DIAG"
@@ -906,7 +958,7 @@ then
     run_audit aggregator
 
     echo -n "Testing inconsistency detection... "
-    TABLE=`jq -r .row_inconsistencies[0].table < test-audit.json`
+    TABLE=`jq -r .row_inconsistencies[0].table < test-audit-aggregation.json`
     if test "x$TABLE" != "xaggregation" -a "x$TABLE" != "xdeposits"
     then
         exit_fail "Reported table wrong: $TABLE"
@@ -950,22 +1002,22 @@ then
 
     echo -n "Testing inconsistency detection... "
 
-    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json`
     if test "x$AMOUNT" != "x$OLD_AMOUNT"
     then
         exit_fail "Reported justified amount wrong: $AMOUNT"
     fi
-    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
     if test "x$AMOUNT" != "x$NEW_AMOUNT"
     then
         exit_fail "Reported wired amount wrong: $AMOUNT"
     fi
-    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
     if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
     then
         exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT"
     fi
-    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
     if test "x$TOTAL_AMOUNT" = "xTESTKUDOS:0"
     then
         exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
@@ -980,22 +1032,22 @@ then
 
     echo -n "Testing inconsistency detection... "
 
-    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-wire-audit.json`
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_justified < test-audit-wire.json`
     if test "x$AMOUNT" != "x$OLD_AMOUNT"
     then
         exit_fail "Reported justified amount wrong: $AMOUNT"
     fi
-    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-wire-audit.json`
+    AMOUNT=`jq -r .wire_out_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
     if test "x$AMOUNT" != "x$NEW_AMOUNT"
     then
         exit_fail "Reported wired amount wrong: $AMOUNT"
     fi
-    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-wire-audit.json`
+    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit-wire.json`
     if test "x$TOTAL_AMOUNT" != "x$OLD_AMOUNT"
     then
         exit_fail "Reported total wired amount minus wrong: $TOTAL_AMOUNT (wanted $OLD_AMOUNT)"
     fi
-    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-wire-audit.json`
+    TOTAL_AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit-wire.json`
     if test "x$TOTAL_AMOUNT" != "xTESTKUDOS:0"
     then
         exit_fail "Reported total wired amount plus wrong: $TOTAL_AMOUNT"
@@ -1044,12 +1096,12 @@ then
     post_audit
 
     echo -n "Testing inconsistency detection... "
-    TABLE=`jq -r .row_minor_inconsistencies[0].table < test-wire-audit.json`
+    TABLE=`jq -r .row_minor_inconsistencies[0].table < test-audit-wire.json`
     if test "x$TABLE" != "xwire_out"
     then
         exit_fail "Reported table wrong: $TABLE"
     fi
-    DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-wire-audit.json`
+    DIAG=`jq -r .row_minor_inconsistencies[0].diagnostic < test-audit-wire.json`
     DIAG=`echo "$DIAG" | awk '{print $1 " " $2 " " $3}'`
     if test "x$DIAG" != "xexecution date mismatch"
     then
@@ -1079,22 +1131,22 @@ run_audit
 
 echo -n "Testing emergency detection... "
 
-jq -e .reserve_balance_summary_wrong_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Reserve balance inconsistency not detected"
+jq -e .reserve_balance_summary_wrong_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve balance inconsistency not detected"
 
-jq -e .emergencies[0] < test-audit.json > /dev/null || exit_fail "Emergency not detected"
-jq -e .emergencies_by_count[0] < test-audit.json > /dev/null || exit_fail "Emergency by count not detected"
-jq -e .amount_arithmetic_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Escrow balance calculation impossibility not detected"
+jq -e .emergencies[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency not detected"
+jq -e .emergencies_by_count[0] < test-audit-coins.json > /dev/null || exit_fail "Emergency by count not detected"
+jq -e .amount_arithmetic_inconsistencies[0] < test-audit-coins.json > /dev/null || exit_fail "Escrow balance calculation impossibility not detected"
 
 echo PASS
 
 echo -n "Testing loss calculation... "
 
-AMOUNT=`jq -r .emergencies_loss < test-audit.json`
+AMOUNT=`jq -r .emergencies_loss < test-audit-coins.json`
 if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
     exit_fail "Reported amount wrong: $AMOUNT"
 fi
-AMOUNT=`jq -r .emergencies_loss_by_count < test-audit.json`
+AMOUNT=`jq -r .emergencies_loss_by_count < test-audit-coins.json`
 if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
     exit_fail "Reported amount wrong: $AMOUNT"
@@ -1135,12 +1187,12 @@ then
 
     echo -n "Testing reserve closure was done correctly... "
 
-    jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null && exit_fail "Unexpected reserve not closed inconsistency detected"
+    jq -e .reserve_not_closed_inconsistencies[0] < test-audit-reserves.json > /dev/null && exit_fail "Unexpected reserve not closed inconsistency detected"
 
     echo "PASS"
 
     echo -n "Testing no bogus transfers detected... "
-    jq -e .wire_out_amount_inconsistencies[0] < test-wire-audit.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in run with reserve closure"
+    jq -e .wire_out_amount_inconsistencies[0] < test-audit-wire.json > /dev/null && exit_fail "Unexpected wire out inconsistency detected in run with reserve closure"
 
     echo "PASS"
 
@@ -1169,10 +1221,10 @@ echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE rese
 run_audit
 
 echo -n "Testing reserve closure missing detected... "
-jq -e .reserve_not_closed_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Reserve not closed inconsistency not detected"
+jq -e .reserve_not_closed_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Reserve not closed inconsistency not detected"
 echo "PASS"
 
-AMOUNT=`jq -r .total_balance_reserve_not_closed < test-audit.json`
+AMOUNT=`jq -r .total_balance_reserve_not_closed < test-audit-reserves.json`
 if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
     exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1220,14 +1272,14 @@ then
 
     echo -n "Testing lack of reserve closure transaction detected... "
 
-    jq -e .reserve_lag_details[0] < test-wire-audit.json > /dev/null || exit_fail "Reserve closure lag not detected"
+    jq -e .reserve_lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Reserve closure lag not detected"
 
-    AMOUNT=`jq -r .reserve_lag_details[0].amount < test-wire-audit.json`
+    AMOUNT=`jq -r .reserve_lag_details[0].amount < test-audit-wire.json`
     if test "x$AMOUNT" != "xTESTKUDOS:${VAL_DELTA}"
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
-    AMOUNT=`jq -r .total_closure_amount_lag < test-wire-audit.json`
+    AMOUNT=`jq -r .total_closure_amount_lag < test-audit-wire.json`
     if test "x$AMOUNT" != "xTESTKUDOS:${VAL_DELTA}"
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1260,7 +1312,7 @@ echo "UPDATE auditor_denominations SET expire_withdraw=${NEW_WEXP} WHERE denom_p
 run_audit
 
 echo -n "Testing inconsistency detection... "
-jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Denomination key withdraw inconsistency not detected"
+jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserves.json > /dev/null || exit_fail "Denomination key withdraw inconsistency not detected"
 
 echo PASS
 
@@ -1295,19 +1347,19 @@ then
 
     echo -n "Testing inconsistency detection... "
 
-    jq -e .wire_out_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Wire out inconsistency not detected"
+    jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Wire out inconsistency not detected"
 
-    ROW=`jq .wire_out_inconsistencies[0].rowid < test-audit.json`
+    ROW=`jq .wire_out_inconsistencies[0].rowid < test-audit-aggregation.json`
     if test $ROW != 1
     then
         exit_fail "Row wrong"
     fi
-    AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit.json`
+    AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit-aggregation.json`
     if test "x$AMOUNT" != "xTESTKUDOS:0"
     then
         exit_fail "Reported amount wrong: $AMOUNT"
     fi
-    AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit.json`
+    AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit-aggregation.json`
     if test "x$AMOUNT" != "xTESTKUDOS:0.01"
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1324,19 +1376,19 @@ then
 
     echo -n "Testing inconsistency detection... "
 
-    jq -e .wire_out_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Wire out inconsistency not detected"
+    jq -e .wire_out_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Wire out inconsistency not detected"
 
-    ROW=`jq .wire_out_inconsistencies[0].rowid < test-audit.json`
+    ROW=`jq .wire_out_inconsistencies[0].rowid < test-audit-aggregation.json`
     if test $ROW != 1
     then
         exit_fail "Row wrong"
     fi
-    AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit.json`
+    AMOUNT=`jq -r .total_wire_out_delta_minus < test-audit-aggregation.json`
     if test "x$AMOUNT" != "xTESTKUDOS:0"
     then
         exit_fail "Reported amount wrong: $AMOUNT"
     fi
-    AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit.json`
+    AMOUNT=`jq -r .total_wire_out_delta_plus < test-audit-aggregation.json`
     if test "x$AMOUNT" != "xTESTKUDOS:0.01"
     then
         exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1370,14 +1422,14 @@ else
 
     echo -n "Testing inconsistency detection... "
 
-    jq -e .deposit_confirmation_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
+    jq -e .deposit_confirmation_inconsistencies[0] < test-audit-deposits.json > /dev/null || exit_fail "Deposit confirmation inconsistency NOT detected"
 
-    AMOUNT=`jq -er .missing_deposit_confirmation_total < test-audit.json`
+    AMOUNT=`jq -er .missing_deposit_confirmation_total < test-audit-deposits.json`
     if test x$AMOUNT = xTESTKUDOS:0
     then
         exit_fail "Expected non-zero total missing deposit confirmation amount"
     fi
-    COUNT=`jq -er .missing_deposit_confirmation_count < test-audit.json`
+    COUNT=`jq -er .missing_deposit_confirmation_count < test-audit-deposits.json`
     if test x$AMOUNT = x0
     then
         exit_fail "Expected non-zero total missing deposit confirmation count"
@@ -1411,22 +1463,22 @@ then
 
     echo -n "Testing inconsistency detection... "
 
-    jq -e .coin_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin inconsistency NOT detected"
+    jq -e .coin_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Coin inconsistency NOT detected"
 
-    jq -e .row_inconsistencies[0] < test-audit.json > /dev/null || exit_fail "Coin history verification failure NOT reported"
+    jq -e .row_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Coin history verification failure NOT reported"
 
     # Note: if the wallet withdrew much more than it spent, this might indeed
     # go legitimately unnoticed.
-    jq -e .emergencies[0] < test-audit.json > /dev/null || exit_fail "Denomination value emergency NOT reported"
+    jq -e .emergencies[0] < test-audit-coins.json > /dev/null || exit_fail "Denomination value emergency NOT reported"
 
-    AMOUNT=`jq -er .total_coin_delta_minus < test-audit.json`
+    AMOUNT=`jq -er .total_coin_delta_minus < test-audit-aggregation.json`
     if test x$AMOUNT = xTESTKUDOS:0
     then
         exit_fail "Expected non-zero total inconsistency amount from coins"
     fi
     # Note: if the wallet withdrew much more than it spent, this might indeed
     # go legitimately unnoticed.
-    COUNT=`jq -er .emergencies_risk_by_amount < test-audit.json`
+    COUNT=`jq -er .emergencies_risk_by_amount < test-audit-coins.json`
     if test x$AMOUNT = xTESTKUDOS:0
     then
         exit_fail "Expected non-zero emergency-by-amount"
@@ -1453,27 +1505,27 @@ run_audit
 
 echo -n "Testing inconsistency detection... "
 
-jq -e .bad_sig_losses[0] < test-audit.json > /dev/null || exit_fail "Bad signature not detected"
+jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad signature not detected"
 
-ROW=`jq -e .bad_sig_losses[0].row < test-audit.json`
+ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
 if test $ROW != ${SERIAL}
 then
     exit_fail "Row wrong, got $ROW"
 fi
 
-LOSS=`jq -r .bad_sig_losses[0].loss < test-audit.json`
+LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
 if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong deposit bad signature loss, got $LOSS"
 fi
 
-OP=`jq -r .bad_sig_losses[0].operation < test-audit.json`
+OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
 if test $OP != "deposit"
 then
     exit_fail "Wrong operation, got $OP"
 fi
 
-LOSS=`jq -r .total_bad_sig_loss < test-audit.json`
+LOSS=`jq -r .total_bad_sig_loss < test-audit-coins.json`
 if test $LOSS != "TESTKUDOS:3"
 then
     exit_fail "Wrong total bad sig loss, got $LOSS"
@@ -1509,13 +1561,13 @@ then
 
     echo -n "Testing inconsistency detection... "
 
-    AMOUNT=`jq -r .wire_format_inconsistencies[0].amount < test-wire-audit.json`
+    AMOUNT=`jq -r .wire_format_inconsistencies[0].amount < test-audit-wire.json`
     if test "${AMOUNT}" != "TESTKUDOS:1"
     then
         exit_fail "Amount wrong, got ${AMOUNT}"
     fi
 
-    AMOUNT=`jq -r .total_wire_format_amount < test-wire-audit.json`
+    AMOUNT=`jq -r .total_wire_format_amount < test-audit-wire.json`
     if test "${AMOUNT}" != "TESTKUDOS:1"
     then
         exit_fail "Wrong total wire format amount, got $AMOUNT"

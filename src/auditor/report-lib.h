@@ -87,7 +87,7 @@ extern struct GNUNET_TIME_Absolute start_time;
  * @return human-readable string representing the time
  */
 json_t *
-TALER_ARL_TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at);
+TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at);
 
 
 /**

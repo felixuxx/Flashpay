@@ -1441,24 +1441,26 @@ run (void *cls,
   report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:o, s:o, s:o, s:I, s:I,"
-                      " s:o, s:o }",
+                      " s:o, s:o, s:o }",
                       /* blocks #1 */
                       "wire_out_inconsistencies",
                       report_wire_out_inconsistencies,
+                      /* Tested in test-auditor.sh #23 */
                       "total_wire_out_delta_plus",
                       TALER_JSON_from_amount (
                         &total_wire_out_delta_plus),
+                      /* Tested in test-auditor.sh #23 */
                       "total_wire_out_delta_minus",
                       TALER_JSON_from_amount (
                         &total_wire_out_delta_minus),
-                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                      /* FIXME: Tested in test-auditor.sh #?? */
                       "bad_sig_losses",
                       report_bad_sig_losses,
-                      /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                      /* FIXME: Tested in test-auditor.sh #?? */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
                       /* block #2 */
-                      /* Tested in test-auditor.sh #14/#15 */
+                      /* Tested in test-auditor.sh #15 */
                       "row_inconsistencies",
                       report_row_inconsistencies,
                       "coin_inconsistencies",
@@ -1490,7 +1492,9 @@ run (void *cls,
                         start_time),
                       "auditor_end_time",
                       TALER_ARL_json_from_time_abs (
-                        GNUNET_TIME_absolute_get ())
+                        GNUNET_TIME_absolute_get ()),
+                      "wire_fee_time_inconsistencies",
+                      report_fee_time_inconsistencies
                       );
   GNUNET_break (NULL != report);
   TALER_ARL_done (report);

@@ -303,14 +303,20 @@ run (void *cls,
   {
     json_t *report;
 
-    report = json_pack ("{s:o, s:o, s:I}",
+    report = json_pack ("{s:o, s:I, s:o, s:o, s:o}",
                         "deposit_confirmation_inconsistencies",
                         report_deposit_confirmation_inconsistencies,
                         "missing_deposit_confirmation_count",
                         (json_int_t) number_missed_deposit_confirmations,
                         "missing_deposit_confirmation_total",
                         TALER_JSON_from_amount (
-                          &total_missed_deposit_confirmations)
+                          &total_missed_deposit_confirmations),
+                        "auditor_start_time",
+                        TALER_ARL_json_from_time_abs (
+                          start_time),
+                        "auditor_end_time",
+                        TALER_ARL_json_from_time_abs (
+                          GNUNET_TIME_absolute_get ())
                         );
     GNUNET_break (NULL != report);
     TALER_ARL_done (report);

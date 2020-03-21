@@ -1449,19 +1449,19 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Launching auditor\n");
   if (GNUNET_OK !=
-      TALER_ARL_init (TALER_ARL_cfg))
+      TALER_ARL_init (c))
   {
     global_ret = 1;
     return;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TALER_ARL_cfg,
-                                           "exchangTALER_ARL_edb",
+                                           "exchangedb",
                                            "IDLE_RESERVE_EXPIRATION_TIME",
                                            &idle_reserve_expiration_time))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchangTALER_ARL_edb",
+                               "exchangedb",
                                "IDLE_RESERVE_EXPIRATION_TIME");
     global_ret = 1;
     return;
@@ -1564,14 +1564,14 @@ run (void *cls,
                         "total_balance_reserve_not_closed",
                         TALER_JSON_from_amount (
                           &total_balance_reserve_not_closed),
-                        /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                        /* Tested in test-auditor.sh #7 */
                         "bad_sig_losses",
                         report_bad_sig_losses,
                         /* blocks #3 */
-                        /* Tested in test-auditor.sh #4/#5/#6/#7/#13 */
+                        /* Tested in test-auditor.sh #7 */
                         "total_bad_sig_loss",
                         TALER_JSON_from_amount (&total_bad_sig_loss),
-                        /* Tested in test-auditor.sh #14/#15 */
+                        /* FIXME: Tested in test-auditor.sh #?? */
                         "row_inconsistencies",
                         report_row_inconsistencies,
                         /* Tested in test-auditor.sh #23 */
