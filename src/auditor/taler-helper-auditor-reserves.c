@@ -489,7 +489,6 @@ handle_reserve_out (void *cls,
                     const struct TALER_Amount *amount_with_fee)
 {
   struct ReserveContext *rc = cls;
-  struct TALER_WithdrawRequestPS wsrd;
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
   const struct TALER_DenominationKeyValidityPS *issue;
@@ -497,12 +496,19 @@ handle_reserve_out (void *cls,
   struct GNUNET_TIME_Absolute valid_start;
   struct GNUNET_TIME_Absolute expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_WithdrawRequestPS wsrd = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW),
+    .purpose.size = htonl (sizeof (wsrd)),
+    .reserve_pub = *reserve_pub,
+    .h_coin_envelope = *h_blind_ev
+  };
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_out_serial_id);
   ppr.last_reserve_out_serial_id = rowid + 1;
 
-  /* lookup denomination pub data (make sure denom_pub is valid, establish fees) */
+  /* lookup denomination pub data (make sure denom_pub is valid, establish fees);
+     initializes wsrd.h_denomination_pub! */
   qs = TALER_ARL_get_denomination_info (denom_pub,
                                         &issue,
                                         &wsrd.h_denomination_pub);
@@ -547,14 +553,10 @@ handle_reserve_out (void *cls,
                                    &wsrd.h_denomination_pub)));
   }
 
-  /* check reserve_sig */
-  wsrd.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
-  wsrd.purpose.size = htonl (sizeof (wsrd));
-  wsrd.reserve_pub = *reserve_pub;
+  /* check reserve_sig (first: setup remaining members of wsrd) */
+  wsrd.withdraw_fee = issue->fee_withdraw;
   TALER_amount_hton (&wsrd.amount_with_fee,
                      amount_with_fee);
-  wsrd.withdraw_fee = issue->fee_withdraw;
-  wsrd.h_coin_envelope = *h_blind_ev;
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
                                   &wsrd.purpose,
@@ -569,11 +571,11 @@ handle_reserve_out (void *cls,
                                    amount_with_fee),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    reserve_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount_with_fee));
-    return GNUNET_OK;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_bad_sig_loss,
+                                     &total_bad_sig_loss,
+                                     amount_with_fee));
+    return GNUNET_OK;   /* exit here, we cannot add this to the legitimate withdrawals */
   }
 
   GNUNET_CRYPTO_hash (reserve_pub,
@@ -626,7 +628,6 @@ handle_reserve_out (void *cls,
                  TALER_amount_add (&rs->total_fee,
                                    &rs->total_fee,
                                    &withdraw_fee));
-
   return GNUNET_OK;
 }
 
@@ -663,7 +664,6 @@ handle_recoup_by_reserve (
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
   struct GNUNET_TIME_Absolute expiry;
-  struct TALER_RecoupRequestPS pr;
   struct TALER_MasterSignatureP msig;
   uint64_t rev_rowid;
   enum GNUNET_DB_QueryStatus qs;
@@ -675,38 +675,43 @@ handle_recoup_by_reserve (
   ppr.last_reserve_recoup_serial_id = rowid + 1;
   /* We know that denom_pub matches denom_pub_hash because this
      is how the SQL statement joined the tables. */
-  pr.h_denom_pub = coin->denom_pub_hash;
-  pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP);
-  pr.purpose.size = htonl (sizeof (pr));
-  pr.coin_pub = coin->coin_pub;
-  pr.coin_blind = *coin_blind;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                  &pr.purpose,
-                                  &coin_sig->eddsa_signature,
-                                  &coin->coin_pub.eddsa_pub))
   {
-    TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", "recoup",
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (amount),
-                                 "key_pub", GNUNET_JSON_from_data_auto (
-                                   &coin->coin_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount));
+    struct TALER_RecoupRequestPS pr = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+      .purpose.size = htonl (sizeof (pr)),
+      .h_denom_pub = coin->denom_pub_hash,
+      .coin_pub = coin->coin_pub,
+      .coin_blind = *coin_blind
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
+                                    &pr.purpose,
+                                    &coin_sig->eddsa_signature,
+                                    &coin->coin_pub.eddsa_pub))
+    {
+      TALER_ARL_report (report_bad_sig_losses,
+                        json_pack ("{s:s, s:I, s:o, s:o}",
+                                   "operation", "recoup",
+                                   "row", (json_int_t) rowid,
+                                   "loss", TALER_JSON_from_amount (amount),
+                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                     &coin->coin_pub)));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_bad_sig_loss,
+                                       &total_bad_sig_loss,
+                                       amount));
+    }
   }
 
   /* check that the coin was eligible for recoup!*/
   rev = GNUNET_CONTAINER_multihashmap_get (rc->revoked,
-                                           &pr.h_denom_pub);
+                                           &coin->denom_pub_hash);
   if (NULL == rev)
   {
     qs = TALER_ARL_edb->get_denomination_revocation (TALER_ARL_edb->cls,
                                                      TALER_ARL_esession,
-                                                     &pr.h_denom_pub,
+                                                     &coin->denom_pub_hash,
                                                      &msig,
                                                      &rev_rowid);
     if (0 > qs)
@@ -728,12 +733,13 @@ handle_recoup_by_reserve (
     else
     {
       /* verify msig */
-      struct TALER_MasterDenominationKeyRevocationPS kr;
+      struct TALER_MasterDenominationKeyRevocationPS kr = {
+        .purpose.purpose = htonl (
+          TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
+        .purpose.size = htonl (sizeof (kr)),
+        .h_denom_pub = coin->denom_pub_hash
+      };
 
-      kr.purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
-      kr.purpose.size = htonl (sizeof (kr));
-      kr.h_denom_pub = pr.h_denom_pub;
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (
             TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
@@ -749,7 +755,7 @@ handle_recoup_by_reserve (
       }
       GNUNET_assert (GNUNET_OK ==
                      GNUNET_CONTAINER_multihashmap_put (rc->revoked,
-                                                        &pr.h_denom_pub,
+                                                        &coin->denom_pub_hash,
                                                         (void *) rev,
                                                         GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
     }
@@ -1006,44 +1012,16 @@ verify_reserve_balance (void *cls,
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_Amount balance;
   struct TALER_Amount nbalance;
-  struct TALER_Amount cfee;
   enum GNUNET_DB_QueryStatus qs;
   int ret;
 
   ret = GNUNET_OK;
-  reserve.pub = rs->reserve_pub;
-  qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
-                                    TALER_ARL_esession,
-                                    &reserve);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-  {
-    char *diag;
-
-    GNUNET_asprintf (&diag,
-                     "Failed to find summary for reserve `%s'\n",
-                     TALER_B2S (&rs->reserve_pub));
-    report_row_inconsistency ("reserve-summary",
-                              UINT64_MAX,
-                              diag);
-    GNUNET_free (diag);
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      GNUNET_break (0);
-      qs = GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    rc->qs = qs;
-    return GNUNET_OK;
-  }
-
-  if (GNUNET_OK !=
-      TALER_amount_add (&balance,
-                        &rs->total_in,
-                        &rs->a_balance))
-  {
-    GNUNET_break (0);
-    goto cleanup;
-  }
-
+  /* Check our reserve summary balance calculation shows that
+     the reserve balance is acceptable (i.e. non-negative) */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&balance,
+                                   &rs->total_in,
+                                   &rs->a_balance));
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&nbalance,
                              &balance,
@@ -1051,79 +1029,117 @@ verify_reserve_balance (void *cls,
   {
     struct TALER_Amount loss;
 
-    GNUNET_break (GNUNET_SYSERR !=
-                  TALER_amount_subtract (&loss,
-                                         &rs->total_out,
-                                         &balance));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_balance_insufficient_loss,
-                                    &total_balance_insufficient_loss,
-                                    &loss));
-    TALER_ARL_report (
-      report_reserve_balance_insufficient_inconsistencies,
-      json_pack ("{s:o, s:o}",
-                 "reserve_pub",
-                 GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                 "loss",
-                 TALER_JSON_from_amount (&loss)));
-    goto cleanup;
+    GNUNET_assert (GNUNET_SYSERR !=
+                   TALER_amount_subtract (&loss,
+                                          &rs->total_out,
+                                          &balance));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_balance_insufficient_loss,
+                                     &total_balance_insufficient_loss,
+                                     &loss));
+    TALER_ARL_report (report_reserve_balance_insufficient_inconsistencies,
+                      json_pack ("{s:o, s:o}",
+                                 "reserve_pub",
+                                 GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                                 "loss",
+                                 TALER_JSON_from_amount (&loss)));
+    /* Continue with a reserve balance of zero */
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (balance.currency,
+                                          &nbalance));
   }
-  if (0 != TALER_amount_cmp (&nbalance,
-                             &reserve.balance))
+
+  /* Now check OUR balance calculation vs. the one the exchange has
+     in its database */
+  reserve.pub = rs->reserve_pub;
+  qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
+                                    TALER_ARL_esession,
+                                    &reserve);
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
-    struct TALER_Amount delta;
+    /* If the exchange doesn't have this reserve in the summary, it
+       is like the exchange 'lost' that amount from its records,
+       making an illegitimate gain over the amount it dropped.
+       We don't add the amount to some total simply because it is
+       not an actualized gain and could be trivially corrected by
+       restoring the summary. *///
+    TALER_ARL_report (report_reserve_balance_insufficient_inconsistencies,
+                      json_pack ("{s:o, s:o}",
+                                 "reserve_pub",
+                                 GNUNET_JSON_from_data_auto (&rs->reserve_pub),
+                                 "gain",
+                                 TALER_JSON_from_amount (&nbalance)));
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      GNUNET_break (0);
+      qs = GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    rc->qs = qs;
+  }
+  else
+  {
+    /* Check that exchange's balance matches our expected balance for the reserve */
+    if (0 != TALER_amount_cmp (&nbalance,
+                               &reserve.balance))
+    {
+      struct TALER_Amount delta;
 
-    if (0 < TALER_amount_cmp (&nbalance,
-                              &reserve.balance))
-    {
-      /* balance > reserve.balance */
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_subtract (&delta,
-                                            &nbalance,
-                                            &reserve.balance));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_balance_summary_delta_plus,
-                                       &total_balance_summary_delta_plus,
-                                       &delta));
+      if (0 < TALER_amount_cmp (&nbalance,
+                                &reserve.balance))
+      {
+        /* balance > reserve.balance */
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_subtract (&delta,
+                                              &nbalance,
+                                              &reserve.balance));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&total_balance_summary_delta_plus,
+                                         &total_balance_summary_delta_plus,
+                                         &delta));
+      }
+      else
+      {
+        /* balance < reserve.balance */
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_subtract (&delta,
+                                              &reserve.balance,
+                                              &nbalance));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&total_balance_summary_delta_minus,
+                                         &total_balance_summary_delta_minus,
+                                         &delta));
+      }
+      TALER_ARL_report (report_reserve_balance_summary_wrong_inconsistencies,
+                        json_pack ("{s:o, s:o, s:o}",
+                                   "reserve_pub",
+                                   GNUNET_JSON_from_data_auto (
+                                     &rs->reserve_pub),
+                                   "exchange",
+                                   TALER_JSON_from_amount (&reserve.balance),
+                                   "auditor",
+                                   TALER_JSON_from_amount (&nbalance)));
     }
-    else
-    {
-      /* balance < reserve.balance */
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_subtract (&delta,
-                                            &reserve.balance,
-                                            &nbalance));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_balance_summary_delta_minus,
-                                       &total_balance_summary_delta_minus,
-                                       &delta));
-    }
-    TALER_ARL_report (
-      report_reserve_balance_summary_wrong_inconsistencies,
-      json_pack ("{s:o, s:o, s:o}",
-                 "reserve_pub",
-                 GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                 "exchange",
-                 TALER_JSON_from_amount (&reserve.balance),
-                 "auditor",
-                 TALER_JSON_from_amount (&nbalance)));
-    goto cleanup;
   }
 
-  /* Check that reserve is being closed if it is past its expiration date */
-
+  /* Check that reserve is being closed if it is past its expiration date
+     (and the closing fee would not exceed the remaining balance) */
   if (CLOSING_GRACE_PERIOD.rel_value_us <
       GNUNET_TIME_absolute_get_duration (rs->a_expiration_date).rel_value_us)
   {
+    /* Reserve is expired */
+    struct TALER_Amount cfee;
+
     if ( (NULL != rs->sender_account) &&
          (GNUNET_OK ==
           get_closing_fee (rs->sender_account,
                            rs->a_expiration_date,
                            &cfee)) )
     {
+      /* We got the closing fee */
       if (1 == TALER_amount_cmp (&nbalance,
                                  &cfee))
       {
+        /* remaining balance (according to us) exceeds closing fee */
         GNUNET_assert (GNUNET_OK ==
                        TALER_amount_add (&total_balance_reserve_not_closed,
                                          &total_balance_reserve_not_closed,
@@ -1142,6 +1158,7 @@ verify_reserve_balance (void *cls,
     }
     else
     {
+      /* We failed to determine the closing fee, complain! */
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_add (&total_balance_reserve_not_closed,
                                        &total_balance_reserve_not_closed,
@@ -1166,31 +1183,44 @@ verify_reserve_balance (void *cls,
               "Reserve reserve `%s' made %s in withdraw fees\n",
               TALER_B2S (&rs->reserve_pub),
               TALER_amount2s (&rs->total_fee));
-  if (GNUNET_YES !=
-      TALER_amount_add (&rs->a_withdraw_fee_balance,
-                        &rs->a_withdraw_fee_balance,
-                        &rs->total_fee))
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&rs->a_withdraw_fee_balance,
+                                   &rs->a_withdraw_fee_balance,
+                                   &rs->total_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&total_escrow_balance,
+                                   &total_escrow_balance,
+                                   &rs->total_in));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_add (&total_withdraw_fee_income,
+                                   &total_withdraw_fee_income,
+                                   &rs->total_fee));
   {
-    GNUNET_break (0);
-    ret = GNUNET_SYSERR;
-    goto cleanup;
-  }
-  if ( (GNUNET_YES !=
-        TALER_amount_add (&total_escrow_balance,
-                          &total_escrow_balance,
-                          &rs->total_in)) ||
-       (GNUNET_SYSERR ==
-        TALER_amount_subtract (&total_escrow_balance,
+    struct TALER_Amount r;
+
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&r,
                                &total_escrow_balance,
-                               &rs->total_out)) ||
-       (GNUNET_YES !=
-        TALER_amount_add (&total_withdraw_fee_income,
-                          &total_withdraw_fee_income,
-                          &rs->total_fee)) )
-  {
-    GNUNET_break (0);
-    ret = GNUNET_SYSERR;
-    goto cleanup;
+                               &rs->total_out))
+    {
+      /* We could not reduce our total balance, i.e. exchange allowed IN TOTAL (!)
+         to be withdrawn more than it was IN TOTAL ever given (exchange balance
+         went negative!).  Woopsie. Calculate how badly it went and log. */
+      report_amount_arithmetic_inconsistency ("global escrow balance",
+                                              UINT64_MAX,
+                                              &total_escrow_balance, /* what we had */
+                                              &rs->total_out, /* what we needed */
+                                              0 /* specific profit/loss does not apply to the total summary */);
+      /* We unexpectedly went negative, so a sane value to continue from
+         would be zero. */
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_get_zero (TALER_ARL_currency,
+                                            &total_escrow_balance));
+    }
+    else
+    {
+      total_escrow_balance = r;
+    }
   }
 
   if ( (0ULL == balance.value) &&
@@ -1212,7 +1242,6 @@ verify_reserve_balance (void *cls,
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
         ret = GNUNET_SYSERR;
         rc->qs = qs;
-        goto cleanup;
       }
     }
     else
@@ -1222,39 +1251,39 @@ verify_reserve_balance (void *cls,
                   TALER_B2S (&rs->reserve_pub),
                   TALER_amount2s (&nbalance));
     }
-    ret = GNUNET_OK;
-    goto cleanup;
   }
-
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Remembering final balance of reserve `%s' as %s\n",
-              TALER_B2S (&rs->reserve_pub),
-              TALER_amount2s (&nbalance));
-
-  if (rs->had_ri)
-    qs = TALER_ARL_adb->update_reserve_info (TALER_ARL_adb->cls,
-                                             TALER_ARL_asession,
-                                             &rs->reserve_pub,
-                                             &TALER_ARL_master_pub,
-                                             &nbalance,
-                                             &rs->a_withdraw_fee_balance,
-                                             rs->a_expiration_date);
   else
-    qs = TALER_ARL_adb->insert_reserve_info (TALER_ARL_adb->cls,
-                                             TALER_ARL_asession,
-                                             &rs->reserve_pub,
-                                             &TALER_ARL_master_pub,
-                                             &nbalance,
-                                             &rs->a_withdraw_fee_balance,
-                                             rs->a_expiration_date,
-                                             rs->sender_account);
-  if (0 >= qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    ret = GNUNET_SYSERR;
-    rc->qs = qs;
+    /* balance is non-zero, persist for future audits */
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Remembering final balance of reserve `%s' as %s\n",
+                TALER_B2S (&rs->reserve_pub),
+                TALER_amount2s (&nbalance));
+    if (rs->had_ri)
+      qs = TALER_ARL_adb->update_reserve_info (TALER_ARL_adb->cls,
+                                               TALER_ARL_asession,
+                                               &rs->reserve_pub,
+                                               &TALER_ARL_master_pub,
+                                               &nbalance,
+                                               &rs->a_withdraw_fee_balance,
+                                               rs->a_expiration_date);
+    else
+      qs = TALER_ARL_adb->insert_reserve_info (TALER_ARL_adb->cls,
+                                               TALER_ARL_asession,
+                                               &rs->reserve_pub,
+                                               &TALER_ARL_master_pub,
+                                               &nbalance,
+                                               &rs->a_withdraw_fee_balance,
+                                               rs->a_expiration_date,
+                                               rs->sender_account);
+    if (0 >= qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+      ret = GNUNET_SYSERR;
+      rc->qs = qs;
+    }
   }
-cleanup:
+
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CONTAINER_multihashmap_remove (rc->reserves,
                                                        key,
@@ -1322,46 +1351,45 @@ analyze_reserves (void *cls)
   rc.revoked = GNUNET_CONTAINER_multihashmap_create (4,
                                                      GNUNET_NO);
 
-  qs = TALER_ARL_edb->select_reserves_in_above_serial_id (TALER_ARL_edb->cls,
-                                                          TALER_ARL_esession,
-                                                          ppr.
-                                                          last_reserve_in_serial_id,
-                                                          &handle_reserve_in,
-                                                          &rc);
+  qs = TALER_ARL_edb->select_reserves_in_above_serial_id (
+    TALER_ARL_edb->cls,
+    TALER_ARL_esession,
+    ppr.last_reserve_in_serial_id,
+    &handle_reserve_in,
+    &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  qs = TALER_ARL_edb->select_withdrawals_above_serial_id (TALER_ARL_edb->cls,
-                                                          TALER_ARL_esession,
-                                                          ppr.
-                                                          last_reserve_out_serial_id,
-                                                          &handle_reserve_out,
-                                                          &rc);
+  qs = TALER_ARL_edb->select_withdrawals_above_serial_id (
+    TALER_ARL_edb->cls,
+    TALER_ARL_esession,
+    ppr.last_reserve_out_serial_id,
+    &handle_reserve_out,
+    &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  qs = TALER_ARL_edb->select_recoup_above_serial_id (TALER_ARL_edb->cls,
-                                                     TALER_ARL_esession,
-                                                     ppr.
-                                                     last_reserve_recoup_serial_id,
-                                                     &handle_recoup_by_reserve,
-                                                     &rc);
+  qs = TALER_ARL_edb->select_recoup_above_serial_id (
+    TALER_ARL_edb->cls,
+    TALER_ARL_esession,
+    ppr.last_reserve_recoup_serial_id,
+    &handle_recoup_by_reserve,
+    &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (TALER_ARL_edb->cls,
-                                                             TALER_ARL_esession,
-                                                             ppr.
-                                                             last_reserve_close_serial_id,
-                                                             &
-                                                             handle_reserve_closed,
-                                                             &rc);
+  qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
+    TALER_ARL_edb->cls,
+    TALER_ARL_esession,
+    ppr.last_reserve_close_serial_id,
+    &handle_reserve_closed,
+    &rc);
   if (qs < 0)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
