@@ -706,24 +706,21 @@ commit (enum GNUNET_DB_QueryStatus qs)
        wa = wa->next)
   {
     GNUNET_assert (0 ==
-                   json_array_append_new (report_account_progress,
-                                          json_pack (
-                                            "{s:s, s:I, s:I, s:I, s:I}",
-                                            "account",
-                                            wa->section_name,
-                                            "start_reserve_in",
-                                            (json_int_t) wa->start_pp.
-                                            last_reserve_in_serial_id,
-                                            "end_reserve_in",
-                                            (json_int_t) wa->pp.
-                                            last_reserve_in_serial_id,
-                                            "start_wire_out",
-                                            (json_int_t) wa->start_pp.
-                                            last_wire_out_serial_id,
-                                            "end_wire_out",
-                                            (json_int_t) wa->pp.
-                                            last_wire_out_serial_id
-                                            ))
+                   json_array_append_new (
+                     report_account_progress,
+                     json_pack (
+                       "{s:s, s:I, s:I, s:I, s:I}",
+                       "account",
+                       wa->section_name,
+                       "start_reserve_in",
+                       (json_int_t) wa->start_pp.last_reserve_in_serial_id,
+                       "end_reserve_in",
+                       (json_int_t) wa->pp.last_reserve_in_serial_id,
+                       "start_wire_out",
+                       (json_int_t) wa->start_pp.last_wire_out_serial_id,
+                       "end_wire_out",
+                       (json_int_t) wa->pp.last_wire_out_serial_id
+                       ))
                    );
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == wa->qsx)
       qs = TALER_ARL_adb->update_wire_auditor_account_progress (
@@ -1139,7 +1136,7 @@ struct CheckMatchContext
 /**
  * Check if any of the reserve closures match the given wire transfer.
  *
- * @param cls a `struct CheckMatchContext`
+ * @param[in,out] cls a `struct CheckMatchContext`
  * @param key key of @a value in #reserve_closures
  * @param value a `struct ReserveClosure`
  */
@@ -1179,7 +1176,7 @@ check_rc_matches (void *cls,
  *
  * @param cls a `struct WireAccount`
  * @param key unused key
- * @param value the `struct ReserveOutInfo` to TALER_ARL_report
+ * @param value the `struct ReserveOutInfo` to report
  * @return #GNUNET_OK
  */
 static int
@@ -1461,13 +1458,11 @@ conclude_credit_history (void)
 static int
 reserve_in_cb (void *cls,
                uint64_t rowid,
-               const struct
-               TALER_ReservePublicKeyP *reserve_pub,
+               const struct TALER_ReservePublicKeyP *reserve_pub,
                const struct TALER_Amount *credit,
                const char *sender_account_details,
                uint64_t wire_reference,
-               struct GNUNET_TIME_Absolute
-               execution_date)
+               struct GNUNET_TIME_Absolute execution_date)
 {
   struct WireAccount *wa = cls;
   struct ReserveInInfo *rii;
@@ -2115,13 +2110,13 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_row_minor_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_wire_format_inconsistencies =
-                    json_array ()));
+                 (report_wire_format_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
                  (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_missattribution_in_inconsistencies =
-                    json_array ()));
+                 (report_missattribution_in_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
                  (report_lags = json_array ()));
   GNUNET_assert (NULL !=
