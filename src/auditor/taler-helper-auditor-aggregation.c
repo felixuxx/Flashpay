@@ -494,6 +494,7 @@ check_transaction_history_for_deposit (
       {
         struct TALER_Amount fee_expected;
 
+        /* Fee according to denomination data of auditor */
         TALER_amount_ntoh (&fee_expected,
                            &issue->fee_deposit);
         if (0 !=
@@ -520,10 +521,10 @@ check_transaction_history_for_deposit (
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
+      /* Check that the fees given in the transaction list and in dki match */
       {
         struct TALER_Amount fee_expected;
 
-        /* Check that the fees given in the transaction list and in dki match */
         TALER_amount_ntoh (&fee_expected,
                            &issue->fee_refresh);
         if (0 !=
@@ -576,12 +577,13 @@ check_transaction_history_for_deposit (
           GNUNET_break (0);
           return GNUNET_SYSERR;
         }
+        /* If there is a refund, we give back the deposit fee */
         refund_deposit_fee = GNUNET_YES;
       }
+      /* Check that the fees given in the transaction list and in dki match */
       {
         struct TALER_Amount fee_expected;
 
-        /* Check that the fees given in the transaction list and in dki match */
         TALER_amount_ntoh (&fee_expected,
                            &issue->fee_refund);
         if (0 !=
@@ -598,9 +600,10 @@ check_transaction_history_for_deposit (
       }
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
-      /* We count recoups of the coin as expenditures, as it
-       equivalently decreases the remaining value of the recouped coin. */
       amount_with_fee = &tl->details.old_coin_recoup->value;
+      /* We count recoups of refreshed coins like refunds for the dirty old
+         coin, as they equivalently _increase_ the remaining value on the
+         _old_ coin */
       if (GNUNET_OK !=
           TALER_amount_add (&refunds,
                             &refunds,
@@ -611,6 +614,8 @@ check_transaction_history_for_deposit (
       }
       break;
     case TALER_EXCHANGEDB_TT_RECOUP:
+      /* We count recoups of the coin as expenditures, as it
+         equivalently decreases the remaining value of the recouped coin. */
       amount_with_fee = &tl->details.recoup->value;
       if (GNUNET_OK !=
           TALER_amount_add (&expenditures,
@@ -622,6 +627,8 @@ check_transaction_history_for_deposit (
       }
       break;
     case TALER_EXCHANGEDB_TT_RECOUP_REFRESH:
+      /* We count recoups of the coin as expenditures, as it
+         equivalently decreases the remaining value of the recouped coin. */
       amount_with_fee = &tl->details.recoup_refresh->value;
       if (GNUNET_OK !=
           TALER_amount_add (&expenditures,
@@ -636,8 +643,53 @@ check_transaction_history_for_deposit (
   } /* for 'tl' */
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Deposits without fees are %s\n",
+              "Deposits for this aggregation (after fees) are %s\n",
               TALER_amount2s (merchant_gain));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Aggregation loss due to refunds is %s\n",
+              TALER_amount2s (&merchant_loss));
+  *deposit_gain = *merchant_gain;
+  if ( (GNUNET_YES == refund_deposit_fee) &&
+       (NULL != deposit_fee) )
+  {
+    /* We had a /deposit operation AND a /refund operation,
+       and should thus not charge the merchant the /deposit fee */
+    if (GNUNET_OK !=
+        TALER_amount_add (merchant_gain,
+                          merchant_gain,
+                          deposit_fee))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  {
+    struct TALER_Amount final_gain;
+
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&final_gain,
+                               merchant_gain,
+                               &merchant_loss))
+    {
+      /* refunds above deposits? Bad! */
+      report_coin_arithmetic_inconsistency ("refund (merchant)",
+                                            coin_pub,
+                                            merchant_gain,
+                                            &merchant_loss,
+                                            1);
+      /* For the overall aggregation, we should not count this
+         as a NEGATIVE contribution as that is not allowed; so
+         let's count it as zero as that's the best we can do. */
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_get_zero (TALER_ARL_currency,
+                                            merchant_gain));
+    }
+    else
+    {
+      *merchant_gain = final_gain;
+    }
+  }
+
 
   /* Calculate total balance change, i.e. expenditures (recoup, deposit, refresh)
      minus refunds (refunds, recoup-to-old) */
@@ -655,12 +707,12 @@ check_transaction_history_for_deposit (
                                           &expenditures,
                                           &refunds,
                                           1);
-    return GNUNET_SYSERR;
   }
-
+  else
   {
-    struct TALER_Amount value;
     /* Now check that 'spent' is less or equal than the total coin value */
+    struct TALER_Amount value;
+
     TALER_amount_ntoh (&value,
                        &issue->value);
     if (1 == TALER_amount_cmp (&spent,
@@ -672,44 +724,10 @@ check_transaction_history_for_deposit (
                                             &spent,
                                             &value,
                                             -1);
-      return GNUNET_SYSERR;
     }
   }
 
-  /* Finally, update @a merchant_gain by subtracting what he "lost"
-     from refunds */
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Merchant 'loss' due to refunds is %s\n",
-              TALER_amount2s (&merchant_loss));
-  *deposit_gain = *merchant_gain;
-  if ( (GNUNET_YES == refund_deposit_fee) &&
-       (NULL != deposit_fee) )
-  {
-    /* We had a /deposit operation AND a /refund operation,
-       and should thus not charge the merchant the /deposit fee */
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (merchant_gain,
-                                     merchant_gain,
-                                     deposit_fee));
-  }
-  {
-    struct TALER_Amount final_gain;
 
-    if (GNUNET_SYSERR ==
-        TALER_amount_subtract (&final_gain,
-                               merchant_gain,
-                               &merchant_loss))
-    {
-      /* refunds above deposits? Bad! */
-      report_coin_arithmetic_inconsistency ("refund (merchant)",
-                                            coin_pub,
-                                            merchant_gain,
-                                            &merchant_loss,
-                                            1);
-      return GNUNET_SYSERR;
-    }
-    *merchant_gain = final_gain;
-  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Final merchant gain after refunds is %s\n",
               TALER_amount2s (deposit_gain));
@@ -726,7 +744,7 @@ check_transaction_history_for_deposit (
  * Function called with the results of the lookup of the
  * transaction data associated with a wire transfer identifier.
  *
- * @param cls a `struct WireCheckContext`
+ * @param[in,out] cls a `struct WireCheckContext`
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
@@ -757,7 +775,6 @@ wire_transfer_information_cb (
   struct WireCheckContext *wcc = cls;
   const struct TALER_DenominationKeyValidityPS *issue;
   struct TALER_Amount computed_value;
-  struct TALER_Amount coin_value_without_fee;
   struct TALER_Amount total_deposit_without_refunds;
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_CoinPublicInfo coin;
@@ -800,13 +817,16 @@ wire_transfer_information_cb (
                                       TALER_ARL_esession,
                                       coin_pub,
                                       &coin);
-  if (qs < 0)
+  if (qs <= 0)
   {
-    GNUNET_break (0); /* this should be a foreign key violation at this point! */
+    /* this should be a foreign key violation at this point! */
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     wcc->qs = qs;
     report_row_inconsistency ("aggregation",
                               rowid,
                               "could not get coin details for coin claimed in aggregation");
+    TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
+                                               tl);
     return;
   }
 
@@ -843,7 +863,6 @@ wire_transfer_information_cb (
     GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("deposit",
                               rowid,
                               "coin denomination signature invalid");
@@ -861,56 +880,55 @@ wire_transfer_information_cb (
                                              issue,
                                              tl,
                                              &computed_value,
-                                             &
-                                             total_deposit_without_refunds))
+                                             &total_deposit_without_refunds))
   {
+    TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
+                                               tl);
     wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    report_row_inconsistency ("coin history",
-                              rowid,
-                              "failed to verify coin history (for deposit)");
     return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Coin contributes %s to aggregate (deposits after fees and refunds)\n",
-              TALER_amount2s (&computed_value));
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&coin_value_without_fee,
-                             coin_value,
-                             deposit_fee))
-  {
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    report_amount_arithmetic_inconsistency (
-      "aggregation (fee structure)",
-      rowid,
-      coin_value,
-      deposit_fee,
-      -1);
-    return;
-  }
-  if (0 !=
-      TALER_amount_cmp (&total_deposit_without_refunds,
-                        &coin_value_without_fee))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Expected coin contribution of %s to aggregate\n",
-                TALER_amount2s (&coin_value_without_fee));
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    report_amount_arithmetic_inconsistency (
-      "aggregation (contribution)",
-      rowid,
-      &coin_value_without_fee,
-      &
-      total_deposit_without_refunds,
-      -1);
   }
   TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                              tl);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Coin contributes %s to aggregate (deposits after fees and refunds)\n",
+              TALER_amount2s (&computed_value));
+  {
+    struct TALER_Amount coin_value_without_fee;
 
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&coin_value_without_fee,
+                               coin_value,
+                               deposit_fee))
+    {
+      wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
+      report_amount_arithmetic_inconsistency (
+        "aggregation (fee structure)",
+        rowid,
+        coin_value,
+        deposit_fee,
+        -1);
+      return;
+    }
+    if (0 !=
+        TALER_amount_cmp (&total_deposit_without_refunds,
+                          &coin_value_without_fee))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Expected coin contribution of %s to aggregate\n",
+                  TALER_amount2s (&coin_value_without_fee));
+      report_amount_arithmetic_inconsistency (
+        "aggregation (contribution)",
+        rowid,
+        &coin_value_without_fee,
+        &
+        total_deposit_without_refunds,
+        -1);
+    }
+  }
   /* Check other details of wire transfer match */
   if (0 != GNUNET_memcmp (h_wire,
                           &wcc->h_wire))
   {
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
                               rowid,
                               "target of outgoing wire transfer do not match hash of wire from deposit");
@@ -919,7 +937,6 @@ wire_transfer_information_cb (
   {
     /* This should be impossible from database constraints */
     GNUNET_break (0);
-    wcc->qs = GNUNET_DB_STATUS_HARD_ERROR;
     report_row_inconsistency ("aggregation",
                               rowid,
                               "date given in aggregate does not match wire transfer date");
@@ -992,15 +1009,16 @@ get_wire_fee (struct AggregationContext *ac,
      easily make this one up, but it means that we have proof that the master
      key was used for inconsistent wire fees if a merchant complains.) */
   {
-    struct TALER_MasterWireFeePS wf;
+    struct TALER_MasterWireFeePS wf = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES),
+      .purpose.size = htonl (sizeof (wf)),
+      .start_date = GNUNET_TIME_absolute_hton (wfi->start_date),
+      .end_date = GNUNET_TIME_absolute_hton (wfi->end_date)
+    };
 
-    wf.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES);
-    wf.purpose.size = htonl (sizeof (wf));
     GNUNET_CRYPTO_hash (method,
                         strlen (method) + 1,
                         &wf.h_wire_method);
-    wf.start_date = GNUNET_TIME_absolute_hton (wfi->start_date);
-    wf.end_date = GNUNET_TIME_absolute_hton (wfi->end_date);
     TALER_amount_hton (&wf.wire_fee,
                        &wfi->wire_fee);
     TALER_amount_hton (&wf.closing_fee,
@@ -1243,7 +1261,7 @@ check_wire_out_cb (void *cls,
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Wire transfer %s is OK\n",
+              "Aggregation unit %s is OK\n",
               TALER_B2S (wtid));
   return GNUNET_OK;
 }
@@ -1302,12 +1320,12 @@ analyze_aggregations (void *cls)
     return qsx;
   }
   ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  qs = TALER_ARL_edb->select_wire_out_above_serial_id (TALER_ARL_edb->cls,
-                                                       TALER_ARL_esession,
-                                                       ppa.
-                                                       last_wire_out_serial_id,
-                                                       &check_wire_out_cb,
-                                                       &ac);
+  qs = TALER_ARL_edb->select_wire_out_above_serial_id (
+    TALER_ARL_edb->cls,
+    TALER_ARL_esession,
+    ppa.last_wire_out_serial_id,
+    &check_wire_out_cb,
+    &ac);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1331,34 +1349,34 @@ analyze_aggregations (void *cls)
     return ac.qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
-    ac.qs = TALER_ARL_adb->insert_wire_fee_summary (TALER_ARL_adb->cls,
-                                                    TALER_ARL_asession,
-                                                    &TALER_ARL_master_pub,
-                                                    &
-                                                    total_aggregation_fee_income);
+    ac.qs = TALER_ARL_adb->insert_wire_fee_summary (
+      TALER_ARL_adb->cls,
+      TALER_ARL_asession,
+      &TALER_ARL_master_pub,
+      &total_aggregation_fee_income);
   else
-    ac.qs = TALER_ARL_adb->update_wire_fee_summary (TALER_ARL_adb->cls,
-                                                    TALER_ARL_asession,
-                                                    &TALER_ARL_master_pub,
-                                                    &
-                                                    total_aggregation_fee_income);
+    ac.qs = TALER_ARL_adb->update_wire_fee_summary (
+      TALER_ARL_adb->cls,
+      TALER_ARL_asession,
+      &TALER_ARL_master_pub,
+      &total_aggregation_fee_income);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == ac.qs);
     return ac.qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
-    qs = TALER_ARL_adb->update_auditor_progress_aggregation (TALER_ARL_adb->cls,
-                                                             TALER_ARL_asession,
-                                                             &
-                                                             TALER_ARL_master_pub,
-                                                             &ppa);
+    qs = TALER_ARL_adb->update_auditor_progress_aggregation (
+      TALER_ARL_adb->cls,
+      TALER_ARL_asession,
+      &TALER_ARL_master_pub,
+      &ppa);
   else
-    qs = TALER_ARL_adb->insert_auditor_progress_aggregation (TALER_ARL_adb->cls,
-                                                             TALER_ARL_asession,
-                                                             &
-                                                             TALER_ARL_master_pub,
-                                                             &ppa);
+    qs = TALER_ARL_adb->insert_auditor_progress_aggregation (
+      TALER_ARL_adb->cls,
+      TALER_ARL_asession,
+      &TALER_ARL_master_pub,
+      &ppa);
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1428,20 +1446,33 @@ run (void *cls,
                  TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_bad_sig_loss));
   GNUNET_assert (NULL !=
-                 (report_row_inconsistencies = json_array ()));
+                 (report_row_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_wire_out_inconsistencies = json_array ()));
+                 (report_wire_out_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_coin_inconsistencies = json_array ()));
+                 (report_coin_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_amount_arithmetic_inconsistencies =
-                    json_array ()));
+                 (report_amount_arithmetic_inconsistencies
+                    = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_bad_sig_losses = json_array ()));
+                 (report_bad_sig_losses
+                    = json_array ()));
   GNUNET_assert (NULL !=
-                 (report_fee_time_inconsistencies = json_array ()));
-  TALER_ARL_setup_sessions_and_run (&analyze_aggregations,
-                                    NULL);
+                 (report_fee_time_inconsistencies
+                    = json_array ()));
+  if (GNUNET_OK !=
+      TALER_ARL_setup_sessions_and_run (&analyze_aggregations,
+                                        NULL))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Audit failed\n");
+    TALER_ARL_done (NULL);
+    global_ret = 1;
+    return;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
   report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"

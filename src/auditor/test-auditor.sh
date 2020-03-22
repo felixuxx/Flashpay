@@ -1460,8 +1460,6 @@ then
 
     jq -e .coin_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Coin inconsistency NOT detected"
 
-    jq -e .row_inconsistencies[0] < test-audit-aggregation.json > /dev/null || exit_fail "Coin history verification failure NOT reported"
-
     # Note: if the wallet withdrew much more than it spent, this might indeed
     # go legitimately unnoticed.
     jq -e .emergencies[0] < test-audit-coins.json > /dev/null || exit_fail "Denomination value emergency NOT reported"
