@@ -1256,10 +1256,8 @@ check_exchange_wire_out (struct WireAccount *wa)
   qs = TALER_ARL_edb->select_wire_out_above_serial_id_by_account (
     TALER_ARL_edb->cls,
     TALER_ARL_esession,
-    wa->
-    section_name,
-    wa->pp.
-    last_wire_out_serial_id,
+    wa->section_name,
+    wa->pp.last_wire_out_serial_id,
     &wire_out_cb,
     wa);
   if (0 > qs)
@@ -1407,9 +1405,9 @@ process_debits (void *cls)
                                       wa);
   if (NULL == wa->dhh)
   {
-    fprintf (stderr,
-             "Failed to obtain bank transaction history for `%s'\n",
-             wa->section_name);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to obtain bank transaction history for `%s'\n",
+                wa->section_name);
     commit (GNUNET_DB_STATUS_HARD_ERROR);
     global_ret = 1;
     GNUNET_SCHEDULER_shutdown ();
@@ -1482,8 +1480,7 @@ reserve_in_cb (void *cls,
               TALER_amount2s (credit),
               TALER_B2S (reserve_pub));
   slen = strlen (sender_account_details) + 1;
-  rii = GNUNET_malloc (sizeof (struct ReserveInInfo)
-                       + slen);
+  rii = GNUNET_malloc (sizeof (struct ReserveInInfo) + slen);
   rii->rowid = rowid;
   rii->details.amount = *credit;
   rii->details.execution_date = execution_date;
@@ -1800,12 +1797,9 @@ process_credits (void *cls)
   qs = TALER_ARL_edb->select_reserves_in_above_serial_id_by_account (
     TALER_ARL_edb->cls,
     TALER_ARL_esession,
-    wa->
-    section_name,
-    wa->pp.
-    last_reserve_in_serial_id,
-    &
-    reserve_in_cb,
+    wa->section_name,
+    wa->pp.last_reserve_in_serial_id,
+    &reserve_in_cb,
     wa);
   if (0 > qs)
   {
@@ -1826,8 +1820,8 @@ process_credits (void *cls)
                                        wa);
   if (NULL == wa->chh)
   {
-    fprintf (stderr,
-             "Failed to obtain bank transaction history\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to obtain bank transaction history\n");
     commit (GNUNET_DB_STATUS_HARD_ERROR);
     global_ret = 1;
     GNUNET_SCHEDULER_shutdown ();
@@ -1925,35 +1919,33 @@ reserve_closed_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 begin_transaction (void)
 {
-  int ret;
-
   TALER_ARL_esession = TALER_ARL_edb->get_session (TALER_ARL_edb->cls);
   if (NULL == TALER_ARL_esession)
   {
-    fprintf (stderr,
-             "Failed to initialize exchange session.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize exchange database session.\n");
     return GNUNET_SYSERR;
   }
   TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
   if (NULL == TALER_ARL_asession)
   {
-    fprintf (stderr,
-             "Failed to initialize auditor session.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize auditor database session.\n");
     return GNUNET_SYSERR;
   }
-  ret = TALER_ARL_adb->start (TALER_ARL_adb->cls,
-                              TALER_ARL_asession);
-  if (GNUNET_OK != ret)
+  if (GNUNET_OK !=
+      TALER_ARL_adb->start (TALER_ARL_adb->cls,
+                            TALER_ARL_asession))
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TALER_ARL_edb->preflight (TALER_ARL_edb->cls,
                             TALER_ARL_esession);
-  ret = TALER_ARL_edb->start (TALER_ARL_edb->cls,
-                              TALER_ARL_esession,
-                              "wire auditor");
-  if (GNUNET_OK != ret)
+  if (GNUNET_OK !=
+      TALER_ARL_edb->start (TALER_ARL_edb->cls,
+                            TALER_ARL_esession,
+                            "wire auditor"))
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -1965,13 +1957,11 @@ begin_transaction (void)
     wa->qsx = TALER_ARL_adb->get_wire_auditor_account_progress (
       TALER_ARL_adb->cls,
       TALER_ARL_asession,
-      &
-      TALER_ARL_master_pub,
+      &TALER_ARL_master_pub,
       wa->section_name,
       &wa->pp,
       &wa->in_wire_off,
-      &wa->
-      out_wire_off);
+      &wa->out_wire_off);
     if (0 > wa->qsx)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == wa->qsx);
@@ -2008,10 +1998,8 @@ begin_transaction (void)
     qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
       TALER_ARL_edb->cls,
       TALER_ARL_esession,
-      pp.
-      last_reserve_close_uuid,
-      &
-      reserve_closed_cb,
+      pp.last_reserve_close_uuid,
+      &reserve_closed_cb,
       NULL);
     if (0 > qs)
     {
@@ -2054,13 +2042,12 @@ process_account_cb (void *cls,
                                  ai->section_name,
                                  &wa->auth))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to access bank account `%s'\n",
+                wa->section_name);
     GNUNET_break (0);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa);
-
-    fprintf (stderr,
-             "Failed to access bank account `%s'\n",
-             wa->section_name);
     global_ret = 1;
     GNUNET_SCHEDULER_shutdown ();
     return;
@@ -2225,4 +2212,4 @@ main (int argc,
 }
 
 
-/* end of taler-wire-auditor.c */
+/* end of taler-helper-auditor-wire.c */
