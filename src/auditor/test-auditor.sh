@@ -1579,6 +1579,12 @@ fi
 
 # **************************************************
 # TODO: Add tests for revocation (payback, accepting of coins despite revocation) HERE! #6053
+#
+# Test detection of fee structure inconsistencies
+# for denomination/wire fees (ADB vs. EDB tables!)
+#
+# Missing test for 'bad signature loss' detected by auditor-aggregation.
+#
 # **************************************************
 
 
