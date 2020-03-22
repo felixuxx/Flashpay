@@ -370,14 +370,14 @@ struct WireCheckContext
  * the amounts for the aggregation table and checks that the total
  * claimed coin value is within the value of the coin's denomination.
  *
- * @param coin_pub public key of the coin (for TALER_ARL_reporting)
+ * @param coin_pub public key of the coin (for reporting)
  * @param h_contract_terms hash of the proposal for which we calculate the amount
  * @param merchant_pub public key of the merchant (who is allowed to issue refunds)
  * @param issue denomination information about the coin
  * @param tl_head head of transaction history to verify
  * @param[out] merchant_gain amount the coin contributes to the wire transfer to the merchant
  * @param[out] deposit_gain amount the coin contributes excluding refunds
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if the transaction must fail (hard error)
  */
 static int
 check_transaction_history_for_deposit (
@@ -392,17 +392,13 @@ check_transaction_history_for_deposit (
   struct TALER_Amount expenditures;
   struct TALER_Amount refunds;
   struct TALER_Amount spent;
-  struct TALER_Amount value;
   struct TALER_Amount merchant_loss;
-  struct TALER_Amount final_gain;
   const struct TALER_Amount *deposit_fee;
   int refund_deposit_fee;
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking transaction history of coin %s\n",
               TALER_B2S (coin_pub));
-
-  GNUNET_assert (NULL != tl_head);
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TALER_ARL_currency,
                                         &expenditures));
@@ -415,10 +411,11 @@ check_transaction_history_for_deposit (
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TALER_ARL_currency,
                                         &merchant_loss));
-  /* Go over transaction history to compute totals; note that we do not
-     know the order, so instead of subtracting we compute positive
-     (deposit, melt) and negative (refund) values separately here,
-     and then subtract the negative from the positive after the loop. */
+  /* Go over transaction history to compute totals; note that we do not bother
+     to reconstruct the order of the events, so instead of subtracting we
+     compute positive (deposit, melt) and negative (refund) values separately
+     here, and then subtract the negative from the positive at the end (after
+     the loops). *///
   refund_deposit_fee = GNUNET_NO;
   deposit_fee = NULL;
   for (const struct TALER_EXCHANGEDB_TransactionList *tl = tl_head;
@@ -426,9 +423,7 @@ check_transaction_history_for_deposit (
        tl = tl->next)
   {
     const struct TALER_Amount *amount_with_fee;
-    const struct TALER_Amount *fee;
-    const struct TALER_AmountNBO *fee_dki;
-    struct TALER_Amount tmp;
+    const struct TALER_Amount *fee_claimed;
 
     switch (tl->type)
     {
@@ -444,7 +439,7 @@ check_transaction_history_for_deposit (
         {
           report_row_inconsistency ("deposits",
                                     tl->serial_id,
-                                    "wire value malformed");
+                                    "wire account given is malformed");
         }
         else if (0 !=
                  GNUNET_memcmp (&hw,
@@ -455,9 +450,8 @@ check_transaction_history_for_deposit (
                                     "h(wire) does not match wire");
         }
       }
-      amount_with_fee = &tl->details.deposit->amount_with_fee;
-      fee = &tl->details.deposit->deposit_fee;
-      fee_dki = &issue->fee_deposit;
+      amount_with_fee = &tl->details.deposit->amount_with_fee; /* according to exchange*/
+      fee_claimed = &tl->details.deposit->deposit_fee; /* Fee according to exchange DB */
       if (GNUNET_OK !=
           TALER_amount_add (&expenditures,
                             &expenditures,
@@ -478,7 +472,7 @@ check_transaction_history_for_deposit (
         if (GNUNET_OK !=
             TALER_amount_subtract (&amount_without_fee,
                                    amount_with_fee,
-                                   fee))
+                                   fee_claimed))
         {
           GNUNET_break (0);
           return GNUNET_SYSERR;
@@ -494,24 +488,30 @@ check_transaction_history_for_deposit (
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "Detected applicable deposit of %s\n",
                     TALER_amount2s (&amount_without_fee));
-        deposit_fee = fee;
+        deposit_fee = fee_claimed; /* We had a deposit, remember the fee, we may need it */
       }
       /* Check that the fees given in the transaction list and in dki match */
-      TALER_amount_ntoh (&tmp,
-                         fee_dki);
-      if (0 !=
-          TALER_amount_cmp (&tmp,
-                            fee))
       {
-        /* Disagreement in fee structure within DB, should be impossible! */
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
+        struct TALER_Amount fee_expected;
+
+        TALER_amount_ntoh (&fee_expected,
+                           &issue->fee_deposit);
+        if (0 !=
+            TALER_amount_cmp (&fee_expected,
+                              fee_claimed))
+        {
+          /* Disagreement in fee structure between auditor and exchange DB! */
+          report_amount_arithmetic_inconsistency ("deposit fee",
+                                                  UINT64_MAX,
+                                                  fee_claimed,
+                                                  &fee_expected,
+                                                  1);
+        }
       }
       break;
     case TALER_EXCHANGEDB_TT_MELT:
       amount_with_fee = &tl->details.melt->amount_with_fee;
-      fee = &tl->details.melt->melt_fee;
-      fee_dki = &issue->fee_refresh;
+      fee_claimed = &tl->details.melt->melt_fee;
       if (GNUNET_OK !=
           TALER_amount_add (&expenditures,
                             &expenditures,
@@ -520,22 +520,28 @@ check_transaction_history_for_deposit (
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
-      /* Check that the fees given in the transaction list and in dki match */
-      TALER_amount_ntoh (&tmp,
-                         fee_dki);
-      if (0 !=
-          TALER_amount_cmp (&tmp,
-                            fee))
       {
-        /* Disagreement in fee structure within DB, should be impossible! */
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
+        struct TALER_Amount fee_expected;
+
+        /* Check that the fees given in the transaction list and in dki match */
+        TALER_amount_ntoh (&fee_expected,
+                           &issue->fee_refresh);
+        if (0 !=
+            TALER_amount_cmp (&fee_expected,
+                              fee_claimed))
+        {
+          /* Disagreement in fee structure between exchange and auditor */
+          report_amount_arithmetic_inconsistency ("melt fee",
+                                                  UINT64_MAX,
+                                                  fee_claimed,
+                                                  &fee_expected,
+                                                  1);
+        }
       }
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
       amount_with_fee = &tl->details.refund->refund_amount;
-      fee = &tl->details.refund->refund_fee;
-      fee_dki = &issue->fee_refund;
+      fee_claimed = &tl->details.refund->refund_fee;
       if (GNUNET_OK !=
           TALER_amount_add (&refunds,
                             &refunds,
@@ -547,7 +553,7 @@ check_transaction_history_for_deposit (
       if (GNUNET_OK !=
           TALER_amount_add (&expenditures,
                             &expenditures,
-                            fee))
+                            fee_claimed))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;
@@ -572,19 +578,28 @@ check_transaction_history_for_deposit (
         }
         refund_deposit_fee = GNUNET_YES;
       }
-      /* Check that the fees given in the transaction list and in dki match */
-      TALER_amount_ntoh (&tmp,
-                         fee_dki);
-      if (0 !=
-          TALER_amount_cmp (&tmp,
-                            fee))
       {
-        /* Disagreement in fee structure within DB, should be impossible! */
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
+        struct TALER_Amount fee_expected;
+
+        /* Check that the fees given in the transaction list and in dki match */
+        TALER_amount_ntoh (&fee_expected,
+                           &issue->fee_refund);
+        if (0 !=
+            TALER_amount_cmp (&fee_expected,
+                              fee_claimed))
+        {
+          /* Disagreement in fee structure between exchange and auditor! */
+          report_amount_arithmetic_inconsistency ("refund fee",
+                                                  UINT64_MAX,
+                                                  fee_claimed,
+                                                  &fee_expected,
+                                                  1);
+        }
       }
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
+      /* We count recoups of the coin as expenditures, as it
+       equivalently decreases the remaining value of the recouped coin. */
       amount_with_fee = &tl->details.old_coin_recoup->value;
       if (GNUNET_OK !=
           TALER_amount_add (&refunds,
@@ -643,19 +658,22 @@ check_transaction_history_for_deposit (
     return GNUNET_SYSERR;
   }
 
-  /* Now check that 'spent' is less or equal than the total coin value */
-  TALER_amount_ntoh (&value,
-                     &issue->value);
-  if (1 == TALER_amount_cmp (&spent,
-                             &value))
   {
-    /* spent > value */
-    report_coin_arithmetic_inconsistency ("spend",
-                                          coin_pub,
-                                          &spent,
-                                          &value,
-                                          -1);
-    return GNUNET_SYSERR;
+    struct TALER_Amount value;
+    /* Now check that 'spent' is less or equal than the total coin value */
+    TALER_amount_ntoh (&value,
+                       &issue->value);
+    if (1 == TALER_amount_cmp (&spent,
+                               &value))
+    {
+      /* spent > value */
+      report_coin_arithmetic_inconsistency ("spend",
+                                            coin_pub,
+                                            &spent,
+                                            &value,
+                                            -1);
+      return GNUNET_SYSERR;
+    }
   }
 
   /* Finally, update @a merchant_gain by subtracting what he "lost"
@@ -674,20 +692,24 @@ check_transaction_history_for_deposit (
                                      merchant_gain,
                                      deposit_fee));
   }
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&final_gain,
-                             merchant_gain,
-                             &merchant_loss))
   {
-    /* refunds above deposits? Bad! */
-    report_coin_arithmetic_inconsistency ("refund (merchant)",
-                                          coin_pub,
-                                          merchant_gain,
-                                          &merchant_loss,
-                                          1);
-    return GNUNET_SYSERR;
+    struct TALER_Amount final_gain;
+
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&final_gain,
+                               merchant_gain,
+                               &merchant_loss))
+    {
+      /* refunds above deposits? Bad! */
+      report_coin_arithmetic_inconsistency ("refund (merchant)",
+                                            coin_pub,
+                                            merchant_gain,
+                                            &merchant_loss,
+                                            1);
+      return GNUNET_SYSERR;
+    }
+    *merchant_gain = final_gain;
   }
-  *merchant_gain = final_gain;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Final merchant gain after refunds is %s\n",
               TALER_amount2s (deposit_gain));
