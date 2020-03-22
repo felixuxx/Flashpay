@@ -366,7 +366,7 @@ transact (TALER_ARL_Analysis analysis,
  * Initialize DB sessions and run the analysis.
  *
  * @param ana analysis to run
- * @param ana_cls closure for @ana
+ * @param ana_cls closure for @a ana
  * @return #GNUNET_OK on success
  */
 int

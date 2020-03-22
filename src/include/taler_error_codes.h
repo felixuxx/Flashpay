@@ -93,7 +93,7 @@ enum TALER_ErrorCode
 
   /**
    * There is no endpoint defined for the URL provided by the client
-   * (returned together with a #MHD_HTTP_NOT FOUND status code).
+   * (returned together with a #MHD_HTTP_NOT_FOUND status code).
    */
   TALER_EC_ENDPOINT_UNKNOWN = 10,
 
@@ -107,7 +107,7 @@ enum TALER_ErrorCode
   /**
    * The number of segments included in the URI does not match the
    * number of segments expected by the endpoint. (returned together
-   * with a #MHD_HTTP_NOT FOUND status code).
+   * with a #MHD_HTTP_NOT_FOUND status code).
    */
   TALER_EC_WRONG_NUMBER_OF_SEGMENTS = 12,
 
@@ -276,7 +276,7 @@ enum TALER_ErrorCode
    * range for Taler amounts.  This is not a client failure, as the coin
    * value and fees come from the exchange's configuration. This
    * response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_AMOUNT_FEE_OVERFLOW = 1102,
 
@@ -285,7 +285,7 @@ enum TALER_ErrorCode
    * that is too big for the numeric range for Taler amounts. This is
    * not a client failure, as the transaction history comes from the
    * exchange's configuration.  This response is provided with HTTP
-   * status code #MHD_HTTP_INTERNAL_ERROR.
+   * status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_AMOUNT_DEPOSITS_OVERFLOW = 1103,
 
@@ -294,7 +294,7 @@ enum TALER_ErrorCode
    * could not find the denomination key. This is not a client failure,
    * as the transaction history comes from the exchange's configuration.
    * This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_HISTORIC_DENOMINATION_KEY_NOT_FOUND = 1104,
 
@@ -303,7 +303,7 @@ enum TALER_ErrorCode
    * big for the numeric range for Taler amounts. This is not a client
    * failure, as the transaction history comes from the exchange's
    * configuration.  This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_AMOUNT_WITHDRAWALS_OVERFLOW = 1105,
 
@@ -312,21 +312,21 @@ enum TALER_ErrorCode
    * have been no wire transfers made.  This is not a client failure, as
    * this is a database consistency issue of the exchange.  This
    * response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_RESERVE_WITHOUT_WIRE_TRANSFER = 1106,
 
   /**
    * The exchange failed to create the signature using the denomination
    * key.  This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_SIGNATURE_FAILED = 1107,
 
   /**
    * The exchange failed to store the withdraw operation in its
    * database.  This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_DB_STORE_ERROR = 1108,
 
@@ -334,7 +334,7 @@ enum TALER_ErrorCode
    * The exchange failed to check against historic withdraw data from
    * database (as part of ensuring the idempotency of the operation).
    * This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_WITHDRAW_DB_FETCH_ERROR = 1109,
 
@@ -580,14 +580,14 @@ enum TALER_ErrorCode
    * The exchange failed to check against historic melt data from
    * database (as part of ensuring the idempotency of the operation).
    * This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_MELT_DB_FETCH_ERROR = 1303,
 
   /**
    * The exchange failed to store session data in the database. This
    * response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_MELT_DB_STORE_SESSION_ERROR = 1304,
 
@@ -674,7 +674,7 @@ enum TALER_ErrorCode
   /**
    * Failed to produce the blinded signatures over the coins to be
    * returned. This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_REVEAL_SIGNING_ERROR = 1371,
 
@@ -688,21 +688,21 @@ enum TALER_ErrorCode
   /**
    * The exchange failed to retrieve valid session data from the
    * database. This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_REVEAL_DB_FETCH_SESSION_ERROR = 1373,
 
   /**
    * The exchange failed to retrieve previously revealed data from the
    * database.  This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_REVEAL_DB_FETCH_REVEAL_ERROR = 1374,
 
   /**
    * The exchange failed to retrieve commitment data from the database.
    * This response is provided with HTTP status code
-   * #MHD_HTTP_INTERNAL_ERROR.
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_REVEAL_DB_COMMIT_ERROR = 1375,
 
@@ -1434,7 +1434,7 @@ enum TALER_ErrorCode
   /**
    * The exchange charged a different wire fee than what it originally
    * advertised, and it is higher.  The response is provied with an HTTP
-   * status of #MHD_HTTP_BAD_DEPENDENCY.
+   * status of #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TRANSFERS_GET_JSON_BAD_WIRE_FEE = 2410,
 
@@ -1546,7 +1546,7 @@ enum TALER_ErrorCode
    * The backend knows the instance that was supposed to support the
    * tip, but it was not configured for tipping (i.e. has no exchange
    * associated with it).  Likely to be a configuration error. Returned
-   * with an HTTP status code of "NOT FOUND".
+   * with an HTTP status code of #MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_TIP_AUTHORIZE_INSTANCE_DOES_NOT_TIP = 2701,
 

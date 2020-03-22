@@ -704,9 +704,9 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
   {
     rctx->ev_sigs[i].rsa_signature
       = GNUNET_CRYPTO_rsa_sign_blinded (
-      rctx->dkis[i]->denom_priv.rsa_private_key,
-      rctx->rcds[i].coin_ev,
-      rctx->rcds[i].coin_ev_size);
+          rctx->dkis[i]->denom_priv.rsa_private_key,
+          rctx->rcds[i].coin_ev,
+          rctx->rcds[i].coin_ev_size);
     if (NULL == rctx->ev_sigs[i].rsa_signature)
     {
       GNUNET_break (0);
@@ -897,9 +897,9 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
  * Handle a "/refreshes/$RCH/reveal" request. This time, the client reveals the
  * private transfer keys except for the cut-and-choose value returned from
  * "/coins/$COIN_PUB/melt".  This function parses the revealed keys and secrets and
- * ultimately passes everything to #resolve_refreshes_reveal_denominations()
+ * ultimately passes everything to resolve_refreshes_reveal_denominations()
  * which will verify that the revealed information is valid then runs the
- * transaction in #refreshes_reveal_transaction() and finally returns the signed
+ * transaction in refreshes_reveal_transaction() and finally returns the signed
  * refreshed coins.
  *
  * @param rh context of the handler

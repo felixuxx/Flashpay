@@ -520,7 +520,6 @@ revoke_run (void *cls,
  * @param expected_response_code expected HTTP status code
  * @param coin_reference reference to any command which
  *        offers a coin & reserve private key.
- * @param amount denomination to pay back.
  * @param melt_reference NULL if coin was not refreshed
  * @return the command.
  */

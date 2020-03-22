@@ -32,9 +32,9 @@
  * Handle a "/refreshes/$RCH/reveal" request. This time, the client reveals the
  * private transfer keys except for the cut-and-choose value returned from
  * "/coins/$COIN_PUB/melt".  This function parses the revealed keys and secrets and
- * ultimately passes everything to #resolve_refresh_reveal_denominations()
+ * ultimately passes everything to resolve_refresh_reveal_denominations()
  * which will verify that the revealed information is valid then runs the
- * transaction in #refresh_reveal_transaction() and finally returns the signed
+ * transaction in refresh_reveal_transaction() and finally returns the signed
  * refreshed coins.
  *
  * @param rh context of the handler

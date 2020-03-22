@@ -1908,7 +1908,6 @@ reserve_closed_cb (void *cls,
 /**
  * Start the database transactions and begin the audit.
  *
- * @param cls NULL
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

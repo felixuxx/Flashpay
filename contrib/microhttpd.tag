@@ -24,6 +24,42 @@
     </member>
     <member kind="define">
       <type>#define</type>
+      <name>MHD_HTTP_BAD_REQUEST</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_URI_TOO_LONG</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_PAYLOAD_TOO_LARGE</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_REQUEST_TIMEOUT</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_ACCEPTED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_NOT_FOUND</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
       <name>MHD_HTTP_NO_CONTENT</name>
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
@@ -43,6 +79,24 @@
     <member kind="define">
       <type>#define</type>
       <name>MHD_HTTP_CONFLICT</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_FORBIDDEN</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_SERVICE_UNAVAILABLE</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_FAILED_DEPENDENCY</name>
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
     </member>
