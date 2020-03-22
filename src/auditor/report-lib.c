@@ -388,9 +388,9 @@ TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
     return GNUNET_SYSERR;
   }
 
-  GNUNET_break (GNUNET_SYSERR !=
-                transact (ana,
-                          ana_cls));
+  if (0 > transact (ana,
+                    ana_cls))
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
