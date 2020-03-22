@@ -174,19 +174,19 @@ report_amount_arithmetic_inconsistency (
                             auditor))
   {
     /* exchange > auditor */
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         exchange,
-                                         auditor));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          exchange,
+                                          auditor));
   }
   else
   {
     /* auditor < exchange */
     profitable = -profitable;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         auditor,
-                                         exchange));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          auditor,
+                                          exchange));
   }
   TALER_ARL_report (report_amount_arithmetic_inconsistencies,
                     json_pack ("{s:s, s:I, s:o, s:o, s:I}",
@@ -200,10 +200,10 @@ report_amount_arithmetic_inconsistency (
     target = (1 == profitable)
              ? &total_arithmetic_delta_plus
              : &total_arithmetic_delta_minus;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (target,
-                                    target,
-                                    &delta));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (target,
+                                     target,
+                                     &delta));
   }
 }
 
@@ -725,10 +725,10 @@ handle_recoup_by_reserve (
       report_row_inconsistency ("recoup",
                                 rowid,
                                 "denomination key not in revocation set");
-      GNUNET_break (GNUNET_OK ==
-                    TALER_amount_add (&total_irregular_recoups,
-                                      &total_irregular_recoups,
-                                      amount));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_irregular_recoups,
+                                       &total_irregular_recoups,
+                                       amount));
     }
     else
     {
@@ -774,10 +774,10 @@ handle_recoup_by_reserve (
                                  "loss", TALER_JSON_from_amount (amount),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    &TALER_ARL_master_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_bad_sig_loss,
+                                     &total_bad_sig_loss,
+                                     amount));
   }
 
   GNUNET_CRYPTO_hash (reserve_pub,

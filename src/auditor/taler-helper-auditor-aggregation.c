@@ -145,19 +145,19 @@ report_amount_arithmetic_inconsistency (
                             auditor))
   {
     /* exchange > auditor */
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         exchange,
-                                         auditor));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          exchange,
+                                          auditor));
   }
   else
   {
     /* auditor < exchange */
     profitable = -profitable;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         auditor,
-                                         exchange));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          auditor,
+                                          exchange));
   }
   TALER_ARL_report (report_amount_arithmetic_inconsistencies,
                     json_pack ("{s:s, s:I, s:o, s:o, s:I}",
@@ -171,10 +171,10 @@ report_amount_arithmetic_inconsistency (
     target = (1 == profitable)
              ? &total_arithmetic_delta_plus
              : &total_arithmetic_delta_minus;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (target,
-                                    target,
-                                    &delta));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (target,
+                                     target,
+                                     &delta));
   }
 }
 
@@ -207,19 +207,19 @@ report_coin_arithmetic_inconsistency (
                             auditor))
   {
     /* exchange > auditor */
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         exchange,
-                                         auditor));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          exchange,
+                                          auditor));
   }
   else
   {
     /* auditor < exchange */
     profitable = -profitable;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         auditor,
-                                         exchange));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          auditor,
+                                          exchange));
   }
   TALER_ARL_report (report_coin_inconsistencies,
                     json_pack ("{s:s, s:o, s:o, s:o, s:I}",
@@ -234,10 +234,10 @@ report_coin_arithmetic_inconsistency (
     target = (1 == profitable)
              ? &total_coin_delta_plus
              : &total_coin_delta_minus;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (target,
-                                    target,
-                                    &delta));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (target,
+                                     target,
+                                     &delta));
   }
 }
 
@@ -856,10 +856,10 @@ wire_transfer_information_cb (
                                  "loss", TALER_JSON_from_amount (coin_value),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    &issue->denom_hash)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    coin_value));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_bad_sig_loss,
+                                     &total_bad_sig_loss,
+                                     coin_value));
     GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);

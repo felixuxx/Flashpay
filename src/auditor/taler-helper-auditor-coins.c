@@ -302,19 +302,19 @@ report_amount_arithmetic_inconsistency (
                             auditor))
   {
     /* exchange > auditor */
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         exchange,
-                                         auditor));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          exchange,
+                                          auditor));
   }
   else
   {
     /* auditor < exchange */
     profitable = -profitable;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_subtract (&delta,
-                                         auditor,
-                                         exchange));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&delta,
+                                          auditor,
+                                          exchange));
   }
   TALER_ARL_report (report_amount_arithmetic_inconsistencies,
                     json_pack ("{s:s, s:I, s:o, s:o, s:I}",
@@ -328,10 +328,10 @@ report_amount_arithmetic_inconsistency (
     target = (1 == profitable)
              ? &total_arithmetic_delta_plus
              : &total_arithmetic_delta_minus;
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (target,
-                                    target,
-                                    &delta));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (target,
+                                     target,
+                                     &delta));
   }
 }
 
@@ -494,12 +494,13 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   if (0 < qs)
   {
     /* check revocation signature */
-    struct TALER_MasterDenominationKeyRevocationPS rm;
+    struct TALER_MasterDenominationKeyRevocationPS rm = {
+      .purpose.purpose = htonl (
+        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
+      .purpose.size = htonl (sizeof (rm)),
+      .h_denom_pub = *denom_hash
+    };
 
-    rm.purpose.purpose = htonl (
-      TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED);
-    rm.purpose.size = htonl (sizeof (rm));
-    rm.h_denom_pub = *denom_hash;
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
@@ -642,8 +643,7 @@ sync_denomination (void *cls,
           (qs = TALER_ARL_adb->insert_historic_denom_revenue (
              TALER_ARL_adb->cls,
              TALER_ARL_asession,
-             &
-             TALER_ARL_master_pub,
+             &TALER_ARL_master_pub,
              denom_hash,
              expire_deposit,
              &ds->denom_balance,
@@ -801,46 +801,26 @@ withdraw_cb (void *cls,
               GNUNET_h2s (&dh),
               TALER_amount2s (&value));
   ds->num_issued++;
-  if (GNUNET_OK !=
-      TALER_amount_add (&ds->denom_balance,
-                        &ds->denom_balance,
-                        &value))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&ds->denom_balance,
+                                   &ds->denom_balance,
+                                   &value));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "New balance of denomination `%s' is %s\n",
               GNUNET_h2s (&dh),
               TALER_amount2s (&ds->denom_balance));
-  if (GNUNET_OK !=
-      TALER_amount_add (&total_escrow_balance,
-                        &total_escrow_balance,
-                        &value))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_amount_add (&total_risk,
-                        &total_risk,
-                        &value))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_amount_add (&ds->denom_risk,
-                        &ds->denom_risk,
-                        &value))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&total_escrow_balance,
+                                   &total_escrow_balance,
+                                   &value));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&total_risk,
+                                   &total_risk,
+                                   &value));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&ds->denom_risk,
+                                   &ds->denom_risk,
+                                   &value));
   return GNUNET_OK;
 }
 
@@ -939,10 +919,10 @@ check_known_coin (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                                    loss_potential),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    coin_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    loss_potential));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_bad_sig_loss,
+                                     &total_bad_sig_loss,
+                                     loss_potential));
 
   }
   GNUNET_CRYPTO_rsa_signature_free (ci.denom_sig.rsa_signature);
@@ -978,7 +958,6 @@ refresh_session_cb (void *cls,
                     const struct TALER_RefreshCommitmentP *rc)
 {
   struct CoinContext *cc = cls;
-  struct TALER_RefreshMeltCoinAffirmationPS rmc;
   const struct TALER_DenominationKeyValidityPS *issue;
   struct DenominationSummary *dso;
   struct TALER_Amount amount_without_fee;
@@ -1016,32 +995,37 @@ refresh_session_cb (void *cls,
   }
 
   /* verify melt signature */
-  rmc.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
-  rmc.purpose.size = htonl (sizeof (rmc));
-  rmc.rc = *rc;
-  TALER_amount_hton (&rmc.amount_with_fee,
-                     amount_with_fee);
-  rmc.melt_fee = issue->fee_refresh;
-  rmc.coin_pub = *coin_pub;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                  &rmc.purpose,
-                                  &coin_sig->eddsa_signature,
-                                  &coin_pub->eddsa_pub))
   {
-    TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", "melt",
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (
-                                   amount_with_fee),
-                                 "key_pub", GNUNET_JSON_from_data_auto (
-                                   coin_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount_with_fee));
-    return GNUNET_OK;
+    struct TALER_RefreshMeltCoinAffirmationPS rmc = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
+      .purpose.size = htonl (sizeof (rmc)),
+      .rc = *rc,
+      .melt_fee = issue->fee_refresh,
+      .coin_pub = *coin_pub
+    };
+
+    TALER_amount_hton (&rmc.amount_with_fee,
+                       amount_with_fee);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
+                                    &rmc.purpose,
+                                    &coin_sig->eddsa_signature,
+                                    &coin_pub->eddsa_pub))
+    {
+      TALER_ARL_report (report_bad_sig_losses,
+                        json_pack ("{s:s, s:I, s:o, s:o}",
+                                   "operation", "melt",
+                                   "row", (json_int_t) rowid,
+                                   "loss", TALER_JSON_from_amount (
+                                     amount_with_fee),
+                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                     coin_pub)));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_bad_sig_loss,
+                                       &total_bad_sig_loss,
+                                       amount_with_fee));
+      return GNUNET_OK;
+    }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Melting coin %s in denomination `%s' of value %s\n",
@@ -1084,10 +1068,10 @@ refresh_session_cb (void *cls,
                                      amount_with_fee),
                                    "coin_pub", GNUNET_JSON_from_data_auto (
                                      coin_pub)));
-      GNUNET_break (GNUNET_OK ==
-                    TALER_amount_add (&total_refresh_hanging,
-                                      &total_refresh_hanging,
-                                      amount_with_fee));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_refresh_hanging,
+                                       &total_refresh_hanging,
+                                       amount_with_fee));
       return GNUNET_OK;
     }
 
@@ -1138,19 +1122,14 @@ refresh_session_cb (void *cls,
                            &new_issues[i]->fee_withdraw);
         TALER_amount_ntoh (&value,
                            &new_issues[i]->value);
-        if ( (GNUNET_OK !=
-              TALER_amount_add (&refresh_cost,
-                                &refresh_cost,
-                                &fee)) ||
-             (GNUNET_OK !=
-              TALER_amount_add (&refresh_cost,
-                                &refresh_cost,
-                                &value)) )
-        {
-          GNUNET_break (0);
-          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-          return GNUNET_SYSERR;
-        }
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&refresh_cost,
+                                         &refresh_cost,
+                                         &fee));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&refresh_cost,
+                                         &refresh_cost,
+                                         &value));
       }
 
       /* compute contribution of old coin */
@@ -1164,6 +1143,7 @@ refresh_session_cb (void *cls,
                                    amount_with_fee,
                                    &melt_fee))
         {
+          // FIXME: handle properly!
           GNUNET_break (0);
           cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
           return GNUNET_SYSERR;
@@ -1204,46 +1184,26 @@ refresh_session_cb (void *cls,
                     GNUNET_h2s (&new_issues[i]->denom_hash),
                     TALER_amount2s (&value));
         dsi->num_issued++;
-        if (GNUNET_OK !=
-            TALER_amount_add (&dsi->denom_balance,
-                              &dsi->denom_balance,
-                              &value))
-        {
-          GNUNET_break (0);
-          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-          return GNUNET_SYSERR;
-        }
-        if (GNUNET_OK !=
-            TALER_amount_add (&dsi->denom_risk,
-                              &dsi->denom_risk,
-                              &value))
-        {
-          GNUNET_break (0);
-          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-          return GNUNET_SYSERR;
-        }
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&dsi->denom_balance,
+                                         &dsi->denom_balance,
+                                         &value));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&dsi->denom_risk,
+                                         &dsi->denom_risk,
+                                         &value));
         GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                     "New balance of denomination `%s' is %s\n",
                     GNUNET_h2s (&new_issues[i]->denom_hash),
                     TALER_amount2s (&dsi->denom_balance));
-        if (GNUNET_OK !=
-            TALER_amount_add (&total_escrow_balance,
-                              &total_escrow_balance,
-                              &value))
-        {
-          GNUNET_break (0);
-          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-          return GNUNET_SYSERR;
-        }
-        if (GNUNET_OK !=
-            TALER_amount_add (&total_risk,
-                              &total_risk,
-                              &value))
-        {
-          GNUNET_break (0);
-          cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-          return GNUNET_SYSERR;
-        }
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&total_escrow_balance,
+                                         &total_escrow_balance,
+                                         &value));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&total_risk,
+                                         &total_risk,
+                                         &value));
       }
     }
   }
@@ -1306,18 +1266,11 @@ refresh_session_cb (void *cls,
 
     TALER_amount_ntoh (&rfee,
                        &issue->fee_refresh);
-    if (GNUNET_OK !=
-        TALER_amount_add (&total_melt_fee_income,
-                          &total_melt_fee_income,
-                          &rfee))
-    {
-      GNUNET_break (0);
-      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-      return GNUNET_SYSERR;
-    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_melt_fee_income,
+                                     &total_melt_fee_income,
+                                     &rfee));
   }
-
-  /* We're good! */
   return GNUNET_OK;
 }
 
@@ -1361,7 +1314,6 @@ deposit_cb (void *cls,
   struct CoinContext *cc = cls;
   const struct TALER_DenominationKeyValidityPS *issue;
   struct DenominationSummary *ds;
-  struct TALER_DepositRequestPS dr;
   struct TALER_Amount tmp;
   enum GNUNET_DB_QueryStatus qs;
 
@@ -1398,56 +1350,61 @@ deposit_cb (void *cls,
   }
 
   /* Verify deposit signature */
-  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-  dr.purpose.size = htonl (sizeof (dr));
-  dr.h_contract_terms = *h_contract_terms;
-  if (GNUNET_OK !=
-      TALER_JSON_merchant_wire_signature_hash (receiver_wire_account,
-                                               &dr.h_wire))
   {
-    TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", "deposit",
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (
-                                   amount_with_fee),
-                                 "key_pub", GNUNET_JSON_from_data_auto (
-                                   coin_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount_with_fee));
-    return GNUNET_OK;
-  }
-  dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  TALER_amount_hton (&dr.amount_with_fee,
-                     amount_with_fee);
-  dr.deposit_fee = issue->fee_deposit;
-  dr.merchant = *merchant_pub;
-  dr.coin_pub = *coin_pub;
-  /* NOTE: This is one of the operations we might eventually
-     want to do in parallel in the background to improve
-     auditor performance! */
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                  &dr.purpose,
-                                  &coin_sig->eddsa_signature,
-                                  &coin_pub->eddsa_pub))
-  {
-    TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", "deposit",
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (
-                                   amount_with_fee),
-                                 "key_pub", GNUNET_JSON_from_data_auto (
-                                   coin_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount_with_fee));
-    return GNUNET_OK;
+    struct TALER_DepositRequestPS dr = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+      .purpose.size = htonl (sizeof (dr)),
+      .h_contract_terms = *h_contract_terms,
+      .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+      .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+      .deposit_fee = issue->fee_deposit,
+      .merchant = *merchant_pub,
+      .coin_pub = *coin_pub
+    };
+
+    if (GNUNET_OK !=
+        TALER_JSON_merchant_wire_signature_hash (receiver_wire_account,
+                                                 &dr.h_wire))
+    {
+      TALER_ARL_report (report_bad_sig_losses,
+                        json_pack ("{s:s, s:I, s:o, s:o}",
+                                   "operation", "deposit",
+                                   "row", (json_int_t) rowid,
+                                   "loss", TALER_JSON_from_amount (
+                                     amount_with_fee),
+                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                     coin_pub)));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_bad_sig_loss,
+                                       &total_bad_sig_loss,
+                                       amount_with_fee));
+      return GNUNET_OK;
+    }
+    TALER_amount_hton (&dr.amount_with_fee,
+                       amount_with_fee);
+    /* NOTE: This is one of the operations we might eventually
+       want to do in parallel in the background to improve
+       auditor performance! */
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+                                    &dr.purpose,
+                                    &coin_sig->eddsa_signature,
+                                    &coin_pub->eddsa_pub))
+    {
+      TALER_ARL_report (report_bad_sig_losses,
+                        json_pack ("{s:s, s:I, s:o, s:o}",
+                                   "operation", "deposit",
+                                   "row", (json_int_t) rowid,
+                                   "loss", TALER_JSON_from_amount (
+                                     amount_with_fee),
+                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                     coin_pub)));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_bad_sig_loss,
+                                       &total_bad_sig_loss,
+                                       amount_with_fee));
+      return GNUNET_OK;
+    }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Deposited coin %s in denomination `%s' of value %s\n",
@@ -1488,7 +1445,8 @@ deposit_cb (void *cls,
        accepted a forged coin (i.e. emergency situation after
        private key compromise). In that case, we cannot even
        subtract the profit we make from the fee from the escrow
-       balance. Tested as part of test-auditor.sh, case #18 */report_amount_arithmetic_inconsistency (
+       balance. Tested as part of test-auditor.sh, case #18 *///
+    report_amount_arithmetic_inconsistency (
       "subtracting deposit fee from escrow balance",
       rowid,
       &total_escrow_balance,
@@ -1508,21 +1466,16 @@ deposit_cb (void *cls,
               GNUNET_h2s (&issue->denom_hash),
               TALER_amount2s (&ds->denom_balance));
 
-  /* update global up melt fees */
+  /* update global deposit fees */
   {
     struct TALER_Amount dfee;
 
     TALER_amount_ntoh (&dfee,
                        &issue->fee_deposit);
-    if (GNUNET_OK !=
-        TALER_amount_add (&total_deposit_fee_income,
-                          &total_deposit_fee_income,
-                          &dfee))
-    {
-      GNUNET_break (0);
-      cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-      return GNUNET_SYSERR;
-    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_deposit_fee_income,
+                                     &total_deposit_fee_income,
+                                     &dfee));
   }
 
   return GNUNET_OK;
@@ -1608,10 +1561,10 @@ refund_cb (void *cls,
                                    amount_with_fee),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    merchant_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount_with_fee));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_bad_sig_loss,
+                                     &total_bad_sig_loss,
+                                     amount_with_fee));
     return GNUNET_OK;
   }
 
@@ -1645,59 +1598,32 @@ refund_cb (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      TALER_amount_add (&ds->denom_balance,
-                        &ds->denom_balance,
-                        &amount_without_fee))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_amount_add (&ds->denom_risk,
-                        &ds->denom_risk,
-                        &amount_without_fee))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_amount_add (&total_escrow_balance,
-                        &total_escrow_balance,
-                        &amount_without_fee))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_amount_add (&total_risk,
-                        &total_risk,
-                        &amount_without_fee))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
-
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&ds->denom_balance,
+                                   &ds->denom_balance,
+                                   &amount_without_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&ds->denom_risk,
+                                   &ds->denom_risk,
+                                   &amount_without_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&total_escrow_balance,
+                                   &total_escrow_balance,
+                                   &amount_without_fee));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&total_risk,
+                                   &total_risk,
+                                   &amount_without_fee));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "New balance of denomination `%s' after refund is %s\n",
               GNUNET_h2s (&issue->denom_hash),
               TALER_amount2s (&ds->denom_balance));
 
   /* update total refund fee balance */
-  if (GNUNET_OK !=
-      TALER_amount_add (&total_refund_fee_income,
-                        &total_refund_fee_income,
-                        &refund_fee))
-  {
-    GNUNET_break (0);
-    cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return GNUNET_SYSERR;
-  }
-
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&total_refund_fee_income,
+                                   &total_refund_fee_income,
+                                   &refund_fee));
   return GNUNET_OK;
 }
 
@@ -1740,10 +1666,10 @@ check_recoup (struct CoinContext *cc,
                                  "loss", TALER_JSON_from_amount (amount),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    &pr.h_denom_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_bad_sig_loss,
+                                     &total_bad_sig_loss,
+                                     amount));
   }
   qs = TALER_ARL_get_denomination_info (denom_pub,
                                         &issue,
@@ -1780,10 +1706,10 @@ check_recoup (struct CoinContext *cc,
                                  "loss", TALER_JSON_from_amount (amount),
                                  "coin_pub", GNUNET_JSON_from_data_auto (
                                    &coin->coin_pub)));
-    GNUNET_break (GNUNET_OK ==
-                  TALER_amount_add (&total_bad_sig_loss,
-                                    &total_bad_sig_loss,
-                                    amount));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_bad_sig_loss,
+                                     &total_bad_sig_loss,
+                                     amount));
     return GNUNET_OK;
   }
   ds = get_denomination_summary (cc,
@@ -1801,14 +1727,14 @@ check_recoup (struct CoinContext *cc,
                                  "coin_pub", GNUNET_JSON_from_data_auto (
                                    &coin->coin_pub)));
   }
-  GNUNET_break (GNUNET_OK ==
-                TALER_amount_add (&ds->denom_recoup,
-                                  &ds->denom_recoup,
-                                  amount));
-  GNUNET_break (GNUNET_OK ==
-                TALER_amount_add (&total_recoup_loss,
-                                  &total_recoup_loss,
-                                  amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&ds->denom_recoup,
+                                   &ds->denom_recoup,
+                                   amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&total_recoup_loss,
+                                   &total_recoup_loss,
+                                   amount));
   return GNUNET_OK;
 }
 
@@ -1960,8 +1886,7 @@ analyze_coins (void *cls)
       (qs = TALER_ARL_edb->select_withdrawals_above_serial_id (
          TALER_ARL_edb->cls,
          TALER_ARL_esession,
-         ppc.
-         last_withdraw_serial_id,
+         ppc.last_withdraw_serial_id,
          &withdraw_cb,
          &cc)) )
   {
@@ -1973,12 +1898,12 @@ analyze_coins (void *cls)
 
   /* process refunds */
   if (0 >
-      (qs = TALER_ARL_edb->select_refunds_above_serial_id (TALER_ARL_edb->cls,
-                                                           TALER_ARL_esession,
-                                                           ppc.
-                                                           last_refund_serial_id,
-                                                           &refund_cb,
-                                                           &cc)))
+      (qs = TALER_ARL_edb->select_refunds_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_esession,
+         ppc.last_refund_serial_id,
+         &refund_cb,
+         &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
@@ -1988,12 +1913,12 @@ analyze_coins (void *cls)
 
   /* process refreshs */
   if (0 >
-      (qs = TALER_ARL_edb->select_refreshes_above_serial_id (TALER_ARL_edb->cls,
-                                                             TALER_ARL_esession,
-                                                             ppc.
-                                                             last_melt_serial_id,
-                                                             &refresh_session_cb,
-                                                             &cc)))
+      (qs = TALER_ARL_edb->select_refreshes_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_esession,
+         ppc.last_melt_serial_id,
+         &refresh_session_cb,
+         &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
@@ -2003,12 +1928,12 @@ analyze_coins (void *cls)
 
   /* process deposits */
   if (0 >
-      (qs = TALER_ARL_edb->select_deposits_above_serial_id (TALER_ARL_edb->cls,
-                                                            TALER_ARL_esession,
-                                                            ppc.
-                                                            last_deposit_serial_id,
-                                                            &deposit_cb,
-                                                            &cc)))
+      (qs = TALER_ARL_edb->select_deposits_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_esession,
+         ppc.last_deposit_serial_id,
+         &deposit_cb,
+         &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
@@ -2018,12 +1943,12 @@ analyze_coins (void *cls)
 
   /* process recoups */
   if (0 >
-      (qs = TALER_ARL_edb->select_recoup_above_serial_id (TALER_ARL_edb->cls,
-                                                          TALER_ARL_esession,
-                                                          ppc.
-                                                          last_recoup_serial_id,
-                                                          &recoup_cb,
-                                                          &cc)))
+      (qs = TALER_ARL_edb->select_recoup_above_serial_id (
+         TALER_ARL_edb->cls,
+         TALER_ARL_esession,
+         ppc.last_recoup_serial_id,
+         &recoup_cb,
+         &cc)))
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
@@ -2145,16 +2070,13 @@ run (void *cls,
                                         &reported_emergency_loss));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TALER_ARL_currency,
-                                        &
-                                        reported_emergency_risk_by_amount));
+                                        &reported_emergency_risk_by_amount));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TALER_ARL_currency,
-                                        &
-                                        reported_emergency_risk_by_count));
+                                        &reported_emergency_risk_by_count));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TALER_ARL_currency,
-                                        &
-                                        reported_emergency_loss_by_count));
+                                        &reported_emergency_loss_by_count));
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (TALER_ARL_currency,
                                         &total_escrow_balance));
