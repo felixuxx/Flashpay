@@ -1235,6 +1235,7 @@ refresh_session_cb (void *cls,
                                   &issue->denom_hash);
   if (NULL == dso)
   {
+    // FIXME: handle more nicely!?!
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
@@ -1440,6 +1441,7 @@ deposit_cb (void *cls,
   if (NULL == ds)
   {
     GNUNET_break (0);
+    // FIXME: handle/report more nicely!??!
     return GNUNET_SYSERR;
   }
   if (GNUNET_SYSERR ==
@@ -1534,7 +1536,6 @@ refund_cb (void *cls,
   struct CoinContext *cc = cls;
   const struct TALER_DenominationKeyValidityPS *issue;
   struct DenominationSummary *ds;
-  struct TALER_RefundRequestPS rr;
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount refund_fee;
   enum GNUNET_DB_QueryStatus qs;
@@ -1559,34 +1560,39 @@ refund_cb (void *cls,
   }
 
   /* verify refund signature */
-  rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
-  rr.purpose.size = htonl (sizeof (rr));
-  rr.h_contract_terms = *h_contract_terms;
-  rr.coin_pub = *coin_pub;
-  rr.merchant = *merchant_pub;
-  rr.rtransaction_id = GNUNET_htonll (rtransaction_id);
-  TALER_amount_hton (&rr.refund_amount,
-                     amount_with_fee);
-  rr.refund_fee = issue->fee_refund;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                  &rr.purpose,
-                                  &merchant_sig->eddsa_sig,
-                                  &merchant_pub->eddsa_pub))
   {
-    TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", "refund",
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (
-                                   amount_with_fee),
-                                 "key_pub", GNUNET_JSON_from_data_auto (
-                                   merchant_pub)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_bad_sig_loss,
-                                     &total_bad_sig_loss,
-                                     amount_with_fee));
-    return GNUNET_OK;
+    struct TALER_RefundRequestPS rr = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
+      .purpose.size = htonl (sizeof (rr)),
+      .h_contract_terms = *h_contract_terms,
+      .coin_pub = *coin_pub,
+      .merchant = *merchant_pub,
+      .rtransaction_id = GNUNET_htonll (rtransaction_id),
+      .refund_fee = issue->fee_refund
+    };
+
+    TALER_amount_hton (&rr.refund_amount,
+                       amount_with_fee);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
+                                    &rr.purpose,
+                                    &merchant_sig->eddsa_sig,
+                                    &merchant_pub->eddsa_pub))
+    {
+      TALER_ARL_report (report_bad_sig_losses,
+                        json_pack ("{s:s, s:I, s:o, s:o}",
+                                   "operation", "refund",
+                                   "row", (json_int_t) rowid,
+                                   "loss", TALER_JSON_from_amount (
+                                     amount_with_fee),
+                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                     merchant_pub)));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&total_bad_sig_loss,
+                                       &total_bad_sig_loss,
+                                       amount_with_fee));
+      return GNUNET_OK;
+    }
   }
 
   TALER_amount_ntoh (&refund_fee,
@@ -1617,6 +1623,7 @@ refund_cb (void *cls,
   if (NULL == ds)
   {
     GNUNET_break (0);
+    // FIXME: handle more nicely!?!?
     return GNUNET_SYSERR;
   }
   GNUNET_assert (GNUNET_OK ==
