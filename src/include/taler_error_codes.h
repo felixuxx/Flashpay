@@ -1318,28 +1318,28 @@ enum TALER_ErrorCode
    * request.  This response is provided with HTTP status code
    * #MHD_HTTP_SERVICE_UNAVAILABLE.
    */
-  TALER_EC_DEPOSITS_GET_EXCHANGE_TIMEOUT = 2300,
+  TALER_EC_TRACK_TRANSACTION_EXCHANGE_TIMEOUT = 2300,
 
   /**
    * The backend could not find the transaction specified in the
    * request.   This response is provided with HTTP status code
    * #MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_DEPOSITS_GET_TRANSACTION_UNKNOWN = 2302,
+  TALER_EC_TRACK_TRANSACTION_TRANSACTION_UNKNOWN = 2302,
 
   /**
    * The backend had a database access error trying to retrieve
    * transaction data from its database. The response is provided with
    * HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_DEPOSITS_GET_DB_FETCH_TRANSACTION_ERROR = 2303,
+  TALER_EC_TRACK_TRANSACTION_DB_FETCH_TRANSACTION_ERROR = 2303,
 
   /**
    * The backend had a database access error trying to retrieve payment
    * data from its database. The response is provided with HTTP status
    * code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_DEPOSITS_GET_DB_FETCH_PAYMENT_ERROR = 2304,
+  TALER_EC_TRACK_TRANSACTION_DB_FETCH_PAYMENT_ERROR = 2304,
 
   /**
    * The backend found no applicable deposits in the database. This is
@@ -1347,7 +1347,7 @@ enum TALER_ErrorCode
    * made for the transaction.  The response is provided with HTTP
    * status code #MHD_HTTP_NOT_FOUND.
    */
-  TALER_EC_DEPOSITS_GET_DB_NO_DEPOSITS_ERROR = 2305,
+  TALER_EC_TRACK_TRANSACTION_DB_NO_DEPOSITS_ERROR = 2305,
 
   /**
    * We failed to obtain a wire transfer identifier for one of the coins
@@ -1356,21 +1356,21 @@ enum TALER_ErrorCode
    * #MHD_HTTP_ACCEPTED if the exchange signaled that the transfer was
    * in progress.
    */
-  TALER_EC_DEPOSITS_GET_COIN_TRACE_ERROR = 2306,
+  TALER_EC_TRACK_TRANSACTION_COIN_TRACE_ERROR = 2306,
 
   /**
    * We failed to obtain the full wire transfer identifier for the
    * transfer one of the coins was aggregated into. The response is
    * provided with HTTP status code #MHD_HTTP_FAILED_DEPENDENCY.
    */
-  TALER_EC_DEPOSITS_GET_WIRE_TRANSFER_TRACE_ERROR = 2307,
+  TALER_EC_TRACK_TRANSACTION_WIRE_TRANSFER_TRACE_ERROR = 2307,
 
   /**
    * We got conflicting reports from the exhange with respect to which
    * transfers are included in which aggregate. The response is provided
    * with HTTP status code #MHD_HTTP_FAILED_DEPENDENCY.
    */
-  TALER_EC_DEPOSITS_GET_CONFLICTING_REPORTS = 2308,
+  TALER_EC_TRACK_TRANSACTION_CONFLICTING_REPORTS = 2308,
 
   /**
    * We failed to contact the exchange for the /track/transfer request.
