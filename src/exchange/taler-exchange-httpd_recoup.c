@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017 Taler Systems SA
+  Copyright (C) 2017-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -34,50 +34,6 @@
 
 
 /**
- * A wallet asked for /recoup (refresh variant), return the successful
- * response.
- *
- * @param connection connection to the client
- * @param old_coin_pub public key of the old coin that will receive the recoup
- * @return MHD result code
- */
-static int
-reply_recoup_refresh_success (struct MHD_Connection *connection,
-                              const struct
-                              TALER_CoinSpendPublicKeyP *old_coin_pub)
-{
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:b}",
-                                    "old_coin_pub",
-                                    GNUNET_JSON_from_data_auto (
-                                      old_coin_pub),
-                                    "refreshed", 1);
-}
-
-
-/**
- * A wallet asked for /recoup (withdraw variant), return the successful
- * response.
- *
- * @param connection connection to the client
- * @param reserve_pub public key of the reserve that will receive the recoup
- * @return MHD result code
- */
-static int
-reply_recoup_success (struct MHD_Connection *connection,
-                      const struct TALER_ReservePublicKeyP *reserve_pub)
-{
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:b}",
-                                    "reserve_pub",
-                                    GNUNET_JSON_from_data_auto (reserve_pub),
-                                    "refreshed", 0);
-}
-
-
-/**
  * Closure for #recoup_transaction.
  */
 struct RecoupContext
@@ -107,6 +63,10 @@ struct RecoupContext
    */
   const struct TALER_CoinSpendSignatureP *coin_sig;
 
+  /**
+   * Where does the value of the recouped coin go? Which member
+   * of the union is valid depends on @e refreshed.
+   */
   union
   {
     /**
@@ -142,7 +102,7 @@ struct RecoupContext
 
 
 /**
- * Execute a "/recoup".  The validity of the coin and signature have
+ * Execute a "recoup".  The validity of the coin and signature have
  * already been checked.  The database must now check that the coin is
  * not (double) spent, and execute the transaction.
  *
@@ -170,7 +130,7 @@ recoup_transaction (void *cls,
   struct TALER_Amount spent;
   struct TALER_Amount recouped;
   enum GNUNET_DB_QueryStatus qs;
-  int existing_recoup_found = GNUNET_NO;
+  int existing_recoup_found;
 
   /* Check whether a recoup is allowed, and if so, to which
      reserve / account the money should go */
@@ -220,7 +180,7 @@ recoup_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_RECOUP_WITHDRAW_NOT_FOUND,
-                                           "blind coin unknown");
+                                           "envelope unknown");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -238,7 +198,7 @@ recoup_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_RECOUP_DB_FETCH_FAILED,
-                                             "failed to fetch old coin transaction history");
+                                             "failed to fetch coin transaction history");
     }
     return qs;
   }
@@ -250,6 +210,7 @@ recoup_transaction (void *cls,
                  TALER_amount_get_zero (pc->value.currency,
                                         &recouped));
   /* Check if this coin has been recouped already at least once */
+  existing_recoup_found = GNUNET_NO;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
        NULL != pos;
        pos = pos->next)
@@ -292,17 +253,20 @@ recoup_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_RECOUP_COIN_BALANCE_NEGATIVE,
-                                           "calculated negative old coin balance");
+                                           "calculated negative coin balance");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if ( (0 == pc->amount.fraction) &&
        (0 == pc->amount.value) )
   {
+    /* Recoup has no effect: coin fully spent! */
     int ret;
+
     TEH_plugin->rollback (TEH_plugin->cls,
                           session);
     if (GNUNET_NO == existing_recoup_found)
     {
+      /* Refuse: insufficient funds for recoup */
       *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
                                                              TALER_EC_RECOUP_COIN_BALANCE_ZERO,
                                                              &pc->coin->coin_pub,
@@ -312,7 +276,7 @@ recoup_transaction (void *cls,
     else
     {
       /* We didn't add any new recoup transaction, but there was at least
-         one recoup before, so we give a success response. */
+         one recoup before, so we give a success response (idempotency!) */
       ret = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
     }
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
@@ -352,7 +316,7 @@ recoup_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
-      TALER_LOG_WARNING ("Failed to store /recoup information in database\n");
+      TALER_LOG_WARNING ("Failed to store recoup information in database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_RECOUP_DB_PUT_FAILED,
@@ -369,7 +333,7 @@ recoup_transaction (void *cls,
  * some basic sanity checks (especially that the signature on the
  * request and coin is valid) and then execute the recoup operation.
  * Note that we need the DB to check the fee structure, so this is not
- * done here.
+ * done here but during the recoup_transaction().
  *
  * @param connection the MHD connection to handle
  * @param coin information about the coin
@@ -388,7 +352,6 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
 {
   struct RecoupContext pc;
   const struct TALER_EXCHANGEDB_DenominationKey *dki;
-  struct TALER_RecoupRequestPS pr;
   struct GNUNET_HashCode c_hash;
   void *coin_ev;
   size_t coin_ev_size;
@@ -417,11 +380,11 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
     {
       TEH_KS_release (key_state);
       TALER_LOG_WARNING (
-        "Denomination key in /recoup request not in recoup mode\n");
+        "Denomination key in recoup request not in recoup mode\n");
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
-                                         "denomination not allowing recoup");
+                                         "denomination not valid for recoup");
     }
     TALER_amount_ntoh (&pc.value,
                        &dki->issue.properties.value);
@@ -431,7 +394,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
         TALER_test_coin_valid (coin,
                                &dki->denom_pub))
     {
-      TALER_LOG_WARNING ("Invalid coin passed for /recoup\n");
+      TALER_LOG_WARNING ("Invalid coin passed for recoup\n");
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
@@ -440,24 +403,28 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
     }
 
     /* check recoup request signature */
-    pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP);
-    pr.purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS));
-    pr.coin_pub = coin->coin_pub;
-    pr.h_denom_pub = dki->issue.properties.denom_hash;
-    pr.coin_blind = *coin_bks;
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                    &pr.purpose,
-                                    &coin_sig->eddsa_signature,
-                                    &coin->coin_pub.eddsa_pub))
     {
-      TALER_LOG_WARNING ("Invalid signature on /recoup request\n");
-      TEH_KS_release (key_state);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_RECOUP_SIGNATURE_INVALID,
-                                         "coin_sig");
+      struct TALER_RecoupRequestPS pr = {
+        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+        .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
+        .coin_pub = coin->coin_pub,
+        .h_denom_pub = dki->issue.properties.denom_hash,
+        .coin_blind = *coin_bks
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
+                                      &pr.purpose,
+                                      &coin_sig->eddsa_signature,
+                                      &coin->coin_pub.eddsa_pub))
+      {
+        TALER_LOG_WARNING ("Invalid signature on recoup request\n");
+        TEH_KS_release (key_state);
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_FORBIDDEN,
+                                           TALER_EC_RECOUP_SIGNATURE_INVALID,
+                                           "coin_sig");
+      }
     }
     GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
                         sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
@@ -499,6 +466,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       return mhd_ret;
   }
 
+  /* Perform actual recoup transaction */
   pc.coin_sig = coin_sig;
   pc.coin_bks = coin_bks;
   pc.coin = coin;
@@ -514,11 +482,22 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                                 &pc))
       return mhd_ret;
   }
+  /* Recoup succeeded, return result */
   return (refreshed)
-         ? reply_recoup_refresh_success (connection,
-                                         &pc.target.old_coin_pub)
-         : reply_recoup_success (connection,
-                                 &pc.target.reserve_pub);
+         ? TALER_MHD_reply_json_pack (connection,
+                                      MHD_HTTP_OK,
+                                      "{s:o, s:b}",
+                                      "old_coin_pub",
+                                      GNUNET_JSON_from_data_auto (
+                                        &pc.target.old_coin_pub),
+                                      "refreshed", 1)
+         : TALER_MHD_reply_json_pack (connection,
+                                      MHD_HTTP_OK,
+                                      "{s:o, s:b}",
+                                      "reserve_pub",
+                                      GNUNET_JSON_from_data_auto (
+                                        &pc.target.reserve_pub),
+                                      "refreshed", 0);
 }
 
 
