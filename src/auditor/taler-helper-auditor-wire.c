@@ -300,7 +300,7 @@ static struct TALER_Amount total_closure_amount_lag;
 static struct TALER_Amount total_wire_format_amount;
 
 /**
- * Amount of zero in our TALER_ARL_currency.
+ * Amount of zero in our currency.
  */
 static struct TALER_Amount zero;
 
@@ -912,7 +912,7 @@ conclude_wire_out (void)
 
 /**
  * Check that @a want is within #TIME_TOLERANCE of @a have.
- * Otherwise TALER_ARL_report an inconsistency in row @a rowid of @a table.
+ * Otherwise report an inconsistency in row @a rowid of @a table.
  *
  * @param table where is the inconsistency (if any)
  * @param rowid what is the row

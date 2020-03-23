@@ -61,19 +61,19 @@ static struct TALER_AUDITORDB_ProgressPointCoin ppc;
 static struct TALER_AUDITORDB_ProgressPointCoin ppc_start;
 
 /**
- * Array of TALER_ARL_reports about denomination keys with an
+ * Array of reports about denomination keys with an
  * emergency (more value deposited than withdrawn)
  */
 static json_t *report_emergencies;
 
 /**
- * Array of TALER_ARL_reports about denomination keys with an
+ * Array of reports about denomination keys with an
  * emergency (more coins deposited than withdrawn)
  */
 static json_t *report_emergencies_by_count;
 
 /**
- * Array of TALER_ARL_reports about row inconsitencies.
+ * Array of reports about row inconsitencies.
  */
 static json_t *report_row_inconsistencies;
 
@@ -149,7 +149,7 @@ static struct TALER_Amount total_melt_fee_income;
 static struct TALER_Amount total_refund_fee_income;
 
 /**
- * Array of TALER_ARL_reports about coin operations with bad signatures.
+ * Array of reports about coin operations with bad signatures.
  */
 static json_t *report_bad_sig_losses;
 
@@ -409,7 +409,8 @@ struct DenominationSummary
   int in_db;
 
   /**
-   * Should we TALER_ARL_report an emergency for this denomination?
+   * Should we report an emergency for this denomination, causing it to be
+   * revoked (because more coins were deposited than issued)?
    */
   int report_emergency;
 
@@ -430,11 +431,6 @@ struct CoinContext
    * Map for tracking information about denominations.
    */
   struct GNUNET_CONTAINER_MultiHashMap *denom_summaries;
-
-  /**
-   * Current write/replace offset in the circular @e summaries buffer.
-   */
-  unsigned int summaries_off;
 
   /**
    * Transaction status code.
@@ -475,12 +471,27 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
     ds->in_db = GNUNET_YES;
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Starting balance for denomination `%s' is %s\n",
-                GNUNET_h2s (denom_hash),
-                TALER_amount2s (&ds->denom_balance));
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
+  else
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (TALER_ARL_currency,
+                                          &ds->denom_balance));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (TALER_ARL_currency,
+                                          &ds->denom_loss));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (TALER_ARL_currency,
+                                          &ds->denom_risk));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_get_zero (TALER_ARL_currency,
+                                          &ds->denom_recoup));
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Starting balance for denomination `%s' is %s (%llu)\n",
+              GNUNET_h2s (denom_hash),
+              TALER_amount2s (&ds->denom_balance),
+              (unsigned long long) ds->num_issued);
   qs = TALER_ARL_edb->get_denomination_revocation (TALER_ARL_edb->cls,
                                                    TALER_ARL_esession,
                                                    denom_hash,
@@ -508,7 +519,7 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
           &msig.eddsa_signature,
           &TALER_ARL_master_pub.eddsa_pub))
     {
-      report_row_inconsistency ("denomination revocation table",
+      report_row_inconsistency ("denomination revocations",
                                 rowid,
                                 "revocation signature invalid");
     }
@@ -517,23 +528,9 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
       ds->was_revoked = GNUNET_YES;
     }
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
-                                        &ds->denom_balance));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
-                                        &ds->denom_loss));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
-                                        &ds->denom_risk));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
-                                        &ds->denom_recoup));
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting balance for denomination `%s' is %s\n",
-              GNUNET_h2s (denom_hash),
-              TALER_amount2s (&ds->denom_balance));
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  return (GNUNET_YES == ds->in_db)
+         ? GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+         : GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
 }
 
 
@@ -576,7 +573,7 @@ get_denomination_summary (struct CoinContext *cc,
 
 /**
  * Write information about the current knowledge about a denomination key
- * back to the database and update our global TALER_ARL_reporting data about the
+ * back to the database and update our global reporting data about the
  * denomination.  Also remove and free the memory of @a value.
  *
  * @param cls the `struct CoinContext`

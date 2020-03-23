@@ -37,7 +37,7 @@
 static int global_ret;
 
 /**
- * Array of TALER_ARL_reports about missing deposit confirmations.
+ * Array of reports about missing deposit confirmations.
  */
 static json_t *report_deposit_confirmation_inconsistencies;
 
@@ -155,7 +155,7 @@ test_dc (void *cls,
 
 
 /**
- * Check that the deposit-confirmations that were TALER_ARL_reported to
+ * Check that the deposit-confirmations that were reported to
  * us by merchants are also in the exchange's database.
  *
  * @param cls closure

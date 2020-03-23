@@ -27,12 +27,12 @@
 struct TALER_EXCHANGEDB_Plugin *TALER_ARL_edb;
 
 /**
- * Which TALER_ARL_currency are we doing the audit for?
+ * Which currency are we doing the audit for?
  */
 char *TALER_ARL_currency;
 
 /**
- * How many fractional digits does the TALER_ARL_currency use?
+ * How many fractional digits does the currency use?
  */
 struct TALER_Amount TALER_ARL_currency_round_unit;
 
@@ -103,9 +103,9 @@ TALER_ARL_json_from_time_abs (struct GNUNET_TIME_Absolute at)
 
 
 /**
- * Add @a object to the TALER_ARL_report @a array.  Fail hard if this fails.
+ * Add @a object to the report @a array.  Fail hard if this fails.
  *
- * @param array TALER_ARL_report array to append @a object to
+ * @param array report array to append @a object to
  * @param object object to append, should be check that it is not NULL
  */
 void
