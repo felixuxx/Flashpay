@@ -910,13 +910,13 @@ reveal_data_cb (void *cls,
       report_row_inconsistency ("refresh_reveal",
                                 rctx->rowid,
                                 "denomination key not found");
-      rctx->err = GNUNET_NO; /* terminate, but return "OK" */
+      rctx->err = GNUNET_NO; /* terminate here, but return "OK" to commit transaction */
     }
     else if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       rctx->qs = qs;
-      rctx->err = GNUNET_SYSERR; /* terminate, return GNUNET_SYSERR */
+      rctx->err = GNUNET_SYSERR; /* terminate, return #GNUNET_SYSERR: abort transaction */
     }
   }
 }
@@ -1101,9 +1101,9 @@ refresh_session_cb (void *cls,
     if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs) ||
          (0 == reveal_ctx.num_freshcoins) )
     {
-      /* This can happen if reveal was not yet called or only
-         with invalid data, even if the exchange is correctly
-         operating. We still report it. */
+      /* This can legitimately happen if reveal was not yet called or only
+         with invalid data, even if the exchange is correctly operating. We
+         still report it. */
       TALER_ARL_report (report_refreshs_hanging,
                         json_pack ("{s:I, s:o, s:o}",
                                    "row", (json_int_t) rowid,
@@ -1162,15 +1162,22 @@ refresh_session_cb (void *cls,
                                  amount_with_fee,
                                  &melt_fee))
       {
-        // FIXME: handle properly!
-        GNUNET_break (0);
-        cc->qs = GNUNET_DB_STATUS_HARD_ERROR;
-        GNUNET_free_non_null (reveal_ctx.new_issues);
-        return GNUNET_SYSERR;
+        /* Melt fee higher than contribution of melted coin; this makes
+           no sense (exchange should never have accepted the operation) */
+        report_amount_arithmetic_inconsistency ("melt contribution vs. fee",
+                                                rowid,
+                                                amount_with_fee,
+                                                &melt_fee,
+                                                -1);
+        /* To continue, best assumption is the melted coin contributed
+           nothing (=> all withdrawal amounts will be counted as losses) */
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_get_zero (TALER_ARL_currency,
+                                              &amount_without_fee));
       }
     }
 
-    /* check old coin covers complete expenses */
+    /* check old coin covers complete expenses (of withdraw operations) */
     if (1 == TALER_amount_cmp (&refresh_cost,
                                &amount_without_fee))
     {
@@ -1184,7 +1191,7 @@ refresh_session_cb (void *cls,
       return GNUNET_OK;
     }
 
-    /* update outstanding denomination amounts */
+    /* update outstanding denomination amounts for fresh coins withdrawn */
     for (unsigned int i = 0; i<reveal_ctx.num_freshcoins; i++)
     {
       struct DenominationSummary *dsi;
@@ -1195,36 +1202,40 @@ refresh_session_cb (void *cls,
                                       &reveal_ctx.new_issues[i]->denom_hash);
       if (NULL == dsi)
       {
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
+        report_row_inconsistency ("refresh_reveal",
+                                  rowid,
+                                  "denomination key for fresh coin unknown to auditor");
       }
-      TALER_amount_ntoh (&value,
-                         &reveal_ctx.new_issues[i]->value);
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Created fresh coin in denomination `%s' of value %s\n",
-                  GNUNET_h2s (&reveal_ctx.new_issues[i]->denom_hash),
-                  TALER_amount2s (&value));
-      dsi->num_issued++;
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&dsi->denom_balance,
-                                       &dsi->denom_balance,
-                                       &value));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&dsi->denom_risk,
-                                       &dsi->denom_risk,
-                                       &value));
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "New balance of denomination `%s' is %s\n",
-                  GNUNET_h2s (&reveal_ctx.new_issues[i]->denom_hash),
-                  TALER_amount2s (&dsi->denom_balance));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_escrow_balance,
-                                       &total_escrow_balance,
-                                       &value));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_risk,
-                                       &total_risk,
-                                       &value));
+      else
+      {
+        TALER_amount_ntoh (&value,
+                           &reveal_ctx.new_issues[i]->value);
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Created fresh coin in denomination `%s' of value %s\n",
+                    GNUNET_h2s (&reveal_ctx.new_issues[i]->denom_hash),
+                    TALER_amount2s (&value));
+        dsi->num_issued++;
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&dsi->denom_balance,
+                                         &dsi->denom_balance,
+                                         &value));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&dsi->denom_risk,
+                                         &dsi->denom_risk,
+                                         &value));
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "New balance of denomination `%s' is %s\n",
+                    GNUNET_h2s (&reveal_ctx.new_issues[i]->denom_hash),
+                    TALER_amount2s (&dsi->denom_balance));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&total_escrow_balance,
+                                         &total_escrow_balance,
+                                         &value));
+        GNUNET_assert (GNUNET_OK ==
+                       TALER_amount_add (&total_risk,
+                                         &total_risk,
+                                         &value));
+      }
     }
     GNUNET_free_non_null (reveal_ctx.new_issues);
   }
@@ -1235,52 +1246,55 @@ refresh_session_cb (void *cls,
                                   &issue->denom_hash);
   if (NULL == dso)
   {
-    // FIXME: handle more nicely!?!
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&tmp,
-                             &dso->denom_balance,
-                             amount_with_fee))
-  {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&dso->denom_loss,
-                                     &dso->denom_loss,
-                                     amount_with_fee));
-    dso->report_emergency = GNUNET_YES;
+    report_row_inconsistency ("refresh_reveal",
+                              rowid,
+                              "denomination key for dirty coin unknown to auditor");
   }
   else
   {
-    dso->denom_balance = tmp;
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&tmp,
+                               &dso->denom_balance,
+                               amount_with_fee))
+    {
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&dso->denom_loss,
+                                       &dso->denom_loss,
+                                       amount_with_fee));
+      dso->report_emergency = GNUNET_YES;
+    }
+    else
+    {
+      dso->denom_balance = tmp;
+    }
+    if (-1 == TALER_amount_cmp (&total_escrow_balance,
+                                amount_with_fee))
+    {
+      /* This can theoretically happen if for example the exchange
+         never issued any coins (i.e. escrow balance is zero), but
+         accepted a forged coin (i.e. emergency situation after
+         private key compromise). In that case, we cannot even
+         subtract the profit we make from the fee from the escrow
+         balance. Tested as part of test-auditor.sh, case #18 *///
+      report_amount_arithmetic_inconsistency (
+        "subtracting refresh fee from escrow balance",
+        rowid,
+        &total_escrow_balance,
+        amount_with_fee,
+        0);
+    }
+    else
+    {
+      GNUNET_assert (GNUNET_SYSERR !=
+                     TALER_amount_subtract (&total_escrow_balance,
+                                            &total_escrow_balance,
+                                            amount_with_fee));
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "New balance of denomination `%s' after melt is %s\n",
+                GNUNET_h2s (&issue->denom_hash),
+                TALER_amount2s (&dso->denom_balance));
   }
-  if (-1 == TALER_amount_cmp (&total_escrow_balance,
-                              amount_with_fee))
-  {
-    /* This can theoretically happen if for example the exchange
-       never issued any coins (i.e. escrow balance is zero), but
-       accepted a forged coin (i.e. emergency situation after
-       private key compromise). In that case, we cannot even
-       subtract the profit we make from the fee from the escrow
-       balance. Tested as part of test-auditor.sh, case #18 */report_amount_arithmetic_inconsistency (
-      "subtracting refresh fee from escrow balance",
-      rowid,
-      &total_escrow_balance,
-      amount_with_fee,
-      0);
-  }
-  else
-  {
-    GNUNET_assert (GNUNET_SYSERR !=
-                   TALER_amount_subtract (&total_escrow_balance,
-                                          &total_escrow_balance,
-                                          amount_with_fee));
-  }
-
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "New balance of denomination `%s' after melt is %s\n",
-              GNUNET_h2s (&issue->denom_hash),
-              TALER_amount2s (&dso->denom_balance));
 
   /* update global melt fees */
   {
@@ -1440,54 +1454,57 @@ deposit_cb (void *cls,
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    GNUNET_break (0);
-    // FIXME: handle/report more nicely!??!
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&tmp,
-                             &ds->denom_balance,
-                             amount_with_fee))
-  {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&ds->denom_loss,
-                                     &ds->denom_loss,
-                                     amount_with_fee));
-    ds->report_emergency = GNUNET_YES;
+    report_row_inconsistency ("deposit",
+                              rowid,
+                              "denomination key for deposited coin unknown to auditor");
   }
   else
   {
-    ds->denom_balance = tmp;
-  }
+    if (GNUNET_SYSERR ==
+        TALER_amount_subtract (&tmp,
+                               &ds->denom_balance,
+                               amount_with_fee))
+    {
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_amount_add (&ds->denom_loss,
+                                       &ds->denom_loss,
+                                       amount_with_fee));
+      ds->report_emergency = GNUNET_YES;
+    }
+    else
+    {
+      ds->denom_balance = tmp;
+    }
 
-  if (-1 == TALER_amount_cmp (&total_escrow_balance,
-                              amount_with_fee))
-  {
-    /* This can theoretically happen if for example the exchange
-       never issued any coins (i.e. escrow balance is zero), but
-       accepted a forged coin (i.e. emergency situation after
-       private key compromise). In that case, we cannot even
-       subtract the profit we make from the fee from the escrow
-       balance. Tested as part of test-auditor.sh, case #18 *///
-    report_amount_arithmetic_inconsistency (
-      "subtracting deposit fee from escrow balance",
-      rowid,
-      &total_escrow_balance,
-      amount_with_fee,
-      0);
-  }
-  else
-  {
-    GNUNET_assert (GNUNET_SYSERR !=
-                   TALER_amount_subtract (&total_escrow_balance,
-                                          &total_escrow_balance,
-                                          amount_with_fee));
-  }
+    if (-1 == TALER_amount_cmp (&total_escrow_balance,
+                                amount_with_fee))
+    {
+      /* This can theoretically happen if for example the exchange
+         never issued any coins (i.e. escrow balance is zero), but
+         accepted a forged coin (i.e. emergency situation after
+         private key compromise). In that case, we cannot even
+         subtract the profit we make from the fee from the escrow
+         balance. Tested as part of test-auditor.sh, case #18 *///
+      report_amount_arithmetic_inconsistency (
+        "subtracting deposit fee from escrow balance",
+        rowid,
+        &total_escrow_balance,
+        amount_with_fee,
+        0);
+    }
+    else
+    {
+      GNUNET_assert (GNUNET_SYSERR !=
+                     TALER_amount_subtract (&total_escrow_balance,
+                                            &total_escrow_balance,
+                                            amount_with_fee));
+    }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "New balance of denomination `%s' after deposit is %s\n",
-              GNUNET_h2s (&issue->denom_hash),
-              TALER_amount2s (&ds->denom_balance));
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "New balance of denomination `%s' after deposit is %s\n",
+                GNUNET_h2s (&issue->denom_hash),
+                TALER_amount2s (&ds->denom_balance));
+  }
 
   /* update global deposit fees */
   {
@@ -1622,31 +1639,33 @@ refund_cb (void *cls,
                                  &issue->denom_hash);
   if (NULL == ds)
   {
-    GNUNET_break (0);
-    // FIXME: handle more nicely!?!?
-    return GNUNET_SYSERR;
+    report_row_inconsistency ("refund",
+                              rowid,
+                              "denomination key for refunded coin unknown to auditor");
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&ds->denom_balance,
-                                   &ds->denom_balance,
-                                   &amount_without_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&ds->denom_risk,
-                                   &ds->denom_risk,
-                                   &amount_without_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_escrow_balance,
-                                   &total_escrow_balance,
-                                   &amount_without_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_risk,
-                                   &total_risk,
-                                   &amount_without_fee));
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "New balance of denomination `%s' after refund is %s\n",
-              GNUNET_h2s (&issue->denom_hash),
-              TALER_amount2s (&ds->denom_balance));
-
+  else
+  {
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&ds->denom_balance,
+                                     &ds->denom_balance,
+                                     &amount_without_fee));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&ds->denom_risk,
+                                     &ds->denom_risk,
+                                     &amount_without_fee));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_escrow_balance,
+                                     &total_escrow_balance,
+                                     &amount_without_fee));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_risk,
+                                     &total_risk,
+                                     &amount_without_fee));
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "New balance of denomination `%s' after refund is %s\n",
+                GNUNET_h2s (&issue->denom_hash),
+                TALER_amount2s (&ds->denom_balance));
+  }
   /* update total refund fee balance */
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_add (&total_refund_fee_income,
@@ -1743,26 +1762,35 @@ check_recoup (struct CoinContext *cc,
   ds = get_denomination_summary (cc,
                                  issue,
                                  &issue->denom_hash);
-  if (GNUNET_NO == ds->was_revoked)
+  if (NULL == ds)
   {
-    /* Woopsie, we allowed recoup on non-revoked denomination!? */
-    TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation",
-                                 "recoup (denomination not revoked)",
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (amount),
-                                 "coin_pub", GNUNET_JSON_from_data_auto (
-                                   &coin->coin_pub)));
+    report_row_inconsistency ("recoup",
+                              rowid,
+                              "denomination key for recouped coin unknown to auditor");
   }
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&ds->denom_recoup,
-                                   &ds->denom_recoup,
-                                   amount));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_recoup_loss,
-                                   &total_recoup_loss,
-                                   amount));
+  else
+  {
+    if (GNUNET_NO == ds->was_revoked)
+    {
+      /* Woopsie, we allowed recoup on non-revoked denomination!? */
+      TALER_ARL_report (report_bad_sig_losses,
+                        json_pack ("{s:s, s:I, s:o, s:o}",
+                                   "operation",
+                                   "recoup (denomination not revoked)",
+                                   "row", (json_int_t) rowid,
+                                   "loss", TALER_JSON_from_amount (amount),
+                                   "coin_pub", GNUNET_JSON_from_data_auto (
+                                     &coin->coin_pub)));
+    }
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&ds->denom_recoup,
+                                     &ds->denom_recoup,
+                                     amount));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&total_recoup_loss,
+                                     &total_recoup_loss,
+                                     amount));
+  }
   return GNUNET_OK;
 }
 
