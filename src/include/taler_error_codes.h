@@ -1377,66 +1377,66 @@ enum TALER_ErrorCode
    * This response is provided with HTTP status code
    * #MHD_HTTP_SERVICE_UNAVAILABLE.
    */
-  TALER_EC_TRANSFERS_GET_EXCHANGE_TIMEOUT = 2400,
+  TALER_EC_TRACK_TRANSFER_EXCHANGE_TIMEOUT = 2400,
 
   /**
    * We failed to persist coin wire transfer information in our merchant
    * database. The response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TRANSFERS_GET_DB_STORE_COIN_ERROR = 2402,
+  TALER_EC_TRACK_TRANSFER_DB_STORE_COIN_ERROR = 2402,
 
   /**
    * We internally failed to execute the /track/transfer request. The
    * response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TRANSFERS_GET_REQUEST_ERROR = 2403,
+  TALER_EC_TRACK_TRANSFER_REQUEST_ERROR = 2403,
 
   /**
    * We failed to persist wire transfer information in our merchant
    * database. The response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TRANSFERS_GET_DB_STORE_TRANSFER_ERROR = 2404,
+  TALER_EC_TRACK_TRANSFER_DB_STORE_TRANSFER_ERROR = 2404,
 
   /**
    * The exchange returned an error from /track/transfer. The response
    * is provided with HTTP status code #MHD_HTTP_FAILED_DEPENDENCY.
    */
-  TALER_EC_TRANSFERS_GET_EXCHANGE_ERROR = 2405,
+  TALER_EC_TRACK_TRANSFER_EXCHANGE_ERROR = 2405,
 
   /**
    * We failed to fetch deposit information from our merchant database.
    * The response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TRANSFERS_GET_DB_FETCH_DEPOSIT_ERROR = 2406,
+  TALER_EC_TRACK_TRANSFER_DB_FETCH_DEPOSIT_ERROR = 2406,
 
   /**
    * We encountered an internal logic error. The response is provided
    * with HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TRANSFERS_GET_DB_INTERNAL_LOGIC_ERROR = 2407,
+  TALER_EC_TRACK_TRANSFER_DB_INTERNAL_LOGIC_ERROR = 2407,
 
   /**
    * The exchange gave conflicting information about a coin which has
    * been wire transferred. The response is provided with HTTP status
    * code #MHD_HTTP_FAILED_DEPENDENCY.
    */
-  TALER_EC_TRANSFERS_GET_CONFLICTING_REPORTS = 2408,
+  TALER_EC_TRACK_TRANSFER_CONFLICTING_REPORTS = 2408,
 
   /**
    * The merchant backend had problems in creating the JSON response.
    */
-  TALER_EC_TRANSFERS_GET_JSON_RESPONSE_ERROR = 2409,
+  TALER_EC_TRACK_TRANSFER_JSON_RESPONSE_ERROR = 2409,
 
   /**
    * The exchange charged a different wire fee than what it originally
    * advertised, and it is higher.  The response is provied with an HTTP
    * status of #MHD_HTTP_FAILED_DEPENDENCY.
    */
-  TALER_EC_TRANSFERS_GET_JSON_BAD_WIRE_FEE = 2410,
+  TALER_EC_TRACK_TRANSFER_JSON_BAD_WIRE_FEE = 2410,
 
   /**
    * The hash provided in the request of /map/in does not match the
