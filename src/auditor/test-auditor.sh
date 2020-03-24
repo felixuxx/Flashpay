@@ -1729,20 +1729,6 @@ fi
 
 }
 
-
-
-# Test where fees known to the auditor differ from those
-# accounted for by the exchange
-function test_32() {
-  echo "not implemented"
-}
-
-
-# **************************************************
-# TODO: Add tests for revocation (payback, accepting of coins despite revocation) HERE! #6053
-# **************************************************
-
-
 # *************** Main test loop starts here **************
 
 
@@ -1783,10 +1769,10 @@ check_with_database()
             break
         fi
     done
-    echo "Cleanup (disabled, leaving database $DB behind)"
-    # dropdb $DB
-    # rm -r $WIRE_FEE_DIR
-    # rm -f test-audit.log test-wire-audit.log
+    # echo "Cleanup (disabled, leaving database $DB behind)"
+    dropdb $DB
+    rm -r $WIRE_FEE_DIR
+    rm -f test-audit.log test-wire-audit.log
 }
 
 
