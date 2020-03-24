@@ -25,7 +25,7 @@ WALLET_DB=wallet-revocation.json
 
 # Configuation file will be edited, so we create one
 # from the template.
-CONF=generate-auditor-basedb-prod.conf
+CONF=generate-auditor-basedb-revocation.conf
 cp generate-auditor-basedb-template.conf $CONF
 
 
@@ -126,8 +126,12 @@ echo " DONE"
 echo "Running wallet"
 taler-wallet-cli --wallet-db=$WALLET_DB testing withdraw \
                  -e $EXCHANGE_URL \
-                 -a TESTKUDOS:8 \
-                 -b $BANK_URL
+                 -b $BANK_URL \
+                 -a TESTKUDOS:8
+
+
+echo "Launching bash for introspection/debugging..."
+bash
 
 coins=$(taler-wallet-cli --wallet-db=$WALLET_DB advanced dump-coins)
 
