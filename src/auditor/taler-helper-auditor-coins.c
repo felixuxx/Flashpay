@@ -2221,7 +2221,7 @@ run (void *cls,
                       /* Tested in test-auditor.sh #4/#5/#6/#13/#26 */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
-                      /* FIXME: Tested in test-auditor.sh #?? */
+                      /* Tested in test-auditor.sh #31 */
                       "row_inconsistencies",
                       report_row_inconsistencies,
                       /* Block #3 */

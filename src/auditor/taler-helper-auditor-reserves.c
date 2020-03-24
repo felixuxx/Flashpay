@@ -864,9 +864,16 @@ get_closing_fee (const char *receiver_account,
                                    fee,
                                    &master_sig))
   {
+    char *diag;
+
+    GNUNET_asprintf (&diag,
+                     "closing fee for `%s' unavailable at %s\n",
+                     method,
+                     GNUNET_STRINGS_absolute_time_to_string (atime));
     report_row_inconsistency ("closing-fee",
                               atime.abs_value_us,
-                              "closing fee unavailable at given time");
+                              diag);
+    GNUNET_free (diag);
     GNUNET_free (method);
     return GNUNET_SYSERR;
   }
