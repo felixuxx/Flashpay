@@ -124,7 +124,8 @@ echo " DONE"
 
 # run wallet CLI
 echo "Running wallet"
-taler-wallet-cli --wallet-db=$WALLET_DB testing withdraw \
+taler-wallet-cli --wallet-db=$WALLET_DB --no-throttle \
+                 testing withdraw \
                  -e $EXCHANGE_URL \
                  -b $BANK_URL \
                  -a TESTKUDOS:8
