@@ -283,9 +283,11 @@ report_emergency_by_count (
  * @param exchange amount calculated by exchange
  * @param auditor amount calculated by auditor
  * @param profitable 1 if @a exchange being larger than @a auditor is
- *           profitable for the exchange for this operation,
+ *           profitable for the exchange for this operation
+ *           (and thus @a exchange being smaller than @ auditor
+ *            representing a loss for the exchange);
  *           -1 if @a exchange being smaller than @a auditor is
- *           profitable for the exchange, and 0 if it is unclear
+ *           profitable for the exchange; and 0 if it is unclear
  */
 static void
 report_amount_arithmetic_inconsistency (
@@ -1071,7 +1073,6 @@ refresh_session_cb (void *cls,
                      TALER_amount_add (&total_bad_sig_loss,
                                        &total_bad_sig_loss,
                                        amount_with_fee));
-      return GNUNET_OK;
     }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -1181,14 +1182,12 @@ refresh_session_cb (void *cls,
     if (1 == TALER_amount_cmp (&refresh_cost,
                                &amount_without_fee))
     {
-      /* refresh_cost > amount_without_fee */
-      report_amount_arithmetic_inconsistency ("melt (fee)",
+      /* refresh_cost > amount_without_fee, which is bad (exchange lost) */
+      report_amount_arithmetic_inconsistency ("melt (cost)",
                                               rowid,
-                                              &amount_without_fee,
-                                              &refresh_cost,
-                                              -1);
-      GNUNET_free_non_null (reveal_ctx.new_issues);
-      return GNUNET_OK;
+                                              &amount_without_fee, /* 'exchange' */
+                                              &refresh_cost, /* 'auditor' */
+                                              1);
     }
 
     /* update outstanding denomination amounts for fresh coins withdrawn */

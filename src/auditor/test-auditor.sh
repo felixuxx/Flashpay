@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 26`
+ALL_TESTS=`seq 0 31`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -1547,7 +1547,8 @@ then
     # Obtain data to duplicate.
     ID=`echo "SELECT id FROM app_banktransaction WHERE debit_account_id=2 LIMIT 1" | psql $DB -Aqt`
     WTID=`echo "SELECT subject FROM app_banktransaction WHERE debit_account_id=2 LIMIT 1" | psql $DB -Aqt`
-    echo "INSERT INTO app_banktransaction (amount,subject,date,credit_account_id,debit_account_id,cancelled) VALUES ('TESTKUDOS:1','$WTID',NOW(),12,2,'f')" | psql -Aqt $DB
+    UUID="992e8936-a64d-4845-87d7-021440330f8a"
+    echo "INSERT INTO app_banktransaction (amount,subject,date,credit_account_id,debit_account_id,cancelled,request_uid) VALUES ('TESTKUDOS:1','$WTID',NOW(),12,2,'f','$UUID')" | psql -Aqt $DB
 
     audit_only
     post_audit
@@ -1575,14 +1576,170 @@ fi
 }
 
 
+
+
+# Test where denom_sig in known_coins table is wrong
+# (=> bad signature) AND the coin is used in aggregation
+function test_28() {
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-helper-auditor-wire.c)
+if [ $DATABASE_AGE -gt 3600 ]
+then
+
+    echo "===========28: known_coins signature wrong================="
+    # Modify denom_sig, so it is wrong
+    OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -Aqt`
+    COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
+    echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+
+    run_audit aggregator
+
+    ROW=`jq -e .bad_sig_losses[0].row < test-audit-aggregation.json`
+    if test $ROW != "1"
+    then
+        exit_fail "Row wrong, got $ROW"
+    fi
+
+    LOSS=`jq -r .bad_sig_losses[0].loss < test-audit-aggregation.json`
+    if test $LOSS == "TESTKUDOS:0"
+    then
+        exit_fail "Wrong deposit bad signature loss, got $LOSS"
+    fi
+
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-aggregation.json`
+    if test $OP != "wire"
+    then
+        exit_fail "Wrong operation, got $OP"
+    fi
+    TAB=`jq -r .row_inconsistencies[0].table < test-audit-aggregation.json`
+    if test $TAB != "deposit"
+    then
+        exit_fail "Wrong table for row inconsistency, got $TAB"
+    fi
+
+    LOSS=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
+    if test $LOSS == "TESTKUDOS:0"
+    then
+        exit_fail "Wrong total bad sig loss, got $LOSS"
+    fi
+
+    # cannot easily undo aggregator, hence full reload
+    full_reload
+
+else
+    echo "Test skipped (database too new)"
+fi
+}
+
+
+
+# Test where fees known to the auditor differ from those
+# accounted for by the exchange
+function test_29() {
+echo "===========29: withdraw fee inconsistency ================="
+
+echo "UPDATE auditor_denominations SET fee_withdraw_frac=5000000 WHERE coin_val=1;" | psql -Aqt $DB
+
+run_audit
+
+AMOUNT=`jq -r .total_balance_summary_delta_plus < test-audit-reserves.json`
+if test "x$AMOUNT" == "xTESTKUDOS:0"
+then
+    exit_fail "Reported total amount wrong: $AMOUNT"
+fi
+
+PROFIT=`jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json`
+if test "x$PROFIT" != "x-1"
+then
+    exit_fail "Reported wrong profitability: $PROFIT"
+fi
+
+# Undo
+echo "UPDATE auditor_denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
+
+}
+
+
+# Test where fees known to the auditor differ from those
+# accounted for by the exchange
+function test_30() {
+echo "===========30: melt fee inconsistency ================="
+
+echo "UPDATE auditor_denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
+
+run_audit
+
+AMOUNT=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
+if test "x$AMOUNT" == "xTESTKUDOS:0"
+then
+    exit_fail "Reported total amount wrong: $AMOUNT"
+fi
+
+PROFIT=`jq -r .amount_arithmetic_inconsistencies[0].profitable < test-audit-coins.json`
+if test "x$PROFIT" != "x-1"
+then
+    exit_fail "Reported profitability wrong: $PROFIT"
+fi
+
+jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
+
+# Undo
+echo "UPDATE auditor_denominations SET fee_refresh_frac=3000000 WHERE coin_val=1;" | psql -Aqt $DB
+
+}
+
+
+# Test where fees known to the auditor differ from those
+# accounted for by the exchange
+function test_31() {
+
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-helper-auditor-wire.c)
+if [ $DATABASE_AGE -gt 3600 ]
+then
+
+    echo "===========31: deposit fee inconsistency ================="
+
+    echo "UPDATE auditor_denominations SET fee_deposit_frac=5000000 WHERE coin_val=8;" | psql -Aqt $DB
+
+    run_audit aggregation
+
+    AMOUNT=`jq -r .total_bad_sig_loss < test-audit-coins.json`
+    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
+
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
+    if test "x$OP" == "xdeposit"
+    then
+        exit_fail "Reported wrong operation: $OP"
+    fi
+
+    # Undo
+    echo "UPDATE auditor_denominations SET fee_deposit_frac=2000000 WHERE coin_val=8;" | psql -Aqt $DB
+
+else
+    echo "Test skipped (database too new)"
+fi
+
+}
+
+
+
+# Test where fees known to the auditor differ from those
+# accounted for by the exchange
+function test_32() {
+  echo "not implemented"
+}
+
+
 # **************************************************
 # TODO: Add tests for revocation (payback, accepting of coins despite revocation) HERE! #6053
-#
-# Test detection of fee structure inconsistencies
-# for denomination/wire fees (ADB vs. EDB tables!)
-#
-# Missing test for 'bad signature loss' detected by auditor-aggregation.
-#
 # **************************************************
 
 

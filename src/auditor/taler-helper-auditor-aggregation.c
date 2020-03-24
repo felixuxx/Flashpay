@@ -1490,10 +1490,10 @@ run (void *cls,
                       "total_wire_out_delta_minus",
                       TALER_JSON_from_amount (
                         &total_wire_out_delta_minus),
-                      /* FIXME: Tested in test-auditor.sh #?? */
+                      /* Tested in test-auditor.sh #28 */
                       "bad_sig_losses",
                       report_bad_sig_losses,
-                      /* FIXME: Tested in test-auditor.sh #?? */
+                      /* Tested in test-auditor.sh #28 */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
                       /* block #2 */
