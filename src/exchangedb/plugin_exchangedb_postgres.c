@@ -1192,8 +1192,8 @@ postgres_get_session (void *cls)
                               ",coin_blind"
                               ",h_blind_ev"
                               ",coins.denom_pub_hash"
-                              ",denoms.denom_pub"
                               ",coins.denom_sig"
+                              ",denoms.denom_pub"
                               ",amount_val"
                               ",amount_frac"
                               " FROM recoup"
@@ -1213,24 +1213,27 @@ postgres_get_session (void *cls)
                               " recoup_refresh_uuid"
                               ",timestamp"
                               ",rc.old_coin_pub"
-                              ",coin_pub"
+                              ",old_coins.denom_pub_hash AS old_denom_pub_hash"
+                              ",recoup_refresh.coin_pub"
                               ",coin_sig"
                               ",coin_blind"
-                              ",h_blind_ev"
-                              ",coins.denom_pub_hash"
                               ",denoms.denom_pub"
-                              ",coins.denom_sig"
+                              ",h_blind_ev"
+                              ",new_coins.denom_pub_hash"
+                              ",new_coins.denom_sig"
                               ",amount_val"
                               ",amount_frac"
                               " FROM recoup_refresh"
-                              "    JOIN refresh_revealed_coins rrc"
+                              "    INNER JOIN refresh_revealed_coins rrc"
                               "      ON (rrc.h_coin_ev = h_blind_ev)"
-                              "    JOIN refresh_commitments rc"
+                              "    INNER JOIN refresh_commitments rc"
                               "      ON (rrc.rc = rc.rc)"
-                              "    JOIN known_coins coins"
-                              "      USING (coin_pub)"
-                              "    JOIN denominations denoms"
-                              "      ON (coins.denom_pub_hash = denoms.denom_pub_hash)"
+                              "    INNER JOIN known_coins old_coins"
+                              "      ON (rc.old_coin_pub = old_coins.coin_pub)"
+                              "    INNER JOIN known_coins new_coins"
+                              "      ON (new_coins.coin_pub = recoup_refresh.coin_pub)"
+                              "    INNER JOIN denominations denoms"
+                              "      ON (new_coins.denom_pub_hash = denoms.denom_pub_hash)"
                               " WHERE recoup_refresh_uuid>=$1"
                               " ORDER BY recoup_refresh_uuid ASC;",
                               1),
@@ -6381,8 +6384,8 @@ recoup_serial_helper_cb (void *cls,
     struct TALER_CoinPublicInfo coin;
     struct TALER_CoinSpendSignatureP coin_sig;
     struct TALER_DenominationBlindingKeyP coin_blind;
-    struct TALER_DenominationPublicKey denom_pub;
     struct TALER_Amount amount;
+    struct TALER_DenominationPublicKey denom_pub;
     struct GNUNET_HashCode h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_PQ_ResultSpec rs[] = {
@@ -6394,6 +6397,8 @@ recoup_serial_helper_cb (void *cls,
                                             &reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &coin.coin_pub),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                             &coin_sig),
       GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
@@ -6402,8 +6407,6 @@ recoup_serial_helper_cb (void *cls,
                                             &h_blind_ev),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &coin.denom_pub_hash),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                            &coin.denom_sig.rsa_signature),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
@@ -6532,6 +6535,7 @@ recoup_refresh_serial_helper_cb (void *cls,
     struct TALER_CoinSpendSignatureP coin_sig;
     struct TALER_DenominationBlindingKeyP coin_blind;
     struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_HashCode old_denom_pub_hash;
     struct TALER_Amount amount;
     struct GNUNET_HashCode h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
@@ -6542,18 +6546,20 @@ recoup_refresh_serial_helper_cb (void *cls,
                                           &timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
                                             &old_coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("old_denom_pub_hash",
+                                            &old_denom_pub_hash),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &coin.coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                             &coin_sig),
       GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
                                             &coin_blind),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
                                             &h_blind_ev),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &coin.denom_pub_hash),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
       GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
                                            &coin.denom_sig.rsa_signature),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
@@ -6576,6 +6582,7 @@ recoup_refresh_serial_helper_cb (void *cls,
                    timestamp,
                    &amount,
                    &old_coin_pub,
+                   &old_denom_pub_hash,
                    &coin,
                    &denom_pub,
                    &coin_sig,

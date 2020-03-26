@@ -1317,6 +1317,7 @@ drop:
  * @param amount how much should be added back to the reserve
  * @param reserve_pub public key of the reserve
  * @param coin public information about the coin
+ * @param denom_pub denomination key of @a coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
