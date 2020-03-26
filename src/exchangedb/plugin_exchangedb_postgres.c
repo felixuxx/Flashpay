@@ -1224,7 +1224,7 @@ postgres_get_session (void *cls)
                               ",amount_frac"
                               " FROM recoup_refresh"
                               "    JOIN refresh_revealed_coins rrc"
-                              "      ON (rrc.coin_ev = h_blind_ev)"
+                              "      ON (rrc.h_coin_ev = h_blind_ev)"
                               "    JOIN refresh_commitments rc"
                               "      ON (rrc.rc = rc.rc)"
                               "    JOIN known_coins coins"
@@ -6536,7 +6536,7 @@ recoup_refresh_serial_helper_cb (void *cls,
     struct GNUNET_HashCode h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("recoup_uuid",
+      GNUNET_PQ_result_spec_uint64 ("recoup_refresh_uuid",
                                     &rowid),
       TALER_PQ_result_spec_absolute_time ("timestamp",
                                           &timestamp),
