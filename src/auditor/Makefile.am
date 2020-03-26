@@ -169,7 +169,8 @@ taler_auditor_exchange_LDADD = \
   -lgnunetutil $(XLIB)
 
 check_SCRIPTS = \
-  test-auditor.sh
+  test-auditor.sh \
+  test-revocation.sh
 
 TESTS = $(check_SCRIPTS)
 
@@ -177,9 +178,15 @@ EXTRA_DIST = \
   auditor.conf \
   test-auditor.conf \
   generate-auditor-basedb.sh \
+  generate-revoke-basedb.sh \
   generate-auditor-basedb.conf \
   generate-auditor-basedb-template.conf \
   $(check_SCRIPTS) \
+  auditor-basedb.age \
   auditor-basedb.sql \
   auditor-basedb.fees \
-  auditor-basedb.mpub
+  auditor-basedb.mpub \
+  revoke-basedb.age \
+  revoke-basedb.sql \
+  revoke-basedb.fees \
+  revoke-basedb.mpub
