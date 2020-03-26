@@ -94,6 +94,7 @@ taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve-http &> revocation-
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 EXCHANGE_PID=$!
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
+MERCHANT_PID=$!
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
 taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
 
@@ -246,15 +247,26 @@ taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced suspend-coins "$sus
 taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB exchanges update \
                  -f $EXCHANGE_URL
 
-# FIXME: wallet is broken...
 echo "Before Wallet CABOOM (type exit, note that you will have to terminate the wallet with CTRL-C)"
-bash
 
 # Block until scheduled operations are done
 taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done &> wallet-caboom.log
 
-bash
-# FIXME: check commands work from here...
+echo "Restarting merchant (so new keys are known)"
+kill -TERM $MERCHANT_PID
+taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
+MERCHANT_PID=$!
+# Wait for merchant to be again available
+for n in `seq 1 50`
+do
+    echo -n "."
+    sleep 0.1
+    OK=0
+    # merchant
+    wget http://localhost:9966/ -o /dev/null -O /dev/null >/dev/null || continue
+    OK=1
+    break
+done
 
 # Now we buy something, only the coins resulting from recoup+refresh will be
 # used, as other ones are suspended
