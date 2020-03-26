@@ -148,7 +148,11 @@ auditor_cb (void *cls,
   key_state = TALER_EXCHANGE_get_keys (dh->exchange);
   spk = TALER_EXCHANGE_get_signing_key_info (key_state,
                                              &dh->exchange_pub);
-  GNUNET_assert (NULL != spk);
+  if (NULL == spk)
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
   TALER_amount_ntoh (&amount_without_fee,
                      &dh->depconf.amount_without_fee);
   aie = GNUNET_new (struct TEAH_AuditorInteractionEntry);
@@ -544,7 +548,11 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   }
   (void) GNUNET_TIME_round_abs (&wire_deadline);
   (void) GNUNET_TIME_round_abs (&refund_deadline);
-  GNUNET_assert (refund_deadline.abs_value_us <= wire_deadline.abs_value_us);
+  if (refund_deadline.abs_value_us > wire_deadline.abs_value_us)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
   /* initialize h_wire */
@@ -558,11 +566,19 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   key_state = TALER_EXCHANGE_get_keys (exchange);
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
                                              denom_pub);
-  GNUNET_assert (NULL != dki);
-  GNUNET_assert (GNUNET_SYSERR !=
-                 TALER_amount_subtract (&amount_without_fee,
-                                        amount,
-                                        &dki->fee_deposit));
+  if (NULL == dki)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (GNUNET_SYSERR ==
+      TALER_amount_subtract (&amount_without_fee,
+                             amount,
+                             &dki->fee_deposit))
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
   GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
                                      &denom_pub_hash);
   if (GNUNET_OK !=
