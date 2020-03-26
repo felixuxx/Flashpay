@@ -216,8 +216,7 @@ taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced force-refresh "$rrc
 taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
 
 # Update our list of the coins
-# FIXME: grep -v timetravel to be removed once wallet output is fixed!
-export coins=$(taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced dump-coins | grep -v timetravel)
+export coins=$(taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced dump-coins)
 
 # Find resulting refreshed coin
 export freshc=$(echo "$coins" | jq -r --arg rrc "$rrc" '[.coins[] | select((.refresh_parent_coin_pub == $rrc))][0] | .coin_pub')
