@@ -1821,6 +1821,8 @@ recoup_cb (void *cls,
 {
   struct CoinContext *cc = cls;
 
+  GNUNET_assert (rowid >= ppc.last_recoup_serial_id); /* should be monotonically increasing */
+  ppc.last_recoup_serial_id = rowid + 1;
   (void) timestamp;
   (void) reserve_pub;
   return check_recoup (cc,
@@ -1861,6 +1863,8 @@ recoup_refresh_cb (void *cls,
 {
   struct CoinContext *cc = cls;
 
+  GNUNET_assert (rowid >= ppc.last_recoup_refresh_serial_id); /* should be monotonically increasing */
+  ppc.last_recoup_refresh_serial_id = rowid + 1;
   (void) timestamp;
   (void) old_coin_pub;
   return check_recoup (cc,
