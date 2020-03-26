@@ -14,18 +14,19 @@ function exit_skip() {
 }
 
 # Where do we write the result?
-BASEDB=${1:-"revoke-basedb"}
+export BASEDB=${1:-"revoke-basedb"}
 
 # Name of the Postgres database we will use for the script.
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
-TARGET_DB=taler-auditor-revokedb
+export TARGET_DB=taler-auditor-revokedb
 TMP_DIR=`mktemp -d revocation-tmp-XXXXXX`
-WALLET_DB=wallet-revocation.json
+export WALLET_DB=wallet-revocation.json
+rm -f $WALLET_DB
 
 # Configuation file will be edited, so we create one
 # from the template.
-CONF=generate-auditor-basedb-revocation.conf
+export CONF=generate-auditor-basedb-revocation.conf
 cp generate-auditor-basedb-template.conf $CONF
 
 
@@ -51,13 +52,13 @@ MASTER_PRIV_FILE=`taler-config -f -c $CONF -s EXCHANGE -o MASTER_PRIV_FILE`
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
-MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
-EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
+export MASTER_PUB=`gnunet-ecc -p $MASTER_PRIV_FILE`
+export EXCHANGE_URL=`taler-config -c $CONF -s EXCHANGE -o BASE_URL`
 MERCHANT_PORT=`taler-config -c $CONF -s MERCHANT -o PORT`
-MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
+export MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
-BANK_URL=http://localhost:${BANK_PORT}/
-AUDITOR_URL=http://localhost:8083/
+export BANK_URL=http://localhost:${BANK_PORT}/
+export AUDITOR_URL=http://localhost:8083/
 
 # patch configuration
 taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
@@ -89,14 +90,25 @@ mv a2e.dat $ABD
 
 # Launch services
 echo "Launching services"
-taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve-http &
+taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve-http &> revocation-bank.log &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
-EXCHANGE_PID=$#
+EXCHANGE_PID=$!
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
 taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
 
-# Wait for all services to be available
+# Wait for all bank to be available (usually the slowest)
+for n in `seq 1 50`
+do
+    echo -n "."
+    sleep 0.2
+    OK=0
+    # bank
+    wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null || continue
+    OK=1
+    break
+done
+# Wait for all other services to be available
 for n in `seq 1 50`
 do
     echo -n "."
@@ -106,13 +118,12 @@ do
     wget http://localhost:8081/ -o /dev/null -O /dev/null >/dev/null || continue
     # merchant
     wget http://localhost:9966/ -o /dev/null -O /dev/null >/dev/null || continue
-    # bank
-    wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null || continue
     # Auditor
     wget http://localhost:8083/ -o /dev/null -O /dev/null >/dev/null || continue
     OK=1
     break
 done
+
 
 if [ 1 != $OK ]
 then
@@ -131,25 +142,23 @@ taler-wallet-cli --wallet-db=$WALLET_DB --no-throttle \
                  -a TESTKUDOS:8
 
 
-echo "Launching bash for introspection/debugging..."
-bash
-
-coins=$(taler-wallet-cli --wallet-db=$WALLET_DB advanced dump-coins)
+export coins=$(taler-wallet-cli --wallet-db=$WALLET_DB advanced dump-coins)
 
 # Find coin we want to revoke
-rc=$(echo "$coins" | jq -r '[.coins[] | select((.denom_value == "TESTKUDOS:8"))][0] | .coin_pub')
+export rc=$(echo "$coins" | jq -r '[.coins[] | select((.denom_value == "TESTKUDOS:2"))][0] | .coin_pub')
 # Find the denom
-rd=$(echo "$coins" | jq -r '[.coins[] | select((.denom_value == "TESTKUDOS:8"))][0] | .denom_pub_hash')
+export rd=$(echo "$coins" | jq -r '[.coins[] | select((.denom_value == "TESTKUDOS:2"))][0] | .denom_pub_hash')
+echo "Revoking denomination ${rd} (to affect coin ${rc})"
 # Find all other coins, which will be suspended
-susp=$(echo "$coins" | jq --arg rc "$rc" '[.coins[] | select(.coin_pub != $rc) | .coin_pub]')
+export susp=$(echo "$coins" | jq --arg rc "$rc" '[.coins[] | select(.coin_pub != $rc) | .coin_pub]')
 
 # Do the revocation
-taler-exchange-keyup -r $rd
+taler-exchange-keyup -c $CONF -r $rd
 
 # Restart the exchange...
-echo $EXCHANGE_PID
-bash
-
+kill -SIGUSR1 $EXCHANGE_PID
+sleep 1 # Give exchange time to re-scan data
+echo "Restarted the exchange post revocation"
 
 # Now we suspend the other coins, so later we will pay with the recouped coin
 taler-wallet-cli --wallet-db=$WALLET_DB advanced suspend-coins "$susp"
@@ -168,8 +177,92 @@ taler-wallet-cli --wallet-db=$WALLET_DB testing test-pay \
                  -a "TESTKUDOS:1" -s "foo"
 taler-wallet-cli --wallet-db=$WALLET_DB run-until-done
 
+echo "Purchase with recoup'ed coin (via reserve) done"
+
+# Find coin we want to refresh, then revoke
+export rrc=$(echo "$coins" | jq -r '[.coins[] | select((.denom_value == "TESTKUDOS:5"))][0] | .coin_pub')
+# Find the denom
+export zombie_denom=$(echo "$coins" | jq -r '[.coins[] | select((.denom_value == "TESTKUDOS:5"))][0] | .denom_pub_hash')
+
+echo "Will refresh coin ${rrc} of denomination ${zombie_denom}"
+# Find all other coins, which will be suspended
+export susp=$(echo "$coins" | jq --arg rrc "$rrc" '[.coins[] | select(.coin_pub != $rrc) | .coin_pub]')
+
+export rrc
+export zombie_denom
+
+# Travel into the future! (must match DURATION_WITHDRAW option)
+export TIMETRAVEL="--timetravel=604800000000"
+
+echo "Launching exchange 1 week in the future"
+kill -TERM $EXCHANGE_PID
+taler-exchange-httpd $TIMETRAVEL -c $CONF 2> taler-exchange-httpd.log &
+export EXCHANGE_PID=$!
+
+# Wait for exchange to be available
+for n in `seq 1 50`
+do
+    echo -n "."
+    sleep 0.1
+    OK=0
+    # exchange
+    wget http://localhost:8081/ -o /dev/null -O /dev/null >/dev/null || continue
+    OK=1
+    break
+done
+
+echo "Refreshing coin $rrc"
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced force-refresh "$rrc"
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
+
+# Update our list of the coins
+# FIXME: grep -v timetravel to be removed once wallet output is fixed!
+export coins=$(taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced dump-coins | grep -v timetravel)
+
+# Find resulting refreshed coin
+export freshc=$(echo "$coins" | jq -r --arg rrc "$rrc" '[.coins[] | select((.refresh_parent_coin_pub == $rrc))][0] | .coin_pub')
+
+# Find the denom of freshc
+export fresh_denom=$(echo "$coins" | jq -r --arg rrc "$rrc" '[.coins[] | select((.refresh_parent_coin_pub == $rrc))][0] | .denom_pub_hash')
+
+echo "Coin ${freshc} of denomination ${fresh_denom} is the result of the refresh"
+
+# Find all other coins, which will be suspended
+export susp=$(echo "$coins" | jq --arg freshc "$freshc" '[.coins[] | select(.coin_pub != $freshc) | .coin_pub]')
 
 
+# Do the revocation of freshc
+echo "Revoking ${fresh_denom} (to affect coin ${freshc})"
+taler-exchange-keyup -c $CONF -r $fresh_denom
+
+# Restart the exchange...
+kill -SIGUSR1 $EXCHANGE_PID
+sleep 1 # give exchange time to re-scan data
+
+
+# Now we suspend the other coins, so later we will pay with the recouped coin
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced suspend-coins "$susp"
+
+# Update exchange /keys so recoup gets scheduled
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB exchanges update \
+                 -f $EXCHANGE_URL
+
+echo "Before Wallet CABOOM (type exit, note that you will have to terminate the wallet with CTRL-C)"
+bash
+
+# Block until scheduled operations are done
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done &> wallet-caboom.log
+
+bash
+
+# Now we buy something, only the coins resulting from recoup+refresh will be
+# used, as other ones are suspended
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB testing test-pay \
+                 -m $MERCHANT_URL -k sandbox \
+                 -a "TESTKUDOS:0.02" -s "bar"
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
+
+echo "Bought something with refresh-recouped coin"
 
 bash
 
