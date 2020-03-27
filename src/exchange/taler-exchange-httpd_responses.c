@@ -91,33 +91,28 @@ TEH_RESPONSE_compile_transaction_history (
         }
 #endif
         if (0 !=
-            json_array_append_new (history,
-                                   json_pack (
-                                     "{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
-                                     "type", "DEPOSIT",
-                                     "amount", TALER_JSON_from_amount (
-                                       &deposit->amount_with_fee),
-                                     "deposit_fee",
-                                     TALER_JSON_from_amount (
-                                       &deposit->deposit_fee),
-                                     "timestamp",
-                                     GNUNET_JSON_from_time_abs (
-                                       deposit->timestamp),
-                                     "refund_deadline",
-                                     GNUNET_JSON_from_time_abs (
-                                       deposit->refund_deadline),
-                                     "merchant_pub",
-                                     GNUNET_JSON_from_data_auto (
-                                       &deposit->merchant_pub),
-                                     "h_contract_terms",
-                                     GNUNET_JSON_from_data_auto (
-                                       &deposit->h_contract_terms),
-                                     "h_wire",
-                                     GNUNET_JSON_from_data_auto (
-                                       &deposit->h_wire),
-                                     "coin_sig",
-                                     GNUNET_JSON_from_data_auto (
-                                       &deposit->csig))))
+            json_array_append_new (
+              history,
+              json_pack (
+                "{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+                "type",
+                "DEPOSIT",
+                "amount",
+                TALER_JSON_from_amount (&deposit->amount_with_fee),
+                "deposit_fee",
+                TALER_JSON_from_amount (&deposit->deposit_fee),
+                "timestamp",
+                GNUNET_JSON_from_time_abs (deposit->timestamp),
+                "refund_deadline",
+                GNUNET_JSON_from_time_abs (deposit->refund_deadline),
+                "merchant_pub",
+                GNUNET_JSON_from_data_auto (&deposit->merchant_pub),
+                "h_contract_terms",
+                GNUNET_JSON_from_data_auto (&deposit->h_contract_terms),
+                "h_wire",
+                GNUNET_JSON_from_data_auto (&deposit->h_wire),
+                "coin_sig",
+                GNUNET_JSON_from_data_auto (&deposit->csig))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -154,19 +149,19 @@ TEH_RESPONSE_compile_transaction_history (
         }
 #endif
         if (0 !=
-            json_array_append_new (history,
-                                   json_pack ("{s:s, s:o, s:o, s:o, s:o}",
-                                              "type", "MELT",
-                                              "amount", TALER_JSON_from_amount (
-                                                &melt->amount_with_fee),
-                                              "melt_fee",
-                                              TALER_JSON_from_amount (
-                                                &melt->melt_fee),
-                                              "rc", GNUNET_JSON_from_data_auto (
-                                                &melt->rc),
-                                              "coin_sig",
-                                              GNUNET_JSON_from_data_auto (
-                                                &melt->coin_sig))))
+            json_array_append_new (
+              history,
+              json_pack ("{s:s, s:o, s:o, s:o, s:o}",
+                         "type",
+                         "MELT",
+                         "amount",
+                         TALER_JSON_from_amount (&melt->amount_with_fee),
+                         "melt_fee",
+                         TALER_JSON_from_amount (&melt->melt_fee),
+                         "rc",
+                         GNUNET_JSON_from_data_auto (&melt->rc),
+                         "coin_sig",
+                         GNUNET_JSON_from_data_auto (&melt->coin_sig))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -215,26 +210,24 @@ TEH_RESPONSE_compile_transaction_history (
           return NULL;
         }
         if (0 !=
-            json_array_append_new (history,
-                                   json_pack (
-                                     "{s:s, s:o, s:o, s:o, s:o, s:I, s:o}",
-                                     "type", "REFUND",
-                                     "amount", TALER_JSON_from_amount (
-                                       &value),
-                                     "refund_fee",
-                                     TALER_JSON_from_amount (
-                                       &refund->refund_fee),
-                                     "h_contract_terms",
-                                     GNUNET_JSON_from_data_auto (
-                                       &refund->h_contract_terms),
-                                     "merchant_pub",
-                                     GNUNET_JSON_from_data_auto (
-                                       &refund->merchant_pub),
-                                     "rtransaction_id",
-                                     (json_int_t) refund->rtransaction_id,
-                                     "merchant_sig",
-                                     GNUNET_JSON_from_data_auto (
-                                       &refund->merchant_sig))))
+            json_array_append_new (
+              history,
+              json_pack (
+                "{s:s, s:o, s:o, s:o, s:o, s:I, s:o}",
+                "type",
+                "REFUND",
+                "amount",
+                TALER_JSON_from_amount (&value),
+                "refund_fee",
+                TALER_JSON_from_amount (&refund->refund_fee),
+                "h_contract_terms",
+                GNUNET_JSON_from_data_auto (&refund->h_contract_terms),
+                "merchant_pub",
+                GNUNET_JSON_from_data_auto (&refund->merchant_pub),
+                "rtransaction_id",
+                (json_int_t) refund->rtransaction_id,
+                "merchant_sig",
+                GNUNET_JSON_from_data_auto (&refund->merchant_sig))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -274,23 +267,21 @@ TEH_RESPONSE_compile_transaction_history (
            check or do anything with it anyway if it doesn't), it seems
            strictly unnecessary. *///
         if (0 !=
-            json_array_append_new (history,
-                                   json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "OLD-COIN-RECOUP",
-                                              "amount", TALER_JSON_from_amount (
-                                                &pr->value),
-                                              "exchange_sig",
-                                              GNUNET_JSON_from_data_auto (
-                                                &esig),
-                                              "exchange_pub",
-                                              GNUNET_JSON_from_data_auto (
-                                                &epub),
-                                              "coin_pub",
-                                              GNUNET_JSON_from_data_auto (
-                                                &pr->coin.coin_pub),
-                                              "timestamp",
-                                              GNUNET_JSON_from_time_abs (
-                                                pr->timestamp))))
+            json_array_append_new (
+              history,
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+                         "type",
+                         "OLD-COIN-RECOUP",
+                         "amount",
+                         TALER_JSON_from_amount (&pr->value),
+                         "exchange_sig",
+                         GNUNET_JSON_from_data_auto (&esig),
+                         "exchange_pub",
+                         GNUNET_JSON_from_data_auto (&epub),
+                         "coin_pub",
+                         GNUNET_JSON_from_data_auto (&pr->coin.coin_pub),
+                         "timestamp",
+                         GNUNET_JSON_from_time_abs (pr->timestamp))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -324,23 +315,21 @@ TEH_RESPONSE_compile_transaction_history (
           return NULL;
         }
         if (0 !=
-            json_array_append_new (history,
-                                   json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "RECOUP",
-                                              "amount", TALER_JSON_from_amount (
-                                                &recoup->value),
-                                              "exchange_sig",
-                                              GNUNET_JSON_from_data_auto (
-                                                &esig),
-                                              "exchange_pub",
-                                              GNUNET_JSON_from_data_auto (
-                                                &epub),
-                                              "reserve_pub",
-                                              GNUNET_JSON_from_data_auto (
-                                                &recoup->reserve_pub),
-                                              "timestamp",
-                                              GNUNET_JSON_from_time_abs (
-                                                recoup->timestamp))))
+            json_array_append_new (
+              history,
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+                         "type",
+                         "RECOUP",
+                         "amount",
+                         TALER_JSON_from_amount (&recoup->value),
+                         "exchange_sig",
+                         GNUNET_JSON_from_data_auto (&esig),
+                         "exchange_pub",
+                         GNUNET_JSON_from_data_auto (&epub),
+                         "reserve_pub",
+                         GNUNET_JSON_from_data_auto (&recoup->reserve_pub),
+                         "timestamp",
+                         GNUNET_JSON_from_time_abs (recoup->timestamp))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -380,23 +369,21 @@ TEH_RESPONSE_compile_transaction_history (
            check or do anything with it anyway if it doesn't), it seems
            strictly unnecessary. *///
         if (0 !=
-            json_array_append_new (history,
-                                   json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "RECOUP-REFRESH",
-                                              "amount", TALER_JSON_from_amount (
-                                                &pr->value),
-                                              "exchange_sig",
-                                              GNUNET_JSON_from_data_auto (
-                                                &esig),
-                                              "exchange_pub",
-                                              GNUNET_JSON_from_data_auto (
-                                                &epub),
-                                              "old_coin_pub",
-                                              GNUNET_JSON_from_data_auto (
-                                                &pr->old_coin_pub),
-                                              "timestamp",
-                                              GNUNET_JSON_from_time_abs (
-                                                pr->timestamp))))
+            json_array_append_new (
+              history,
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+                         "type",
+                         "RECOUP-REFRESH",
+                         "amount",
+                         TALER_JSON_from_amount (&pr->value),
+                         "exchange_sig",
+                         GNUNET_JSON_from_data_auto (&esig),
+                         "exchange_pub",
+                         GNUNET_JSON_from_data_auto (&epub),
+                         "old_coin_pub",
+                         GNUNET_JSON_from_data_auto (&pr->old_coin_pub),
+                         "timestamp",
+                         GNUNET_JSON_from_time_abs (pr->timestamp))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -486,49 +473,52 @@ TEH_RESPONSE_compile_reserve_history (
     switch (pos->type)
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
-      if (0 == (IA_DEPOSIT & init))
       {
-        deposit_total = pos->details.bank->amount;
-        init |= IA_DEPOSIT;
+        const struct TALER_EXCHANGEDB_BankTransfer *bank =
+          pos->details.bank;
+        if (0 == (IA_DEPOSIT & init))
+        {
+          deposit_total = bank->amount;
+          init |= IA_DEPOSIT;
+        }
+        else if (GNUNET_OK !=
+                 TALER_amount_add (&deposit_total,
+                                   &deposit_total,
+                                   &bank->amount))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+        if (0 !=
+            json_array_append_new (
+              json_history,
+              json_pack ("{s:s, s:o, s:s, s:o, s:o}",
+                         "type",
+                         "DEPOSIT",
+                         "timestamp",
+                         GNUNET_JSON_from_time_abs (bank->execution_date),
+                         "sender_account_url",
+                         bank->sender_account_details,
+                         "wire_reference",
+                         GNUNET_JSON_from_data (bank->wire_reference,
+                                                bank->wire_reference_size),
+                         "amount",
+                         TALER_JSON_from_amount (&bank->amount))))
+        {
+          GNUNET_break (0);
+          json_decref (json_history);
+          return NULL;
+        }
+        break;
       }
-      else if (GNUNET_OK !=
-               TALER_amount_add (&deposit_total,
-                                 &deposit_total,
-                                 &pos->details.bank->amount))
-      {
-        GNUNET_break (0);
-        json_decref (json_history);
-        return NULL;
-      }
-      if (0 !=
-          json_array_append_new (json_history,
-                                 json_pack ("{s:s, s:o, s:s, s:o, s:o}",
-                                            "type", "DEPOSIT",
-                                            "timestamp",
-                                            GNUNET_JSON_from_time_abs (
-                                              pos->details.bank->execution_date),
-                                            "sender_account_url",
-                                            pos->details.bank->
-                                            sender_account_details,
-                                            "wire_reference",
-                                            GNUNET_JSON_from_data (
-                                              pos->details.bank->wire_reference,
-                                              pos
-                                              ->details.
-                                              bank->wire_reference_size),
-                                            "amount", TALER_JSON_from_amount (
-                                              &pos->details.bank->amount))))
-      {
-        GNUNET_break (0);
-        json_decref (json_history);
-        return NULL;
-      }
-      break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       {
+        const struct TALER_EXCHANGEDB_CollectableBlindcoin *withdraw
+          = pos->details.withdraw;
         struct TALER_Amount value;
 
-        value = pos->details.withdraw->amount_with_fee;
+        value = withdraw->amount_with_fee;
         if (0 == (IA_WITHDRAW & init))
         {
           withdraw_total = value;
@@ -547,27 +537,22 @@ TEH_RESPONSE_compile_reserve_history (
           }
         }
         if (0 !=
-            json_array_append_new (json_history,
-                                   json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                                              "type", "WITHDRAW",
-                                              "reserve_sig",
-                                              GNUNET_JSON_from_data_auto (
-                                                &pos->details.withdraw->
-                                                reserve_sig),
-                                              "h_coin_envelope",
-                                              GNUNET_JSON_from_data_auto (
-                                                &pos->details.withdraw->
-                                                h_coin_envelope),
-                                              "h_denom_pub",
-                                              GNUNET_JSON_from_data_auto (
-                                                &pos->details.withdraw->
-                                                denom_pub_hash),
-                                              "withdraw_fee",
-                                              TALER_JSON_from_amount (
-                                                &pos->details.withdraw->
-                                                withdraw_fee),
-                                              "amount", TALER_JSON_from_amount (
-                                                &value))))
+            json_array_append_new (
+              json_history,
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+                         "type",
+                         "WITHDRAW",
+                         "reserve_sig",
+                         GNUNET_JSON_from_data_auto (&withdraw->reserve_sig),
+                         "h_coin_envelope",
+                         GNUNET_JSON_from_data_auto (
+                           &withdraw->h_coin_envelope),
+                         "h_denom_pub",
+                         GNUNET_JSON_from_data_auto (&withdraw->denom_pub_hash),
+                         "withdraw_fee",
+                         TALER_JSON_from_amount (&withdraw->withdraw_fee),
+                         "amount",
+                         TALER_JSON_from_amount (&value))))
         {
           GNUNET_break (0);
           json_decref (json_history);
@@ -577,11 +562,11 @@ TEH_RESPONSE_compile_reserve_history (
       break;
     case TALER_EXCHANGEDB_RO_RECOUP_COIN:
       {
-        const struct TALER_EXCHANGEDB_Recoup *recoup;
+        const struct TALER_EXCHANGEDB_Recoup *recoup
+          = pos->details.recoup;
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
 
-        recoup = pos->details.recoup;
         if (0 == (IA_DEPOSIT & init))
         {
           deposit_total = recoup->value;
@@ -643,11 +628,13 @@ TEH_RESPONSE_compile_reserve_history (
       break;
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       {
+        const struct TALER_EXCHANGEDB_ClosingTransfer *closing =
+          pos->details.closing;
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
         struct TALER_Amount value;
 
-        value = pos->details.closing->amount;
+        value = closing->amount;
         if (0 == (IA_WITHDRAW & init))
         {
           withdraw_total = value;
@@ -669,20 +656,17 @@ TEH_RESPONSE_compile_reserve_history (
           struct TALER_ReserveCloseConfirmationPS rcc = {
             .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED),
             .purpose.size = htonl (sizeof (rcc)),
-            .timestamp = GNUNET_TIME_absolute_hton (
-              pos->details.closing->execution_date),
+            .timestamp = GNUNET_TIME_absolute_hton (closing->execution_date),
             .reserve_pub = pos->details.closing->reserve_pub,
-            .wtid = pos->details.closing->wtid
+            .wtid = closing->wtid
           };
 
           TALER_amount_hton (&rcc.closing_amount,
                              &value);
           TALER_amount_hton (&rcc.closing_fee,
-                             &pos->details.closing->closing_fee);
-          GNUNET_CRYPTO_hash (pos->details.closing->receiver_account_details,
-                              strlen (
-                                pos->details.closing->receiver_account_details)
-                              + 1,
+                             &closing->closing_fee);
+          GNUNET_CRYPTO_hash (closing->receiver_account_details,
+                              strlen (closing->receiver_account_details) + 1,
                               &rcc.h_wire);
           if (GNUNET_OK !=
               TEH_KS_sign (&rcc.purpose,
@@ -695,28 +679,26 @@ TEH_RESPONSE_compile_reserve_history (
           }
         }
         if (0 !=
-            json_array_append_new (json_history,
-                                   json_pack (
-                                     "{s:s, s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
-                                     "type", "CLOSING",
-                                     "receiver_account_details",
-                                     pos->details.closing->
-                                     receiver_account_details,
-                                     "wtid",
-                                     GNUNET_JSON_from_data_auto (
-                                       &pos->details.closing->wtid),
-                                     "exchange_pub",
-                                     GNUNET_JSON_from_data_auto (&pub),
-                                     "exchange_sig",
-                                     GNUNET_JSON_from_data_auto (&sig),
-                                     "timestamp",
-                                     GNUNET_JSON_from_time_abs (
-                                       pos->details.closing->execution_date),
-                                     "amount", TALER_JSON_from_amount (
-                                       &value),
-                                     "closing_fee",
-                                     TALER_JSON_from_amount (
-                                       &pos->details.closing->closing_fee))))
+            json_array_append_new (
+              json_history,
+              json_pack (
+                "{s:s, s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
+                "type",
+                "CLOSING",
+                "receiver_account_details",
+                closing->receiver_account_details,
+                "wtid",
+                GNUNET_JSON_from_data_auto (&closing->wtid),
+                "exchange_pub",
+                GNUNET_JSON_from_data_auto (&pub),
+                "exchange_sig",
+                GNUNET_JSON_from_data_auto (&sig),
+                "timestamp",
+                GNUNET_JSON_from_time_abs (closing->execution_date),
+                "amount",
+                TALER_JSON_from_amount (&value),
+                "closing_fee",
+                TALER_JSON_from_amount (&closing->closing_fee))))
         {
           GNUNET_break (0);
           json_decref (json_history);
