@@ -1415,6 +1415,7 @@ wire_missing_cb (void *cls,
   const struct TALER_EXCHANGEDB_Deposit *deposit = cls;
   struct GNUNET_HashCode h_wire;
 
+  (void) done;
   if (NULL != wire)
     GNUNET_assert (GNUNET_OK ==
                    TALER_JSON_merchant_wire_signature_hash (wire,
