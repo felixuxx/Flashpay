@@ -523,6 +523,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      TALER_amount_add (&refunded,
                                        &refunded,
                                        &pos->details.old_coin_recoup->value));
+      break;
     case TALER_EXCHANGEDB_TT_RECOUP:
       /* spent += pos->value */
       GNUNET_assert (GNUNET_OK ==

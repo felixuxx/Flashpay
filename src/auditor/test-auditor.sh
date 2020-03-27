@@ -1751,6 +1751,8 @@ then
     run_audit aggregation
 
     # FIXME: test incomplete...
+    # BIG Q: why is wire_out empty? => aggregation test does not actually
+    # find WTIDs to check, and thus doesn't detect the bad signature!
 
     # Cannot undo aggregation, do full reload
     full_reload
