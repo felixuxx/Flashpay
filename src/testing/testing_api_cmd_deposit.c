@@ -124,7 +124,7 @@ struct DepositState
    * Set to #GNUNET_YES if the /deposit succeeded
    * and we now can provide the resulting traits.
    */
-  int traits_ready;
+  int deposit_succeeded;
 
   /**
    * Signing key used by the exchange to sign the
@@ -143,6 +143,14 @@ struct DepositState
    * Only present if we're supposed to replay the previous deposit.
    */
   const char *deposit_reference;
+
+  /**
+   * Did we set the parameters for this deposit command?
+   *
+   * When we're referencing another deposit operation,
+   * this will only be set after the command has been started.
+   */
+  int command_initialized;
 };
 
 
@@ -241,7 +249,7 @@ deposit_cb (void *cls,
   }
   if (MHD_HTTP_OK == http_status)
   {
-    ds->traits_ready = GNUNET_YES;
+    ds->deposit_succeeded = GNUNET_YES;
     ds->exchange_pub = *exchange_pub;
     ds->exchange_sig = *exchange_sig;
   }
@@ -297,6 +305,14 @@ deposit_run (void *cls,
     ds->timestamp = ods->timestamp;
     ds->refund_deadline = ods->refund_deadline;
     ds->amount = ods->amount;
+    ds->merchant_priv = ods->merchant_priv;
+    ds->command_initialized = GNUNET_YES;
+  }
+  else
+  {
+    merchant_priv = GNUNET_CRYPTO_eddsa_key_create ();
+    ds->merchant_priv.eddsa_priv = *merchant_priv;
+    GNUNET_free (merchant_priv);
   }
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command
@@ -331,10 +347,6 @@ deposit_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
-
-  merchant_priv = GNUNET_CRYPTO_eddsa_key_create ();
-  ds->merchant_priv.eddsa_priv = *merchant_priv;
-  GNUNET_free (merchant_priv);
 
   if (0 != ds->refund_deadline.abs_value_us)
   {
@@ -458,6 +470,13 @@ deposit_traits (void *cls,
   /* Will point to coin cmd internals. */
   const struct TALER_CoinSpendPrivateKeyP *coin_spent_priv;
 
+  if (GNUNET_YES != ds->command_initialized)
+  {
+    /* No access to traits yet. */
+    GNUNET_break (0);
+    return GNUNET_NO;
+  }
+
   coin_cmd
     = TALER_TESTING_interpreter_lookup_command (ds->is,
                                                 ds->coin_reference);
@@ -498,7 +517,7 @@ deposit_traits (void *cls,
       TALER_TESTING_trait_end ()
     };
 
-    return TALER_TESTING_get_trait ((ds->traits_ready)
+    return TALER_TESTING_get_trait ((ds->deposit_succeeded)
                                     ? traits
                                     : &traits[2],
                                     ret,
@@ -577,6 +596,7 @@ TALER_TESTING_cmd_deposit (const char *label,
                  TALER_string_to_amount (amount,
                                          &ds->amount));
   ds->expected_response_code = expected_response_code;
+  ds->command_initialized = GNUNET_YES;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,
