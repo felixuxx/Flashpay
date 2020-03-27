@@ -59,23 +59,24 @@ TEH_RESPONSE_compile_transaction_history (
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       {
-        struct TALER_DepositRequestPS dr;
         const struct TALER_EXCHANGEDB_DepositListEntry *deposit =
           pos->details.deposit;
+        struct TALER_DepositRequestPS dr = {
+          .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+          .purpose.size = htonl (sizeof (dr)),
+          .h_contract_terms = deposit->h_contract_terms,
+          .h_wire = deposit->h_wire,
+          .timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
+          .refund_deadline = GNUNET_TIME_absolute_hton (
+            deposit->refund_deadline),
+          .merchant = deposit->merchant_pub,
+          .coin_pub = *coin_pub
+        };
 
-        dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-        dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
-        dr.h_contract_terms = deposit->h_contract_terms;
-        dr.h_wire = deposit->h_wire;
-        dr.timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp);
-        dr.refund_deadline = GNUNET_TIME_absolute_hton (
-          deposit->refund_deadline);
         TALER_amount_hton (&dr.amount_with_fee,
                            &deposit->amount_with_fee);
         TALER_amount_hton (&dr.deposit_fee,
                            &deposit->deposit_fee);
-        dr.merchant = deposit->merchant_pub;
-        dr.coin_pub = *coin_pub;
 #if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
@@ -126,19 +127,19 @@ TEH_RESPONSE_compile_transaction_history (
       }
     case TALER_EXCHANGEDB_TT_MELT:
       {
-        struct TALER_RefreshMeltCoinAffirmationPS ms;
         const struct TALER_EXCHANGEDB_MeltListEntry *melt =
           pos->details.melt;
+        struct TALER_RefreshMeltCoinAffirmationPS ms = {
+          .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
+          .purpose.size = htonl (sizeof (ms)),
+          .rc = melt->rc,
+          .coin_pub = *coin_pub
+        };
 
-        ms.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
-        ms.purpose.size = htonl (sizeof (struct
-                                         TALER_RefreshMeltCoinAffirmationPS));
-        ms.rc = melt->rc;
         TALER_amount_hton (&ms.amount_with_fee,
                            &melt->amount_with_fee);
         TALER_amount_hton (&ms.melt_fee,
                            &melt->melt_fee);
-        ms.coin_pub = *coin_pub;
 #if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
@@ -175,26 +176,18 @@ TEH_RESPONSE_compile_transaction_history (
       break;
     case TALER_EXCHANGEDB_TT_REFUND:
       {
-        struct TALER_RefundRequestPS rr;
         const struct TALER_EXCHANGEDB_RefundListEntry *refund =
           pos->details.refund;
         struct TALER_Amount value;
+        struct TALER_RefundRequestPS rr = {
+          .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
+          .purpose.size = htonl (sizeof (rr)),
+          .h_contract_terms = refund->h_contract_terms,
+          .coin_pub = *coin_pub,
+          .merchant = refund->merchant_pub,
+          .rtransaction_id = GNUNET_htonll (refund->rtransaction_id)
+        };
 
-        if (GNUNET_OK !=
-            TALER_amount_subtract (&value,
-                                   &refund->refund_amount,
-                                   &refund->refund_fee))
-        {
-          GNUNET_break (0);
-          json_decref (history);
-          return NULL;
-        }
-        rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
-        rr.purpose.size = htonl (sizeof (struct TALER_RefundRequestPS));
-        rr.h_contract_terms = refund->h_contract_terms;
-        rr.coin_pub = *coin_pub;
-        rr.merchant = refund->merchant_pub;
-        rr.rtransaction_id = GNUNET_htonll (refund->rtransaction_id);
         TALER_amount_hton (&rr.refund_amount,
                            &refund->refund_amount);
         TALER_amount_hton (&rr.refund_fee,
@@ -212,6 +205,15 @@ TEH_RESPONSE_compile_transaction_history (
           return NULL;
         }
 #endif
+        if (GNUNET_OK !=
+            TALER_amount_subtract (&value,
+                                   &refund->refund_amount,
+                                   &refund->refund_fee))
+        {
+          GNUNET_break (0);
+          json_decref (history);
+          return NULL;
+        }
         if (0 !=
             json_array_append_new (history,
                                    json_pack (
@@ -244,18 +246,19 @@ TEH_RESPONSE_compile_transaction_history (
       {
         struct TALER_EXCHANGEDB_RecoupRefreshListEntry *pr =
           pos->details.old_coin_recoup;
-        struct TALER_RecoupRefreshConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
+        struct TALER_RecoupRefreshConfirmationPS pc = {
+          .purpose.purpose = htonl (
+            TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
+          .purpose.size = htonl (sizeof (pc)),
+          .timestamp = GNUNET_TIME_absolute_hton (pr->timestamp),
+          .coin_pub = *coin_pub,
+          .old_coin_pub = pr->old_coin_pub
+        };
 
-        pc.purpose.purpose = htonl (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH);
-        pc.purpose.size = htonl (sizeof (pc));
-        pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
         TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
-        pc.coin_pub = *coin_pub;
-        pc.old_coin_pub = pr->old_coin_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
                          &epub,
@@ -299,17 +302,18 @@ TEH_RESPONSE_compile_transaction_history (
       {
         const struct TALER_EXCHANGEDB_RecoupListEntry *recoup =
           pos->details.recoup;
-        struct TALER_RecoupConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
+        struct TALER_RecoupConfirmationPS pc = {
+          .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
+          .purpose.size = htonl (sizeof (pc)),
+          .timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp),
+          .coin_pub = *coin_pub,
+          .reserve_pub = recoup->reserve_pub
+        };
 
-        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
-        pc.purpose.size = htonl (sizeof (pc));
-        pc.timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp);
         TALER_amount_hton (&pc.recoup_amount,
                            &recoup->value);
-        pc.coin_pub = *coin_pub;
-        pc.reserve_pub = recoup->reserve_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
                          &epub,
@@ -348,18 +352,19 @@ TEH_RESPONSE_compile_transaction_history (
       {
         struct TALER_EXCHANGEDB_RecoupRefreshListEntry *pr =
           pos->details.recoup_refresh;
-        struct TALER_RecoupRefreshConfirmationPS pc;
         struct TALER_ExchangePublicKeyP epub;
         struct TALER_ExchangeSignatureP esig;
+        struct TALER_RecoupRefreshConfirmationPS pc = {
+          .purpose.purpose = htonl (
+            TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
+          .purpose.size = htonl (sizeof (pc)),
+          .timestamp = GNUNET_TIME_absolute_hton (pr->timestamp),
+          .coin_pub = *coin_pub,
+          .old_coin_pub = pr->old_coin_pub
+        };
 
-        pc.purpose.purpose = htonl (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH);
-        pc.purpose.size = htonl (sizeof (pc));
-        pc.timestamp = GNUNET_TIME_absolute_hton (pr->timestamp);
         TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
-        pc.coin_pub = *coin_pub;
-        pc.old_coin_pub = pr->old_coin_pub;
         if (GNUNET_OK !=
             TEH_KS_sign (&pc.purpose,
                          &epub,
@@ -573,7 +578,6 @@ TEH_RESPONSE_compile_reserve_history (
     case TALER_EXCHANGEDB_RO_RECOUP_COIN:
       {
         const struct TALER_EXCHANGEDB_Recoup *recoup;
-        struct TALER_RecoupConfirmationPS pc;
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
 
@@ -592,21 +596,26 @@ TEH_RESPONSE_compile_reserve_history (
           json_decref (json_history);
           return NULL;
         }
-        pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
-        pc.purpose.size = htonl (sizeof (struct TALER_RecoupConfirmationPS));
-        pc.timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp);
-        TALER_amount_hton (&pc.recoup_amount,
-                           &recoup->value);
-        pc.coin_pub = recoup->coin.coin_pub;
-        pc.reserve_pub = recoup->reserve_pub;
-        if (GNUNET_OK !=
-            TEH_KS_sign (&pc.purpose,
-                         &pub,
-                         &sig))
         {
-          GNUNET_break (0);
-          json_decref (json_history);
-          return NULL;
+          struct TALER_RecoupConfirmationPS pc = {
+            .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
+            .purpose.size = htonl (sizeof (pc)),
+            .timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp),
+            .coin_pub = recoup->coin.coin_pub,
+            .reserve_pub = recoup->reserve_pub
+          };
+
+          TALER_amount_hton (&pc.recoup_amount,
+                             &recoup->value);
+          if (GNUNET_OK !=
+              TEH_KS_sign (&pc.purpose,
+                           &pub,
+                           &sig))
+          {
+            GNUNET_break (0);
+            json_decref (json_history);
+            return NULL;
+          }
         }
 
         if (0 !=
@@ -634,7 +643,6 @@ TEH_RESPONSE_compile_reserve_history (
       break;
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
       {
-        struct TALER_ReserveCloseConfirmationPS rcc;
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
         struct TALER_Amount value;
@@ -657,30 +665,34 @@ TEH_RESPONSE_compile_reserve_history (
             return NULL;
           }
         }
-        rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);
-        rcc.purpose.size = htonl (sizeof (struct
-                                          TALER_ReserveCloseConfirmationPS));
-        rcc.timestamp = GNUNET_TIME_absolute_hton (
-          pos->details.closing->execution_date);
-        TALER_amount_hton (&rcc.closing_amount,
-                           &value);
-        TALER_amount_hton (&rcc.closing_fee,
-                           &pos->details.closing->closing_fee);
-        rcc.reserve_pub = pos->details.closing->reserve_pub;
-        GNUNET_CRYPTO_hash (pos->details.closing->receiver_account_details,
-                            strlen (
-                              pos->details.closing->receiver_account_details)
-                            + 1,
-                            &rcc.h_wire);
-        rcc.wtid = pos->details.closing->wtid;
-        if (GNUNET_OK !=
-            TEH_KS_sign (&rcc.purpose,
-                         &pub,
-                         &sig))
         {
-          GNUNET_break (0);
-          json_decref (json_history);
-          return NULL;
+          struct TALER_ReserveCloseConfirmationPS rcc = {
+            .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED),
+            .purpose.size = htonl (sizeof (rcc)),
+            .timestamp = GNUNET_TIME_absolute_hton (
+              pos->details.closing->execution_date),
+            .reserve_pub = pos->details.closing->reserve_pub,
+            .wtid = pos->details.closing->wtid
+          };
+
+          TALER_amount_hton (&rcc.closing_amount,
+                             &value);
+          TALER_amount_hton (&rcc.closing_fee,
+                             &pos->details.closing->closing_fee);
+          GNUNET_CRYPTO_hash (pos->details.closing->receiver_account_details,
+                              strlen (
+                                pos->details.closing->receiver_account_details)
+                              + 1,
+                              &rcc.h_wire);
+          if (GNUNET_OK !=
+              TEH_KS_sign (&rcc.purpose,
+                           &pub,
+                           &sig))
+          {
+            GNUNET_break (0);
+            json_decref (json_history);
+            return NULL;
+          }
         }
         if (0 !=
             json_array_append_new (json_history,
