@@ -122,9 +122,9 @@ run (void *cls,
      * Move money to the exchange's bank account.
      */
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
-                              "EUR:5.01"),
+                              "EUR:4.01"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
-                                                 "EUR:5.01",
+                                                 "EUR:4.01",
                                                  bc.user42_payto,
                                                  bc.exchange_payto,
                                                  "create-reserve-1"),
@@ -133,6 +133,20 @@ run (void *cls,
      * transfer.
      */
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
+    /**
+     * Do another transfer to the same reserve
+     */
+    TALER_TESTING_cmd_admin_add_incoming_with_ref ("create-reserve-1.2",
+                                                   "EUR:1",
+                                                   &bc.exchange_auth,
+                                                   bc.user42_payto,
+                                                   "create-reserve-1"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1.2",
+                                                 "EUR:1",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "create-reserve-1.2"),
+    CMD_EXEC_WIREWATCH ("wirewatch-1.2"),
     /**
      * Withdraw EUR:5.
      */
