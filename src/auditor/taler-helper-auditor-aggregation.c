@@ -1388,7 +1388,7 @@ analyze_aggregations (void *cls)
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              _ ("Concluded aggregation audit step at %llu\n"),
+              "Concluded aggregation audit step at %llu\n",
               (unsigned long long) ppa.last_wire_out_serial_id);
 
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;

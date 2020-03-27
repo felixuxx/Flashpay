@@ -481,8 +481,7 @@ revocations_iterate_cb (void *cls,
           &ric->master_pub->eddsa_pub))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  _ (
-                    "Invalid revocation file `%s' found and ignored (bad signature)\n"),
+                  "Invalid revocation file `%s' found and ignored (bad signature)\n",
                   filename);
       return GNUNET_OK;
     }

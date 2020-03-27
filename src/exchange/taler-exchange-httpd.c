@@ -1249,7 +1249,7 @@ main (int argc,
                                  cfgfile))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                _ ("Malformed configuration file `%s', exit ...\n"),
+                "Malformed configuration file `%s', exit ...\n",
                 cfgfile);
     GNUNET_free_non_null (cfgfile);
     return 1;

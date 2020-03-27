@@ -2419,7 +2419,7 @@ analyze_coins (void *cls)
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              _ ("Concluded coin audit step at %llu/%llu/%llu/%llu/%llu\n"),
+              "Concluded coin audit step at %llu/%llu/%llu/%llu/%llu\n",
               (unsigned long long) ppc.last_deposit_serial_id,
               (unsigned long long) ppc.last_melt_serial_id,
               (unsigned long long) ppc.last_refund_serial_id,

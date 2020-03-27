@@ -282,8 +282,7 @@ TEAH_acc_confirmation_cb (void *cls,
   if (MHD_HTTP_OK != http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                _ (
-                  "Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n"),
+                "Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n",
                 ale->auditor_url,
                 http_status,
                 (int) ec);
@@ -312,8 +311,7 @@ TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
   if (NULL == h->auditors_head)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                _ (
-                  "No auditor available for exchange `%s'. Not submitting deposit confirmations.\n"),
+                "No auditor available for exchange `%s'. Not submitting deposit confirmations.\n",
                 h->url);
     return;
   }
@@ -676,7 +674,7 @@ auditor_version_cb (
   {
     /* In this case, we don't mark the auditor as 'up' */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                _ ("Auditor `%s' gave unexpected version response.\n"),
+                "Auditor `%s' gave unexpected version response.\n",
                 ale->auditor_url);
     return;
   }
@@ -684,19 +682,18 @@ auditor_version_cb (
   if (0 != (TALER_AUDITOR_VC_INCOMPATIBLE & compat))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                _ ("Auditor `%s' runs incompatible protocol version!\n"),
+                "Auditor `%s' runs incompatible protocol version!\n",
                 ale->auditor_url);
     if (0 != (TALER_AUDITOR_VC_OLDER & compat))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  _ ("Auditor `%s' runs outdated protocol version!\n"),
+                  "Auditor `%s' runs outdated protocol version!\n",
                   ale->auditor_url);
     }
     if (0 != (TALER_AUDITOR_VC_NEWER & compat))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  _ (
-                    "Auditor `%s' runs more recent incompatible version. We should upgrade!\n"),
+                  "Auditor `%s' runs more recent incompatible version. We should upgrade!\n",
                   ale->auditor_url);
     }
     return;
@@ -1297,7 +1294,7 @@ keys_completed_cb (void *cls,
     for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
       kd.denom_keys[i].key.rsa_public_key
         = GNUNET_CRYPTO_rsa_public_key_dup (
-        kd_old.denom_keys[i].key.rsa_public_key);
+            kd_old.denom_keys[i].key.rsa_public_key);
 
     kd.num_auditors = kd_old.num_auditors;
     kd.auditors = GNUNET_new_array (kd.num_auditors,
@@ -2035,8 +2032,7 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
     {
       GNUNET_assert (aie->ale == ale);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  _ (
-                    "Not sending deposit confirmation to auditor `%s' due to exchange disconnect\n"),
+                  "Not sending deposit confirmation to auditor `%s' due to exchange disconnect\n",
                   ale->auditor_url);
       TALER_AUDITOR_deposit_confirmation_cancel (aie->dch);
       GNUNET_CONTAINER_DLL_remove (ale->ai_head,

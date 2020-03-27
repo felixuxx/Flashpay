@@ -1395,7 +1395,7 @@ run (void *cls,
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "LOOKAHEAD_SIGN",
-                               _ ("must not be zero"));
+                               "must not be zero");
     global_ret = 1;
     return;
   }
