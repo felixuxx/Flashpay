@@ -277,7 +277,6 @@ deposit_run (void *cls,
   const struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_TIME_Absolute wire_deadline;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract_terms;
 
@@ -307,12 +306,6 @@ deposit_run (void *cls,
     ds->amount = ods->amount;
     ds->merchant_priv = ods->merchant_priv;
     ds->command_initialized = GNUNET_YES;
-  }
-  else
-  {
-    merchant_priv = GNUNET_CRYPTO_eddsa_key_create ();
-    ds->merchant_priv.eddsa_priv = *merchant_priv;
-    GNUNET_free (merchant_priv);
   }
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command
@@ -561,6 +554,7 @@ TALER_TESTING_cmd_deposit (const char *label,
 {
   struct DepositState *ds;
   json_t *wire_details;
+  struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
 
   wire_details = TALER_TESTING_make_wire_details (target_account_payto);
   ds = GNUNET_new (struct DepositState);
@@ -570,6 +564,9 @@ TALER_TESTING_cmd_deposit (const char *label,
   ds->contract_terms = json_loads (contract_terms,
                                    JSON_REJECT_DUPLICATES,
                                    NULL);
+  merchant_priv = GNUNET_CRYPTO_eddsa_key_create ();
+  ds->merchant_priv.eddsa_priv = *merchant_priv;
+  GNUNET_free (merchant_priv);
   if (NULL == ds->contract_terms)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
