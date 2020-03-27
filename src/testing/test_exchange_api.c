@@ -176,7 +176,10 @@ run (void *cls,
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:5",
                                MHD_HTTP_OK),
-    /**
+    TALER_TESTING_cmd_deposit_replay ("deposit-simple-replay",
+                                      "deposit-simple",
+                                      MHD_HTTP_OK),
+    /*
      * Try to overdraw.
      */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-2",

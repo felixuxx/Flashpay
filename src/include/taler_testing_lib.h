@@ -1330,6 +1330,20 @@ TALER_TESTING_cmd_deposit (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd);
 
+/**
+ * Create a "deposit" command that repeats an existing
+ * deposit command.
+ *
+ * @param label command label.
+ * @param expected_response_code expected HTTP response code.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_replay (const char *label,
+                                  const char *deposit_reference,
+                                  unsigned int expected_response_code);
+
 
 /**
  * Create a "refresh melt" command.

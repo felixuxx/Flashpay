@@ -137,6 +137,12 @@ struct DepositState
    * deposit confirmation.
    */
   struct TALER_ExchangeSignatureP exchange_sig;
+
+  /**
+   * Reference to previous deposit operation.
+   * Only present if we're supposed to replay the previous deposit.
+   */
+  const char *deposit_reference;
 };
 
 
@@ -269,6 +275,29 @@ deposit_run (void *cls,
 
   (void) cmd;
   ds->is = is;
+  if (NULL != ds->deposit_reference)
+  {
+    // We're copying another deposit operation, initialize here.
+    const struct TALER_TESTING_Command *cmd;
+    struct DepositState *ods;
+    cmd = TALER_TESTING_interpreter_lookup_command
+            (is,
+            ds->deposit_reference);
+    if (NULL == cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    ods = cmd->cls;
+    ds->coin_reference = ods->coin_reference;
+    ds->coin_index = ods->coin_index;
+    ds->wire_details = ods->wire_details;
+    ds->contract_terms = ods->contract_terms;
+    ds->timestamp = ods->timestamp;
+    ds->refund_deadline = ods->refund_deadline;
+    ds->amount = ods->amount;
+  }
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command
                (is,
@@ -547,6 +576,38 @@ TALER_TESTING_cmd_deposit (const char *label,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (amount,
                                          &ds->amount));
+  ds->expected_response_code = expected_response_code;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ds,
+      .label = label,
+      .run = &deposit_run,
+      .cleanup = &deposit_cleanup,
+      .traits = &deposit_traits
+    };
+
+    return cmd;
+  }
+}
+
+
+/**
+ * Create a "deposit" command that repeats an existing
+ * deposit command.
+ *
+ * @param label command label.
+ * @param expected_response_code expected HTTP response code.
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_replay (const char *label,
+                                  const char *deposit_reference,
+                                  unsigned int expected_response_code)
+{
+  struct DepositState *ds;
+  ds = GNUNET_new (struct DepositState);
+  ds->deposit_reference = deposit_reference;
   ds->expected_response_code = expected_response_code;
   {
     struct TALER_TESTING_Command cmd = {
