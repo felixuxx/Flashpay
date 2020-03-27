@@ -15,6 +15,8 @@
 #
 set -eu
 
+trap "kill `jobs -p` &> /dev/null || true" ERR
+
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
     echo $1
