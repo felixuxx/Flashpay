@@ -241,9 +241,14 @@ get_cached_history (const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
   unsigned int i = coin_history_index (coin_pub);
 
-  if (GNUNET_memcmp (coin_pub,
-                     &coin_histories[i].coin_pub))
+  if (0 == GNUNET_memcmp (coin_pub,
+                          &coin_histories[i].coin_pub))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Found verification of %s in cache\n",
+                TALER_B2S (coin_pub));
     return coin_histories[i].tl;
+  }
   return NULL;
 }
 
@@ -559,6 +564,15 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                         &total))
   {
     /* spent > total: bad */
+    struct TALER_Amount loss;
+
+    TALER_amount_subtract (&loss,
+                           &spent,
+                           &total);
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Loss detected for coin %s - %s\n",
+                TALER_B2S (coin_pub),
+                TALER_amount2s (&loss));
     report_amount_arithmetic_inconsistency (operation,
                                             rowid,
                                             &spent,
@@ -1925,6 +1939,7 @@ refund_cb (void *cls,
  * and update the denomination's losses accordingly.
  *
  * @param cc the context with details about the coin
+ * @param operation name of the operation matching @a rowid
  * @param rowid row identifier used to uniquely identify the recoup operation
  * @param amount how much should be added back to the reserve
  * @param coin public information about the coin
@@ -1935,6 +1950,7 @@ refund_cb (void *cls,
  */
 static int
 check_recoup (struct CoinContext *cc,
+              const char *operation,
               uint64_t rowid,
               const struct TALER_Amount *amount,
               const struct TALER_CoinPublicInfo *coin,
@@ -1952,7 +1968,7 @@ check_recoup (struct CoinContext *cc,
   {
     TALER_ARL_report (report_bad_sig_losses,
                       json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", "recoup",
+                                 "operation", operation,
                                  "row", (json_int_t) rowid,
                                  "loss", TALER_JSON_from_amount (amount),
                                  "key_pub", GNUNET_JSON_from_data_auto (
@@ -1966,7 +1982,7 @@ check_recoup (struct CoinContext *cc,
                                                 &issue);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    report_row_inconsistency ("recoup",
+    report_row_inconsistency (operation,
                               rowid,
                               "denomination key not found");
     return GNUNET_OK;
@@ -1979,7 +1995,7 @@ check_recoup (struct CoinContext *cc,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
-  qs = check_known_coin ("recoup",
+  qs = check_known_coin (operation,
                          issue,
                          rowid,
                          &coin->coin_pub,
@@ -2008,7 +2024,7 @@ check_recoup (struct CoinContext *cc,
     {
       TALER_ARL_report (report_bad_sig_losses,
                         json_pack ("{s:s, s:I, s:o, s:o}",
-                                   "operation", "recoup",
+                                   "operation", operation,
                                    "row", (json_int_t) rowid,
                                    "loss", TALER_JSON_from_amount (amount),
                                    "coin_pub", GNUNET_JSON_from_data_auto (
@@ -2035,9 +2051,11 @@ check_recoup (struct CoinContext *cc,
     {
       /* Woopsie, we allowed recoup on non-revoked denomination!? */
       TALER_ARL_report (report_bad_sig_losses,
-                        json_pack ("{s:s, s:I, s:o, s:o}",
+                        json_pack ("{s:s, s:s, s:I, s:o, s:o}",
                                    "operation",
-                                   "recoup (denomination not revoked)",
+                                   operation,
+                                   "hint",
+                                   "denomination not revoked",
                                    "row", (json_int_t) rowid,
                                    "loss", TALER_JSON_from_amount (amount),
                                    "coin_pub", GNUNET_JSON_from_data_auto (
@@ -2092,6 +2110,7 @@ recoup_cb (void *cls,
   (void) timestamp;
   (void) reserve_pub;
   return check_recoup (cc,
+                       "recoup",
                        rowid,
                        amount,
                        coin,
@@ -2183,6 +2202,7 @@ recoup_refresh_cb (void *cls,
   }
 
   return check_recoup (cc,
+                       "recoup-refresh",
                        rowid,
                        amount,
                        coin,
