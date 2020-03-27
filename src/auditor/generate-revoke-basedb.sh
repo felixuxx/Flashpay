@@ -226,10 +226,14 @@ taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
 export coins=$(taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced dump-coins)
 
 # Find resulting refreshed coin
-export freshc=$(echo "$coins" | jq -r --arg rrc "$rrc" '[.coins[] | select((.refresh_parent_coin_pub == $rrc))][0] | .coin_pub')
+export freshc=$(echo "$coins" | jq -r --arg rrc "$rrc" \
+  '[.coins[] | select((.refresh_parent_coin_pub == $rrc) and .denom_value == "TESTKUDOS:0.1")][0] | .coin_pub'
+)
 
 # Find the denom of freshc
-export fresh_denom=$(echo "$coins" | jq -r --arg rrc "$rrc" '[.coins[] | select((.refresh_parent_coin_pub == $rrc))][0] | .denom_pub_hash')
+export fresh_denom=$(echo "$coins" | jq -r --arg rrc "$rrc" \
+  '[.coins[] | select((.refresh_parent_coin_pub == $rrc) and .denom_value == "TESTKUDOS:0.1")][0] | .denom_pub_hash'
+)
 
 echo "Coin ${freshc} of denomination ${fresh_denom} is the result of the refresh"
 
