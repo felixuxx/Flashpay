@@ -290,9 +290,10 @@ deposit_run (void *cls,
   ds->is = is;
   if (NULL != ds->deposit_reference)
   {
-    // We're copying another deposit operation, initialize here.
+    /* We're copying another deposit operation, initialize here. */
     const struct TALER_TESTING_Command *cmd;
     struct DepositState *ods;
+
     cmd = TALER_TESTING_interpreter_lookup_command
             (is,
             ds->deposit_reference);
