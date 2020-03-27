@@ -1820,8 +1820,8 @@ check_with_database()
         fi
     done
     echo "Cleanup (disabled, leaving database $DB behind)"
-#    dropdb $DB
-#    rm -r $WIRE_FEE_DIR
+    dropdb $DB
+    rm -r $WIRE_FEE_DIR
 }
 
 
