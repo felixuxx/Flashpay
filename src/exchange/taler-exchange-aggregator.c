@@ -525,7 +525,6 @@ aggregate_cb (void *cls,
   struct AggregationUnit *au = cls;
   struct TALER_Amount old;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_Amount delta;
 
   /* NOTE: potential optimization: use custom SQL API to not
      fetch these: */
@@ -632,9 +631,8 @@ aggregate_cb (void *cls,
     return qs;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Aggregator marked deposit %llu over %s as DONE\n",
-              (unsigned long long) row_id,
-              TALER_amount2s (&delta));
+              "Aggregator marked deposit %llu as DONE\n",
+              (unsigned long long) row_id);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
