@@ -63,15 +63,15 @@ run (void *cls,
 {
   struct TALER_TESTING_Command revocation[] = {
     /**
-     * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per
+     * Fill reserve with EUR:10.02, as withdraw fee is 1 ct per
      * config.
      */
     TALER_TESTING_cmd_admin_add_incoming ("create-reserve-1",
-                                          "EUR:5.01",
+                                          "EUR:10.02",
                                           &bc.exchange_auth,
                                           bc.user42_payto),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
-                                                 "EUR:5.01",
+                                                 "EUR:10.02",
                                                  bc.user42_payto,
                                                  bc.exchange_payto,
                                                  "create-reserve-1"),
@@ -85,6 +85,11 @@ run (void *cls,
                                        "create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
+    /* Withdraw another 5 EUR coin, at fee of 1 ct */
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-2",
+                                       "create-reserve-1",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
     /* Try to partially spend (deposit) 1 EUR of the 5 EUR coin (in full)
      * (merchant would receive EUR:0.99 due to 1 ct deposit fee) *///
     TALER_TESTING_cmd_deposit ("deposit-partial",
@@ -94,6 +99,15 @@ run (void *cls,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:1\"}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:1",
+                               MHD_HTTP_OK),
+    /* Deposit another coin in full */
+    TALER_TESTING_cmd_deposit ("deposit-full",
+                               "withdraw-revocation-coin-2",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":\"EUR:5\"}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:5",
                                MHD_HTTP_OK),
     /**
      * Melt SOME of the rest of the coin's value
@@ -118,6 +132,16 @@ run (void *cls,
                               MHD_HTTP_OK,
                               "refresh-melt-1",
                               CONFIG_FILE),
+    /* Also make fully spent coin invalid (should be same denom) */
+    TALER_TESTING_cmd_revoke ("revoke-2-EUR:5",
+                              MHD_HTTP_OK,
+                              "withdraw-revocation-coin-2",
+                              CONFIG_FILE),
+    /* Refund fully spent coin (which should fail) */
+    TALER_TESTING_cmd_recoup ("recoup-fully-spent",
+                              MHD_HTTP_CONFLICT,
+                              "withdraw-revocation-coin-2",
+                              NULL),
     /* Refund coin to original coin */
     TALER_TESTING_cmd_recoup ("recoup-1a",
                               MHD_HTTP_OK,
