@@ -108,6 +108,11 @@ run (void *cls,
     TALER_TESTING_cmd_refresh_reveal ("refresh-reveal-1",
                                       "refresh-melt-1",
                                       MHD_HTTP_OK),
+    /* Try to recoup before it's allowed */
+    TALER_TESTING_cmd_recoup ("recoup-not-allowed",
+                              MHD_HTTP_NOT_FOUND,
+                              "refresh-reveal-1#0",
+                              "refresh-melt-1"),
     /* Make refreshed coin invalid */
     TALER_TESTING_cmd_revoke ("revoke-2-EUR:5",
                               MHD_HTTP_OK,
