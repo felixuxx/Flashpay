@@ -7,6 +7,9 @@
 #
 set -eu
 
+
+trap "kill `jobs -p` &> /dev/null || true" EXIT
+
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
     echo $1
@@ -253,10 +256,8 @@ taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced suspend-coins "$sus
 taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB exchanges update \
                  -f $EXCHANGE_URL
 
-echo "Before Wallet CABOOM (type exit, note that you will have to terminate the wallet with CTRL-C)"
-
 # Block until scheduled operations are done
-taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done &> wallet-caboom.log
+taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
 
 echo "Restarting merchant (so new keys are known)"
 kill -TERM $MERCHANT_PID
