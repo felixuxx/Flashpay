@@ -186,6 +186,7 @@ check_keys_cleanup (void *cls,
 {
   struct CheckKeysState *cks = cls;
 
+  (void) cmd;
   GNUNET_free (cks);
 }
 

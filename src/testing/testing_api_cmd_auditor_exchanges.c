@@ -221,6 +221,7 @@ exchanges_run (void *cls,
 {
   struct ExchangesState *es = cls;
 
+  (void) cmd;
   es->is = is;
   es->leh = TALER_AUDITOR_list_exchanges
               (is->auditor,
@@ -283,6 +284,10 @@ exchanges_traits (void *cls,
                   const char *trait,
                   unsigned int index)
 {
+  (void) cls;
+  (void) ret;
+  (void) trait;
+  (void) index;
   /* Must define this function because some callbacks
    * look for certain traits on _all_ the commands. */
   return GNUNET_SYSERR;

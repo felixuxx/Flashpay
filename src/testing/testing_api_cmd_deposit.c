@@ -267,6 +267,7 @@ deposit_run (void *cls,
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract_terms;
 
+  (void) cmd;
   ds->is = is;
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command

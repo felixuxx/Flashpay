@@ -61,6 +61,7 @@ auditor_run (void *cls,
 {
   struct AuditorState *ks = cls;
 
+  (void) cmd;
   ks->auditor_proc
     = GNUNET_OS_start_process (GNUNET_NO,
                                GNUNET_OS_INHERIT_STD_ALL,
@@ -92,6 +93,7 @@ auditor_cleanup (void *cls,
 {
   struct AuditorState *ks = cls;
 
+  (void) cmd;
   if (NULL != ks->auditor_proc)
   {
     GNUNET_break (0 ==

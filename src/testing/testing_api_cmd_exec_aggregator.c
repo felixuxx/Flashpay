@@ -60,6 +60,7 @@ aggregator_run (void *cls,
 {
   struct AggregatorState *as = cls;
 
+  (void) cmd;
   as->aggregator_proc
     = GNUNET_OS_start_process (GNUNET_NO,
                                GNUNET_OS_INHERIT_STD_ALL,
@@ -92,6 +93,7 @@ aggregator_cleanup (void *cls,
 {
   struct AggregatorState *as = cls;
 
+  (void) cmd;
   if (NULL != as->aggregator_proc)
   {
     GNUNET_break (0 ==

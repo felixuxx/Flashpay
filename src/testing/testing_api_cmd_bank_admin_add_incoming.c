@@ -195,6 +195,7 @@ confirmation_cb (void *cls,
   struct AdminAddIncomingState *fts = cls;
   struct TALER_TESTING_Interpreter *is = fts->is;
 
+  (void) json;
   fts->aih = NULL;
   if (MHD_HTTP_OK != http_status)
   {
@@ -253,6 +254,7 @@ admin_add_incoming_run (void *cls,
 {
   struct AdminAddIncomingState *fts = cls;
 
+  (void) cmd;
   /* Use reserve public key as subject */
   if (NULL != fts->reserve_reference)
   {

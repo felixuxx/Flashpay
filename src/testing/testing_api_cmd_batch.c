@@ -72,7 +72,7 @@ batch_run (void *cls,
   }
   bs->batch[bs->batch_ip].start_time
     = bs->batch[bs->batch_ip].last_req_time
-        = GNUNET_TIME_absolute_get ();
+      = GNUNET_TIME_absolute_get ();
   bs->batch[bs->batch_ip].num_tries = 1;
   bs->batch[bs->batch_ip].run (bs->batch[bs->batch_ip].cls,
                                &bs->batch[bs->batch_ip],
@@ -93,6 +93,7 @@ batch_cleanup (void *cls,
 {
   struct BatchState *bs = cls;
 
+  (void) cmd;
   for (unsigned int i = 0;
        NULL != bs->batch[i].label;
        i++)

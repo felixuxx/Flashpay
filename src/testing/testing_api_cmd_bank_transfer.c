@@ -238,6 +238,7 @@ transfer_run (void *cls,
   void *buf;
   size_t buf_size;
 
+  (void) cmd;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Transfer of %s from %s to %s\n",
               TALER_amount2s (&fts->amount),

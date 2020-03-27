@@ -52,6 +52,9 @@ TAH_MHD_handler_static_response (struct TAH_RequestHandler *rh,
 {
   size_t dlen;
 
+  (void) connection_cls;
+  (void) upload_data;
+  (void) upload_data_size;
   dlen = (0 == rh->data_size)
          ? strlen ((const char *) rh->data)
          : rh->data_size;

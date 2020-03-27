@@ -274,7 +274,7 @@ interpreter_run (void *cls)
               cmd->label);
   cmd->start_time
     = cmd->last_req_time
-        = GNUNET_TIME_absolute_get ();
+      = GNUNET_TIME_absolute_get ();
   cmd->num_tries = 1;
   cmd->run (cmd->cls,
             cmd,
@@ -591,6 +591,7 @@ TALER_TESTING_cert_cb (void *cls,
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
 
+  (void) compat;
   if (NULL == keys)
   {
     if (GNUNET_NO == is->working)

@@ -94,6 +94,7 @@ check_bank_transfer_run (void *cls,
   const char *debit_payto;
   const char *credit_payto;
 
+  (void) cmd;
   if (NULL == bcs->deposit_reference)
   {
     TALER_LOG_INFO ("Deposit reference NOT given\n");
@@ -194,6 +195,7 @@ check_bank_transfer_cleanup (void *cls,
 {
   struct BankCheckState *bcs = cls;
 
+  (void) cmd;
   GNUNET_free (bcs);
 }
 

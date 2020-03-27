@@ -221,6 +221,7 @@ deposit_confirmation_run (void *cls,
   const struct TALER_EXCHANGE_Keys *keys;
   const struct TALER_EXCHANGE_SigningPublicKey *spk;
 
+  (void) cmd;
   dcs->is = is;
   GNUNET_assert (NULL != dcs->deposit_reference);
   deposit_cmd
@@ -385,6 +386,10 @@ deposit_confirmation_traits (void *cls,
                              const char *trait,
                              unsigned int index)
 {
+  (void) cls;
+  (void) ret;
+  (void) trait;
+  (void) index;
   /* Must define this function because some callbacks
    * look for certain traits on _all_ the commands. */
   return GNUNET_SYSERR;

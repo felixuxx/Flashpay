@@ -343,7 +343,6 @@ build_history (struct TALER_TESTING_Interpreter *is,
  * Check that the "/history/outgoing" response matches the
  * CMD whose offset in the list of CMDs is @a off.
  *
- * @param is the interpreter state.
  * @param h expected history
  * @param total number of entries in @a h
  * @param off the offset (of the CMD list) where the command
@@ -352,8 +351,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
  * @return #GNUNET_OK if the transaction is what we expect.
  */
 static int
-check_result (struct TALER_TESTING_Interpreter *is,
-              struct History *h,
+check_result (struct History *h,
               uint64_t total,
               unsigned int off,
               const struct TALER_BANK_DebitDetails *details)
@@ -457,8 +455,7 @@ history_cb (void *cls,
   }
 
   /* check current element */
-  if (GNUNET_OK != check_result (is,
-                                 hs->h,
+  if (GNUNET_OK != check_result (hs->h,
                                  hs->total,
                                  hs->results_obtained,
                                  details))

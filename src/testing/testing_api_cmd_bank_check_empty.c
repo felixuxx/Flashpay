@@ -40,6 +40,8 @@ check_bank_empty_cleanup
   (void *cls,
   const struct TALER_TESTING_Command *cmd)
 {
+  (void) cls;
+  (void) cmd;
   return;
 }
 
@@ -56,6 +58,8 @@ check_bank_empty_run (void *cls,
                       const struct TALER_TESTING_Command *cmd,
                       struct TALER_TESTING_Interpreter *is)
 {
+  (void) cls;
+  (void) cmd;
   if (GNUNET_OK != TALER_FAKEBANK_check_empty (is->fakebank))
   {
     GNUNET_break (0);
@@ -76,6 +80,10 @@ check_bank_empty_traits (void *cls,
                          const char *trait,
                          unsigned int index)
 {
+  (void) cls;
+  (void) ret;
+  (void) trait;
+  (void) index;
   return GNUNET_SYSERR;
 }
 

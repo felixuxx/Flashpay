@@ -83,6 +83,7 @@ check_bank_admin_transfer_run (void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub;
   const struct TALER_TESTING_Command *cmd_ref;
 
+  (void) cmd;
   cmd_ref
     = TALER_TESTING_interpreter_lookup_command (is,
                                                 bcs->reserve_pub_ref);
@@ -153,6 +154,7 @@ check_bank_admin_transfer_cleanup (void *cls,
 {
   struct BankAdminCheckState *bcs = cls;
 
+  (void) cmd;
   GNUNET_free (bcs);
 }
 

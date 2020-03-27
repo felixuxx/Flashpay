@@ -61,6 +61,7 @@ auditor_dbinit_run (void *cls,
 {
   struct AuditorDbinitState *ks = cls;
 
+  (void) cmd;
   ks->auditor_dbinit_proc
     = GNUNET_OS_start_process (GNUNET_NO,
                                GNUNET_OS_INHERIT_STD_ALL,
@@ -93,6 +94,7 @@ auditor_dbinit_cleanup (void *cls,
 {
   struct AuditorDbinitState *ks = cls;
 
+  (void) cmd;
   if (NULL != ks->auditor_dbinit_proc)
   {
     GNUNET_break (0 ==
