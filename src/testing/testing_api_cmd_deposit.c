@@ -151,6 +151,12 @@ struct DepositState
    * this will only be set after the command has been started.
    */
   int command_initialized;
+
+  /**
+   * Reference to fetch the merchant private key from.
+   * If NULL, we generate our own, fresh merchant key.
+   */
+  const char *merchant_priv_reference;
 };
 
 
@@ -306,6 +312,31 @@ deposit_run (void *cls,
     ds->amount = ods->amount;
     ds->merchant_priv = ods->merchant_priv;
     ds->command_initialized = GNUNET_YES;
+  }
+  else if (NULL != ds->merchant_priv_reference)
+  {
+    // We're copying the merchant key from another deposit operation
+    const struct TALER_MerchantPrivateKeyP *merchant_priv;
+    const struct TALER_TESTING_Command *cmd;
+    cmd = TALER_TESTING_interpreter_lookup_command
+            (is,
+            ds->merchant_priv_reference);
+    if (NULL == cmd)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    if ( (GNUNET_OK !=
+          TALER_TESTING_get_trait_merchant_priv (cmd,
+                                                 0,
+                                                 &merchant_priv)) )
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    ds->merchant_priv = *merchant_priv;
   }
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command
@@ -567,6 +598,94 @@ TALER_TESTING_cmd_deposit (const char *label,
   merchant_priv = GNUNET_CRYPTO_eddsa_key_create ();
   ds->merchant_priv.eddsa_priv = *merchant_priv;
   GNUNET_free (merchant_priv);
+  if (NULL == ds->contract_terms)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse contract terms `%s' for CMD `%s'\n",
+                contract_terms,
+                label);
+    GNUNET_assert (0);
+  }
+  ds->timestamp = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&ds->timestamp);
+
+  json_object_set_new (ds->contract_terms,
+                       "timestamp",
+                       GNUNET_JSON_from_time_abs (ds->timestamp));
+  if (0 != refund_deadline.rel_value_us)
+  {
+    ds->refund_deadline = GNUNET_TIME_relative_to_absolute (refund_deadline);
+    (void) GNUNET_TIME_round_abs (&ds->refund_deadline);
+    json_object_set_new (ds->contract_terms,
+                         "refund_deadline",
+                         GNUNET_JSON_from_time_abs (ds->refund_deadline));
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount (amount,
+                                         &ds->amount));
+  ds->expected_response_code = expected_response_code;
+  ds->command_initialized = GNUNET_YES;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = ds,
+      .label = label,
+      .run = &deposit_run,
+      .cleanup = &deposit_cleanup,
+      .traits = &deposit_traits
+    };
+
+    return cmd;
+  }
+}
+
+
+/**
+ * Create a "deposit" command that references an existing merchant key.
+ *
+ * @param label command label.
+ * @param coin_reference reference to any operation that can
+ *        provide a coin.
+ * @param coin_index if @a withdraw_reference offers an array of
+ *        coins, this parameter selects which one in that array.
+ *        This value is currently ignored, as only one-coin
+ *        withdrawals are implemented.
+ * @param target_account_payto target account for the "deposit"
+ *        request.
+ * @param contract_terms contract terms to be signed over by the
+ *        coin.
+ * @param refund_deadline refund deadline, zero means 'no refunds'.
+ *        Note, if time were absolute, then it would have come
+ *        one day and disrupt tests meaning.
+ * @param amount how much is going to be deposited.
+ * @param expected_response_code expected HTTP response code.
+ * @param merchant_priv_reference reference to another operation
+ *        that has a merchant private key trait
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_with_ref (const char *label,
+                                    const char *coin_reference,
+                                    unsigned int coin_index,
+                                    const char *target_account_payto,
+                                    const char *contract_terms,
+                                    struct GNUNET_TIME_Relative refund_deadline,
+                                    const char *amount,
+                                    unsigned int expected_response_code,
+                                    const char *merchant_priv_reference)
+{
+  struct DepositState *ds;
+  json_t *wire_details;
+
+  wire_details = TALER_TESTING_make_wire_details (target_account_payto);
+  ds = GNUNET_new (struct DepositState);
+  ds->merchant_priv_reference = merchant_priv_reference;
+  ds->coin_reference = coin_reference;
+  ds->coin_index = coin_index;
+  ds->wire_details = wire_details;
+  ds->contract_terms = json_loads (contract_terms,
+                                   JSON_REJECT_DUPLICATES,
+                                   NULL);
   if (NULL == ds->contract_terms)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

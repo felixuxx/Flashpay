@@ -436,6 +436,53 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+
+  /**
+   * This block exercises the aggretation logic by making two payments
+   * to the same merchant.
+   */
+  struct TALER_TESTING_Command aggregation[] = {
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-aggtest",
+                              "EUR:5.01"),
+    /* "consume" reserve creation transfer.  */
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "check-create-reserve-aggtest",
+      "EUR:5.01",
+      bc.user42_payto,
+      bc.exchange_payto,
+      "create-reserve-aggtest"),
+    CMD_EXEC_WIREWATCH ("wirewatch-aggtest"),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-aggtest",
+                                       "create-reserve-aggtest",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit ("deposit-aggtest-1",
+                               "withdraw-coin-aggtest",
+                               0,
+                               bc.user43_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:2",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit_with_ref ("deposit-aggtest-2",
+                                        "withdraw-coin-aggtest",
+                                        0,
+                                        bc.user43_payto,
+                                        "{\"items\":[{\"name\":\"foo bar\",\"value\":1}]}",
+                                        GNUNET_TIME_UNIT_ZERO,
+                                        "EUR:2",
+                                        MHD_HTTP_OK,
+                                        "deposit-aggtest-1"),
+    CMD_EXEC_AGGREGATOR ("aggregation-aggtest"),
+    TALER_TESTING_cmd_check_bank_transfer ("check-bank-transfer-aggtest",
+                                           ec.exchange_url,
+                                           "EUR:3.97",
+                                           bc.exchange_payto,
+                                           bc.user43_payto),
+    TALER_TESTING_cmd_check_bank_empty ("check-bank-empty-aggtest"),
+    TALER_TESTING_cmd_end ()
+  };
+
   struct TALER_TESTING_Command refund[] = {
     /**
      * Fill reserve with EUR:5.01, as withdraw fee is 1 ct per
@@ -786,6 +833,8 @@ run (void *cls,
                                track),
       TALER_TESTING_cmd_batch ("unaggregation",
                                unaggregation),
+      TALER_TESTING_cmd_batch ("aggregation",
+                               aggregation),
       TALER_TESTING_cmd_batch ("refund",
                                refund),
       TALER_TESTING_cmd_batch ("recoup",

@@ -1319,6 +1319,40 @@ TALER_TESTING_cmd_deposit (const char *label,
                            const char *amount,
                            unsigned int expected_response_code);
 
+/**
+ * Create a "deposit" command that references an existing merchant key.
+ *
+ * @param label command label.
+ * @param coin_reference reference to any operation that can
+ *        provide a coin.
+ * @param coin_index if @a withdraw_reference offers an array of
+ *        coins, this parameter selects which one in that array.
+ *        This value is currently ignored, as only one-coin
+ *        withdrawals are implemented.
+ * @param target_account_payto target account for the "deposit"
+ *        request.
+ * @param contract_terms contract terms to be signed over by the
+ *        coin.
+ * @param refund_deadline refund deadline, zero means 'no refunds'.
+ *        Note, if time were absolute, then it would have come
+ *        one day and disrupt tests meaning.
+ * @param amount how much is going to be deposited.
+ * @param expected_response_code expected HTTP response code.
+ * @param merchant_priv_reference reference to another operation
+ *        that has a merchant private key trait
+ *
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_deposit_with_ref (const char *label,
+                                    const char *coin_reference,
+                                    unsigned int coin_index,
+                                    const char *target_account_payto,
+                                    const char *contract_terms,
+                                    struct GNUNET_TIME_Relative refund_deadline,
+                                    const char *amount,
+                                    unsigned int expected_response_code,
+                                    const char *merchant_priv_reference);
 
 /**
  * Modify a deposit command to enable retries when we get transient
