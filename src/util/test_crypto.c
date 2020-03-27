@@ -30,7 +30,7 @@
  * @return 0 on success
  */
 static int
-test_high_level ()
+test_high_level (void)
 {
   struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
@@ -88,7 +88,7 @@ test_high_level ()
  * @return 0 on success
  */
 static int
-test_planchets ()
+test_planchets (void)
 {
   struct TALER_PlanchetSecretsP ps;
   struct TALER_DenominationPrivateKey dk_priv;
@@ -127,6 +127,8 @@ int
 main (int argc,
       const char *const argv[])
 {
+  (void) argc;
+  (void) argv;
   if (0 != test_high_level ())
     return 1;
   if (0 != test_planchets ())

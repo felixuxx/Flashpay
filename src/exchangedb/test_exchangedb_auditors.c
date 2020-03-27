@@ -114,6 +114,8 @@ main (int argc,
   struct GNUNET_CONFIGURATION_Handle *cfg = NULL;
   int ret;
 
+  (void) argc;
+  (void) argv;
   ret = 1;
   GNUNET_log_setup ("test-exchangedb-auditors",
                     "WARNING",

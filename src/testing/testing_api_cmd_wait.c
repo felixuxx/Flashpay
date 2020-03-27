@@ -84,6 +84,7 @@ wait_service_run (void *cls,
   const char *url = cmd->cls;
   char *wget_cmd;
 
+  (void) cls;
   GNUNET_asprintf (&wget_cmd,
                    "wget -q -t 1 -T 1 %s -o /dev/null -O /dev/null",
                    url);

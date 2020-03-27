@@ -47,6 +47,7 @@ ski_iter (void *cls,
 {
   const struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *exp = cls;
 
+  (void) filename;
   if (0 != GNUNET_memcmp (ski,
                           exp))
   {
@@ -66,6 +67,8 @@ main (int argc,
   char *tmpfile;
   int ret;
 
+  (void) argc;
+  (void) argv;
   ret = 1;
   tmpfile = NULL;
   GNUNET_log_setup ("test-exchangedb-signkeys",

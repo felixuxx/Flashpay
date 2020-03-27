@@ -117,6 +117,7 @@ check_SCRIPTS += \
   test_taler_exchange_httpd_afl.sh
 endif
 
+.NOTPARALLEL:
 TESTS = \
   $(check_SCRIPTS)
 

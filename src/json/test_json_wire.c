@@ -35,6 +35,8 @@ main (int argc,
   const char *payto = "payto://x-taler-bank/42";
   char *p;
 
+  (void) argc;
+  (void) argv;
   GNUNET_log_setup ("test-json-wire",
                     "WARNING",
                     NULL);

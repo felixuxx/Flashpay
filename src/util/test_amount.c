@@ -34,6 +34,8 @@ main (int argc,
   struct TALER_Amount r;
   char *c;
 
+  (void) argc;
+  (void) argv;
   GNUNET_log_setup ("test-amout",
                     "WARNING",
                     NULL);

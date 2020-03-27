@@ -60,6 +60,7 @@ closer_run (void *cls,
 {
   struct CloserState *as = cls;
 
+  (void) cmd;
   as->closer_proc
     = GNUNET_OS_start_process (GNUNET_NO,
                                GNUNET_OS_INHERIT_STD_ALL,
@@ -92,6 +93,7 @@ closer_cleanup (void *cls,
 {
   struct CloserState *as = cls;
 
+  (void) cmd;
   if (NULL != as->closer_proc)
   {
     GNUNET_break (0 ==

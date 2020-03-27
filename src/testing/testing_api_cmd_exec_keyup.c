@@ -125,6 +125,7 @@ keyup_cleanup (void *cls,
 {
   struct KeyupState *ks = cls;
 
+  (void) cmd;
   if (NULL != ks->keyup_proc)
   {
     GNUNET_break (0 ==

@@ -49,6 +49,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_batch.c \
   testing_api_cmd_check_keys.c \
   testing_api_cmd_deposit.c \
+  testing_api_cmd_deposits_get.c \
   testing_api_cmd_exec_aggregator.c \
   testing_api_cmd_exec_auditor-sign.c \
   testing_api_cmd_exec_closer.c \
@@ -63,7 +64,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_sleep.c \
   testing_api_cmd_stat.c \
   testing_api_cmd_status.c \
-  testing_api_cmd_track.c \
+  testing_api_cmd_transfer_get.c \
   testing_api_cmd_wait.c \
   testing_api_cmd_wire.c \
   testing_api_cmd_withdraw.c \
@@ -109,6 +110,7 @@ libtalertesting_la_LIBADD = \
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
+.NOTPARALLEL:
 check_PROGRAMS = \
   test_auditor_api \
   test_auditor_api_version \

@@ -172,6 +172,7 @@ check_SCRIPTS = \
   test-auditor.sh \
   test-revocation.sh
 
+.NOTPARALLEL:
 TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \

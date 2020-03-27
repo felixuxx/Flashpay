@@ -86,10 +86,10 @@ wire_cb (void *cls,
          const struct TALER_EXCHANGE_WireAccount *accounts)
 {
   struct WireState *ws = cls;
-  struct TALER_TESTING_Command *cmd = \
-    &ws->is->commands[ws->is->ip];
+  struct TALER_TESTING_Command *cmd = &ws->is->commands[ws->is->ip];
   struct TALER_Amount expected_fee;
 
+  (void) ec;
   TALER_LOG_DEBUG ("Checking parsed /wire response\n");
   ws->wh = NULL;
   if (ws->expected_response_code != http_status)
@@ -165,6 +165,8 @@ wire_run (void *cls,
           struct TALER_TESTING_Interpreter *is)
 {
   struct WireState *ws = cls;
+
+  (void) cmd;
   ws->is = is;
   ws->wh = TALER_EXCHANGE_wire (is->exchange,
                                 &wire_cb,

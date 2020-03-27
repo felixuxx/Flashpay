@@ -39,6 +39,8 @@ main (int argc,
 {
   char *r;
 
+  (void) argc;
+  (void) argv;
   GNUNET_log_setup ("test-payto",
                     "WARNING",
                     NULL);

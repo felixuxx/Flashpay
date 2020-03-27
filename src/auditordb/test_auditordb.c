@@ -781,6 +781,7 @@ main (int argc,
   char *testname;
   struct GNUNET_CONFIGURATION_Handle *cfg;
 
+  (void) argc;
   result = -1;
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
   {

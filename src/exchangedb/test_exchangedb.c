@@ -75,6 +75,11 @@ dead_prepare_cb (void *cls,
                  const char *buf,
                  size_t buf_size)
 {
+  (void) cls;
+  (void) rowid;
+  (void) wire_method;
+  (void) buf;
+  (void) buf_size;
   GNUNET_assert (0);
 }
 
@@ -344,6 +349,12 @@ never_called_cb (void *cls,
                  const struct TALER_TransferPrivateKeyP *tprivs,
                  const struct TALER_TransferPublicKeyP *tp)
 {
+  (void) cls;
+  (void) num_freshcoins;
+  (void) rrcs;
+  (void) num_tprivs;
+  (void) tprivs;
+  (void) tp;
   GNUNET_assert (0); /* should never be called! */
 }
 
@@ -361,14 +372,15 @@ never_called_cb (void *cls,
  * @param tpr transfer public key information
  */
 static void
-check_refresh_reveal_cb (void *cls,
-                         uint32_t num_freshcoins,
-                         const struct
-                         TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
-                         unsigned int num_tprivs,
-                         const struct TALER_TransferPrivateKeyP *tprivsr,
-                         const struct TALER_TransferPublicKeyP *tpr)
+check_refresh_reveal_cb (
+  void *cls,
+  uint32_t num_freshcoins,
+  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
+  unsigned int num_tprivs,
+  const struct TALER_TransferPrivateKeyP *tprivsr,
+  const struct TALER_TransferPublicKeyP *tpr)
 {
+  (void) cls;
   /* compare the refresh commit coin arrays */
   for (unsigned int cnt = 0; cnt < num_freshcoins; cnt++)
   {
@@ -426,6 +438,13 @@ audit_refresh_session_cb (void *cls,
                           uint32_t noreveal_index,
                           const struct TALER_RefreshCommitmentP *rc)
 {
+  (void) cls;
+  (void) rowid;
+  (void) denom_pub;
+  (void) coin_sig;
+  (void) amount_with_fee;
+  (void) noreveal_index;
+  (void) rc;
   auditor_row_cnt++;
   return GNUNET_OK;
 }
@@ -450,6 +469,8 @@ handle_link_data_cb (void *cls,
                      const struct TALER_TransferPublicKeyP *transfer_pub,
                      const struct TALER_EXCHANGEDB_LinkList *ldl)
 {
+  (void) cls;
+  (void) transfer_pub;
   for (const struct TALER_EXCHANGEDB_LinkList *ldlp = ldl;
        NULL != ldlp;
        ldlp = ldlp->next)
@@ -931,6 +952,15 @@ audit_refund_cb (void *cls,
                  uint64_t rtransaction_id,
                  const struct TALER_Amount *amount_with_fee)
 {
+  (void) cls;
+  (void) rowid;
+  (void) denom_pub;
+  (void) coin_pub;
+  (void) merchant_pub;
+  (void) merchant_sig;
+  (void) h_contract_terms;
+  (void) rtransaction_id;
+  (void) amount_with_fee;
   auditor_row_cnt++;
   return GNUNET_OK;
 }
@@ -957,6 +987,13 @@ audit_reserve_in_cb (void *cls,
                      uint64_t wire_reference,
                      struct GNUNET_TIME_Absolute execution_date)
 {
+  (void) cls;
+  (void) rowid;
+  (void) reserve_pub;
+  (void) credit;
+  (void) sender_account_details;
+  (void) wire_reference;
+  (void) execution_date;
   auditor_row_cnt++;
   return GNUNET_OK;
 }
@@ -985,6 +1022,14 @@ audit_reserve_out_cb (void *cls,
                       struct GNUNET_TIME_Absolute execution_date,
                       const struct TALER_Amount *amount_with_fee)
 {
+  (void) cls;
+  (void) rowid;
+  (void) h_blind_ev;
+  (void) denom_pub;
+  (void) reserve_pub;
+  (void) reserve_sig;
+  (void) execution_date;
+  (void) amount_with_fee;
   auditor_row_cnt++;
   return GNUNET_OK;
 }

@@ -520,11 +520,11 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_denomination (const char *label,
-                                         const char *reserve_reference,
-                                         const struct
-                                         TALER_EXCHANGE_DenomPublicKey *dk,
-                                         unsigned int expected_response_code)
+TALER_TESTING_cmd_withdraw_denomination (
+  const char *label,
+  const char *reserve_reference,
+  const struct TALER_EXCHANGE_DenomPublicKey *dk,
+  unsigned int expected_response_code)
 {
   struct WithdrawState *ws;
 

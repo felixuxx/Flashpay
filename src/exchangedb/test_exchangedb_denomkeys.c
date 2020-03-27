@@ -49,6 +49,7 @@ dki_iter (void *cls,
 {
   const struct TALER_EXCHANGEDB_DenominationKey *exp = cls;
 
+  (void) alias;
   if (0 != GNUNET_memcmp (&exp->issue,
                           &dki->issue))
   {
@@ -124,6 +125,8 @@ main (int argc,
   int ret;
   struct GNUNET_TIME_Absolute start;
 
+  (void) argc;
+  (void) argv;
   ret = 1;
   GNUNET_log_setup ("test-exchangedb-denomkeys",
                     "WARNING",

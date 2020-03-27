@@ -65,12 +65,12 @@ auditor_sign_run (void *cls,
                   struct TALER_TESTING_Interpreter *is)
 {
   struct AuditorSignState *ass = cls;
-
   struct GNUNET_CONFIGURATION_Handle *cfg;
   char *test_home_dir;
   char *exchange_master_pub;
   struct GNUNET_TIME_Absolute now;
 
+  (void) cmd;
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK != GNUNET_CONFIGURATION_load
         (cfg, ass->config_filename))
@@ -157,6 +157,7 @@ auditor_sign_cleanup (void *cls,
 {
   struct AuditorSignState *ass = cls;
 
+  (void) cmd;
   if (NULL != ass->auditor_sign_proc)
   {
     GNUNET_break (0 == GNUNET_OS_process_kill

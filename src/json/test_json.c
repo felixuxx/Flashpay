@@ -30,7 +30,7 @@
  * @return 0 on success
  */
 static int
-test_amount ()
+test_amount (void)
 {
   json_t *j;
   struct TALER_Amount a1;
@@ -60,6 +60,8 @@ int
 main (int argc,
       const char *const argv[])
 {
+  (void) argc;
+  (void) argv;
   GNUNET_log_setup ("test-json",
                     "WARNING",
                     NULL);

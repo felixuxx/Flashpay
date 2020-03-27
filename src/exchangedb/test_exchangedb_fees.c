@@ -60,6 +60,8 @@ main (int argc,
   int ret;
   unsigned int year;
 
+  (void) argc;
+  (void) argv;
   GNUNET_log_setup ("test-exchangedb-fees",
                     "WARNING",
                     NULL);

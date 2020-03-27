@@ -45,6 +45,8 @@ int
 main (int argc,
       const char *const argv[])
 {
+  (void) argc;
+  (void) argv;
   cf (TALER_urlencode (""), "");
   cf (TALER_urlencode ("abc"), "abc");
   cf (TALER_urlencode ("~~"), "~~");

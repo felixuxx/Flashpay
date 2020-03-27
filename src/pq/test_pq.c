@@ -175,10 +175,11 @@ main (int argc,
                             ")"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
-
   struct GNUNET_PQ_Context *conn;
   int ret;
 
+  (void) argc;
+  (void) argv;
   GNUNET_log_setup ("test-pq",
                     "WARNING",
                     NULL);
