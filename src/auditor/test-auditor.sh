@@ -1715,7 +1715,7 @@ then
         exit_fail "Reported total amount wrong: $AMOUNT"
     fi
 
-    OP=`jq -r --arg dep "deposit" '.bad_sig_losses[0] | select(.operation == $dep) | .operation' < test-audit-coins.json`
+    OP=`jq -r --arg dep "deposit" '.bad_sig_losses[] | select(.operation == $dep) | .operation' < test-audit-coins.json`
     if test "x$OP" != "xdeposit"
     then
         exit_fail "Reported wrong operation: $OP"
