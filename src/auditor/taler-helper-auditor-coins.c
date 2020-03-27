@@ -486,6 +486,7 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (value->currency,
                                         &deposit_fee));
+  have_refund = GNUNET_NO;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
        NULL != pos;
        pos = pos->next)
@@ -563,9 +564,10 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     /* spent > total: bad */
     struct TALER_Amount loss;
 
-    TALER_amount_subtract (&loss,
-                           &spent,
-                           &total);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_subtract (&loss,
+                                          &spent,
+                                          &total));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Loss detected for coin %s - %s\n",
                 TALER_B2S (coin_pub),
