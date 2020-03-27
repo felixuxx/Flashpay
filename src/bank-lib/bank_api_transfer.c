@@ -284,7 +284,10 @@ TALER_BANK_transfer (
   }
   d_len = ntohl (wp->account_len);
   u_len = ntohl (wp->exchange_url_len);
-  if (sizeof (*wp) + d_len + u_len != buf_size)
+  if ( (sizeof (*wp) + d_len + u_len != buf_size) ||
+       (d_len > buf_size) ||
+       (u_len > buf_size) ||
+       (d_len + u_len > buf_size) )
   {
     GNUNET_break (0);
     return NULL;
