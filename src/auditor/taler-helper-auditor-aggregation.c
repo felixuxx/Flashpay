@@ -845,6 +845,9 @@ wire_transfer_information_cb (
       wcc->qs = qs;
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Testing coin `%s' for validity\n",
+              TALER_B2S (&coin.coin_pub));
   if (GNUNET_OK !=
       TALER_test_coin_valid (&coin,
                              denom_pub))
@@ -854,8 +857,8 @@ wire_transfer_information_cb (
                                  "operation", "wire",
                                  "row", (json_int_t) rowid,
                                  "loss", TALER_JSON_from_amount (coin_value),
-                                 "key_pub", GNUNET_JSON_from_data_auto (
-                                   &issue->denom_hash)));
+                                 "coin_pub", GNUNET_JSON_from_data_auto (
+                                   &coin.coin_pub)));
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_add (&total_bad_sig_loss,
                                      &total_bad_sig_loss,
@@ -1490,10 +1493,10 @@ run (void *cls,
                       "total_wire_out_delta_minus",
                       TALER_JSON_from_amount (
                         &total_wire_out_delta_minus),
-                      /* Tested in test-auditor.sh #28 */
+                      /* Tested in test-auditor.sh #28/32 */
                       "bad_sig_losses",
                       report_bad_sig_losses,
-                      /* Tested in test-auditor.sh #28 */
+                      /* Tested in test-auditor.sh #28/32 */
                       "total_bad_sig_loss",
                       TALER_JSON_from_amount (&total_bad_sig_loss),
                       /* block #2 */

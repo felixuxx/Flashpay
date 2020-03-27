@@ -31,14 +31,11 @@
 #include "report-lib.h"
 
 /**
- * How many coin histories do we keep in RAM at any given point in
- * time? Used bound memory consumption of the auditor. Larger values
- * reduce database accesses.
- *
- * Set to a VERY low value here for testing. Practical values may be
- * in the millions.
+ * How many coin histories do we keep in RAM at any given point in time?
+ * Expect a few kB per coin history to be used. Used bound memory consumption
+ * of the auditor. Larger values reduce database accesses.
  */
-#define MAX_COIN_HISTORIES 4
+#define MAX_COIN_HISTORIES (16 * 1024 * 1024)
 
 /**
  * Use a 1 day grace period to deal with clocks not being perfectly synchronized.

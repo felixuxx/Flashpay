@@ -707,31 +707,23 @@ This section lists operations that the exchange performed, but for
 which the signatures provided are invalid. Hence the operations were
 invalid and the amount involved should be considered lost.
 
-The key given is always the key for which the signature verification
-step failed. This is the reserve public key for ``withdraw''
-operations, the coin public key for ``deposit'' and ``melt''
-operations, the merchant's public key for ``melt'' operations,
-the (hash of the) denomination public key for
-``recoup-verify'' and ``deposit-verify'' operations, and the master
-public key for ``recoup-master'' operations.
+\subsubsection{For aggregation}
 
-\subsubsection{For aggregations}
-
-% Table generation tested by testcase #XX in test-auditor.sh
+% Table generation tested by testcase #32 in test-auditor.sh
 
 {% if aggregation.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
 {% else %}
   \begin{longtable}{l|r|r}
-  \multicolumn{3}{l}{ {\bf Public key} }\\
+  \multicolumn{3}{l}{ {\bf Coin public key} }\\
   {\bf Operation type} & Database row & {\bf Loss amount} \\
   \hline \hline
 \endfirsthead
-  \multicolumn{3}{l}{ {\bf Public key} }\\
+  \multicolumn{3}{l}{ {\bf Coin public key} }\\
   {\bf Operation type} & Database row & {\bf Loss amount} \\ \hline \hline
 \endhead
   \hline \hline
-  \multicolumn{3}{l}{ {\bf Public key} }\\
+  \multicolumn{3}{l}{ {\bf Coin public key} }\\
   {\bf Operation type} & Database row & {\bf Loss amount} \\
 \endfoot
   \hline
@@ -741,7 +733,7 @@ public key for ``recoup-master'' operations.
   \label{table:bad_signature_losses}
 \endlastfoot
 {% for item in aggregation.bad_sig_losses %}
-  \multicolumn{3}{l}{ {\tt \small \truncate{0.9\textwidth}{ {{ item.key_pub }} } } } \\
+  \multicolumn{3}{l}{ {\tt \small \truncate{0.9\textwidth}{ {{ item.coin_pub }} } } } \\
 \nopagebreak
   {{ item.operation }} &
   {{ item.row }} &
@@ -759,15 +751,15 @@ public key for ``recoup-master'' operations.
   {\bf All signatures were valid.}
 {% else %}
   \begin{longtable}{l|r|r}
-  \multicolumn{3}{l}{ {\bf Public key} }\\
+  \multicolumn{3}{l}{ {\bf Coin public key} }\\
   {\bf Operation type} & Database row & {\bf Loss amount} \\
   \hline \hline
 \endfirsthead
-  \multicolumn{3}{l}{ {\bf Public key} }\\
+  \multicolumn{3}{l}{ {\bf Coin public key} }\\
   {\bf Operation type} & Database row & {\bf Loss amount} \\ \hline \hline
 \endhead
   \hline \hline
-  \multicolumn{3}{l}{ {\bf Public key} }\\
+  \multicolumn{3}{l}{ {\bf Coin public key} }\\
   {\bf Operation type} & Database row & {\bf Loss amount} \\
 \endfoot
   \hline
@@ -789,6 +781,13 @@ public key for ``recoup-master'' operations.
 \subsubsection{For reserves}
 
 % Table generation tested by testcase #7 in test-auditor.sh
+
+The key given is always the key for which the signature verification step
+failed. This is the reserve public key for ``withdraw'' operations, the coin
+public key for ``recoup'' operations, and the master public key for
+``recoup-master'' operations (where the master's signature on the revocation
+is invalid).
+
 
 {% if reserves.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
@@ -1140,7 +1139,7 @@ with respect to what wire fee it charges at what time.
 This section describes issues found that do not have a clear financial
 impact.
 
-\subsubsection{For aggregations}
+\subsubsection{For aggregation}
 
 % Table generation tested by testcase #15/#25 in test-auditor.sh
 

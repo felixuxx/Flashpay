@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 31`
+ALL_TESTS=`seq 0 32`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -60,7 +60,6 @@ function pre_audit () {
         exit_skip "Failed to launch bank"
     fi
     echo " DONE"
-
     if test ${1:-no} = "aggregator"
     then
         echo -n "Running exchange aggregator ..."
@@ -1595,6 +1594,7 @@ then
 
     run_audit aggregator
 
+    echo -n "Testing inconsistency detection... "
     ROW=`jq -e .bad_sig_losses[0].row < test-audit-aggregation.json`
     if test $ROW != "1"
     then
@@ -1624,6 +1624,7 @@ then
         exit_fail "Wrong total bad sig loss, got $LOSS"
     fi
 
+    echo "OK"
     # cannot easily undo aggregator, hence full reload
     full_reload
 
@@ -1643,6 +1644,7 @@ echo "UPDATE auditor_denominations SET fee_withdraw_frac=5000000 WHERE coin_val=
 
 run_audit
 
+echo -n "Testing inconsistency detection... "
 AMOUNT=`jq -r .total_balance_summary_delta_plus < test-audit-reserves.json`
 if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
@@ -1654,7 +1656,7 @@ if test "x$PROFIT" != "x-1"
 then
     exit_fail "Reported wrong profitability: $PROFIT"
 fi
-
+echo "OK"
 # Undo
 echo "UPDATE auditor_denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
 
@@ -1669,7 +1671,7 @@ echo "===========30: melt fee inconsistency ================="
 echo "UPDATE auditor_denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
 
 run_audit
-
+echo -n "Testing inconsistency detection... "
 AMOUNT=`jq -r .bad_sig_losses[0].loss < test-audit-coins.json`
 if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
@@ -1683,7 +1685,7 @@ then
 fi
 
 jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
-
+echo "OK"
 # Undo
 echo "UPDATE auditor_denominations SET fee_refresh_frac=3000000 WHERE coin_val=1;" | psql -Aqt $DB
 
@@ -1705,8 +1707,8 @@ then
 
     echo "UPDATE auditor_denominations SET fee_deposit_frac=5000000 WHERE coin_val=8;" | psql -Aqt $DB
 
-    run_audit aggregation
-
+    run_audit aggregator
+    echo -n "Testing inconsistency detection... "
     AMOUNT=`jq -r .total_bad_sig_loss < test-audit-coins.json`
     if test "x$AMOUNT" == "xTESTKUDOS:0"
     then
@@ -1714,11 +1716,12 @@ then
     fi
 
     OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
-    if test "x$OP" == "xdeposit"
+    if test "x$OP" != "xdeposit"
     then
         exit_fail "Reported wrong operation: $OP"
     fi
 
+    echo "OK"
     # Undo
     echo "UPDATE auditor_denominations SET fee_deposit_frac=2000000 WHERE coin_val=8;" | psql -Aqt $DB
 
@@ -1744,16 +1747,30 @@ then
 
     echo "===========32: known_coins signature wrong w. aggregation================="
     # Modify denom_sig, so it is wrong
-    OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -Aqt`
-    COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
-    echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+    OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -At`
+    COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -At`
+    echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -At $DB
 
-    run_audit aggregation
+    run_audit aggregator
+    echo -n "Testing inconsistency detection... "
+
+    AMOUNT=`jq -r .total_bad_sig_loss < test-audit-aggregation.json`
+    if test "x$AMOUNT" == "xTESTKUDOS:0"
+    then
+        exit_fail "Reported total amount wrong: $AMOUNT"
+    fi
+
+    OP=`jq -r .bad_sig_losses[0].operation < test-audit-aggregation.json`
+    if test "x$OP" != "xwire"
+    then
+        exit_fail "Reported wrong operation: $OP"
+    fi
 
     # FIXME: test incomplete...
     # BIG Q: why is wire_out empty? => aggregation test does not actually
     # find WTIDs to check, and thus doesn't detect the bad signature!
 
+    echo "OK"
     # Cannot undo aggregation, do full reload
     full_reload
 
@@ -1802,10 +1819,9 @@ check_with_database()
             break
         fi
     done
-    # echo "Cleanup (disabled, leaving database $DB behind)"
-    dropdb $DB
-    rm -r $WIRE_FEE_DIR
-    rm -f test-audit.log test-wire-audit.log
+    echo "Cleanup (disabled, leaving database $DB behind)"
+#    dropdb $DB
+#    rm -r $WIRE_FEE_DIR
 }
 
 
