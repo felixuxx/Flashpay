@@ -1323,7 +1323,7 @@ refresh_session_cb (void *cls,
                                    "row", (json_int_t) rowid,
                                    "loss", TALER_JSON_from_amount (
                                      amount_with_fee),
-                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                   "coin_pub", GNUNET_JSON_from_data_auto (
                                      coin_pub)));
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_add (&total_bad_sig_loss,
@@ -1665,7 +1665,7 @@ deposit_cb (void *cls,
                                    "row", (json_int_t) rowid,
                                    "loss", TALER_JSON_from_amount (
                                      amount_with_fee),
-                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                   "coin_pub", GNUNET_JSON_from_data_auto (
                                      coin_pub)));
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_add (&total_bad_sig_loss,
@@ -1690,7 +1690,7 @@ deposit_cb (void *cls,
                                    "row", (json_int_t) rowid,
                                    "loss", TALER_JSON_from_amount (
                                      amount_with_fee),
-                                   "key_pub", GNUNET_JSON_from_data_auto (
+                                   "coin_pub", GNUNET_JSON_from_data_auto (
                                      coin_pub)));
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_add (&total_bad_sig_loss,
@@ -1861,8 +1861,8 @@ refund_cb (void *cls,
                                    "row", (json_int_t) rowid,
                                    "loss", TALER_JSON_from_amount (
                                      amount_with_fee),
-                                   "key_pub", GNUNET_JSON_from_data_auto (
-                                     merchant_pub)));
+                                   "coin_pub", GNUNET_JSON_from_data_auto (
+                                     coin_pub)));
       GNUNET_assert (GNUNET_OK ==
                      TALER_amount_add (&total_bad_sig_loss,
                                        &total_bad_sig_loss,
@@ -1971,7 +1971,7 @@ check_recoup (struct CoinContext *cc,
                                  "operation", operation,
                                  "row", (json_int_t) rowid,
                                  "loss", TALER_JSON_from_amount (amount),
-                                 "key_pub", GNUNET_JSON_from_data_auto (
+                                 "coin_pub", GNUNET_JSON_from_data_auto (
                                    &coin->denom_pub_hash)));
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_add (&total_bad_sig_loss,
