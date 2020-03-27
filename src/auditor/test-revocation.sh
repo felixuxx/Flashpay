@@ -9,7 +9,7 @@ set -eu
 
 # Set of numbers for all the testcases.
 # When adding new tests, increase the last number:
-ALL_TESTS=`seq 0 1`
+ALL_TESTS=`seq 0 4`
 
 # $TESTS determines which tests we should run.
 # This construction is used to make it easy to
@@ -344,9 +344,103 @@ if test $WIRED != "TESTKUDOS:0"
 then
     exit_fail "Expected total missattribution in wrong, got $WIRED"
 fi
+
 # Database was unmodified, no need to undo
 echo "OK"
 }
+
+
+
+# Change recoup amount
+function test_2() {
+
+echo "===========2: recoup amount inconsistency==========="
+echo "UPDATE recoup SET amount_val=5 WHERE recoup_uuid=1" | psql -Aqt $DB
+
+run_audit
+
+# Reserve balance is now wrong
+echo -n "Testing inconsistency detection... "
+AMOUNT=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit-reserves.json`
+if test $AMOUNT != "TESTKUDOS:3"
+then
+    exit_fail "Auditor amount $AMOUNT is wrong"
+fi
+AMOUNT=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit-reserves.json`
+if test $AMOUNT != "TESTKUDOS:0"
+then
+    exit_fail "Exchange amount $AMOUNT is wrong"
+fi
+# Coin spent exceeded coin's value
+AMOUNT=`jq -r .amount_arithmetic_inconsistencies[0].auditor < test-audit-coins.json`
+if test $AMOUNT != "TESTKUDOS:2"
+then
+    exit_fail "Auditor amount $AMOUNT is wrong"
+fi
+AMOUNT=`jq -r .amount_arithmetic_inconsistencies[0].exchange < test-audit-coins.json`
+if test $AMOUNT != "TESTKUDOS:5"
+then
+    exit_fail "Exchange amount $AMOUNT is wrong"
+fi
+echo OK
+
+# Undo database modification
+echo "UPDATE recoup SET amount_val=2 WHERE recoup_uuid=1" | psql -Aqt $DB
+
+}
+
+
+# Change recoup-refresh amount
+function test_3() {
+
+echo "===========3: recoup-refresh amount inconsistency==========="
+echo "UPDATE recoup_refresh SET amount_val=5 WHERE recoup_refresh_uuid=1" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Testing inconsistency detection... "
+# Coin spent exceeded coin's value
+AMOUNT=`jq -r .total_arithmetic_delta_minus < test-audit-coins.json`
+if test $AMOUNT != "TESTKUDOS:5"
+then
+    exit_fail "Arithmetic delta minus amount $AMOUNT is wrong"
+fi
+AMOUNT=`jq -r .total_arithmetic_delta_plus < test-audit-coins.json`
+if test $AMOUNT != "TESTKUDOS:0"
+then
+    exit_fail "Arithmetic delta plus amount $AMOUNT is wrong"
+fi
+echo OK
+
+# Undo database modification
+echo "UPDATE recoup_refresh SET amount_val=0 WHERE recoup_refresh_uuid=1" | psql -Aqt $DB
+
+}
+
+
+# Void recoup-refresh entry by 'unrevoking' denomination
+function test_4() {
+
+echo "===========4: invalid recoup==========="
+echo "DELETE FROM denomination_revocations;" | psql -Aqt $DB
+
+run_audit
+
+echo -n "Testing inconsistency detection... "
+# Coin spent exceeded coin's value
+jq -e .bad_sig_losses[0] < test-audit-coins.json > /dev/null || exit_fail "Bad recoup not detected"
+AMOUNT=`jq -r .total_bad_sig_losses < test-audit-coins.json`
+if test $AMOUNT == "TESTKUDOS:0"
+then
+    exit_fail "Total bad sig losses are wrong"
+fi
+echo OK
+
+# Undo database modification (can't easily undo DELETE, so full reload)
+full_reload
+
+}
+
 
 
 

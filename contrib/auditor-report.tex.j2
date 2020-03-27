@@ -509,6 +509,7 @@ easily determined from the amounts and thus not included in the totals.
 \subsubsection{For coins}
 
 % Table generation tested by testcase #18 in test-auditor.sh
+% Table generation tested by testcase #3 in test-revocation.sh
 
 {% if coins.amount_arithmetic_inconsistencies|length() == 0 %}
   {\bf No arithmetic problems detected.}
@@ -541,7 +542,7 @@ easily determined from the amounts and thus not included in the totals.
 
 \subsubsection{For reserves}
 
-% Table generation tested by testcase #XX in test-auditor.sh
+% Table generation tested by testcase #2 in test-auditor.sh
 
 {% if reserves.amount_arithmetic_inconsistencies|length() == 0 %}
   {\bf No arithmetic problems detected.}
@@ -752,6 +753,7 @@ public key for ``recoup-master'' operations.
 \subsubsection{For coins}
 
 % Table generation tested by testcase #4/#5/#6/#13 in test-auditor.sh
+% Table generation tested by testcase #4 in test-revocation.sh
 
 {% if coins.bad_sig_losses|length() == 0 %}
   {\bf All signatures were valid.}
@@ -775,7 +777,7 @@ public key for ``recoup-master'' operations.
   \label{table:bad_signature_losses}
 \endlastfoot
 {% for item in coins.bad_sig_losses %}
-  \multicolumn{3}{l}{ {\tt \small \truncate{0.9\textwidth}{ {{ item.key_pub }} } } } \\
+  \multicolumn{3}{l}{ {\tt \small \truncate{0.9\textwidth}{ {{ item.coin_pub }} } } } \\
 \nopagebreak
   {{ item.operation }} &
   {{ item.row }} &
@@ -974,6 +976,7 @@ Deltas may indicate a corrupt database, but do not necessarily
 translate into a financial loss (yet).
 
 % Table generation tested by testcase #3 in test-auditor.sh
+% Table generation tested by testcase #4 in test-revocation.sh
 
 {% if reserves.reserve_balance_summary_wrong_inconsistencies|length() == 0 %}
   {\bf All balances matched up.}
@@ -1065,8 +1068,7 @@ have a clear financial impact.
 This section describes issues found by the wire auditor that
 relate to outgoing wire transfers subjects being duplicated.
 
-% Table generation tested by testcase #XX in test-auditor.sh
-% TODO: test this! #6054
+% Table generation tested by testcase #27 in test-auditor.sh
 
 {% if wire.wire_format_inconsistencies|length() == 0 %}
   {\bf No wire format inconsistencies found.}
@@ -1081,7 +1083,7 @@ relate to outgoing wire transfers subjects being duplicated.
   \hline \hline
 \endhead
   \hline
-  \multicolumn{2}{c}{ {\bf Row (base32)} } \\
+  \multicolumn{2}{c}{ {\bf Diagnostic} } \\
   {\bf Row (base32)}  & {\bf Amount} \\
 \endfoot
   \hline
@@ -1200,7 +1202,7 @@ impact.
 
 \subsubsection{For reserves}
 
-% Table generation tested by testcase #XX in test-auditor.sh
+% Table generation tested by testcase #4 in test-revocation.sh
 
 {% if reserves.row_inconsistencies|length() == 0 %}
   {\bf No row inconsistencies found.}

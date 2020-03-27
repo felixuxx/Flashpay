@@ -352,7 +352,7 @@ echo "OK"
 # Change amount of wire transfer reported by exchange
 function test_2() {
 
-echo "===========2: reserves_in inconsitency==========="
+echo "===========2: reserves_in inconsistency==========="
 echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 run_audit
@@ -396,7 +396,7 @@ echo "UPDATE reserves_in SET credit_val=10 WHERE reserve_in_serial_id=1" | psql 
 # lower than what exchange claims to have received.
 function test_3() {
 
-echo "===========3: reserves_in inconsitency==========="
+echo "===========3: reserves_in inconsistency==========="
 echo "UPDATE reserves_in SET credit_val=15 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
 
 run_audit
@@ -1443,7 +1443,6 @@ function test_25() {
 
 echo "=========25: inconsistent coin history========="
 
-# Check wire transfer lag reported (no aggregator!)
 # NOTE: This test is EXPECTED to fail for ~1h after
 # re-generating the test database as we do not
 # report lag of less than 1h (see GRACE_PERIOD in
@@ -1728,6 +1727,38 @@ else
 fi
 
 }
+
+
+
+
+# Test where denom_sig in known_coins table is wrong
+# (=> bad signature)
+function test_32() {
+
+# NOTE: This test is EXPECTED to fail for ~1h after
+# re-generating the test database as we do not
+# report lag of less than 1h (see GRACE_PERIOD in
+# taler-helper-auditor-wire.c)
+if [ $DATABASE_AGE -gt 3600 ]
+then
+
+    echo "===========32: known_coins signature wrong w. aggregation================="
+    # Modify denom_sig, so it is wrong
+    OLD_SIG=`echo 'SELECT denom_sig FROM known_coins LIMIT 1;' | psql $DB -Aqt`
+    COIN_PUB=`echo "SELECT coin_pub FROM known_coins WHERE denom_sig='$OLD_SIG';"  | psql $DB -Aqt`
+    echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020287320233542383731423743393036444643303442424430453039353246413642464132463537303139374131313437353746324632323332394644443146324643333445393939413336363430334233413133324444464239413833353833464536354442374335434445304441453035374438363336434541423834463843323843344446304144363030343430413038353435363039373833434431333239393736423642433437313041324632414132414435413833303432434346314139464635394244434346374436323238344143354544364131373739463430353032323241373838423837363535453434423145443831364244353638303232413123290a2020290a20290b' WHERE coin_pub='$COIN_PUB'" | psql -Aqt $DB
+
+    run_audit aggregation
+
+    # FIXME: test incomplete...
+
+    # Cannot undo aggregation, do full reload
+    full_reload
+
+fi
+}
+
+
 
 # *************** Main test loop starts here **************
 
