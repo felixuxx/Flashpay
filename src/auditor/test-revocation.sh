@@ -364,23 +364,23 @@ echo -n "Testing inconsistency detection... "
 AMOUNT=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].auditor < test-audit-reserves.json`
 if test $AMOUNT != "TESTKUDOS:3"
 then
-    exit_fail "Auditor amount $AMOUNT is wrong"
+    exit_fail "Reserve auditor amount $AMOUNT is wrong"
 fi
 AMOUNT=`jq -r .reserve_balance_summary_wrong_inconsistencies[0].exchange < test-audit-reserves.json`
 if test $AMOUNT != "TESTKUDOS:0"
 then
-    exit_fail "Exchange amount $AMOUNT is wrong"
+    exit_fail "Reserve exchange amount $AMOUNT is wrong"
 fi
 # Coin spent exceeded coin's value
 AMOUNT=`jq -r .amount_arithmetic_inconsistencies[0].auditor < test-audit-coins.json`
 if test $AMOUNT != "TESTKUDOS:2"
 then
-    exit_fail "Auditor amount $AMOUNT is wrong"
+    exit_fail "Coin auditor amount $AMOUNT is wrong"
 fi
 AMOUNT=`jq -r .amount_arithmetic_inconsistencies[0].exchange < test-audit-coins.json`
 if test $AMOUNT != "TESTKUDOS:5"
 then
-    exit_fail "Exchange amount $AMOUNT is wrong"
+    exit_fail "Coin exchange amount $AMOUNT is wrong"
 fi
 echo OK
 
