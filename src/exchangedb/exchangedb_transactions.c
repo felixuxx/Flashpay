@@ -40,10 +40,13 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
 {
   struct TALER_Amount spent = *off;
   struct TALER_Amount refunded;
+  struct TALER_Amount deposit_fee;
+  int have_refund;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (spent.currency,
                                         &refunded));
+  have_refund = GNUNET_NO;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
        NULL != pos;
        pos = pos->next)
@@ -60,6 +63,7 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
+      deposit_fee = pos->details.deposit->deposit_fee;
       break;
     case TALER_EXCHANGEDB_TT_MELT:
       /* spent += pos->amount_with_fee */
@@ -83,13 +87,14 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
-          TALER_amount_subtract (&refunded,
-                                 &refunded,
-                                 &pos->details.refund->refund_fee))
+          TALER_amount_add (&spent,
+                            &spent,
+                            &pos->details.refund->refund_fee))
       {
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
+      have_refund = GNUNET_YES;
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
       /* refunded += pos->value */
@@ -124,6 +129,18 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
         return GNUNET_SYSERR;
       }
       break;
+    }
+  }
+  if (have_refund)
+  {
+    /* If we gave any refund, also discount ONE deposit fee */
+    if (GNUNET_OK !=
+        TALER_amount_add (&refunded,
+                          &refunded,
+                          &deposit_fee))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
     }
   }
   /* spent = spent - refunded */
