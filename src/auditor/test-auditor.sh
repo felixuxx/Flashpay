@@ -108,6 +108,8 @@ function audit_only () {
 
 # Cleanup to run after the auditor
 function post_audit () {
+    taler-exchange-dbinit -g || exit_fail "exchange DB GC failed"
+
     kill -TERM `jobs -p` >/dev/null 2>/dev/null || true
     echo -n "Waiting for servers to die ..."
     wait
