@@ -558,7 +558,7 @@ echo "UPDATE known_coins SET denom_sig='\x287369672d76616c200a2028727361200a2020
 run_audit
 
 ROW=`jq -e .bad_sig_losses[0].row < test-audit-coins.json`
-if test $ROW != "-1"
+if test $ROW != "1"
 then
     exit_fail "Row wrong, got $ROW"
 fi
@@ -570,7 +570,7 @@ then
 fi
 
 OP=`jq -r .bad_sig_losses[0].operation < test-audit-coins.json`
-if test $OP != "known-coin"
+if test $OP != "melt"
 then
     exit_fail "Wrong operation, got $OP"
 fi
