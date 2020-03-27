@@ -322,6 +322,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION)
   };
 
+  (void) rh;
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
