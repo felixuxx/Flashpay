@@ -2084,7 +2084,7 @@ check_recoup (struct CoinContext *cc,
  * @param amount how much should be added back to the reserve
  * @param reserve_pub public key of the reserve
  * @param coin public information about the coin
- * @param denom_pub_hash hash of denomination public key of @a coin
+ * @param denom_pub denomination public key of @a coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
@@ -2126,7 +2126,7 @@ recoup_cb (void *cls,
  * @param timestamp when did we receive the recoup request
  * @param amount how much should be added back to the reserve
  * @param old_coin_pub original coin that was refreshed to create @a coin
- * @param old_denom_pub public key of @a old_coin_pub
+ * @param old_denom_pub_hash hash of the public key of @a old_coin_pub
  * @param coin public information about the coin
  * @param denom_pub denomination public key of @a coin
  * @param coin_sig signature with @e coin_pub of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
