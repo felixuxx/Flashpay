@@ -665,7 +665,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                     (json_int_t) row_id,
                                     "timestamp",
                                     GNUNET_JSON_from_time_abs (
-                                      GNUNET_TIME_UNIT_ZERO_ABS));
+                                      h->transactions_tail->date));
 }
 
 
