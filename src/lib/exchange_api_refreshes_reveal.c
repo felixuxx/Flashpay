@@ -239,6 +239,7 @@ handle_refresh_reveal_finished (void *cls,
       for (unsigned int i = 0; i<rrh->md->num_fresh_coins; i++)
         if (NULL != sigs[i].rsa_signature)
           GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
+      TALER_EXCHANGE_refreshes_reveal_cancel (rrh);
       return;
     }
   case MHD_HTTP_BAD_REQUEST:

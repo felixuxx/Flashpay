@@ -294,9 +294,8 @@ deposit_run (void *cls,
     const struct TALER_TESTING_Command *cmd;
     struct DepositState *ods;
 
-    cmd = TALER_TESTING_interpreter_lookup_command
-            (is,
-            ds->deposit_reference);
+    cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                    ds->deposit_reference);
     if (NULL == cmd)
     {
       GNUNET_break (0);
@@ -306,8 +305,8 @@ deposit_run (void *cls,
     ods = cmd->cls;
     ds->coin_reference = ods->coin_reference;
     ds->coin_index = ods->coin_index;
-    ds->wire_details = ods->wire_details;
-    ds->contract_terms = ods->contract_terms;
+    ds->wire_details = json_incref (ods->wire_details);
+    ds->contract_terms = json_incref (ods->contract_terms);
     ds->timestamp = ods->timestamp;
     ds->refund_deadline = ods->refund_deadline;
     ds->amount = ods->amount;
@@ -319,9 +318,9 @@ deposit_run (void *cls,
     /* We're copying the merchant key from another deposit operation */
     const struct TALER_MerchantPrivateKeyP *merchant_priv;
     const struct TALER_TESTING_Command *cmd;
-    cmd = TALER_TESTING_interpreter_lookup_command
-            (is,
-            ds->merchant_priv_reference);
+
+    cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                    ds->merchant_priv_reference);
     if (NULL == cmd)
     {
       GNUNET_break (0);
@@ -340,9 +339,8 @@ deposit_run (void *cls,
     ds->merchant_priv = *merchant_priv;
   }
   GNUNET_assert (ds->coin_reference);
-  coin_cmd = TALER_TESTING_interpreter_lookup_command
-               (is,
-               ds->coin_reference);
+  coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                       ds->coin_reference);
   if (NULL == coin_cmd)
   {
     GNUNET_break (0);
@@ -743,6 +741,7 @@ TALER_TESTING_cmd_deposit_replay (const char *label,
                                   unsigned int expected_response_code)
 {
   struct DepositState *ds;
+
   ds = GNUNET_new (struct DepositState);
   ds->deposit_reference = deposit_reference;
   ds->expected_response_code = expected_response_code;

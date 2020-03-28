@@ -459,9 +459,8 @@ refresh_reveal_run (void *cls,
   const struct TALER_TESTING_Command *melt_cmd;
 
   rrs->is = is;
-  melt_cmd = TALER_TESTING_interpreter_lookup_command
-               (is, rrs->melt_reference);
-
+  melt_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                       rrs->melt_reference);
   if (NULL == melt_cmd)
   {
     GNUNET_break (0);
@@ -469,12 +468,12 @@ refresh_reveal_run (void *cls,
     return;
   }
   rms = melt_cmd->cls;
-  rrs->rrh = TALER_EXCHANGE_refreshes_reveal
-               (is->exchange,
-               rms->refresh_data_length,
-               rms->refresh_data,
-               rms->noreveal_index,
-               &reveal_cb, rrs);
+  rrs->rrh = TALER_EXCHANGE_refreshes_reveal (is->exchange,
+                                              rms->refresh_data_length,
+                                              rms->refresh_data,
+                                              rms->noreveal_index,
+                                              &reveal_cb,
+                                              rrs);
 
   if (NULL == rrs->rrh)
   {
@@ -504,7 +503,6 @@ refresh_reveal_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 rrs->is->ip,
                 cmd->label);
-
     TALER_EXCHANGE_refreshes_reveal_cancel (rrs->rrh);
     rrs->rrh = NULL;
   }
