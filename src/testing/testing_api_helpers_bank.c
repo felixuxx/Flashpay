@@ -443,6 +443,7 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
     if (NULL == exchange_xtalerbank_account)
     {
       GNUNET_break (0);
+      GNUNET_free (exchange_payto_uri);
       return GNUNET_SYSERR;
     }
     GNUNET_asprintf (&bc->exchange_auth.wire_gateway_url,
@@ -462,6 +463,7 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
   {
     GNUNET_free (bc->exchange_auth.wire_gateway_url);
     bc->exchange_auth.wire_gateway_url = NULL;
+    GNUNET_free (exchange_payto_uri);
     return GNUNET_SYSERR;
   }
   /* Now we know it's the fake bank, for purpose of authentication, we
