@@ -95,6 +95,12 @@ struct WithdrawState
   struct TALER_PlanchetSecretsP ps;
 
   /**
+   * Reserve history entry that corresponds to this operation.
+   * Will be of type #TALER_EXCHANGE_RTT_WITHDRAWAL.
+   */
+  struct TALER_EXCHANGE_ReserveHistory reserve_history;
+
+  /**
    * Withdraw handle (while operation is running).
    */
   struct TALER_EXCHANGE_WithdrawHandle *wsh;
@@ -286,8 +292,10 @@ withdraw_run (void *cls,
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
 
   (void) cmd;
-  create_reserve = TALER_TESTING_interpreter_lookup_command
-                     (is, ws->reserve_reference);
+  create_reserve
+    = TALER_TESTING_interpreter_lookup_command (
+        is,
+        ws->reserve_reference);
   if (NULL == create_reserve)
   {
     GNUNET_break (0);
@@ -322,6 +330,16 @@ withdraw_run (void *cls,
      * would free the old one. */
     ws->pk = TALER_EXCHANGE_copy_denomination_key (dpk);
   }
+  else
+  {
+    ws->amount = ws->pk->value;
+  }
+  ws->reserve_history.type = TALER_EXCHANGE_RTT_WITHDRAWAL;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_add (&ws->reserve_history.amount,
+                                   &ws->amount,
+                                   &ws->pk->fee_withdraw));
+  ws->reserve_history.details.withdraw.fee = ws->pk->fee_withdraw;
   ws->wsh = TALER_EXCHANGE_withdraw (is->exchange,
                                      ws->pk,
                                      rp,
@@ -401,8 +419,8 @@ withdraw_traits (void *cls,
 
   /* We offer the reserve key where these coins were withdrawn
    * from. */
-  reserve_cmd = TALER_TESTING_interpreter_lookup_command
-                  (ws->is, ws->reserve_reference);
+  reserve_cmd = TALER_TESTING_interpreter_lookup_command (ws->is,
+                                                          ws->reserve_reference);
 
   if (NULL == reserve_cmd)
   {
@@ -434,6 +452,9 @@ withdraw_traits (void *cls,
       = GNUNET_strdup (TALER_EXCHANGE_get_base_url (ws->is->exchange));
   {
     struct TALER_TESTING_Trait traits[] = {
+      /* history entry MUST be first due to response code logic below! */
+      TALER_TESTING_make_trait_reserve_history (0,
+                                                &ws->reserve_history),
       TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
                                           &ws->ps.coin_priv),
       TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
@@ -453,7 +474,9 @@ withdraw_traits (void *cls,
       TALER_TESTING_trait_end ()
     };
 
-    return TALER_TESTING_get_trait (traits,
+    return TALER_TESTING_get_trait ((ws->expected_response_code == MHD_HTTP_OK)
+                                    ? &traits[0] /* we have reserve history */
+                                    : &traits[1],/* skip reserve history */
                                     ret,
                                     trait,
                                     index);

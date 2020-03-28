@@ -97,9 +97,22 @@ struct AdminAddIncomingState
   struct TALER_TESTING_Interpreter *is;
 
   /**
+   * Reserve history entry that corresponds to this operation.
+   * Will be of type #TALER_EXCHANGE_RTT_CREDIT.  Note that
+   * the "sender_url" field is set to a 'const char *' and
+   * MUST NOT be free()'ed.
+   */
+  struct TALER_EXCHANGE_ReserveHistory reserve_history;
+
+  /**
    * Set to the wire transfer's unique ID.
    */
   uint64_t serial_id;
+
+  /**
+   * Set to the wire transfer's row ID in network byte order.
+   */
+  uint64_t row_id_nbo;
 
   /**
    * Timestamp of the transaction (as returned from the bank).
@@ -196,6 +209,11 @@ confirmation_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = fts->is;
 
   (void) json;
+  fts->row_id_nbo = GNUNET_htonll (serial_id);
+  fts->reserve_history.details.in_details.timestamp = timestamp;
+  fts->reserve_history.details.in_details.wire_reference = &fts->row_id_nbo;
+  fts->reserve_history.details.in_details.wire_reference_size
+    = sizeof (fts->row_id_nbo);
   fts->aih = NULL;
   if (MHD_HTTP_OK != http_status)
   {
@@ -322,11 +340,10 @@ admin_add_incoming_run (void *cls,
       GNUNET_free (keys);
       if (NULL == priv)
       {
-        GNUNET_log_config_invalid
-          (GNUNET_ERROR_TYPE_ERROR,
-          section,
-          "TIP_RESERVE_PRIV_FILENAME",
-          "Failed to read private key");
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   section,
+                                   "TIP_RESERVE_PRIV_FILENAME",
+                                   "Failed to read private key");
         GNUNET_free (section);
         TALER_TESTING_interpreter_fail (is);
         return;
@@ -349,10 +366,14 @@ admin_add_incoming_run (void *cls,
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
                                       &fts->reserve_pub.eddsa_pub);
+  fts->reserve_history.type = TALER_EXCHANGE_RTT_CREDIT;
+  fts->reserve_history.amount = fts->amount;
+  fts->reserve_history.details.in_details.sender_url
+    = (char *) fts->payto_debit_account; /* remember to NOT free this one... */
   fts->is = is;
   fts->aih
-    = TALER_BANK_admin_add_incoming
-        (TALER_TESTING_interpreter_get_context (is),
+    = TALER_BANK_admin_add_incoming (
+        TALER_TESTING_interpreter_get_context (is),
         &fts->auth,
         &fts->reserve_pub,
         &fts->amount,
@@ -430,6 +451,8 @@ admin_add_incoming_traits (void *cls,
                                            &fts->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (0,
                                           &fts->reserve_pub),
+    TALER_TESTING_make_trait_reserve_history (0,
+                                              &fts->reserve_history),
     TALER_TESTING_trait_end ()
   };
 

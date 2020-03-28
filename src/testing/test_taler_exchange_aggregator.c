@@ -67,7 +67,6 @@ static char *config_filename;
  */
 #define CMD_EXEC_AGGREGATOR(label, cfg_fn)                                 \
   TALER_TESTING_cmd_exec_aggregator (label "-aggregator", cfg_fn), \
-  TALER_TESTING_cmd_exec_closer (label "-closer", cfg_fn),   \
   TALER_TESTING_cmd_exec_transfer (label "-transfer", cfg_fn)
 
 

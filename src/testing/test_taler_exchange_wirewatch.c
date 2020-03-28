@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016, 2017, 2018 Taler Systems SA
+  (C) 2016-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -57,7 +57,6 @@ static char *config_filename;
  */
 #define CMD_EXEC_AGGREGATOR(label) \
   TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_filename), \
-  TALER_TESTING_cmd_exec_closer (label "-closer", config_filename),   \
   TALER_TESTING_cmd_exec_transfer (label "-transfer", config_filename)
 
 
@@ -101,12 +100,25 @@ run (void *cls,
       bc.exchange_payto,                                            // credit
       "run-transfer-good-to-exchange"),
 
-    CMD_EXEC_AGGREGATOR ("run-aggregator-non-expired-reserve"),
+    TALER_TESTING_cmd_exec_closer ("run-closer-non-expired-reserve",
+                                   config_filename,
+                                   NULL,
+                                   NULL,
+                                   NULL),
+    TALER_TESTING_cmd_exec_transfer ("do-idle-transfer", config_filename),
 
     TALER_TESTING_cmd_check_bank_empty ("expect-empty-transactions-1"),
     TALER_TESTING_cmd_sleep ("wait (5s)",
                              5),
-    CMD_EXEC_AGGREGATOR ("run-aggregator-on-expired-reserve"),
+    TALER_TESTING_cmd_exec_closer ("run-closer-expired-reserve",
+                                   config_filename,
+                                   "EUR:4.99",
+                                   "EUR:0.01",
+                                   "run-transfer-good-to-exchange"),
+    TALER_TESTING_cmd_exec_transfer ("do-closing-transfer",
+                                     config_filename),
+
+    CMD_EXEC_AGGREGATOR ("run-closer-on-expired-reserve"),
     TALER_TESTING_cmd_check_bank_transfer ("expect-deposit-1",
                                            ec.exchange_url,
                                            "EUR:4.99",

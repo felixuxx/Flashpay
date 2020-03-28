@@ -45,6 +45,8 @@ TALER_TESTING_get_trait_reserve_pub
   unsigned int index,
   const struct TALER_ReservePublicKeyP **reserve_pub)
 {
+  if (NULL == cmd->traits)
+    return GNUNET_SYSERR;
   return cmd->traits (cmd->cls,
                       (const void **) reserve_pub,
                       TALER_TESTING_TRAIT_RESERVE_PUBLIC_KEY,

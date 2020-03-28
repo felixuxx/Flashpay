@@ -71,7 +71,6 @@ static struct TALER_TESTING_BankConfiguration bc;
  */
 #define CMD_EXEC_AGGREGATOR(label) \
   TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE), \
-  TALER_TESTING_cmd_exec_closer (label, CONFIG_FILE), \
   TALER_TESTING_cmd_exec_transfer (label, CONFIG_FILE)
 
 /**
@@ -401,7 +400,8 @@ run (void *cls,
     TALER_TESTING_cmd_recoup ("recoup-1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
-                              NULL),
+                              NULL,
+                              "EUR:5"),
     /**
      * Re-withdraw from this reserve
      */
@@ -460,7 +460,8 @@ run (void *cls,
     TALER_TESTING_cmd_recoup ("recoup-2",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
-                              NULL),
+                              NULL,
+                              "EUR:0.5"),
     TALER_TESTING_cmd_end ()
   };
 

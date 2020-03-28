@@ -548,8 +548,8 @@ TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is);
  * @return the label.
  */
 const char *
-TALER_TESTING_interpreter_get_current_label (struct
-                                             TALER_TESTING_Interpreter *is);
+TALER_TESTING_interpreter_get_current_label (
+  struct TALER_TESTING_Interpreter *is);
 
 
 /**
@@ -730,9 +730,9 @@ struct TALER_TESTING_SetupContext
  * @return #GNUNET_OK if no errors occurred.
  */
 int
-TALER_TESTING_setup_with_exchange_cfg (void *cls,
-                                       const struct
-                                       GNUNET_CONFIGURATION_Handle *cfg);
+TALER_TESTING_setup_with_exchange_cfg (
+  void *cls,
+  const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
@@ -766,10 +766,9 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
  * @return #GNUNET_OK if no errors occurred.
  */
 int
-TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
-                                                   const struct
-                                                   GNUNET_CONFIGURATION_Handle *
-                                                   cfg);
+TALER_TESTING_setup_with_auditor_and_exchange_cfg (
+  void *cls,
+  const struct GNUNET_CONFIGURATION_Handle *cfg);
 
 
 /**
@@ -866,11 +865,11 @@ TALER_TESTING_has_in_name (const char *prog,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_credits (const char *label,
-                                const struct
-                                TALER_BANK_AuthenticationData *auth,
-                                const char *start_row_reference,
-                                long long num_results);
+TALER_TESTING_cmd_bank_credits (
+  const char *label,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *start_row_reference,
+  long long num_results);
 
 
 /**
@@ -968,8 +967,9 @@ TALER_TESTING_cmd_deposit_confirmation (const char *label,
  * @return the command with retries enabled
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_deposit_confirmation_with_retry (struct TALER_TESTING_Command
-                                                   cmd);
+TALER_TESTING_cmd_deposit_confirmation_with_retry (
+  struct TALER_TESTING_Command
+  cmd);
 
 
 /**
@@ -1024,11 +1024,11 @@ TALER_TESTING_cmd_exchanges_with_retry (struct TALER_TESTING_Command cmd);
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming (const char *label,
-                                      const char *amount,
-                                      const struct
-                                      TALER_BANK_AuthenticationData *auth,
-                                      const char *payto_debit_account);
+TALER_TESTING_cmd_admin_add_incoming (
+  const char *label,
+  const char *amount,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *payto_debit_account);
 
 
 /**
@@ -1046,13 +1046,12 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
-                                               const char *amount,
-                                               const struct
-                                               TALER_BANK_AuthenticationData *
-                                               auth,
-                                               const char *payto_debit_account,
-                                               const char *ref);
+TALER_TESTING_cmd_admin_add_incoming_with_ref (
+  const char *label,
+  const char *amount,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *payto_debit_account,
+  const char *ref);
 
 
 /**
@@ -1074,15 +1073,13 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_with_instance (const char *label,
-                                                    const char *amount,
-                                                    const struct
-                                                    TALER_BANK_AuthenticationData
-                                                    *auth,
-                                                    const char *
-                                                    payto_debit_account,
-                                                    const char *instance,
-                                                    const char *config_filename);
+TALER_TESTING_cmd_admin_add_incoming_with_instance (
+  const char *label,
+  const char *amount,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *payto_debit_account,
+  const char *instance,
+  const char *config_filename);
 
 
 /**
@@ -1123,16 +1120,27 @@ TALER_TESTING_cmd_exec_aggregator (const char *label,
 
 
 /**
- * Make a "closer" CMD.
+ * Make a "closer" CMD.  Note that it is right now not supported to run the
+ * closer to close multiple reserves in combination with a subsequent reserve
+ * status call, as we cannot generate the traits necessary for multiple closed
+ * reserves.  You can work around this by using multiple closer commands, one
+ * per reserve that is being closed.
  *
  * @param label command label.
  * @param config_filename configuration file for the
  *                        closer to use.
+ * @param expected_amount amount we expect to see wired from a @a expected_reserve_ref
+ * @param expected_fee closing fee we expect to see
+ * @param expected_reserve_ref reference to a reserve we expect the closer to drain;
+ *          NULL if we do not expect the closer to do anything
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_closer (const char *label,
-                               const char *config_filename);
+                               const char *config_filename,
+                               const char *expected_amount,
+                               const char *expected_fee,
+                               const char *expected_reserve_ref);
 
 
 /**
@@ -1661,13 +1669,15 @@ TALER_TESTING_cmd_refund (const char *label,
  *        the index of the coin using "$LABEL#$INDEX" syntax.
  *        Here, $INDEX must be a non-negative number.
  * @param melt_reference NULL if coin was not refreshed, otherwise label of the melt operation
+ * @param amount how much do we expect to recoup, NULL for nothing
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_recoup (const char *label,
                           unsigned int expected_response_code,
                           const char *coin_reference,
-                          const char *melt_reference);
+                          const char *melt_reference,
+                          const char *amount);
 
 
 /**
@@ -2006,9 +2016,9 @@ TALER_TESTING_make_trait_bank_row (const uint64_t *row);
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_reserve_priv (unsigned int index,
-                                       const struct
-                                       TALER_ReservePrivateKeyP *reserve_priv);
+TALER_TESTING_make_trait_reserve_priv (
+  unsigned int index,
+  const struct TALER_ReservePrivateKeyP *reserve_priv);
 
 
 /**
@@ -2020,10 +2030,10 @@ TALER_TESTING_make_trait_reserve_priv (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_reserve_priv (const struct TALER_TESTING_Command *cmd,
-                                      unsigned int index,
-                                      const struct
-                                      TALER_ReservePrivateKeyP **reserve_priv);
+TALER_TESTING_get_trait_reserve_priv (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_ReservePrivateKeyP **reserve_priv);
 
 
 /**
@@ -2034,9 +2044,9 @@ TALER_TESTING_get_trait_reserve_priv (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_reserve_pub (unsigned int index,
-                                      const struct
-                                      TALER_ReservePublicKeyP *reserve_pub);
+TALER_TESTING_make_trait_reserve_pub (
+  unsigned int index,
+  const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
 /**
@@ -2048,10 +2058,38 @@ TALER_TESTING_make_trait_reserve_pub (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_reserve_pub (const struct TALER_TESTING_Command *cmd,
-                                     unsigned int index,
-                                     const struct
-                                     TALER_ReservePublicKeyP **reserve_pub);
+TALER_TESTING_get_trait_reserve_pub (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_ReservePublicKeyP **reserve_pub);
+
+
+/**
+ * Offer a reserve history entry.
+ *
+ * @param index reserve pubs's index number.
+ * @param rh reserve history entry to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_reserve_history (
+  unsigned int index,
+  const struct TALER_EXCHANGE_ReserveHistory *rh);
+
+
+/**
+ * Obtain a reserve history entry from a @a cmd.
+ *
+ * @param cmd command to extract the reserve history from.
+ * @param index reserve history's index number.
+ * @param[out] rhp set to the reserve history.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_reserve_history (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_EXCHANGE_ReserveHistory **rhp);
 
 
 /**
@@ -2063,9 +2101,9 @@ TALER_TESTING_get_trait_reserve_pub (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_exchange_sig (unsigned int index,
-                                       const struct
-                                       TALER_ExchangeSignatureP *exchange_sig);
+TALER_TESTING_make_trait_exchange_sig (
+  unsigned int index,
+  const struct TALER_ExchangeSignatureP *exchange_sig);
 
 
 /**
@@ -2077,10 +2115,10 @@ TALER_TESTING_make_trait_exchange_sig (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_exchange_sig (const struct TALER_TESTING_Command *cmd,
-                                      unsigned int index,
-                                      const struct
-                                      TALER_ExchangeSignatureP **exchange_sig);
+TALER_TESTING_get_trait_exchange_sig (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_ExchangeSignatureP **exchange_sig);
 
 
 /**
@@ -2092,9 +2130,9 @@ TALER_TESTING_get_trait_exchange_sig (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_exchange_pub (unsigned int index,
-                                       const struct
-                                       TALER_ExchangePublicKeyP *exchange_pub);
+TALER_TESTING_make_trait_exchange_pub (
+  unsigned int index,
+  const struct TALER_ExchangePublicKeyP *exchange_pub);
 
 
 /**
@@ -2106,10 +2144,10 @@ TALER_TESTING_make_trait_exchange_pub (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_exchange_pub (const struct TALER_TESTING_Command *cmd,
-                                      unsigned int index,
-                                      const struct
-                                      TALER_ExchangePublicKeyP **exchange_pub);
+TALER_TESTING_get_trait_exchange_pub (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_ExchangePublicKeyP **exchange_pub);
 
 
 /**
@@ -2149,9 +2187,9 @@ TALER_TESTING_make_trait_process (unsigned int index,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_coin_priv (unsigned int index,
-                                    const struct
-                                    TALER_CoinSpendPrivateKeyP *coin_priv);
+TALER_TESTING_make_trait_coin_priv (
+  unsigned int index,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv);
 
 /**
  * Obtain a coin private key from a @a cmd.
@@ -2162,10 +2200,10 @@ TALER_TESTING_make_trait_coin_priv (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_coin_priv (const struct TALER_TESTING_Command *cmd,
-                                   unsigned int index,
-                                   const struct
-                                   TALER_CoinSpendPrivateKeyP **coin_priv);
+TALER_TESTING_get_trait_coin_priv (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_CoinSpendPrivateKeyP **coin_priv);
 
 
 /**
@@ -2176,10 +2214,9 @@ TALER_TESTING_get_trait_coin_priv (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_blinding_key (unsigned int index,
-                                       const struct
-                                       TALER_DenominationBlindingKeyP *
-                                       blinding_key);
+TALER_TESTING_make_trait_blinding_key (
+  unsigned int index,
+  const struct TALER_DenominationBlindingKeyP *blinding_key);
 
 
 /**
@@ -2191,11 +2228,10 @@ TALER_TESTING_make_trait_blinding_key (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_blinding_key (const struct TALER_TESTING_Command *cmd,
-                                      unsigned int index,
-                                      const struct
-                                      TALER_DenominationBlindingKeyP **
-                                      blinding_key);
+TALER_TESTING_get_trait_blinding_key (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_DenominationBlindingKeyP **blinding_key);
 
 
 /**
@@ -2206,9 +2242,9 @@ TALER_TESTING_get_trait_blinding_key (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_pub (unsigned int index,
-                                    const struct
-                                    TALER_EXCHANGE_DenomPublicKey *dpk);
+TALER_TESTING_make_trait_denom_pub (
+  unsigned int index,
+  const struct TALER_EXCHANGE_DenomPublicKey *dpk);
 
 
 /**
@@ -2220,10 +2256,10 @@ TALER_TESTING_make_trait_denom_pub (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_denom_pub (const struct TALER_TESTING_Command *cmd,
-                                   unsigned int index,
-                                   const struct
-                                   TALER_EXCHANGE_DenomPublicKey **dpk);
+TALER_TESTING_get_trait_denom_pub (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_EXCHANGE_DenomPublicKey **dpk);
 
 
 /**
@@ -2235,10 +2271,10 @@ TALER_TESTING_get_trait_denom_pub (const struct TALER_TESTING_Command *cmd,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_denom_sig (const struct TALER_TESTING_Command *cmd,
-                                   unsigned int index,
-                                   const struct
-                                   TALER_DenominationSignature **dpk);
+TALER_TESTING_get_trait_denom_sig (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_DenominationSignature **dpk);
 
 
 /**
@@ -2250,9 +2286,9 @@ TALER_TESTING_get_trait_denom_sig (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_sig (unsigned int index,
-                                    const struct
-                                    TALER_DenominationSignature *sig);
+TALER_TESTING_make_trait_denom_sig (
+  unsigned int index,
+  const struct TALER_DenominationSignature *sig);
 
 
 /**
@@ -2323,9 +2359,9 @@ struct TALER_TESTING_FreshCoinData;
  * @return the trait,
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_fresh_coins (unsigned int index,
-                                      const struct TALER_TESTING_FreshCoinData *
-                                      fresh_coins);
+TALER_TESTING_make_trait_fresh_coins (
+  unsigned int index,
+  const struct TALER_TESTING_FreshCoinData *fresh_coins);
 
 
 /**
@@ -2338,10 +2374,10 @@ TALER_TESTING_make_trait_fresh_coins (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_fresh_coins (const struct TALER_TESTING_Command *cmd,
-                                     unsigned int index,
-                                     const struct
-                                     TALER_TESTING_FreshCoinData **fresh_coins);
+TALER_TESTING_get_trait_fresh_coins (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_TESTING_FreshCoinData **fresh_coins);
 
 
 /**
@@ -2440,10 +2476,10 @@ TALER_TESTING_make_trait_exchange_keys (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_merchant_priv (const struct TALER_TESTING_Command *cmd,
-                                       unsigned int index,
-                                       const struct
-                                       TALER_MerchantPrivateKeyP **priv);
+TALER_TESTING_get_trait_merchant_priv (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_MerchantPrivateKeyP **priv);
 
 
 /**
@@ -2456,9 +2492,9 @@ TALER_TESTING_get_trait_merchant_priv (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_merchant_priv (unsigned int index,
-                                        const struct
-                                        TALER_MerchantPrivateKeyP *priv);
+TALER_TESTING_make_trait_merchant_priv (
+  unsigned int index,
+  const struct TALER_MerchantPrivateKeyP *priv);
 
 
 /**
@@ -2472,10 +2508,10 @@ TALER_TESTING_make_trait_merchant_priv (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_merchant_pub (const struct TALER_TESTING_Command *cmd,
-                                      unsigned int index,
-                                      const struct
-                                      TALER_MerchantPublicKeyP **pub);
+TALER_TESTING_get_trait_merchant_pub (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_MerchantPublicKeyP **pub);
 
 
 /**
@@ -2488,9 +2524,9 @@ TALER_TESTING_get_trait_merchant_pub (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_merchant_pub (unsigned int index,
-                                       const struct
-                                       TALER_MerchantPublicKeyP *pub);
+TALER_TESTING_make_trait_merchant_pub (
+  unsigned int index,
+  const struct TALER_MerchantPublicKeyP *pub);
 
 
 /**
@@ -2504,10 +2540,10 @@ TALER_TESTING_make_trait_merchant_pub (unsigned int index,
  * @return #GNUNET_OK on success.
  */
 int
-TALER_TESTING_get_trait_string (const struct
-                                TALER_TESTING_Command *cmd,
-                                unsigned int index,
-                                const char **s);
+TALER_TESTING_get_trait_string (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const char **s);
 
 
 /**
@@ -2533,10 +2569,10 @@ TALER_TESTING_make_trait_string (unsigned int index,
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_get_trait_wtid (const struct TALER_TESTING_Command *cmd,
-                              unsigned int index,
-                              const struct
-                              TALER_WireTransferIdentifierRawP **wtid);
+TALER_TESTING_get_trait_wtid (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct TALER_WireTransferIdentifierRawP **wtid);
 
 
 /**
@@ -2547,9 +2583,9 @@ TALER_TESTING_get_trait_wtid (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_wtid (unsigned int index,
-                               const struct
-                               TALER_WireTransferIdentifierRawP *wtid);
+TALER_TESTING_make_trait_wtid (
+  unsigned int index,
+  const struct TALER_WireTransferIdentifierRawP *wtid);
 
 
 /**
@@ -2752,10 +2788,10 @@ TALER_TESTING_get_trait_cmd (const struct TALER_TESTING_Command *cmd,
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_get_trait_absolute_time (const struct TALER_TESTING_Command *cmd,
-                                       unsigned int index,
-                                       const struct
-                                       GNUNET_TIME_Absolute **time);
+TALER_TESTING_get_trait_absolute_time (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct GNUNET_TIME_Absolute **time);
 
 
 /**
@@ -2766,8 +2802,8 @@ TALER_TESTING_get_trait_absolute_time (const struct TALER_TESTING_Command *cmd,
  * @return the trait.
  */
 struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_absolute_time (unsigned int index,
-                                        const struct
-                                        GNUNET_TIME_Absolute *time);
+TALER_TESTING_make_trait_absolute_time (
+  unsigned int index,
+  const struct GNUNET_TIME_Absolute *time);
 
 #endif

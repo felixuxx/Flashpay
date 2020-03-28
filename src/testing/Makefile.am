@@ -59,6 +59,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_recoup.c \
   testing_api_cmd_refund.c \
   testing_api_cmd_refresh.c \
+  testing_api_cmd_revoke.c \
   testing_api_cmd_serialize_keys.c \
   testing_api_cmd_signal.c \
   testing_api_cmd_sleep.c \
@@ -88,6 +89,7 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_merchant_key.c \
   testing_api_trait_number.c \
   testing_api_trait_process.c \
+  testing_api_trait_reserve_history.c \
   testing_api_trait_reserve_pub.c \
   testing_api_trait_reserve_priv.c \
   testing_api_trait_string.c \

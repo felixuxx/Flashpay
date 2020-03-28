@@ -72,7 +72,6 @@ static struct TALER_TESTING_BankConfiguration bc;
  */
 #define CMD_EXEC_AGGREGATOR(label) \
   TALER_TESTING_cmd_exec_aggregator (label "-aggregator", CONFIG_FILE), \
-  TALER_TESTING_cmd_exec_closer (label "-closer", CONFIG_FILE), \
   TALER_TESTING_cmd_exec_transfer (label "-transfer", CONFIG_FILE)
 
 
@@ -651,7 +650,8 @@ run (void *cls,
     TALER_TESTING_cmd_recoup ("recoup-1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
-                              NULL),
+                              NULL,
+                              "EUR:5"),
     /* Check the money is back with the reserve */
     TALER_TESTING_cmd_status ("recoup-reserve-status-1",
                               "recoup-create-reserve-1",
@@ -674,7 +674,6 @@ run (void *cls,
                               "recoup-create-reserve-1",
                               "EUR:3.99",
                               MHD_HTTP_OK),
-
     /* These commands should close the reserve because
      * the aggregator is given a config file that ovverrides
      * the reserve expiration time (making it now-ish) */
@@ -687,9 +686,11 @@ run (void *cls,
                                                  "short-lived-reserve"),
     TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
                                       CONFIG_FILE_EXPIRE_RESERVE_NOW),
-
     TALER_TESTING_cmd_exec_closer ("close-reserves",
-                                   CONFIG_FILE_EXPIRE_RESERVE_NOW),
+                                   CONFIG_FILE_EXPIRE_RESERVE_NOW,
+                                   "EUR:5",
+                                   "EUR:0.01",
+                                   "short-lived-reserve"),
     TALER_TESTING_cmd_exec_transfer ("close-reserves-transfer",
                                      CONFIG_FILE_EXPIRE_RESERVE_NOW),
 
@@ -745,11 +746,13 @@ run (void *cls,
     TALER_TESTING_cmd_recoup ("recoup-2",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
-                              NULL),
+                              NULL,
+                              "EUR:0.5"),
     /* Idempotency of recoup (withdrawal variant) */
     TALER_TESTING_cmd_recoup ("recoup-2b",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
+                              NULL,
                               NULL),
     TALER_TESTING_cmd_deposit ("recoup-deposit-revoked",
                                "recoup-withdraw-coin-2b",
@@ -809,7 +812,10 @@ run (void *cls,
                                           CONFIG_FILE_EXPIRE_RESERVE_NOW);
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
       = TALER_TESTING_cmd_exec_closer ("reserve-open-close-aggregation",
-                                       CONFIG_FILE_EXPIRE_RESERVE_NOW);
+                                       CONFIG_FILE_EXPIRE_RESERVE_NOW,
+                                       "EUR:19.99",
+                                       "EUR:0.01",
+                                       "reserve-open-close-key");
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 3]
       = TALER_TESTING_cmd_status ("reserve-open-close-status",
                                   "reserve-open-close-key",
