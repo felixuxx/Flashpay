@@ -627,11 +627,12 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("recoup-create-reserve-1",
                               "EUR:5.01"),
-    TALER_TESTING_cmd_check_bank_admin_transfer ("recoup-create-reserve-1",
-                                                 "EUR:5.01",
-                                                 bc.user42_payto,
-                                                 bc.exchange_payto,
-                                                 "recoup-create-reserve-1"),
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "recoup-create-reserve-1-check",
+      "EUR:5.01",
+      bc.user42_payto,
+      bc.exchange_payto,
+      "recoup-create-reserve-1"),
     /**
      * Run wire-watch to trigger the reserve creation.
      */
