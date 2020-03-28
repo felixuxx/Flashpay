@@ -492,6 +492,5 @@ AC_CONFIG_FILES([Makefile
                  src/mhd/Makefile
                  src/pq/Makefile
                  src/util/Makefile
-                 src/util/taler-config
                  ])
 AC_OUTPUT

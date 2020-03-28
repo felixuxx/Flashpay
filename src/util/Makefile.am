@@ -19,6 +19,16 @@ EXTRA_DIST = \
 bin_SCRIPTS = \
   taler-config
 
+edit_script = $(SED) -e 's,%libdir%,$(libdir),'g $(NULL)
+
+taler-config: taler-config.in
+	rm -f $@ $@.tmp && \
+	$(edit_script) $< >$@.tmp && \
+	chmod a-w+x $@.tmp && \
+	mv $@.tmp $@
+
+
+
 lib_LTLIBRARIES = \
   libtalerutil.la
 

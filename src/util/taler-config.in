@@ -7,15 +7,6 @@ if ! type gnunet-config >/dev/null; then
   exit 1
 fi
 
-# FIXME: not very portable ...
-# FIXME: should use "libdir" instead of prefix/lib, but somehow
-# the recursive expansion does not work ;-(.
 GC=`which gnunet-config`
-ASAN=""
-A=`ldd $GC | grep libasan` && ASAN=`echo $A | awk '{print $3 ":"}'`
-if test -z $ASAN
-then
-   A=`ldd @prefix@/lib/libtalerutil.so | grep libasan` && ASAN=`echo $A | awk '{print $3 ":"}'`
-fi
-export LD_PRELOAD=${ASAN}${LD_PRELOAD:-}:@prefix@/lib/libtalerutil.so
+export LD_PRELOAD=${LD_PRELOAD:-}:%libdir%/libtalerutil.so
 exec gnunet-config "$@"
