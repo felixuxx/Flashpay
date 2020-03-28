@@ -15,3 +15,4 @@ taler-helper-auditor-deposits
 taler-helper-auditor-reserves
 taler-helper-auditor-wire
 generate-auditor-basedb-prod.conf
+generate-auditor-basedb-revocation.conf
