@@ -237,6 +237,13 @@ TALER_TESTING_cmd_exec_closer (const char *label,
                   label);
       GNUNET_assert (0);
     }
+    /* expected amount includes fee, while our argument
+       gives the amount _without_ the fee. So add the fee. */
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_amount_add (&as->reserve_history.amount,
+                                     &as->reserve_history.amount,
+                                     &as->reserve_history.details.close_details.
+                                     fee));
     as->reserve_history.type = TALER_EXCHANGE_RTT_CLOSE;
   }
   {
