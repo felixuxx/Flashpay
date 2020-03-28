@@ -406,6 +406,13 @@ sign_keys_for_exchange (void *cls,
     si->ec->exchange_url = NULL;
     return GNUNET_NO;
   }
+  if (GNUNET_OK !=
+      TALER_TESTING_url_port_free (si->ec->exchange_url))
+  {
+    GNUNET_free (si->ec->exchange_url);
+    si->ec->exchange_url = NULL;
+    return GNUNET_NO;
+  }
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -421,7 +428,12 @@ sign_keys_for_exchange (void *cls,
     si->ec->auditor_url = NULL;
     return GNUNET_SYSERR;
   }
-
+  if (GNUNET_OK !=
+      TALER_TESTING_url_port_free (si->ec->auditor_url))
+  {
+    ret = GNUNET_NO;
+    goto fail;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "paths",
