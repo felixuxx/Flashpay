@@ -316,7 +316,7 @@ deposit_run (void *cls,
   }
   else if (NULL != ds->merchant_priv_reference)
   {
-    // We're copying the merchant key from another deposit operation
+    /* We're copying the merchant key from another deposit operation */
     const struct TALER_MerchantPrivateKeyP *merchant_priv;
     const struct TALER_TESTING_Command *cmd;
     cmd = TALER_TESTING_interpreter_lookup_command
@@ -733,8 +733,8 @@ TALER_TESTING_cmd_deposit_with_ref (const char *label,
  * deposit command.
  *
  * @param label command label.
+ * @param deposit_reference which deposit command should we repeat
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command

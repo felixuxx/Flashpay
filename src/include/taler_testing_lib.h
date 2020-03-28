@@ -1246,11 +1246,11 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_denomination (const char *label,
-                                         const char *reserve_reference,
-                                         const struct
-                                         TALER_EXCHANGE_DenomPublicKey *dk,
-                                         unsigned int expected_response_code);
+TALER_TESTING_cmd_withdraw_denomination (
+  const char *label,
+  const char *reserve_reference,
+  const struct TALER_EXCHANGE_DenomPublicKey *dk,
+  unsigned int expected_response_code);
 
 
 /**
@@ -1372,13 +1372,14 @@ TALER_TESTING_cmd_deposit_with_ref (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd);
 
+
 /**
  * Create a "deposit" command that repeats an existing
  * deposit command.
  *
  * @param label command label.
+ * @param deposit_reference which deposit command should we repeat
  * @param expected_response_code expected HTTP response code.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
