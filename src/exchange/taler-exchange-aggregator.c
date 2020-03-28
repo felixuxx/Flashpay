@@ -312,7 +312,7 @@ refund_by_coin_cb (void *cls,
               "Aggregator subtracts applicable refund of amount %s\n",
               TALER_amount2s (amount_with_fee));
   aux->have_refund = GNUNET_YES;
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_amount_subtract (&aux->total_amount,
                              &aux->total_amount,
                              amount_with_fee))
