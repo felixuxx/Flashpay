@@ -109,7 +109,7 @@ TALER_EXCHANGE_parse_reserve_history (
         GNUNET_JSON_spec_end ()
       };
 
-      rhistory[off].type = TALER_EXCHANGE_RTT_DEPOSIT;
+      rhistory[off].type = TALER_EXCHANGE_RTT_CREDIT;
       if (GNUNET_OK !=
           TALER_amount_add (&total_in,
                             &total_in,
@@ -201,8 +201,9 @@ TALER_EXCHANGE_parse_reserve_history (
           GNUNET_JSON_parse_free (withdraw_spec);
           return GNUNET_SYSERR;
         }
+        rhistory[off].details.withdraw.fee = fee;
       }
-      rhistory[off].details.out_authorization_sig
+      rhistory[off].details.withdraw.out_authorization_sig
         = json_object_get (transaction,
                            "signature");
       /* Check check that the same withdraw transaction
@@ -355,7 +356,8 @@ TALER_EXCHANGE_parse_reserve_history (
       rcc.reserve_pub = *reserve_pub;
       timestamp = GNUNET_TIME_absolute_ntoh (rcc.timestamp);
       rhistory[off].details.close_details.timestamp = timestamp;
-
+      TALER_amount_ntoh (&rhistory[off].details.close_details.fee,
+                         &rcc.closing_fee);
       key_state = TALER_EXCHANGE_get_keys (exchange);
       if (GNUNET_OK !=
           TALER_EXCHANGE_test_signing_key (key_state,
@@ -424,7 +426,7 @@ TALER_EXCHANGE_free_reserve_history (
   {
     switch (rhistory[i].type)
     {
-    case TALER_EXCHANGE_RTT_DEPOSIT:
+    case TALER_EXCHANGE_RTT_CREDIT:
       GNUNET_free_non_null (rhistory[i].details.in_details.wire_reference);
       GNUNET_free_non_null (rhistory[i].details.in_details.sender_url);
       break;

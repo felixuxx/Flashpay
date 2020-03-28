@@ -946,7 +946,7 @@ enum TALER_EXCHANGE_ReserveTransactionType
   /**
    * Deposit into the reserve.
    */
-  TALER_EXCHANGE_RTT_DEPOSIT,
+  TALER_EXCHANGE_RTT_CREDIT,
 
   /**
    * Withdrawal from the reserve.
@@ -990,7 +990,7 @@ struct TALER_EXCHANGE_ReserveHistory
 
     /**
      * Information about a deposit that filled this reserve.
-     * @e type is #TALER_EXCHANGE_RTT_DEPOSIT.
+     * @e type is #TALER_EXCHANGE_RTT_CREDIT.
      */
     struct
     {
@@ -1017,10 +1017,21 @@ struct TALER_EXCHANGE_ReserveHistory
     } in_details;
 
     /**
-     * Signature authorizing the withdrawal for outgoing transaction.
+     * Information about withdraw operation.
      * @e type is #TALER_EXCHANGE_RTT_WITHDRAWAL.
      */
-    json_t *out_authorization_sig;
+    struct
+    {
+      /**
+       * Signature authorizing the withdrawal for outgoing transaction.
+       */
+      json_t *out_authorization_sig;
+
+      /**
+       * Fee that was charged for the withdrawal.
+       */
+      struct TALER_Amount fee;
+    } withdraw;
 
     /**
      * Information provided if the reserve was filled via /recoup.
@@ -1083,6 +1094,11 @@ struct TALER_EXCHANGE_ReserveHistory
        * When did the wire transfer happen?
        */
       struct GNUNET_TIME_Absolute timestamp;
+
+      /**
+       * Fee that was charged for the closing.
+       */
+      struct TALER_Amount fee;
 
     } close_details;
 
