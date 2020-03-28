@@ -1768,10 +1768,6 @@ then
         exit_fail "Reported wrong operation: $OP"
     fi
 
-    # FIXME: test incomplete...
-    # BIG Q: why is wire_out empty? => aggregation test does not actually
-    # find WTIDs to check, and thus doesn't detect the bad signature!
-
     echo "OK"
     # Cannot undo aggregation, do full reload
     full_reload
