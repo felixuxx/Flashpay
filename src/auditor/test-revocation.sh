@@ -434,6 +434,11 @@ if test $AMOUNT == "TESTKUDOS:0"
 then
     exit_fail "Total bad sig losses are wrong"
 fi
+TAB=`jq -r .row_inconsistencies[0].table < test-audit-reserves.json`
+if test $TAB != "recoup"
+then
+    exit_fail "Wrong table for row inconsistency, got $TAB"
+fi
 echo OK
 
 # Undo database modification (can't easily undo DELETE, so full reload)

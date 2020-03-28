@@ -1602,7 +1602,7 @@ run (void *cls,
                         /* Tested in test-auditor.sh #7 */
                         "total_bad_sig_loss",
                         TALER_JSON_from_amount (&total_bad_sig_loss),
-                        /* FIXME: Tested in test-auditor.sh #?? */
+                        /* Tested in test-revocation.sh #4 */
                         "row_inconsistencies",
                         report_row_inconsistencies,
                         /* Tested in test-auditor.sh #23 */
