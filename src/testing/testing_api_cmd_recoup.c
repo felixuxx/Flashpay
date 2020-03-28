@@ -18,51 +18,13 @@
 */
 /**
  * @file testing/testing_api_cmd_recoup.c
- * @brief Implement the /revoke and /recoup test commands.
+ * @brief Implement the /recoup test command.
  * @author Marcello Stanisci
  */
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_testing_lib.h"
-
-
-/**
- * State for a "revoke" CMD.
- */
-struct RevokeState
-{
-  /**
-   * Expected HTTP status code.
-   */
-  unsigned int expected_response_code;
-
-  /**
-   * Command that offers a denomination to revoke.
-   */
-  const char *coin_reference;
-
-  /**
-   * The interpreter state.
-   */
-  struct TALER_TESTING_Interpreter *is;
-
-  /**
-   * The revoke process handle.
-   */
-  struct GNUNET_OS_Process *revoke_proc;
-
-  /**
-   * Configuration file name.
-   */
-  const char *config_filename;
-
-  /**
-   * Encoding of the denomination (to revoke) public key hash.
-   */
-  char *dhks;
-
-};
 
 
 /**
@@ -96,6 +58,17 @@ struct RecoupState
    * to the melt operation underlying @a coin_reference.
    */
   const char *melt_reference;
+
+  /**
+   * If the recoup filled a reserve, this is set to the reserve's public key.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
+   * Reserve history entry, set if this recoup actually filled up a reserve.
+   * Otherwise `reserve_history.type` will be zero.
+   */
+  struct TALER_EXCHANGE_ReserveHistory reserve_history;
 
 };
 
@@ -195,8 +168,8 @@ recoup_cb (void *cls,
     return;
   }
 
-  reserve_cmd = TALER_TESTING_interpreter_lookup_command
-                  (is, cref);
+  reserve_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                          cref);
   GNUNET_free (cref);
 
   if (NULL == reserve_cmd)
@@ -246,7 +219,6 @@ recoup_cb (void *cls,
     else
     {
       const struct TALER_ReservePrivateKeyP *reserve_priv;
-      struct TALER_ReservePublicKeyP rp;
 
       if (NULL == reserve_pub)
       {
@@ -254,21 +226,28 @@ recoup_cb (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      if (GNUNET_OK != TALER_TESTING_get_trait_reserve_priv
-            (reserve_cmd, idx, &reserve_priv))
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_reserve_priv (reserve_cmd,
+                                                idx,
+                                                &reserve_priv))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
       GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
-                                          &rp.eddsa_pub);
-      if (0 != GNUNET_memcmp (reserve_pub, &rp))
+                                          &ps->reserve_pub.eddsa_pub);
+      if (0 != GNUNET_memcmp (reserve_pub,
+                              &ps->reserve_pub))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
+      if (GNUNET_OK ==
+          TALER_amount_is_valid (&ps->reserve_history.amount))
+        ps->reserve_history.type = TALER_EXCHANGE_RTT_RECOUP;
+      /* ps->reserve_history.details.recoup_details.coin_pub; // initialized earlier */
     }
     break;
   default:
@@ -313,8 +292,8 @@ recoup_run (void *cls,
     return;
   }
 
-  coin_cmd = TALER_TESTING_interpreter_lookup_command
-               (is, cref);
+  coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                       cref);
   GNUNET_free (cref);
 
   if (NULL == coin_cmd)
@@ -324,16 +303,20 @@ recoup_run (void *cls,
     return;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-        (coin_cmd, idx, &coin_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_coin_priv (coin_cmd,
+                                         idx,
+                                         &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_blinding_key
-        (coin_cmd, idx, &blinding_key))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_blinding_key (coin_cmd,
+                                            idx,
+                                            &blinding_key))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -341,17 +324,24 @@ recoup_run (void *cls,
   }
   planchet.coin_priv = *coin_priv;
   planchet.blinding_key = *blinding_key;
+  GNUNET_CRYPTO_eddsa_key_get_public (
+    &coin_priv->eddsa_priv,
+    &ps->reserve_history.details.recoup_details.coin_pub.eddsa_pub);
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_denom_pub
-        (coin_cmd, idx, &denom_pub))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_denom_pub (coin_cmd,
+                                         idx,
+                                         &denom_pub))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
 
-  if (GNUNET_OK != TALER_TESTING_get_trait_denom_sig
-        (coin_cmd, idx, &coin_sig))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_denom_sig (coin_cmd,
+                                         idx,
+                                         &coin_sig))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
@@ -359,7 +349,7 @@ recoup_run (void *cls,
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Trying to get '%s..' paid back\n",
+              "Trying to recoup denomination '%s'\n",
               TALER_B2S (&denom_pub->h_key));
 
   ps->ph = TALER_EXCHANGE_recoup (is->exchange,
@@ -370,31 +360,6 @@ recoup_run (void *cls,
                                   recoup_cb,
                                   ps);
   GNUNET_assert (NULL != ps->ph);
-}
-
-
-/**
- * Cleanup the state.
- *
- * @param cls closure, must be a `struct RevokeState`.
- * @param cmd the command which is being cleaned up.
- */
-static void
-revoke_cleanup (void *cls,
-                const struct TALER_TESTING_Command *cmd)
-{
-  struct RevokeState *rs = cls;
-
-  if (NULL != rs->revoke_proc)
-  {
-    GNUNET_break (0 == GNUNET_OS_process_kill
-                    (rs->revoke_proc, SIGKILL));
-    GNUNET_OS_process_wait (rs->revoke_proc);
-    GNUNET_OS_process_destroy (rs->revoke_proc);
-    rs->revoke_proc = NULL;
-  }
-  GNUNET_free_non_null (rs->dhks);
-  GNUNET_free (rs);
 }
 
 
@@ -420,7 +385,8 @@ recoup_cleanup (void *cls,
 
 
 /**
- * Offer internal data from a "revoke" CMD to other CMDs.
+ * Offer internal data from a "recoup" CMD state to other
+ * commands.
  *
  * @param cls closure
  * @param[out] ret result (could be anything)
@@ -429,87 +395,29 @@ recoup_cleanup (void *cls,
  * @return #GNUNET_OK on success
  */
 static int
-revoke_traits (void *cls,
+recoup_traits (void *cls,
                const void **ret,
                const char *trait,
                unsigned int index)
 {
-  struct RevokeState *rs = cls;
-  struct TALER_TESTING_Trait traits[] = {
-    /* Needed by the handler which waits the proc'
-     * death and calls the next command */
-    TALER_TESTING_make_trait_process (0, &rs->revoke_proc),
-    TALER_TESTING_trait_end ()
-  };
+  struct RecoupState *ps = cls;
 
-  return TALER_TESTING_get_trait (traits,
-                                  ret,
-                                  trait,
-                                  index);
-}
-
-
-/**
- * Run the "revoke" command.  The core of the function
- * is to call the "keyup" utility passing it the base32
- * encoding of the denomination to revoke.
- *
- * @param cls closure.
- * @param cmd the command to execute.
- * @param is the interpreter state.
- */
-static void
-revoke_run (void *cls,
-            const struct TALER_TESTING_Command *cmd,
-            struct TALER_TESTING_Interpreter *is)
-{
-  struct RevokeState *rs = cls;
-  const struct TALER_TESTING_Command *coin_cmd;
-  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
-
-  rs->is = is;
-  /* Get denom pub from trait */
-  coin_cmd = TALER_TESTING_interpreter_lookup_command
-               (is, rs->coin_reference);
-
-  if (NULL == coin_cmd)
+  if (ps->reserve_history.type != TALER_EXCHANGE_RTT_RECOUP)
+    return GNUNET_SYSERR; /* no traits */
   {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
+    struct TALER_TESTING_Trait traits[] = {
+      TALER_TESTING_make_trait_reserve_pub (0,
+                                            &ps->reserve_pub),
+      TALER_TESTING_make_trait_reserve_history (0,
+                                                &ps->reserve_history),
+      TALER_TESTING_trait_end ()
+    };
+
+    return TALER_TESTING_get_trait (traits,
+                                    ret,
+                                    trait,
+                                    index);
   }
-
-  GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_denom_pub
-                   (coin_cmd, 0, &denom_pub));
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Trying to revoke denom '%s..'\n",
-              TALER_B2S (&denom_pub->h_key));
-
-  rs->dhks = GNUNET_STRINGS_data_to_string_alloc
-               (&denom_pub->h_key, sizeof (struct GNUNET_HashCode));
-
-  rs->revoke_proc = GNUNET_OS_start_process
-                      (GNUNET_NO,
-                      GNUNET_OS_INHERIT_STD_ALL,
-                      NULL, NULL, NULL,
-                      "taler-exchange-keyup",
-                      "taler-exchange-keyup",
-                      "-c", rs->config_filename,
-                      "-r", rs->dhks,
-                      NULL);
-
-  if (NULL == rs->revoke_proc)
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Revoke is ongoing..\n");
-
-  is->reload_keys = GNUNET_OK;
-  TALER_TESTING_wait_for_sigchld (is);
 }
 
 
@@ -521,13 +429,15 @@ revoke_run (void *cls,
  * @param coin_reference reference to any command which
  *        offers a coin & reserve private key.
  * @param melt_reference NULL if coin was not refreshed
+ * @param amount how much do we expect to recoup?
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_recoup (const char *label,
                           unsigned int expected_response_code,
                           const char *coin_reference,
-                          const char *melt_reference)
+                          const char *melt_reference,
+                          const char *amount)
 {
   struct RecoupState *ps;
 
@@ -535,49 +445,24 @@ TALER_TESTING_cmd_recoup (const char *label,
   ps->expected_response_code = expected_response_code;
   ps->coin_reference = coin_reference;
   ps->melt_reference = melt_reference;
+  if ( (NULL != amount) &&
+       (GNUNET_OK !=
+        TALER_string_to_amount (amount,
+                                &ps->reserve_history.amount)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to parse amount `%s' at %s\n",
+                amount,
+                label);
+    GNUNET_assert (0);
+  }
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ps,
       .label = label,
       .run = &recoup_run,
-      .cleanup = &recoup_cleanup
-    };
-
-    return cmd;
-  }
-}
-
-
-/**
- * Make a "revoke" command.
- *
- * @param label the command label.
- * @param expected_response_code expected HTTP status code.
- * @param coin_reference reference to a CMD that will offer the
- *        denomination to revoke.
- * @param config_filename configuration file name.
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_revoke (const char *label,
-                          unsigned int expected_response_code,
-                          const char *coin_reference,
-                          const char *config_filename)
-{
-
-  struct RevokeState *rs;
-
-  rs = GNUNET_new (struct RevokeState);
-  rs->expected_response_code = expected_response_code;
-  rs->coin_reference = coin_reference;
-  rs->config_filename = config_filename;
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = rs,
-      .label = label,
-      .run = &revoke_run,
-      .cleanup = &revoke_cleanup,
-      .traits = &revoke_traits
+      .cleanup = &recoup_cleanup,
+      .traits = &recoup_traits
     };
 
     return cmd;

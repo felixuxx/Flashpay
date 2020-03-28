@@ -109,7 +109,8 @@ revoke_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     /* Needed by the handler which waits the proc'
      * death and calls the next command */
-    TALER_TESTING_make_trait_process (0, &rs->revoke_proc),
+    TALER_TESTING_make_trait_process (0,
+                                      &rs->revoke_proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -140,8 +141,8 @@ revoke_run (void *cls,
 
   rs->is = is;
   /* Get denom pub from trait */
-  coin_cmd = TALER_TESTING_interpreter_lookup_command
-               (is, rs->coin_reference);
+  coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                       rs->coin_reference);
 
   if (NULL == coin_cmd)
   {
@@ -150,25 +151,27 @@ revoke_run (void *cls,
     return;
   }
 
-  GNUNET_assert (GNUNET_OK == TALER_TESTING_get_trait_denom_pub
-                   (coin_cmd, 0, &denom_pub));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_denom_pub (coin_cmd,
+                                                    0,
+                                                    &denom_pub));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to revoke denom '%s..'\n",
               TALER_B2S (&denom_pub->h_key));
 
-  rs->dhks = GNUNET_STRINGS_data_to_string_alloc
-               (&denom_pub->h_key, sizeof (struct GNUNET_HashCode));
+  rs->dhks = GNUNET_STRINGS_data_to_string_alloc (
+    &denom_pub->h_key,
+    sizeof (struct GNUNET_HashCode));
 
-  rs->revoke_proc = GNUNET_OS_start_process
-                      (GNUNET_NO,
-                      GNUNET_OS_INHERIT_STD_ALL,
-                      NULL, NULL, NULL,
-                      "taler-exchange-keyup",
-                      "taler-exchange-keyup",
-                      "-c", rs->config_filename,
-                      "-r", rs->dhks,
-                      NULL);
+  rs->revoke_proc = GNUNET_OS_start_process (GNUNET_NO,
+                                             GNUNET_OS_INHERIT_STD_ALL,
+                                             NULL, NULL, NULL,
+                                             "taler-exchange-keyup",
+                                             "taler-exchange-keyup",
+                                             "-c", rs->config_filename,
+                                             "-r", rs->dhks,
+                                             NULL);
 
   if (NULL == rs->revoke_proc)
   {
