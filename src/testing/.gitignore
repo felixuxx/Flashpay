@@ -6,3 +6,4 @@ test_bank_api_with_pybank_twisted
 test_taler_exchange_aggregator-postgres
 test_taler_exchange_wirewatch-postgres
 test_exchange_api_revocation
+report*
