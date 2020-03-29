@@ -32,6 +32,7 @@ bin_SCRIPTS = \
 EXTRA_DIST = \
   $(bin_SCRIPTS) \
   $(tosen_DATA) \
+  $(ppen_DATA) \
   update-tos.sh \
   update-pp.sh \
   tos/Makefile \
@@ -41,10 +42,10 @@ EXTRA_DIST = \
   tos/locale/de/LC_MESSAGES/tos.po \
   pp/Makefile \
   pp/README \
-  pp/tos.rst \
+  pp/pp.rst \
   pp/conf.py \
-  pp/locale/pp/LC_MESSAGES/pp.po \
-  $(data_DATA) \
+  pp/locale/de/LC_MESSAGES/pp.po \
+  $(rdata_DATA) \
   coverage.sh \
   gnunet.tag \
   microhttpd.tag

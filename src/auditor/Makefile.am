@@ -176,6 +176,8 @@ check_SCRIPTS = \
 TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \
+  taler-auditor.in \
+  taler-helper-auditor-render.py \
   auditor.conf \
   test-auditor.conf \
   generate-auditor-basedb.sh \

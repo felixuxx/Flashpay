@@ -309,8 +309,10 @@ test_bank_api_with_pybank_twisted_LDADD = \
 # Distribution
 
 EXTRA_DIST = \
-  test_bank_api.conf \
-  test_bank_api_bank_twisted.conf \
+  test_bank_api_fakebank.conf \
+  test_bank_api_fakebank_twisted.conf \
+  test_bank_api_pybank.conf \
+  test_bank_api_pybank_twisted.conf \
   test_auditor_api.conf \
   test_auditor_api_expire_reserve_now.conf \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
@@ -318,8 +320,6 @@ EXTRA_DIST = \
   test_exchange_api_keys_cherry_picking_home/.config/taler/x-taler-bank.json \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/offline-keys/master.priv \
-  test_exchange_api_home/.config/taler/test.json \
-  test_exchange_api_home/.config/taler/sepa.json \
   test_exchange_api.conf \
   test_exchange_api_twisted.conf \
   test_exchange_api_keys_cherry_picking.conf \
