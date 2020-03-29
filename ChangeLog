@@ -1,3 +1,8 @@
+Sun 29 Mar 2020 08:53:46 PM CEST
+    Changed protocol to be more RESTful. Expanded auditor tests.
+    Completed transition to new wire gateway API for bank interaction.
+    Releasing GNU Taler 0.7.0. -CG
+
 Tue 24 Dec 2019 11:09:14 PM CET
     Releasing GNU Taler 0.6.0. -CG
 
