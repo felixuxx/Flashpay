@@ -163,19 +163,18 @@ run (void *cls,
      * current lookahead_sign == 60 seconds and the key's withdraw
      * duration is 80 seconds.
      *///
-    TALER_TESTING_cmd_exec_keyup_with_now
-      ("keyup-1",
-      CONFIG_FILE,
-      TTH_parse_time (JAN2030)),
+    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-1",
+                                           CONFIG_FILE,
+                                           TTH_parse_time (JAN2030)),
     /**
-    * Should return 1 new key, + the original one.  NOTE: the
-    * original DK will never be 'cancelled' as for the current
-    * libtalerexchange logic, so it must always be counted.
-    */TALER_TESTING_cmd_check_keys_with_now
-      ("check-keys-2",
-      2,  /* generation */
-      2,
-      TTH_parse_time (JAN2030)),
+     * Should return 1 new key, + the original one.  NOTE: the
+     * original DK will never be 'cancelled' as for the current
+     * libtalerexchange logic, so it must always be counted.
+     *///
+    TALER_TESTING_cmd_check_keys_with_now ("check-keys-2",
+                                           2, /* generation */
+                                           2,
+                                           TTH_parse_time (JAN2030)),
     TALER_TESTING_cmd_exec_keyup_with_now
       ("keyup-3",
       CONFIG_FILE_EXTENDED_2,
@@ -184,7 +183,6 @@ run (void *cls,
        * overridden.  */
       ADDSECS (TTH_parse_time (JAN2030),
                10)),
-
     /**
      * Expected number of DK:
      *
@@ -205,11 +203,9 @@ run (void *cls,
       3 /* generation */,
       NDKS_RIGHT_BEFORE_SERIALIZATION,
       TTH_parse_time (JAN2030)),
-
     TALER_TESTING_cmd_end ()
   };
   struct TALER_TESTING_Command commands[] = {
-
     TALER_TESTING_cmd_batch ("ordinary-cherry-pick",
                              ordinary_cherry_pick),
     TALER_TESTING_cmd_batch ("keys-serialization",
