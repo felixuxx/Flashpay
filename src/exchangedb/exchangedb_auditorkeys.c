@@ -151,7 +151,7 @@ auditor_iter (void *cls,
     return GNUNET_OK;
   }
   size -= sizeof (struct AuditorFileHeaderP);
-  if ( (size / dki_len) <=
+  if ( (size / dki_len) <
        (sizeof (struct TALER_DenominationKeyValidityPS)
         + sizeof (struct TALER_AuditorSignatureP)) )
   {
@@ -168,7 +168,8 @@ auditor_iter (void *cls,
   sigs = (const struct TALER_AuditorSignatureP *) &af[1];
   dki = (const struct TALER_DenominationKeyValidityPS *) &sigs[dki_len];
   auditor_url = (const char *) &dki[dki_len];
-  if ('\0' != auditor_url[url_len - 1])
+  if ( (0 == url_len) ||
+       ('\0' != auditor_url[url_len - 1]) )
   {
     GNUNET_break_op (0);
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
