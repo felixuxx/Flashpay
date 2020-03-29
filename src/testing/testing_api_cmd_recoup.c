@@ -250,6 +250,10 @@ recoup_cb (void *cls,
       /* ps->reserve_history.details.recoup_details.coin_pub; // initialized earlier */
     }
     break;
+  case MHD_HTTP_NOT_FOUND:
+    break;
+  case MHD_HTTP_CONFLICT:
+    break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Unmanaged HTTP status code %u.\n",

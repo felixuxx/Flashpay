@@ -955,9 +955,6 @@ decode_keys_json (const json_t *resp_obj,
       {
         /* 0:0:0 did not support /keys cherry picking */
         TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
-        /* Okay, but why breaking here? It could be that the
-         * user redownloaded all the keys in a forced way. */
-        GNUNET_break_op (0 == current);
         GNUNET_CRYPTO_rsa_public_key_free (dk.key.rsa_public_key);
         continue;
       }

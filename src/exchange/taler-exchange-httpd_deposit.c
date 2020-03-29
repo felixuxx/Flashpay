@@ -221,7 +221,7 @@ deposit_transaction (void *cls,
     if (0 < TALER_amount_cmp (&spent,
                               &dc->value))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Deposited coin has insufficient funds left!\n");
       *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
                                                              TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS,
@@ -417,7 +417,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                                   &hc);
     if (NULL == dki)
     {
-      TALER_LOG_WARNING ("Unknown denomination key in /deposit request\n");
+      TALER_LOG_DEBUG ("Unknown denomination key in /deposit request\n");
       TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,

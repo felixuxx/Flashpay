@@ -185,7 +185,6 @@ refund_transaction (void *cls,
              (tlp->details.refund->rtransaction_id !=
               refund->details.rtransaction_id) )
         {
-          GNUNET_break_op (0); /* conflicting refund found */
           refund_found = GNUNET_SYSERR;
           /* NOTE: Alternatively we could total up all existing
              refunds and check if the sum still permits the

@@ -250,7 +250,6 @@ withdraw_transaction (void *cls,
 
     /* The reserve does not have the required amount (actual
      * amount + withdraw fee) */
-    GNUNET_break_op (0);
 #if GNUNET_EXTRA_LOGGING
     {
       char *amount_required;
@@ -258,9 +257,9 @@ withdraw_transaction (void *cls,
 
       amount_required = TALER_amount_to_string (&wc->amount_required);
       r_balance = TALER_amount_to_string (&r.balance);
-      TALER_LOG_WARNING ("Asked %s over a reserve worth %s\n",
-                         amount_required,
-                         r_balance);
+      TALER_LOG_DEBUG ("Asked %s over a reserve worth %s\n",
+                       amount_required,
+                       r_balance);
       GNUNET_free (amount_required);
       GNUNET_free (r_balance);
     }

@@ -206,10 +206,8 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                                                  0,
                                                  &he))
     {
-      /* NOTE: good for debugging for now, might later reduce debug
-         level in case there are commands that legitimately don't
-         impact the reserve history but have the public key trait */
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+      /* NOTE: only for debugging... */
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Command `%s' has the reserve_pub trait, but does not reserve history trait\n",
                   cmd->label);
       return GNUNET_OK; /* command does nothing for reserves */
