@@ -986,6 +986,11 @@ reload_keys_sign_iter (
         now.abs_value_us) )
   {
     /* We use the most recent one, if it is valid now (not just in the near future) */
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Found signing key valid until `%s'\n",
+                GNUNET_STRINGS_absolute_time_to_string (
+                  GNUNET_TIME_absolute_ntoh (
+                    key_state->current_sign_key_issue.issue.end)));
     key_state->current_sign_key_issue = *ski;
   }
   if (0 !=
@@ -1965,10 +1970,12 @@ TEH_KS_acquire_ (struct GNUNET_TIME_Absolute now,
   }
   if (NULL == internal_key_state)
   {
-    /* We tried and failed (again) to setup #internal_key_state */
+    /* We tried and failed to setup #internal_key_state */
     GNUNET_assert (0 == pthread_mutex_unlock (&internal_key_state_mutex));
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize key state\n");
+    if (NULL != os)
+      ks_free (os);
     return NULL;
   }
   key_state = internal_key_state;
