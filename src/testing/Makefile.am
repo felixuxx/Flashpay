@@ -315,6 +315,9 @@ EXTRA_DIST = \
   test_bank_api_pybank_twisted.conf \
   test_auditor_api.conf \
   test_auditor_api_expire_reserve_now.conf \
+  test_taler_exchange_httpd_home/.config/taler/account-1.json \
+  test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
+  test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
   test_exchange_api_home/.config/taler/account-2.json \
   test_exchange_api_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_exchange_api_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
