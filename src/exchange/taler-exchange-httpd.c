@@ -1241,6 +1241,8 @@ main (int argc,
                  GNUNET_log_setup ("taler-exchange-httpd",
                                    (NULL == loglev) ? "INFO" : loglev,
                                    logfile));
+  GNUNET_free_non_null (loglev);
+  GNUNET_free_non_null (logfile);
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   TEH_cfg = GNUNET_CONFIGURATION_create ();
