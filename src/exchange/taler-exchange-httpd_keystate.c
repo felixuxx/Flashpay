@@ -44,7 +44,7 @@
  * #TALER_PROTOCOL_CURRENT and #TALER_PROTOCOL_AGE in
  * exchange_api_handle.c!
  */
-#define TALER_PROTOCOL_VERSION "7:0:0"
+#define EXCHANGE_PROTOCOL_VERSION "7:0:0"
 
 
 /**
@@ -1513,7 +1513,7 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
   keys = json_pack ("{s:s, s:o, s:o, s:O, s:O,"
                     " s:o, s:o, s:o, s:o, s:o}",
                     /* 1-5 */
-                    "version", TALER_PROTOCOL_VERSION,
+                    "version", EXCHANGE_PROTOCOL_VERSION,
                     "master_public_key", GNUNET_JSON_from_data_auto (
                       &TEH_master_public_key),
                     "reserve_closing_delay", GNUNET_JSON_from_time_rel (
