@@ -36,13 +36,13 @@
 #include "taler_curl_lib.h"
 
 /**
- * Which revision of the Taler protocol is implemented
+ * Which version of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
 #define TALER_PROTOCOL_CURRENT 7
 
 /**
- * How many revisions back are we compatible to?
+ * How many versions are we backwards compatible with?
  */
 #define TALER_PROTOCOL_AGE 0
 
