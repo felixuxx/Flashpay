@@ -91,7 +91,7 @@ TALER_EXCHANGE_parse_reserve_history (
     rhistory[off].amount = amount;
 
     if (0 == strcasecmp (type,
-                         "DEPOSIT"))
+                         "CREDIT"))
     {
       const char *wire_url;
       void *wire_reference;

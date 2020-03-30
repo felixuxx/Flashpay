@@ -452,15 +452,15 @@ TEH_RESPONSE_compile_reserve_history (
   const struct TALER_EXCHANGEDB_ReserveHistory *rh,
   struct TALER_Amount *balance)
 {
-  struct TALER_Amount deposit_total;
+  struct TALER_Amount credit_total;
   struct TALER_Amount withdraw_total;
   json_t *json_history;
   enum InitAmounts
   {
     /** Nothing initialized */
     IA_NONE = 0,
-    /** deposit_total initialized */
-    IA_DEPOSIT = 1,
+    /** credit_total initialized */
+    IA_CREDIT = 1,
     /** withdraw_total initialized */
     IA_WITHDRAW = 2
   } init = IA_NONE;
@@ -476,14 +476,14 @@ TEH_RESPONSE_compile_reserve_history (
       {
         const struct TALER_EXCHANGEDB_BankTransfer *bank =
           pos->details.bank;
-        if (0 == (IA_DEPOSIT & init))
+        if (0 == (IA_CREDIT & init))
         {
-          deposit_total = bank->amount;
-          init |= IA_DEPOSIT;
+          credit_total = bank->amount;
+          init |= IA_CREDIT;
         }
         else if (GNUNET_OK !=
-                 TALER_amount_add (&deposit_total,
-                                   &deposit_total,
+                 TALER_amount_add (&credit_total,
+                                   &credit_total,
                                    &bank->amount))
         {
           GNUNET_break (0);
@@ -495,7 +495,7 @@ TEH_RESPONSE_compile_reserve_history (
               json_history,
               json_pack ("{s:s, s:o, s:s, s:o, s:o}",
                          "type",
-                         "DEPOSIT",
+                         "CREDIT",
                          "timestamp",
                          GNUNET_JSON_from_time_abs (bank->execution_date),
                          "sender_account_url",
@@ -567,14 +567,14 @@ TEH_RESPONSE_compile_reserve_history (
         struct TALER_ExchangePublicKeyP pub;
         struct TALER_ExchangeSignatureP sig;
 
-        if (0 == (IA_DEPOSIT & init))
+        if (0 == (IA_CREDIT & init))
         {
-          deposit_total = recoup->value;
-          init |= IA_DEPOSIT;
+          credit_total = recoup->value;
+          init |= IA_CREDIT;
         }
         else if (GNUNET_OK !=
-                 TALER_amount_add (&deposit_total,
-                                   &deposit_total,
+                 TALER_amount_add (&credit_total,
+                                   &credit_total,
                                    &recoup->value))
         {
           GNUNET_break (0);
@@ -709,9 +709,9 @@ TEH_RESPONSE_compile_reserve_history (
     }
   }
 
-  if (0 == (IA_DEPOSIT & init))
+  if (0 == (IA_CREDIT & init))
   {
-    /* We should not have gotten here, without deposits no reserve
+    /* We should not have gotten here, without credits no reserve
        should exist! */
     GNUNET_break (0);
     json_decref (json_history);
@@ -721,12 +721,12 @@ TEH_RESPONSE_compile_reserve_history (
   {
     /* did not encounter any withdraw operations, set withdraw_total to zero */
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (deposit_total.currency,
+                   TALER_amount_get_zero (credit_total.currency,
                                           &withdraw_total));
   }
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (balance,
-                             &deposit_total,
+                             &credit_total,
                              &withdraw_total))
   {
     GNUNET_break (0);
