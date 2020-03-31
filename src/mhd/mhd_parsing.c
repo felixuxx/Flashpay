@@ -74,6 +74,7 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
   switch (pr)
   {
   case GNUNET_JSON_PR_OUT_OF_MEMORY:
+    GNUNET_break (NULL == *json);
     return (MHD_NO ==
             TALER_MHD_reply_with_error
               (connection,
@@ -82,12 +83,15 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
               "out of memory")) ? GNUNET_SYSERR : GNUNET_NO;
 
   case GNUNET_JSON_PR_CONTINUE:
+    GNUNET_break (NULL == *json);
     return GNUNET_YES;
   case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+    GNUNET_break (NULL == *json);
     return (MHD_NO ==
             TALER_MHD_reply_request_too_large
               (connection)) ? GNUNET_SYSERR : GNUNET_NO;
   case GNUNET_JSON_PR_JSON_INVALID:
+    GNUNET_break (NULL == *json);
     return (MHD_YES ==
             TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_BAD_REQUEST,
