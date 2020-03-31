@@ -15,9 +15,9 @@ taler-helper-auditor-render.py \
     ${DIR}/reserves.json \
     ${DIR}/wire.json < %pkgdatadir%/auditor-report.tex.j2 > ${DIR}/auditor-report.tex
 cd ${DIR}
-pdflatex auditor-report.tex < /dev/null
-pdflatex auditor-report.tex < /dev/null
-pdflatex auditor-report.tex < /dev/null
+pdflatex auditor-report.tex < /dev/null &> /dev/null || true
+pdflatex auditor-report.tex < /dev/null &> /dev/null || true
+pdflatex auditor-report.tex < /dev/null || echo "pdflatex failed"
 cd ..
 
 echo "Result is in ${DIR}/auditor-report.pdf"
