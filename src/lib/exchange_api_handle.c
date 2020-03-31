@@ -783,7 +783,7 @@ denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
 
   denom1->key.rsa_public_key = NULL;
   denom2->key.rsa_public_key = NULL;
-  /* Then procede with the rest of the object.  */
+  /* Then proceed with the rest of the object.  */
   ret = GNUNET_memcmp (denom1,
                        denom2);
   denom1->revoked = r1;

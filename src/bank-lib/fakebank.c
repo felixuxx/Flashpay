@@ -867,7 +867,7 @@ struct HistoryArgs
  *
  * @param connection MHD connection.
  * @param[out] ha will contain the parsed values.
- * @return #GNUNET_OK only if the parsing succeedes.
+ * @return #GNUNET_OK only if the parsing succeeds.
  */
 static int
 parse_history_common_args (struct MHD_Connection *connection,

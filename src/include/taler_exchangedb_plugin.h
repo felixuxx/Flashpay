@@ -243,7 +243,7 @@ struct TALER_EXCHANGEDB_CollectableBlindcoin
   struct TALER_Amount amount_with_fee;
 
   /**
-   * Withdrawl fee charged by the exchange.  This must match the Exchange's
+   * Withdrawal fee charged by the exchange.  This must match the Exchange's
    * denomination key's withdrawal fee.  If the client puts in an
    * invalid withdrawal fee (too high or too low) that does not match
    * the Exchange's denomination key, the withdraw operation is invalid
@@ -441,7 +441,7 @@ struct TALER_EXCHANGEDB_ReserveHistory
   struct TALER_EXCHANGEDB_ReserveHistory *next;
 
   /**
-   * Type of the event, determins @e details.
+   * Type of the event, determines @e details.
    */
   enum TALER_EXCHANGEDB_ReserveOperation type;
 
@@ -980,7 +980,7 @@ struct TALER_EXCHANGEDB_Session;
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_deadline by which the merchant adviced that he would like the
+ * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant, includes
  *        'url' in payto://-format; NULL from iterate_matching_deposits()
@@ -1029,9 +1029,9 @@ typedef void
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param refund_deadline by which the merchant adviced that he might want
+ * @param refund_deadline by which the merchant advised that he might want
  *        to get a refund
- * @param wire_deadline by which the merchant adviced that he would like the
+ * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant including 'url' in payto://-format;
  *        NULL from iterate_matching_deposits()
@@ -1840,7 +1840,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session database connection
    * @param deposit deposit to search for
-   * @param check_extras wether to check extra fields or not
+   * @param check_extras whether to check extra fields or not
    * @return 1 if we know this operation,
    *         0 if this exact deposit is unknown to us,
    *         otherwise transaction error status

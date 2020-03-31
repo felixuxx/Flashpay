@@ -634,7 +634,7 @@ main (int argc,
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-exchange-wirewatch",
                           gettext_noop (
-                            "background process that watches for incomming wire transfers from customers"),
+                            "background process that watches for incoming wire transfers from customers"),
                           options,
                           &run, NULL))
   {

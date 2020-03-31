@@ -1086,20 +1086,20 @@ enum TALER_ErrorCode
   TALER_EC_RECOUP_REPLY_MALFORMED = 1861,
 
   /**
-   * The "have" parameter was not a natural number. This reponse is
+   * The "have" parameter was not a natural number. This response is
    * provied with an HTTP status code of #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_KEYS_HAVE_NOT_NUMERIC = 1900,
 
   /**
-   * We currently cannot find any keys. This reponse is provied with an
+   * We currently cannot find any keys. This response is provied with an
    * HTTP status code of #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_KEYS_MISSING = 1901,
 
   /**
    * This exchange does not allow clients to request /keys for times
-   * other than the current (exchange) time. This reponse is provied
+   * other than the current (exchange) time. This response is provied
    * with an HTTP status code of #MHD_HTTP_FORBIDDEN.
    */
   TALER_EC_KEYS_TIMETRAVEL_FORBIDDEN = 1902,
@@ -1295,7 +1295,7 @@ enum TALER_ErrorCode
   TALER_EC_PAY_WRONG_INSTANCE = 2127,
 
   /**
-   * Integer overflow with sepcified timestamp argument detected. This
+   * Integer overflow with specified timestamp argument detected. This
    * response is provided with HTTP status code #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_HISTORY_TIMESTAMP_OVERFLOW = 2200,
@@ -1836,7 +1836,7 @@ enum TALER_ErrorCode
   TALER_EC_SERVER_SIGNATURE_INVALID = 5001,
 
   /**
-   * Wire tranfer attempted with credit and debit party being the same
+   * Wire transfer attempted with credit and debit party being the same
    * bank account.
    */
   TALER_EC_BANK_SAME_ACCOUNT = 5102,

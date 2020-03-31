@@ -476,7 +476,7 @@ handle_signal (int signal_number)
                   1);
   /* While one might like to "handle errors" here, even logging via fprintf()
      isn't safe inside of a signal handler. So there is nothing we safely CAN
-     do. OTOH, also very little that can go wrong in pratice. Calling _exit()
+     do. OTOH, also very little that can go wrong in practice. Calling _exit()
      on errors might be a possibility, but that might do more harm than good. *///
 }
 
@@ -489,7 +489,7 @@ handle_signal (int signal_number)
  *
  * @param pk public key of the denomination
  * @param dki the denomination key issue information
- * @return a JSON object describing the denomination key isue (public part)
+ * @return a JSON object describing the denomination key issue (public part)
  */
 static json_t *
 denom_key_issue_to_json (
@@ -560,7 +560,7 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
               const struct TALER_EXCHANGEDB_DenominationKey *dki)
 {
   /* First, we verify that the @a dki is actually well-formed.  While it comes
-     from our own hard disk, there is the possibility of missconfiguration
+     from our own hard disk, there is the possibility of misconfiguration
      (i.e. bogus file in the directory), or that the administrator used the
      wrong master public key, and we should not accept entries that are not
      well-formed. *///
@@ -2554,7 +2554,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
     if (NULL == key_state)
     {
       /* Maybe client picked time stamp too far in the future?  In that case,
-         #MHD_HTTP_INTERNAL_SERVER_ERROR might be missleading, could be more like a
+         #MHD_HTTP_INTERNAL_SERVER_ERROR might be misleading, could be more like a
          NOT_FOUND situation. But, OTOH, for 'sane' clients it is more likely
          to be our fault, so let's speculatively assume we are to blame ;-) */
       return TALER_MHD_reply_with_error (connection,
@@ -2584,7 +2584,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
     if (NULL == krd)
     {
       /* Maybe client picked time stamp too far in the future?  In that case,
-         "INTERNAL_SERVER_ERROR" might be missleading, could be more like a
+         "INTERNAL_SERVER_ERROR" might be misleading, could be more like a
          NOT_FOUND situation. But, OTOH, for 'sane' clients it is more likely
          to be our fault, so let's speculatively assume we are to blame ;-) *///
       GNUNET_break (0);

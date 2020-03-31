@@ -95,7 +95,7 @@ struct TALER_EXCHANGE_RefreshesRevealHandle
  *
  * @param rrh operation handle
  * @param json reply from the exchange
- * @param[out] sigs array of length `num_fresh_coins`, initialized to cointain RSA signatures
+ * @param[out] sigs array of length `num_fresh_coins`, initialized to contain RSA signatures
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static int
@@ -248,7 +248,7 @@ handle_refresh_reveal_finished (void *cls,
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
-    /* Nothing really to verify, exchange says our reveal is inconsitent
+    /* Nothing really to verify, exchange says our reveal is inconsistent
        with our commitment, so either side is buggy; we
        should pass the JSON reply to the application */
     ec = TALER_JSON_get_error_code (j);

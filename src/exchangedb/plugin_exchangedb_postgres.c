@@ -2570,7 +2570,7 @@ postgres_get_reserve_history (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session database connection
  * @param deposit deposit to search for
- * @param check_extras wether to check extra fields match or not
+ * @param check_extras whether to check extra fields match or not
  * @return 1 if we know this operation,
  *         0 if this exact deposit is unknown to us,
  *         otherwise transaction error status
@@ -7226,7 +7226,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   if (0 != pthread_key_create (&pg->db_conn_threadlocal,
                                &db_conn_destroy))
   {
-    TALER_LOG_ERROR ("Cannnot create pthread key.\n");
+    TALER_LOG_ERROR ("Cannot create pthread key.\n");
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;

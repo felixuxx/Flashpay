@@ -156,7 +156,7 @@ static struct GNUNET_SCHEDULER_Task *task;
 static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
 
 /**
- * Value to return from main(). 0 on success, non-zero on erorrs.
+ * Value to return from main(). 0 on success, non-zero on errors.
  */
 static enum
 {
@@ -193,7 +193,7 @@ run_aggregation (void *cls);
 /**
  * Free data stored in @a au, but not @a au itself (stack allocated).
  *
- * @param au aggreation unit to clean up
+ * @param au aggregation unit to clean up
  */
 static void
 cleanup_au (struct AggregationUnit *au)
@@ -335,7 +335,7 @@ refund_by_coin_cb (void *cls,
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_deadline by which the merchant adviced that he would like the
+ * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant
  * @return transaction status code,  #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
@@ -506,7 +506,7 @@ deposit_cb (void *cls,
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_deadline by which the merchant adviced that he would like the
+ * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant
  * @return transaction status code

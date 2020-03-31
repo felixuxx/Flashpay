@@ -15,7 +15,7 @@
 */
 /**
  * @file taler-exchange-httpd_responses.c
- * @brief API for generating genric replies of the exchange; these
+ * @brief API for generating generic replies of the exchange; these
  *        functions are called TEH_RESPONSE_reply_ and they generate
  *        and queue MHD response objects for a given connection.
  * @author Florian Dold

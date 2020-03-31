@@ -89,7 +89,7 @@ check_bank_empty_traits (void *cls,
 
 
 /**
- * Checks wheter all the wire transfers got "checked"
+ * Checks whether all the wire transfers got "checked"
  * by the "bank check" CMD.
  *
  * @param label command label.

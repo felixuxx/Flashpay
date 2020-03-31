@@ -27,7 +27,7 @@ TMP_DIR=`mktemp -d revocation-tmp-XXXXXX`
 export WALLET_DB=wallet-revocation.json
 rm -f $WALLET_DB
 
-# Configuation file will be edited, so we create one
+# Configuration file will be edited, so we create one
 # from the template.
 export CONF=generate-auditor-basedb-revocation.conf
 cp generate-auditor-basedb-template.conf $CONF

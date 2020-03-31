@@ -108,7 +108,7 @@ auditor_iter (void *cls,
                              GNUNET_YES))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Skipping inaccessable auditor information file `%s'\n",
+                "Skipping inaccessible auditor information file `%s'\n",
                 filename);
     return GNUNET_OK;
   }

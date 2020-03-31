@@ -115,7 +115,7 @@ struct RevealContext
 {
 
   /**
-   * Commitment of the refresh operaton.
+   * Commitment of the refresh operation.
    */
   struct TALER_RefreshCommitmentP rc;
 

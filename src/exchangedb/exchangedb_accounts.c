@@ -39,7 +39,7 @@ static struct TALER_EXCHANGEDB_WireAccount *wa_tail;
 struct FindAccountContext
 {
   /**
-   * Configuration we are usign.
+   * Configuration we are using.
    */
   const struct GNUNET_CONFIGURATION_Handle *cfg;
 

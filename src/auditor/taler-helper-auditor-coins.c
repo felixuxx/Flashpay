@@ -1578,9 +1578,9 @@ refresh_session_cb (void *cls,
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param refund_deadline by which the merchant adviced that he might want
+ * @param refund_deadline by which the merchant advised that he might want
  *        to get a refund
- * @param wire_deadline by which the merchant adviced that he would like the
+ * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
  * @param done flag set if the deposit was already executed (or not)

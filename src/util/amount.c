@@ -556,7 +556,7 @@ TALER_amount_normalize (struct TALER_Amount *amount)
  * Convert the fraction of @a amount to a string in decimals.
  *
  * @param amount value to convert
- * @param[out] tail where to write the reesult
+ * @param[out] tail where to write the result
  */
 static void
 amount_to_tail (const struct TALER_Amount *amount,

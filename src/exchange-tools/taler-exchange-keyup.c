@@ -235,7 +235,7 @@ static struct GNUNET_TIME_Relative max_duration_spend;
 static struct GNUNET_HashCode revoke_dkh;
 
 /**
- * Which RSA key size should we use for replacment keys after revocation?
+ * Which RSA key size should we use for replacement keys after revocation?
  * (Useful because maybe that's the one option one might usefully want to
  * change when replacing a key.)
  */
@@ -1151,7 +1151,7 @@ check_revocation_regeneration (
   if (now.abs_value_us >= withdraw_end.abs_value_us)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Revoked denomination key has expired, no need to create a replacment\n");
+                "Revoked denomination key has expired, no need to create a replacement\n");
     return GNUNET_NO;
   }
 

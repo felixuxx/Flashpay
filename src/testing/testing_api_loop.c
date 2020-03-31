@@ -176,7 +176,7 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   if (GNUNET_SYSERR == is->result)
-    return; /* ignore, we already failled! */
+    return; /* ignore, we already failed! */
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
     TALER_TESTING_cmd_batch_next (is);

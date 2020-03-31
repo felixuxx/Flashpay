@@ -124,7 +124,7 @@ TALER_EXCHANGEDB_denomination_key_read (
                              GNUNET_YES))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Skipping inaccessable denomination key file `%s'\n",
+                "Skipping inaccessible denomination key file `%s'\n",
                 filename);
     return GNUNET_SYSERR;
   }

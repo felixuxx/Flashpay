@@ -106,7 +106,7 @@ how to set up PostgreSQL. On debian, the two packages needed are:
 
 For other operating systems, please refer to the relevant documentation.
 
-In this settlement, the exchange wll use a database called 'talercheck' and will
+In this settlement, the exchange will use a database called 'talercheck' and will
 run under the username through which 'taler-exchange-httpd' is launched. Thus assuming
 that this user is 'demo', we need to create a 'demo' role for postgresql and make
 him the owner of 'talercheck' database.

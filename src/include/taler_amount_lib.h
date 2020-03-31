@@ -34,7 +34,7 @@ extern "C"
  * @brief Number of characters (plus 1 for 0-termination) we use to
  * represent currency names (i.e. EUR, USD, etc.).  We use 8+4 for
  * alignment in the `struct TALER_Amount`.  The amount is typically an
- * ISO 4217 currency code when an alpha-numeric 3-digit code is used.
+ * ISO 4217 currency code when an alphanumeric 3-digit code is used.
  * For regional currencies, the first character should be a "*" followed
  * by a region-specific name (i.e. "*BRETAGNEFR").
  */

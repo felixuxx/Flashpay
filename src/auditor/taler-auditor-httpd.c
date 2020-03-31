@@ -125,7 +125,7 @@ handle_signal (int signal_number)
                   1);
   /* While one might like to "handle errors" here, even logging via fprintf()
      isn't safe inside of a signal handler. So there is nothing we safely CAN
-     do. OTOH, also very little that can go wrong in pratice. Calling _exit()
+     do. OTOH, also very little that can go wrong in practice. Calling _exit()
      on errors might be a possibility, but that might do more harm than good. *///
 }
 

@@ -109,7 +109,7 @@ wait_service_run (void *cls,
 
 /**
  * This CMD simply tries to connect via HTTP to the
- * service addressed by @a url.  It attemps 10 times
+ * service addressed by @a url.  It attempts 10 times
  * before giving up and make the test fail.
  *
  * @param label label for the command.

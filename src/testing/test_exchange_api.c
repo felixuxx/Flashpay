@@ -201,7 +201,7 @@ run (void *cls,
      * is currently the case because of the "timestamp" field,
      * which is set automatically by #TALER_TESTING_cmd_deposit().
      * This could theoretically fail if at some point a deposit
-     * command executs in less than 1 ms. *///
+     * command executes in less than 1 ms. *///
     TALER_TESTING_cmd_deposit ("deposit-double-1",
                                "withdraw-coin-1",
                                0,
@@ -676,7 +676,7 @@ run (void *cls,
                               "EUR:3.99",
                               MHD_HTTP_OK),
     /* These commands should close the reserve because
-     * the aggregator is given a config file that ovverrides
+     * the aggregator is given a config file that overrides
      * the reserve expiration time (making it now-ish) */
     CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
                               "EUR:5.01"),

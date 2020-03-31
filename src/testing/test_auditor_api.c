@@ -411,7 +411,7 @@ run (void *cls,
                                        MHD_HTTP_OK),
     /**
      * These commands should close the reserve because the aggregator
-     * is given a config file that ovverrides the reserve expiration
+     * is given a config file that overrides the reserve expiration
      * time (making it now-ish)
      */CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
                               "EUR:5.01"),

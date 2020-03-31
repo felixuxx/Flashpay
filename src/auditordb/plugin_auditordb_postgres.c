@@ -3192,7 +3192,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   if (0 != pthread_key_create (&pg->db_conn_threadlocal,
                                &db_conn_destroy))
   {
-    TALER_LOG_ERROR ("Cannnot create pthread key.\n");
+    TALER_LOG_ERROR ("Cannot create pthread key.\n");
     GNUNET_free (pg);
     return NULL;
   }

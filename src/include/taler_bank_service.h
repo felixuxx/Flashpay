@@ -232,7 +232,7 @@ TALER_BANK_transfer (struct GNUNET_CURL_Context *ctx,
  * succeed.
  *
  * The caller MUST run #TALER_BANK_transfer() again for the same request as
- * soon as possilbe, to ensure that the request either ultimately succeeds or
+ * soon as possible, to ensure that the request either ultimately succeeds or
  * ultimately fails. Until this has been done, the transaction is in limbo
  * (i.e. may or may not have been committed).
  *

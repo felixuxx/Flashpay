@@ -295,7 +295,7 @@ struct TALER_TESTING_BankConfiguration
 
 /**
  * Prepare launching a fakebank.  Check that the configuration
- * file has the right option, and that the port is avaiable.
+ * file has the right option, and that the port is available.
  * If everything is OK, return the configuration data of the fakebank.
  *
  * @param config_filename configuration file to use
@@ -1605,7 +1605,7 @@ TALER_TESTING_cmd_check_bank_transfer_with_ref (const char *label,
 
 
 /**
- * Checks wheter all the wire transfers got "checked"
+ * Checks whether all the wire transfers got "checked"
  * by the "bank check" CMD.
  *
  * @param label command label.
@@ -1727,7 +1727,7 @@ TALER_TESTING_cmd_sleep (const char *label,
 
 /**
  * This CMD simply tries to connect via HTTP to the
- * service addressed by @a url.  It attemps 10 times
+ * service addressed by @a url.  It attempts 10 times
  * before giving up and make the test fail.
  *
  * @param label label for the command.

@@ -838,7 +838,7 @@ static uint64_t deposit_rowid;
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_deadline by which the merchant adviced that he would like the
+ * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
@@ -897,9 +897,9 @@ deposit_cb (void *cls,
  * @param coin_sig signature from the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param refund_deadline by which the merchant adviced that he might want
+ * @param refund_deadline by which the merchant advised that he might want
  *        to get a refund
- * @param wire_deadline by which the merchant adviced that he would like the
+ * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
  * @param done flag set if the deposit was already executed (or not)
@@ -1785,7 +1785,7 @@ run (void *cls)
       FAILIF (0 != memcmp (&bt->reserve_pub,
                            &reserve_pub,
                            sizeof (reserve_pub)));
-      /* this is the amount we trasferred twice*/
+      /* this is the amount we transferred twice*/
       FAILIF (1 != bt->amount.value);
       FAILIF (1000 != bt->amount.fraction);
       FAILIF (0 != strcmp (CURRENCY, bt->amount.currency));

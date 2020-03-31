@@ -31,7 +31,7 @@ BASEDB=${1:-"auditor-basedb"}
 # elsewhere
 TARGET_DB=taler-auditor-basedb
 
-# Configuation file will be edited, so we create one
+# Configuration file will be edited, so we create one
 # from the template.
 CONF=generate-auditor-basedb-prod.conf
 cp generate-auditor-basedb-template.conf $CONF

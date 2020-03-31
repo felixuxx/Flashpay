@@ -484,7 +484,7 @@ res_cb (void *cls,
     break;
   default:
     fprintf (stderr,
-             "Operation failed with staus code %u/%u\n",
+             "Operation failed with status code %u/%u\n",
              (unsigned int) ec,
              http_status);
     if (NULL != json)

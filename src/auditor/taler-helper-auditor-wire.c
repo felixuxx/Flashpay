@@ -222,18 +222,18 @@ static json_t *report_reserve_in_inconsistencies;
 static json_t *report_missattribution_in_inconsistencies;
 
 /**
- * Array of reports about row inconcistencies.
+ * Array of reports about row inconsistencies.
  */
 static json_t *report_row_inconsistencies;
 
 /**
- * Array of reports about inconcistencies in the database about
+ * Array of reports about inconsistencies in the database about
  * the incoming wire transfers (exchange is not exactly to blame).
  */
 static json_t *report_wire_format_inconsistencies;
 
 /**
- * Array of reports about minor row inconcistencies.
+ * Array of reports about minor row inconsistencies.
  */
 static json_t *report_row_minor_inconsistencies;
 

@@ -380,7 +380,7 @@ struct SignInfo
  * Sign the keys for an exchange given configuration @a cfg.
  * The information to be signed must be in a file "auditor.in".
  *
- * @param[in,out] cls a `struct SignInfo` with further paramters
+ * @param[in,out] cls a `struct SignInfo` with further parameters
  * @param cfg configuration to use
  * @return #GNUNET_OK on success
  */

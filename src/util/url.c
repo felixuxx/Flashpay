@@ -213,7 +213,7 @@ serialize_arguments (struct GNUNET_Buffer *buf,
  * @param ... NULL-terminated key-value pairs (char *) for query parameters,
  *        the value will be url-encoded
  * @returns the URL (must be freed with #GNUNET_free) or
- *          NULL if an error occured.
+ *          NULL if an error occurred.
  */
 char *
 TALER_url_join (const char *base_url,

@@ -322,7 +322,7 @@ struct TALER_WithdrawRequestPS
   struct TALER_AmountNBO amount_with_fee;
 
   /**
-   * Withdrawl fee charged by the exchange.  This must match the Exchange's
+   * Withdrawal fee charged by the exchange.  This must match the Exchange's
    * denomination key's withdrawal fee.  If the client puts in an
    * invalid withdrawal fee (too high or too low) that does not match
    * the Exchange's denomination key, the withdraw operation is invalid

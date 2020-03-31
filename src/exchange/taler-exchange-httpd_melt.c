@@ -90,7 +90,7 @@ reply_melt_insufficient_funds (
  * Send a response to a "melt" request.
  *
  * @param connection the connection to send the response to
- * @param rc value the client commited to
+ * @param rc value the client committed to
  * @param noreveal_index which index will the client not have to reveal
  * @return a MHD status code
  */

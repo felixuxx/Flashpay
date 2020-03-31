@@ -398,7 +398,7 @@ struct TALER_TrackTransferDetails
  * @param denom_pub denomination key, must match @a coin_public_info's `denom_pub_hash`
  * @return #GNUNET_YES if the coin is valid,
  *         #GNUNET_NO if it is invalid
- *         #GNUNET_SYSERR if an internal error occured
+ *         #GNUNET_SYSERR if an internal error occurred
  */
 int
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
