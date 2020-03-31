@@ -339,9 +339,15 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
                                      upload_data_size,
                                      &root);
     if (GNUNET_SYSERR == res)
+    {
+      GNUNET_assert (NULL == root);
       return MHD_NO;  /* bad upload, could not even generate error */
+    }
     if ( (GNUNET_NO == res) || (NULL == root) )
+    {
+      GNUNET_assert (NULL == root);
       return MHD_YES; /* so far incomplete upload or parser error */
+    }
   }
 
   {
@@ -381,6 +387,8 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
                          rh->url,
                          url);
         GNUNET_break_op (0);
+        if (NULL != root)
+          json_decref (root);
         return TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_WRONG_NUMBER_OF_SEGMENTS,
