@@ -416,51 +416,59 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    struct GNUNET_TIME_Absolute refund_deadline,
                    const struct TALER_CoinSpendSignatureP *coin_sig)
 {
-  struct TALER_DepositRequestPS dr;
-  struct TALER_CoinPublicInfo coin_info;
-
-  dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-  dr.purpose.size = htonl (sizeof (struct TALER_DepositRequestPS));
-  dr.h_contract_terms = *h_contract_terms;
-  dr.h_wire = *h_wire;
-  dr.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  dr.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  TALER_amount_hton (&dr.amount_with_fee,
-                     amount);
-  TALER_amount_hton (&dr.deposit_fee,
-                     &dki->fee_deposit);
-  dr.merchant = *merchant_pub;
-  dr.coin_pub = *coin_pub;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                  &dr.purpose,
-                                  &coin_sig->eddsa_signature,
-                                  &coin_pub->eddsa_pub))
   {
-    GNUNET_break_op (0);
-    TALER_LOG_WARNING ("Invalid coin signature on /deposit request!\n");
-    {
-      TALER_LOG_DEBUG ("... amount_with_fee was %s\n",
-                       TALER_amount2s (amount));
-      TALER_LOG_DEBUG ("... deposit_fee was %s\n",
-                       TALER_amount2s (&dki->fee_deposit));
-    }
+    struct TALER_DepositRequestPS dr = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+      .purpose.size = htonl (sizeof (dr)),
+      .h_contract_terms = *h_contract_terms,
+      .h_wire = *h_wire,
+      .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+      .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+      .merchant = *merchant_pub,
+      .coin_pub = *coin_pub
+    };
 
-    return GNUNET_SYSERR;
+    TALER_amount_hton (&dr.amount_with_fee,
+                       amount);
+    TALER_amount_hton (&dr.deposit_fee,
+                       &dki->fee_deposit);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+                                    &dr.purpose,
+                                    &coin_sig->eddsa_signature,
+                                    &coin_pub->eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      TALER_LOG_WARNING ("Invalid coin signature on /deposit request!\n");
+      {
+        TALER_LOG_DEBUG ("... amount_with_fee was %s\n",
+                         TALER_amount2s (amount));
+        TALER_LOG_DEBUG ("... deposit_fee was %s\n",
+                         TALER_amount2s (&dki->fee_deposit));
+      }
+      return GNUNET_SYSERR;
+    }
   }
 
   /* check coin signature */
-  coin_info.coin_pub = *coin_pub;
-  coin_info.denom_pub_hash = *denom_pub_hash;
-  coin_info.denom_sig = *denom_sig;
-  if (GNUNET_YES !=
-      TALER_test_coin_valid (&coin_info,
-                             denom_pub))
   {
-    GNUNET_break_op (0);
-    TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
-    return GNUNET_SYSERR;
+    struct TALER_CoinPublicInfo coin_info = {
+      .coin_pub = *coin_pub,
+      .denom_pub_hash = *denom_pub_hash,
+      .denom_sig = *denom_sig
+    };
+
+    if (GNUNET_YES !=
+        TALER_test_coin_valid (&coin_info,
+                               denom_pub))
+    {
+      GNUNET_break_op (0);
+      TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
+      return GNUNET_SYSERR;
+    }
   }
+
+  /* Check coin does make a contribution */
   if (0 < TALER_amount_cmp (&dki->fee_deposit,
                             amount))
   {
