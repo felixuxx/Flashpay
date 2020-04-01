@@ -56,7 +56,6 @@ TALER_EXCHANGE_parse_reserve_history (
   unsigned int uuid_off;
   struct TALER_Amount total_in;
   struct TALER_Amount total_out;
-  size_t off;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (currency,
@@ -65,13 +64,14 @@ TALER_EXCHANGE_parse_reserve_history (
                  TALER_amount_get_zero (currency,
                                         &total_out));
   uuid_off = 0;
-  for (off = 0; off<history_length; off++)
+  for (unsigned int off = 0; off<history_length; off++)
   {
     json_t *transaction;
     struct TALER_Amount amount;
     const char *type;
     struct GNUNET_JSON_Specification hist_spec[] = {
-      GNUNET_JSON_spec_string ("type", &type),
+      GNUNET_JSON_spec_string ("type",
+                               &type),
       TALER_JSON_spec_amount ("amount",
                               &amount),
       /* 'wire' and 'signature' are optional depending on 'type'! */
