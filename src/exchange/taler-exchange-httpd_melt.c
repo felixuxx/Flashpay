@@ -548,7 +548,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_MELT_CURRENCY_MISSMATCH,
+                                         TALER_EC_MELT_CURRENCY_MISMATCH,
                                          "value_with_fee");
 
     }

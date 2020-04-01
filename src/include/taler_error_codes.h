@@ -549,7 +549,7 @@ enum TALER_ErrorCode
    * currency of the coin.  This response is provided with HTTP status
    * code #MHD_HTTP_PRECONDITION_FAILED.
    */
-  TALER_EC_DEPOSIT_CURRENCY_MISSMATCH = 1222,
+  TALER_EC_DEPOSIT_CURRENCY_MISMATCH = 1222,
 
   /**
    * The respective coin did not have sufficient residual value for the
@@ -636,7 +636,7 @@ enum TALER_ErrorCode
    * currency of the coin.  This response is provided with HTTP status
    * code #MHD_HTTP_PRECONDITION_FAILED.
    */
-  TALER_EC_MELT_CURRENCY_MISSMATCH = 1311,
+  TALER_EC_MELT_CURRENCY_MISMATCH = 1311,
 
   /**
    * The exchange is unaware of the denomination key that was used to
@@ -726,7 +726,7 @@ enum TALER_ErrorCode
    * denomination keys given. This response is provided with HTTP status
    * code #MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISSMATCH = 1378,
+  TALER_EC_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISMATCH = 1378,
 
   /**
    * The exchange encountered a numeric overflow totaling up the cost
@@ -821,7 +821,7 @@ enum TALER_ErrorCode
    * currency of the coin.  This response is provided with HTTP status
    * code #MHD_HTTP_PRECONDITION_FAILED.
    */
-  TALER_EC_REFUND_CURRENCY_MISSMATCH = 1504,
+  TALER_EC_REFUND_CURRENCY_MISMATCH = 1504,
 
   /**
    * When we tried to check if we already paid out the coin, the
@@ -874,7 +874,7 @@ enum TALER_ErrorCode
    * amount. This response is provided with HTTP status code
    * #MHD_HTTP_BAD_REQUEST.
    */
-  TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH = 1511,
+  TALER_EC_REFUND_FEE_CURRENCY_MISMATCH = 1511,
 
   /**
    * The refunded amount is smaller than the refund fee, which would
@@ -1155,7 +1155,7 @@ enum TALER_ErrorCode
   /**
    * There was an integer overflow totaling up the amounts or deposit
    * fees in the payment.  This response is provided with HTTP status
-   * code #MHD_HTTP_BAD_REQUEST.
+   * code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PAY_AMOUNT_OVERFLOW = 2106,
 
@@ -1190,7 +1190,7 @@ enum TALER_ErrorCode
   /**
    * We failed to contact the exchange for the /pay request. This
    * response is provided with HTTP status code
-   * #MHD_HTTP_SERVICE_UNAVAILABLE.
+   * #MHD_HTTP_REQUEST_TIMEOUT.
    */
   TALER_EC_PAY_EXCHANGE_TIMEOUT = 2111,
 
@@ -1243,7 +1243,7 @@ enum TALER_ErrorCode
   /**
    * The exchange failed to provide a valid response to the merchant's
    * /keys request. This response is provided with HTTP status code
-   * #MHD_HTTP_SERVICE_UNAVAILABLE.
+   * #MHD_HTTP_FAILED_DEPENDENDCY.
    */
   TALER_EC_PAY_EXCHANGE_KEYS_FAILURE = 2120,
 
@@ -1278,7 +1278,7 @@ enum TALER_ErrorCode
    * fee.  This response is provided with HTTP status code of
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_PAY_WIRE_FEE_CURRENCY_MISSMATCH = 2125,
+  TALER_EC_PAY_WIRE_FEE_CURRENCY_MISMATCH = 2125,
 
   /**
    * The merchant refuses to abort and refund the payment operation as
@@ -1290,9 +1290,36 @@ enum TALER_ErrorCode
   /**
    * A unknown merchant public key was included in the payment.  That
    * happens typically when the wallet sends the payment to the wrong
-   * merchant instance.
+   * merchant instance. This response is provided with an HTTP status
+   * code of #MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_PAY_WRONG_INSTANCE = 2127,
+
+  /**
+   * The exchange failed to give us a response when we asked for /keys.
+   * This response is provided with HTTP status code
+   * #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_PAY_EXCHANGE_HAS_NO_KEYS = 2128,
+
+  /**
+   * The deposit time for the denomination has expired. This response is
+   * provided with HTTP status code #MHD_HTTP_GONE.
+   */
+  TALER_EC_PAY_DENOMINATION_DEPOSIT_EXPIRED = 2129,
+
+  /**
+   * The proposal is not known to the backend. This response is provided
+   * with an HTTP status code of #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_PAY_PROPOSAL_NOT_FOUND = 2130,
+
+  /**
+   * The exchange of the deposited coin charges a wire fee that could
+   * not be added to the total (total amount too high).  This response
+   * is provided with HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_EXCHANGE_WIRE_FEE_ADDITION_FAILED = 2131,
 
   /**
    * Integer overflow with specified timestamp argument detected. This
@@ -1552,13 +1579,13 @@ enum TALER_ErrorCode
 
   /**
    * The reserve that was used to fund the tips has expired. Returned
-   * with an HTTP status code of "not found".
+   * with an HTTP status code of #MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_TIP_AUTHORIZE_RESERVE_EXPIRED = 2702,
 
   /**
    * The reserve that was used to fund the tips was not found in the DB.
-   * Returned with an HTTP status code of "not found".
+   * Returned with an HTTP status code of #MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_TIP_AUTHORIZE_RESERVE_UNKNOWN = 2703,
 
@@ -1611,7 +1638,7 @@ enum TALER_ErrorCode
    * The backend got a reserve with a currency that does not match the
    * backend's currency.
    */
-  TALER_EC_TIP_QUERY_RESERVE_CURRENCY_MISSMATCH = 2711,
+  TALER_EC_TIP_QUERY_RESERVE_CURRENCY_MISMATCH = 2711,
 
   /**
    * The backend got a reserve history with amounts it cannot process
@@ -1650,7 +1677,7 @@ enum TALER_ErrorCode
 
   /**
    * The tip ID is unknown.  This could happen if the tip has expired.
-   * Returned with an HTTP status code of "not found".
+   * Returned with an HTTP status code of #MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_TIP_PICKUP_TIP_ID_UNKNOWN = 2800,
 

@@ -436,7 +436,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_DEPOSIT_CURRENCY_MISSMATCH,
+                                         TALER_EC_DEPOSIT_CURRENCY_MISMATCH,
                                          "contribution");
     }
     /* check coin signature */

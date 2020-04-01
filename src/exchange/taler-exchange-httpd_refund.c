@@ -258,7 +258,7 @@ refund_transaction (void *cls,
                                             tl);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_PRECONDITION_FAILED,
-                                           TALER_EC_REFUND_CURRENCY_MISSMATCH,
+                                           TALER_EC_REFUND_CURRENCY_MISMATCH,
                                            "currencies involved do not match");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -443,7 +443,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
+                                       TALER_EC_REFUND_FEE_CURRENCY_MISMATCH,
                                        "refund_fee");
   }
   {
@@ -535,7 +535,7 @@ TEH_handler_refund (struct MHD_Connection *connection,
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REFUND_FEE_CURRENCY_MISSMATCH,
+                                       TALER_EC_REFUND_FEE_CURRENCY_MISMATCH,
                                        "refund_amount or refund_fee");
   }
   if (-1 == TALER_amount_cmp (&refund.details.refund_amount,

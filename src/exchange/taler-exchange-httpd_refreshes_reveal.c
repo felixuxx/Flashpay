@@ -837,7 +837,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISSMATCH,
+                                       TALER_EC_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISMATCH,
                                        "new_denoms/coin_evs");
   }
   if (json_array_size (new_denoms_h_json) !=
@@ -846,7 +846,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISSMATCH,
+                                       TALER_EC_REVEAL_NEW_DENOMS_ARRAY_SIZE_MISMATCH,
                                        "new_denoms/link_sigs");
   }
 
