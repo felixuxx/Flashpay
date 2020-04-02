@@ -1120,7 +1120,9 @@ enum TALER_ErrorCode
   /**
    * The exchange failed to provide a meaningful response to a /deposit
    * request.  This response is provided with HTTP status code
-   * #MHD_HTTP_SERVICE_UNAVAILABLE.
+   * #MHD_HTTP_DEPENDENCY_FAILED, or #MHD_HTTP_CONFLICT in case the
+   * exchange reports #TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS (aka double
+   * spending).
    */
   TALER_EC_PAY_EXCHANGE_FAILED = 2101,
 
@@ -1166,17 +1168,18 @@ enum TALER_ErrorCode
   TALER_EC_PAY_FEES_EXCEED_PAYMENT = 2107,
 
   /**
-   * After considering deposit fees, the payment is insufficient to
-   * satisfy the required amount for the contract. This response is
-   * provided with HTTP status code #MHD_HTTP_BAD_REQUEST.
+   * After considering deposit and wire fees, the payment is
+   * insufficient to satisfy the required amount for the contract.  The
+   * client should revisit the logic used to calculate fees it must
+   * cover. This response is provided with HTTP status code
+   * #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_PAY_PAYMENT_INSUFFICIENT_DUE_TO_FEES = 2108,
 
   /**
-   * While the merchant is happy to cover all applicable deposit fees,
-   * the payment is insufficient to satisfy the required amount for the
-   * contract.  This response is provided with HTTP status code
-   * #MHD_HTTP_BAD_REQUEST.
+   * Even if we do not consider deposit and wire fees, the payment is
+   * insufficient to satisfy the required amount for the contract.  This
+   * response is provided with HTTP status code #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_PAY_PAYMENT_INSUFFICIENT = 2109,
 
@@ -1195,14 +1198,19 @@ enum TALER_ErrorCode
   TALER_EC_PAY_EXCHANGE_TIMEOUT = 2111,
 
   /**
-   * The signature over the contract of the merchant was invalid. This
-   * response is provided with HTTP status code #MHD_HTTP_BAD_REQUEST.
+   * When we tried to find information about the exchange to issue the
+   * deposit, we failed.  This usually only happens if the merchant
+   * backend is somehow unable to get its own HTTP client logic to work.
+   * This response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_PAY_MERCHANT_SIGNATURE_INVALID = 2113,
+  TALER_EC_PAY_EXCHANGE_LOOKUP_FAILED = 2112,
 
   /**
-   * The refund deadline was after the transfer deadline. This response
-   * is provided with HTTP status code #MHD_HTTP_BAD_REQUEST.
+   * The refund deadline in the contract is after the transfer deadline.
+   * This response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR as this should have been caught
+   * when the offer was first setup.
    */
   TALER_EC_PAY_REFUND_DEADLINE_PAST_WIRE_TRANSFER_DEADLINE = 2114,
 
@@ -1213,9 +1221,9 @@ enum TALER_ErrorCode
   TALER_EC_PAY_COINS_ARRAY_EMPTY = 2115,
 
   /**
-   * The merchant failed to fetch the merchant's previous state with
-   * respect to a /pay request from its database.  This response is
-   * provided with HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   * The merchant failed to fetch the contract terms from the merchant's
+   * database.  This response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PAY_DB_FETCH_PAY_ERROR = 2116,
 
@@ -1225,13 +1233,6 @@ enum TALER_ErrorCode
    * provided with HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PAY_DB_FETCH_TRANSACTION_ERROR = 2117,
-
-  /**
-   * The transaction ID was used for a conflicing transaction before.
-   * This response is provided with HTTP status code
-   * #MHD_HTTP_BAD_REQUEST.
-   */
-  TALER_EC_PAY_DB_TRANSACTION_ID_CONFLICT = 2118,
 
   /**
    * The merchant failed to store the merchant's state with respect to
@@ -1249,7 +1250,7 @@ enum TALER_ErrorCode
 
   /**
    * The payment is too late, the offer has expired. This response is
-   * provided with HTTP status code #MHD_HTTP_BAD_REQUEST.
+   * provided with HTTP status code #MHD_HTTP_GONE.
    */
   TALER_EC_PAY_OFFER_EXPIRED = 2121,
 
@@ -1320,6 +1321,21 @@ enum TALER_ErrorCode
    * is provided with HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PAY_EXCHANGE_WIRE_FEE_ADDITION_FAILED = 2131,
+
+  /**
+   * The contract was not fully paid because of refunds. Note that
+   * clients MAY treat this as paid if, for example, contracts must be
+   * executed despite of refunds. This response is provided with HTTP
+   * status code #MHD_HTTP_PAYMENT_REQUIRED.
+   */
+  TALER_EC_PAY_REFUNDED = 2132,
+
+  /**
+   * According to our database, we have refunded more than we were paid
+   * (which should not be possible). This response is provided with HTTP
+   * status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PAY_REFUNDS_EXCEED_PAYMENTS = 2133,
 
   /**
    * Integer overflow with specified timestamp argument detected. This
