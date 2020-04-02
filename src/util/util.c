@@ -37,7 +37,7 @@ const char *
 TALER_b2s (const void *buf,
            size_t buf_size)
 {
-  static char ret[9];
+  static GNUNET_THREAD_LOCAL char ret[9];
   struct GNUNET_HashCode hc;
   char *tmp;
 

@@ -625,7 +625,8 @@ const char *
 TALER_amount2s (const struct TALER_Amount *amount)
 {
   /* 12 is sufficient for a uint32_t value in decimal; 3 is for ":.\0" */
-  static char result[TALER_AMOUNT_FRAC_LEN + TALER_CURRENCY_LEN + 3 + 12];
+  static GNUNET_THREAD_LOCAL char result[TALER_AMOUNT_FRAC_LEN
+                                         + TALER_CURRENCY_LEN + 3 + 12];
   struct TALER_Amount norm;
 
   if (GNUNET_YES != TALER_amount_is_valid (amount))
