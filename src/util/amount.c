@@ -529,26 +529,23 @@ TALER_amount_add (struct TALER_Amount *sum,
 int
 TALER_amount_normalize (struct TALER_Amount *amount)
 {
-  int ret;
+  uint32_t overflow;
 
   if (GNUNET_YES != TALER_amount_is_valid (amount))
     return GNUNET_SYSERR;
-  ret = GNUNET_NO;
-  while ( (amount->value != UINT64_MAX) &&
-          (amount->fraction >= TALER_AMOUNT_FRAC_BASE) )
+  if (amount->fraction < TALER_AMOUNT_FRAC_BASE)
+    return GNUNET_NO;
+  overflow = amount->fraction / TALER_AMOUT_FRAC_BASE;
+  amount->fraction %= TALER_AMOUNT_FRAC_BASE;
+  amount->value += overflow;
+  ret = GNUNET_OK;
+  if ( (amount->value < overflow) ||
+       (amount->value > MAX_AMOUNT_VALUE) )
   {
-    amount->fraction -= TALER_AMOUNT_FRAC_BASE;
-    amount->value++;
-    ret = GNUNET_OK;
-  }
-  if (amount->fraction >= TALER_AMOUNT_FRAC_BASE)
-  {
-    /* failed to normalize, adding up fractions caused
-       main value to overflow! */
     invalidate (amount);
     return GNUNET_SYSERR;
   }
-  return ret;
+  return GNUNET_OK;
 }
 
 
