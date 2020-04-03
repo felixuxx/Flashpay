@@ -535,10 +535,9 @@ TALER_amount_normalize (struct TALER_Amount *amount)
     return GNUNET_SYSERR;
   if (amount->fraction < TALER_AMOUNT_FRAC_BASE)
     return GNUNET_NO;
-  overflow = amount->fraction / TALER_AMOUT_FRAC_BASE;
+  overflow = amount->fraction / TALER_AMOUNT_FRAC_BASE;
   amount->fraction %= TALER_AMOUNT_FRAC_BASE;
   amount->value += overflow;
-  ret = GNUNET_OK;
   if ( (amount->value < overflow) ||
        (amount->value > MAX_AMOUNT_VALUE) )
   {
