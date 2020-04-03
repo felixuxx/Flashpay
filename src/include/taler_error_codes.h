@@ -1120,7 +1120,7 @@ enum TALER_ErrorCode
   /**
    * The exchange failed to provide a meaningful response to a /deposit
    * request.  This response is provided with HTTP status code
-   * #MHD_HTTP_DEPENDENCY_FAILED, or #MHD_HTTP_CONFLICT in case the
+   * #MHD_HTTP_FAILED_DEPENDENCY, or #MHD_HTTP_CONFLICT in case the
    * exchange reports #TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS (aka double
    * spending).
    */
@@ -1589,7 +1589,7 @@ enum TALER_ErrorCode
    * The backend knows the instance that was supposed to support the
    * tip, but it was not configured for tipping (i.e. has no exchange
    * associated with it).  Likely to be a configuration error. Returned
-   * with an HTTP status code of #MHD_HTTP_NOT_FOUND.
+   * with an HTTP status code of #MHD_HTTP_PRECONDITION_FAILED.
    */
   TALER_EC_TIP_AUTHORIZE_INSTANCE_DOES_NOT_TIP = 2701,
 
@@ -1601,7 +1601,7 @@ enum TALER_ErrorCode
 
   /**
    * The reserve that was used to fund the tips was not found in the DB.
-   * Returned with an HTTP status code of #MHD_HTTP_NOT_FOUND.
+   * Returned with an HTTP status code of #MHD_HTTP_SERVICE_UNAVAILABLE.
    */
   TALER_EC_TIP_AUTHORIZE_RESERVE_UNKNOWN = 2703,
 
@@ -1610,7 +1610,7 @@ enum TALER_ErrorCode
    * tip, and it was configured for tipping. However, the funds
    * remaining are insufficient to cover the tip, and the merchant
    * should top up the reserve. Returned with an HTTP status code of
-   * "PRECONDITION FAILED".
+   * #MHD_HTTP_PRECONDITION FAILED.
    */
   TALER_EC_TIP_AUTHORIZE_INSUFFICIENT_FUNDS = 2704,
 
@@ -1630,47 +1630,57 @@ enum TALER_ErrorCode
 
   /**
    * The backend failed to obtain a reserve status from the exchange.
+   * This response is provided with HTTP status code
+   * #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_QUERY_RESERVE_STATUS_FAILED_EXCHANGE_DOWN = 2707,
 
   /**
    * The backend got an empty (!) reserve history from the exchange.
+   * This response is provided with HTTP status code
+   * #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_FAILED_EMPTY = 2708,
 
   /**
    * The backend got an invalid reserve history (fails to start with a
-   * deposit) from the exchange.
+   * deposit) from the exchange. This response is provided with HTTP
+   * status code #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_INVALID_NO_DEPOSIT = 2709,
 
   /**
-   * The backend got an reserve history with a bad currency from the
-   * exchange.
+   * The backend got an 404 response from the exchange when it inquired
+   * about the reserve history. The response is provided with HTTP
+   * status code #MHD_HTTP_SERVICE_UNAVAILABLE.
    */
-  TALER_EC_TIP_QUERY_RESERVE_HISTORY_INVALID_CURRENCY = 2710,
+  TALER_EC_TIP_QUERY_RESERVE_UNKNOWN_TO_EXCHANGE = 2710,
 
   /**
    * The backend got a reserve with a currency that does not match the
-   * backend's currency.
+   * backend's currency. The response is provided with HTTP status code
+   * #MHD_HTTP_SERVICE_UNAVAILABLE.
    */
   TALER_EC_TIP_QUERY_RESERVE_CURRENCY_MISMATCH = 2711,
 
   /**
    * The backend got a reserve history with amounts it cannot process
-   * (addition failure in deposits).
+   * (addition failure in deposits). The response is provided with HTTP
+   * status code #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_DEPOSIT = 2712,
 
   /**
    * The backend got a reserve history with amounts it cannot process
-   * (addition failure in withdraw amounts).
+   * (addition failure in withdraw amounts). The response is provided
+   * with HTTP status code #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_WITHDRAW = 2713,
 
   /**
    * The backend got a reserve history with amounts it cannot process
-   * (addition failure in closing amounts).
+   * (addition failure in closing amounts). The response is provided
+   * with HTTP status code #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_CLOSED = 2714,
 
@@ -1683,6 +1693,28 @@ enum TALER_ErrorCode
    * The backend encountered a database error querying tipping reserves.
    */
   TALER_EC_TIP_QUERY_DB_ERROR = 2716,
+
+  /**
+   * The backend got an unexpected resever history reply from the
+   * exchange. This response is provided with HTTP status code
+   * #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TIP_QUERY_RESERVE_HISTORY_FAILED = 2717,
+
+  /**
+   * The backend got a reserve history with amounts it cannot process
+   * (addition failure in withdraw amounts). The response is provided
+   * with HTTP status code #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TIP_QUERY_RESERVE_HISTORY_ARITHMETIC_ISSUE_RECOUP = 2718,
+
+  /**
+   * The backend knows the instance that was supposed to support the
+   * tip, but it was not configured for tipping (i.e. has no exchange
+   * associated with it).  Likely to be a configuration error. Returned
+   * with an HTTP status code of #MHD_HTTP_PRECONDITION_FAILED.
+   */
+  TALER_EC_TIP_QUERY_INSTANCE_DOES_NOT_TIP = 2719,
 
   /**
    * The backend had trouble accessing the database to persist
