@@ -1429,6 +1429,13 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSFER_EXCHANGE_TIMEOUT = 2400,
 
   /**
+   * We failed to obtain an acceptable /keys response from the exchange
+   * for the /track/transfer request.  This response is provided with
+   * HTTP status code #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TRACK_TRANSFER_EXCHANGE_KEYS_FAILURE = 2401,
+
+  /**
    * We failed to persist coin wire transfer information in our merchant
    * database. The response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
