@@ -77,19 +77,22 @@ struct WireState
  * @param accounts_len length of the @a accounts array.
  * @param accounts list of wire accounts of the exchange,
  *        NULL on error.
+ * @param full_reply the complete response from the exchange
  */
 static void
 wire_cb (void *cls,
          unsigned int http_status,
          enum TALER_ErrorCode ec,
          unsigned int accounts_len,
-         const struct TALER_EXCHANGE_WireAccount *accounts)
+         const struct TALER_EXCHANGE_WireAccount *accounts,
+         const json_t *full_reply)
 {
   struct WireState *ws = cls;
   struct TALER_TESTING_Command *cmd = &ws->is->commands[ws->is->ip];
   struct TALER_Amount expected_fee;
 
   (void) ec;
+  (void) full_reply;
   TALER_LOG_DEBUG ("Checking parsed /wire response\n");
   ws->wh = NULL;
   if (ws->expected_response_code != http_status)

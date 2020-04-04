@@ -112,6 +112,12 @@ enum TALER_ErrorCode
   TALER_EC_WRONG_NUMBER_OF_SEGMENTS = 12,
 
   /**
+   * The start and end-times in the wire fee structure leave a hole.
+   * This is not allowed. Generated as an error on the client-side.
+   */
+  TALER_EC_HOLE_IN_WIRE_FEE_STRUCTURE = 13,
+
+  /**
    * The exchange failed to even just initialize its connection to the
    * database.  This response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.

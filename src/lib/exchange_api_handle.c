@@ -373,7 +373,6 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
                     json_t *sign_key_obj,
                     const struct TALER_MasterPublicKeyP *master_key)
 {
-  struct TALER_ExchangeSigningKeyValidityPS sign_key_issue;
   struct TALER_MasterSignatureP sign_key_issue_sig;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -400,23 +399,26 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
 
   if (! check_sigs)
     return GNUNET_OK;
-  sign_key_issue.signkey_pub = sign_key->key;
-  sign_key_issue.purpose.purpose = htonl (
-    TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-  sign_key_issue.purpose.size = htonl (sizeof (struct
-                                               TALER_ExchangeSigningKeyValidityPS));
-  sign_key_issue.master_public_key = *master_key;
-  sign_key_issue.start = GNUNET_TIME_absolute_hton (sign_key->valid_from);
-  sign_key_issue.expire = GNUNET_TIME_absolute_hton (sign_key->valid_until);
-  sign_key_issue.end = GNUNET_TIME_absolute_hton (sign_key->valid_legal);
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                  &sign_key_issue.purpose,
-                                  &sign_key_issue_sig.eddsa_signature,
-                                  &master_key->eddsa_pub))
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    struct TALER_ExchangeSigningKeyValidityPS sign_key_issue = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
+      .purpose.size = htonl (sizeof (sign_key_issue)),
+      .signkey_pub = sign_key->key,
+      .master_public_key = *master_key,
+      .start = GNUNET_TIME_absolute_hton (sign_key->valid_from),
+      .expire = GNUNET_TIME_absolute_hton (sign_key->valid_until),
+      .end = GNUNET_TIME_absolute_hton (sign_key->valid_legal)
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
+                                    &sign_key_issue.purpose,
+                                    &sign_key_issue_sig.eddsa_signature,
+                                    &master_key->eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
   }
   sign_key->master_sig = sign_key_issue_sig;
   return GNUNET_OK;
@@ -441,7 +443,6 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                      struct TALER_MasterPublicKeyP *master_key,
                      struct GNUNET_HashContext *hash_context)
 {
-  struct TALER_DenominationKeyValidityPS denom_key_issue;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &denom_key->master_sig),
@@ -479,46 +480,50 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
 
   GNUNET_CRYPTO_rsa_public_key_hash (denom_key->key.rsa_public_key,
                                      &denom_key->h_key);
+  if (NULL != hash_context)
+    GNUNET_CRYPTO_hash_context_read (hash_context,
+                                     &denom_key->h_key,
+                                     sizeof (struct GNUNET_HashCode));
   if (! check_sigs)
     return GNUNET_OK;
-  memset (&denom_key_issue,
-          0,
-          sizeof (denom_key_issue));
-  denom_key_issue.purpose.purpose
-    = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-  denom_key_issue.purpose.size
-    = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
-  denom_key_issue.master = *master_key;
-  denom_key_issue.denom_hash = denom_key->h_key;
-  denom_key_issue.start = GNUNET_TIME_absolute_hton (denom_key->valid_from);
-  denom_key_issue.expire_withdraw = GNUNET_TIME_absolute_hton (
-    denom_key->withdraw_valid_until);
-  denom_key_issue.expire_deposit = GNUNET_TIME_absolute_hton (
-    denom_key->expire_deposit);
-  denom_key_issue.expire_legal = GNUNET_TIME_absolute_hton (
-    denom_key->expire_legal);
-  TALER_amount_hton (&denom_key_issue.value,
-                     &denom_key->value);
-  TALER_amount_hton (&denom_key_issue.fee_withdraw,
-                     &denom_key->fee_withdraw);
-  TALER_amount_hton (&denom_key_issue.fee_deposit,
-                     &denom_key->fee_deposit);
-  TALER_amount_hton (&denom_key_issue.fee_refresh,
-                     &denom_key->fee_refresh);
-  TALER_amount_hton (&denom_key_issue.fee_refund,
-                     &denom_key->fee_refund);
-  EXITIF (GNUNET_SYSERR ==
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-            &denom_key_issue.purpose,
-            &denom_key->master_sig.eddsa_signature,
-            &master_key->eddsa_pub));
-  GNUNET_CRYPTO_hash_context_read (hash_context,
-                                   &denom_key_issue.denom_hash,
-                                   sizeof (struct GNUNET_HashCode));
+  {
+    struct TALER_DenominationKeyValidityPS denom_key_issue =  {
+      .purpose.purpose
+        = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
+      .purpose.size = htonl (sizeof (denom_key_issue)),
+      .master = *master_key,
+      .denom_hash = denom_key->h_key,
+      .start = GNUNET_TIME_absolute_hton (denom_key->valid_from),
+      .expire_withdraw
+        = GNUNET_TIME_absolute_hton (denom_key->withdraw_valid_until),
+      .expire_deposit = GNUNET_TIME_absolute_hton (denom_key->expire_deposit),
+      .expire_legal = GNUNET_TIME_absolute_hton (denom_key->expire_legal)
+    };
+
+    TALER_amount_hton (&denom_key_issue.value,
+                       &denom_key->value);
+    TALER_amount_hton (&denom_key_issue.fee_withdraw,
+                       &denom_key->fee_withdraw);
+    TALER_amount_hton (&denom_key_issue.fee_deposit,
+                       &denom_key->fee_deposit);
+    TALER_amount_hton (&denom_key_issue.fee_refresh,
+                       &denom_key->fee_refresh);
+    TALER_amount_hton (&denom_key_issue.fee_refund,
+                       &denom_key->fee_refund);
+    EXITIF (GNUNET_SYSERR ==
+            GNUNET_CRYPTO_eddsa_verify (
+              TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
+              &denom_key_issue.purpose,
+              &denom_key->master_sig.eddsa_signature,
+              &master_key->eddsa_pub));
+  }
   return GNUNET_OK;
 
 EXITIF_exit:
+  /* invalidate denom_key, just to be sure */
+  memset (denom_key,
+          0,
+          sizeof (*denom_key));
   GNUNET_JSON_parse_free (spec);
   return GNUNET_SYSERR;
 }
@@ -1376,7 +1381,10 @@ keys_completed_cb (void *cls,
     /* notify application that we failed */
     exchange->cert_cb (exchange->cert_cb_cls,
                        NULL,
-                       vc);
+                       vc,
+                       TALER_JSON_get_error_code (j),
+                       response_code,
+                       j);
     return;
   }
 
@@ -1390,7 +1398,10 @@ keys_completed_cb (void *cls,
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
                      &exchange->key_data,
-                     vc);
+                     vc,
+                     TALER_EC_NONE,
+                     MHD_HTTP_OK,
+                     j);
   free_key_data (&kd_old);
 }
 
@@ -1612,7 +1623,10 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
                      &exchange->key_data,
-                     vc);
+                     vc,
+                     TALER_EC_NONE,
+                     MHD_HTTP_OK,
+                     data);
   GNUNET_JSON_parse_free (spec);
 }
 

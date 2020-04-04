@@ -209,7 +209,7 @@ connect_with_state_run (void *cls,
                                               &exchange_url));
   is->exchange = TALER_EXCHANGE_connect (is->ctx,
                                          exchange_url,
-                                         TALER_TESTING_cert_cb,
+                                         &TALER_TESTING_cert_cb,
                                          cwss,
                                          TALER_EXCHANGE_OPTION_DATA,
                                          serialized_keys,

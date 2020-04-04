@@ -328,7 +328,8 @@ handle_wire_finished (void *cls,
                   response_code,
                   ec,
                   num_accounts,
-                  was);
+                  was,
+                  j);
           wh->cb = NULL;
         }
       } /* end of 'parse accounts */
@@ -367,7 +368,8 @@ handle_wire_finished (void *cls,
             response_code,
             ec,
             0,
-            NULL);
+            NULL,
+            j);
   TALER_EXCHANGE_wire_cancel (wh);
 }
 

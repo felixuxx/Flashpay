@@ -359,12 +359,18 @@ enum TALER_EXCHANGE_VersionCompatibility
  * @param keys information about the various keys used
  *        by the exchange, NULL if /keys failed
  * @param compat protocol compatibility information
+ * @param ec error code, #TALER_EC_NONE on success
+ * @param http_status status returned by /keys, #MHD_HTTP_OK on success
+ * @param full_reply JSON body of /keys request, NULL if reply was not in JSON
  */
 typedef void
 (*TALER_EXCHANGE_CertificationCallback) (
   void *cls,
   const struct TALER_EXCHANGE_Keys *keys,
-  enum TALER_EXCHANGE_VersionCompatibility compat);
+  enum TALER_EXCHANGE_VersionCompatibility compat,
+  enum TALER_ErrorCode ec,
+  unsigned int http_status,
+  const json_t *full_reply);
 
 
 /**
@@ -649,6 +655,7 @@ struct TALER_EXCHANGE_WireAccount
  * @param ec taler-specific error code, #TALER_EC_NONE on success
  * @param accounts_len length of the @a accounts array
  * @param accounts list of wire accounts of the exchange, NULL on error
+ * @param full_reply the complete reply from the exchange (if it was in JSON)
  */
 typedef void
 (*TALER_EXCHANGE_WireCallback) (
@@ -656,7 +663,8 @@ typedef void
   unsigned int http_status,
   enum TALER_ErrorCode ec,
   unsigned int accounts_len,
-  const struct TALER_EXCHANGE_WireAccount *accounts);
+  const struct TALER_EXCHANGE_WireAccount *accounts,
+  const json_t *full_reply);
 
 
 /**
