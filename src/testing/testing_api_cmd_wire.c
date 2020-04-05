@@ -72,37 +72,31 @@ struct WireState
  * that the wire fee is acceptable too.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param accounts_len length of the @a accounts array.
  * @param accounts list of wire accounts of the exchange,
  *        NULL on error.
- * @param full_reply the complete response from the exchange
  */
 static void
 wire_cb (void *cls,
-         unsigned int http_status,
-         enum TALER_ErrorCode ec,
+         const struct TALER_EXCHANGE_HttpResponse *hr,
          unsigned int accounts_len,
-         const struct TALER_EXCHANGE_WireAccount *accounts,
-         const json_t *full_reply)
+         const struct TALER_EXCHANGE_WireAccount *accounts)
 {
   struct WireState *ws = cls;
   struct TALER_TESTING_Command *cmd = &ws->is->commands[ws->is->ip];
   struct TALER_Amount expected_fee;
 
-  (void) ec;
-  (void) full_reply;
   TALER_LOG_DEBUG ("Checking parsed /wire response\n");
   ws->wh = NULL;
-  if (ws->expected_response_code != http_status)
+  if (ws->expected_response_code != hr->http_status)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (ws->is);
     return;
   }
 
-  if (MHD_HTTP_OK == http_status)
+  if (MHD_HTTP_OK == hr->http_status)
   {
     for (unsigned int i = 0; i<accounts_len; i++)
     {
@@ -115,12 +109,11 @@ wire_cb (void *cls,
         ws->method_found = GNUNET_OK;
         if (NULL != ws->expected_fee)
         {
-          GNUNET_assert
-            (GNUNET_OK ==
-            TALER_string_to_amount (ws->expected_fee,
-                                    &expected_fee));
-          const struct TALER_EXCHANGE_WireAggregateFees *waf;
-          for (waf = accounts[i].fees;
+          GNUNET_assert (GNUNET_OK ==
+                         TALER_string_to_amount (ws->expected_fee,
+                                                 &expected_fee));
+          for (const struct TALER_EXCHANGE_WireAggregateFees *waf
+                 = accounts[i].fees;
                NULL != waf;
                waf = waf->next)
           {
@@ -150,7 +143,6 @@ wire_cb (void *cls,
       return;
     }
   }
-
   TALER_TESTING_interpreter_next (ws->is);
 }
 

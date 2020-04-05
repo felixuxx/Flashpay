@@ -105,6 +105,10 @@ check_transfers_get_response_ok (
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
     GNUNET_JSON_spec_end ()
   };
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = json,
+    .http_status = MHD_HTTP_OK
+  };
 
   if (GNUNET_OK !=
       GNUNET_JSON_parse (json,
@@ -175,10 +179,10 @@ check_transfers_get_response_ok (
         GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &dd,
-                                       sizeof (struct
-                                               TALER_WireDepositDetailP));
+      GNUNET_CRYPTO_hash_context_read (
+        hash_context,
+        &dd,
+        sizeof (struct TALER_WireDepositDetailP));
     }
     /* Check signature */
     wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
@@ -200,8 +204,9 @@ check_transfers_get_response_ok (
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    if (GNUNET_OK != GNUNET_CRYPTO_eddsa_verify
-          (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
           &wdp.purpose,
           &exchange_sig.eddsa_signature,
           &exchange_pub.eddsa_pub))
@@ -229,10 +234,8 @@ check_transfers_get_response_ok (
       return GNUNET_SYSERR;
     }
     wdh->cb (wdh->cb_cls,
-             MHD_HTTP_OK,
-             TALER_EC_NONE,
+             &hr,
              &exchange_pub,
-             json,
              &h_wire,
              exec_time,
              &total_amount,
@@ -261,13 +264,16 @@ handle_transfers_get_finished (void *cls,
 {
   struct TALER_EXCHANGE_TransfersGetHandle *wdh = cls;
   const json_t *j = response;
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = j,
+    .http_status = (unsigned int) response_code
+  };
 
   wdh->job = NULL;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK ==
@@ -275,45 +281,48 @@ handle_transfers_get_finished (void *cls,
                                          j))
       return;
     GNUNET_break_op (0);
-    ec = TALER_EC_TRANSFERS_GET_REPLY_MALFORMED;
-    response_code = 0;
+    hr.ec = TALER_EC_TRANSFERS_GET_REPLY_MALFORMED;
+    hr.http_status = 0;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Exchange does not know about transaction;
        we should pass the reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
-    ec = TALER_JSON_get_error_code (j);
+    GNUNET_break_op (0);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
-    GNUNET_break (0);
-    response_code = 0;
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
     break;
   }
   wdh->cb (wdh->cb_cls,
-           response_code,
-           ec,
+           &hr,
            NULL,
-           j,
            NULL,
            GNUNET_TIME_UNIT_ZERO_ABS,
            NULL,

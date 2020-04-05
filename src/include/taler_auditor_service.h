@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -107,17 +107,58 @@ enum TALER_AUDITOR_VersionCompatibility
 
 
 /**
+ * General information about the HTTP response we obtained
+ * from the auditor for a request.
+ */
+struct TALER_AUDITOR_HttpResponse
+{
+
+  /**
+   * The complete JSON reply. NULL if we failed to parse the
+   * reply (too big, invalid JSON).
+   */
+  const json_t *reply;
+
+  /**
+   * Set to the human-readable 'hint' that is optionally
+   * provided by the exchange together with errors. NULL
+   * if no hint was provided or if there was no error.
+   */
+  const char *hint;
+
+  /**
+   * HTTP status code for the response.  0 if the
+   * HTTP request failed and we did not get any answer, or
+   * if the answer was invalid and we set @a ec to a
+   * client-side error code.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code.  #TALER_EC_NONE if everything was
+   * OK.  Usually set to the "code" field of an error
+   * response, but may be set to values created at the
+   * client side, for example when the response was
+   * not in JSON format or was otherwise ill-formed.
+   */
+  enum TALER_ErrorCode ec;
+
+};
+
+
+/**
  * Function called with information about the auditor.
  *
  * @param cls closure
+ * @param hr HTTP response data
  * @param vi basic information about the auditor
  * @param compat protocol compatibility information
  */
 typedef void
 (*TALER_AUDITOR_VersionCallback) (
   void *cls,
-  const struct
-  TALER_AUDITOR_VersionInformation *vi,
+  const struct TALER_AUDITOR_HttpResponse *hr,
+  const struct TALER_AUDITOR_VersionInformation *vi,
   enum TALER_AUDITOR_VersionCompatibility compat);
 
 
@@ -169,15 +210,12 @@ struct TALER_AUDITOR_DepositConfirmationHandle;
  * auditor's /deposit-confirmation handler.
  *
  * @param cls closure
- * @param http_status HTTP status code, 200 on success
- * @param ec taler protocol error status code, 0 on success
- * @param json raw json response
+ * @param hr HTTP response data
  */
 typedef void
-(*TALER_AUDITOR_DepositConfirmationResultCallback)(void *cls,
-                                                   unsigned int http_status,
-                                                   enum TALER_ErrorCode ec,
-                                                   const json_t *json);
+(*TALER_AUDITOR_DepositConfirmationResultCallback)(
+  void *cls,
+  const struct TALER_AUDITOR_HttpResponse *hr);
 
 
 /**
@@ -274,20 +312,16 @@ struct TALER_AUDITOR_ExchangeInfo
  * Function called with the result from /exchagnes.
  *
  * @param cls closure
- * @param http_status the HTTP status code, 200 on success
- * @param ec detailed Taler error status code, #TALER_EC_NONE on success
+ * @param hr HTTP response data
  * @param num_exchanges length of array at @a ei
  * @param ei information about exchanges returned by the auditor
- * @param raw_response raw JSON response
  */
 typedef void
 (*TALER_AUDITOR_ListExchangesResultCallback)(
   void *cls,
-  unsigned int http_status,
-  enum TALER_ErrorCode ec,
+  const struct TALER_AUDITOR_HttpResponse *hr,
   unsigned int num_exchanges,
-  const struct TALER_AUDITOR_ExchangeInfo *ei,
-  const json_t *raw_response);
+  const struct TALER_AUDITOR_ExchangeInfo *ei);
 
 /**
  * Submit an /exchanges request to the auditor and get the

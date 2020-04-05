@@ -101,22 +101,24 @@ struct MainWrapperContext
  * Function called with information about the auditor.
  *
  * @param cls closure
+ * @param hr http response details
  * @param vi basic information about the auditor
  * @param compat protocol compatibility information
  */
 static void
 auditor_version_cb (void *cls,
+                    const struct TALER_AUDITOR_HttpResponse *hr,
                     const struct TALER_AUDITOR_VersionInformation *vi,
                     enum TALER_AUDITOR_VersionCompatibility compat)
 {
   struct TALER_TESTING_Interpreter *is = cls;
 
+  (void) hr;
   if (TALER_AUDITOR_VC_MATCH != compat)
   {
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   is->auditor_working = GNUNET_YES;
 }
 

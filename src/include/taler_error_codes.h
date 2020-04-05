@@ -118,6 +118,13 @@ enum TALER_ErrorCode
   TALER_EC_HOLE_IN_WIRE_FEE_STRUCTURE = 13,
 
   /**
+   * The version string given does not follow the expected
+   * CURRENT:REVISION:AGE Format.  Generated as an error on the client
+   * side.
+   */
+  TALER_EC_VERSION_MALFORMED = 14,
+
+  /**
    * The exchange failed to even just initialize its connection to the
    * database.  This response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -1109,6 +1116,12 @@ enum TALER_ErrorCode
    * with an HTTP status code of #MHD_HTTP_FORBIDDEN.
    */
   TALER_EC_KEYS_TIMETRAVEL_FORBIDDEN = 1902,
+
+  /**
+   * The keys response was malformed. This error is generated client-
+   * side.
+   */
+  TALER_EC_KEYS_INVALID = 1903,
 
   /**
    * The backend could not find the merchant instance specified in the

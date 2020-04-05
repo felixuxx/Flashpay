@@ -123,19 +123,15 @@ parse_coin_reference (const char *coin_reference,
  * was paid back belonged to the right reserve.
  *
  * @param cls closure
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param reserve_pub public key of the reserve receiving the recoup, NULL if refreshed or on error
  * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
- * @param full_response raw response from the exchange.
  */
 static void
 recoup_cb (void *cls,
-           unsigned int http_status,
-           enum TALER_ErrorCode ec,
+           const struct TALER_EXCHANGE_HttpResponse *hr,
            const struct TALER_ReservePublicKeyP *reserve_pub,
-           const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-           const json_t *full_response)
+           const struct TALER_CoinSpendPublicKeyP *old_coin_pub)
 {
   struct RecoupState *ps = cls;
   struct TALER_TESTING_Interpreter *is = ps->is;
@@ -145,15 +141,18 @@ recoup_cb (void *cls,
   unsigned int idx;
 
   ps->ph = NULL;
-  if (ps->expected_response_code != http_status)
+  if (ps->expected_response_code != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                http_status,
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
+                hr->http_status,
+                (int) hr->ec,
                 cmd->label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (full_response, stderr, 0);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     fprintf (stderr, "\n");
     TALER_TESTING_interpreter_fail (is);
     return;
@@ -179,7 +178,7 @@ recoup_cb (void *cls,
     return;
   }
 
-  switch (http_status)
+  switch (hr->http_status)
   {
   case MHD_HTTP_OK:
     /* check old_coin_pub or reserve_pub, respectively */
@@ -256,8 +255,9 @@ recoup_cb (void *cls,
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Unmanaged HTTP status code %u.\n",
-                http_status);
+                "Unmanaged HTTP status code %u/%d.\n",
+                hr->http_status,
+                (int) hr->ec);
     break;
   }
   TALER_TESTING_interpreter_next (is);

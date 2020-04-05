@@ -80,11 +80,8 @@ struct TrackTransactionState
  * line matches our expectations.
  *
  * @param cls closure.
- * @param http_status HTTP status code we got.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param exchange_pub public key of the exchange
- * @param json original json reply (may include signatures, those
- *        have then been validated already).
  * @param wtid wire transfer identifier, NULL if exchange did not
  *        execute the transaction yet.
  * @param execution_time actual or planned execution time for the
@@ -94,10 +91,8 @@ struct TrackTransactionState
  */
 static void
 deposit_wtid_cb (void *cls,
-                 unsigned int http_status,
-                 enum TALER_ErrorCode ec,
+                 const struct TALER_EXCHANGE_HttpResponse *hr,
                  const struct TALER_ExchangePublicKeyP *exchange_pub,
-                 const json_t *json,
                  const struct TALER_WireTransferIdentifierRawP *wtid,
                  struct GNUNET_TIME_Absolute execution_time,
                  const struct TALER_Amount *coin_contribution)
@@ -108,22 +103,24 @@ deposit_wtid_cb (void *cls,
 
   (void) coin_contribution;
   (void) exchange_pub;
-  (void) ec;
   (void) execution_time;
   tts->tth = NULL;
-  if (tts->expected_response_code != http_status)
+  if (tts->expected_response_code != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                http_status,
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
+                hr->http_status,
+                (int) hr->ec,
                 cmd->label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (json, stderr, 0);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  switch (http_status)
+  switch (hr->http_status)
   {
   case MHD_HTTP_OK:
     tts->wtid = *wtid;
@@ -133,8 +130,9 @@ deposit_wtid_cb (void *cls,
       const struct TALER_WireTransferIdentifierRawP *wtid_want;
 
       /* _this_ wire transfer subject line.  */
-      bank_transfer_cmd = TALER_TESTING_interpreter_lookup_command
-                            (is, tts->bank_transfer_reference);
+      bank_transfer_cmd
+        = TALER_TESTING_interpreter_lookup_command (is,
+                                                    tts->bank_transfer_reference);
       if (NULL == bank_transfer_cmd)
       {
         GNUNET_break (0);
@@ -143,8 +141,9 @@ deposit_wtid_cb (void *cls,
       }
 
       if (GNUNET_OK !=
-          TALER_TESTING_get_trait_wtid
-            (bank_transfer_cmd, 0, &wtid_want))
+          TALER_TESTING_get_trait_wtid (bank_transfer_cmd,
+                                        0,
+                                        &wtid_want))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);

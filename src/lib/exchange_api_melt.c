@@ -267,13 +267,16 @@ handle_melt_finished (void *cls,
   uint32_t noreveal_index = TALER_CNC_KAPPA; /* invalid value */
   struct TALER_ExchangePublicKeyP exchange_pub;
   const json_t *j = response;
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = j,
+    .http_status = (unsigned int) response_code
+  };
 
   mh->job = NULL;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -283,30 +286,25 @@ handle_melt_finished (void *cls,
                                   &noreveal_index))
     {
       GNUNET_break_op (0);
-      response_code = 0;
-      ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
-    }
-    else
-    {
-      ec = TALER_EC_NONE;
+      hr.http_status = 0;
+      hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     if (NULL != mh->melt_cb)
     {
       mh->melt_cb (mh->melt_cb_cls,
-                   response_code,
-                   ec,
+                   &hr,
                    noreveal_index,
                    (0 == response_code)
                    ? NULL
-                   : &exchange_pub,
-                   j);
+                   : &exchange_pub);
       mh->melt_cb = NULL;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
@@ -315,46 +313,46 @@ handle_melt_finished (void *cls,
                                         j))
     {
       GNUNET_break_op (0);
-      response_code = 0;
-      ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+      hr.http_status = 0;
+      hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+      hr.hint = TALER_JSON_get_error_hint (j);
     }
-    else
-      ec = TALER_EC_NONE;
     break;
   case MHD_HTTP_FORBIDDEN:
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; assuming we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d\n",
                 (unsigned int) response_code,
-                ec);
-    GNUNET_break (0);
-    response_code = 0;
+                hr.ec);
+    GNUNET_break_op (0);
     break;
   }
   if (NULL != mh->melt_cb)
     mh->melt_cb (mh->melt_cb_cls,
-                 response_code,
-                 ec,
+                 &hr,
                  UINT32_MAX,
-                 NULL,
-                 j);
+                 NULL);
   TALER_EXCHANGE_melt_cancel (mh);
 }
 

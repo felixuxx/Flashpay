@@ -197,40 +197,36 @@ do_retry (void *cls)
  * check if the response code is acceptable.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param exchange_sig signature provided by the exchange
  *        (NULL on errors)
  * @param exchange_pub public key of the exchange,
  *        used for signing the response.
- * @param obj raw response from the exchange.
  */
 static void
 deposit_cb (void *cls,
-            unsigned int http_status,
-            enum TALER_ErrorCode ec,
+            const struct TALER_EXCHANGE_HttpResponse *hr,
             const struct TALER_ExchangeSignatureP *exchange_sig,
-            const struct TALER_ExchangePublicKeyP *exchange_pub,
-            const json_t *obj)
+            const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct DepositState *ds = cls;
 
   ds->dh = NULL;
-  if (ds->expected_response_code != http_status)
+  if (ds->expected_response_code != hr->http_status)
   {
     if (0 != ds->do_retry)
     {
       ds->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == hr->http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying deposit failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    hr->http_status,
+                    (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
           ds->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff,
@@ -245,15 +241,17 @@ deposit_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u to command %s in %s:%u\n",
-                http_status,
+                hr->http_status,
                 ds->is->commands[ds->is->ip].label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (obj, stderr, 0);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (ds->is);
     return;
   }
-  if (MHD_HTTP_OK == http_status)
+  if (MHD_HTTP_OK == hr->http_status)
   {
     ds->deposit_succeeded = GNUNET_YES;
     ds->exchange_pub = *exchange_pub;

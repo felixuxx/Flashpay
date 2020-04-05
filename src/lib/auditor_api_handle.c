@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -197,9 +197,9 @@ free_version_info (struct TALER_AUDITOR_VersionInformation *vi)
  * @param[in] resp_obj JSON object to parse
  * @param[out] vi where to store the results we decoded
  * @param[out] vc where to store version compatibility data
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error (malformed JSON)
+ * @return #TALER_EC_NONE on success
  */
-static int
+static enum TALER_ErrorCode
 decode_version_json (const json_t *resp_obj,
                      struct TALER_AUDITOR_VersionInformation *vi,
                      enum TALER_AUDITOR_VersionCompatibility *vc)
@@ -219,7 +219,7 @@ decode_version_json (const json_t *resp_obj,
   if (JSON_OBJECT != json_typeof (resp_obj))
   {
     GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    return TALER_EC_JSON_INVALID;
   }
   /* check the version */
   if (GNUNET_OK !=
@@ -228,7 +228,7 @@ decode_version_json (const json_t *resp_obj,
                          NULL, NULL))
   {
     GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    return TALER_EC_JSON_INVALID;
   }
   if (3 != sscanf (ver,
                    "%u:%u:%u",
@@ -237,7 +237,7 @@ decode_version_json (const json_t *resp_obj,
                    &age))
   {
     GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    return TALER_EC_VERSION_MALFORMED;
   }
   vi->version = GNUNET_strdup (ver);
   *vc = TALER_AUDITOR_VC_MATCH;
@@ -253,7 +253,7 @@ decode_version_json (const json_t *resp_obj,
     if (TALER_PROTOCOL_CURRENT - TALER_PROTOCOL_AGE > current)
       *vc |= TALER_AUDITOR_VC_INCOMPATIBLE;
   }
-  return GNUNET_OK;
+  return TALER_EC_NONE;
 }
 
 
@@ -283,6 +283,10 @@ version_completed_cb (void *cls,
   struct VersionRequest *vr = cls;
   struct TALER_AUDITOR_Handle *auditor = vr->auditor;
   enum TALER_AUDITOR_VersionCompatibility vc;
+  struct TALER_AUDITOR_HttpResponse hr = {
+    .reply = resp_obj,
+    .http_status = (unsigned int) response_code
+  };
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received version from URL `%s' with status %ld.\n",
@@ -293,6 +297,8 @@ version_completed_cb (void *cls,
   {
   case 0:
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
+    /* NOTE: this design is debatable. We MAY want to throw this error at the
+       client. We may then still additionally internally re-try. */
     free_version_request (vr);
     auditor->vr = NULL;
     GNUNET_assert (NULL == auditor->retry_task);
@@ -306,24 +312,28 @@ version_completed_cb (void *cls,
     {
       GNUNET_break_op (0);
       TALER_LOG_WARNING ("NULL body for a 200-OK /version\n");
-      response_code = 0;
+      hr.http_status = 0;
+      hr.ec = TALER_EC_INVALID_RESPONSE;
       break;
     }
-    if (GNUNET_OK !=
-        decode_version_json (resp_obj,
-                             &auditor->vi,
-                             &vc))
+    hr.ec = decode_version_json (resp_obj,
+                                 &auditor->vi,
+                                 &vc);
+    if (TALER_EC_NONE != hr.ec)
     {
       GNUNET_break_op (0);
-      response_code = 0;
+      hr.http_status = 0;
       break;
     }
     auditor->retry_delay = GNUNET_TIME_UNIT_ZERO; /* restart quickly */
     break;
   default:
+    hr.ec = TALER_JSON_get_error_code (resp_obj);
+    hr.hint = TALER_JSON_get_error_hint (resp_obj);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
     break;
   }
   if (MHD_HTTP_OK != response_code)
@@ -338,6 +348,7 @@ version_completed_cb (void *cls,
     free_version_info (&auditor->vi);
     /* notify application that we failed */
     auditor->version_cb (auditor->version_cb_cls,
+                         &hr,
                          NULL,
                          vc);
     return;
@@ -352,6 +363,7 @@ version_completed_cb (void *cls,
               auditor);
   /* notify application about the key information */
   auditor->version_cb (auditor->version_cb_cls,
+                       &hr,
                        &auditor->vi,
                        vc);
 }

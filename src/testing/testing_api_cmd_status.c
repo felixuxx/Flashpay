@@ -237,9 +237,7 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
  * both acceptable.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
- * @param json original JSON response from the exchange
+ * @param hr HTTP response details
  * @param balance current balance in the reserve, NULL on error.
  * @param history_length number of entries in the transaction
  *        history, 0 on error.
@@ -247,9 +245,7 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
  */
 static void
 reserve_status_cb (void *cls,
-                   unsigned int http_status,
-                   enum TALER_ErrorCode ec,
-                   const json_t *json,
+                   const struct TALER_EXCHANGE_HttpResponse *hr,
                    const struct TALER_Amount *balance,
                    unsigned int history_length,
                    const struct TALER_EXCHANGE_ReserveHistory *history)
@@ -259,14 +255,16 @@ reserve_status_cb (void *cls,
   struct TALER_Amount eb;
 
   ss->rsh = NULL;
-  if (ss->expected_response_code != http_status)
+  if (ss->expected_response_code != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected HTTP response code: %d in %s:%u\n",
-                http_status,
+                hr->http_status,
                 __FILE__,
                 __LINE__);
-    json_dumpf (json, stderr, 0);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (ss->is);
     return;
   }
@@ -287,7 +285,9 @@ reserve_status_cb (void *cls,
   {
     int found[history_length];
 
-    memset (found, 0, sizeof (found));
+    memset (found,
+            0,
+            sizeof (found));
     for (unsigned int i = 0; i<=is->ip; i++)
     {
       struct TALER_TESTING_Command *cmd = &is->commands[i];

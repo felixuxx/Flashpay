@@ -91,6 +91,10 @@ handle_reserves_get_ok (struct TALER_EXCHANGE_ReservesGetHandle *rgh,
     TALER_JSON_spec_amount ("balance", &balance),
     GNUNET_JSON_spec_end ()
   };
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = j,
+    .http_status = MHD_HTTP_OK
+  };
 
   if (GNUNET_OK !=
       GNUNET_JSON_parse (j,
@@ -141,9 +145,7 @@ handle_reserves_get_ok (struct TALER_EXCHANGE_ReservesGetHandle *rgh,
     if (NULL != rgh->cb)
     {
       rgh->cb (rgh->cb_cls,
-               MHD_HTTP_OK,
-               TALER_EC_NONE,
-               j,
+               &hr,
                &balance,
                len,
                rhistory);
@@ -171,55 +173,59 @@ handle_reserves_get_finished (void *cls,
 {
   struct TALER_EXCHANGE_ReservesGetHandle *rgh = cls;
   const json_t *j = response;
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = j,
+    .http_status = (unsigned int) response_code
+  };
 
   rgh->job = NULL;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
-    ec = TALER_EC_NONE;
     if (GNUNET_OK !=
         handle_reserves_get_ok (rgh,
                                 j))
     {
-      response_code = 0;
-      ec = TALER_EC_RESERVE_STATUS_REPLY_MALFORMED;
+      hr.http_status = 0;
+      hr.ec = TALER_EC_RESERVE_STATUS_REPLY_MALFORMED;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
-    ec = TALER_JSON_get_error_code (j);
+    GNUNET_break_op (0);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
-    GNUNET_break (0);
-    response_code = 0;
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
     break;
   }
   if (NULL != rgh->cb)
   {
     rgh->cb (rgh->cb_cls,
-             response_code,
-             ec,
-             j,
+             &hr,
              NULL,
              0, NULL);
     rgh->cb = NULL;

@@ -186,6 +186,10 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
   unsigned int session;
   unsigned int num_coins;
   int ret;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = json,
+    .http_status = MHD_HTTP_OK
+  };
 
   if (! json_is_array (json))
   {
@@ -305,13 +309,11 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
     if (off_coin == num_coins)
     {
       lh->link_cb (lh->link_cb_cls,
-                   MHD_HTTP_OK,
-                   TALER_EC_NONE,
+                   &hr,
                    num_coins,
                    coin_privs,
                    sigs,
-                   pubs,
-                   json);
+                   pubs);
       lh->link_cb = NULL;
       ret = GNUNET_OK;
     }
@@ -350,13 +352,16 @@ handle_link_finished (void *cls,
 {
   struct TALER_EXCHANGE_LinkHandle *lh = cls;
   const json_t *j = response;
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = j,
+    .http_status = (unsigned int) response_code
+  };
 
   lh->job = NULL;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -364,47 +369,49 @@ handle_link_finished (void *cls,
                        j))
     {
       GNUNET_break_op (0);
-      response_code = 0;
-      ec = TALER_EC_LINK_REPLY_MALFORMED;
+      hr.http_status = 0;
+      hr.ec = TALER_EC_LINK_REPLY_MALFORMED;
       break;
     }
     GNUNET_assert (NULL == lh->link_cb);
     TALER_EXCHANGE_link_cancel (lh);
     return;
   case MHD_HTTP_BAD_REQUEST:
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, exchange says this coin was not melted; we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
+    GNUNET_break_op (0);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
-    GNUNET_break (0);
-    response_code = 0;
-    ec = TALER_JSON_get_error_code (j);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
     break;
   }
   if (NULL != lh->link_cb)
     lh->link_cb (lh->link_cb_cls,
-                 response_code,
-                 ec,
+                 &hr,
                  0,
                  NULL,
                  NULL,
-                 NULL,
-                 j);
+                 NULL);
   TALER_EXCHANGE_link_cancel (lh);
 }
 

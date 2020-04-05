@@ -138,34 +138,30 @@ do_retry (void *cls)
  * to check if the response code is acceptable.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
- * @param obj raw response from the auditor.
+ * @param hr HTTP response details
  */
 static void
 deposit_confirmation_cb (void *cls,
-                         unsigned int http_status,
-                         enum TALER_ErrorCode ec,
-                         const json_t *obj)
+                         const struct TALER_AUDITOR_HttpResponse *hr)
 {
   struct DepositConfirmationState *dcs = cls;
 
   dcs->dc = NULL;
-  if (dcs->expected_response_code != http_status)
+  if (dcs->expected_response_code != hr->http_status)
   {
     if (0 != dcs->do_retry)
     {
       dcs->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == hr->http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying deposit confirmation failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    hr->http_status,
+                    (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
           dcs->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           dcs->backoff = GNUNET_TIME_randomized_backoff (dcs->backoff,
@@ -179,11 +175,11 @@ deposit_confirmation_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u to command %s in %s:%u\n",
-                http_status,
+                hr->http_status,
                 dcs->is->commands[dcs->is->ip].label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (obj, stderr, 0);
+    json_dumpf (hr->reply, stderr, 0);
     TALER_TESTING_interpreter_fail (dcs->is);
     return;
   }
@@ -310,24 +306,23 @@ deposit_confirmation_run (void *cls,
       refund_deadline = timestamp;
     }
   }
-  dcs->dc = TALER_AUDITOR_deposit_confirmation
-              (dcs->auditor,
-              &h_wire,
-              &h_contract_terms,
-              timestamp,
-              refund_deadline,
-              &amount_without_fee,
-              &coin_pub,
-              &merchant_pub,
-              exchange_pub,
-              exchange_sig,
-              &keys->master_pub,
-              spk->valid_from,
-              spk->valid_until,
-              spk->valid_legal,
-              &spk->master_sig,
-              &deposit_confirmation_cb,
-              dcs);
+  dcs->dc = TALER_AUDITOR_deposit_confirmation (dcs->auditor,
+                                                &h_wire,
+                                                &h_contract_terms,
+                                                timestamp,
+                                                refund_deadline,
+                                                &amount_without_fee,
+                                                &coin_pub,
+                                                &merchant_pub,
+                                                exchange_pub,
+                                                exchange_sig,
+                                                &keys->master_pub,
+                                                spk->valid_from,
+                                                spk->valid_until,
+                                                spk->valid_legal,
+                                                &spk->master_sig,
+                                                &deposit_confirmation_cb,
+                                                dcs);
 
   if (NULL == dcs->dc)
   {

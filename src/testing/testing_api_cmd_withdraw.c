@@ -172,42 +172,38 @@ do_retry (void *cls)
  * in the state.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param sig signature over the coin, NULL on error.
- * @param full_response raw response.
  */
 static void
 reserve_withdraw_cb (void *cls,
-                     unsigned int http_status,
-                     enum TALER_ErrorCode ec,
-                     const struct TALER_DenominationSignature *sig,
-                     const json_t *full_response)
+                     const struct TALER_EXCHANGE_HttpResponse *hr,
+                     const struct TALER_DenominationSignature *sig)
 {
   struct WithdrawState *ws = cls;
   struct TALER_TESTING_Interpreter *is = ws->is;
 
   ws->wsh = NULL;
-  if (ws->expected_response_code != http_status)
+  if (ws->expected_response_code != hr->http_status)
   {
     if (0 != ws->do_retry)
     {
-      if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != ec)
+      if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
         ws->do_retry--; /* we don't count reserve unknown as failures here */
-      if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-           (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == ec) ||
-           (TALER_EC_WITHDRAW_RESERVE_UNKNOWN == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == hr->http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == hr->ec) ||
+           (TALER_EC_WITHDRAW_RESERVE_UNKNOWN == hr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying withdraw failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    hr->http_status,
+                    (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
           ws->backoff = GNUNET_TIME_UNIT_ZERO;
-        else if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != ec)
+        else if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
           ws->backoff = EXCHANGE_LIB_BACKOFF (ws->backoff);
         else
           ws->backoff = GNUNET_TIME_relative_max (UNKNOWN_MIN_BACKOFF,
@@ -225,19 +221,19 @@ reserve_withdraw_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
-                http_status,
-                (int) ec,
+                hr->http_status,
+                (int) hr->ec,
                 TALER_TESTING_interpreter_get_current_label (is),
                 __FILE__,
                 __LINE__);
-    json_dumpf (full_response,
+    json_dumpf (hr->reply,
                 stderr,
                 0);
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  switch (http_status)
+  switch (hr->http_status)
   {
   case MHD_HTTP_OK:
     if (NULL == sig)
@@ -246,8 +242,8 @@ reserve_withdraw_cb (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    ws->sig.rsa_signature
-      = GNUNET_CRYPTO_rsa_signature_dup (sig->rsa_signature);
+    ws->sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_dup (
+      sig->rsa_signature);
     if (0 != ws->total_backoff.rel_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -270,7 +266,7 @@ reserve_withdraw_cb (void *cls,
     /* Unsupported status code (by test harness) */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Withdraw test command does not support status code %u\n",
-                http_status);
+                hr->http_status);
     GNUNET_break (0);
     break;
   }

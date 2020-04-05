@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -328,9 +328,8 @@ do_reveal_retry (void *cls)
  * code is expected and copies into its command's state the data
  * coming from the exchange, namely the fresh coins.
  *
- * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param cls closure, a `struct RefreshRevealState`
+ * @param hr HTTP response details
  * @param num_coins number of fresh coins created, length of the
  *        @a sigs and @a coin_privs arrays, 0 if the operation
  *        failed.
@@ -338,36 +337,33 @@ do_reveal_retry (void *cls)
  *        coins that were created, NULL on error.
  * @param sigs array of signature over @a num_coins coins,
  *        NULL on error.
- * @param full_response raw exchange response.
  */
 static void
 reveal_cb (void *cls,
-           unsigned int http_status,
-           enum TALER_ErrorCode ec,
+           const struct TALER_EXCHANGE_HttpResponse *hr,
            unsigned int num_coins,
            const struct TALER_PlanchetSecretsP *coin_privs,
-           const struct TALER_DenominationSignature *sigs,
-           const json_t *full_response)
+           const struct TALER_DenominationSignature *sigs)
 {
   struct RefreshRevealState *rrs = cls;
   const struct TALER_TESTING_Command *melt_cmd;
 
   rrs->rrh = NULL;
-  if (rrs->expected_response_code != http_status)
+  if (rrs->expected_response_code != hr->http_status)
   {
     if (0 != rrs->do_retry)
     {
       rrs->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == hr->http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying refresh reveal failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    hr->http_status,
+                    (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
           rrs->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           rrs->backoff = GNUNET_TIME_randomized_backoff (rrs->backoff,
@@ -383,17 +379,19 @@ reveal_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
-                http_status,
-                (int) ec,
+                hr->http_status,
+                (int) hr->ec,
                 rrs->is->commands[rrs->is->ip].label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (full_response, stderr, 0);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (rrs->is);
     return;
   }
-  melt_cmd = TALER_TESTING_interpreter_lookup_command
-               (rrs->is, rrs->melt_reference);
+  melt_cmd = TALER_TESTING_interpreter_lookup_command (rrs->is,
+                                                       rrs->melt_reference);
   if (NULL == melt_cmd)
   {
     GNUNET_break (0);
@@ -401,7 +399,7 @@ reveal_cb (void *cls,
     return;
   }
   rrs->num_fresh_coins = num_coins;
-  switch (http_status)
+  switch (hr->http_status)
   {
   case MHD_HTTP_OK:
     rrs->fresh_coins = GNUNET_new_array (num_coins,
@@ -435,8 +433,9 @@ reveal_cb (void *cls,
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Unknown HTTP status %d\n",
-                http_status);
+                "Unknown HTTP status %u/%d\n",
+                hr->http_status,
+                (int) hr->ec);
   }
   TALER_TESTING_interpreter_next (rrs->is);
 }
@@ -560,8 +559,7 @@ do_link_retry (void *cls)
  * withdrawn by the "refresh reveal" CMD.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code
+ * @param hr HTTP response details
  * @param num_coins number of fresh coins created, length of the
  *        @a sigs and @a coin_privs arrays, 0 if the operation
  *        failed.
@@ -571,42 +569,38 @@ do_link_retry (void *cls)
  *        error.
  * @param pubs array of public keys for the @a sigs,
  *        NULL on error.
- * @param full_response raw response from the exchange.
  */
 static void
 link_cb (void *cls,
-         unsigned int http_status,
-         enum TALER_ErrorCode ec,
+         const struct TALER_EXCHANGE_HttpResponse *hr,
          unsigned int num_coins,
          const struct TALER_CoinSpendPrivateKeyP *coin_privs,
          const struct TALER_DenominationSignature *sigs,
-         const struct TALER_DenominationPublicKey *pubs,
-         const json_t *full_response)
+         const struct TALER_DenominationPublicKey *pubs)
 {
 
   struct RefreshLinkState *rls = cls;
   const struct TALER_TESTING_Command *reveal_cmd;
-  struct TALER_TESTING_Command *link_cmd
-    = &rls->is->commands[rls->is->ip];
+  struct TALER_TESTING_Command *link_cmd = &rls->is->commands[rls->is->ip];
   unsigned int found;
   const unsigned int *num_fresh_coins;
 
   rls->rlh = NULL;
-  if (rls->expected_response_code != http_status)
+  if (rls->expected_response_code != hr->http_status)
   {
     if (0 != rls->do_retry)
     {
       rls->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == hr->http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying refresh link failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    hr->http_status,
+                    (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
           rls->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           rls->backoff = GNUNET_TIME_randomized_backoff (rls->backoff,
@@ -622,18 +616,19 @@ link_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
-                http_status,
-                (int) ec,
+                hr->http_status,
+                (int) hr->ec,
                 link_cmd->label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (full_response, stderr, 0);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (rls->is);
     return;
   }
-  reveal_cmd = TALER_TESTING_interpreter_lookup_command
-                 (rls->is, rls->reveal_reference);
-
+  reveal_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
+                                                         rls->reveal_reference);
   if (NULL == reveal_cmd)
   {
     GNUNET_break (0);
@@ -641,12 +636,14 @@ link_cb (void *cls,
     return;
   }
 
-  switch (http_status)
+  switch (hr->http_status)
   {
   case MHD_HTTP_OK:
     /* check that number of coins returned matches */
-    if (GNUNET_OK != TALER_TESTING_get_trait_uint
-          (reveal_cmd, 0, &num_fresh_coins))
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_uint (reveal_cmd,
+                                      0,
+                                      &num_fresh_coins))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rls->is);
@@ -666,39 +663,45 @@ link_cb (void *cls,
     /* check that the coins match */
     for (unsigned int i = 0; i<num_coins; i++)
       for (unsigned int j = i + 1; j<num_coins; j++)
-        if (0 == GNUNET_memcmp
-              (&coin_privs[i], &coin_privs[j]))
+        if (0 ==
+            GNUNET_memcmp (&coin_privs[i],
+                           &coin_privs[j]))
           GNUNET_break (0);
     /* Note: coins might be legitimately permutated in here... */
     found = 0;
 
     /* Will point to the pointer inside the cmd state. */
-    const struct TALER_TESTING_FreshCoinData *fc = NULL;
-
-    if (GNUNET_OK != TALER_TESTING_get_trait_fresh_coins
-          (reveal_cmd, 0, &fc))
     {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (rls->is);
-      return;
-    }
+      const struct TALER_TESTING_FreshCoinData *fc = NULL;
 
-    for (unsigned int i = 0; i<num_coins; i++)
-      for (unsigned int j = 0; j<num_coins; j++)
+      if (GNUNET_OK !=
+          TALER_TESTING_get_trait_fresh_coins (reveal_cmd,
+                                               0,
+                                               &fc))
       {
-        if ( (0 == GNUNET_memcmp
-                (&coin_privs[i], &fc[j].coin_priv)) &&
-             (0 == GNUNET_CRYPTO_rsa_signature_cmp
-                (fc[i].sig.rsa_signature,
-                sigs[j].rsa_signature)) &&
-             (0 == GNUNET_CRYPTO_rsa_public_key_cmp
-                (fc[i].pk->key.rsa_public_key,
-                pubs[j].rsa_public_key)) )
-        {
-          found++;
-          break;
-        }
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (rls->is);
+        return;
       }
+
+      for (unsigned int i = 0; i<num_coins; i++)
+        for (unsigned int j = 0; j<num_coins; j++)
+        {
+          if ( (0 ==
+                GNUNET_memcmp (&coin_privs[i],
+                               &fc[j].coin_priv)) &&
+               (0 ==
+                GNUNET_CRYPTO_rsa_signature_cmp (fc[i].sig.rsa_signature,
+                                                 sigs[j].rsa_signature)) &&
+               (0 ==
+                GNUNET_CRYPTO_rsa_public_key_cmp (fc[i].pk->key.rsa_public_key,
+                                                  pubs[j].rsa_public_key)) )
+          {
+            found++;
+            break;
+          }
+        }
+    }
     if (found != num_coins)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -719,8 +722,9 @@ link_cb (void *cls,
     break;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unknown HTTP response code %u.\n",
-                http_status);
+                "Unknown HTTP response code %u/%d.\n",
+                hr->http_status,
+                hr->ec);
   }
   TALER_TESTING_interpreter_next (rls->is);
 }
@@ -746,9 +750,8 @@ refresh_link_run (void *cls,
   const struct TALER_TESTING_Command *coin_cmd;
 
   rls->is = is;
-  reveal_cmd = TALER_TESTING_interpreter_lookup_command
-                 (rls->is, rls->reveal_reference);
-
+  reveal_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
+                                                         rls->reveal_reference);
   if (NULL == reveal_cmd)
   {
     GNUNET_break (0);
@@ -756,9 +759,8 @@ refresh_link_run (void *cls,
     return;
   }
   rrs = reveal_cmd->cls;
-  melt_cmd = TALER_TESTING_interpreter_lookup_command
-               (rls->is, rrs->melt_reference);
-
+  melt_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
+                                                       rrs->melt_reference);
   if (NULL == melt_cmd)
   {
     GNUNET_break (0);
@@ -769,8 +771,8 @@ refresh_link_run (void *cls,
   /* find reserve_withdraw command */
   {
     rms = melt_cmd->cls;
-    coin_cmd = TALER_TESTING_interpreter_lookup_command
-                 (rls->is, rms->coin_reference);
+    coin_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
+                                                         rms->coin_reference);
     if (NULL == coin_cmd)
     {
       GNUNET_break (0);
@@ -789,8 +791,10 @@ refresh_link_run (void *cls,
   }
 
   /* finally, use private key from withdraw sign command */
-  rls->rlh = TALER_EXCHANGE_link
-               (is->exchange, coin_priv, &link_cb, rls);
+  rls->rlh = TALER_EXCHANGE_link (is->exchange,
+                                  coin_priv,
+                                  &link_cb,
+                                  rls);
 
   if (NULL == rls->rlh)
   {
@@ -871,39 +875,35 @@ do_melt_retry (void *cls)
  * CMD was set to do so.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param noreveal_index choice by the exchange in the
  *        cut-and-choose protocol, UINT16_MAX on error.
  * @param exchange_pub public key the exchange used for signing.
- * @param full_response raw response body from the exchange.
  */
 static void
 melt_cb (void *cls,
-         unsigned int http_status,
-         enum TALER_ErrorCode ec,
+         const struct TALER_EXCHANGE_HttpResponse *hr,
          uint32_t noreveal_index,
-         const struct TALER_ExchangePublicKeyP *exchange_pub,
-         const json_t *full_response)
+         const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct RefreshMeltState *rms = cls;
 
   rms->rmh = NULL;
-  if (rms->expected_response_code != http_status)
+  if (rms->expected_response_code != hr->http_status)
   {
     if (0 != rms->do_retry)
     {
       rms->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == hr->http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying refresh melt failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    hr->http_status,
+                    (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
           rms->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           rms->backoff = GNUNET_TIME_randomized_backoff (rms->backoff,
@@ -911,22 +911,22 @@ melt_cb (void *cls,
         rms->total_backoff = GNUNET_TIME_relative_add (rms->total_backoff,
                                                        rms->backoff);
         rms->is->commands[rms->is->ip].num_tries++;
-        rms->retry_task = GNUNET_SCHEDULER_add_delayed
-                            (rms->backoff,
-                            &do_melt_retry,
-                            rms);
+        rms->retry_task = GNUNET_SCHEDULER_add_delayed (rms->backoff,
+                                                        &do_melt_retry,
+                                                        rms);
         return;
       }
     }
-    GNUNET_log
-      (GNUNET_ERROR_TYPE_ERROR,
-      "Unexpected response code %u/%d to command %s in %s:%u\n",
-      http_status,
-      (int) ec,
-      rms->is->commands[rms->is->ip].label,
-      __FILE__,
-      __LINE__);
-    json_dumpf (full_response, stderr, 0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
+                hr->http_status,
+                (int) hr->ec,
+                rms->is->commands[rms->is->ip].label,
+                __FILE__,
+                __LINE__);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (rms->is);
     return;
   }
@@ -943,9 +943,11 @@ melt_cb (void *cls,
   {
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->is->commands[rms->is->ip].label);
-    rms->rmh = TALER_EXCHANGE_melt
-                 (rms->is->exchange, rms->refresh_data_length,
-                 rms->refresh_data, &melt_cb, rms);
+    rms->rmh = TALER_EXCHANGE_melt (rms->is->exchange,
+                                    rms->refresh_data_length,
+                                    rms->refresh_data,
+                                    &melt_cb,
+                                    rms);
     rms->double_melt = GNUNET_NO;
     return;
   }

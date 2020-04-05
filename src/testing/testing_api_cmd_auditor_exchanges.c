@@ -127,38 +127,34 @@ do_retry (void *cls)
  * Callback to analyze the /exchanges response.
  *
  * @param cls closure.
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param num_exchanges length of the @a ei array
  * @param ei array with information about the exchanges
- * @param raw_response raw response from the auditor.
  */
 static void
 exchanges_cb (void *cls,
-              unsigned int http_status,
-              enum TALER_ErrorCode ec,
+              const struct TALER_AUDITOR_HttpResponse *hr,
               unsigned int num_exchanges,
-              const struct TALER_AUDITOR_ExchangeInfo *ei,
-              const json_t *raw_response)
+              const struct TALER_AUDITOR_ExchangeInfo *ei)
 {
   struct ExchangesState *es = cls;
 
   es->leh = NULL;
-  if (es->expected_response_code != http_status)
+  if (es->expected_response_code != hr->http_status)
   {
     if (0 != es->do_retry)
     {
       es->do_retry--;
-      if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
+      if ( (0 == hr->http_status) ||
+           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying list exchanges failed with %u/%d\n",
-                    http_status,
-                    (int) ec);
+                    hr->http_status,
+                    (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
           es->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           es->backoff = GNUNET_TIME_randomized_backoff (es->backoff,
@@ -170,14 +166,16 @@ exchanges_cb (void *cls,
         return;
       }
     }
-    GNUNET_log
-      (GNUNET_ERROR_TYPE_ERROR,
-      "Unexpected response code %u to command %s in %s:%u\n",
-      http_status,
-      es->is->commands[es->is->ip].label,
-      __FILE__,
-      __LINE__);
-    json_dumpf (raw_response, stderr, 0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
+                hr->http_status,
+                (int) hr->ec,
+                es->is->commands[es->is->ip].label,
+                __FILE__,
+                __LINE__);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (es->is);
     return;
   }
@@ -193,9 +191,8 @@ exchanges_cb (void *cls,
         found = GNUNET_YES;
     if (GNUNET_NO == found)
     {
-      TALER_LOG_ERROR
-        ("Exchange '%s' doesn't exist at this auditor\n",
-        es->exchange_url);
+      TALER_LOG_ERROR ("Exchange '%s' doesn't exist at this auditor\n",
+                       es->exchange_url);
       TALER_TESTING_interpreter_fail (es->is);
       return;
     }

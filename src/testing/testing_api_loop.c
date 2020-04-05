@@ -589,49 +589,43 @@ sighandler_child_death (void)
  *
  * @param cls closure, typically, the "run" method containing
  *        all the commands to be run, and a closure for it.
+ * @param hr HTTP response details
  * @param keys the exchange's keys.
  * @param compat protocol compatibility information.
- * @param ec error code, #TALER_EC_NONE on success
- * @param http_status status returned by /keys, #MHD_HTTP_OK on success
- * @param full_reply JSON body of /keys request, NULL if reply was not in JSON
  */
 void
 TALER_TESTING_cert_cb (void *cls,
+                       const struct TALER_EXCHANGE_HttpResponse *hr,
                        const struct TALER_EXCHANGE_Keys *keys,
-                       enum TALER_EXCHANGE_VersionCompatibility compat,
-                       enum TALER_ErrorCode ec,
-                       unsigned int http_status,
-                       const json_t *full_reply)
+                       enum TALER_EXCHANGE_VersionCompatibility compat)
 {
   struct MainContext *main_ctx = cls;
   struct TALER_TESTING_Interpreter *is = main_ctx->is;
 
   (void) compat;
-  (void) full_reply;
   if (NULL == keys)
   {
     if (GNUNET_NO == is->working)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Got NULL response for /keys during startup (%u/%d), retrying!\n",
-                  http_status,
-                  (int) ec);
+                  hr->http_status,
+                  (int) hr->ec);
       TALER_EXCHANGE_disconnect (is->exchange);
-      GNUNET_assert
-        (NULL != (is->exchange = TALER_EXCHANGE_connect
-                                   (is->ctx,
-                                   main_ctx->exchange_url,
-                                   &TALER_TESTING_cert_cb,
-                                   main_ctx,
-                                   TALER_EXCHANGE_OPTION_END)));
+      GNUNET_assert (NULL != (is->exchange
+                                = TALER_EXCHANGE_connect (is->ctx,
+                                                          main_ctx->exchange_url,
+                                                          &TALER_TESTING_cert_cb,
+                                                          main_ctx,
+                                                          TALER_EXCHANGE_OPTION_END)));
       return;
     }
     else
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Got NULL response for /keys during execution (%u/%d)!\n",
-                  http_status,
-                  (int) ec);
+                  hr->http_status,
+                  (int) hr->ec);
     }
   }
   else

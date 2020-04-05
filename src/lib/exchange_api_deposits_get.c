@@ -151,13 +151,16 @@ handle_deposit_wtid_finished (void *cls,
   struct TALER_ExchangePublicKeyP exchange_pub;
   struct TALER_ExchangePublicKeyP *ep = NULL;
   const json_t *j = response;
-  enum TALER_ErrorCode ec;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = j,
+    .http_status = (unsigned int) response_code
+  };
 
   dwh->job = NULL;
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -174,8 +177,8 @@ handle_deposit_wtid_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        response_code = 0;
-        ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
+        hr.http_status = 0;
+        hr.ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
         break;
       }
       wtid = &dwh->depconf.wtid;
@@ -189,13 +192,12 @@ handle_deposit_wtid_finished (void *cls,
                                             &exchange_pub))
       {
         GNUNET_break_op (0);
-        response_code = 0;
-        ec = TALER_EC_DEPOSITS_INVALID_SIGNATURE_BY_EXCHANGE;
+        hr.http_status = 0;
+        hr.ec = TALER_EC_DEPOSITS_INVALID_SIGNATURE_BY_EXCHANGE;
       }
       else
       {
         ep = &exchange_pub;
-        ec = TALER_EC_NONE;
       }
     }
     break;
@@ -213,49 +215,51 @@ handle_deposit_wtid_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        response_code = 0;
-        ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
+        hr.http_status = 0;
+        hr.ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
         break;
       }
-      ec = TALER_EC_NONE;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     /* Exchange does not know about transaction;
        we should pass the reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    ec = TALER_JSON_get_error_code (j);
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
-    GNUNET_break (0);
-    ec = TALER_JSON_get_error_code (j);
-    response_code = 0;
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
+    GNUNET_break_op (0);
     break;
   }
   dwh->cb (dwh->cb_cls,
-           response_code,
-           ec,
+           &hr,
            ep,
-           j,
            wtid,
            execution_time,
            coin_contribution);

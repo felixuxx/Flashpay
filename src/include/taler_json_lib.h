@@ -133,6 +133,17 @@ TALER_JSON_get_error_code (const json_t *json);
 
 
 /**
+ * Extract the Taler error hint from the given @a json object.
+ * Note that NULL is returned if no "hint" is present.
+ *
+ * @param json response to extract the error hint from
+ * @return the "hint" value from @a json; only valid as long as @a json is valid
+ */
+const char *
+TALER_JSON_get_error_hint (const json_t *json);
+
+
+/**
  * Extract the Taler error code from the given @a data object, which is expected to be in JSON.
  * Note that #TALER_EC_INVALID is returned if no "code" is present or if @a data is not in JSON.
  *

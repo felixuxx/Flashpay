@@ -56,6 +56,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_exec_keyup.c \
   testing_api_cmd_exec_transfer.c \
   testing_api_cmd_exec_wirewatch.c \
+  testing_api_cmd_insert_deposit.c \
   testing_api_cmd_recoup.c \
   testing_api_cmd_refund.c \
   testing_api_cmd_refresh.c \
@@ -69,7 +70,6 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_wait.c \
   testing_api_cmd_wire.c \
   testing_api_cmd_withdraw.c \
-  testing_api_cmd_insert_deposit.c \
   testing_api_helpers_auditor.c \
   testing_api_helpers_bank.c \
   testing_api_helpers_exchange.c \

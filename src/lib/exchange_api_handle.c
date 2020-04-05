@@ -265,27 +265,22 @@ struct KeysRequest
  * auditor's /deposit-confirmation handler.
  *
  * @param cls closure of type `struct TEAH_AuditorInteractionEntry *`
- * @param http_status HTTP status code, 200 on success
- * @param ec taler protocol error status code, 0 on success
- * @param json raw json response
+ * @param hr HTTP response
  */
 void
 TEAH_acc_confirmation_cb (void *cls,
-                          unsigned int http_status,
-                          enum TALER_ErrorCode ec,
-                          const json_t *json)
+                          const struct TALER_AUDITOR_HttpResponse *hr)
 {
   struct TEAH_AuditorInteractionEntry *aie = cls;
   struct TEAH_AuditorListEntry *ale = aie->ale;
 
-  (void) json;
-  if (MHD_HTTP_OK != http_status)
+  if (MHD_HTTP_OK != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to submit deposit confirmation to auditor `%s' with HTTP status %d (EC: %d). This is acceptable if it does not happen often.\n",
                 ale->auditor_url,
-                http_status,
-                (int) ec);
+                hr->http_status,
+                hr->ec);
   }
   GNUNET_CONTAINER_DLL_remove (ale->ai_head,
                                ale->ai_tail,
@@ -664,12 +659,14 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
  * auditor as 'up'.
  *
  * @param cls closure, a `struct TEAH_AuditorListEntry *`
+ * @param hr http response from the auditor
  * @param vi basic information about the auditor
  * @param compat protocol compatibility information
  */
 static void
 auditor_version_cb (
   void *cls,
+  const struct TALER_AUDITOR_HttpResponse *hr,
   const struct TALER_AUDITOR_VersionInformation *vi,
   enum TALER_AUDITOR_VersionCompatibility compat)
 {
@@ -1252,6 +1249,10 @@ keys_completed_cb (void *cls,
   struct TALER_EXCHANGE_Keys kd_old;
   enum TALER_EXCHANGE_VersionCompatibility vc;
   const json_t *j = resp_obj;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .reply = j,
+    .http_status = (unsigned int) response_code
+  };
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received keys from URL `%s' with status %ld.\n",
@@ -1328,7 +1329,8 @@ keys_completed_cb (void *cls,
                           &vc))
     {
       TALER_LOG_ERROR ("Could not decode /keys response\n");
-      response_code = 0;
+      hr.http_status = 0;
+      hr.ec = TALER_EC_KEYS_INVALID;
       for (unsigned int i = 0; i<kd.num_auditors; i++)
       {
         struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];
@@ -1354,9 +1356,12 @@ keys_completed_cb (void *cls,
     exchange->retry_delay = GNUNET_TIME_UNIT_ZERO;
     break;
   default:
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u\n",
-                (unsigned int) response_code);
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
     break;
   }
   exchange->key_data = kd;
@@ -1380,11 +1385,9 @@ keys_completed_cb (void *cls,
     free_key_data (&kd_old);
     /* notify application that we failed */
     exchange->cert_cb (exchange->cert_cb_cls,
+                       &hr,
                        NULL,
-                       vc,
-                       TALER_JSON_get_error_code (j),
-                       response_code,
-                       j);
+                       vc);
     return;
   }
 
@@ -1397,11 +1400,9 @@ keys_completed_cb (void *cls,
   update_auditors (exchange);
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
+                     &hr,
                      &exchange->key_data,
-                     vc,
-                     TALER_EC_NONE,
-                     MHD_HTTP_OK,
-                     j);
+                     vc);
   free_key_data (&kd_old);
 }
 
@@ -1575,6 +1576,11 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_Keys key_data;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .ec = TALER_EC_NONE,
+    .http_status = MHD_HTTP_OK,
+    .reply = data
+  };
 
   if (NULL == data)
     return;
@@ -1622,11 +1628,9 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   update_auditors (exchange);
   /* notify application about the key information */
   exchange->cert_cb (exchange->cert_cb_cls,
+                     &hr,
                      &exchange->key_data,
-                     vc,
-                     TALER_EC_NONE,
-                     MHD_HTTP_OK,
-                     data);
+                     vc);
   GNUNET_JSON_parse_free (spec);
 }
 

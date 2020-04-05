@@ -135,19 +135,15 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
  *
  * @param cls closure, typically, the "run" method containing
  *        all the commands to be run, and a closure for it.
+ * @param hr http response details
  * @param keys the exchange's keys.
  * @param compat protocol compatibility information.
- * @param ec error code, #TALER_EC_NONE on success
- * @param http_status status returned by /keys, #MHD_HTTP_OK on success
- * @param full_reply JSON body of /keys request, NULL if reply was not in JSON
  */
 void
 TALER_TESTING_cert_cb (void *cls,
+                       const struct TALER_EXCHANGE_HttpResponse *hr,
                        const struct TALER_EXCHANGE_Keys *keys,
-                       enum TALER_EXCHANGE_VersionCompatibility compat,
-                       enum TALER_ErrorCode ec,
-                       unsigned int http_status,
-                       const json_t *full_reply);
+                       enum TALER_EXCHANGE_VersionCompatibility compat);
 
 
 /**

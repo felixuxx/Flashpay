@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -80,18 +80,14 @@ struct RefundState
  * response code is acceptable.
  *
  * @param cls closure
- * @param http_status HTTP response code.
- * @param ec taler-specific error code.
+ * @param hr HTTP response details
  * @param exchange_pub public key the exchange
  *        used for signing @a obj.
- * @param obj response object.
  */
 static void
 refund_cb (void *cls,
-           unsigned int http_status,
-           enum TALER_ErrorCode ec,
-           const struct TALER_ExchangePublicKeyP *exchange_pub,
-           const json_t *obj)
+           const struct TALER_EXCHANGE_HttpResponse *hr,
+           const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
 
   struct RefundState *rs = cls;
@@ -99,15 +95,18 @@ refund_cb (void *cls,
 
   refund_cmd = &rs->is->commands[rs->is->ip];
   rs->rh = NULL;
-  if (rs->expected_response_code != http_status)
+  if (rs->expected_response_code != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u to command %s in %s:%u\n",
-                http_status,
+                "Unexpected response code %u/%d to command %s in %s:%u\n",
+                hr->http_status,
+                hr->ec,
                 refund_cmd->label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (obj, stderr, 0);
+    json_dumpf (hr->reply,
+                stderr,
+                0);
     TALER_TESTING_interpreter_fail (rs->is);
     return;
   }
