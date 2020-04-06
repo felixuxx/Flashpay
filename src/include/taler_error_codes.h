@@ -125,6 +125,12 @@ enum TALER_ErrorCode
   TALER_EC_VERSION_MALFORMED = 14,
 
   /**
+   * The client-side experienced an internal failure. Generated as an
+   * error on the client side.
+   */
+  TALER_EC_CLIENT_INTERNAL_FAILURE = 15,
+
+  /**
    * The exchange failed to even just initialize its connection to the
    * database.  This response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -1137,6 +1143,12 @@ enum TALER_ErrorCode
   TALER_EC_PROPOSAL_INSTANCE_CONFIGURATION_LACKS_WIRE = 2002,
 
   /**
+   * The merchant failed to provide a meaningful response to a /pay
+   * request.  This error is created client-side.
+   */
+  TALER_EC_PAY_MERCHANT_INVALID_RESPONSE = 2100,
+
+  /**
    * The exchange failed to provide a meaningful response to a /deposit
    * request.  This response is provided with HTTP status code
    * #MHD_HTTP_FAILED_DEPENDENCY, or #MHD_HTTP_CONFLICT in case the
@@ -1376,6 +1388,12 @@ enum TALER_ErrorCode
   TALER_EC_POLL_PAYMENT_CONTRACT_NOT_FOUND = 2250,
 
   /**
+   * The response provided by the merchant backend was malformed. This
+   * error is created client-side.
+   */
+  TALER_EC_POLL_PAYMENT_REPLY_MALFORMED = 2251,
+
+  /**
    * We failed to contact the exchange for the /track/transaction
    * request.  This response is provided with HTTP status code
    * #MHD_HTTP_SERVICE_UNAVAILABLE.
@@ -1574,10 +1592,16 @@ enum TALER_ErrorCode
 
   /**
    * The order provided to the backend uses an amount in a currency that
-   * does not match the backend's configuration. Returned as a bad
-   * request.
+   * does not match the backend's configuration. Returned with HTTP
+   * status code #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_PROPOSAL_ORDER_BAD_CURRENCY = 2509,
+
+  /**
+   * The response provided by the merchant backend was malformed. This
+   * error is created client-side.
+   */
+  TALER_EC_PROPOSAL_REPLY_MALFORMED = 2510,
 
   /**
    * The frontend gave an unknown order id to issue the refund to.
@@ -1859,6 +1883,12 @@ enum TALER_ErrorCode
    * with HTTP status code #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_CHECK_PAYMENT_SESSION_SIGNATURE_INVALID = 2915,
+
+  /**
+   * The response we received from the merchant is malformed. This error
+   * is generated client-side.
+   */
+  TALER_EC_CHECK_PAYMENT_RESPONSE_MALFORMED = 2916,
 
   /**
    * The signature from the exchange on the deposit confirmation is
