@@ -49,7 +49,7 @@ struct TALER_AUDITOR_VersionInformation
    * semantics of GNU libtool.  See
    * https://www.gnu.org/software/libtool/manual/html_node/Versioning.html#Versioning
    */
-  char *version;
+  const char *version;
 
 };
 

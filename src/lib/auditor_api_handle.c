@@ -122,6 +122,11 @@ struct TALER_AUDITOR_Handle
    * /version data of the auditor, only valid if
    * @e handshake_complete is past stage #MHS_VERSION.
    */
+  char *version;
+
+  /**
+   * Version information for the callback.
+   */
   struct TALER_AUDITOR_VersionInformation vi;
 
   /**
@@ -178,19 +183,6 @@ free_version_request (struct VersionRequest *vr)
 
 
 /**
- * Free version data object.
- *
- * @param vi data to free (pointer itself excluded)
- */
-static void
-free_version_info (struct TALER_AUDITOR_VersionInformation *vi)
-{
-  GNUNET_free_non_null (vi->version);
-  vi->version = NULL;
-}
-
-
-/**
  * Decode the JSON in @a resp_obj from the /version response and store the data
  * in the @a key_data.
  *
@@ -201,9 +193,10 @@ free_version_info (struct TALER_AUDITOR_VersionInformation *vi)
  */
 static enum TALER_ErrorCode
 decode_version_json (const json_t *resp_obj,
-                     struct TALER_AUDITOR_VersionInformation *vi,
+                     struct TALER_AUDITOR_Handle *auditor,
                      enum TALER_AUDITOR_VersionCompatibility *vc)
 {
+  struct TALER_AUDITOR_VersionInformation *vi = &auditor->vi;
   unsigned int age;
   unsigned int revision;
   unsigned int current;
@@ -239,7 +232,8 @@ decode_version_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return TALER_EC_VERSION_MALFORMED;
   }
-  vi->version = GNUNET_strdup (ver);
+  auditor->version = GNUNET_strdup (ver);
+  vi->version = auditor->version;
   *vc = TALER_AUDITOR_VC_MATCH;
   if (TALER_PROTOCOL_CURRENT < current)
   {
@@ -317,7 +311,7 @@ version_completed_cb (void *cls,
       break;
     }
     hr.ec = decode_version_json (resp_obj,
-                                 &auditor->vi,
+                                 auditor,
                                  &vc);
     if (TALER_EC_NONE != hr.ec)
     {
@@ -345,7 +339,6 @@ version_completed_cb (void *cls,
     auditor->vr = NULL;
     free_version_request (vr);
     auditor->state = MHS_FAILED;
-    free_version_info (&auditor->vi);
     /* notify application that we failed */
     auditor->version_cb (auditor->version_cb_cls,
                          &hr,
@@ -532,7 +525,7 @@ TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor)
     free_version_request (auditor->vr);
     auditor->vr = NULL;
   }
-  free_version_info (&auditor->vi);
+  GNUNET_free_non_null (auditor->version);
   if (NULL != auditor->retry_task)
   {
     GNUNET_SCHEDULER_cancel (auditor->retry_task);
