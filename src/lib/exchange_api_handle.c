@@ -39,18 +39,18 @@
  * Which version of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define TALER_PROTOCOL_CURRENT 7
+#define EXCHANGE_PROTOCOL_CURRENT 7
 
 /**
  * How many versions are we backwards compatible with?
  */
-#define TALER_PROTOCOL_AGE 0
+#define EXCHANGE_PROTOCOL_AGE 0
 
 /**
  * Current version for (local) JSON serialization of persisted
  * /keys data.
  */
-#define TALER_SERIALIZATION_FORMAT_VERSION 0
+#define EXCHANGE_SERIALIZATION_FORMAT_VERSION 0
 
 
 /**
@@ -816,9 +816,6 @@ decode_keys_json (const json_t *resp_obj,
   struct TALER_ExchangeSignatureP sig;
   struct GNUNET_HashContext *hash_context;
   struct TALER_ExchangePublicKeyP pub;
-  unsigned int age;
-  unsigned int revision;
-  unsigned int current;
   struct GNUNET_JSON_Specification mspec[] = {
     GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
                                  &sig),
@@ -843,6 +840,9 @@ decode_keys_json (const json_t *resp_obj,
   /* check the version */
   {
     const char *ver;
+    unsigned int age;
+    unsigned int revision;
+    unsigned int current;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("version",
                                &ver),
@@ -867,16 +867,16 @@ decode_keys_json (const json_t *resp_obj,
       return GNUNET_SYSERR;
     }
     *vc = TALER_EXCHANGE_VC_MATCH;
-    if (TALER_PROTOCOL_CURRENT < current)
+    if (EXCHANGE_PROTOCOL_CURRENT < current)
     {
       *vc |= TALER_EXCHANGE_VC_NEWER;
-      if (TALER_PROTOCOL_CURRENT < current - age)
+      if (EXCHANGE_PROTOCOL_CURRENT < current - age)
         *vc |= TALER_EXCHANGE_VC_INCOMPATIBLE;
     }
-    if (TALER_PROTOCOL_CURRENT > current)
+    if (EXCHANGE_PROTOCOL_CURRENT > current)
     {
       *vc |= TALER_EXCHANGE_VC_OLDER;
-      if (TALER_PROTOCOL_CURRENT - TALER_PROTOCOL_AGE > current)
+      if (EXCHANGE_PROTOCOL_CURRENT - EXCHANGE_PROTOCOL_AGE > current)
         *vc |= TALER_EXCHANGE_VC_INCOMPATIBLE;
     }
     key_data->version = GNUNET_strdup (ver);
@@ -1317,8 +1317,8 @@ keys_completed_cb (void *cls,
                          aold->num_denom_keys);
       memcpy (anew->denom_keys,
               aold->denom_keys,
-              aold->num_denom_keys * sizeof (struct
-                                             TALER_EXCHANGE_AuditorDenominationInfo));
+              aold->num_denom_keys
+              * sizeof (struct TALER_EXCHANGE_AuditorDenominationInfo));
     }
 
     /* Old auditors got just copied into new ones.  */
@@ -1868,7 +1868,7 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
   }
   return json_pack ("{s:I, s:o, s:s, s:o}",
                     "version",
-                    (json_int_t) TALER_SERIALIZATION_FORMAT_VERSION,
+                    (json_int_t) EXCHANGE_SERIALIZATION_FORMAT_VERSION,
                     "expire",
                     GNUNET_JSON_from_time_abs (exchange->key_data_expiration),
                     "exchange_url",
