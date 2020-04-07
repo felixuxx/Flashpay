@@ -168,11 +168,6 @@
 #define TALER_SIGNATURE_MERCHANT_PAYMENT_OK 1104
 
 /**
- * Signature where the merchant confirms a refund increase
- */
-#define TALER_SIGNATURE_MERCHANT_REFUND_OK 1105
-
-/**
  * Signature where the merchant confirms that the user replayed
  * a payment for a browser session.
  */
