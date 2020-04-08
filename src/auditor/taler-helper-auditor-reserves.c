@@ -263,7 +263,7 @@ struct ReserveSummary
    * Previous balance of the reserve as remembered by the auditor.
    * (updated based on @e total_in and @e total_out at the end).
    */
-  struct TALER_Amount a_balance;
+  struct TALER_Amount balance_at_previous_audit;
 
   /**
    * Previous withdraw fee balance of the reserve, as remembered by the auditor.
@@ -312,7 +312,7 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
                                         &rs->reserve_pub,
                                         &TALER_ARL_master_pub,
                                         &rowid,
-                                        &rs->a_balance,
+                                        &rs->balance_at_previous_audit,
                                         &rs->a_withdraw_fee_balance,
                                         &rs->a_expiration_date,
                                         &rs->sender_account);
@@ -326,23 +326,23 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
     rs->had_ri = GNUNET_NO;
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (rs->total_in.currency,
-                                          &rs->a_balance));
+                                          &rs->balance_at_previous_audit));
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (rs->total_in.currency,
                                           &rs->a_withdraw_fee_balance));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Creating fresh reserve `%s' with starting balance %s\n",
                 TALER_B2S (&rs->reserve_pub),
-                TALER_amount2s (&rs->a_balance));
+                TALER_amount2s (&rs->balance_at_previous_audit));
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   rs->had_ri = GNUNET_YES;
   if ( (GNUNET_YES !=
-        TALER_amount_cmp_currency (&rs->a_balance,
+        TALER_amount_cmp_currency (&rs->balance_at_previous_audit,
                                    &rs->a_withdraw_fee_balance)) ||
        (GNUNET_YES !=
         TALER_amount_cmp_currency (&rs->total_in,
-                                   &rs->a_balance)) )
+                                   &rs->balance_at_previous_audit)) )
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -350,7 +350,7 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Auditor remembers reserve `%s' has balance %s\n",
               TALER_B2S (&rs->reserve_pub),
-              TALER_amount2s (&rs->a_balance));
+              TALER_amount2s (&rs->balance_at_previous_audit));
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -1028,7 +1028,7 @@ verify_reserve_balance (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_add (&balance,
                                    &rs->total_in,
-                                   &rs->a_balance));
+                                   &rs->balance_at_previous_audit));
   if (GNUNET_SYSERR ==
       TALER_amount_subtract (&nbalance,
                              &balance,
