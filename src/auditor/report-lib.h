@@ -153,6 +153,143 @@ typedef enum GNUNET_DB_QueryStatus
 
 
 /**
+ * Perform addition of amounts.  If the addition fails, logs
+ * a detailed error and calls exit() to terminate the process (!).
+ *
+ * Do not call this function directly, use #TALER_ARL_amount_add().
+ *
+ * @param[out] sum where to store @a a1 + @a a2, set to "invalid" on overflow
+ * @param a1 first amount to add
+ * @param a2 second amount to add
+ * @param filename where is the addition called
+ * @param functionname name of the function where the addition is called
+ * @param line line number of the addition
+ */
+void
+TALER_ARL_amount_add_ (struct TALER_Amount *sum,
+                       const struct TALER_Amount *a1,
+                       const struct TALER_Amount *a2,
+                       const char *filename,
+                       const char *functionname,
+                       unsigned int line);
+
+
+/**
+ * Perform addition of amounts.  If the addition fails, logs
+ * a detailed error and calls exit() to terminate the process (!).
+ *
+ * @param[out] sum where to store @a a1 + @a a2, set to "invalid" on overflow
+ * @param a1 first amount to add
+ * @param a2 second amount to add
+ */
+#define TALER_ARL_amount_add(sum,a1,a2) \
+  TALER_ARL_amount_add_ (sum, a1, a2, __FILE__, __FUNCTION__, __LINE__)
+
+
+/**
+ * Perform subtraction of amounts where the result "cannot" be negative. If the
+ * subtraction fails, logs a detailed error and calls exit() to terminate the
+ * process (!).
+ *
+ * Do not call this function directly, use #TALER_ARL_amount_subtract().
+ *
+ * @param[out] diff where to store (@a a1 - @a a2)
+ * @param a1 amount to subtract from
+ * @param a2 amount to subtract
+ * @param filename where is the addition called
+ * @param functionname name of the function where the addition is called
+ * @param line line number of the addition
+ */
+void
+TALER_ARL_amount_subtract_ (struct TALER_Amount *diff,
+                            const struct TALER_Amount *a1,
+                            const struct TALER_Amount *a2,
+                            const char *filename,
+                            const char *functionname,
+                            unsigned int line);
+
+
+/**
+ * Perform subtraction of amounts where the result "cannot" be negative. If
+ * the subtraction fails, logs a detailed error and calls exit() to terminate
+ * the process (!).
+ *
+ * @param[out] diff where to store (@a a1 - @a a2)
+ * @param a1 amount to subtract from
+ * @param a2 amount to subtract
+ */
+#define TALER_ARL_amount_subtract(diff,a1,a2) \
+  TALER_ARL_amount_subtract_ (diff, a1, a2, __FILE__, __FUNCTION__, __LINE__)
+
+
+/**
+ * Possible outcomes of #TALER_ARL_amount_subtract_neg().
+ */
+enum TALER_ARL_SubtractionResult
+{
+  /**
+   * Note that in this case no actual result was computed.
+   */
+  TALER_ARL_SR_INVALID_NEGATIVE = -1,
+
+  /**
+   * The result of the subtraction is exactly zero.
+   */
+  TALER_ARL_SR_ZERO = 0,
+
+  /**
+   * The result of the subtraction is a positive value.
+   */
+  TALER_ARL_SR_POSITIVE = 1
+};
+
+
+/**
+ * Perform subtraction of amounts. Negative results should be signalled by the
+ * return value (leaving @a diff set to 'invalid'). If the subtraction fails
+ * for other reasons (currency missmatch, normalization failure), logs a
+ * detailed error and calls exit() to terminate the process (!).
+ *
+ * Do not call this function directly, use #TALER_ARL_amount_subtract_neg().
+ *
+ * @param[out] diff where to store (@a a1 - @a a2)
+ * @param a1 amount to subtract from
+ * @param a2 amount to subtract
+ * @param filename where is the addition called
+ * @param functionname name of the function where the addition is called
+ * @param line line number of the addition
+ * @return #TALER_ARL_SR_NEGATIVE if the result was negative (and @a diff is now invalid),
+ *         #TALER_ARL_SR_ZERO if the result was zero,
+ *         #TALER_ARL_SR_POSITIVE if the result is positive
+ */
+enum TALER_ARL_SubtractionResult
+TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
+                                const struct TALER_Amount *a1,
+                                const struct TALER_Amount *a2,
+                                const char *filename,
+                                const char *functionname,
+                                unsigned int line);
+
+
+/**
+ * Perform subtraction of amounts.  Negative results should be signalled by
+ * the return value (leaving @a diff set to 'invalid'). If the subtraction
+ * fails for other reasons (currency missmatch, normalization failure), logs a
+ * detailed error and calls exit() to terminate the process (!).
+ *
+ * @param[out] diff where to store (@a a1 - @a a2)
+ * @param a1 amount to subtract from
+ * @param a2 amount to subtract
+ * @return #TALER_ARL_SR_NEGATIVE if the result was negative (and @a diff is now invalid),
+ *         #TALER_ARL_SR_ZERO if the result was zero,
+ *         #TALER_ARL_SR_POSITIVE if the result is positive
+ */
+#define TALER_ARL_amount_subtract_neg(diff,a1,a2) \
+  TALER_ARL_amount_subtract_neg_ (diff, a1, a2, __FILE__, __FUNCTION__, \
+                                  __LINE__)
+
+
+/**
  * Initialize DB sessions and run the analysis.
  *
  * @param ana analysis to run

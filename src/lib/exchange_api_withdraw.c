@@ -242,7 +242,7 @@ reserve_withdraw_payment_required (
     return GNUNET_SYSERR;
   }
   /* Compute how much we expected to charge to the reserve */
-  if (GNUNET_OK !=
+  if (0 >
       TALER_amount_add (&requested_amount,
                         &wh->pk.value,
                         &wh->pk.fee_withdraw))
@@ -515,7 +515,7 @@ TALER_EXCHANGE_withdraw (
                                       &req.reserve_pub.eddsa_pub);
   req.purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS));
   req.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
-  if (GNUNET_OK !=
+  if (0 >
       TALER_amount_add (&amount_with_fee,
                         &pk->fee_withdraw,
                         &pk->value))

@@ -536,11 +536,11 @@ TALER_EXCHANGE_refresh_prepare (
   {
     md.fresh_pks[i].rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_dup (fresh_pks[i].key.rsa_public_key);
-    if ( (GNUNET_OK !=
+    if ( (0 >
           TALER_amount_add (&total,
                             &total,
                             &fresh_pks[i].value)) ||
-         (GNUNET_OK !=
+         (0 >
           TALER_amount_add (&total,
                             &total,
                             &fresh_pks[i].fee_withdraw)) )

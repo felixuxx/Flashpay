@@ -249,7 +249,7 @@ refresh_check_melt (struct MHD_Connection *connection,
   {
     struct TALER_Amount coin_residual;
 
-    GNUNET_assert (GNUNET_SYSERR !=
+    GNUNET_assert (0 <=
                    TALER_amount_subtract (&coin_residual,
                                           &spent,
                                           &rmc->refresh_session.amount_with_fee));

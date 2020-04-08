@@ -394,12 +394,9 @@ TALER_amount_cmp (const struct TALER_Amount *a1,
  * @param[out] diff where to store (@a a1 - @a a2), or invalid if @a a2 > @a a1
  * @param a1 amount to subtract from
  * @param a2 amount to subtract
- * @return #GNUNET_OK if the subtraction worked,
- *         #GNUNET_NO if @a a1 = @a a2
- *         #GNUNET_SYSERR if @a a2 > @a a1 or currencies are incompatible;
- *                        @a diff is set to invalid
+ * @return operation status, negative on failures
  */
-int
+enum TALER_AmountArithmeticResult
 TALER_amount_subtract (struct TALER_Amount *diff,
                        const struct TALER_Amount *a1,
                        const struct TALER_Amount *a2)
@@ -412,7 +409,7 @@ TALER_amount_subtract (struct TALER_Amount *diff,
                                  a2))
   {
     invalidate (diff);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_CURRENCIES_INCOMPATIBLE;
   }
   /* make local copies to avoid aliasing problems between
      diff and a1/a2 */
@@ -422,7 +419,7 @@ TALER_amount_subtract (struct TALER_Amount *diff,
        (GNUNET_SYSERR == TALER_amount_normalize (&n2)) )
   {
     invalidate (diff);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_NORMALIZATION_FAILED;
   }
 
   if (n1.fraction < n2.fraction)
@@ -430,7 +427,7 @@ TALER_amount_subtract (struct TALER_Amount *diff,
     if (0 == n1.value)
     {
       invalidate (diff);
-      return GNUNET_SYSERR;
+      return TALER_AAR_INVALID_NEGATIVE_RESULT;
     }
     n1.fraction += TALER_AMOUNT_FRAC_BASE;
     n1.value--;
@@ -438,7 +435,7 @@ TALER_amount_subtract (struct TALER_Amount *diff,
   if (n1.value < n2.value)
   {
     invalidate (diff);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_NEGATIVE_RESULT;
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (n1.currency,
@@ -449,8 +446,8 @@ TALER_amount_subtract (struct TALER_Amount *diff,
   diff->value = n1.value - n2.value;
   if ( (0 == diff->fraction) &&
        (0 == diff->value) )
-    return GNUNET_NO;
-  return GNUNET_OK;
+    return TALER_AAR_RESULT_ZERO;
+  return TALER_AAR_RESULT_POSITIVE;
 }
 
 
@@ -460,10 +457,9 @@ TALER_amount_subtract (struct TALER_Amount *diff,
  * @param[out] sum where to store @a a1 + @a a2, set to "invalid" on overflow
  * @param a1 first amount to add
  * @param a2 second amount to add
- * @return #GNUNET_OK if the addition worked,
- *         #GNUNET_SYSERR on overflow
+ * @return operation status, negative on failures
  */
-int
+enum TALER_AmountArithmeticResult
 TALER_amount_add (struct TALER_Amount *sum,
                   const struct TALER_Amount *a1,
                   const struct TALER_Amount *a2)
@@ -476,7 +472,7 @@ TALER_amount_add (struct TALER_Amount *sum,
       TALER_amount_cmp_currency (a1, a2))
   {
     invalidate (sum);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_CURRENCIES_INCOMPATIBLE;
   }
   /* make local copies to avoid aliasing problems between
      diff and a1/a2 */
@@ -486,7 +482,7 @@ TALER_amount_add (struct TALER_Amount *sum,
        (GNUNET_SYSERR == TALER_amount_normalize (&n2)) )
   {
     invalidate (sum);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_NORMALIZATION_FAILED;
   }
 
   GNUNET_assert (GNUNET_OK ==
@@ -497,13 +493,13 @@ TALER_amount_add (struct TALER_Amount *sum,
   {
     /* integer overflow */
     invalidate (sum);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_RESULT_OVERFLOW;
   }
   if (res.value > MAX_AMOUNT_VALUE)
   {
     /* too large to be legal */
     invalidate (sum);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_RESULT_OVERFLOW;
   }
   res.fraction = n1.fraction + n2.fraction;
   if (GNUNET_SYSERR ==
@@ -511,10 +507,13 @@ TALER_amount_add (struct TALER_Amount *sum,
   {
     /* integer overflow via carry from fraction */
     invalidate (sum);
-    return GNUNET_SYSERR;
+    return TALER_AAR_INVALID_RESULT_OVERFLOW;
   }
   *sum = res;
-  return GNUNET_OK;
+  if ( (0 == sum->fraction) &&
+       (0 == sum->value) )
+    return TALER_AAR_RESULT_ZERO;
+  return TALER_AAR_RESULT_POSITIVE;
 }
 
 

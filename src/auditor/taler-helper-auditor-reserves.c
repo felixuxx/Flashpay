@@ -174,19 +174,17 @@ report_amount_arithmetic_inconsistency (
                             auditor))
   {
     /* exchange > auditor */
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_subtract (&delta,
-                                          exchange,
-                                          auditor));
+    TALER_ARL_amount_subtract (&delta,
+                               exchange,
+                               auditor);
   }
   else
   {
     /* auditor < exchange */
     profitable = -profitable;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_subtract (&delta,
-                                          auditor,
-                                          exchange));
+    TALER_ARL_amount_subtract (&delta,
+                               auditor,
+                               exchange);
   }
   TALER_ARL_report (report_amount_arithmetic_inconsistencies,
                     json_pack ("{s:s, s:I, s:o, s:o, s:I}",
@@ -200,10 +198,9 @@ report_amount_arithmetic_inconsistency (
     target = (1 == profitable)
              ? &total_arithmetic_delta_plus
              : &total_arithmetic_delta_minus;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (target,
-                                     target,
-                                     &delta));
+    TALER_ARL_amount_add (target,
+                          target,
+                          &delta);
   }
 }
 
@@ -445,10 +442,9 @@ handle_reserve_in (void *cls,
   }
   else
   {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&rs->total_in,
-                                     &rs->total_in,
-                                     credit));
+    TALER_ARL_amount_add (&rs->total_in,
+                          &rs->total_in,
+                          credit);
     if (NULL == rs->sender_account)
       rs->sender_account = GNUNET_strdup (sender_account_details);
   }
@@ -571,10 +567,9 @@ handle_reserve_out (void *cls,
                                    amount_with_fee),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    reserve_pub)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_bad_sig_loss,
-                                     &total_bad_sig_loss,
-                                     amount_with_fee));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          amount_with_fee);
     return GNUNET_OK;   /* exit here, we cannot add this to the legitimate withdrawals */
   }
 
@@ -610,10 +605,9 @@ handle_reserve_out (void *cls,
   }
   else
   {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&rs->total_out,
-                                     &rs->total_out,
-                                     amount_with_fee));
+    TALER_ARL_amount_add (&rs->total_out,
+                          &rs->total_out,
+                          amount_with_fee);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Reserve `%s' reduced by %s from withdraw\n",
@@ -624,10 +618,9 @@ handle_reserve_out (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Increasing withdraw profits by fee %s\n",
               TALER_amount2s (&withdraw_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&rs->total_fee,
-                                   &rs->total_fee,
-                                   &withdraw_fee));
+  TALER_ARL_amount_add (&rs->total_fee,
+                        &rs->total_fee,
+                        &withdraw_fee);
   return GNUNET_OK;
 }
 
@@ -697,10 +690,9 @@ handle_recoup_by_reserve (
                                    "loss", TALER_JSON_from_amount (amount),
                                    "key_pub", GNUNET_JSON_from_data_auto (
                                      &coin->coin_pub)));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_bad_sig_loss,
-                                       &total_bad_sig_loss,
-                                       amount));
+      TALER_ARL_amount_add (&total_bad_sig_loss,
+                            &total_bad_sig_loss,
+                            amount);
     }
   }
 
@@ -725,10 +717,9 @@ handle_recoup_by_reserve (
       report_row_inconsistency ("recoup",
                                 rowid,
                                 "denomination key not in revocation set");
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_irregular_recoups,
-                                       &total_irregular_recoups,
-                                       amount));
+      TALER_ARL_amount_add (&total_irregular_recoups,
+                            &total_irregular_recoups,
+                            amount);
     }
     else
     {
@@ -774,10 +765,9 @@ handle_recoup_by_reserve (
                                  "loss", TALER_JSON_from_amount (amount),
                                  "key_pub", GNUNET_JSON_from_data_auto (
                                    &TALER_ARL_master_pub)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_bad_sig_loss,
-                                     &total_bad_sig_loss,
-                                     amount));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          amount);
   }
 
   GNUNET_CRYPTO_hash (reserve_pub,
@@ -812,10 +802,9 @@ handle_recoup_by_reserve (
   }
   else
   {
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&rs->total_in,
-                                     &rs->total_in,
-                                     amount));
+    TALER_ARL_amount_add (&rs->total_in,
+                          &rs->total_in,
+                          amount);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Additional /recoup value to for reserve `%s' of %s\n",
@@ -949,14 +938,12 @@ handle_reserve_closed (
   {
     struct TALER_Amount expected_fee;
 
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&rs->total_out,
-                                     &rs->total_out,
-                                     amount_with_fee));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&rs->total_fee,
-                                     &rs->total_fee,
-                                     closing_fee));
+    TALER_ARL_amount_add (&rs->total_out,
+                          &rs->total_out,
+                          amount_with_fee);
+    TALER_ARL_amount_add (&rs->total_fee,
+                          &rs->total_fee,
+                          closing_fee);
     /* verify closing_fee is correct! */
     if (GNUNET_OK !=
         get_closing_fee (receiver_account,
@@ -1025,25 +1012,22 @@ verify_reserve_balance (void *cls,
   ret = GNUNET_OK;
   /* Check our reserve summary balance calculation shows that
      the reserve balance is acceptable (i.e. non-negative) */
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&balance,
-                                   &rs->total_in,
-                                   &rs->balance_at_previous_audit));
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&nbalance,
-                             &balance,
-                             &rs->total_out))
+  TALER_ARL_amount_add (&balance,
+                        &rs->total_in,
+                        &rs->balance_at_previous_audit);
+  if (TALER_ARL_SR_INVALID_NEGATIVE ==
+      TALER_ARL_amount_subtract_neg (&nbalance,
+                                     &balance,
+                                     &rs->total_out))
   {
     struct TALER_Amount loss;
 
-    GNUNET_assert (GNUNET_SYSERR !=
-                   TALER_amount_subtract (&loss,
-                                          &rs->total_out,
-                                          &balance));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_balance_insufficient_loss,
-                                     &total_balance_insufficient_loss,
-                                     &loss));
+    TALER_ARL_amount_subtract (&loss,
+                               &rs->total_out,
+                               &balance);
+    TALER_ARL_amount_add (&total_balance_insufficient_loss,
+                          &total_balance_insufficient_loss,
+                          &loss);
     TALER_ARL_report (report_reserve_balance_insufficient_inconsistencies,
                       json_pack ("{s:o, s:o}",
                                  "reserve_pub",
@@ -1095,26 +1079,22 @@ verify_reserve_balance (void *cls,
                                 &reserve.balance))
       {
         /* balance > reserve.balance */
-        GNUNET_assert (GNUNET_OK ==
-                       TALER_amount_subtract (&delta,
-                                              &nbalance,
-                                              &reserve.balance));
-        GNUNET_assert (GNUNET_OK ==
-                       TALER_amount_add (&total_balance_summary_delta_plus,
-                                         &total_balance_summary_delta_plus,
-                                         &delta));
+        TALER_ARL_amount_subtract (&delta,
+                                   &nbalance,
+                                   &reserve.balance);
+        TALER_ARL_amount_add (&total_balance_summary_delta_plus,
+                              &total_balance_summary_delta_plus,
+                              &delta);
       }
       else
       {
         /* balance < reserve.balance */
-        GNUNET_assert (GNUNET_OK ==
-                       TALER_amount_subtract (&delta,
-                                              &reserve.balance,
-                                              &nbalance));
-        GNUNET_assert (GNUNET_OK ==
-                       TALER_amount_add (&total_balance_summary_delta_minus,
-                                         &total_balance_summary_delta_minus,
-                                         &delta));
+        TALER_ARL_amount_subtract (&delta,
+                                   &reserve.balance,
+                                   &nbalance);
+        TALER_ARL_amount_add (&total_balance_summary_delta_minus,
+                              &total_balance_summary_delta_minus,
+                              &delta);
       }
       TALER_ARL_report (report_reserve_balance_summary_wrong_inconsistencies,
                         json_pack ("{s:o, s:o, s:o}",
@@ -1147,10 +1127,9 @@ verify_reserve_balance (void *cls,
                                  &cfee))
       {
         /* remaining balance (according to us) exceeds closing fee */
-        GNUNET_assert (GNUNET_OK ==
-                       TALER_amount_add (&total_balance_reserve_not_closed,
-                                         &total_balance_reserve_not_closed,
-                                         &nbalance));
+        TALER_ARL_amount_add (&total_balance_reserve_not_closed,
+                              &total_balance_reserve_not_closed,
+                              &nbalance);
         TALER_ARL_report (report_reserve_not_closed_inconsistencies,
                           json_pack ("{s:o, s:o, s:o}",
                                      "reserve_pub",
@@ -1166,10 +1145,9 @@ verify_reserve_balance (void *cls,
     else
     {
       /* We failed to determine the closing fee, complain! */
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_balance_reserve_not_closed,
-                                       &total_balance_reserve_not_closed,
-                                       &nbalance));
+      TALER_ARL_amount_add (&total_balance_reserve_not_closed,
+                            &total_balance_reserve_not_closed,
+                            &nbalance);
       TALER_ARL_report (report_reserve_not_closed_inconsistencies,
                         json_pack ("{s:o, s:o, s:o, s:s}",
                                    "reserve_pub",
@@ -1190,25 +1168,22 @@ verify_reserve_balance (void *cls,
               "Reserve reserve `%s' made %s in withdraw fees\n",
               TALER_B2S (&rs->reserve_pub),
               TALER_amount2s (&rs->total_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&rs->a_withdraw_fee_balance,
-                                   &rs->a_withdraw_fee_balance,
-                                   &rs->total_fee));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_escrow_balance,
-                                   &total_escrow_balance,
-                                   &rs->total_in));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_add (&total_withdraw_fee_income,
-                                   &total_withdraw_fee_income,
-                                   &rs->total_fee));
+  TALER_ARL_amount_add (&rs->a_withdraw_fee_balance,
+                        &rs->a_withdraw_fee_balance,
+                        &rs->total_fee);
+  TALER_ARL_amount_add (&total_escrow_balance,
+                        &total_escrow_balance,
+                        &rs->total_in);
+  TALER_ARL_amount_add (&total_withdraw_fee_income,
+                        &total_withdraw_fee_income,
+                        &rs->total_fee);
   {
     struct TALER_Amount r;
 
-    if (GNUNET_SYSERR ==
-        TALER_amount_subtract (&r,
-                               &total_escrow_balance,
-                               &rs->total_out))
+    if (TALER_ARL_SR_INVALID_NEGATIVE ==
+        TALER_ARL_amount_subtract_neg (&r,
+                                       &total_escrow_balance,
+                                       &rs->total_out))
     {
       /* We could not reduce our total balance, i.e. exchange allowed IN TOTAL (!)
          to be withdrawn more than it was IN TOTAL ever given (exchange balance

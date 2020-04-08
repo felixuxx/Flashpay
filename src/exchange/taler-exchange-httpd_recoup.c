@@ -242,7 +242,7 @@ recoup_transaction (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Recoup: coin value %s\n",
               TALER_amount2s (&pc->value));
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_subtract (&pc->amount,
                              &pc->value,
                              &spent))

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Taler Systems SA
+  Copyright (C) 2014, 2015, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -231,17 +231,54 @@ TALER_amount_cmp_currency_nbo (const struct TALER_AmountNBO *a1,
 
 
 /**
+ * Possible results from calling #TALER_amount_subtract() and
+ * possibly other arithmetic operations. Negative values
+ * indicate that the operation did not generate a result.
+ */
+enum TALER_AmountArithmeticResult
+{
+
+  /**
+   * Operation succeeded, result is positive.
+   */
+  TALER_AAR_RESULT_POSITIVE = 1,
+
+  /**
+   * Operation succeeded, result is exactly zero.
+   */
+  TALER_AAR_RESULT_ZERO = 0,
+
+  /**
+   * Operation failed, the result would have been negative.
+   */
+  TALER_AAR_INVALID_NEGATIVE_RESULT = -1,
+
+  /**
+   * Operation failed, result outside of the representable range.
+   */
+  TALER_AAR_INVALID_RESULT_OVERFLOW = -2,
+
+  /**
+   * Operation failed, inputs could not be normalized.
+   */
+  TALER_AAR_INVALID_NORMALIZATION_FAILED = -3,
+
+  /**
+   * Operation failed, input currencies were not identical.
+   */
+  TALER_AAR_INVALID_CURRENCIES_INCOMPATIBLE = -4
+
+};
+
+/**
  * Perform saturating subtraction of amounts.
  *
  * @param[out] diff where to store (@a a1 - @a a2), or invalid if @a a2 > @a a1
  * @param a1 amount to subtract from
  * @param a2 amount to subtract
- * @return #GNUNET_OK if the subtraction worked,
- *         #GNUNET_NO if @a a1 = @a a2
- *         #GNUNET_SYSERR if @a a2 > @a a1 or currencies are incompatible;
- *                        @a diff is set to invalid
+ * @return operation status, negative on failures
  */
-int
+enum TALER_AmountArithmeticResult
 TALER_amount_subtract (struct TALER_Amount *diff,
                        const struct TALER_Amount *a1,
                        const struct TALER_Amount *a2);
@@ -253,10 +290,9 @@ TALER_amount_subtract (struct TALER_Amount *diff,
  * @param[out] sum where to store @a a1 + @a a2, set to "invalid" on overflow
  * @param a1 first amount to add
  * @param a2 second amount to add
- * @return #GNUNET_OK if the addition worked,
- *         #GNUNET_SYSERR on overflow
+ * @return operation status, negative on failures
  */
-int
+enum TALER_AmountArithmeticResult
 TALER_amount_add (struct TALER_Amount *sum,
                   const struct TALER_Amount *a1,
                   const struct TALER_Amount *a2);

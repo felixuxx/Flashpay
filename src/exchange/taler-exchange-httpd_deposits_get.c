@@ -176,7 +176,7 @@ handle_wtid_data (void *cls,
     ctx->execution_time = execution_time;
     return;
   }
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_subtract (&ctx->coin_delta,
                              coin_contribution,
                              coin_fee))

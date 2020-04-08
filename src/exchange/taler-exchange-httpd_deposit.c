@@ -162,7 +162,7 @@ deposit_transaction (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "/deposit replay, accepting again!\n");
-    GNUNET_assert (GNUNET_OK ==
+    GNUNET_assert (0 <=
                    TALER_amount_subtract (&amount_without_fee,
                                           &deposit->amount_with_fee,
                                           &deposit->deposit_fee));
@@ -543,7 +543,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     struct TALER_Amount amount_without_fee;
     int res;
 
-    GNUNET_assert (GNUNET_SYSERR !=
+    GNUNET_assert (0 <=
                    TALER_amount_subtract (&amount_without_fee,
                                           &deposit.amount_with_fee,
                                           &deposit.deposit_fee));

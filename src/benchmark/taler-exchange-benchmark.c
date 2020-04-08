@@ -338,7 +338,7 @@ run (void *cls,
                  TALER_string_to_amount (withdraw_fee_str,
                                          &withdraw_fee));
   for (unsigned int i = 0; i < howmany_coins; i++)
-    GNUNET_assert (GNUNET_OK ==
+    GNUNET_assert (0 <=
                    TALER_amount_add (&total_reserve_amount,
                                      &total_reserve_amount,
                                      &withdraw_fee));

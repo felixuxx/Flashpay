@@ -200,7 +200,7 @@ TEH_RESPONSE_compile_transaction_history (
           return NULL;
         }
 #endif
-        if (GNUNET_OK !=
+        if (0 >
             TALER_amount_subtract (&value,
                                    &refund->refund_amount,
                                    &refund->refund_fee))
@@ -481,7 +481,7 @@ TEH_RESPONSE_compile_reserve_history (
           credit_total = bank->amount;
           init |= IA_CREDIT;
         }
-        else if (GNUNET_OK !=
+        else if (0 >
                  TALER_amount_add (&credit_total,
                                    &credit_total,
                                    &bank->amount))
@@ -526,7 +526,7 @@ TEH_RESPONSE_compile_reserve_history (
         }
         else
         {
-          if (GNUNET_OK !=
+          if (0 >
               TALER_amount_add (&withdraw_total,
                                 &withdraw_total,
                                 &value))
@@ -572,7 +572,7 @@ TEH_RESPONSE_compile_reserve_history (
           credit_total = recoup->value;
           init |= IA_CREDIT;
         }
-        else if (GNUNET_OK !=
+        else if (0 >
                  TALER_amount_add (&credit_total,
                                    &credit_total,
                                    &recoup->value))
@@ -642,7 +642,7 @@ TEH_RESPONSE_compile_reserve_history (
         }
         else
         {
-          if (GNUNET_OK !=
+          if (0 >
               TALER_amount_add (&withdraw_total,
                                 &withdraw_total,
                                 &value))
@@ -724,7 +724,7 @@ TEH_RESPONSE_compile_reserve_history (
                    TALER_amount_get_zero (credit_total.currency,
                                           &withdraw_total));
   }
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_subtract (balance,
                              &credit_total,
                              &withdraw_total))

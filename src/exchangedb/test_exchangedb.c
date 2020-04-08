@@ -1264,7 +1264,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
 
   coin_value_wt = deposit->amount_with_fee;
   coin_fee_wt = fee_deposit;
-  GNUNET_assert (GNUNET_OK ==
+  GNUNET_assert (0 <
                  TALER_amount_subtract (&transfer_value_wt,
                                         &coin_value_wt,
                                         &coin_fee_wt));
@@ -1728,7 +1728,7 @@ run (void *cls)
             plugin->reserves_get (plugin->cls,
                                   session,
                                   &post_reserve));
-    FAILIF (GNUNET_OK !=
+    FAILIF (0 >=
             TALER_amount_subtract (&delta,
                                    &post_reserve.balance,
                                    &pre_reserve.balance));
@@ -1743,7 +1743,7 @@ run (void *cls)
                                                  &recoup_cb,
                                                  &coin_blind));
 
-  GNUNET_assert (GNUNET_OK ==
+  GNUNET_assert (0 <=
                  TALER_amount_add (&amount_with_fee,
                                    &value,
                                    &value));

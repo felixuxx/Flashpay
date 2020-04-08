@@ -418,6 +418,194 @@ test_master_present (void *cls,
 
 
 /**
+ * Perform addition of amounts.  If the addition fails, logs
+ * a detailed error and calls exit() to terminate the process (!).
+ *
+ * Do not call this function directly, use #TALER_ARL_amount_add().
+ *
+ * @param[out] sum where to store @a a1 + @a a2, set to "invalid" on overflow
+ * @param a1 first amount to add
+ * @param a2 second amount to add
+ * @param filename where is the addition called
+ * @param functionname name of the function where the addition is called
+ * @param line line number of the addition
+ */
+void
+TALER_ARL_amount_add_ (struct TALER_Amount *sum,
+                       const struct TALER_Amount *a1,
+                       const struct TALER_Amount *a2,
+                       const char *filename,
+                       const char *functionname,
+                       unsigned int line)
+{
+  enum TALER_AmountArithmeticResult aar;
+  const char *msg;
+  char *a2s;
+
+  aar = TALER_amount_add (sum,
+                          a1,
+                          a2);
+  if (aar >= 0)
+    return;
+  switch (aar)
+  {
+  case TALER_AAR_INVALID_RESULT_OVERFLOW:
+    msg =
+      "arithmetic overflow in amount addition (likely the database is corrupt, see manual)";
+    break;
+  case TALER_AAR_INVALID_NORMALIZATION_FAILED:
+    msg =
+      "normalization failed in amount addition (likely the database is corrupt, see manual)";
+    break;
+  case TALER_AAR_INVALID_CURRENCIES_INCOMPATIBLE:
+    msg =
+      "incompatible currencies in amount addition (likely bad configuration and auditor code missing a sanity check, see manual)";
+    break;
+  default:
+    GNUNET_assert (0); /* should be impossible */
+  }
+  a2s = TALER_amount_to_string (a2);
+  fprintf (stderr,
+           "Aborting audit due to fatal error in function %s at %s:%d trying to add %s to %s: %s\n",
+           functionname,
+           filename,
+           line,
+           TALER_amount2s (a1),
+           a2s,
+           msg);
+  GNUNET_free (a2s);
+  exit (42);
+}
+
+
+/**
+ * Perform subtraction of amounts. If the subtraction fails, logs
+ * a detailed error and calls exit() to terminate the process (!).
+ *
+ * Do not call this function directly, use #TALER_ARL_amount_subtract().
+ *
+ * @param[out] diff where to store (@a a1 - @a a2)
+ * @param a1 amount to subtract from
+ * @param a2 amount to subtract
+ * @param filename where is the addition called
+ * @param functionname name of the function where the addition is called
+ * @param line line number of the addition
+ */
+void
+TALER_ARL_amount_subtract_ (struct TALER_Amount *diff,
+                            const struct TALER_Amount *a1,
+                            const struct TALER_Amount *a2,
+                            const char *filename,
+                            const char *functionname,
+                            unsigned int line)
+{
+  enum TALER_AmountArithmeticResult aar;
+  const char *msg;
+  char *a2s;
+
+  aar = TALER_amount_subtract (diff,
+                               a1,
+                               a2);
+  if (aar >= 0)
+    return;
+  switch (aar)
+  {
+  case TALER_AAR_INVALID_NEGATIVE_RESULT:
+    msg =
+      "negative result in amount subtraction (likely the database is corrupt, see manual)";
+    break;
+  case TALER_AAR_INVALID_NORMALIZATION_FAILED:
+    msg =
+      "normalization failed in amount subtraction (likely the database is corrupt, see manual)";
+    break;
+  case TALER_AAR_INVALID_CURRENCIES_INCOMPATIBLE:
+    msg =
+      "currencies incompatible in amount subtraction (likely bad configuration and auditor code missing a sanity check, see manual)";
+    break;
+  default:
+    GNUNET_assert (0); /* should be impossible */
+  }
+  a2s = TALER_amount_to_string (a2);
+  fprintf (stderr,
+           "Aborting audit due to fatal error in function %s at %s:%d trying to subtract %s from %s: %s\n",
+           functionname,
+           filename,
+           line,
+           a2s,
+           TALER_amount2s (a1),
+           msg);
+  GNUNET_free (a2s);
+  exit (42);
+}
+
+
+/**
+ * Perform subtraction of amounts. Negative results should be signalled by the
+ * return value (leaving @a diff set to 'invalid'). If the subtraction fails
+ * for other reasons (currency missmatch, normalization failure), logs a
+ * detailed error and calls exit() to terminate the process (!).
+ *
+ * Do not call this function directly, use #TALER_ARL_amount_subtract_neg().
+ *
+ * @param[out] diff where to store (@a a1 - @a a2)
+ * @param a1 amount to subtract from
+ * @param a2 amount to subtract
+ * @param filename where is the addition called
+ * @param functionname name of the function where the addition is called
+ * @param line line number of the addition
+ * @return #TALER_ARL_SR_NEGATIVE if the result was negative (and @a diff is now invalid),
+ *         #TALER_ARL_SR_ZERO if the result was zero,
+ *         #TALER_ARL_SR_POSITIVE if the result is positive
+ */
+enum TALER_ARL_SubtractionResult
+TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
+                                const struct TALER_Amount *a1,
+                                const struct TALER_Amount *a2,
+                                const char *filename,
+                                const char *functionname,
+                                unsigned int line)
+{
+  enum TALER_AmountArithmeticResult aar;
+  const char *msg;
+  char *a2s;
+
+  aar = TALER_amount_subtract (diff,
+                               a1,
+                               a2);
+  switch (aar)
+  {
+  case TALER_AAR_RESULT_POSITIVE:
+    return TALER_ARL_SR_POSITIVE;
+  case TALER_AAR_RESULT_ZERO:
+    return TALER_ARL_SR_ZERO;
+  case TALER_AAR_INVALID_NEGATIVE_RESULT:
+    return TALER_ARL_SR_INVALID_NEGATIVE;
+  case TALER_AAR_INVALID_NORMALIZATION_FAILED:
+    msg =
+      "normalization failed in amount subtraction (likely the database is corrupt, see manual)";
+    break;
+  case TALER_AAR_INVALID_CURRENCIES_INCOMPATIBLE:
+    msg =
+      "currencies incompatible in amount subtraction (likely bad configuration and auditor code missing a sanity check, see manual)";
+    break;
+  default:
+    GNUNET_assert (0); /* should be impossible */
+  }
+  a2s = TALER_amount_to_string (a2);
+  fprintf (stderr,
+           "Aborting audit due to fatal error in function %s at %s:%d trying to subtract %s from %s: %s\n",
+           functionname,
+           filename,
+           line,
+           a2s,
+           TALER_amount2s (a1),
+           msg);
+  GNUNET_free (a2s);
+  exit (42);
+}
+
+
+/**
  * Setup global variables based on configuration.
  *
  * @param c configuration to use

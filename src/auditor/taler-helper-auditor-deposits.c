@@ -147,10 +147,9 @@ test_dc (void *cls,
   dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial,
                                               serial_id);
   dcc->missed_count++;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&dcc->missed_amount,
-                                   &dcc->missed_amount,
-                                   &dc->amount_without_fee));
+  TALER_ARL_amount_add (&dcc->missed_amount,
+                        &dcc->missed_amount,
+                        &dc->amount_without_fee);
 }
 
 

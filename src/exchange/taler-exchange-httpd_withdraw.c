@@ -422,7 +422,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                        &wc.dki->issue.properties.value);
     TALER_amount_ntoh (&fee_withdraw,
                        &wc.dki->issue.properties.fee_withdraw);
-    if (GNUNET_OK !=
+    if (0 >
         TALER_amount_add (&wc.amount_required,
                           &amount,
                           &fee_withdraw))

@@ -312,7 +312,7 @@ refund_by_coin_cb (void *cls,
               "Aggregator subtracts applicable refund of amount %s\n",
               TALER_amount2s (amount_with_fee));
   aux->have_refund = GNUNET_YES;
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_subtract (&aux->total_amount,
                              &aux->total_amount,
                              amount_with_fee))
@@ -385,7 +385,7 @@ deposit_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Non-refunded transaction, subtracting deposit fee %s\n",
                 TALER_amount2s (deposit_fee));
-    if (GNUNET_SYSERR ==
+    if (0 >
         TALER_amount_subtract (&ntotal,
                                amount_with_fee,
                                deposit_fee))
@@ -571,7 +571,7 @@ aggregate_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Subtracting deposit fee %s for non-refunded coin\n",
                 TALER_amount2s (deposit_fee));
-    if (GNUNET_SYSERR ==
+    if (0 >
         TALER_amount_subtract (&tmp,
                                &au->total_amount,
                                deposit_fee))
@@ -595,7 +595,7 @@ aggregate_cb (void *cls,
   {
     struct TALER_Amount tmp;
 
-    if (GNUNET_OK !=
+    if (0 >
         TALER_amount_add (&tmp,
                           &au->total_amount,
                           &old))
@@ -782,7 +782,7 @@ run_aggregation (void *cls)
   /* Subtract wire transfer fee and round to the unit supported by the
      wire transfer method; Check if after rounding down, we still have
      an amount to transfer, and if not mark as 'tiny'. */
-  if ( (GNUNET_OK !=
+  if ( (0 >=
         TALER_amount_subtract (&au_active.final_amount,
                                &au_active.total_amount,
                                &au_active.wire_fee)) ||

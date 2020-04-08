@@ -331,7 +331,7 @@ withdraw_run (void *cls,
     ws->amount = ws->pk->value;
   }
   ws->reserve_history.type = TALER_EXCHANGE_RTT_WITHDRAWAL;
-  GNUNET_assert (GNUNET_OK ==
+  GNUNET_assert (0 <=
                  TALER_amount_add (&ws->reserve_history.amount,
                                    &ws->amount,
                                    &ws->pk->fee_withdraw));

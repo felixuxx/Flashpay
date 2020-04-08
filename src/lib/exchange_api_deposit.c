@@ -263,7 +263,7 @@ verify_deposit_signature_forbidden (
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
+  if (0 >
       TALER_amount_add (&total,
                         &total,
                         &dh->amount_with_fee))
@@ -586,7 +586,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_subtract (&amount_without_fee,
                              amount,
                              &dki->fee_deposit))

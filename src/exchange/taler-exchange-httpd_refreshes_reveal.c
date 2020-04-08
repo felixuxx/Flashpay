@@ -436,11 +436,11 @@ refreshes_reveal_transaction (void *cls,
                          &rctx->dkis[i]->issue.properties.fee_withdraw);
       TALER_amount_ntoh (&value,
                          &rctx->dkis[i]->issue.properties.value);
-      if ( (GNUNET_OK !=
+      if ( (0 >
             TALER_amount_add (&total,
                               &fee_withdraw,
                               &value)) ||
-           (GNUNET_OK !=
+           (0 >
             TALER_amount_add (&refresh_cost,
                               &refresh_cost,
                               &total)) )

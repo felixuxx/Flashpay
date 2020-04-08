@@ -629,10 +629,9 @@ check_pending_rc (void *cls,
 
   (void) cls;
   (void) key;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_closure_amount_lag,
-                                   &total_closure_amount_lag,
-                                   &rc->amount));
+  TALER_ARL_amount_add (&total_closure_amount_lag,
+                        &total_closure_amount_lag,
+                        &rc->amount);
   if ( (0 != rc->amount.value) ||
        (0 != rc->amount.fraction) )
     TALER_ARL_report (report_closure_lags,
@@ -835,10 +834,9 @@ wire_missing_cb (void *cls,
                  /* bool? */ int done)
 {
   (void) cls;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_amount_lag,
-                                   &total_amount_lag,
-                                   amount));
+  TALER_ARL_amount_add (&total_amount_lag,
+                        &total_amount_lag,
+                        amount);
   if ( (GNUNET_YES == tiny) &&
        (0 > TALER_amount_cmp (amount,
                               &tiny_amount)) )
@@ -1001,10 +999,9 @@ wire_out_cb (void *cls,
                                    date),
                                  "diagnostic", "wire transfer not made (yet?)",
                                  "account_section", wa->section_name));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_bad_amount_out_minus,
-                                     &total_bad_amount_out_minus,
-                                     amount));
+    TALER_ARL_amount_add (&total_bad_amount_out_minus,
+                          &total_bad_amount_out_minus,
+                          amount);
     return GNUNET_OK;
   }
   {
@@ -1029,10 +1026,9 @@ wire_out_cb (void *cls,
                                      date),
                                    "diagnostic", "recevier account mismatch",
                                    "account_section", wa->section_name));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_bad_amount_out_plus,
-                                       &total_bad_amount_out_plus,
-                                       &roi->details.amount));
+      TALER_ARL_amount_add (&total_bad_amount_out_plus,
+                            &total_bad_amount_out_plus,
+                            &roi->details.amount);
       TALER_ARL_report (report_wire_out_inconsistencies,
                         json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
                                    "row", (json_int_t) rowid,
@@ -1045,10 +1041,9 @@ wire_out_cb (void *cls,
                                      date),
                                    "diagnostic", "receiver account mismatch",
                                    "account_section", wa->section_name));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_bad_amount_out_minus,
-                                       &total_bad_amount_out_minus,
-                                       amount));
+      TALER_ARL_amount_add (&total_bad_amount_out_minus,
+                            &total_bad_amount_out_minus,
+                            amount);
       GNUNET_free (payto_uri);
       goto cleanup;
     }
@@ -1075,28 +1070,24 @@ wire_out_cb (void *cls,
       /* amount > roi->details.amount: wire transfer was smaller than it should have been */
       struct TALER_Amount delta;
 
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_subtract (&delta,
-                                            amount,
-                                            &roi->details.amount));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_bad_amount_out_minus,
-                                       &total_bad_amount_out_minus,
-                                       &delta));
+      TALER_ARL_amount_subtract (&delta,
+                                 amount,
+                                 &roi->details.amount);
+      TALER_ARL_amount_add (&total_bad_amount_out_minus,
+                            &total_bad_amount_out_minus,
+                            &delta);
     }
     else
     {
       /* roi->details.amount < amount: wire transfer was larger than it should have been */
       struct TALER_Amount delta;
 
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_subtract (&delta,
-                                            &roi->details.amount,
-                                            amount));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_bad_amount_out_plus,
-                                       &total_bad_amount_out_plus,
-                                       &delta));
+      TALER_ARL_amount_subtract (&delta,
+                                 &roi->details.amount,
+                                 amount);
+      TALER_ARL_amount_add (&total_bad_amount_out_plus,
+                            &total_bad_amount_out_plus,
+                            &delta);
     }
     goto cleanup;
   }
@@ -1217,10 +1208,9 @@ complain_out_not_found (void *cls,
                                wa->section_name,
                                "diagnostic",
                                "justification for wire transfer not found"));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_bad_amount_out_plus,
-                                   &total_bad_amount_out_plus,
-                                   &roi->details.amount));
+  TALER_ARL_amount_add (&total_bad_amount_out_plus,
+                        &total_bad_amount_out_plus,
+                        &roi->details.amount);
   return GNUNET_OK;
 }
 
@@ -1350,10 +1340,9 @@ history_debit_cb (void *cls,
     GNUNET_asprintf (&diagnostic,
                      "duplicate subject hash `%s'",
                      TALER_B2S (&roi->subject_hash));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_wire_format_amount,
-                                     &total_wire_format_amount,
-                                     &details->amount));
+    TALER_ARL_amount_add (&total_wire_format_amount,
+                          &total_wire_format_amount,
+                          &details->amount);
     TALER_ARL_report (report_wire_format_inconsistencies,
                       json_pack ("{s:o, s:I, s:s}",
                                  "amount", TALER_JSON_from_amount (
@@ -1540,10 +1529,9 @@ complain_in_not_found (void *cls,
                                "account", wa->section_name,
                                "diagnostic",
                                "incoming wire transfer claimed by exchange not found"));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_add (&total_bad_amount_in_minus,
-                                   &total_bad_amount_in_minus,
-                                   &rii->details.amount));
+  TALER_ARL_amount_add (&total_bad_amount_in_minus,
+                        &total_bad_amount_in_minus,
+                        &rii->details.amount);
   return GNUNET_OK;
 }
 
@@ -1653,10 +1641,9 @@ history_credit_cb (void *cls,
                                  "timestamp", TALER_ARL_json_from_time_abs (
                                    rii->details.execution_date),
                                  "diagnostic", "wire subject does not match"));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_bad_amount_in_minus,
-                                     &total_bad_amount_in_minus,
-                                     &rii->details.amount));
+    TALER_ARL_amount_add (&total_bad_amount_in_minus,
+                          &total_bad_amount_in_minus,
+                          &rii->details.amount);
     TALER_ARL_report (report_reserve_in_inconsistencies,
                       json_pack ("{s:I, s:I, s:o, s:o, s:o, s:o, s:s}",
                                  "row", (json_int_t) rii->rowid,
@@ -1672,10 +1659,9 @@ history_credit_cb (void *cls,
                                    details->execution_date),
                                  "diagnostic", "wire subject does not match"));
 
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_bad_amount_in_plus,
-                                     &total_bad_amount_in_plus,
-                                     &details->amount));
+    TALER_ARL_amount_add (&total_bad_amount_in_plus,
+                          &total_bad_amount_in_plus,
+                          &details->amount);
     goto cleanup;
   }
   if (0 != TALER_amount_cmp (&rii->details.amount,
@@ -1701,28 +1687,24 @@ history_credit_cb (void *cls,
       /* details->amount > rii->details.amount: wire transfer was larger than it should have been */
       struct TALER_Amount delta;
 
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_subtract (&delta,
-                                            &details->amount,
-                                            &rii->details.amount));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_bad_amount_in_plus,
-                                       &total_bad_amount_in_plus,
-                                       &delta));
+      TALER_ARL_amount_subtract (&delta,
+                                 &details->amount,
+                                 &rii->details.amount);
+      TALER_ARL_amount_add (&total_bad_amount_in_plus,
+                            &total_bad_amount_in_plus,
+                            &delta);
     }
     else
     {
       /* rii->details.amount < details->amount: wire transfer was smaller than it should have been */
       struct TALER_Amount delta;
 
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_subtract (&delta,
-                                            &rii->details.amount,
-                                            &details->amount));
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_add (&total_bad_amount_in_minus,
-                                       &total_bad_amount_in_minus,
-                                       &delta));
+      TALER_ARL_amount_subtract (&delta,
+                                 &rii->details.amount,
+                                 &details->amount);
+      TALER_ARL_amount_add (&total_bad_amount_in_minus,
+                            &total_bad_amount_in_minus,
+                            &delta);
     }
     goto cleanup;
   }
@@ -1737,10 +1719,9 @@ history_credit_cb (void *cls,
                                  "bank_row", (json_int_t) row_off,
                                  "reserve_pub", GNUNET_JSON_from_data_auto (
                                    &rii->details.reserve_pub)));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_add (&total_missattribution_in,
-                                     &total_missattribution_in,
-                                     &rii->details.amount));
+    TALER_ARL_amount_add (&total_missattribution_in,
+                          &total_missattribution_in,
+                          &rii->details.amount);
   }
   if (details->execution_date.abs_value_us !=
       rii->details.execution_date.abs_value_us)
@@ -1867,10 +1848,10 @@ reserve_closed_cb (void *cls,
 
   (void) cls;
   rc = GNUNET_new (struct ReserveClosure);
-  if (GNUNET_SYSERR ==
-      TALER_amount_subtract (&rc->amount,
-                             amount_with_fee,
-                             closing_fee))
+  if (TALER_ARL_SR_INVALID_NEGATIVE ==
+      TALER_ARL_amount_subtract_neg (&rc->amount,
+                                     amount_with_fee,
+                                     closing_fee))
   {
     TALER_ARL_report (report_row_inconsistencies,
                       json_pack ("{s:s, s:I, s:o, s:o, s:o, s:s}",

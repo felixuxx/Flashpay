@@ -165,11 +165,11 @@ check_transfers_get_response_ok (
                          &detail->coin_value);
       TALER_amount_hton (&dd.deposit_fee,
                          &detail->coin_fee);
-      if ( (GNUNET_OK !=
+      if ( (0 >
             TALER_amount_add (&total_expected,
                               &total_expected,
                               &detail->coin_value)) ||
-           (GNUNET_OK !=
+           (0 >
             TALER_amount_subtract (&total_expected,
                                    &total_expected,
                                    &detail->coin_fee)) )
@@ -216,7 +216,7 @@ check_transfers_get_response_ok (
       return GNUNET_SYSERR;
     }
 
-    if (GNUNET_OK !=
+    if (0 >
         TALER_amount_subtract (&total_expected,
                                &total_expected,
                                &wire_fee))

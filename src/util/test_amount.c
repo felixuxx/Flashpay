@@ -117,7 +117,7 @@ main (int argc,
                                             &a2));
 
   /* test subtraction failure (currency mismatch) */
-  GNUNET_assert (GNUNET_SYSERR ==
+  GNUNET_assert (TALER_AAR_INVALID_CURRENCIES_INCOMPATIBLE ==
                  TALER_amount_subtract (&a3,
                                         &a3,
                                         &a2));
@@ -125,7 +125,7 @@ main (int argc,
                  TALER_amount_normalize (&a3));
 
   /* test subtraction failure (negative result) */
-  GNUNET_assert (GNUNET_SYSERR ==
+  GNUNET_assert (TALER_AAR_INVALID_NEGATIVE_RESULT ==
                  TALER_amount_subtract (&a3,
                                         &a1,
                                         &a2));
@@ -133,11 +133,11 @@ main (int argc,
                  TALER_amount_normalize (&a3));
 
   /* test subtraction success cases */
-  GNUNET_assert (GNUNET_YES ==
+  GNUNET_assert (TALER_AAR_RESULT_POSITIVE ==
                  TALER_amount_subtract (&a3,
                                         &a2,
                                         &a1));
-  GNUNET_assert (GNUNET_NO ==
+  GNUNET_assert (TALER_AAR_RESULT_ZERO ==
                  TALER_amount_subtract (&a3,
                                         &a1,
                                         &a1));
@@ -147,7 +147,7 @@ main (int argc,
                  TALER_amount_normalize (&a3));
 
   /* test addition success */
-  GNUNET_assert (GNUNET_OK ==
+  GNUNET_assert (TALER_AAR_RESULT_POSITIVE ==
                  TALER_amount_add (&a3,
                                    &a3,
                                    &a2));
@@ -189,7 +189,7 @@ main (int argc,
   a1.value = UINT64_MAX - 5;
   a2.fraction = 2;
   a2.value = 5;
-  GNUNET_assert (GNUNET_SYSERR ==
+  GNUNET_assert (TALER_AAR_INVALID_RESULT_OVERFLOW ==
                  TALER_amount_add (&a3, &a1, &a2));
 
   /* test addition with underflow on fraction */
@@ -197,7 +197,7 @@ main (int argc,
   a1.value = UINT64_MAX;
   a2.fraction = 2;
   a2.value = 0;
-  GNUNET_assert (GNUNET_OK ==
+  GNUNET_assert (TALER_AAR_RESULT_POSITIVE ==
                  TALER_amount_subtract (&a3, &a1, &a2));
   GNUNET_assert (UINT64_MAX - 1 == a3.value);
   GNUNET_assert (TALER_AMOUNT_FRAC_BASE - 1 == a3.fraction);

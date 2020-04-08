@@ -117,7 +117,7 @@ TALER_EXCHANGE_parse_reserve_history (
       };
 
       rh->type = TALER_EXCHANGE_RTT_CREDIT;
-      if (GNUNET_OK !=
+      if (0 >
           TALER_amount_add (&total_in,
                             &total_in,
                             &amount))
@@ -233,7 +233,7 @@ TALER_EXCHANGE_parse_reserve_history (
       }
       uuid_off++;
 
-      if (GNUNET_OK !=
+      if (0 >
           TALER_amount_add (&total_out,
                             &total_out,
                             &amount))
@@ -301,7 +301,7 @@ TALER_EXCHANGE_parse_reserve_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      if (GNUNET_OK !=
+      if (0 >
           TALER_amount_add (&total_in,
                             &total_in,
                             &rh->amount))
@@ -378,7 +378,7 @@ TALER_EXCHANGE_parse_reserve_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      if (GNUNET_OK !=
+      if (0 >
           TALER_amount_add (&total_out,
                             &total_out,
                             &rh->amount))
@@ -398,7 +398,7 @@ TALER_EXCHANGE_parse_reserve_history (
   }
 
   /* check balance = total_in - total_out < withdraw-amount */
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_subtract (balance,
                              &total_in,
                              &total_out))
@@ -750,7 +750,7 @@ TALER_EXCHANGE_verify_coin_history (
     if (GNUNET_YES == add)
     {
       /* This amount should be added to the total */
-      if (GNUNET_OK !=
+      if (0 >
           TALER_amount_add (total,
                             total,
                             &amount))
@@ -768,7 +768,7 @@ TALER_EXCHANGE_verify_coin_history (
          these negative amounts, as we might get refunds before
          deposits from a semi-evil exchange.  Then, at the end, we do
          the subtraction by calculating "total = total - rtotal" */GNUNET_assert (GNUNET_NO == add);
-      if (GNUNET_OK !=
+      if (0 >
           TALER_amount_add (&rtotal,
                             &rtotal,
                             &amount))
@@ -781,7 +781,7 @@ TALER_EXCHANGE_verify_coin_history (
   }
 
   /* Finally, subtract 'rtotal' from total to handle the subtractions */
-  if (GNUNET_OK !=
+  if (0 >
       TALER_amount_subtract (total,
                              total,
                              &rtotal))

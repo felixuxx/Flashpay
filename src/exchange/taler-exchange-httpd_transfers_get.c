@@ -314,7 +314,7 @@ handle_deposit_data (void *cls,
     ctx->exec_time = exec_time;
     ctx->wire_method = wire_method; /* captures the reference */
     ctx->is_valid = GNUNET_YES;
-    if (GNUNET_OK !=
+    if (0 >
         TALER_amount_subtract (&ctx->total,
                                deposit_value,
                                deposit_fee))
@@ -343,7 +343,7 @@ handle_deposit_data (void *cls,
       return;
     }
     GNUNET_free (wire_method);
-    if (GNUNET_OK !=
+    if (0 >
         TALER_amount_subtract (&delta,
                                deposit_value,
                                deposit_fee))
@@ -352,7 +352,7 @@ handle_deposit_data (void *cls,
       ctx->is_valid = GNUNET_SYSERR;
       return;
     }
-    if (GNUNET_OK !=
+    if (0 >
         TALER_amount_add (&ctx->total,
                           &ctx->total,
                           &delta))
@@ -489,7 +489,7 @@ get_transfer_deposits (void *cls,
     }
     return qs;
   }
-  if (GNUNET_OK !=
+  if (0 >
       TALER_amount_subtract (&ctx->total,
                              &ctx->total,
                              &ctx->wire_fee))

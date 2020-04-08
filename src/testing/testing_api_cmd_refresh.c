@@ -1053,11 +1053,11 @@ melt_run (void *cls,
         TALER_TESTING_interpreter_fail (rms->is);
         return;
       }
-      GNUNET_assert (GNUNET_OK ==
+      GNUNET_assert (0 <=
                      TALER_amount_add (&melt_amount,
                                        &melt_amount,
                                        &fresh_amount));
-      GNUNET_assert (GNUNET_OK ==
+      GNUNET_assert (0 <=
                      TALER_amount_add (&melt_amount,
                                        &melt_amount,
                                        &fresh_pk->fee_withdraw));

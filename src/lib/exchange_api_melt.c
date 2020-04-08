@@ -227,7 +227,7 @@ verify_melt_signature_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   json_decref (history);
 
   /* check if melt operation was really too expensive given history */
-  if (GNUNET_OK !=
+  if (0 >
       TALER_amount_add (&total,
                         &total,
                         &melt_value_with_fee))

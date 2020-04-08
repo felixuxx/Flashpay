@@ -1987,7 +1987,7 @@ postgres_reserves_in_insert (void *cls,
        never actually have to rollback anything. */struct TALER_EXCHANGEDB_Reserve updated_reserve;
 
     updated_reserve.pub = reserve.pub;
-    if (GNUNET_OK !=
+    if (0 >
         TALER_amount_add (&updated_reserve.balance,
                           &reserve.balance,
                           balance))
@@ -2160,7 +2160,7 @@ postgres_insert_withdraw_info (
       qs = GNUNET_DB_STATUS_HARD_ERROR;
     return qs;
   }
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_subtract (&reserve.balance,
                              &reserve.balance,
                              &collectable->amount_with_fee))
@@ -5083,7 +5083,7 @@ postgres_insert_reserve_closed (
     TALER_PQ_query_param_amount (closing_fee),
     GNUNET_PQ_query_param_end
   };
-  int ret;
+  enum TALER_AmountArithmeticResult ret;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
@@ -5108,7 +5108,7 @@ postgres_insert_reserve_closed (
   ret = TALER_amount_subtract (&reserve.balance,
                                &reserve.balance,
                                amount_with_fee);
-  if (GNUNET_SYSERR == ret)
+  if (ret < 0)
   {
     /* The reserve history was checked to make sure there is enough of a balance
        left before we tried this; however, concurrent operations may have changed
@@ -5118,7 +5118,7 @@ postgres_insert_reserve_closed (
                 TALER_B2S (reserve_pub));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  GNUNET_break (GNUNET_NO == ret);
+  GNUNET_break (TALER_AAR_RESULT_ZERO == ret);
   return reserves_update (cls,
                           session,
                           &reserve);
@@ -6839,7 +6839,7 @@ postgres_insert_recoup_request (
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if (GNUNET_SYSERR ==
+  if (0 >
       TALER_amount_add (&reserve.balance,
                         &reserve.balance,
                         amount))
