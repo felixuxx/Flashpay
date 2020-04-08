@@ -119,7 +119,7 @@ verify_deposit_wtid_signature_ok (
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE,
-                                  &dwh->depconf.purpose,
+                                  &dwh->depconf,
                                   &exchange_sig.eddsa_signature,
                                   &exchange_pub->eddsa_pub))
   {
@@ -315,10 +315,9 @@ TALER_EXCHANGE_deposits_get (
                                       &dtp.merchant.eddsa_pub);
 
   dtp.coin_pub = *coin_pub;
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
-                                           &dtp.purpose,
-                                           &merchant_sig.eddsa_sig));
+  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
+                            &dtp,
+                            &merchant_sig.eddsa_sig);
   {
     char cpub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char mpub_str[sizeof (struct TALER_MerchantPublicKeyP) * 2];

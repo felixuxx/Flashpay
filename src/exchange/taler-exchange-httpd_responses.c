@@ -81,7 +81,7 @@ TEH_RESPONSE_compile_transaction_history (
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                        &dr.purpose,
+                                        &dr,
                                         &deposit->csig.eddsa_signature,
                                         &coin_pub->eddsa_pub))
         {
@@ -139,7 +139,7 @@ TEH_RESPONSE_compile_transaction_history (
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                        &ms.purpose,
+                                        &ms,
                                         &melt->coin_sig.eddsa_signature,
                                         &coin_pub->eddsa_pub))
         {
@@ -191,7 +191,7 @@ TEH_RESPONSE_compile_transaction_history (
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                        &rr.purpose,
+                                        &rr,
                                         &refund->merchant_sig.eddsa_sig,
                                         &refund->merchant_pub.eddsa_pub))
         {
@@ -253,7 +253,7 @@ TEH_RESPONSE_compile_transaction_history (
         TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
         if (GNUNET_OK !=
-            TEH_KS_sign (&pc.purpose,
+            TEH_KS_sign (&pc,
                          &epub,
                          &esig))
         {
@@ -306,7 +306,7 @@ TEH_RESPONSE_compile_transaction_history (
         TALER_amount_hton (&pc.recoup_amount,
                            &recoup->value);
         if (GNUNET_OK !=
-            TEH_KS_sign (&pc.purpose,
+            TEH_KS_sign (&pc,
                          &epub,
                          &esig))
         {
@@ -355,7 +355,7 @@ TEH_RESPONSE_compile_transaction_history (
         TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
         if (GNUNET_OK !=
-            TEH_KS_sign (&pc.purpose,
+            TEH_KS_sign (&pc,
                          &epub,
                          &esig))
         {
@@ -593,7 +593,7 @@ TEH_RESPONSE_compile_reserve_history (
           TALER_amount_hton (&pc.recoup_amount,
                              &recoup->value);
           if (GNUNET_OK !=
-              TEH_KS_sign (&pc.purpose,
+              TEH_KS_sign (&pc,
                            &pub,
                            &sig))
           {
@@ -669,7 +669,7 @@ TEH_RESPONSE_compile_reserve_history (
                               strlen (closing->receiver_account_details) + 1,
                               &rcc.h_wire);
           if (GNUNET_OK !=
-              TEH_KS_sign (&rcc.purpose,
+              TEH_KS_sign (&rcc,
                            &pub,
                            &sig))
           {

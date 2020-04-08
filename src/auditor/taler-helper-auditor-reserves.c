@@ -559,7 +559,7 @@ handle_reserve_out (void *cls,
                      amount_with_fee);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
-                                  &wsrd.purpose,
+                                  &wsrd,
                                   &reserve_sig->eddsa_signature,
                                   &reserve_pub->eddsa_pub))
   {
@@ -686,7 +686,7 @@ handle_recoup_by_reserve (
 
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                    &pr.purpose,
+                                    &pr,
                                     &coin_sig->eddsa_signature,
                                     &coin->coin_pub.eddsa_pub))
     {
@@ -743,7 +743,7 @@ handle_recoup_by_reserve (
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (
             TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-            &kr.purpose,
+            &kr,
             &msig.eddsa_signature,
             &TALER_ARL_master_pub.eddsa_pub))
       {

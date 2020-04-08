@@ -540,10 +540,9 @@ TALER_EXCHANGE_withdraw (
   GNUNET_CRYPTO_hash (pd.coin_ev,
                       pd.coin_ev_size,
                       &req.h_coin_envelope);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
-                                           &req.purpose,
-                                           &reserve_sig.eddsa_signature));
+  GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                            &req,
+                            &reserve_sig.eddsa_signature);
   wh = reserve_withdraw_internal (exchange,
                                   pk,
                                   &reserve_sig,

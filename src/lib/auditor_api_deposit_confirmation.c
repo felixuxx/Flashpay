@@ -178,49 +178,57 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
                    struct GNUNET_TIME_Absolute ep_end,
                    const struct TALER_MasterSignatureP *master_sig)
 {
-  struct TALER_DepositConfirmationPS dc;
-  struct TALER_ExchangeSigningKeyValidityPS sv;
+  {
+    struct TALER_DepositConfirmationPS dc = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT),
+      .purpose.size = htonl (sizeof (dc)),
+      .h_contract_terms = *h_contract_terms,
+      .h_wire = *h_wire,
+      .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+      .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+      .coin_pub = *coin_pub,
+      .merchant = *merchant_pub
+    };
 
-  dc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
-  dc.purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS));
-  dc.h_contract_terms = *h_contract_terms;
-  dc.h_wire = *h_wire;
-  dc.timestamp = GNUNET_TIME_absolute_hton (timestamp);
-  dc.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
-  TALER_amount_hton (&dc.amount_without_fee,
-                     amount_without_fee);
-  dc.coin_pub = *coin_pub;
-  dc.merchant = *merchant_pub;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
-                                  &dc.purpose,
-                                  &exchange_sig->eddsa_signature,
-                                  &exchange_pub->eddsa_pub))
-  {
-    GNUNET_break_op (0);
-    TALER_LOG_WARNING ("Invalid signature on /deposit-confirmation request!\n");
+    TALER_amount_hton (&dc.amount_without_fee,
+                       amount_without_fee);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
+                                    &dc,
+                                    &exchange_sig->eddsa_signature,
+                                    &exchange_pub->eddsa_pub))
     {
-      TALER_LOG_DEBUG ("... amount_without_fee was %s\n",
-                       TALER_amount2s (amount_without_fee));
+      GNUNET_break_op (0);
+      TALER_LOG_WARNING (
+        "Invalid signature on /deposit-confirmation request!\n");
+      {
+        TALER_LOG_DEBUG ("... amount_without_fee was %s\n",
+                         TALER_amount2s (amount_without_fee));
+      }
+      return GNUNET_SYSERR;
     }
-    return GNUNET_SYSERR;
   }
-  sv.purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
-  sv.purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS));
-  sv.master_public_key = *master_pub;
-  sv.start = GNUNET_TIME_absolute_hton (ep_start);
-  sv.expire = GNUNET_TIME_absolute_hton (ep_expire);
-  sv.end = GNUNET_TIME_absolute_hton (ep_end);
-  sv.signkey_pub = *exchange_pub;
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                  &sv.purpose,
-                                  &master_sig->eddsa_signature,
-                                  &master_pub->eddsa_pub))
   {
-    GNUNET_break (0);
-    TALER_LOG_WARNING ("Invalid signature on exchange signing key!\n");
-    return GNUNET_SYSERR;
+    struct TALER_ExchangeSigningKeyValidityPS sv = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
+      .purpose.size = htonl (sizeof (sv)),
+      .master_public_key = *master_pub,
+      .start = GNUNET_TIME_absolute_hton (ep_start),
+      .expire = GNUNET_TIME_absolute_hton (ep_expire),
+      .end = GNUNET_TIME_absolute_hton (ep_end),
+      .signkey_pub = *exchange_pub
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
+                                    &sv,
+                                    &master_sig->eddsa_signature,
+                                    &master_pub->eddsa_pub))
+    {
+      GNUNET_break (0);
+      TALER_LOG_WARNING ("Invalid signature on exchange signing key!\n");
+      return GNUNET_SYSERR;
+    }
   }
   if (0 == GNUNET_TIME_absolute_get_remaining (ep_end).rel_value_us)
   {

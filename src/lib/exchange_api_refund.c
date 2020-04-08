@@ -117,7 +117,7 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND,
-                                  &rh->depconf.purpose,
+                                  &rh->depconf,
                                   &exchange_sig.eddsa_signature,
                                   &exchange_pub->eddsa_pub))
   {
@@ -289,10 +289,9 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                      amount);
   TALER_amount_hton (&rr.refund_fee,
                      refund_fee);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
-                                           &rr.purpose,
-                                           &merchant_sig.eddsa_sig));
+  GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
+                            &rr,
+                            &merchant_sig.eddsa_sig);
   return TALER_EXCHANGE_refund2 (exchange,
                                  amount,
                                  refund_fee,

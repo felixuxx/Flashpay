@@ -64,7 +64,7 @@ reply_refund_success (struct MHD_Connection *connection,
   TALER_amount_hton (&rc.refund_fee,
                      &refund->refund_fee);
   if (GNUNET_OK !=
-      TEH_KS_sign (&rc.purpose,
+      TEH_KS_sign (&rc,
                    &pub,
                    &sig))
   {
@@ -365,7 +365,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                        &refund->details.refund_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                    &rr.purpose,
+                                    &rr,
                                     &refund->details.merchant_sig.eddsa_sig,
                                     &refund->details.merchant_pub.eddsa_pub))
     {

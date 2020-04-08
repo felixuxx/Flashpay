@@ -1028,7 +1028,7 @@ get_wire_fee (struct AggregationContext *ac,
                        &wfi->closing_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
-                                    &wf.purpose,
+                                    &wf,
                                     &master_sig.eddsa_signature,
                                     &TALER_ARL_master_pub.eddsa_pub))
     {

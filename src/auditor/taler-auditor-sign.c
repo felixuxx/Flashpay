@@ -350,10 +350,9 @@ main (int argc,
     kv.denom_hash = dk->denom_hash;
 
     /* Finally sign ... */
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
-                                             &kv.purpose,
-                                             &sigs[i].eddsa_sig));
+    GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
+                              &kv,
+                              &sigs[i].eddsa_sig);
   }
 
   if (NULL == output_file)

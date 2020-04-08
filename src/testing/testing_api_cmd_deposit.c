@@ -409,10 +409,9 @@ deposit_run (void *cls,
                        &denom_pub->fee_deposit);
     dr.merchant = merchant_pub;
     dr.coin_pub = coin_pub;
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
-                                             &dr.purpose,
-                                             &coin_sig.eddsa_signature));
+    GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                              &dr,
+                              &coin_sig.eddsa_signature);
   }
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,

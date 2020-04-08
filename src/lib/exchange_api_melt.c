@@ -142,7 +142,7 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
   confirm.noreveal_index = htonl (*noreveal_index);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT,
-                                  &confirm.purpose,
+                                  &confirm,
                                   &exchange_sig.eddsa_signature,
                                   &exchange_pub->eddsa_pub))
   {
@@ -416,7 +416,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
                                       &melt.coin_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
-                            &melt.purpose,
+                            &melt,
                             &confirm_sig.eddsa_signature);
   GNUNET_CRYPTO_rsa_public_key_hash (md->melted_coin.pub_key.rsa_public_key,
                                      &h_denom_pub);

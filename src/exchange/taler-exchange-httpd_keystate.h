@@ -171,15 +171,45 @@ TEH_KS_loop (void);
  * Sign the message in @a purpose with the exchange's signing
  * key.
  *
+ * The @a purpose data is the beginning of the data of which the signature is
+ * to be created. The `size` field in @a purpose must correctly indicate the
+ * number of bytes of the data structure, including its header.  Use
+ * #TEH_KS_sign() instead of calling this function directly!
+ *
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if we lack key material
  */
 int
-TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-             struct TALER_ExchangePublicKeyP *pub,
-             struct TALER_ExchangeSignatureP *sig);
+TEH_KS_sign_ (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+              struct TALER_ExchangePublicKeyP *pub,
+              struct TALER_ExchangeSignatureP *sig);
+
+/**
+ * @ingroup crypto
+ * @brief EdDSA sign a given block.
+ *
+ * The @a ps data must be a fixed-size struct for which the signature is to be
+ * created. The `size` field in @a ps->purpose must correctly indicate the
+ * number of bytes of the data structure, including its header.
+ *
+ * @param ps packed struct with what to sign, MUST begin with a purpose
+ * @param[out] pub where to store the public key to use for the signing
+ * @param[out] sig where to write the signature
+ */
+#define TEH_KS_sign(ps,pub,sig) \
+  ({                                                  \
+    /* check size is set correctly */                 \
+    GNUNET_assert (htonl ((ps)->purpose.size) ==      \
+                   sizeof (*ps));                     \
+    /* check 'ps' begins with the purpose */          \
+    GNUNET_static_assert (((void*) (ps)) ==           \
+                          ((void*) &(ps)->purpose));  \
+    TEH_KS_sign_ (&(ps)->purpose,                     \
+                  pub,                                \
+                  sig);                               \
+  })
 
 
 /**

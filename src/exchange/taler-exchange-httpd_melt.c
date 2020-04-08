@@ -109,7 +109,7 @@ reply_melt_success (struct MHD_Connection *connection,
   };
 
   if (GNUNET_OK !=
-      TEH_KS_sign (&body.purpose,
+      TEH_KS_sign (&body,
                    &pub,
                    &sig))
   {
@@ -376,22 +376,22 @@ handle_melt (struct MHD_Connection *connection,
 {
   /* verify signature of coin for melt operation */
   {
-    struct TALER_RefreshMeltCoinAffirmationPS body;
+    struct TALER_RefreshMeltCoinAffirmationPS body = {
+      .purpose.size = htonl (sizeof (body)),
+      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
+      .rc = rmc->refresh_session.rc,
+      .coin_pub = rmc->refresh_session.coin.coin_pub
+    };
 
-    body.purpose.size = htonl (sizeof (struct
-                                       TALER_RefreshMeltCoinAffirmationPS));
-    body.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
-    body.rc = rmc->refresh_session.rc;
     TALER_amount_hton (&body.amount_with_fee,
                        &rmc->refresh_session.amount_with_fee);
     TALER_amount_hton (&body.melt_fee,
                        &rmc->coin_refresh_fee);
-    body.coin_pub = rmc->refresh_session.coin.coin_pub;
 
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_WALLET_COIN_MELT,
-          &body.purpose,
+          &body,
           &rmc->refresh_session.coin_sig.eddsa_signature,
           &rmc->refresh_session.coin.coin_pub.eddsa_pub))
     {

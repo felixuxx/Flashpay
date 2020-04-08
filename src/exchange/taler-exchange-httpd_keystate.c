@@ -593,7 +593,7 @@ store_in_map (struct GNUNET_CONTAINER_MultiHashMap *map,
     if (GNUNET_SYSERR ==
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-          &denom_key_issue.purpose,
+          &denom_key_issue,
           &dkip->signature.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
@@ -1489,12 +1489,10 @@ build_keys_response (const struct ResponseFactoryContext *rfc,
   GNUNET_CRYPTO_hash_context_finish (rbc.hash_context,
                                      &ks.hc);
   rbc.hash_context = NULL;
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (
-                   &rfc->key_state->current_sign_key_issue.signkey_priv.
-                   eddsa_priv,
-                   &ks.purpose,
-                   &sig.eddsa_signature));
+  GNUNET_CRYPTO_eddsa_sign (
+    &rfc->key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
+    &ks,
+    &sig.eddsa_signature);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            "exchangedb",
@@ -2399,16 +2397,20 @@ TEH_KS_free (void)
 /**
  * Sign the message in @a purpose with the exchange's signing key.
  *
+ * The @a purpose data is the beginning of the data of which the signature is
+ * to be created. The `size` field in @a purpose must correctly indicate the
+ * number of bytes of the data structure, including its header.  Use
+ * #TEH_KS_sign() instead of calling this function directly!
+ *
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if we lack key material
  */
 int
-TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-             struct TALER_ExchangePublicKeyP *pub,
-             struct TALER_ExchangeSignatureP *sig)
-
+TEH_KS_sign_ (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+              struct TALER_ExchangePublicKeyP *pub,
+              struct TALER_ExchangeSignatureP *sig)
 {
   struct TEH_KS_StateHandle *key_state;
 
@@ -2424,7 +2426,7 @@ TEH_KS_sign (const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
   }
   *pub = key_state->current_sign_key_issue.issue.signkey_pub;
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (
+                 GNUNET_CRYPTO_eddsa_sign_ (
                    &key_state->current_sign_key_issue.signkey_priv.eddsa_priv,
                    purpose,
                    &sig->eddsa_signature));

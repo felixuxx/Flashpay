@@ -75,10 +75,9 @@ TALER_EXCHANGEDB_denomination_key_revoke (
       .h_denom_pub = *denom_hash
     };
 
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CRYPTO_eddsa_sign (&mpriv->eddsa_priv,
-                                             &rm.purpose,
-                                             &rd.msig.eddsa_signature));
+    GNUNET_CRYPTO_eddsa_sign (&mpriv->eddsa_priv,
+                              &rm,
+                              &rd.msig.eddsa_signature);
   }
   GNUNET_asprintf (&fn,
                    "%s" DIR_SEPARATOR_STR
@@ -476,7 +475,7 @@ revocations_iterate_cb (void *cls,
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-          &rm.purpose,
+          &rm,
           &rf.msig.eddsa_signature,
           &ric->master_pub->eddsa_pub))
     {

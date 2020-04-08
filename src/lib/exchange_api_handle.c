@@ -407,7 +407,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
 
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                    &sign_key_issue.purpose,
+                                    &sign_key_issue,
                                     &sign_key_issue_sig.eddsa_signature,
                                     &master_key->eddsa_pub))
     {
@@ -508,7 +508,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
     EXITIF (GNUNET_SYSERR ==
             GNUNET_CRYPTO_eddsa_verify (
               TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-              &denom_key_issue.purpose,
+              &denom_key_issue,
               &denom_key->master_sig.eddsa_signature,
               &master_key->eddsa_pub));
   }
@@ -635,7 +635,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
 
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,
-                                      &kv.purpose,
+                                      &kv,
                                       &auditor_sig.eddsa_sig,
                                       &auditor->auditor_pub.eddsa_pub))
       {
@@ -1096,7 +1096,7 @@ decode_keys_json (const json_t *resp_obj,
                                              &pub));
     EXITIF (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_KEY_SET,
-                                        &ks.purpose,
+                                        &ks,
                                         &sig.eddsa_signature,
                                         &pub.eddsa_pub));
   }

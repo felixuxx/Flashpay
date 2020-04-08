@@ -414,7 +414,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
 
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                      &pr.purpose,
+                                      &pr,
                                       &coin_sig->eddsa_signature,
                                       &coin->coin_pub.eddsa_pub))
       {

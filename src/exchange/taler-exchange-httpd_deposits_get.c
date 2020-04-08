@@ -69,7 +69,7 @@ reply_deposit_details (struct MHD_Connection *connection,
   TALER_amount_hton (&cw.coin_contribution,
                      coin_contribution);
   if (GNUNET_OK !=
-      TEH_KS_sign (&cw.purpose,
+      TEH_KS_sign (&cw,
                    &pub,
                    &sig))
   {
@@ -381,7 +381,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     return MHD_YES; /* parse error */
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION,
-                                  &tps.purpose,
+                                  &tps,
                                   &merchant_sig.eddsa_sig,
                                   &tps.merchant.eddsa_pub))
   {

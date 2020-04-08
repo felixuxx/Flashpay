@@ -207,7 +207,7 @@ check_transfers_get_response_ok (
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
-          &wdp.purpose,
+          &wdp,
           &exchange_sig.eddsa_signature,
           &exchange_pub.eddsa_pub))
     {

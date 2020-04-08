@@ -159,7 +159,7 @@ reply_transfer_details (struct MHD_Connection *connection,
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &wdp.h_details);
   if (GNUNET_OK !=
-      TEH_KS_sign (&wdp.purpose,
+      TEH_KS_sign (&wdp,
                    &pub,
                    &sig))
   {

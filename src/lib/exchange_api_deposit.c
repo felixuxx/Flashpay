@@ -219,7 +219,7 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
   }
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
-                                  &dh->depconf.purpose,
+                                  &dh->depconf,
                                   &exchange_sig->eddsa_signature,
                                   &exchange_pub->eddsa_pub))
   {
@@ -441,7 +441,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                        &dki->fee_deposit);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                    &dr.purpose,
+                                    &dr,
                                     &coin_sig->eddsa_signature,
                                     &coin_pub->eddsa_pub))
     {

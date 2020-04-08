@@ -39,10 +39,9 @@ sign_af (struct TALER_EXCHANGEDB_AggregateFees *af,
   TALER_EXCHANGEDB_fees_2_wf ("test",
                               af,
                               &wf);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (priv,
-                                           &wf.purpose,
-                                           &af->master_sig.eddsa_signature));
+  GNUNET_CRYPTO_eddsa_sign (priv,
+                            &wf,
+                            &af->master_sig.eddsa_signature);
 }
 
 
@@ -136,7 +135,7 @@ main (int argc,
                                   &wf);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
-                                      &wf.purpose,
+                                      &wf,
                                       &p->master_sig.eddsa_signature,
                                       &master_pub.eddsa_pub))
       {

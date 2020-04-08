@@ -676,11 +676,11 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
                           rcds[i].coin_ev_size,
                           &ldp.coin_envelope_hash);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
-                                      &ldp.purpose,
-                                      &link_sigs[i].eddsa_signature,
-                                      &melt.session.coin.coin_pub.
-                                      eddsa_pub))
+          GNUNET_CRYPTO_eddsa_verify (
+            TALER_SIGNATURE_WALLET_COIN_LINK,
+            &ldp,
+            &link_sigs[i].eddsa_signature,
+            &melt.session.coin.coin_pub.eddsa_pub))
       {
         GNUNET_break_op (0);
         res = TALER_MHD_reply_with_error (connection,

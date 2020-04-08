@@ -112,7 +112,7 @@ verify_and_execute_deposit_confirmation (
     /* Not in cache, need to verify the signature, persist it, and possibly cache it */
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                    &skv.purpose,
+                                    &skv,
                                     &es->master_sig.eddsa_signature,
                                     &es->master_public_key.eddsa_pub))
     {
@@ -165,7 +165,7 @@ verify_and_execute_deposit_confirmation (
                        &dc->amount_without_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
-                                    &dcs.purpose,
+                                    &dcs,
                                     &dc->exchange_sig.eddsa_signature,
                                     &dc->exchange_pub.eddsa_pub))
     {

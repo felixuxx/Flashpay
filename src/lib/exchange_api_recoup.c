@@ -303,11 +303,9 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                                      &h_denom_pub);
   pr.h_denom_pub = pk->h_key;
   pr.coin_blind = ps->blinding_key;
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&ps->coin_priv.eddsa_priv,
-                                           &pr.purpose,
-                                           &coin_sig.eddsa_signature));
-
+  GNUNET_CRYPTO_eddsa_sign (&ps->coin_priv.eddsa_priv,
+                            &pr,
+                            &coin_sig.eddsa_signature);
   recoup_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
                           " s:o,"  /* sig */
                           " s:o, s:o}",  /* coin_bks */

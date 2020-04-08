@@ -79,7 +79,7 @@ reply_deposit_success (struct MHD_Connection *connection,
   TALER_amount_hton (&dc.amount_without_fee,
                      amount_without_fee);
   if (GNUNET_OK !=
-      TEH_KS_sign (&dc.purpose,
+      TEH_KS_sign (&dc,
                    &pub,
                    &sig))
   {
@@ -508,7 +508,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                        &deposit.deposit_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                    &dr.purpose,
+                                    &dr,
                                     &deposit.csig.eddsa_signature,
                                     &deposit.coin.coin_pub.eddsa_pub))
     {

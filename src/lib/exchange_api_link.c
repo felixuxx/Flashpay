@@ -154,7 +154,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
 
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
-                                    &ldp.purpose,
+                                    &ldp,
                                     &link_sig.eddsa_signature,
                                     &ldp.old_coin_pub.eddsa_pub))
     {

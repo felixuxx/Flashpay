@@ -743,7 +743,7 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-          &rm.purpose,
+          &rm,
           &msig.eddsa_signature,
           &TALER_ARL_master_pub.eddsa_pub))
     {
@@ -1312,7 +1312,7 @@ refresh_session_cb (void *cls,
                        amount_with_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                    &rmc.purpose,
+                                    &rmc,
                                     &coin_sig->eddsa_signature,
                                     &coin_pub->eddsa_pub))
     {
@@ -1679,7 +1679,7 @@ deposit_cb (void *cls,
        auditor performance! */
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                    &dr.purpose,
+                                    &dr,
                                     &coin_sig->eddsa_signature,
                                     &coin_pub->eddsa_pub))
     {
@@ -1850,7 +1850,7 @@ refund_cb (void *cls,
                        amount_with_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                    &rr.purpose,
+                                    &rr,
                                     &merchant_sig->eddsa_sig,
                                     &merchant_pub->eddsa_pub))
     {
@@ -2017,7 +2017,7 @@ check_recoup (struct CoinContext *cc,
 
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                    &pr.purpose,
+                                    &pr,
                                     &coin_sig->eddsa_signature,
                                     &coin->coin_pub.eddsa_pub))
     {

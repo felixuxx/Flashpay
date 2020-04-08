@@ -442,7 +442,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
 
   /* verify signature! */
   wc.wsrd.purpose.size
-    = htonl (sizeof (struct TALER_WithdrawRequestPS));
+    = htonl (sizeof (wc.wsrd));
   wc.wsrd.purpose.purpose
     = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
   wc.wsrd.h_denomination_pub
@@ -452,7 +452,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                       &wc.wsrd.h_coin_envelope);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
-                                  &wc.wsrd.purpose,
+                                  &wc.wsrd,
                                   &wc.signature.eddsa_signature,
                                   &wc.wsrd.reserve_pub.eddsa_pub))
   {

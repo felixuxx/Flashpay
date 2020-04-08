@@ -177,7 +177,7 @@ TALER_EXCHANGE_parse_reserve_history (
       /* Check that the signature is a valid withdraw request */
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
-                                      &withdraw_purpose.purpose,
+                                      &withdraw_purpose,
                                       &sig.eddsa_signature,
                                       &reserve_pub->eddsa_pub))
       {
@@ -294,7 +294,7 @@ TALER_EXCHANGE_parse_reserve_history (
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (
             TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
-            &pc.purpose,
+            &pc,
             &rh->details.recoup_details.exchange_sig.eddsa_signature,
             &rh->details.recoup_details.exchange_pub.eddsa_pub))
       {
@@ -371,7 +371,7 @@ TALER_EXCHANGE_parse_reserve_history (
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (
             TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED,
-            &rcc.purpose,
+            &rcc,
             &rh->details.close_details.exchange_sig.eddsa_signature,
             &rh->details.close_details.exchange_pub.eddsa_pub))
       {
@@ -551,7 +551,7 @@ TALER_EXCHANGE_verify_coin_history (
       dr.coin_pub = *coin_pub;
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                      &dr.purpose,
+                                      &dr,
                                       &sig.eddsa_signature,
                                       &coin_pub->eddsa_pub))
       {
@@ -606,7 +606,7 @@ TALER_EXCHANGE_verify_coin_history (
       rm.coin_pub = *coin_pub;
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                      &rm.purpose,
+                                      &rm,
                                       &sig.eddsa_signature,
                                       &coin_pub->eddsa_pub))
       {
@@ -665,7 +665,7 @@ TALER_EXCHANGE_verify_coin_history (
                          &amount);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                      &rr.purpose,
+                                      &rr,
                                       &sig.eddsa_sig,
                                       &rr.merchant.eddsa_pub))
       {
@@ -731,7 +731,7 @@ TALER_EXCHANGE_verify_coin_history (
                          &amount);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
-                                      &pc.purpose,
+                                      &pc,
                                       &exchange_sig.eddsa_signature,
                                       &exchange_pub.eddsa_pub))
       {

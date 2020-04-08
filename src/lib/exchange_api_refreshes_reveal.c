@@ -399,11 +399,9 @@ TALER_EXCHANGE_refreshes_reveal (
       GNUNET_CRYPTO_hash (pd.coin_ev,
                           pd.coin_ev_size,
                           &ldp.coin_envelope_hash);
-      GNUNET_assert (GNUNET_OK ==
-                     GNUNET_CRYPTO_eddsa_sign (
-                       &md->melted_coin.coin_priv.eddsa_priv,
-                       &ldp.purpose,
-                       &link_sig.eddsa_signature));
+      GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
+                                &ldp,
+                                &link_sig.eddsa_signature);
       GNUNET_assert (0 ==
                      json_array_append_new (link_sigs,
                                             GNUNET_JSON_from_data_auto (

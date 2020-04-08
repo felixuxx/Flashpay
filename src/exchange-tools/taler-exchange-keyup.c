@@ -497,10 +497,9 @@ create_signkey_issue_priv (
   issue->purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY);
   issue->purpose.size = htonl (sizeof (struct
                                        TALER_ExchangeSigningKeyValidityPS));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
-                                           &issue->purpose,
-                                           &pi->master_sig.eddsa_signature));
+  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
+                            issue,
+                            &pi->master_sig.eddsa_signature);
 }
 
 
@@ -796,10 +795,9 @@ create_denomkey_issue (
     = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   dki->issue.properties.purpose.size
     = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
-                                           &dki->issue.properties.purpose,
-                                           &dki->issue.signature.eddsa_signature));
+  GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
+                            &dki->issue.properties,
+                            &dki->issue.signature.eddsa_signature);
 }
 
 
@@ -948,10 +946,9 @@ sign_af (struct TALER_EXCHANGEDB_AggregateFees *af,
   TALER_EXCHANGEDB_fees_2_wf (method,
                               af,
                               &wf);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign (priv,
-                                           &wf.purpose,
-                                           &af->master_sig.eddsa_signature));
+  GNUNET_CRYPTO_eddsa_sign (priv,
+                            &wf,
+                            &af->master_sig.eddsa_signature);
 }
 
 
