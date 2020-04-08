@@ -36,7 +36,7 @@
  * @param args array of additional options (length: 2, first is the coin_pub, second must be "link")
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_link (const struct TEH_RequestHandler *rh,
                   struct MHD_Connection *connection,
                   const char *const args[2]);

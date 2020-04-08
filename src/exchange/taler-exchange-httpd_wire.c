@@ -295,7 +295,7 @@ load_account (void *cls,
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_wire (const struct TEH_RequestHandler *rh,
                   struct MHD_Connection *connection,
                   const char *const args[])

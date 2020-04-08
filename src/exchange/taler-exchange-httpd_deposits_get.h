@@ -36,7 +36,7 @@
  *      h_wire, merchant_pub, h_contract_terms and coin_pub)
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                           struct MHD_Connection *connection,
                           const char *const args[4]);

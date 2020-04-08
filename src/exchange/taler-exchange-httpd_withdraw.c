@@ -51,7 +51,7 @@
  * @param rh reserve history to return
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 reply_withdraw_insufficient_funds (
   struct MHD_Connection *connection,
   const struct TALER_Amount *ebalance,
@@ -173,7 +173,7 @@ static enum GNUNET_DB_QueryStatus
 withdraw_transaction (void *cls,
                       struct MHD_Connection *connection,
                       struct TALER_EXCHANGEDB_Session *session,
-                      int *mhd_ret)
+                      MHD_RESULT *mhd_ret)
 {
   struct WithdrawContext *wc = cls;
   struct TALER_EXCHANGEDB_Reserve r;
@@ -343,7 +343,7 @@ withdraw_transaction (void *cls,
  *         reserve public key, the second one should be "withdraw")
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                       struct MHD_Connection *connection,
                       const json_t *root,
@@ -376,7 +376,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   }
 
   {
-    int res;
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_data (connection,
                                      root,
@@ -486,7 +486,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
 
   /* run transaction and sign (if not optimistically signed before) */
   {
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
@@ -510,7 +510,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   GNUNET_JSON_parse_free (spec);
 
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = TALER_MHD_reply_json_pack (
       connection,

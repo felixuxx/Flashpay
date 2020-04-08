@@ -302,7 +302,7 @@ handle_mhd_completion_callback (void *cls,
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
   */
-static int
+static MHD_RESULT
 handle_version (struct TAH_RequestHandler *rh,
                 struct MHD_Connection *connection,
                 void **connection_cls,
@@ -347,7 +347,7 @@ handle_version (struct TAH_RequestHandler *rh,
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_mhd_request (void *cls,
                     struct MHD_Connection *connection,
                     const char *url,

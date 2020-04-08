@@ -80,7 +80,7 @@ TALER_MHD_add_global_headers (struct MHD_Response *response)
  * itself.  This should eventually be fixed, see also
  * https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
  */
-int
+MHD_RESULT
 TALER_MHD_can_compress (struct MHD_Connection *connection)
 {
   const char *ae;
@@ -118,13 +118,13 @@ TALER_MHD_can_compress (struct MHD_Connection *connection)
  * @param[in,out] buf_size pointer to initial size of @a buf
  * @return #MHD_YES if @a buf was compressed
  */
-int
+MHD_RESULT
 TALER_MHD_body_compress (void **buf,
                          size_t *buf_size)
 {
   Bytef *cbuf;
   uLongf cbuf_size;
-  int ret;
+  MHD_RESULT ret;
 
   cbuf_size = compressBound (*buf_size);
   cbuf = malloc (cbuf_size);
@@ -193,7 +193,7 @@ TALER_MHD_make_json (const json_t *json)
  * @param response_code the http response code
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_json (struct MHD_Connection *connection,
                       const json_t *json,
                       unsigned int response_code)
@@ -201,7 +201,7 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
   struct MHD_Response *response;
   void *json_str;
   size_t json_len;
-  int is_compressed;
+  MHD_RESULT is_compressed;
 
   json_str = json_dumps (json,
                          JSON_INDENT (2));
@@ -253,7 +253,7 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
   }
 
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = MHD_queue_response (connection,
                               response_code,
@@ -271,7 +271,7 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
  * @param connection the MHD connection
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
 {
   struct MHD_Response *response;
@@ -291,7 +291,7 @@ TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
                                          "*"));
 
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = MHD_queue_response (connection,
                               MHD_HTTP_NO_CONTENT,
@@ -312,7 +312,7 @@ TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
  * @param ... varargs
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
                            unsigned int response_code,
                            const char *fmt,
@@ -344,7 +344,7 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
   }
 
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = TALER_MHD_reply_json (connection,
                                 json,
@@ -426,7 +426,7 @@ TALER_MHD_make_error (enum TALER_ErrorCode ec,
  * @param hint human readable hint about the error
  * @return a MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_with_error (struct MHD_Connection *connection,
                             unsigned int http_status,
                             enum TALER_ErrorCode ec,
@@ -446,7 +446,7 @@ TALER_MHD_reply_with_error (struct MHD_Connection *connection,
  * @param connection the MHD connection to use
  * @return a MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_request_too_large (struct MHD_Connection *connection)
 {
   struct MHD_Response *response;
@@ -459,7 +459,7 @@ TALER_MHD_reply_request_too_large (struct MHD_Connection *connection)
   TALER_MHD_add_global_headers (response);
 
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = MHD_queue_response (connection,
                               MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
@@ -478,7 +478,7 @@ TALER_MHD_reply_request_too_large (struct MHD_Connection *connection)
  * @param url where to redirect for the sources
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_agpl (struct MHD_Connection *connection,
                       const char *url)
 {
@@ -510,7 +510,7 @@ TALER_MHD_reply_agpl (struct MHD_Connection *connection,
   }
 
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = MHD_queue_response (connection,
                               MHD_HTTP_FOUND,
@@ -532,7 +532,7 @@ TALER_MHD_reply_agpl (struct MHD_Connection *connection,
  * @param body_size number of bytes in @a body
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_static (struct MHD_Connection *connection,
                         unsigned int http_status,
                         const char *mime_type,
@@ -556,7 +556,7 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
                                            MHD_HTTP_HEADER_CONTENT_TYPE,
                                            mime_type));
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = MHD_queue_response (connection,
                               http_status,

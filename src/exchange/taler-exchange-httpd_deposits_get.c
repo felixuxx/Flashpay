@@ -45,7 +45,7 @@
  * @param exec_time execution time of the wire transfer
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 reply_deposit_details (struct MHD_Connection *connection,
                        const struct GNUNET_HashCode *h_contract_terms,
                        const struct GNUNET_HashCode *h_wire,
@@ -213,7 +213,7 @@ static enum GNUNET_DB_QueryStatus
 deposits_get_transaction (void *cls,
                           struct MHD_Connection *connection,
                           struct TALER_EXCHANGEDB_Session *session,
-                          int *mhd_ret)
+                          MHD_RESULT *mhd_ret)
 {
   struct DepositWtidContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -258,13 +258,13 @@ deposits_get_transaction (void *cls,
  * @param merchant_pub public key from the merchant
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_track_transaction_request (
   struct MHD_Connection *connection,
   const struct TALER_DepositTrackPS *tps,
   const struct TALER_MerchantPublicKeyP *merchant_pub)
 {
-  int mhd_ret;
+  MHD_RESULT mhd_ret;
   struct DepositWtidContext ctx = {
     .pending = GNUNET_NO,
     .tps = tps,
@@ -310,12 +310,12 @@ handle_track_transaction_request (
  *      h_wire, merchant_pub, h_contract_terms and coin_pub)
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                           struct MHD_Connection *connection,
                           const char *const args[4])
 {
-  int res;
+  enum GNUNET_GenericReturnValue res;
   struct TALER_MerchantSignatureP merchant_sig;
   struct TALER_DepositTrackPS tps = {
     .purpose.size = htonl (sizeof (tps)),

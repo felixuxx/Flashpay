@@ -34,7 +34,7 @@
  * @param args array of additional options (length: 1, just the wtid)
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
                            struct MHD_Connection *connection,
                            const char *const args[1]);

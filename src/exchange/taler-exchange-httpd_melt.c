@@ -47,7 +47,7 @@
  * @param residual remaining value of the coin (after subtracting @a tl)
  * @return a MHD result code
  */
-static int
+static MHD_RESULT
 reply_melt_insufficient_funds (
   struct MHD_Connection *connection,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -94,7 +94,7 @@ reply_melt_insufficient_funds (
  * @param noreveal_index which index will the client not have to reveal
  * @return a MHD status code
  */
-static int
+static MHD_RESULT
 reply_melt_success (struct MHD_Connection *connection,
                     const struct TALER_RefreshCommitmentP *rc,
                     uint32_t noreveal_index)
@@ -174,7 +174,7 @@ static enum GNUNET_DB_QueryStatus
 refresh_check_melt (struct MHD_Connection *connection,
                     struct TALER_EXCHANGEDB_Session *session,
                     struct MeltContext *rmc,
-                    int *mhd_ret)
+                    MHD_RESULT *mhd_ret)
 {
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_Amount spent;
@@ -296,7 +296,7 @@ static enum GNUNET_DB_QueryStatus
 melt_transaction (void *cls,
                   struct MHD_Connection *connection,
                   struct TALER_EXCHANGEDB_Session *session,
-                  int *mhd_ret)
+                  MHD_RESULT *mhd_ret)
 {
   struct MeltContext *rmc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -370,7 +370,7 @@ melt_transaction (void *cls,
  * @param[in,out] rmc details about the melt request
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_melt (struct MHD_Connection *connection,
              struct MeltContext *rmc)
 {
@@ -405,7 +405,7 @@ handle_melt (struct MHD_Connection *connection,
 
   /* run database transaction */
   {
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
@@ -431,7 +431,7 @@ handle_melt (struct MHD_Connection *connection,
  * @param rmc parsed request information
  * @return MHD status code
  */
-static int
+static MHD_RESULT
 check_for_denomination_key (struct MHD_Connection *connection,
                             struct MeltContext *rmc)
 {
@@ -572,7 +572,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
   if (GNUNET_NO == coin_is_dirty)
   {
     struct TEH_DB_KnowCoinContext kcc;
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
 
     kcc.coin = &rmc->refresh_session.coin;
     kcc.connection = connection;
@@ -612,13 +612,14 @@ check_for_denomination_key (struct MHD_Connection *connection,
  * @param root uploaded JSON data
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_melt (struct MHD_Connection *connection,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   const json_t *root)
 {
   struct MeltContext rmc;
-  int res;
+  enum GNUNET_GenericReturnValue ret;
+  MHD_RESULT res;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_denomination_signature ("denom_sig",
                                             &rmc.refresh_session.coin.denom_sig),
@@ -637,11 +638,11 @@ TEH_handler_melt (struct MHD_Connection *connection,
           0,
           sizeof (rmc));
   rmc.refresh_session.coin.coin_pub = *coin_pub;
-  res = TALER_MHD_parse_json_data (connection,
+  ret = TALER_MHD_parse_json_data (connection,
                                    root,
                                    spec);
-  if (GNUNET_OK != res)
-    return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
+  if (GNUNET_OK != ret)
+    return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
 
   res = check_for_denomination_key (connection,
                                     &rmc);

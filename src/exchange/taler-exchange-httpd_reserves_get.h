@@ -38,7 +38,7 @@
  * @param args array of additional options (length: 1, just the reserve_pub)
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
                           struct MHD_Connection *connection,
                           const char *const args[1]);

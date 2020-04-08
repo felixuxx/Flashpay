@@ -27,6 +27,8 @@
 #include <jansson.h>
 #include <microhttpd.h>
 #include "taler_error_codes.h"
+#include <gnunet/gnunet_mhd_compat.h>
+
 
 /**
  * Global options for response generation.
@@ -79,7 +81,7 @@ TALER_MHD_add_global_headers (struct MHD_Response *response);
  * @param[in,out] buf_size pointer to initial size of @a buf
  * @return #MHD_YES if @a buf was compressed
  */
-int
+MHD_RESULT
 TALER_MHD_body_compress (void **buf,
                          size_t *buf_size);
 
@@ -90,7 +92,7 @@ TALER_MHD_body_compress (void **buf,
  * @param connection connection to check
  * @return #MHD_YES if 'deflate' compression is allowed
  */
-int
+MHD_RESULT
 TALER_MHD_can_compress (struct MHD_Connection *connection);
 
 
@@ -102,7 +104,7 @@ TALER_MHD_can_compress (struct MHD_Connection *connection);
  * @param response_code the http response code
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_json (struct MHD_Connection *connection,
                       const json_t *json,
                       unsigned int response_code);
@@ -118,7 +120,7 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
  * @param ... varargs
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
                            unsigned int response_code,
                            const char *fmt,
@@ -134,7 +136,7 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
  * @param hint human readable hint about the error
  * @return a MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_with_error (struct MHD_Connection *connection,
                             unsigned int http_status,
                             enum TALER_ErrorCode ec,
@@ -181,7 +183,7 @@ TALER_MHD_make_error (enum TALER_ErrorCode ec,
  * @param connection the MHD connection to use
  * @return a MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_request_too_large (struct MHD_Connection *connection);
 
 
@@ -193,7 +195,7 @@ TALER_MHD_reply_request_too_large (struct MHD_Connection *connection);
  * @param url where to redirect for the sources
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_agpl (struct MHD_Connection *connection,
                       const char *url);
 
@@ -209,7 +211,7 @@ TALER_MHD_reply_agpl (struct MHD_Connection *connection,
  * @param body_size number of bytes in @a body
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_static (struct MHD_Connection *connection,
                         unsigned int http_status,
                         const char *mime_type,
@@ -241,7 +243,7 @@ TALER_MHD_reply_static (struct MHD_Connection *connection,
  *               (we could not even queue an error message,
  *                close HTTP session with MHD_NO)
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_post_json (struct MHD_Connection *connection,
                            void **con_cls,
                            const char *upload_data,
@@ -274,7 +276,7 @@ TALER_MHD_parse_post_cleanup_callback (void *con_cls);
  *    #GNUNET_NO if json is malformed, error response was generated
  *    #GNUNET_SYSERR on internal error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_json_data (struct MHD_Connection *connection,
                            const json_t *root,
                            struct GNUNET_JSON_Specification *spec);
@@ -295,7 +297,7 @@ TALER_MHD_parse_json_data (struct MHD_Connection *connection,
  *    #GNUNET_NO if json is malformed, error response was generated
  *    #GNUNET_SYSERR on internal error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_json_array (struct MHD_Connection *connection,
                             const json_t *root,
                             struct GNUNET_JSON_Specification *spec,
@@ -317,7 +319,7 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
  *   #GNUNET_NO if the argument is absent or malformed
  *   #GNUNET_SYSERR on internal error (error response could not be sent)
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
                                   const char *param_name,
                                   void *out_data,
@@ -335,7 +337,7 @@ TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
  * @param[out] unix_mode set to the mode to be used for @a unix_path
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
                         const char *section,
                         uint16_t *rport,
@@ -431,7 +433,7 @@ TALER_MHD_legal_free (struct TALER_MHD_Legal *legal);
  * @param legal legal document to serve
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_legal (struct MHD_Connection *conn,
                        struct TALER_MHD_Legal *legal);
 
@@ -443,7 +445,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
  * @param connection the MHD connection
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection);
 
 #endif

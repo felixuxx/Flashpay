@@ -142,7 +142,7 @@ static enum GNUNET_DB_QueryStatus
 link_transaction (void *cls,
                   struct MHD_Connection *connection,
                   struct TALER_EXCHANGEDB_Session *session,
-                  int *mhd_ret)
+                  MHD_RESULT *mhd_ret)
 {
   struct HTD_Context *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -180,13 +180,13 @@ link_transaction (void *cls,
  * @param args array of additional options (length: 2, first is the coin_pub, second must be "link")
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_link (const struct TEH_RequestHandler *rh,
                   struct MHD_Connection *connection,
                   const char *const args[2])
 {
   struct HTD_Context ctx;
-  int mhd_ret;
+  MHD_RESULT mhd_ret;
 
   (void) rh;
   memset (&ctx,

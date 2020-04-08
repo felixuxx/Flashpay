@@ -411,7 +411,7 @@ TEH_RESPONSE_compile_transaction_history (
  * @param tl transaction list to use to build reply
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_RESPONSE_reply_coin_insufficient_funds (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,

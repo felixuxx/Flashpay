@@ -25,6 +25,7 @@
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
 #include "taler_mhd_lib.h"
+#include <gnunet/gnunet_mhd_compat.h>
 
 /**
  * Maximum POST request size (for /admin/add-incoming)
@@ -585,7 +586,7 @@ handle_mhd_completion_callback (void *cls,
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                            struct MHD_Connection *connection,
                            const char *account,
@@ -680,7 +681,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_transfer (struct TALER_FAKEBANK_Handle *h,
                  struct MHD_Connection *connection,
                  const char *account,
@@ -800,12 +801,12 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
  * @param con_cls place to store state, not used
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_home_page (struct TALER_FAKEBANK_Handle *h,
                   struct MHD_Connection *connection,
                   void **con_cls)
 {
-  int ret;
+  MHD_RESULT ret;
   struct MHD_Response *resp;
 #define HELLOMSG "Hello, Fakebank!"
 
@@ -936,7 +937,7 @@ parse_history_common_args (struct MHD_Connection *connection,
  * @param account which account the request is about
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                       struct MHD_Connection *connection,
                       const char *account)
@@ -1051,7 +1052,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
  * @param account which account the request is about
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                        struct MHD_Connection *connection,
                        const char *account)
@@ -1198,7 +1199,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 serve (struct TALER_FAKEBANK_Handle *h,
        struct MHD_Connection *connection,
        const char *account,
@@ -1279,7 +1280,7 @@ serve (struct TALER_FAKEBANK_Handle *h,
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_mhd_request (void *cls,
                     struct MHD_Connection *connection,
                     const char *url,
@@ -1292,7 +1293,7 @@ handle_mhd_request (void *cls,
   struct TALER_FAKEBANK_Handle *h = cls;
   char *account = NULL;
   char *end;
-  int ret;
+  MHD_RESULT ret;
 
   (void) version;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

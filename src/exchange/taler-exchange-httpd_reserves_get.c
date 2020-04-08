@@ -37,7 +37,7 @@
  * @param rh reserve history to return
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 reply_reserve_history_success (struct MHD_Connection *connection,
                                const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
@@ -100,7 +100,7 @@ static enum GNUNET_DB_QueryStatus
 reserve_history_transaction (void *cls,
                              struct MHD_Connection *connection,
                              struct TALER_EXCHANGEDB_Session *session,
-                             int *mhd_ret)
+                             MHD_RESULT *mhd_ret)
 {
   struct ReserveHistoryContext *rsc = cls;
 
@@ -124,13 +124,13 @@ reserve_history_transaction (void *cls,
  * @param args array of additional options (length: 1, just the reserve_pub)
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
                           struct MHD_Connection *connection,
                           const char *const args[1])
 {
   struct ReserveHistoryContext rsc;
-  int mhd_ret;
+  MHD_RESULT mhd_ret;
 
   (void) rh;
   if (GNUNET_OK !=

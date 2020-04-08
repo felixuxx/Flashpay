@@ -669,7 +669,7 @@ static enum GNUNET_DB_QueryStatus
 add_revocations_transaction (void *cls,
                              struct MHD_Connection *connection,
                              struct TALER_EXCHANGEDB_Session *session,
-                             int *mhd_ret)
+                             MHD_RESULT *mhd_ret)
 {
   struct AddRevocationContext *arc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -709,7 +709,7 @@ static enum GNUNET_DB_QueryStatus
 add_denomination_transaction (void *cls,
                               struct MHD_Connection *connection,
                               struct TALER_EXCHANGEDB_Session *session,
-                              int *mhd_ret)
+                              MHD_RESULT *mhd_ret)
 {
   const struct TALER_EXCHANGEDB_DenominationKey *dki = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -2467,12 +2467,12 @@ krd_search_comparator (const void *key,
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_keys (const struct TEH_RequestHandler *rh,
                   struct MHD_Connection *connection,
                   const char *const args[])
 {
-  int ret;
+  MHD_RESULT ret;
   const char *have_cherrypick;
   const char *have_fakenow;
   struct GNUNET_TIME_Absolute last_issue_date;

@@ -56,7 +56,7 @@ static pthread_mutex_t lock;
  * @param es information about the exchange's signing key
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 verify_and_execute_deposit_confirmation (
   struct MHD_Connection *connection,
   const struct TALER_AUDITORDB_DepositConfirmation *dc,
@@ -212,7 +212,7 @@ verify_and_execute_deposit_confirmation (
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
   */
-int
+MHD_RESULT
 TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                   struct MHD_Connection *connection,
                                   void **connection_cls,
@@ -245,7 +245,7 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   (void) upload_data_size;
   {
     json_t *json;
-    int res;
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_post_json (connection,
                                      connection_cls,
@@ -270,7 +270,7 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   es.exchange_pub = dc.exchange_pub; /* used twice! */
   dc.master_public_key = es.master_public_key;
   {
-    int res;
+    MHD_RESULT res;
 
     res = verify_and_execute_deposit_confirmation (connection,
                                                    &dc,

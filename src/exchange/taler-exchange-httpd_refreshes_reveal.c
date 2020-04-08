@@ -52,7 +52,7 @@
  * @param sigs array of @a num_freshcoins signatures revealed
  * @return a MHD result code
  */
-static int
+static MHD_RESULT
 reply_refreshes_reveal_success (struct MHD_Connection *connection,
                                 unsigned int num_freshcoins,
                                 const struct TALER_DenominationSignature *sigs)
@@ -235,7 +235,7 @@ static enum GNUNET_DB_QueryStatus
 refreshes_reveal_preflight (void *cls,
                             struct MHD_Connection *connection,
                             struct TALER_EXCHANGEDB_Session *session,
-                            int *mhd_ret)
+                            MHD_RESULT *mhd_ret)
 {
   struct RevealContext *rctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -292,7 +292,7 @@ static enum GNUNET_DB_QueryStatus
 refreshes_reveal_transaction (void *cls,
                               struct MHD_Connection *connection,
                               struct TALER_EXCHANGEDB_Session *session,
-                              int *mhd_ret)
+                              MHD_RESULT *mhd_ret)
 {
   struct RevealContext *rctx = cls;
   struct TALER_EXCHANGEDB_Melt melt;
@@ -482,7 +482,7 @@ static enum GNUNET_DB_QueryStatus
 refreshes_reveal_persist (void *cls,
                           struct MHD_Connection *connection,
                           struct TALER_EXCHANGEDB_Session *session,
-                          int *mhd_ret)
+                          MHD_RESULT *mhd_ret)
 {
   struct RevealContext *rctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -532,7 +532,7 @@ refreshes_reveal_persist (void *cls,
  * @param coin_evs envelopes of gamma-selected coins to be signed
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
                                         struct MHD_Connection *connection,
                                         struct RevealContext *rctx,
@@ -547,7 +547,8 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
   struct TALER_EXCHANGEDB_Melt melt;
-  int res;
+  enum GNUNET_GenericReturnValue res;
+  MHD_RESULT ret;
 
   /* Parse denomination key hashes */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
@@ -624,13 +625,13 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       switch (qs)
       {
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        res = TALER_MHD_reply_with_error (connection,
+        ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_NOT_FOUND,
                                           TALER_EC_REVEAL_SESSION_UNKNOWN,
                                           "rc");
         break;
       case GNUNET_DB_STATUS_HARD_ERROR:
-        res = TALER_MHD_reply_with_error (connection,
+        ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
                                           TALER_EC_REVEAL_DB_FETCH_SESSION_ERROR,
                                           "failed to fetch session data");
@@ -638,7 +639,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       case GNUNET_DB_STATUS_SOFT_ERROR:
       default:
         GNUNET_break (0);   /* should be impossible */
-        res = TALER_MHD_reply_with_error (connection,
+        ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
                                           TALER_EC_INTERNAL_INVARIANT_FAILURE,
                                           "assertion failed (unexpected database serialization error)");
@@ -683,7 +684,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
             &melt.session.coin.coin_pub.eddsa_pub))
       {
         GNUNET_break_op (0);
-        res = TALER_MHD_reply_with_error (connection,
+        ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_FORBIDDEN,
                                           TALER_EC_REVEAL_LINK_SIGNATURE_INVALID,
                                           "link_sig");
@@ -710,7 +711,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
     if (NULL == rctx->ev_sigs[i].rsa_signature)
     {
       GNUNET_break (0);
-      res = TALER_MHD_reply_with_error (connection,
+      ret = TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
                                         TALER_EC_REVEAL_SIGNING_ERROR,
                                         "internal signing error");
@@ -729,17 +730,17 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
     if ( (GNUNET_OK ==
           TEH_DB_run_transaction (connection,
                                   "reveal pre-check",
-                                  &res,
+                                  &ret,
                                   &refreshes_reveal_preflight,
                                   rctx)) &&
          (GNUNET_YES == rctx->preflight_ok) )
     {
       /* Generate final (positive) response */
       GNUNET_assert (NULL != rctx->ev_sigs);
-      res = reply_refreshes_reveal_success (connection,
+      ret = reply_refreshes_reveal_success (connection,
                                             num_fresh_coins,
                                             rctx->ev_sigs);
-      GNUNET_break (MHD_NO != res);
+      GNUNET_break (MHD_NO != ret);
       goto cleanup;   /* aka 'break' */
     }
     if (GNUNET_SYSERR == rctx->preflight_ok)
@@ -750,7 +751,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "run reveal",
-                                &res,
+                                &ret,
                                 &refreshes_reveal_transaction,
                                 rctx))
     {
@@ -761,13 +762,13 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
     if (GNUNET_OK ==
         TEH_DB_run_transaction (connection,
                                 "persist reveal",
-                                &res,
+                                &ret,
                                 &refreshes_reveal_persist,
                                 rctx))
     {
       /* Generate final (positive) response */
       GNUNET_assert (NULL != rctx->ev_sigs);
-      res = reply_refreshes_reveal_success (connection,
+      ret = reply_refreshes_reveal_success (connection,
                                             num_fresh_coins,
                                             rctx->ev_sigs);
       break;
@@ -778,7 +779,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
   }   /* end for (retries...) */
 
 cleanup:
-  GNUNET_break (MHD_NO != res);
+  GNUNET_break (MHD_NO != ret);
   /* free resources */
   if (NULL != rctx->ev_sigs)
   {
@@ -790,7 +791,7 @@ cleanup:
   }
   for (unsigned int i = 0; i<num_fresh_coins; i++)
     GNUNET_free_non_null (rcds[i].coin_ev);
-  return res;
+  return ret;
 }
 
 
@@ -908,7 +909,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
  * @param args array of additional options (length: 2, session hash and the string "reveal")
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_reveal (const struct TEH_RequestHandler *rh,
                     struct MHD_Connection *connection,
                     const json_t *root,

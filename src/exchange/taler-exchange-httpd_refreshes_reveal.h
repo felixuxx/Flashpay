@@ -43,7 +43,7 @@
  * @param args array of additional options (length: 2, session hash and the string "reveal")
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_reveal (const struct TEH_RequestHandler *rh,
                     struct MHD_Connection *connection,
                     const json_t *root,

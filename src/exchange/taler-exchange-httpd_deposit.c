@@ -53,7 +53,7 @@
  * @param amount_without_fee fraction of coin value to deposit, without the fee
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 reply_deposit_success (struct MHD_Connection *connection,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        const struct GNUNET_HashCode *h_wire,
@@ -133,7 +133,7 @@ static enum GNUNET_DB_QueryStatus
 deposit_transaction (void *cls,
                      struct MHD_Connection *connection,
                      struct TALER_EXCHANGEDB_Session *session,
-                     int *mhd_ret)
+                     MHD_RESULT *mhd_ret)
 {
   struct DepositContext *dc = cls;
   const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
@@ -301,7 +301,7 @@ check_timestamp_current (struct GNUNET_TIME_Absolute ts)
  * @param root uploaded JSON data
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_deposit (struct MHD_Connection *connection,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const json_t *root)
@@ -471,7 +471,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
 
   /* make sure coin is 'known' in database */
   {
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
     struct TEH_DB_KnowCoinContext kcc = {
       .coin = &deposit.coin,
       .connection = connection
@@ -524,7 +524,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   /* execute transaction */
   dc.deposit = &deposit;
   {
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
@@ -541,7 +541,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   /* generate regular response */
   {
     struct TALER_Amount amount_without_fee;
-    int res;
+    MHD_RESULT res;
 
     GNUNET_assert (0 <=
                    TALER_amount_subtract (&amount_without_fee,

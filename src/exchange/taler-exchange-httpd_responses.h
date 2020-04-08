@@ -31,6 +31,7 @@
 #include "taler_error_codes.h"
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_db.h"
+#include <gnunet/gnunet_mhd_compat.h>
 
 
 /**
@@ -59,7 +60,7 @@ TEH_RESPONSE_compile_reserve_history (
  * @param tl transaction list to use to build reply
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_RESPONSE_reply_coin_insufficient_funds (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,

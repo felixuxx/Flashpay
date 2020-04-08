@@ -49,7 +49,7 @@ TEAH_DEPOSIT_CONFIRMATION_done (void);
  * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
  * @return MHD result code
   */
-int
+MHD_RESULT
 TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                   struct MHD_Connection *connection,
                                   void **connection_cls,

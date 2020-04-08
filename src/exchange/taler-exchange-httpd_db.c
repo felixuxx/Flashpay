@@ -58,7 +58,7 @@ enum GNUNET_DB_QueryStatus
 TEH_DB_know_coin_transaction (void *cls,
                               struct MHD_Connection *connection,
                               struct TALER_EXCHANGEDB_Session *session,
-                              int *mhd_ret)
+                              MHD_RESULT *mhd_ret)
 {
   struct TEH_DB_KnowCoinContext *kcc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -96,10 +96,10 @@ TEH_DB_know_coin_transaction (void *cls,
  * @param cb_cls closure for @a cb, must be read-only!
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
-int
+enum GNUNET_GenericReturnValue
 TEH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
-                        int *mhd_ret,
+                        MHD_RESULT *mhd_ret,
                         TEH_DB_TransactionCallback cb,
                         void *cb_cls)
 {

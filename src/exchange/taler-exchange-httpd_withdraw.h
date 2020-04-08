@@ -42,7 +42,7 @@
  *         reserve public key, the second one should be "withdraw")
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                       struct MHD_Connection *connection,
                       const json_t *root,

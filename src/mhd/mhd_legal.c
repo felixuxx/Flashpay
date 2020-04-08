@@ -155,7 +155,7 @@ language_matches (const char *language_pattern,
  * @param legal legal document to serve
  * @return MHD result code
  */
-int
+MHD_RESULT
 TALER_MHD_reply_legal (struct MHD_Connection *conn,
                        struct TALER_MHD_Legal *legal)
 {
@@ -174,7 +174,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
          (0 == strcasecmp (etag,
                            legal->terms_etag)) )
     {
-      int ret;
+      MHD_RESULT ret;
 
       resp = MHD_create_response_from_buffer (0,
                                               NULL,
@@ -292,7 +292,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          t->mime_type));
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = MHD_queue_response (conn,
                               MHD_HTTP_OK,

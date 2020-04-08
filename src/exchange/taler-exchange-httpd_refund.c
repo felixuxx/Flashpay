@@ -43,7 +43,7 @@
  * @param refund details about the successful refund
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 reply_refund_success (struct MHD_Connection *connection,
                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
                       const struct TALER_EXCHANGEDB_RefundListEntry *refund)
@@ -104,7 +104,7 @@ static enum GNUNET_DB_QueryStatus
 refund_transaction (void *cls,
                     struct MHD_Connection *connection,
                     struct TALER_EXCHANGEDB_Session *session,
-                    int *mhd_ret)
+                    MHD_RESULT *mhd_ret)
 {
   const struct TALER_EXCHANGEDB_Refund *refund = cls;
   struct TALER_EXCHANGEDB_TransactionList *tl;
@@ -342,7 +342,7 @@ refund_transaction (void *cls,
  * @param refund information about the refund
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 verify_and_execute_refund (struct MHD_Connection *connection,
                            const struct TALER_EXCHANGEDB_Refund *refund)
 {
@@ -468,7 +468,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
 
   /* Finally run the actual transaction logic */
   {
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
@@ -497,7 +497,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
  * @param root uploaded JSON data
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_refund (struct MHD_Connection *connection,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     const json_t *root)
@@ -517,7 +517,7 @@ TEH_handler_refund (struct MHD_Connection *connection,
 
   refund.coin.coin_pub = *coin_pub;
   {
-    int res;
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_data (connection,
                                      root,
@@ -549,7 +549,7 @@ TEH_handler_refund (struct MHD_Connection *connection,
                                        "refund_amount");
   }
   {
-    int res;
+    MHD_RESULT res;
 
     res = verify_and_execute_refund (connection,
                                      &refund);

@@ -40,7 +40,7 @@
  * @param root uploaded JSON data
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_deposit (struct MHD_Connection *connection,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const json_t *root);

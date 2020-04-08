@@ -83,7 +83,7 @@ struct AggregatedDepositDetail
  * @param wdd_head linked list with details about the combined deposits
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 reply_transfer_details (struct MHD_Connection *connection,
                         const struct TALER_Amount *total,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -421,7 +421,7 @@ static enum GNUNET_DB_QueryStatus
 get_transfer_deposits (void *cls,
                        struct MHD_Connection *connection,
                        struct TALER_EXCHANGEDB_Session *session,
-                       int *mhd_ret)
+                       MHD_RESULT *mhd_ret)
 {
   struct WtidTransactionContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -513,13 +513,13 @@ get_transfer_deposits (void *cls,
  * @param args array of additional options (length: 1, just the wtid)
  * @return MHD result code
  */
-int
+MHD_RESULT
 TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
                            struct MHD_Connection *connection,
                            const char *const args[1])
 {
   struct WtidTransactionContext ctx;
-  int mhd_ret;
+  MHD_RESULT mhd_ret;
 
   (void) rh;
   memset (&ctx,

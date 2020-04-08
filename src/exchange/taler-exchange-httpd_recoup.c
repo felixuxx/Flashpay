@@ -123,7 +123,7 @@ static enum GNUNET_DB_QueryStatus
 recoup_transaction (void *cls,
                     struct MHD_Connection *connection,
                     struct TALER_EXCHANGEDB_Session *session,
-                    int *mhd_ret)
+                    MHD_RESULT *mhd_ret)
 {
   struct RecoupContext *pc = cls;
   struct TALER_EXCHANGEDB_TransactionList *tl;
@@ -260,7 +260,7 @@ recoup_transaction (void *cls,
        (0 == pc->amount.value) )
   {
     /* Recoup has no effect: coin fully spent! */
-    int ret;
+    enum GNUNET_DB_QueryStatus ret;
 
     TEH_plugin->rollback (TEH_plugin->cls,
                           session);
@@ -342,7 +342,7 @@ recoup_transaction (void *cls,
  * @param refreshed #GNUNET_YES if the coin was refreshed
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 verify_and_execute_recoup (struct MHD_Connection *connection,
                            const struct TALER_CoinPublicInfo *coin,
                            const struct
@@ -453,7 +453,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   /* make sure coin is 'known' in database */
   {
     struct TEH_DB_KnowCoinContext kcc;
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
 
     kcc.coin = coin;
     kcc.connection = connection;
@@ -472,7 +472,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   pc.coin = coin;
   pc.refreshed = refreshed;
   {
-    int mhd_ret;
+    MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
@@ -512,12 +512,12 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
  * @param root uploaded JSON data
  * @return MHD result code
   */
-int
+MHD_RESULT
 TEH_handler_recoup (struct MHD_Connection *connection,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     const json_t *root)
 {
-  int res;
+  enum GNUNET_GenericReturnValue ret;
   struct TALER_CoinPublicInfo coin;
   struct TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
@@ -538,20 +538,24 @@ TEH_handler_recoup (struct MHD_Connection *connection,
   };
 
   coin.coin_pub = *coin_pub;
-  res = TALER_MHD_parse_json_data (connection,
+  ret = TALER_MHD_parse_json_data (connection,
                                    root,
                                    spec);
-  if (GNUNET_SYSERR == res)
+  if (GNUNET_SYSERR == ret)
     return MHD_NO; /* hard failure */
-  if (GNUNET_NO == res)
+  if (GNUNET_NO == ret)
     return MHD_YES; /* failure */
-  res = verify_and_execute_recoup (connection,
-                                   &coin,
-                                   &coin_bks,
-                                   &coin_sig,
-                                   refreshed);
-  GNUNET_JSON_parse_free (spec);
-  return res;
+  {
+    MHD_RESULT res;
+
+    res = verify_and_execute_recoup (connection,
+                                     &coin,
+                                     &coin_bks,
+                                     &coin_sig,
+                                     refreshed);
+    GNUNET_JSON_parse_free (spec);
+    return res;
+  }
 }
 
 

@@ -42,7 +42,7 @@
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler_exchangedb_plugin.h"
-
+#include <gnunet/gnunet_mhd_compat.h>
 
 /**
  * Backlog for listen operation on unix domain sockets.
@@ -158,7 +158,7 @@ static unsigned long long req_max;
  * @param root uploaded JSON data
  * @return MHD result code
  */
-typedef int
+typedef MHD_RESULT
 (*CoinOpHandler)(struct MHD_Connection *connection,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const json_t *root);
@@ -175,7 +175,7 @@ typedef int
  *         reserve public key, the second one should be "withdraw")
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_post_coins (const struct TEH_RequestHandler *rh,
                    struct MHD_Connection *connection,
                    const json_t *root,
@@ -297,7 +297,7 @@ handle_mhd_completion_callback (void *cls,
  * @param[in,out] upload_data_size number of bytes in @a upload_data
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 proceed_with_handler (const struct TEH_RequestHandler *rh,
                       struct MHD_Connection *connection,
                       const char *url,
@@ -308,7 +308,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
   const char *args[rh->nargs + 1];
   size_t ulen = strlen (url) + 1;
   json_t *root = NULL;
-  int ret;
+  MHD_RESULT ret;
 
   /* We do check for "ulen" here, because we'll later stack-allocate a buffer
      of that size and don't want to enable malicious clients to cause us
@@ -331,7 +331,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
   if (0 == strcasecmp (rh->method,
                        MHD_HTTP_METHOD_POST))
   {
-    int res;
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_post_json (connection,
                                      inner_cls,
@@ -433,7 +433,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
  * @param con_cls closure for request (a `struct Buffer *`)
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_mhd_request (void *cls,
                     struct MHD_Connection *connection,
                     const char *url,
@@ -606,7 +606,7 @@ handle_mhd_request (void *cls,
   /* on repeated requests, check our cache first */
   if (NULL != ecls->rh)
   {
-    int ret;
+    MHD_RESULT ret;
     const char *start;
 
     if ('\0' == url[0])
@@ -669,7 +669,7 @@ handle_mhd_request (void *cls,
       if (0 == strcasecmp (method,
                            rh->method))
       {
-        int ret;
+        MHD_RESULT ret;
 
         /* cache to avoid the loop next time */
         ecls->rh = rh;
@@ -698,7 +698,7 @@ handle_mhd_request (void *cls,
 
   /* No handler matches, generate not found */
   {
-    int ret;
+    MHD_RESULT ret;
 
     ret = TALER_MHD_reply_with_error (connection,
                                       MHD_HTTP_NOT_FOUND,
@@ -716,7 +716,7 @@ handle_mhd_request (void *cls,
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 exchange_serve_process_config (void)
 {
   if (GNUNET_OK !=

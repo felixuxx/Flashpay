@@ -26,6 +26,7 @@
 #include <microhttpd.h>
 #include "taler_json_lib.h"
 #include "taler_crypto_lib.h"
+#include <gnunet/gnunet_mhd_compat.h>
 
 
 /**
@@ -100,9 +101,9 @@ struct TEH_RequestHandler
      * @param args array of arguments, needs to be of length @e args_expected
      * @return MHD result code
      */
-    int (*get)(const struct TEH_RequestHandler *rh,
-               struct MHD_Connection *connection,
-               const char *const args[]);
+    MHD_RESULT (*get)(const struct TEH_RequestHandler *rh,
+                      struct MHD_Connection *connection,
+                      const char *const args[]);
 
 
     /**
@@ -115,10 +116,10 @@ struct TEH_RequestHandler
      * @param args array of arguments, needs to be of length @e args_expected
      * @return MHD result code
      */
-    int (*post)(const struct TEH_RequestHandler *rh,
-                struct MHD_Connection *connection,
-                const json_t *root,
-                const char *const args[]);
+    MHD_RESULT (*post)(const struct TEH_RequestHandler *rh,
+                       struct MHD_Connection *connection,
+                       const json_t *root,
+                       const char *const args[]);
 
   } handler;
 

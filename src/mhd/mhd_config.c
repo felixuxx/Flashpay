@@ -42,7 +42,7 @@
  * @param[out] unix_mode set to the mode to be used for @a unix_path
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
                         const char *section,
                         uint16_t *rport,
