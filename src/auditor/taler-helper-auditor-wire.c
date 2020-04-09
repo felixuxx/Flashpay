@@ -1024,7 +1024,7 @@ wire_out_cb (void *cls,
                                    "wtid", GNUNET_JSON_from_data_auto (wtid),
                                    "timestamp", TALER_ARL_json_from_time_abs (
                                      date),
-                                   "diagnostic", "recevier account mismatch",
+                                   "diagnostic", "receiver account mismatch",
                                    "account_section", wa->section_name));
       TALER_ARL_amount_add (&total_bad_amount_out_plus,
                             &total_bad_amount_out_plus,
