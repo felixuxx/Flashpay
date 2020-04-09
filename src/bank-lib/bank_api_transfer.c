@@ -91,8 +91,9 @@ TALER_BANK_prepare_transfer (
   size_t u_len = strlen (exchange_base_url) + 1;
   char *end;
 
-  if ( (d_len > (size_t) UINT32_MAX) ||
-       (u_len > (size_t) UINT32_MAX) )
+  if ( (d_len >= (size_t) GNUNET_MAX_MALLOC_CHECKED) ||
+       (u_len >= (size_t) GNUNET_MAX_MALLOC_CHECKED) ||
+       (d_len + u_len + sizeof (*wp) >= GNUNET_MAX_MALLOC_CHECKED) )
   {
     GNUNET_break (0); /* that's some long URL... */
     *buf = NULL;
