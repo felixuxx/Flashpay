@@ -509,6 +509,8 @@ TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
  *
  * @param exchange exchange to check keys for
  * @param force_download #GNUNET_YES to force download even if /keys is still valid
+ * @param pull_all_keys if #GNUNET_YES, then the exchange state is reset to #MHS_INIT,
+ *        and all denoms will be redownloaded.
  * @return until when the response is current, 0 if we are re-downloading
  */
 struct GNUNET_TIME_Absolute
