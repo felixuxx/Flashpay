@@ -850,22 +850,23 @@ struct TALER_EXCHANGE_RefundHandle;
  * @param cls closure
  * @param hr HTTP response data
  * @param sign_key exchange key used to sign @a obj, or NULL
+ * @param signature the actual signature, or NULL on error
  */
 typedef void
 (*TALER_EXCHANGE_RefundCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ExchangePublicKeyP *sign_key);
+  const struct TALER_ExchangePublicKeyP *sign_key,
+  const struct TALER_ExchangeSignatureP *signature);
 
 
 /**
- * Submit a refund request to the exchange and get the exchange's
- * response.  This API is used by a merchant.  Note that
- * while we return the response verbatim to the caller for further
- * processing, we do already verify that the response is well-formed
- * (i.e. that signatures included in the response are all valid).  If
- * the exchange's reply is not well-formed, we return an HTTP status code
- * of zero to @a cb.
+ * Submit a refund request to the exchange and get the exchange's response.
+ * This API is used by a merchant.  Note that while we return the response
+ * verbatim to the caller for further processing, we do already verify that
+ * the response is well-formed (i.e. that signatures included in the response
+ * are all valid).  If the exchange's reply is not well-formed, we return an
+ * HTTP status code of zero to @a cb.
  *
  * The @a exchange must be ready to operate (i.e.  have
  * finished processing the /keys reply).  If this check fails, we do
@@ -912,6 +913,8 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
  * The @a exchange must be ready to operate (i.e.  have
  * finished processing the /keys reply).  If this check fails, we do
  * NOT initiate the transaction with the exchange and instead return NULL.
+ *
+ * FIXME: We can probably DEPRECATE this API and only use #TALER_EXCHANGE_refund()!
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param amount the amount to be refunded; must be larger than the refund fee

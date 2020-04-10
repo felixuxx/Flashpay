@@ -84,17 +84,19 @@ struct TALER_EXCHANGE_RefundHandle
  * @param rh refund handle
  * @param json json reply with the signature
  * @param[out] exchange_pub set to the exchange's public key
+ * @param[out] exchange_sig set to the exchange's signature
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
 verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
                             const json_t *json,
-                            struct TALER_ExchangePublicKeyP *exchange_pub)
+                            struct TALER_ExchangePublicKeyP *exchange_pub,
+                            struct TALER_ExchangeSignatureP *exchange_sig)
+
 {
-  struct TALER_ExchangeSignatureP exchange_sig;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("sig", &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("sig", exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
     GNUNET_JSON_spec_end ()
   };
@@ -118,7 +120,7 @@ verify_refund_signature_ok (const struct TALER_EXCHANGE_RefundHandle *rh,
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND,
                                   &rh->depconf,
-                                  &exchange_sig.eddsa_signature,
+                                  &exchange_sig->eddsa_signature,
                                   &exchange_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
@@ -143,7 +145,9 @@ handle_refund_finished (void *cls,
 {
   struct TALER_EXCHANGE_RefundHandle *rh = cls;
   struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP *ep = NULL;
+  struct TALER_ExchangeSignatureP *es = NULL;
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .reply = j,
@@ -160,7 +164,8 @@ handle_refund_finished (void *cls,
     if (GNUNET_OK !=
         verify_refund_signature_ok (rh,
                                     j,
-                                    &exchange_pub))
+                                    &exchange_pub,
+                                    &exchange_sig))
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
@@ -169,6 +174,7 @@ handle_refund_finished (void *cls,
     else
     {
       ep = &exchange_pub;
+      es = &exchange_sig;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -227,7 +233,8 @@ handle_refund_finished (void *cls,
   }
   rh->cb (rh->cb_cls,
           &hr,
-          ep);
+          ep,
+          es);
   TALER_EXCHANGE_refund_cancel (rh);
 }
 

@@ -83,11 +83,13 @@ struct RefundState
  * @param hr HTTP response details
  * @param exchange_pub public key the exchange
  *        used for signing @a obj.
+ * @param exchange_sig actual signature confirming the refund
  */
 static void
 refund_cb (void *cls,
            const struct TALER_EXCHANGE_HttpResponse *hr,
-           const struct TALER_ExchangePublicKeyP *exchange_pub)
+           const struct TALER_ExchangePublicKeyP *exchange_pub,
+           const struct TALER_ExchangeSignatureP *exchange_sig)
 {
 
   struct RefundState *rs = cls;
