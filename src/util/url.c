@@ -296,7 +296,7 @@ TALER_url_absolute_raw_va (const char *proto,
 
   len += strlen (proto) + strlen ("://") + strlen (host);
   len += strlen (prefix) + strlen (path);
-  len += calculate_argument_length (args);
+  len += calculate_argument_length (args) + 1; /* 0-terminator */
 
   GNUNET_buffer_prealloc (&buf,
                           len);
