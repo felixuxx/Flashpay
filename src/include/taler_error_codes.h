@@ -1604,6 +1604,12 @@ enum TALER_ErrorCode
   TALER_EC_PROPOSAL_REPLY_MALFORMED = 2510,
 
   /**
+   * The merchant returned a malformed response. Error created client-
+   * side.
+   */
+  TALER_EC_REFUND_LOOKUP_INVALID_RESPONSE = 2600,
+
+  /**
    * The frontend gave an unknown order id to issue the refund to.
    */
   TALER_EC_REFUND_ORDER_ID_UNKNOWN = 2601,
@@ -1641,6 +1647,13 @@ enum TALER_ErrorCode
    * The backend failed to sign the refund request.
    */
   TALER_EC_PAY_REFUND_SIGNATURE_FAILED = 2606,
+
+  /**
+   * The merchant backend is not available of any applicable refund(s)
+   * for this order. Returned with an HTTP status of
+   * #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_REFUND_LOOKUP_NO_REFUND = 2607,
 
   /**
    * The backend knows the instance that was supposed to support the
