@@ -329,10 +329,10 @@ LDFLAGS=$LDFLAGS_SAVE
 LIBS=$LIBS_SAVE
 
 # check for libtalertwistertesting
-twistertesting=0
-AC_MSG_CHECKING([for talerwtistertesting])
+talertwister=0
+AC_MSG_CHECKING([for talertwister])
 AC_ARG_WITH([twister],
-            [AS_HELP_STRING([--with-twister=PFX], [base of libtalertwistertesting])],
+            [AS_HELP_STRING([--with-twister=PFX], [base of libtalertwister])],
             [AC_MSG_RESULT([given as $with_twister])],
             [AC_MSG_RESULT([not given])
              with_twister=yes])
@@ -341,14 +341,13 @@ AS_CASE([$with_twister],
         [no], [AC_MSG_WARN([no twister-testing will be compiled])],
         [LDFLAGS="-L$with_twister/lib $LDFLAGS"
          CPPFLAGS="-I$with_twister/include $CPPFLAGS"])
-AC_CHECK_LIB(talertwistertesting,TALER_TESTING_run_twister,
-  [AC_CHECK_HEADER([taler/taler_twister_testing_lib.h],[twistertesting=1],,
-                   [#ifdef HAVE_GNUNET_PLATFORM_H
-                      #include <gnunet/platform.h>
-                    #endif
-                    ])])
 
-AM_CONDITIONAL(HAVE_TWISTER, test x$twistertesting = x1)
+AC_CHECK_HEADERS([taler/taler_twister_service.h],
+ [AC_CHECK_LIB([talertwister], [TALER_TWISTER_connect], talertwister=1)],
+   [], [#ifdef HAVE_GNUNET_PLATFORM_H
+        #include <gnunet/platform.h>
+       #endif])
+AM_CONDITIONAL(HAVE_TWISTER, test x$talertwister = x1)
 
 # should developer logic be compiled (not-for-production code)?
 AC_MSG_CHECKING(whether to compile developer logic)
