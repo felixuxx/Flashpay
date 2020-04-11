@@ -121,6 +121,26 @@ purge_process (struct GNUNET_OS_Process *process)
 }
 
 
+/**
+ * Runs #TALER_TESTING_setup() using the configuration.
+ *
+ * @param cls unused
+ * @param cfg configuration to use
+ * @return status code
+ */
+static int
+setup_with_cfg (void *cls,
+                const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  (void) cls;
+  return TALER_TESTING_setup (&run,
+                              NULL,
+                              cfg,
+                              NULL,
+                              GNUNET_NO);
+}
+
+
 int
 main (int argc,
       char *const *argv)
@@ -196,11 +216,9 @@ main (int argc,
     }
   }
 
-  ret = TALER_TESTING_setup (&run,
-                             NULL,
-                             cfgfilename,
-                             NULL,
-                             GNUNET_NO);
+  ret = GNUNET_CONFIGURATION_parse_and_run (cfgfilename,
+                                            &setup_with_cfg,
+                                            NULL);
   purge_process (twisterd);
 
   if (GNUNET_NO == with_fakebank)
