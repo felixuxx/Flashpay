@@ -304,7 +304,6 @@ admin_add_incoming_run (void *cls,
     {
       char *section;
       char *keys;
-      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
       struct GNUNET_CONFIGURATION_Handle *cfg;
 
       GNUNET_assert (NULL != fts->config_filename);
@@ -336,21 +335,22 @@ admin_add_incoming_run (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      priv = GNUNET_CRYPTO_eddsa_key_create_from_file (keys);
-      GNUNET_free (keys);
-      if (NULL == priv)
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_key_from_file (keys,
+                                             GNUNET_NO,
+                                             &fts->reserve_priv.eddsa_priv))
       {
         GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                    section,
                                    "TIP_RESERVE_PRIV_FILENAME",
                                    "Failed to read private key");
         GNUNET_free (section);
+        GNUNET_free (keys);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      fts->reserve_priv.eddsa_priv = *priv;
+      GNUNET_free (keys);
       GNUNET_free (section);
-      GNUNET_free (priv);
       GNUNET_CONFIGURATION_destroy (cfg);
     }
     else

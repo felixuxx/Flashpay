@@ -186,7 +186,7 @@ main (int argc,
     GNUNET_GETOPT_option_verbose (&verbose),
     GNUNET_GETOPT_OPTION_END
   };
-  struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
   struct TALER_AuditorSignatureP *sigs;
   struct TALER_AuditorPublicKeyP apub;
   struct GNUNET_DISK_FileHandle *fh;
@@ -239,20 +239,17 @@ main (int argc,
              "Auditor URL not given in neither configuration nor command-line\n");
     return 1;
   }
-  if (GNUNET_YES !=
-      GNUNET_DISK_file_test (auditor_key_file))
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Auditor private key `%s' does not exist yet, creating it!\n",
-                auditor_key_file);
-  eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (auditor_key_file);
-  if (NULL == eddsa_priv)
+  if (GNUNET_SYSERR ==
+      GNUNET_CRYPTO_eddsa_key_from_file (auditor_key_file,
+                                         GNUNET_YES,
+                                         &eddsa_priv))
   {
     fprintf (stderr,
-             "Failed to initialize auditor key from file `%s'\n",
+             "Failed to initialize auditor private key from file `%s'\n",
              auditor_key_file);
     return 1;
   }
-  GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
+  GNUNET_CRYPTO_eddsa_key_get_public (&eddsa_priv,
                                       &apub.eddsa_pub);
   fh = GNUNET_DISK_file_open (exchange_request_file,
                               GNUNET_DISK_OPEN_READ,
@@ -263,7 +260,6 @@ main (int argc,
              "Failed to open file `%s': %s\n",
              exchange_request_file,
              strerror (errno));
-    GNUNET_free (eddsa_priv);
     return 1;
   }
   if (GNUNET_OK !=
@@ -275,7 +271,6 @@ main (int argc,
              exchange_request_file,
              strerror (errno));
     GNUNET_DISK_file_close (fh);
-    GNUNET_free (eddsa_priv);
     return 1;
   }
   if (0 != (in_size % sizeof (struct TALER_DenominationKeyValidityPS)))
@@ -284,7 +279,6 @@ main (int argc,
              "Input file size of file `%s' is invalid\n",
              exchange_request_file);
     GNUNET_DISK_file_close (fh);
-    GNUNET_free (eddsa_priv);
     return 1;
   }
   dki_len = in_size / sizeof (struct TALER_DenominationKeyValidityPS);
@@ -293,7 +287,6 @@ main (int argc,
     fprintf (stderr,
              "Failed to produce auditor signature, denomination list is empty.\n");
     GNUNET_DISK_file_close (fh);
-    GNUNET_free (eddsa_priv);
     return 2;
   }
   if (NULL ==
@@ -302,7 +295,6 @@ main (int argc,
     fprintf (stderr,
              "Failed to initialize auditor database plugin.\n");
     GNUNET_DISK_file_close (fh);
-    GNUNET_free (eddsa_priv);
     return 3;
   }
 
@@ -326,7 +318,6 @@ main (int argc,
     TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_DISK_file_close (fh);
     GNUNET_free (dki);
-    GNUNET_free (eddsa_priv);
     return 1;
   }
   GNUNET_DISK_file_close (fh);
@@ -350,7 +341,7 @@ main (int argc,
     kv.denom_hash = dk->denom_hash;
 
     /* Finally sign ... */
-    GNUNET_CRYPTO_eddsa_sign (eddsa_priv,
+    GNUNET_CRYPTO_eddsa_sign (&eddsa_priv,
                               &kv,
                               &sigs[i].eddsa_sig);
   }
@@ -362,7 +353,6 @@ main (int argc,
     TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_free (dki);
     GNUNET_free (sigs);
-    GNUNET_free (eddsa_priv);
     return 1;
   }
 
@@ -375,7 +365,6 @@ main (int argc,
     TALER_AUDITORDB_plugin_unload (adb);
     GNUNET_free (dki);
     GNUNET_free (sigs);
-    GNUNET_free (eddsa_priv);
     return 3;
   }
 
@@ -396,7 +385,6 @@ main (int argc,
       TALER_AUDITORDB_plugin_unload (adb);
       GNUNET_free (dki);
       GNUNET_free (sigs);
-      GNUNET_free (eddsa_priv);
       return 3;
     }
     for (unsigned int i = 0; i<dki_len; i++)
@@ -416,7 +404,6 @@ main (int argc,
         TALER_AUDITORDB_plugin_unload (adb);
         GNUNET_free (dki);
         GNUNET_free (sigs);
-        GNUNET_free (eddsa_priv);
         return 3;
       }
     }
@@ -443,7 +430,6 @@ main (int argc,
   }
   GNUNET_free (sigs);
   GNUNET_free (dki);
-  GNUNET_free (eddsa_priv);
   return 0;
 }
 

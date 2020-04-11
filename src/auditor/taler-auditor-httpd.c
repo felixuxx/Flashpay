@@ -479,7 +479,7 @@ auditor_serve_process_config (void)
   {
     /* Fall back to trying to read private key */
     char *auditor_key_file;
-    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+    struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
 
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_filename (cfg,
@@ -495,8 +495,10 @@ auditor_serve_process_config (void)
                                  "AUDITOR_PRIV_FILE");
       return GNUNET_SYSERR;
     }
-    eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (auditor_key_file);
-    if (NULL == eddsa_priv)
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_key_from_file (auditor_key_file,
+                                           GNUNET_NO,
+                                           &eddsa_priv))
     {
       /* Both failed, complain! */
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
@@ -509,9 +511,8 @@ auditor_serve_process_config (void)
       return 1;
     }
     GNUNET_free (auditor_key_file);
-    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&eddsa_priv,
                                         &auditor_pub.eddsa_pub);
-    GNUNET_free (eddsa_priv);
   }
   return GNUNET_OK;
 }

@@ -60,21 +60,24 @@ get_and_check_master_key (const struct GNUNET_CONFIGURATION_Handle *cfg,
                 "Exchange master private key `%s' does not exist yet, creating it!\n",
                 fn);
   {
-    struct GNUNET_CRYPTO_EddsaPrivateKey *eddsa_priv;
+    int ret;
 
-    eddsa_priv = GNUNET_CRYPTO_eddsa_key_create_from_file (fn);
-    if (NULL == eddsa_priv)
+    ret = GNUNET_CRYPTO_eddsa_key_from_file (fn,
+                                             GNUNET_YES,
+                                             &master_priv->eddsa_priv);
+    if (GNUNET_OK != ret)
     {
       fprintf (stderr,
-               "Failed to initialize master key from file `%s'\n",
-               fn);
+               "Failed to initialize master key from file `%s': %s\n",
+               fn,
+               (GNUNET_NO == ret)
+               ? "file exists"
+               : "could not create file");
       GNUNET_free (fn);
       return GNUNET_SYSERR;
     }
-    master_priv->eddsa_priv = *eddsa_priv;
-    GNUNET_CRYPTO_eddsa_key_get_public (eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&master_priv->eddsa_priv,
                                         &mpub);
-    GNUNET_free (eddsa_priv);
   }
 
   /* Check our key matches that in the configuration */
