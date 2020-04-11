@@ -581,7 +581,6 @@ TALER_TESTING_cmd_deposit (const char *label,
 {
   struct DepositState *ds;
   json_t *wire_details;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *merchant_priv;
 
   wire_details = TALER_TESTING_make_wire_details (target_account_payto);
   ds = GNUNET_new (struct DepositState);
@@ -591,9 +590,7 @@ TALER_TESTING_cmd_deposit (const char *label,
   ds->contract_terms = json_loads (contract_terms,
                                    JSON_REJECT_DUPLICATES,
                                    NULL);
-  merchant_priv = GNUNET_CRYPTO_eddsa_key_create ();
-  ds->merchant_priv.eddsa_priv = *merchant_priv;
-  GNUNET_free (merchant_priv);
+  GNUNET_CRYPTO_eddsa_key_create (&ds->merchant_priv.eddsa_priv);
   if (NULL == ds->contract_terms)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

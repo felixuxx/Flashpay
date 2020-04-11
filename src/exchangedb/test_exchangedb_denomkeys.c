@@ -114,7 +114,6 @@ main (int argc,
   void *enc;
   size_t enc_size;
   struct TALER_EXCHANGEDB_DenominationKey dki_read;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
   struct TALER_MasterPrivateKeyP master_priv;
   struct TALER_MasterPublicKeyP master_pub;
   void *enc_read;
@@ -136,11 +135,9 @@ main (int argc,
   tmpfile = NULL;
   dki.denom_priv.rsa_private_key = NULL;
   dki_read.denom_priv.rsa_private_key = NULL;
-  pk = GNUNET_CRYPTO_eddsa_key_create ();
-  master_priv.eddsa_priv = *pk;
-  GNUNET_CRYPTO_eddsa_key_get_public (pk,
+  GNUNET_CRYPTO_eddsa_key_create (&master_priv.eddsa_priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
                                       &master_pub.eddsa_pub);
-  GNUNET_free (pk);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &dki.issue,
                               sizeof (struct

@@ -32,10 +32,8 @@
 static int
 test_high_level (void)
 {
-  struct GNUNET_CRYPTO_EddsaPrivateKey *pk;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct GNUNET_CRYPTO_EcdhePrivateKey *pk2;
   struct TALER_TransferPrivateKeyP trans_priv;
   struct TALER_TransferPublicKeyP trans_pub;
   struct TALER_TransferSecretP secret;
@@ -43,14 +41,10 @@ test_high_level (void)
   struct TALER_PlanchetSecretsP fc1;
   struct TALER_PlanchetSecretsP fc2;
 
-  pk = GNUNET_CRYPTO_eddsa_key_create ();
-  coin_priv.eddsa_priv = *pk;
-  GNUNET_free (pk);
+  GNUNET_CRYPTO_eddsa_key_create (&coin_priv.eddsa_priv);
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
-  pk2 = GNUNET_CRYPTO_ecdhe_key_create ();
-  trans_priv.ecdhe_priv = *pk2;
-  GNUNET_free (pk2);
+  GNUNET_CRYPTO_ecdhe_key_create (&trans_priv.ecdhe_priv);
   GNUNET_CRYPTO_ecdhe_key_get_public (&trans_priv.ecdhe_priv,
                                       &trans_pub.ecdhe_pub);
   TALER_link_derive_transfer_secret (&coin_priv,

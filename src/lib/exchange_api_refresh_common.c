@@ -565,12 +565,8 @@ TALER_EXCHANGE_refresh_prepare (
   /* build up coins */
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
   {
-    struct GNUNET_CRYPTO_EcdhePrivateKey *tpk;
-
-    tpk = GNUNET_CRYPTO_ecdhe_key_create ();
-    md.melted_coin.transfer_priv[i].ecdhe_priv = *tpk;
-    GNUNET_free (tpk);
-
+    GNUNET_CRYPTO_ecdhe_key_create (
+      &md.melted_coin.transfer_priv[i].ecdhe_priv);
     GNUNET_CRYPTO_ecdhe_key_get_public (
       &md.melted_coin.transfer_priv[i].ecdhe_priv,
       &rce[i].transfer_pub.ecdhe_pub);

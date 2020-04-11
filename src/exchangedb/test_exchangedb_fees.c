@@ -53,7 +53,7 @@ main (int argc,
   struct TALER_EXCHANGEDB_AggregateFees *af;
   struct TALER_EXCHANGEDB_AggregateFees *n;
   struct TALER_MasterPublicKeyP master_pub;
-  struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
+  struct GNUNET_CRYPTO_EddsaPrivateKey priv;
   char *tmpdir;
   char *tmpfile = NULL;
   int ret;
@@ -67,8 +67,8 @@ main (int argc,
   tmpdir = GNUNET_DISK_mkdtemp ("test_exchangedb_fees");
   if (NULL == tmpdir)
     return 77; /* skip test */
-  priv = GNUNET_CRYPTO_eddsa_key_create ();
-  GNUNET_CRYPTO_eddsa_key_get_public (priv,
+  GNUNET_CRYPTO_eddsa_key_create (&priv);
+  GNUNET_CRYPTO_eddsa_key_get_public (&priv,
                                       &master_pub.eddsa_pub);
   cfg = GNUNET_CONFIGURATION_create ();
   GNUNET_CONFIGURATION_set_value_string (cfg,
@@ -91,7 +91,7 @@ main (int argc,
                  TALER_string_to_amount ("EUR:1.0",
                                          &af->closing_fee));
   sign_af (af,
-           priv);
+           &priv);
   n = GNUNET_new (struct TALER_EXCHANGEDB_AggregateFees);
   n->start_date = GNUNET_TIME_year_to_time (year + 1);
   n->end_date = GNUNET_TIME_year_to_time (year + 2);
@@ -102,7 +102,7 @@ main (int argc,
                  TALER_string_to_amount ("EUR:0.1",
                                          &n->closing_fee));
   sign_af (n,
-           priv);
+           &priv);
   af->next = n;
 
   if (GNUNET_OK !=
@@ -148,7 +148,6 @@ main (int argc,
 
   (void) GNUNET_DISK_directory_remove (tmpdir);
   GNUNET_free (tmpdir);
-  GNUNET_free (priv);
   GNUNET_CONFIGURATION_destroy (cfg);
   return ret;
 }

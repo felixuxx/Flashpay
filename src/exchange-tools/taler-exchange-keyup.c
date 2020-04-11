@@ -481,12 +481,9 @@ create_signkey_issue_priv (
   struct GNUNET_TIME_Absolute end,
   struct TALER_EXCHANGEDB_PrivateSigningKeyInformationP *pi)
 {
-  struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
   struct TALER_ExchangeSigningKeyValidityPS *issue = &pi->issue;
 
-  priv = GNUNET_CRYPTO_eddsa_key_create ();
-  pi->signkey_priv.eddsa_priv = *priv;
-  GNUNET_free (priv);
+  GNUNET_CRYPTO_eddsa_key_create (&pi->signkey_priv.eddsa_priv);
   issue->master_public_key = master_public_key;
   issue->start = GNUNET_TIME_absolute_hton (start);
   issue->expire = GNUNET_TIME_absolute_hton (GNUNET_TIME_absolute_add (start,

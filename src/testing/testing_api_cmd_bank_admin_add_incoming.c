@@ -357,11 +357,7 @@ admin_add_incoming_run (void *cls,
     {
       /* No referenced reserve, no instance to take priv
        * from, no explicit subject given: create new key! */
-      struct GNUNET_CRYPTO_EddsaPrivateKey *priv;
-
-      priv = GNUNET_CRYPTO_eddsa_key_create ();
-      fts->reserve_priv.eddsa_priv = *priv;
-      GNUNET_free (priv);
+      GNUNET_CRYPTO_eddsa_key_create (&fts->reserve_priv.eddsa_priv);
     }
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
