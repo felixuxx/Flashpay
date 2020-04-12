@@ -1250,9 +1250,44 @@ TALER_EXCHANGE_withdraw (
 
 
 /**
+ * Cancel a withdraw status request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param wh the withdraw handle
+ */
+void
+TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh);
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * withdraw request to a exchange without the (un)blinding factor.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ * @param blind_sig blind signature over the coin, NULL on error
+ */
+typedef void
+(*TALER_EXCHANGE_Withdraw2Callback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr,
+  const struct GNUNET_CRYPTO_RsaSignature *blind_sig);
+
+
+/**
+ * @brief A /reserves/$RESERVE_PUB/withdraw Handle, 2nd variant.
+ * This variant does not do the blinding/unblinding and only
+ * fetches the blind signature on the already blinded planchet.
+ * Used internally by the `struct TALER_EXCHANGE_WithdrawHandle`
+ * implementation as well as for the tipping logic of merchants.
+ */
+struct TALER_EXCHANGE_Withdraw2Handle;
+
+
+/**
  * Withdraw a coin from the exchange using a /reserves/$RESERVE_PUB/withdraw
- * request.  This API is typically used by a wallet to withdraw a tip
- * where the reserve's signature was created by the merchant already.
+ * request.  This API is typically used by a merchant to withdraw a tip
+ * where the blinding factor is unknown to the merchant.
  *
  * Note that to ensure that no money is lost in case of hardware
  * failures, the caller must have committed (most of) the arguments to
@@ -1260,26 +1295,20 @@ TALER_EXCHANGE_withdraw (
  * same arguments in case of failures.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param pk kind of coin to create
- * @param reserve_sig signature from the reserve authorizing the withdrawal
- * @param reserve_pub public key of the reserve to withdraw from
- * @param ps secrets of the planchet
- *        caller must have committed this value to disk before the call (with @a pk)
+ * @param pd planchet details of the planchet to withdraw
+ * @param reserve_priv private key of the reserve to withdraw from
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
  *         In this case, the callback is not called.
  */
-struct TALER_EXCHANGE_WithdrawHandle *
-TALER_EXCHANGE_withdraw2 (
-  struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_EXCHANGE_DenomPublicKey *pk,
-  const struct TALER_ReserveSignatureP *reserve_sig,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_PlanchetSecretsP *ps,
-  TALER_EXCHANGE_WithdrawCallback res_cb,
-  void *res_cb_cls);
+struct TALER_EXCHANGE_Withdraw2Handle *
+TALER_EXCHANGE_withdraw2 (struct TALER_EXCHANGE_Handle *exchange,
+                          const struct TALER_PlanchetDetail *pd,
+                          const struct TALER_ReservePrivateKeyP *reserve_priv,
+                          TALER_EXCHANGE_Withdraw2Callback res_cb,
+                          void *res_cb_cls);
 
 
 /**
@@ -1289,7 +1318,7 @@ TALER_EXCHANGE_withdraw2 (
  * @param wh the withdraw handle
  */
 void
-TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh);
+TALER_EXCHANGE_withdraw2_cancel (struct TALER_EXCHANGE_Withdraw2Handle *wh);
 
 
 /* ********************* /refresh/melt+reveal ***************************** */

@@ -417,6 +417,12 @@ enum TALER_ErrorCode
   TALER_EC_WITHDRAW_REPLY_MALFORMED = 1118,
 
   /**
+   * The client failed to unblind the blind signature. This error is not
+   * used in the protocol but created client-side.
+   */
+  TALER_EC_WITHDRAW_UNBLIND_FAILURE = 1119,
+
+  /**
    * The exchange failed to obtain the transaction history of the given
    * reserve from the database. This response is provided with HTTP
    * status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
@@ -1203,14 +1209,14 @@ enum TALER_ErrorCode
    * insufficient to satisfy the required amount for the contract.  The
    * client should revisit the logic used to calculate fees it must
    * cover. This response is provided with HTTP status code
-   * #MHD_HTTP_BAD_REQUEST.
+   * #MHD_HTTP_ACCEPTED.
    */
   TALER_EC_PAY_PAYMENT_INSUFFICIENT_DUE_TO_FEES = 2108,
 
   /**
    * Even if we do not consider deposit and wire fees, the payment is
    * insufficient to satisfy the required amount for the contract.  This
-   * response is provided with HTTP status code #MHD_HTTP_BAD_REQUEST.
+   * response is provided with HTTP status code #MHD_HTTP_ACCEPTED.
    */
   TALER_EC_PAY_PAYMENT_INSUFFICIENT = 2109,
 
