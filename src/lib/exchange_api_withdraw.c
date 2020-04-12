@@ -175,7 +175,7 @@ TALER_EXCHANGE_withdraw (
                               &wh->c_hash,
                               &pd))
   {
-    GNUNET_break_op (0);
+    GNUNET_break (0);
     GNUNET_free (wh);
     return NULL;
   }

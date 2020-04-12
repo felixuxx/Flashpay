@@ -1793,6 +1793,12 @@ enum TALER_ErrorCode
   TALER_EC_TIP_QUERY_INSTANCE_DOES_NOT_TIP = 2719,
 
   /**
+   * The tip id is unknown.  This could happen if the tip id is wrong or
+   * the tip authorization expired.
+   */
+  TALER_EC_TIP_QUERY_TIP_ID_UNKNOWN = 2720,
+
+  /**
    * The backend had trouble accessing the database to persist
    * information about enabling tips. Returned with an HTTP status code
    * of internal error.
@@ -1834,14 +1840,14 @@ enum TALER_ErrorCode
 
   /**
    * We failed to contact the exchange to obtain the denomination keys.
-   * Returned with a response code "failed dependency" (424).
+   * Returned with a response code #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_PICKUP_EXCHANGE_DOWN = 2805,
 
   /**
    * We contacted the exchange to obtain any denomination keys, but got
-   * no valid keys. Returned with a response code "failed dependency"
-   * (424).
+   * no valid keys. Returned with a response code
+   * #MHD_HTTP_FAILED_DEPENDENCY.
    */
   TALER_EC_TIP_PICKUP_EXCHANGE_LACKED_KEYS = 2806,
 
@@ -1854,21 +1860,33 @@ enum TALER_ErrorCode
 
   /**
    * We encountered an arithmetic issue totaling up the amount to
-   * withdraw. Returned with a response code of "bad request".
+   * withdraw. Returned with a response code of #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_TIP_PICKUP_EXCHANGE_AMOUNT_OVERFLOW = 2808,
 
   /**
    * The number of planchets specified exceeded the limit. Returned with
-   * a response code of "bad request".
+   * a response code of #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_TIP_PICKUP_EXCHANGE_TOO_MANY_PLANCHETS = 2809,
 
   /**
-   * The tip id is unknown.  This could happen if the tip id is wrong or
-   * the tip authorization expired.
+   * The merchant failed to initialize the withdraw operaiton. Returned
+   * with a response code of #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
-  TALER_EC_TIP_QUERY_TIP_ID_UNKNOWN = 2810,
+  TALER_EC_TIP_PICKUP_WITHDRAW_FAILED = 2810,
+
+  /**
+   * The merchant failed to initialize the withdraw operaiton. Returned
+   * with a response code of #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TIP_PICKUP_WITHDRAW_FAILED_AT_EXCHANGE = 2811,
+
+  /**
+   * The client failed to unblind the signature returned by the
+   * merchant. Generated client-side.
+   */
+  TALER_EC_TIP_PICKUP_UNBLIND_FAILURE = 2812,
 
   /**
    * We failed to contract terms from our merchant database. The
