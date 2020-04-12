@@ -109,54 +109,43 @@ run (void *cls,
    * response from a refresh-reveal operation.
    */
   struct TALER_TESTING_Command refresh_409_conflict[] = {
-    CMD_TRANSFER_TO_EXCHANGE
-      ("refresh-create-reserve",
-      "EUR:5.01"),
+    CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve",
+                              "EUR:5.01"),
     /**
      * Make previous command effective.
      */
-    CMD_EXEC_WIREWATCH
-      ("wirewatch"),
+    CMD_EXEC_WIREWATCH ("wirewatch"),
     /**
      * Withdraw EUR:5.
      */
-    TALER_TESTING_cmd_withdraw_amount
-      ("refresh-withdraw-coin",
-      "refresh-create-reserve",
-      "EUR:5",
-      MHD_HTTP_OK),
-
-    TALER_TESTING_cmd_deposit
-      ("refresh-deposit-partial",
-      "refresh-withdraw-coin",
-      0,
-      bc.user42_payto,
-      "{\"items\":[{\"name\":\"ice cream\",\
+    TALER_TESTING_cmd_withdraw_amount ("refresh-withdraw-coin",
+                                       "refresh-create-reserve",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit ("refresh-deposit-partial",
+                               "refresh-withdraw-coin",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\
                      \"value\":\"EUR:1\"}]}",
-      GNUNET_TIME_UNIT_ZERO,
-      "EUR:1",
-      MHD_HTTP_OK),
-
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:1",
+                               MHD_HTTP_OK),
     /**
      * Melt the rest of the coin's value
      * (EUR:4.00 = 3x EUR:1.03 + 7x EUR:0.13) */
-    TALER_TESTING_cmd_melt
-      ("refresh-melt",
-      "refresh-withdraw-coin",
-      MHD_HTTP_OK,
-      NULL),
+    TALER_TESTING_cmd_melt ("refresh-melt",
+                            "refresh-withdraw-coin",
+                            MHD_HTTP_OK,
+                            NULL),
     /* Trigger 409 Conflict.  */
-    TALER_TESTING_cmd_flip_upload
-      ("flip-upload",
-      CONFIG_FILE,
-      "transfer_privs.0"),
-    TALER_TESTING_cmd_refresh_reveal
-      ("refresh-(flipped-)reveal",
-      "refresh-melt",
-      MHD_HTTP_CONFLICT),
-
+    TALER_TESTING_cmd_flip_upload ("flip-upload",
+                                   CONFIG_FILE,
+                                   "transfer_privs.0"),
+    TALER_TESTING_cmd_refresh_reveal ("refresh-(flipped-)reveal",
+                                      "refresh-melt",
+                                      MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_end ()
-
   };
 
 
@@ -165,85 +154,71 @@ run (void *cls,
    * so it may be better to move those into the "main"
    * lib test suite.
    */struct TALER_TESTING_Command refund[] = {
-
-    CMD_TRANSFER_TO_EXCHANGE
-      ("create-reserve-r1",
-      "EUR:5.01"),
-    CMD_EXEC_WIREWATCH
-      ("wirewatch-r1"),
-    TALER_TESTING_cmd_withdraw_amount
-      ("withdraw-coin-r1",
-      "create-reserve-r1",
-      "EUR:5",
-      MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit
-      ("deposit-refund-1",
-      "withdraw-coin-r1",
-      0,
-      bc.user42_payto,
-      "{\"items\":[{\"name\":\"ice cream\","
-      "\"value\":\"EUR:5\"}]}",
-      GNUNET_TIME_UNIT_MINUTES,
-      "EUR:5",
-      MHD_HTTP_OK),
-    TALER_TESTING_cmd_refund
-      ("refund-currency-mismatch",
-      MHD_HTTP_PRECONDITION_FAILED,
-      "USD:5",
-      "USD:0.01",
-      "deposit-refund-1"),
-    TALER_TESTING_cmd_refund
-      ("refund-fee-above-amount",
-      MHD_HTTP_BAD_REQUEST,
-      "EUR:5",
-      "EUR:10",
-      "deposit-refund-1"),
-    TALER_TESTING_cmd_flip_upload
-      ("flip-upload",
-      CONFIG_FILE,
-      "merchant_sig"),
-    TALER_TESTING_cmd_refund
-      ("refund-bad-sig",
-      MHD_HTTP_FORBIDDEN,
-      "EUR:5",
-      "EUR:0.01",
-      "deposit-refund-1"),
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r1",
+                              "EUR:5.01"),
+    CMD_EXEC_WIREWATCH ("wirewatch-r1"),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r1",
+                                       "create-reserve-r1",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_deposit ("deposit-refund-1",
+                               "withdraw-coin-r1",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\","
+                               "\"value\":\"EUR:5\"}]}",
+                               GNUNET_TIME_UNIT_MINUTES,
+                               "EUR:5",
+                               MHD_HTTP_OK),
+    TALER_TESTING_cmd_refund ("refund-currency-mismatch",
+                              MHD_HTTP_BAD_REQUEST,
+                              "USD:5",
+                              "USD:0.01",
+                              "deposit-refund-1"),
+    TALER_TESTING_cmd_refund ("refund-fee-above-amount",
+                              MHD_HTTP_BAD_REQUEST,
+                              "EUR:5",
+                              "EUR:10",
+                              "deposit-refund-1"),
+    TALER_TESTING_cmd_flip_upload ("flip-upload",
+                                   CONFIG_FILE,
+                                   "merchant_sig"),
+    TALER_TESTING_cmd_refund ("refund-bad-sig",
+                              MHD_HTTP_FORBIDDEN,
+                              "EUR:5",
+                              "EUR:0.01",
+                              "deposit-refund-1"),
 
     /* This next deposit CMD is only used to provide a
      * good merchant signature to the next (failing) refund
      * operations.  */
-
-    TALER_TESTING_cmd_deposit
-      ("deposit-refund-to-fail",
-      "withdraw-coin-r1",
-      0,  /* coin index.  */
-      bc.user42_payto,
-      /* This parameter will make any comparison about
-         h_contract_terms fail, when /refund will be handled.
-         So in other words, this is h_contract mismatch.  */
-      "{\"items\":[{\"name\":\"ice skate\","
-      "\"value\":\"EUR:5\"}]}",
-      GNUNET_TIME_UNIT_MINUTES,
-      "EUR:5",
-      MHD_HTTP_CONFLICT),
-    TALER_TESTING_cmd_refund
-      ("refund-deposit-not-found",
-      MHD_HTTP_NOT_FOUND,
-      "EUR:5",
-      "EUR:0.01",
-      "deposit-refund-to-fail"),
-    TALER_TESTING_cmd_refund
-      ("refund-insufficient-funds",
-      MHD_HTTP_PRECONDITION_FAILED,
-      "EUR:50",
-      "EUR:0.01",
-      "deposit-refund-1"),
-    TALER_TESTING_cmd_refund
-      ("refund-fee-too-low",
-      MHD_HTTP_BAD_REQUEST,
-      "EUR:5",
-      "EUR:0.000001",
-      "deposit-refund-1"),
+    TALER_TESTING_cmd_deposit ("deposit-refund-to-fail",
+                               "withdraw-coin-r1",
+                               0, /* coin index.  */
+                               bc.user42_payto,
+                               /* This parameter will make any comparison about
+                                  h_contract_terms fail, when /refund will be handled.
+                                  So in other words, this is h_contract mismatch.  */
+                               "{\"items\":[{\"name\":\"ice skate\","
+                               "\"value\":\"EUR:5\"}]}",
+                               GNUNET_TIME_UNIT_MINUTES,
+                               "EUR:5",
+                               MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_refund ("refund-deposit-not-found",
+                              MHD_HTTP_NOT_FOUND,
+                              "EUR:5",
+                              "EUR:0.01",
+                              "deposit-refund-to-fail"),
+    TALER_TESTING_cmd_refund ("refund-insufficient-funds",
+                              MHD_HTTP_PRECONDITION_FAILED,
+                              "EUR:50",
+                              "EUR:0.01",
+                              "deposit-refund-1"),
+    TALER_TESTING_cmd_refund ("refund-fee-too-low",
+                              MHD_HTTP_BAD_REQUEST,
+                              "EUR:5",
+                              "EUR:0.000001",
+                              "deposit-refund-1"),
     TALER_TESTING_cmd_end ()
   };
 
