@@ -65,7 +65,7 @@ get_and_check_master_key (const struct GNUNET_CONFIGURATION_Handle *cfg,
     ret = GNUNET_CRYPTO_eddsa_key_from_file (fn,
                                              GNUNET_YES,
                                              &master_priv->eddsa_priv);
-    if (GNUNET_OK != ret)
+    if (GNUNET_SYSERR == ret)
     {
       fprintf (stderr,
                "Failed to initialize master key from file `%s': %s\n",
