@@ -204,7 +204,7 @@ handle_refresh_reveal_finished (void *cls,
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .reply = j,
-    .http_status = MHD_HTTP_OK
+    .http_status = response_code
   };
 
   rrh->job = NULL;
