@@ -361,6 +361,7 @@ TALER_EXCHANGE_refreshes_reveal (
   {
     struct GNUNET_HashCode denom_hash;
     struct TALER_PlanchetDetail pd;
+    struct GNUNET_HashCode c_hash;
 
     GNUNET_CRYPTO_rsa_public_key_hash (md->fresh_pks[i].rsa_public_key,
                                        &denom_hash);
@@ -372,6 +373,7 @@ TALER_EXCHANGE_refreshes_reveal (
     if (GNUNET_OK !=
         TALER_planchet_prepare (&md->fresh_pks[i],
                                 &md->fresh_coins[noreveal_index][i],
+                                &c_hash,
                                 &pd))
     {
       /* This should have been noticed during the preparation stage. */

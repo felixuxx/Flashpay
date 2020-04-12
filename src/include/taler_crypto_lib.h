@@ -446,13 +446,6 @@ struct TALER_PlanchetDetail
   struct GNUNET_HashCode denom_pub_hash;
 
   /**
-   * Hash of the coin's public key.  Kept around so we do not need to
-   * compute it again.  Can be recomputed by hashing the public key
-   * of @a coin_priv if storage is at a premium.
-   */
-  struct GNUNET_HashCode c_hash;
-
-  /**
    * Blinded coin (see GNUNET_CRYPTO_rsa_blind()).  Note: is malloc()'ed!
    */
   void *coin_ev;
@@ -589,6 +582,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps);
  *
  * @param dk denomination key for the coin to be created
  * @param ps secret planchet internals (for #TALER_planchet_to_coin)
+ * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
  *               other withdraw operations
  * @return #GNUNET_OK on success
@@ -596,6 +590,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps);
 int
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
+                        struct GNUNET_HashCode *c_hash,
                         struct TALER_PlanchetDetail *pd);
 
 

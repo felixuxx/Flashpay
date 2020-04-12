@@ -381,6 +381,7 @@ handle_reserve_withdraw_finished (void *cls,
  * @param ps secrets of the planchet
  *        caller must have committed this value to disk before the call (with @a pk)
  * @param pd planchet details matching @a ps
+ * @param c_hash hash over the coin's public key
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
  * @return NULL
@@ -394,6 +395,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            const struct TALER_PlanchetSecretsP *ps,
                            const struct TALER_PlanchetDetail *pd,
+                           const struct GNUNET_HashCode *c_hash,
                            TALER_EXCHANGE_WithdrawCallback res_cb,
                            void *res_cb_cls)
 {
@@ -427,7 +429,7 @@ reserve_withdraw_internal (struct TALER_EXCHANGE_Handle *exchange,
   wh->pk.key.rsa_public_key
     = GNUNET_CRYPTO_rsa_public_key_dup (pk->key.rsa_public_key);
   wh->reserve_pub = *reserve_pub;
-  wh->c_hash = pd->c_hash;
+  wh->c_hash = *c_hash;
   GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
                                      &h_denom_pub);
   withdraw_obj = json_pack ("{s:o, s:o," /* denom_pub_hash and coin_ev */
@@ -510,6 +512,7 @@ TALER_EXCHANGE_withdraw (
   struct TALER_WithdrawRequestPS req;
   struct TALER_PlanchetDetail pd;
   struct TALER_EXCHANGE_WithdrawHandle *wh;
+  struct GNUNET_HashCode c_hash;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &req.reserve_pub.eddsa_pub);
@@ -531,6 +534,7 @@ TALER_EXCHANGE_withdraw (
   if (GNUNET_OK !=
       TALER_planchet_prepare (&pk->key,
                               ps,
+                              &c_hash,
                               &pd))
   {
     GNUNET_break_op (0);
@@ -549,6 +553,7 @@ TALER_EXCHANGE_withdraw (
                                   &req.reserve_pub,
                                   ps,
                                   &pd,
+                                  &c_hash,
                                   res_cb,
                                   res_cb_cls);
   GNUNET_free (pd.coin_ev);
@@ -589,11 +594,13 @@ TALER_EXCHANGE_withdraw2 (
   void *res_cb_cls)
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh;
+  struct GNUNET_HashCode c_hash;
   struct TALER_PlanchetDetail pd;
 
   if (GNUNET_OK !=
       TALER_planchet_prepare (&pk->key,
                               ps,
+                              &c_hash,
                               &pd))
   {
     GNUNET_break_op (0);
@@ -605,6 +612,7 @@ TALER_EXCHANGE_withdraw2 (
                                   reserve_pub,
                                   ps,
                                   &pd,
+                                  &c_hash,
                                   res_cb,
                                   res_cb_cls);
   GNUNET_free (pd.coin_ev);

@@ -128,18 +128,21 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                  rpub);
   /* verify link_sig */
   {
-    struct TALER_LinkDataPS ldp;
     struct TALER_PlanchetDetail pd;
+    struct GNUNET_HashCode c_hash;
+    struct TALER_LinkDataPS ldp = {
+      .purpose.size = htonl (sizeof (ldp)),
+      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
+      .transfer_pub = *trans_pub
+    };
 
-    ldp.purpose.size = htonl (sizeof (ldp));
-    ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &ldp.old_coin_pub.eddsa_pub);
-    ldp.transfer_pub = *trans_pub;
     pub->rsa_public_key = rpub;
     if (GNUNET_OK !=
         TALER_planchet_prepare (pub,
                                 &fc,
+                                &c_hash,
                                 &pd))
     {
       GNUNET_break (0);

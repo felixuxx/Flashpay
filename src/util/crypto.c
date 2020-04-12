@@ -226,6 +226,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
  *
  * @param dk denomination key for the coin to be created
  * @param ps secret planchet internals (for #TALER_planchet_to_coin)
+ * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
  *               other withdraw operations
  * @return #GNUNET_OK on success
@@ -233,6 +234,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
 int
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
+                        struct GNUNET_HashCode *c_hash,
                         struct TALER_PlanchetDetail *pd)
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -241,9 +243,9 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                                       &coin_pub.eddsa_pub);
   GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &pd->c_hash);
+                      c_hash);
   if (GNUNET_YES !=
-      GNUNET_CRYPTO_rsa_blind (&pd->c_hash,
+      GNUNET_CRYPTO_rsa_blind (c_hash,
                                &ps->blinding_key.bks,
                                dk->rsa_public_key,
                                &pd->coin_ev,

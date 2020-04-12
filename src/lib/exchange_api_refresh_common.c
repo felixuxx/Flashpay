@@ -582,6 +582,7 @@ TALER_EXCHANGE_refresh_prepare (
       struct TALER_PlanchetSecretsP *fc = &md.fresh_coins[i][j];
       struct TALER_RefreshCoinData *rcd = &rce[i].new_coins[j];
       struct TALER_PlanchetDetail pd;
+      struct GNUNET_HashCode c_hash;
 
       TALER_planchet_setup_refresh (&trans_sec[i],
                                     j,
@@ -589,6 +590,7 @@ TALER_EXCHANGE_refresh_prepare (
       if (GNUNET_OK !=
           TALER_planchet_prepare (&md.fresh_pks[j],
                                   fc,
+                                  &c_hash,
                                   &pd))
       {
         GNUNET_break_op (0);

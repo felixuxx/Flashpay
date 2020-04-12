@@ -365,6 +365,7 @@ refreshes_reveal_transaction (void *cls,
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
           struct TALER_PlanchetSecretsP ps;
           struct TALER_PlanchetDetail pd;
+          struct GNUNET_HashCode c_hash;
 
           rcd->dk = &rctx->dkis[j]->denom_pub;
           TALER_planchet_setup_refresh (&ts,
@@ -373,6 +374,7 @@ refreshes_reveal_transaction (void *cls,
           GNUNET_assert (GNUNET_OK ==
                          TALER_planchet_prepare (rcd->dk,
                                                  &ps,
+                                                 &c_hash,
                                                  &pd));
           rcd->coin_ev = pd.coin_ev;
           rcd->coin_ev_size = pd.coin_ev_size;
