@@ -160,6 +160,14 @@ test_auditor_api_version_LDADD = \
   -lgnunetutil \
   -ljansson
 
+test_bank_api_with_nexus_SOURCES = \
+  test_bank_api.c
+test_bank_api_with_nexus_LDADD = \
+  libtalertesting.la \
+  -ltalerexchange \
+  -lgnunetutil \
+  $(top_builddir)/src/bank-lib/libtalerbank.la
+
 test_bank_api_with_fakebank_SOURCES = \
   test_bank_api.c
 test_bank_api_with_fakebank_LDADD = \
