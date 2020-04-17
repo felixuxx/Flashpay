@@ -452,8 +452,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                          TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
                                          "ub_sig");
     }
-    TALER_amount_ntoh (&deposit.deposit_fee,
-                       &dki->issue.properties.fee_deposit);
     TALER_amount_ntoh (&dc.value,
                        &dki->issue.properties.value);
     TEH_KS_release (key_state);
