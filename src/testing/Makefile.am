@@ -118,6 +118,7 @@ check_PROGRAMS = \
   test_auditor_api_version \
   test_bank_api_with_fakebank \
   test_bank_api_with_pybank \
+  test_bank_api_with_nexus \
   test_exchange_api \
   test_exchange_api_keys_cherry_picking \
   test_exchange_api_revocation \

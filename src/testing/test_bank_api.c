@@ -151,9 +151,10 @@ main (int argc,
   GNUNET_log_setup ("test-bank-api",
                     "DEBUG",
                     NULL);
-  
-  if (GNUNET_YES == TALER_TESTING_has_in_name (argv[0],
-                                               "_with_fakebank"))
+
+  with_fakebank = TALER_TESTING_has_in_name (argv[0],
+                                             "_with_fakebank");
+  if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
     cfgfile = CONFIG_FILE_FAKEBANK;
@@ -210,7 +211,7 @@ main (int argc,
                             SIGKILL);
     GNUNET_OS_process_wait (bankd);
     GNUNET_OS_process_destroy (bankd);
-    return 99;
+    return 0;
   }
   else
   {
