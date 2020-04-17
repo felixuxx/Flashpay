@@ -90,6 +90,7 @@ test_planchets (void)
   struct TALER_PlanchetDetail pd;
   struct GNUNET_CRYPTO_RsaSignature *blind_sig;
   struct TALER_FreshCoin coin;
+  struct GNUNET_HashCode c_hash;
 
   dk_priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (1024);
   dk_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
@@ -98,6 +99,7 @@ test_planchets (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
                                          &ps,
+                                         &c_hash,
                                          &pd));
   blind_sig = GNUNET_CRYPTO_rsa_sign_blinded (dk_priv.rsa_private_key,
                                               pd.coin_ev,
@@ -107,7 +109,7 @@ test_planchets (void)
                  TALER_planchet_to_coin (&dk_pub,
                                          blind_sig,
                                          &ps,
-                                         &pd.c_hash,
+                                         &c_hash,
                                          &coin));
   GNUNET_CRYPTO_rsa_signature_free (blind_sig);
   GNUNET_CRYPTO_rsa_signature_free (coin.sig.rsa_signature);
