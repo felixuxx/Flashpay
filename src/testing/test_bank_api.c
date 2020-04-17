@@ -35,6 +35,7 @@
 
 #define CONFIG_FILE_FAKEBANK "test_bank_api_fakebank.conf"
 #define CONFIG_FILE_PYBANK "test_bank_api_pybank.conf"
+#define CONFIG_FILE_NEXUS "test_bank_api_nexus.conf"
 
 /**
  * Bank configuration data.
@@ -141,8 +142,8 @@ int
 main (int argc,
       char *const *argv)
 {
-  const char *cfgfilename;
   int rv;
+  const char *cfgfile;
 
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
@@ -150,12 +151,13 @@ main (int argc,
   GNUNET_log_setup ("test-bank-api",
                     "DEBUG",
                     NULL);
+
   with_fakebank = TALER_TESTING_has_in_name (argv[0],
                                              "_with_fakebank");
   if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
-    cfgfilename = CONFIG_FILE_FAKEBANK;
+    cfgfile = CONFIG_FILE_FAKEBANK;
     if (GNUNET_OK !=
         TALER_TESTING_prepare_fakebank (CONFIG_FILE_FAKEBANK,
                                         "exchange-account-2",
@@ -165,10 +167,11 @@ main (int argc,
       return 77;
     }
   }
-  else
+  else if (GNUNET_YES == TALER_TESTING_has_in_name (argv[0],
+                                                    "_with_pybank"))
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
-    cfgfilename = CONFIG_FILE_PYBANK;
+    cfgfile = CONFIG_FILE_FAKEBANK;
     if (GNUNET_OK !=
         TALER_TESTING_prepare_bank (CONFIG_FILE_PYBANK,
                                     GNUNET_YES,
@@ -186,9 +189,38 @@ main (int argc,
       GNUNET_break (0);
       return 77;
     }
+  } else if (GNUNET_YES == TALER_TESTING_has_in_name (argv[0],
+                                                      "_with_nexus")) 
+  {
+    TALER_LOG_DEBUG ("Running against Nexus.\n");
+    cfgfile = CONFIG_FILE_FAKEBANK;
+    if (GNUNET_OK != TALER_TESTING_prepare_nexus (CONFIG_FILE_NEXUS,
+                                                  GNUNET_YES,
+                                                  "exchange-account-2",
+                                                  &bc))
+    {
+      GNUNET_break (0);
+      return 77;
+    }
+    if (NULL == (bankd = TALER_TESTING_run_nexus (&bc)))
+    {
+      GNUNET_break (0);
+      return 77;
+    }
+    GNUNET_OS_process_kill (bankd,
+                            SIGKILL);
+    GNUNET_OS_process_wait (bankd);
+    GNUNET_OS_process_destroy (bankd);
+    return 0;
   }
+  else
+  {
+    GNUNET_break (0);
+    return 77;
+  }
+
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_parse_and_run (cfgfilename,
+      GNUNET_CONFIGURATION_parse_and_run (cfgfile,
                                           &setup_with_cfg,
                                           NULL))
     rv = 1;

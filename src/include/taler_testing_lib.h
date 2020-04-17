@@ -811,6 +811,21 @@ TALER_TESTING_run_bank (const char *config_filename,
                         const char *bank_url);
 
 /**
+ * Start the (nexus) bank process.  Assume the port
+ * is available and the database is clean.  Use the "prepare
+ * bank" function to do such tasks.  This function is also
+ * responsible to create the exchange EBICS subscriber at
+ * the nexus.
+ *
+ * @param bank_url base URL of the bank, used by `wget' to check
+ *        that the bank was started right.
+ * @return the process, or NULL if the process could not
+ *         be started.
+ */
+struct GNUNET_OS_Process *
+TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc);
+
+/**
  * Runs the Fakebank by guessing / extracting the portnumber
  * from the base URL.
  *
@@ -839,6 +854,22 @@ TALER_TESTING_prepare_bank (const char *config_filename,
                             const char *config_section,
                             struct TALER_TESTING_BankConfiguration *bc);
 
+/**
+ * Prepare the Nexus execution.  Check if the port is available
+ * and delete old database.
+ *
+ * @param config_filename configuration file name.
+ * @param reset_db should we reset the bank's database
+ * @param config_section section of the configuration with the exchange's account
+ * @param[out] bc set to the bank's configuration data
+ * @return the base url, or NULL upon errors.  Must be freed
+ *         by the caller.
+ */
+int
+TALER_TESTING_prepare_nexus (const char *config_filename,
+                             int reset_db,
+                             const char *config_section,
+                             struct TALER_TESTING_BankConfiguration *bc);
 
 /**
  * Look for substring in a programs' name.

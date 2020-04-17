@@ -118,6 +118,7 @@ check_PROGRAMS = \
   test_auditor_api_version \
   test_bank_api_with_fakebank \
   test_bank_api_with_pybank \
+  test_bank_api_with_nexus \
   test_exchange_api \
   test_exchange_api_keys_cherry_picking \
   test_exchange_api_revocation \
@@ -159,6 +160,14 @@ test_auditor_api_version_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson
+
+test_bank_api_with_nexus_SOURCES = \
+  test_bank_api.c
+test_bank_api_with_nexus_LDADD = \
+  libtalertesting.la \
+  -ltalerexchange \
+  -lgnunetutil \
+  $(top_builddir)/src/bank-lib/libtalerbank.la
 
 test_bank_api_with_fakebank_SOURCES = \
   test_bank_api.c

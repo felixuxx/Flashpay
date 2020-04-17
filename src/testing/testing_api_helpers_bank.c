@@ -101,6 +101,100 @@ TALER_TESTING_has_in_name (const char *prog,
 
 
 /**
+ * Start the (nexus) bank process.  Assume the port
+ * is available and the database is clean.  Use the "prepare
+ * bank" function to do such tasks.  This function is also
+ * responsible to create the exchange EBICS subscriber at
+ * the nexus.
+ *
+ * @param config_filename configuration filename.  Used to 
+ * @return the process, or NULL if the process could not
+ *         be started.
+ */
+struct GNUNET_OS_Process *
+TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
+{
+  struct GNUNET_OS_Process *bank_proc;
+  unsigned int iter;
+  char *curl_check_cmd;
+  char *curl_cmd;
+  char *post_body;
+  char *register_url;
+
+  bank_proc = GNUNET_OS_start_process
+                (GNUNET_NO,
+                GNUNET_OS_INHERIT_STD_NONE,
+                NULL, NULL, NULL,
+                "nexus",
+                "nexus",
+                NULL);
+  if (NULL == bank_proc)
+  {
+    BANK_FAIL ();
+  }
+  GNUNET_asprintf (&curl_check_cmd,
+                   "curl -s %s",
+                   bc->exchange_auth.wire_gateway_url);
+
+  /* give child time to start and bind against the socket */
+  fprintf (stderr,
+           "Waiting for `nexus' to be ready (via %s)\n", curl_check_cmd);
+  iter = 0;
+  do
+  {
+    if (10 == iter)
+    {
+      fprintf (
+        stderr,
+        "Failed to launch `nexus'\n");
+      GNUNET_OS_process_kill (bank_proc,
+                              SIGTERM);
+      GNUNET_OS_process_wait (bank_proc);
+      GNUNET_OS_process_destroy (bank_proc);
+      GNUNET_free (curl_check_cmd);
+      BANK_FAIL ();
+    }
+    fprintf (stderr, ".");
+    sleep (1);
+    iter++;
+  }
+  while (0 != system (curl_check_cmd));
+
+  GNUNET_asprintf (&post_body,
+                   "{ \
+                   \"ebicsURL\": \"http://mock\", \
+                   \"userID\": \"mock\", \
+                   \"partnerID\": \"mock\", \
+                   \"hostID\": \"mock\", \
+                   \"password\": \"%s\"}",
+                   bc->exchange_auth.details.basic.password);
+  GNUNET_asprintf (&register_url,
+                   "http://localhost:5001/ebics/%s/subscribers",
+                   bc->exchange_auth.details.basic.username);
+  GNUNET_asprintf (&curl_cmd,
+                   "curl -d'%s' -H'Content-Type: application/json' %s",
+                   post_body,
+                   register_url);
+
+  if (0 != system (curl_cmd))
+  {
+    GNUNET_free (curl_check_cmd);
+    GNUNET_free (curl_cmd);
+    GNUNET_free (post_body);
+    GNUNET_free (register_url);
+    BANK_FAIL (); // includes logging and return (!)
+  }
+
+  GNUNET_free (curl_check_cmd);
+  GNUNET_free (curl_cmd);
+  GNUNET_free (post_body);
+  GNUNET_free (register_url);
+  fprintf (stderr, "\n");
+
+  return bank_proc;
+}
+
+/**
  * Start the (Python) bank process.  Assume the port
  * is available and the database is clean.  Use the "prepare
  * bank" function to do such tasks.
@@ -216,6 +310,156 @@ TALER_TESTING_run_bank (const char *config_filename,
 
 }
 
+/**
+ * Prepare the Nexus execution.  Check if the port is available
+ * and delete old database.
+ *
+ * @param config_filename configuration file name.
+ * @param reset_db should we reset the bank's database
+ * @param config_section section of the configuration with the exchange's account
+ * @param[out] bc set to the bank's configuration data
+ * @return the base url, or NULL upon errors.  Must be freed
+ *         by the caller.
+ */
+int
+TALER_TESTING_prepare_nexus (const char *config_filename,
+                             int reset_db,
+                             const char *config_section,
+                             struct TALER_TESTING_BankConfiguration *bc)
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  unsigned long long port;
+  struct GNUNET_OS_Process *dbreset_proc;
+  enum GNUNET_OS_ProcessStatusType type;
+  unsigned long code;
+  char *database = NULL; // silence compiler
+  char *exchange_payto_uri;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg, config_filename))
+  {
+    GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             config_section,
+                                             "PAYTO_URI",
+                                             &exchange_payto_uri))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                               config_section,
+                               "PAYTO_URI");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return GNUNET_SYSERR;
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "bank",
+                                             "HTTP_PORT",
+                                             &port))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "bank",
+                               "HTTP_PORT");
+    GNUNET_CONFIGURATION_destroy (cfg);
+    GNUNET_free (database);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+                                     (uint16_t) port))
+  {
+    fprintf (stderr,
+             "Required port %llu not available, skipping.\n",
+             port);
+    GNUNET_break (0);
+    GNUNET_free (database);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return GNUNET_SYSERR;
+  }
+
+  /* DB preparation */
+  if (GNUNET_YES == reset_db)
+  {
+    if (NULL ==
+        (dbreset_proc = GNUNET_OS_start_process (
+           GNUNET_NO,
+           GNUNET_OS_INHERIT_STD_NONE,
+           NULL, NULL, NULL,
+           "rm",
+           "rm",
+           "-f",
+           "libeufin-nexus.sqlite3", NULL)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to invoke db-removal command.\n");
+      GNUNET_free (database);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_SYSERR ==
+        GNUNET_OS_process_wait_status (dbreset_proc,
+                                       &type,
+                                       &code))
+    {
+      GNUNET_OS_process_destroy (dbreset_proc);
+      GNUNET_break (0);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    if ( (type == GNUNET_OS_PROCESS_EXITED) &&
+         (0 != code) )
+    {
+      fprintf (stderr,
+               "db-removal command was unsuccessful\n");
+      GNUNET_break (0);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    if ( (type != GNUNET_OS_PROCESS_EXITED) ||
+         (0 != code) )
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected error running `rm libeufin-nexus.sqlite3'!\n");
+      GNUNET_break (0);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_OS_process_destroy (dbreset_proc);
+  }
+  if (GNUNET_OK !=
+      TALER_BANK_auth_parse_cfg (cfg,
+                                 config_section,
+                                 &bc->exchange_auth))
+  {
+    GNUNET_break (0);
+    GNUNET_CONFIGURATION_destroy (cfg);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_CONFIGURATION_destroy (cfg);
+  bc->exchange_payto = exchange_payto_uri;
+  bc->user42_payto = "payto://x-taler-bank/localhost/42";
+  bc->user43_payto = "payto://x-taler-bank/localhost/43";
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Relying on nexus %s on port %u\n",
+              bc->exchange_auth.wire_gateway_url,
+              (unsigned int) port);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "exchange payto: %s\n",
+              bc->exchange_payto);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+              bc->user42_payto);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+              bc->user43_payto);
+  return GNUNET_OK;
+}
 
 /**
  * Prepare the bank execution.  Check if the port is available
