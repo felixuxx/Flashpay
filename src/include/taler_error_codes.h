@@ -1539,6 +1539,70 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSFER_JSON_BAD_WIRE_FEE = 2410,
 
   /**
+   * The merchant backend cannot create an instance under the given
+   * identifier as one already exists. Use PATCH to modify the existing
+   * entry.  The response is provied with an HTTP status of
+   * #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_POST_INSTANCES_ALREADY_EXISTS = 2450,
+
+  /**
+   * The merchant backend cannot create an instance because the
+   * specified bank accounts are somehow invalid. The response is
+   * provied with an HTTP status of #MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_POST_INSTANCES_BAD_PAYTO_URIS = 2451,
+
+  /**
+   * The merchant backend cannot create an instance because it failed to
+   * start the database transaction. The response is provied with an
+   * HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_POST_INSTANCES_DB_START_ERROR = 2452,
+
+  /**
+   * The merchant backend cannot create an instance because it failed to
+   * commit the database transaction. The response is provied with an
+   * HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_POST_INSTANCES_DB_COMMIT_ERROR = 2453,
+
+  /**
+   * The merchant backend cannot delete an instance because it failed to
+   * commit the database transaction. The response is provied with an
+   * HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_DELETE_INSTANCES_ID_DB_HARD_FAILURE = 2454,
+
+  /**
+   * The merchant backend cannot delete the data because it already does
+   * not exist. The response is provied with an HTTP status of
+   * #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_DELETE_INSTANCES_ID_NO_SUCH_INSTANCE = 2455,
+
+  /**
+   * The merchant backend cannot update an instance because the
+   * specified bank accounts are somehow invalid. The response is
+   * provied with an HTTP status of #MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_PATCH_INSTANCES_BAD_PAYTO_URIS = 2456,
+
+  /**
+   * The merchant backend cannot patch an instance because it failed to
+   * start the database transaction. The response is provied with an
+   * HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PATCH_INSTANCES_DB_START_ERROR = 2457,
+
+  /**
+   * The merchant backend cannot patch an instance because it failed to
+   * commit the database transaction. The response is provied with an
+   * HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PATCH_INSTANCES_DB_COMMIT_ERROR = 2458,
+
+  /**
    * The hash provided in the request of /map/in does not match the
    * contract sent alongside in the same request.
    */
@@ -1608,6 +1672,83 @@ enum TALER_ErrorCode
    * error is created client-side.
    */
   TALER_EC_PROPOSAL_REPLY_MALFORMED = 2510,
+
+  /**
+   * The merchant backend failed to lookup the products. The response is
+   * provied with an HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_GET_PRODUCTS_DB_LOOKUP_ERROR = 2550,
+
+  /**
+   * The merchant backend failed to start the transaction. The response
+   * is provied with an HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PRODUCTS_POST_DB_START_ERROR = 2551,
+
+  /**
+   * The product ID exists. The response is provied with an HTTP status
+   * of #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_PRODUCTS_POST_CONFLICT_PRODUCT_EXISTS = 2552,
+
+  /**
+   * The merchant backend failed to serialize the transaction. The
+   * response is provied with an HTTP status of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PRODUCTS_POST_DB_COMMIT_SOFT_ERROR = 2553,
+
+  /**
+   * The merchant backend failed to commit the transaction. The response
+   * is provied with an HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PRODUCTS_POST_DB_COMMIT_HARD_ERROR = 2554,
+
+  /**
+   * The merchant backend failed to commit the transaction. The response
+   * is provied with an HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PRODUCTS_PATCH_DB_COMMIT_HARD_ERROR = 2555,
+
+  /**
+   * The merchant backend did not find the product to be updated. The
+   * response is provied with an HTTP status of #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_PRODUCTS_PATCH_UNKNOWN_PRODUCT = 2556,
+
+  /**
+   * The update would have reduced the total amount of product lost,
+   * which is not allowed. The response is provied with an HTTP status
+   * of #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_PRODUCTS_PATCH_TOTAL_LOST_REDUCED = 2557,
+
+  /**
+   * The update would have reduced the total amount of product sold,
+   * which is not allowed. The response is provied with an HTTP status
+   * of #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_PRODUCTS_PATCH_TOTAL_SOLD_REDUCED = 2558,
+
+  /**
+   * The update would have reduced the total amount of product in stock,
+   * which is not allowed. The response is provied with an HTTP status
+   * of #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_PRODUCTS_PATCH_TOTAL_STOCKED_REDUCED = 2559,
+
+  /**
+   * The lock request is for more products than we have left (unlocked)
+   * in stock. The response is provied with an HTTP status of
+   * #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_PRODUCTS_LOCK_INSUFFICIENT_STOCKS = 2560,
+
+  /**
+   * The lock request is for an unknown product. The response is provied
+   * with an HTTP status of #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_PRODUCTS_LOCK_UNKNOWN_PRODUCT = 2561,
 
   /**
    * The merchant returned a malformed response. Error created client-
