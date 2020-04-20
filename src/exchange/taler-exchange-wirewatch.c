@@ -638,10 +638,10 @@ main (int argc,
                           options,
                           &run, NULL))
   {
-    GNUNET_free ((void *) argv);
+    GNUNET_free_nz ((void *) argv);
     return GR_CMD_LINE_OPTIONS_WRONG;
   }
-  GNUNET_free ((void *) argv);
+  GNUNET_free_nz ((void *) argv);
   return global_ret;
 }
 

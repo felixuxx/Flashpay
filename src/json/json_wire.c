@@ -399,7 +399,9 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
                                          struct GNUNET_HashCode *hc)
 {
   const char *payto_uri;
-  const char *salt;
+  const char *salt; /* Current merchant backend will always make the salt
+                       a `struct GNUNET_HashCode`, but *we* do not insist
+                       on that. */
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri", &payto_uri),
     GNUNET_JSON_spec_string ("salt", &salt),
