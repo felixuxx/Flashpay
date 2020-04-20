@@ -15,6 +15,9 @@
 #
 set -eu
 
+echo "Script disabled: taler-wallet-cli integration test known to fail right now!"
+exit 1
+
 trap "kill `jobs -p` &> /dev/null || true" ERR
 
 # Exit, with status code "skip" (no 'real' failure)
