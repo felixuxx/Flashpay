@@ -206,9 +206,9 @@ deserialize_melted_coin (struct MeltedCoin *mc,
  * @param dk information to serialize
  * @param buf buffer to write data in, NULL to just compute
  *            required size
- * @param off offeset at @a buf to use
- * @return number of bytes written to @a buf at @a off, or if
- *        @a buf is NULL, number of bytes required
+ * @param off offset at @a buf to use
+ * @return number of bytes written to @a buf at @a off (in addition to @a off itself), or if
+ *        @a buf is NULL, number of bytes required, excluding @a off
  */
 static size_t
 serialize_denomination_key (const struct TALER_DenominationPublicKey *dk,
