@@ -266,7 +266,8 @@ deserialize_denomination_key (struct TALER_DenominationPublicKey *dk,
           buf,
           sizeof (uint32_t));
   pbuf_size = ntohl (be);
-  if (size < sizeof (uint32_t) + pbuf_size)
+  if ( (size < sizeof (uint32_t) + pbuf_size) ||
+       (sizeof (uint32_t) + pbuf_size < pbuf_size) )
   {
     GNUNET_break (0);
     *ok = GNUNET_NO;
