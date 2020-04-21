@@ -236,7 +236,6 @@ handle_transfer_finished (void *cls,
                 (unsigned int) response_code);
     GNUNET_break (0);
     ec = TALER_JSON_get_error_code (j);
-    response_code = 0;
     break;
   }
   th->cb (th->cb_cls,

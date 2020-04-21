@@ -202,7 +202,6 @@ handle_debit_history_finished (void *cls,
                 (unsigned int) response_code);
     GNUNET_break_op (0);
     ec = TALER_JSON_get_error_code (j);
-    response_code = 0;
     break;
   }
   if (NULL != hh->hcb)

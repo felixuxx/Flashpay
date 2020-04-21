@@ -141,7 +141,6 @@ handle_admin_add_incoming_finished (void *cls,
                 (unsigned int) response_code);
     GNUNET_break (0);
     ec = TALER_JSON_get_error_code (j);
-    response_code = 0;
     break;
   }
   aai->cb (aai->cb_cls,
