@@ -1014,13 +1014,10 @@ decode_keys_json (const json_t *resp_obj,
             aix->num_denom_keys,
             ai.num_denom_keys);
 
-          GNUNET_array_grow (aix->denom_keys,
-                             aix->num_denom_keys,
-                             aix->num_denom_keys + ai.num_denom_keys);
-          memcpy (&aix->denom_keys[aix->num_denom_keys - ai.num_denom_keys],
-                  ai.denom_keys,
-                  ai.num_denom_keys * sizeof (struct
-                                              TALER_EXCHANGE_AuditorDenominationInfo));
+          GNUNET_array_concatenate (aix->denom_keys,
+                                    aix->num_denom_keys,
+                                    ai.denom_keys,
+                                    ai.num_denom_keys);
           break;
         }
       }
