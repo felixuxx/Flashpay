@@ -62,13 +62,9 @@ TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
 
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
     GNUNET_free_non_null (md->fresh_coins[i]);
-  /* Finally, clean up a bit...
-     (NOTE: compilers might optimize this away, so this is
-     not providing any strong assurances that the key material
-     is purged.) */
-  memset (md,
-          0,
-          sizeof (struct MeltData));
+  /* Finally, clean up a bit... */
+  GNUNET_CRYPTO_zero_keys (md,
+                           sizeof (struct MeltData));
 }
 
 
