@@ -4001,9 +4001,9 @@ struct CoinHistoryContext
   struct PostgresClosure *pg;
 
   /**
-   * Set to transaction status.
+   * Set to 'true' if the transaction failed.
    */
-  enum GNUNET_DB_QueryStatus status;
+  bool failed;
 };
 
 
@@ -4064,7 +4064,7 @@ add_coin_deposit (void *cls,
       {
         GNUNET_break (0);
         GNUNET_free (deposit);
-        chc->status = GNUNET_DB_STATUS_HARD_ERROR;
+        chc->failed = true;
         return;
       }
     }
@@ -4124,7 +4124,7 @@ add_coin_melt (void *cls,
       {
         GNUNET_break (0);
         GNUNET_free (melt);
-        chc->status = GNUNET_DB_STATUS_HARD_ERROR;
+        chc->failed = true;
         return;
       }
     }
@@ -4187,7 +4187,7 @@ add_coin_refund (void *cls,
       {
         GNUNET_break (0);
         GNUNET_free (refund);
-        chc->status = GNUNET_DB_STATUS_HARD_ERROR;
+        chc->failed = true;
         return;
       }
     }
@@ -4253,7 +4253,7 @@ add_old_coin_recoup (void *cls,
       {
         GNUNET_break (0);
         GNUNET_free (recoup);
-        chc->status = GNUNET_DB_STATUS_HARD_ERROR;
+        chc->failed = true;
         return;
       }
       recoup->old_coin_pub = *chc->coin_pub;
@@ -4315,7 +4315,7 @@ add_coin_recoup (void *cls,
       {
         GNUNET_break (0);
         GNUNET_free (recoup);
-        chc->status = GNUNET_DB_STATUS_HARD_ERROR;
+        chc->failed = true;
         return;
       }
     }
@@ -4381,7 +4381,7 @@ add_coin_recoup_refresh (void *cls,
       {
         GNUNET_break (0);
         GNUNET_free (recoup);
-        chc->status = GNUNET_DB_STATUS_HARD_ERROR;
+        chc->failed = true;
         return;
       }
       recoup->coin.coin_pub = *chc->coin_pub;
@@ -4474,7 +4474,6 @@ postgres_get_coin_transactions (
   const struct Work *work;
   struct CoinHistoryContext chc = {
     .head = NULL,
-    .status = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT,
     .coin_pub = coin_pub,
     .session = session,
     .pg = pg,
@@ -4493,14 +4492,14 @@ postgres_get_coin_transactions (
                                                work[i].cb,
                                                &chc);
     if ( (0 > qs) ||
-         (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != chc.status) )
+         (chc.failed) )
     {
       if (NULL != chc.head)
         common_free_coin_transaction_list (cls,
                                            chc.head);
       *tlp = NULL;
-      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != chc.status)
-        qs = chc.status;
+      if (chc.failed)
+        qs = GNUNET_DB_STATUS_HARD_ERROR;
       return qs;
     }
   }
