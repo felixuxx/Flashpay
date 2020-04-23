@@ -4004,6 +4004,11 @@ struct CoinHistoryContext
    * Set to 'true' if the transaction failed.
    */
   bool failed;
+
+  /**
+   * Set to 'true' if we found a deposit (for invariant check).
+   */
+  bool have_deposit;
 };
 
 
@@ -4029,6 +4034,7 @@ add_coin_deposit (void *cls,
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
+    chc->have_deposit = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_DepositListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4506,6 +4512,7 @@ postgres_get_coin_transactions (
   *tlp = chc.head;
   if (NULL == chc.head)
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  GNUNET_break (chc.have_deposit);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 

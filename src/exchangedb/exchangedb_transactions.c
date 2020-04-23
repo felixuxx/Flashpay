@@ -41,12 +41,14 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
   struct TALER_Amount spent = *off;
   struct TALER_Amount refunded;
   struct TALER_Amount deposit_fee;
-  int have_refund;
+  bool have_refund;
+  bool have_deposit;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_get_zero (spent.currency,
                                         &refunded));
-  have_refund = GNUNET_NO;
+  have_refund = false;
+  have_deposit = false;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
        NULL != pos;
        pos = pos->next)
@@ -55,6 +57,7 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       /* spent += pos->amount_with_fee */
+      have_deposit = true;
       if (0 >
           TALER_amount_add (&spent,
                             &spent,
@@ -94,7 +97,7 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
-      have_refund = GNUNET_YES;
+      have_refund = true;
       break;
     case TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP:
       /* refunded += pos->value */
@@ -152,7 +155,7 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
+  GNUNET_break (have_deposit);
   *ret = spent;
   return GNUNET_OK;
 }
