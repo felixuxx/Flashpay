@@ -126,7 +126,8 @@ TALER_string_to_amount (const char *str,
       return GNUNET_SYSERR;
     }
     n = *value - '0';
-    if ( (amount->value * 10 + n < amount->value) ||
+    if ( (amount->value * 10 < amount->value) ||
+         (amount->value * 10 + n < amount->value) ||
          (amount->value > MAX_AMOUNT_VALUE) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
