@@ -128,7 +128,8 @@ TALER_string_to_amount (const char *str,
     n = *value - '0';
     if ( (amount->value * 10 < amount->value) ||
          (amount->value * 10 + n < amount->value) ||
-         (amount->value > MAX_AMOUNT_VALUE) )
+         (amount->value > MAX_AMOUNT_VALUE) ||
+         (amount->value * 10 + n > MAX_AMOUNT_VALUE) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Value specified in amount `%s' is too large\n",
