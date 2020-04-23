@@ -148,6 +148,9 @@ calculate_argument_length (va_list args)
                     char *);
     if (NULL == value)
       continue;
+    GNUNET_assert ( (len <= len + urlencode_len (value)) &&
+                    (len <= len + urlencode_len (value) + strlen (key)) &&
+                    (len < len + urlencode_len (value) + strlen (key) + 2) );
     len += urlencode_len (value) + strlen (key) + 2;
   }
   va_end (ap);
