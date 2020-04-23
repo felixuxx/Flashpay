@@ -4006,9 +4006,9 @@ struct CoinHistoryContext
   bool failed;
 
   /**
-   * Set to 'true' if we found a deposit (for invariant check).
+   * Set to 'true' if we found a deposit or melt (for invariant check).
    */
-  bool have_deposit;
+  bool have_deposit_or_melt;
 };
 
 
@@ -4034,7 +4034,7 @@ add_coin_deposit (void *cls,
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
-    chc->have_deposit = true;
+    chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_DepositListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4106,6 +4106,7 @@ add_coin_melt (void *cls,
     struct TALER_EXCHANGEDB_TransactionList *tl;
     uint64_t serial_id;
 
+    chc->have_deposit_or_melt = true;
     melt = GNUNET_new (struct TALER_EXCHANGEDB_MeltListEntry);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
@@ -4512,7 +4513,7 @@ postgres_get_coin_transactions (
   *tlp = chc.head;
   if (NULL == chc.head)
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  GNUNET_break (chc.have_deposit);
+  GNUNET_break (chc.have_deposit_or_melt);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
