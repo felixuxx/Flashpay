@@ -110,6 +110,7 @@ mime_matches (const char *accept_pattern,
 /**
  * Check if @a lang matches the @a language_pattern, and if so with
  * which preference.
+ * See also: https://tools.ietf.org/html/rfc7231#section-5.3.1
  *
  * @param language_pattern a language preferences string
  *        like "fr-CH, fr;q=0.9, en;q=0.8, *;q=0.1"
@@ -125,15 +126,20 @@ language_matches (const char *language_pattern,
   char *sptr;
   double r = 0.0;
 
-  for (char *tok = strtok_r (p, ", ", &sptr);
+  for (char *tok = strtok_r (p, ",", &sptr);
        NULL != tok;
-       tok = strtok_r (NULL, ", ", &sptr))
+       tok = strtok_r (NULL, ",", &sptr))
   {
     char *sptr2;
     char *lp = strtok_r (tok, ";", &sptr2);
     char *qp = strtok_r (NULL, ";", &sptr2);
     double q = 1.0;
 
+    while (isspace ((int) *lp))
+      lp++;
+    if (NULL != qp)
+      while (isspace ((int) *qp))
+        qp++;
     GNUNET_break_op ( (NULL == qp) ||
                       (1 == sscanf (qp,
                                     "q=%lf",
