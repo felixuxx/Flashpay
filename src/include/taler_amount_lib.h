@@ -51,6 +51,9 @@ extern "C"
  *
  * Note that we need sub-cent precision here as transaction fees might
  * be that low, and as we want to support microdonations.
+ *
+ * An actual `struct Amount a` thus represents
+ * "a.value + (a.fraction / #TALER_AMOUNT_FRAC_BASE)" units of "a.currency".
  */
 #define TALER_AMOUNT_FRAC_BASE 100000000
 
@@ -76,7 +79,7 @@ struct TALER_AmountNBO
   uint64_t value GNUNET_PACKED;
 
   /**
-   * Additinal fractional value, in NBO.
+   * Fraction (integer multiples of #TALER_AMOUNT_FRAC_BASE), in NBO.
    */
   uint32_t fraction GNUNET_PACKED;
 
@@ -100,7 +103,7 @@ struct TALER_Amount
   uint64_t value;
 
   /**
-   * Fraction (denominator of fraction)
+   * Fraction (integer multiples of #TALER_AMOUNT_FRAC_BASE).
    */
   uint32_t fraction;
 
