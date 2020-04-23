@@ -84,8 +84,12 @@ static void
 buffer_write_urlencode (struct GNUNET_Buffer *buf,
                         const char *s)
 {
+  size_t ulen;
+
+  ulen = urlencode_len (s);
+  GNUNET_assert (ulen < ulen + 1);
   GNUNET_buffer_ensure_remaining (buf,
-                                  urlencode_len (s) + 1);
+                                  ulen + 1);
   for (size_t i = 0; i < strlen (s); i++)
   {
     if (GNUNET_YES == is_reserved (s[i]))
@@ -139,6 +143,8 @@ calculate_argument_length (va_list args)
   {
     char *key;
     char *value;
+    size_t vlen;
+    size_t klen;
 
     key = va_arg (ap,
                   char *);
@@ -148,10 +154,12 @@ calculate_argument_length (va_list args)
                     char *);
     if (NULL == value)
       continue;
-    GNUNET_assert ( (len <= len + urlencode_len (value)) &&
-                    (len <= len + urlencode_len (value) + strlen (key)) &&
-                    (len < len + urlencode_len (value) + strlen (key) + 2) );
-    len += urlencode_len (value) + strlen (key) + 2;
+    vlen = urlencode_len (value);
+    klen = strlen (key);
+    GNUNET_assert ( (len <= len + vlen) &&
+                    (len <= len + vlen + klen) &&
+                    (len < len + vlen + klen + 2) );
+    len += vlen + klen + 2;
   }
   va_end (ap);
   return len;
