@@ -380,7 +380,10 @@ validate_payto (const char *account_url)
     return GNUNET_SYSERR; /* not payto */
 #undef PAYTO_PREFIX
   if (GNUNET_NO != (ret = validate_payto_iban (account_url)))
+  {
+    GNUNET_break_op (GNUNET_SYSERR != ret);
     return ret; /* got a definitive answer */
+  }
   /* Insert other bank account validation methods here later! */
   return GNUNET_NO;
 }
@@ -416,6 +419,9 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Validating `%s'\n",
+              payto_uri);
   if (GNUNET_SYSERR == validate_payto (payto_uri))
   {
     GNUNET_break_op (0);
