@@ -317,19 +317,6 @@ struct TALER_WithdrawRequestPS
   struct TALER_AmountNBO amount_with_fee;
 
   /**
-   * Withdrawal fee charged by the exchange.  This must match the Exchange's
-   * denomination key's withdrawal fee.  If the client puts in an
-   * invalid withdrawal fee (too high or too low) that does not match
-   * the Exchange's denomination key, the withdraw operation is invalid
-   * and will be rejected by the exchange.  The @e amount_with_fee minus
-   * the @e withdraw_fee is must match the value of the generated
-   * coin.  We include this in what is being signed so that we can
-   * verify a exchange's accounting without needing to access the
-   * respective denomination key information each time.
-   */
-  struct TALER_AmountNBO withdraw_fee;
-
-  /**
    * Hash of the denomination public key for the coin that is withdrawn.
    */
   struct GNUNET_HashCode h_denomination_pub GNUNET_PACKED;
@@ -516,17 +503,6 @@ struct TALER_RefundRequestPS
    * exchange to the customer.
    */
   struct TALER_AmountNBO refund_amount;
-
-  /**
-   * Refund fee charged by the exchange.  This must match the
-   * Exchange's denomination key's refund fee.  If the client puts in
-   * an invalid refund fee (too high or too low) that does not match
-   * the Exchange's denomination key, the refund operation is invalid
-   * and will be rejected by the exchange.  The @e amount_with_fee
-   * minus the @e refund_fee is the amount that will be credited to
-   * the original coin.
-   */
-  struct TALER_AmountNBO refund_fee;
 
 };
 
