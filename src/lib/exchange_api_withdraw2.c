@@ -429,8 +429,6 @@ TALER_EXCHANGE_withdraw2 (
 
     TALER_amount_hton (&req.amount_with_fee,
                        &wh->requested_amount);
-    TALER_amount_hton (&req.withdraw_fee,
-                       &dk->fee_withdraw);
     GNUNET_CRYPTO_hash (pd->coin_ev,
                         pd->coin_ev_size,
                         &req.h_coin_envelope);

@@ -306,8 +306,6 @@ withdraw_transaction (void *cls,
 #endif
   wc->collectable.denom_pub_hash = wc->denom_pub_hash;
   wc->collectable.amount_with_fee = wc->amount_required;
-  TALER_amount_ntoh (&wc->collectable.withdraw_fee,
-                     &wc->dki->issue.properties.fee_withdraw);
   wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
   wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
   wc->collectable.reserve_sig = wc->signature;
@@ -436,8 +434,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     }
     TALER_amount_hton (&wc.wsrd.amount_with_fee,
                        &wc.amount_required);
-    TALER_amount_hton (&wc.wsrd.withdraw_fee,
-                       &fee_withdraw);
   }
 
   /* verify signature! */

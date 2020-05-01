@@ -878,7 +878,6 @@ typedef void
  * @param amount the amount to be refunded; must be larger than the refund fee
  *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
- * @param refund_fee fee applicable to this coin for the refund
  * @param h_contract_terms hash of the contact of the merchant with the customer that is being refunded
  * @param coin_pub coin’s public key of the coin from the original deposit operation
  * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
@@ -894,7 +893,6 @@ typedef void
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_Amount *amount,
-                       const struct TALER_Amount *refund_fee,
                        const struct GNUNET_HashCode *h_contract_terms,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        uint64_t rtransaction_id,
@@ -922,7 +920,6 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
  * @param amount the amount to be refunded; must be larger than the refund fee
  *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
- * @param refund_fee fee applicable to this coin for the refund
  * @param h_contract_terms hash of the contact of the merchant with the customer that is being refunded
  * @param coin_pub coin’s public key of the coin from the original deposit operation
  * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
@@ -939,7 +936,6 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_Amount *amount,
-                        const struct TALER_Amount *refund_fee,
                         const struct GNUNET_HashCode *h_contract_terms,
                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
                         uint64_t rtransaction_id,

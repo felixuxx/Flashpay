@@ -844,7 +844,7 @@ enum TALER_ErrorCode
   /**
    * The currency specified for the refund is different from the
    * currency of the coin.  This response is provided with HTTP status
-   * code #MHD_HTTP_PRECONDITION_FAILED.
+   * code #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_REFUND_CURRENCY_MISMATCH = 1504,
 
