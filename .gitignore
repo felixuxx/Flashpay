@@ -126,3 +126,4 @@ uncrustify.cfg
 vgcore.*
 tags
 /.vscode
+src/testing/test_bank_api_with_nexus
