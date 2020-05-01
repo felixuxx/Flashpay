@@ -543,6 +543,12 @@ else
     fi
 fi
 
-check_with_database "revoke-basedb"
+# run tests with pre-build database, if one is available
+if test -x revoke-basedb.mpub
+then
+  check_with_database "revoke-basedb"
+else
+  fail=77
+fi
 
 exit $fail
