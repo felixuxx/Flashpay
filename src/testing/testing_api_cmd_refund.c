@@ -44,11 +44,6 @@ struct RefundState
   const char *refund_amount;
 
   /**
-   * Expected refund fee.
-   */
-  const char *refund_fee;
-
-  /**
    * Reference to any command that can provide a coin to refund.
    */
   const char *coin_reference;
@@ -133,7 +128,6 @@ refund_run (void *cls,
   struct TALER_CoinSpendPublicKeyP coin;
   const json_t *contract_terms;
   struct GNUNET_HashCode h_contract_terms;
-  struct TALER_Amount refund_fee;
   struct TALER_Amount refund_amount;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
   const struct TALER_TESTING_Command *coin_cmd;
@@ -153,19 +147,6 @@ refund_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  if (GNUNET_OK !=
-      TALER_string_to_amount (rs->refund_fee,
-                              &refund_fee))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %u/%s\n",
-                rs->refund_fee,
-                is->ip,
-                cmd->label);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
-
   coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                        rs->coin_reference);
   if (NULL == coin_cmd)
@@ -211,7 +192,6 @@ refund_run (void *cls,
   }
   rs->rh = TALER_EXCHANGE_refund (rs->exchange,
                                   &refund_amount,
-                                  &refund_fee,
                                   &h_contract_terms,
                                   &coin,
                                   rs->refund_transaction_id,
@@ -254,7 +234,6 @@ refund_cleanup (void *cls,
  * @param label command label.
  * @param expected_response_code expected HTTP status code.
  * @param refund_amount the amount to ask a refund for.
- * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
  *
@@ -264,7 +243,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund (const char *label,
                           unsigned int expected_response_code,
                           const char *refund_amount,
-                          const char *refund_fee,
                           const char *coin_reference)
 {
   struct RefundState *rs;
@@ -273,7 +251,6 @@ TALER_TESTING_cmd_refund (const char *label,
 
   rs->expected_response_code = expected_response_code;
   rs->refund_amount = refund_amount;
-  rs->refund_fee = refund_fee;
   rs->coin_reference = coin_reference;
   {
     struct TALER_TESTING_Command cmd = {
@@ -295,7 +272,6 @@ TALER_TESTING_cmd_refund (const char *label,
  * @param label command label.
  * @param expected_response_code expected HTTP status code.
  * @param refund_amount the amount to ask a refund for.
- * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
  * @param refund_transaction_id transaction id to use
@@ -308,7 +284,6 @@ TALER_TESTING_cmd_refund_with_id
   (const char *label,
   unsigned int expected_response_code,
   const char *refund_amount,
-  const char *refund_fee,
   const char *coin_reference,
   uint64_t refund_transaction_id)
 {
@@ -317,7 +292,6 @@ TALER_TESTING_cmd_refund_with_id
   rs = GNUNET_new (struct RefundState);
   rs->expected_response_code = expected_response_code;
   rs->refund_amount = refund_amount;
-  rs->refund_fee = refund_fee;
   rs->coin_reference = coin_reference;
   rs->refund_transaction_id = refund_transaction_id;
   {

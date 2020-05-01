@@ -1656,7 +1656,6 @@ TALER_TESTING_cmd_check_bank_empty (const char *label);
  * @param label command label.
  * @param expected_response_code expected HTTP status code.
  * @param refund_amount the amount to ask a refund for.
- * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
  * @param refund_transaction_id transaction id to use
@@ -1668,7 +1667,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund_with_id (const char *label,
                                   unsigned int expected_response_code,
                                   const char *refund_amount,
-                                  const char *refund_fee,
                                   const char *deposit_reference,
                                   uint64_t refund_transaction_id);
 
@@ -1679,7 +1677,6 @@ TALER_TESTING_cmd_refund_with_id (const char *label,
  * @param label command label.
  * @param expected_response_code expected HTTP status code.
  * @param refund_amount the amount to ask a refund for.
- * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
  *
@@ -1689,7 +1686,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund (const char *label,
                           unsigned int expected_response_code,
                           const char *refund_amount,
-                          const char *refund_fee,
                           const char *deposit_reference);
 
 

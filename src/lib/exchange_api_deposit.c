@@ -196,8 +196,8 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("sig", exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig", exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
     GNUNET_JSON_spec_end ()
   };
 
