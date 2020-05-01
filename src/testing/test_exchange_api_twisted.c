@@ -205,6 +205,10 @@ run (void *cls,
                               MHD_HTTP_PRECONDITION_FAILED,
                               "EUR:50",
                               "deposit-refund-1"),
+    TALER_TESTING_cmd_refund ("refund-fee-too-low",
+                              MHD_HTTP_BAD_REQUEST,
+                              "EUR:5",
+                              "deposit-refund-1"),
     TALER_TESTING_cmd_end ()
   };
 
