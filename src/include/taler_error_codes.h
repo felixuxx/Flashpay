@@ -1319,13 +1319,6 @@ enum TALER_ErrorCode
   TALER_EC_PAY_WIRE_FEE_CURRENCY_MISMATCH = 2125,
 
   /**
-   * The merchant refuses to abort and refund the payment operation as
-   * the payment succeeded already. This response is provided with HTTP
-   * status code of #MHD_HTTP_FORBIDDEN.
-   */
-  TALER_EC_PAY_ABORT_REFUND_REFUSED_PAYMENT_COMPLETE = 2126,
-
-  /**
    * A unknown merchant public key was included in the payment.  That
    * happens typically when the wallet sends the payment to the wrong
    * merchant instance. This response is provided with an HTTP status
@@ -1373,6 +1366,80 @@ enum TALER_ErrorCode
    * status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PAY_REFUNDS_EXCEED_PAYMENTS = 2133,
+
+  /**
+   * The merchant failed to contact the exchange. This response is
+   * provided with HTTP status code of #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_ABORT_EXCHANGE_KEYS_FAILURE = 2150,
+
+  /**
+   * The merchant failed to send the exchange the refund request. This
+   * response is provided with HTTP status code of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ABORT_EXCHANGE_REFUND_FAILED = 2151,
+
+  /**
+   * The merchant failed to find the exchange to process the lookup.
+   * This response is provided with HTTP status code of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ABORT_EXCHANGE_LOOKUP_FAILED = 2152,
+
+  /**
+   * The merchant failed to store the abort request in its database.
+   * This response is provided with HTTP status code of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ABORT_DB_STORE_ABORT_ERROR = 2153,
+
+  /**
+   * The merchant failed to repeatedly serialize the transaction. This
+   * response is provided with HTTP status code of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ABORT_DB_STORE_TRANSACTION_ERROR = 2154,
+
+  /**
+   * The merchant failed in the lookup part of the transaction. This
+   * response is provided with HTTP status code of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ABORT_DB_FETCH_TRANSACTION_ERROR = 2155,
+
+  /**
+   * The merchant could not find the contract. This response is provided
+   * with HTTP status code of #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_ABORT_CONTRACT_NOT_FOUND = 2156,
+
+  /**
+   * The payment was already completed and thus cannot be aborted
+   * anymore. This response is provided with HTTP status code of
+   * #MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_ABORT_REFUND_REFUSED_PAYMENT_COMPLETE = 2157,
+
+  /**
+   * The hash provided by the wallet does not match the order. This
+   * response is provided with HTTP status code of
+   * #MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_ABORT_CONTRACT_HASH_MISSMATCH = 2158,
+
+  /**
+   * The array of coins cannot be empty. This response is provided with
+   * HTTP status code of #MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_ABORT_COINS_ARRAY_EMPTY = 2159,
+
+  /**
+   * The merchant experienced a timeout processing the request. This
+   * response is provided with HTTP status code of
+   * #MHD_HTTP_REQUEST_TIMEOUT.
+   */
+  TALER_EC_ABORT_EXCHANGE_TIMEOUT = 2160,
 
   /**
    * Integer overflow with specified timestamp argument detected. This
@@ -1617,25 +1684,29 @@ enum TALER_ErrorCode
 
   /**
    * The backend encountered an error while trying to retrieve the
-   * proposal data from database.  Likely to be an internal error.
+   * proposal data from database.  Likely to be an internal error. The
+   * response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PROPOSAL_LOOKUP_DB_ERROR = 2502,
 
   /**
    * The proposal being looked up is not found on this merchant.
+   * Returned with an HTTP status code of #MHD_HTTP_NOT_FOUND
    */
   TALER_EC_PROPOSAL_LOOKUP_NOT_FOUND = 2503,
 
   /**
    * The proposal had no timestamp and the backend failed to obtain the
-   * local time. Likely to be an internal error.
+   * local time. Likely to be an internal error. The response is
+   * provided with HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
    */
   TALER_EC_PROPOSAL_NO_LOCALTIME = 2504,
 
   /**
    * The order provided to the backend could not be parsed, some
-   * required fields were missing or ill-formed. Returned as a bad
-   * request.
+   * required fields were missing or ill-formed. Returned with an HTTP
+   * status code #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_PROPOSAL_ORDER_PARSE_ERROR = 2505,
 
@@ -1672,6 +1743,80 @@ enum TALER_ErrorCode
    * error is created client-side.
    */
   TALER_EC_PROPOSAL_REPLY_MALFORMED = 2510,
+
+  /**
+   * The order provided to the backend could not be deleted, it is not
+   * known. Returned with an HTTP status code #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_ORDERS_DELETE_NO_SUCH_ORDER = 2511,
+
+  /**
+   * The order provided to the backend could not be deleted, our offer
+   * is still valid and awaiting payment. Returned with an HTTP status
+   * code #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_ORDERS_DELETE_AWAITING_PAYMENT = 2512,
+
+  /**
+   * The order provided to the backend could not be deleted, due to a
+   * database error. Returned with an HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ORDERS_DELETE_DB_HARD_FAILURE = 2513,
+
+  /**
+   * The order provided to the backend could not be completed, due to a
+   * database error trying to fetch product inventory data. Returned
+   * with an HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ORDERS_LOOKUP_PRODUCT_DB_HARD_FAILURE = 2514,
+
+  /**
+   * The order provided to the backend could not be completed, due to a
+   * database serialization error (which should be impossible) trying to
+   * fetch product inventory data. Returned with an HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ORDERS_LOOKUP_PRODUCT_DB_SOFT_FAILURE = 2515,
+
+  /**
+   * The order provided to the backend could not be completed, because a
+   * product to be completed via inventory data is not actually in our
+   * inventory. Returned with an HTTP status code #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_ORDERS_LOOKUP_PRODUCT_NOT_FOUND = 2516,
+
+  /**
+   * We could not obtain a list of all orders because of a database
+   * failure. Returned with an HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ORDERS_GET_DB_LOOKUP_ERROR = 2517,
+
+  /**
+   * We could not claim the order because of a database failure.
+   * Returned with an HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ORDERS_CLAIM_HARD_DB_ERROR = 2518,
+
+  /**
+   * We could not claim the order because of a database serialization
+   * failure. Returned with an HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_ORDERS_CLAIM_SOFT_DB_ERROR = 2519,
+
+  /**
+   * We could not claim the order because the backend is unaware of it.
+   * Returned with an HTTP status code #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_ORDERS_CLAIM_NOT_FOUND = 2520,
+
+  /**
+   * We could not claim the order because someone else claimed it first.
+   * Returned with an HTTP status code #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_ORDERS_ALREADY_CLAIMED = 2521,
 
   /**
    * The merchant backend failed to lookup the products. The response is
@@ -1724,11 +1869,11 @@ enum TALER_ErrorCode
   TALER_EC_PRODUCTS_PATCH_TOTAL_LOST_REDUCED = 2557,
 
   /**
-   * The update would have reduced the total amount of product sold,
-   * which is not allowed. The response is provied with an HTTP status
-   * of #MHD_HTTP_CONFLICT.
+   * The update would have mean that more stocks were lost than what
+   * remains from total inventory after sales, which is not allowed. The
+   * response is provied with an HTTP status of #MHD_HTTP_CONFLICT.
    */
-  TALER_EC_PRODUCTS_PATCH_TOTAL_SOLD_REDUCED = 2558,
+  TALER_EC_PRODUCTS_PATCH_TOTAL_LOST_EXCEEDS_STOCKS = 2558,
 
   /**
    * The update would have reduced the total amount of product in stock,
@@ -1749,6 +1894,25 @@ enum TALER_ErrorCode
    * with an HTTP status of #MHD_HTTP_NOT_FOUND.
    */
   TALER_EC_PRODUCTS_LOCK_UNKNOWN_PRODUCT = 2561,
+
+  /**
+   * The deletion request resulted in a hard database error. The
+   * response is provied with an HTTP status of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_PRODUCTS_DELETE_DB_HARD_FAILURE = 2562,
+
+  /**
+   * The deletion request was for a product unknown to the backend. The
+   * response is provied with an HTTP status of #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_PRODUCTS_DELETE_NO_SUCH_PRODUCT = 2563,
+
+  /**
+   * The deletion request is for a product that is locked. The response
+   * is provied with an HTTP status of #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_PRODUCTS_DELETE_CONFLICTING_LOCK = 2564,
 
   /**
    * The merchant returned a malformed response. Error created client-
