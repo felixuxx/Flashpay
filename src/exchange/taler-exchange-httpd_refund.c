@@ -73,12 +73,13 @@ reply_refund_success (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                        "no online signing key");
   }
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:s, s:o, s:o}",
-                                    "status", "REFUND_OK",
-                                    "sig", GNUNET_JSON_from_data_auto (&sig),
-                                    "pub", GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (
+    connection,
+    MHD_HTTP_OK,
+    "{s:o, s:o, s:o}",
+    "refund_fee", TALER_JSON_from_amount (&refund->refund_fee),
+    "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
+    "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -246,18 +247,15 @@ refund_transaction (void *cls,
   }
 
   /* check currency is compatible */
-  if ( (GNUNET_YES !=
-        TALER_amount_cmp_currency (&refund->details.refund_amount,
-                                   &dep->amount_with_fee)) ||
-       (GNUNET_YES !=
-        TALER_amount_cmp_currency (&refund->details.refund_fee,
-                                   &dep->deposit_fee)) )
+  if (GNUNET_YES !=
+      TALER_amount_cmp_currency (&refund->details.refund_amount,
+                                 &dep->amount_with_fee))
   {
     GNUNET_break_op (0); /* currency mismatch */
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tl);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_PRECONDITION_FAILED,
+                                           MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_REFUND_CURRENCY_MISMATCH,
                                            "currencies involved do not match");
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -339,15 +337,14 @@ refund_transaction (void *cls,
  * the fee structure, so this is not done here.
  *
  * @param connection the MHD connection to handle
- * @param refund information about the refund
+ * @param[in,out] refund information about the refund
  * @return MHD result code
  */
 static MHD_RESULT
 verify_and_execute_refund (struct MHD_Connection *connection,
-                           const struct TALER_EXCHANGEDB_Refund *refund)
+                           struct TALER_EXCHANGEDB_Refund *refund)
 {
   struct GNUNET_HashCode denom_hash;
-  struct TALER_Amount expect_fee;
 
   {
     struct TALER_RefundRequestPS rr = {
@@ -361,8 +358,6 @@ verify_and_execute_refund (struct MHD_Connection *connection,
 
     TALER_amount_hton (&rr.refund_amount,
                        &refund->details.refund_amount);
-    TALER_amount_hton (&rr.refund_fee,
-                       &refund->details.refund_fee);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
                                     &rr,
@@ -429,42 +424,11 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                            ec,
                                            "denomination not found, but coin known");
       }
-      TALER_amount_ntoh (&expect_fee,
+      TALER_amount_ntoh (&refund->details.refund_fee,
                          &dki->issue.properties.fee_refund);
     }
     TEH_KS_release (key_state);
   }
-
-  /* Check refund fee matches fee of denomination key! */
-  if (GNUNET_YES !=
-      TALER_amount_cmp_currency (&expect_fee,
-                                 &refund->details.refund_fee) )
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REFUND_FEE_CURRENCY_MISMATCH,
-                                       "refund_fee");
-  }
-  {
-    int fee_cmp;
-
-    fee_cmp = TALER_amount_cmp (&refund->details.refund_fee,
-                                &expect_fee);
-    if (-1 == fee_cmp)
-    {
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_REFUND_FEE_TOO_LOW,
-                                         "refund_fee");
-    }
-    if (1 == fee_cmp)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Refund fee proposed by merchant is higher than necessary.\n");
-    }
-  }
-
 
   /* Finally run the actual transaction logic */
   {
@@ -502,16 +466,20 @@ TEH_handler_refund (struct MHD_Connection *connection,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     const json_t *root)
 {
-  struct TALER_EXCHANGEDB_Refund refund;
+  struct TALER_EXCHANGEDB_Refund refund = {
+    .details.refund_fee.currency = {0}                                        /* set to invalid, just to be sure */
+  };
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("refund_amount", &refund.details.refund_amount),
-    TALER_JSON_spec_amount ("refund_fee", &refund.details.refund_fee),
+    TALER_JSON_spec_amount ("refund_amount",
+                            &refund.details.refund_amount),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &refund.details.h_contract_terms),
-    GNUNET_JSON_spec_fixed_auto ("merchant_pub", &refund.details.merchant_pub),
+    GNUNET_JSON_spec_fixed_auto ("merchant_pub",
+                                 &refund.details.merchant_pub),
     GNUNET_JSON_spec_uint64 ("rtransaction_id",
                              &refund.details.rtransaction_id),
-    GNUNET_JSON_spec_fixed_auto ("merchant_sig", &refund.details.merchant_sig),
+    GNUNET_JSON_spec_fixed_auto ("merchant_sig",
+                                 &refund.details.merchant_sig),
     GNUNET_JSON_spec_end ()
   };
 
@@ -526,27 +494,6 @@ TEH_handler_refund (struct MHD_Connection *connection,
       return MHD_NO; /* hard failure */
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
-  }
-  if (GNUNET_YES !=
-      TALER_amount_cmp_currency (&refund.details.refund_amount,
-                                 &refund.details.refund_fee) )
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REFUND_FEE_CURRENCY_MISMATCH,
-                                       "refund_amount or refund_fee");
-  }
-  if (-1 == TALER_amount_cmp (&refund.details.refund_amount,
-                              &refund.details.refund_fee) )
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_REFUND_FEE_ABOVE_AMOUNT,
-                                       "refund_amount");
   }
   {
     MHD_RESULT res;

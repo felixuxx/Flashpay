@@ -1802,7 +1802,6 @@ refund_cb (void *cls,
       .coin_pub = *coin_pub,
       .merchant = *merchant_pub,
       .rtransaction_id = GNUNET_htonll (rtransaction_id),
-      .refund_fee = issue->fee_refund
     };
 
     TALER_amount_hton (&rr.refund_amount,

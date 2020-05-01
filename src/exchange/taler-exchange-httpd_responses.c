@@ -185,8 +185,6 @@ TEH_RESPONSE_compile_transaction_history (
 
         TALER_amount_hton (&rr.refund_amount,
                            &refund->refund_amount);
-        TALER_amount_hton (&rr.refund_fee,
-                           &refund->refund_fee);
 #if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
