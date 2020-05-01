@@ -185,6 +185,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
       resp = MHD_create_response_from_buffer (0,
                                               NULL,
                                               MHD_RESPMEM_PERSISTENT);
+      TALER_MHD_add_global_headers (resp);
       ret = MHD_queue_response (conn,
                                 MHD_HTTP_NOT_MODIFIED,
                                 resp);
@@ -288,6 +289,7 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
                                             (void *) t->terms,
                                             MHD_RESPMEM_PERSISTENT);
   }
+  TALER_MHD_add_global_headers (resp);
   if (NULL != legal)
     GNUNET_break (MHD_YES ==
                   MHD_add_response_header (resp,
