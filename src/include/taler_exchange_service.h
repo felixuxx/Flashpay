@@ -1611,7 +1611,11 @@ struct TALER_EXCHANGE_TransferData
   struct GNUNET_TIME_Absolute execution_time;
 
   /**
+<<<<<<< HEAD
    * amount of the wire transfer; FIXME: total wired (without fee), or including @a wire_fee?
+=======
+   * amount of the wire transfer
+>>>>>>> update exchange API to return struct instead of lots of individual args for TALER_EXCHANGE_transfers_get() -- simplifies merchant later
    */
   struct TALER_Amount total_amount;
 
