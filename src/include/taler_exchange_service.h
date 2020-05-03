@@ -1683,26 +1683,56 @@ struct TALER_EXCHANGE_DepositGetHandle;
 
 
 /**
+ * Data returned for a successful GET /deposits/ request.  Note that
+ * most fields are only set if the status is #MHD_HTTP_OK.  Only
+ * the @e execution_time is available if the status is #MHD_HTTP_ACCEPTED.
+ */
+struct TALER_EXCHANGE_DepositData
+{
+
+  /**
+   * exchange key used to sign, NULL if exchange did not
+   * yet execute the transaction
+   */
+  const struct TALER_ExchangePublicKeyP *exchange_pub;
+
+  /**
+   * signature from the exchange over the deposit data, NULL if exchange did not
+   * yet execute the transaction
+   */
+  const struct TALER_ExchangeSignatureP *exchange_sig;
+
+  /**
+   * wire transfer identifier used by the exchange, NULL if exchange did not
+   * yet execute the transaction
+   */
+  const struct TALER_WireTransferIdentifierRawP *wtid;
+
+  /**
+   * actual or planned execution time for the wire transfer
+   */
+  struct GNUNET_TIME_Absolute execution_time;
+
+  /**
+   * contribution to the total amount by this coin, NULL if exchange did not
+   * yet execute the transaction
+   */
+  const struct TALER_Amount *coin_contribution;
+};
+
+
+/**
  * Function called with detailed wire transfer data.
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param exchange_pub exchange key used to sign @a json, or NULL
- * @param wtid wire transfer identifier used by the exchange, NULL if exchange did not
- *                  yet execute the transaction
- * @param execution_time actual or planned execution time for the wire transfer
- * @param coin_contribution contribution to the total amount by this coin (can be NULL)
- * // FIXME: also return the exchange signature
- * // FIXME: combine all of the above (except cls,hr) into a 'struct'! => DepositData
+ * @param dd details about the deposit (NULL on errors)
  */
 typedef void
 (*TALER_EXCHANGE_DepositGetCallback)(
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ExchangePublicKeyP *exchange_pub,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  struct GNUNET_TIME_Absolute execution_time,
-  const struct TALER_Amount *coin_contribution);
+  const struct TALER_EXCHANGE_DepositData *dd);
 
 
 /**
