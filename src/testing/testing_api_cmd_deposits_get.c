@@ -112,6 +112,7 @@ deposit_wtid_cb (void *cls,
   {
   case MHD_HTTP_OK:
     tts->wtid = dd->wtid;
+
     if (NULL != tts->bank_transfer_reference)
     {
       const struct TALER_TESTING_Command *bank_transfer_cmd;
