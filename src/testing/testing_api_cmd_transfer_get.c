@@ -121,37 +121,18 @@ track_transfer_cleanup (void *cls,
  *
  * @param cls closure.
  * @param hr HTTP response details
- * @param exchange_pub public key the exchange used for signing
- *        the response.
- * @param h_wire hash of the wire transfer address the transfer
- *        went to, or NULL on error.
- * @param execution_time time when the exchange claims to have
- *        performed the wire transfer.
- * @param total_amount total amount of the wire transfer, or NULL
- *        if the exchange could not provide any @a wtid (set only
- *        if @a http_status is "200 OK").
- * @param wire_fee wire fee that was charged by the exchange.
- * @param details_length length of the @a details array.
- * @param details array with details about the combined
- *        transactions.
+ * @param ta transfer data returned by the exchange
  */
 static void
 track_transfer_cb (void *cls,
                    const struct TALER_EXCHANGE_HttpResponse *hr,
-                   const struct TALER_ExchangePublicKeyP *exchange_pub,
-                   const struct GNUNET_HashCode *h_wire,
-                   struct GNUNET_TIME_Absolute execution_time,
-                   const struct TALER_Amount *total_amount,
-                   const struct TALER_Amount *wire_fee,
-                   unsigned int details_length,
-                   const struct TALER_TrackTransferDetails *details)
+                   const struct TALER_EXCHANGE_TransferData *ta)
 {
   struct TrackTransferState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   struct TALER_Amount expected_amount;
 
-  (void) exchange_pub;
   tts->tth = NULL;
   if (tts->expected_response_code != hr->http_status)
   {
@@ -193,14 +174,14 @@ track_transfer_cb (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    if (0 != TALER_amount_cmp (total_amount,
+    if (0 != TALER_amount_cmp (&ta->total_amount,
                                &expected_amount))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Total amount mismatch to command %s - "
                   "%s vs %s\n",
                   cmd->label,
-                  TALER_amount_to_string (total_amount),
+                  TALER_amount_to_string (&ta->total_amount),
                   TALER_amount_to_string (&expected_amount));
       json_dumpf (hr->reply,
                   stderr,
@@ -219,7 +200,7 @@ track_transfer_cb (void *cls,
       return;
     }
 
-    if (0 != TALER_amount_cmp (wire_fee,
+    if (0 != TALER_amount_cmp (&ta->wire_fee,
                                &expected_amount))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -266,7 +247,7 @@ track_transfer_cb (void *cls,
                      TALER_JSON_merchant_wire_signature_hash (wire_details,
                                                               &h_wire_details));
       if (0 != GNUNET_memcmp (&h_wire_details,
-                              h_wire))
+                              &ta->h_wire))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Wire hash missmath to command %s\n",
@@ -301,7 +282,7 @@ track_transfer_cb (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      if (0 != TALER_amount_cmp (total_amount,
+      if (0 != TALER_amount_cmp (&ta->total_amount,
                                  total_amount_from_reference))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

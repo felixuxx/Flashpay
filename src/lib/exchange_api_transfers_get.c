@@ -85,24 +85,18 @@ check_transfers_get_response_ok (
   const json_t *json)
 {
   json_t *details_j;
-  struct GNUNET_HashCode h_wire;
-  struct GNUNET_TIME_Absolute exec_time;
-  struct TALER_Amount total_amount;
+  struct TALER_EXCHANGE_TransferData td;
   struct TALER_Amount total_expected;
-  struct TALER_Amount wire_fee;
   struct TALER_MerchantPublicKeyP merchant_pub;
-  unsigned int num_details;
-  struct TALER_ExchangePublicKeyP exchange_pub;
-  struct TALER_ExchangeSignatureP exchange_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("total", &total_amount),
-    TALER_JSON_spec_amount ("wire_fee", &wire_fee),
+    TALER_JSON_spec_amount ("total", &td.total_amount),
+    TALER_JSON_spec_amount ("wire_fee", &td.wire_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
-    GNUNET_JSON_spec_fixed_auto ("h_wire", &h_wire),
-    GNUNET_JSON_spec_absolute_time ("execution_time", &exec_time),
+    GNUNET_JSON_spec_fixed_auto ("h_wire", &td.h_wire),
+    GNUNET_JSON_spec_absolute_time ("execution_time", &td.execution_time),
     GNUNET_JSON_spec_json ("deposits", &details_j),
-    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &td.exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", &td.exchange_pub),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_HttpResponse hr = {
@@ -119,22 +113,32 @@ check_transfers_get_response_ok (
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_amount_get_zero (total_amount.currency,
+      TALER_amount_get_zero (td.total_amount.currency,
                              &total_expected))
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
-  num_details = json_array_size (details_j);
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_test_signing_key (
+        TALER_EXCHANGE_get_keys (wdh->exchange),
+        &td.exchange_pub))
   {
-    struct TALER_TrackTransferDetails details[num_details];
-    unsigned int i;
+    GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
+  td.details_length = json_array_size (details_j);
+  {
     struct GNUNET_HashContext *hash_context;
-    struct TALER_WireDepositDetailP dd;
-    struct TALER_WireDepositDataPS wdp;
+    struct TALER_TrackTransferDetails *details;
 
+    details = GNUNET_new_array (td.details_length,
+                                struct TALER_TrackTransferDetails);
+    td.details = details;
     hash_context = GNUNET_CRYPTO_hash_context_start ();
-    for (i = 0; i<num_details; i++)
+    for (unsigned int i = 0; i<td.details_length; i++)
     {
       struct TALER_TrackTransferDetails *detail = &details[i];
       struct json_t *detail_j = json_array_get (details_j, i);
@@ -147,25 +151,11 @@ check_transfers_get_response_ok (
         GNUNET_JSON_spec_end ()
       };
 
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (detail_j,
-                             spec_detail,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        GNUNET_CRYPTO_hash_context_abort (hash_context);
-        GNUNET_JSON_parse_free (spec);
-        return GNUNET_SYSERR;
-      }
-      /* build up big hash for signature checking later */
-      dd.h_contract_terms = detail->h_contract_terms;
-      dd.execution_time = GNUNET_TIME_absolute_hton (exec_time);
-      dd.coin_pub = detail->coin_pub;
-      TALER_amount_hton (&dd.deposit_value,
-                         &detail->coin_value);
-      TALER_amount_hton (&dd.deposit_fee,
-                         &detail->coin_fee);
-      if ( (0 >
+      if ( (GNUNET_OK !=
+            GNUNET_JSON_parse (detail_j,
+                               spec_detail,
+                               NULL, NULL)) ||
+           (0 >
             TALER_amount_add (&total_expected,
                               &total_expected,
                               &detail->coin_value)) ||
@@ -177,71 +167,78 @@ check_transfers_get_response_ok (
         GNUNET_break_op (0);
         GNUNET_CRYPTO_hash_context_abort (hash_context);
         GNUNET_JSON_parse_free (spec);
+        GNUNET_free (details);
         return GNUNET_SYSERR;
       }
-      GNUNET_CRYPTO_hash_context_read (
-        hash_context,
-        &dd,
-        sizeof (struct TALER_WireDepositDetailP));
+      /* build up big hash for signature checking later */
+      {
+        struct TALER_WireDepositDetailP dd;
+
+        dd.h_contract_terms = detail->h_contract_terms;
+        dd.execution_time = GNUNET_TIME_absolute_hton (td.execution_time);
+        dd.coin_pub = detail->coin_pub;
+        TALER_amount_hton (&dd.deposit_value,
+                           &detail->coin_value);
+        TALER_amount_hton (&dd.deposit_fee,
+                           &detail->coin_fee);
+        GNUNET_CRYPTO_hash_context_read (hash_context,
+                                         &dd,
+                                         sizeof (dd));
+      }
     }
     /* Check signature */
-    wdp.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT);
-    wdp.purpose.size = htonl (sizeof (struct TALER_WireDepositDataPS));
-    TALER_amount_hton (&wdp.total,
-                       &total_amount);
-    TALER_amount_hton (&wdp.wire_fee,
-                       &wire_fee);
-    wdp.merchant_pub = merchant_pub;
-    wdp.h_wire = h_wire;
-    GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                       &wdp.h_details);
-    if (GNUNET_OK !=
-        TALER_EXCHANGE_test_signing_key (TALER_EXCHANGE_get_keys (
-                                           wdh->exchange),
-                                         &exchange_pub))
     {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
-          &wdp,
-          &exchange_sig.eddsa_signature,
-          &exchange_pub.eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
+      struct TALER_WireDepositDataPS wdp = {
+        .purpose.purpose = htonl (
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT),
+        .purpose.size = htonl (sizeof (wdp)),
+        .merchant_pub = merchant_pub,
+        .h_wire = td.h_wire
+      };
+
+      TALER_amount_hton (&wdp.total,
+                         &td.total_amount);
+      TALER_amount_hton (&wdp.wire_fee,
+                         &td.wire_fee);
+      GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                         &wdp.h_details);
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (
+            TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT,
+            &wdp,
+            &td.exchange_sig.eddsa_signature,
+            &td.exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
+        GNUNET_free (details);
+        return GNUNET_SYSERR;
+      }
     }
 
     if (0 >
         TALER_amount_subtract (&total_expected,
                                &total_expected,
-                               &wire_fee))
+                               &td.wire_fee))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
+      GNUNET_free (details);
       return GNUNET_SYSERR;
     }
     if (0 !=
         TALER_amount_cmp (&total_expected,
-                          &total_amount))
+                          &td.total_amount))
     {
       GNUNET_break_op (0);
       GNUNET_JSON_parse_free (spec);
+      GNUNET_free (details);
       return GNUNET_SYSERR;
     }
     wdh->cb (wdh->cb_cls,
              &hr,
-             &exchange_pub,
-             &h_wire,
-             exec_time,
-             &total_amount,
-             &wire_fee,
-             num_details,
-             details);
+             &td);
+    GNUNET_free (details);
   }
   GNUNET_JSON_parse_free (spec);
   TALER_EXCHANGE_transfers_get_cancel (wdh);
@@ -322,12 +319,7 @@ handle_transfers_get_finished (void *cls,
   }
   wdh->cb (wdh->cb_cls,
            &hr,
-           NULL,
-           NULL,
-           GNUNET_TIME_UNIT_ZERO_ABS,
-           NULL,
-           NULL,
-           0, NULL);
+           NULL);
   TALER_EXCHANGE_transfers_get_cancel (wdh);
 }
 
