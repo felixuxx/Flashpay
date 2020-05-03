@@ -81,29 +81,17 @@ struct TrackTransactionState
  *
  * @param cls closure.
  * @param hr HTTP response details
- * @param exchange_pub public key of the exchange
- * @param wtid wire transfer identifier, NULL if exchange did not
- *        execute the transaction yet.
- * @param execution_time actual or planned execution time for the
- *        wire transfer.
- * @param coin_contribution contribution to the total amount of
- *        the deposited coin (can be NULL).
+ * @param dd data about the wire transfer associated with the deposit
  */
 static void
 deposit_wtid_cb (void *cls,
                  const struct TALER_EXCHANGE_HttpResponse *hr,
-                 const struct TALER_ExchangePublicKeyP *exchange_pub,
-                 const struct TALER_WireTransferIdentifierRawP *wtid,
-                 struct GNUNET_TIME_Absolute execution_time,
-                 const struct TALER_Amount *coin_contribution)
+                 const struct TALER_EXCHANGE_DepositData *dd)
 {
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
-  (void) coin_contribution;
-  (void) exchange_pub;
-  (void) execution_time;
   tts->tth = NULL;
   if (tts->expected_response_code != hr->http_status)
   {
@@ -123,7 +111,8 @@ deposit_wtid_cb (void *cls,
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
-    tts->wtid = *wtid;
+    GNUNET_assert (NULL != dd->wtid);
+    tts->wtid = *dd->wtid;
     if (NULL != tts->bank_transfer_reference)
     {
       const struct TALER_TESTING_Command *bank_transfer_cmd;
@@ -151,7 +140,7 @@ deposit_wtid_cb (void *cls,
       }
 
       /* Compare that expected and gotten subjects match.  */
-      if (0 != GNUNET_memcmp (wtid,
+      if (0 != GNUNET_memcmp (dd->wtid,
                               wtid_want))
       {
         GNUNET_break (0);
