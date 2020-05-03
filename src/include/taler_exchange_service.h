@@ -1722,7 +1722,6 @@ struct TALER_EXCHANGE_DepositData
    * yet execute the transaction
    */
   struct TALER_Amount coin_contribution;
-
 };
 
 
