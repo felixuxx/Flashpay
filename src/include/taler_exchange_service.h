@@ -1581,31 +1581,67 @@ struct TALER_EXCHANGE_TransfersGetHandle;
 
 
 /**
+ * Information the exchange returns per wire transfer.
+ */
+struct TALER_EXCHANGE_TransferData
+{
+
+  /**
+   * exchange key used to sign
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * exchange signature over the transfer data
+   */
+  struct TALER_ExchangeSignatureP exchange_sig;
+
+  /**
+   * hash of the wire transfer address the transfer went to
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * time when the exchange claims to have performed the wire transfer
+   */
+  struct GNUNET_TIME_Absolute execution_time;
+
+  /**
+   * amount of the wire transfer
+   */
+  struct TALER_Amount total_amount;
+
+  /**
+   * wire fee that was charged by the exchange
+   */
+  struct TALER_Amount wire_fee;
+
+  /**
+   * length of the @e details array
+   */
+  unsigned int details_length;
+
+  /**
+   * array with details about the combined transactions
+   */
+  const struct TALER_TrackTransferDetails *details;
+
+};
+
+
+/**
  * Function called with detailed wire transfer data, including all
  * of the coin transactions that were combined into the wire transfer.
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param sign_key exchange key used to sign @a json, or NULL
- * @param h_wire hash of the wire transfer address the transfer went to, or NULL on error
- * @param execution_time time when the exchange claims to have performed the wire transfer
- * @param total_amount total amount of the wire transfer, or NULL if the exchange could
- *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
- * @param wire_fee wire fee that was charged by the exchange
- * @param details_length length of the @a details array
- * @param details array with details about the combined transactions
+ * @param ta transfer data, (set only if @a http_status is #MHD_HTTP_OK, otherwise NULL)
  */
 typedef void
 (*TALER_EXCHANGE_TransfersGetCallback)(
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ExchangePublicKeyP *sign_key,
-  const struct GNUNET_HashCode *h_wire,
-  struct GNUNET_TIME_Absolute execution_time,
-  const struct TALER_Amount *total_amount,
-  const struct TALER_Amount *wire_fee,
-  unsigned int details_length,
-  const struct TALER_TrackTransferDetails *details);
+  const struct TALER_EXCHANGE_TransferData *ta);
 
 
 /**
@@ -1651,17 +1687,19 @@ struct TALER_EXCHANGE_DepositGetHandle;
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param sign_key exchange key used to sign @a json, or NULL
+ * @param exchange_pub exchange key used to sign @a json, or NULL
  * @param wtid wire transfer identifier used by the exchange, NULL if exchange did not
  *                  yet execute the transaction
  * @param execution_time actual or planned execution time for the wire transfer
  * @param coin_contribution contribution to the total amount by this coin (can be NULL)
+ * // FIXME: also return the exchange signature
+ * // FIXME: combine all of the above (except cls,hr) into a 'struct'! => DepositData
  */
 typedef void
 (*TALER_EXCHANGE_DepositGetCallback)(
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ExchangePublicKeyP *sign_key,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   struct GNUNET_TIME_Absolute execution_time,
   const struct TALER_Amount *coin_contribution);
