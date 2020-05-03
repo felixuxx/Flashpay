@@ -111,7 +111,14 @@ deposit_wtid_cb (void *cls,
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
-    tts->wtid = dd->wtid;
+      << << << < HEAD
+      tts->wtid = dd->wtid;
+    ====== =
+      GNUNET_assert (NULL != dd->wtid);
+    tts->wtid = *dd->wtid;
+    >> >> >> > modify
+    TALER_EXCHANGE_deposits_get () API to combine returned arguments into
+    a struct (simplifies merchant later)
     if (NULL != tts->bank_transfer_reference)
     {
       const struct TALER_TESTING_Command *bank_transfer_cmd;
@@ -147,6 +154,8 @@ deposit_wtid_cb (void *cls,
         return;
       }
     }
+
+
     break;
   case MHD_HTTP_ACCEPTED:
     /* allowed, nothing to check here */
