@@ -111,8 +111,7 @@ deposit_wtid_cb (void *cls,
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
-    GNUNET_assert (NULL != dd->wtid);
-    tts->wtid = *dd->wtid;
+    tts->wtid = dd->wtid;
     if (NULL != tts->bank_transfer_reference)
     {
       const struct TALER_TESTING_Command *bank_transfer_cmd;
@@ -140,7 +139,7 @@ deposit_wtid_cb (void *cls,
       }
 
       /* Compare that expected and gotten subjects match.  */
-      if (0 != GNUNET_memcmp (dd->wtid,
+      if (0 != GNUNET_memcmp (&dd->wtid,
                               wtid_want))
       {
         GNUNET_break (0);

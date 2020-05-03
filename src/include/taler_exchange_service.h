@@ -1691,22 +1691,22 @@ struct TALER_EXCHANGE_DepositData
 {
 
   /**
-   * exchange key used to sign, NULL if exchange did not
+   * exchange key used to sign, all zeros if exchange did not
    * yet execute the transaction
    */
-  const struct TALER_ExchangePublicKeyP *exchange_pub;
+  struct TALER_ExchangePublicKeyP exchange_pub;
 
   /**
-   * signature from the exchange over the deposit data, NULL if exchange did not
+   * signature from the exchange over the deposit data, all zeros if exchange did not
    * yet execute the transaction
    */
-  const struct TALER_ExchangeSignatureP *exchange_sig;
+  struct TALER_ExchangeSignatureP exchange_sig;
 
   /**
-   * wire transfer identifier used by the exchange, NULL if exchange did not
+   * wire transfer identifier used by the exchange, all zeros if exchange did not
    * yet execute the transaction
    */
-  const struct TALER_WireTransferIdentifierRawP *wtid;
+  struct TALER_WireTransferIdentifierRawP wtid;
 
   /**
    * actual or planned execution time for the wire transfer
@@ -1714,10 +1714,10 @@ struct TALER_EXCHANGE_DepositData
   struct GNUNET_TIME_Absolute execution_time;
 
   /**
-   * contribution to the total amount by this coin, NULL if exchange did not
+   * contribution to the total amount by this coin, all zeros if exchange did not
    * yet execute the transaction
    */
-  const struct TALER_Amount *coin_contribution;
+  struct TALER_Amount coin_contribution;
 };
 
 
