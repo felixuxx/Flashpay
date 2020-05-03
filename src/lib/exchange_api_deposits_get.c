@@ -146,16 +146,13 @@ handle_deposit_wtid_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
-      struct GNUNET_TIME_Absolute execution_time;
-      struct TALER_Amount coin_contribution;
-      struct TALER_ExchangePublicKeyP exchange_pub;
-      struct TALER_ExchangeSignatureP exchange_sig;
+      struct TALER_EXCHANGE_DepositData dd;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
-        GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
-        TALER_JSON_spec_amount ("coin_contribution", &coin_contribution),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &exchange_pub),
+        GNUNET_JSON_spec_absolute_time ("execution_time", &dd.execution_time),
+        TALER_JSON_spec_amount ("coin_contribution", &dd.coin_contribution),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &dd.exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &dd.exchange_pub),
         GNUNET_JSON_spec_end ()
       };
 
@@ -169,14 +166,15 @@ handle_deposit_wtid_finished (void *cls,
         hr.ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
         break;
       }
-      dwh->depconf.execution_time = GNUNET_TIME_absolute_hton (execution_time);
+      dwh->depconf.execution_time = GNUNET_TIME_absolute_hton (
+        dd.execution_time);
       TALER_amount_hton (&dwh->depconf.coin_contribution,
-                         &coin_contribution);
+                         &dd.coin_contribution);
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
                                             j,
-                                            &exchange_pub,
-                                            &exchange_sig))
+                                            &dd.exchange_pub,
+                                            &dd.exchange_sig))
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
@@ -184,14 +182,7 @@ handle_deposit_wtid_finished (void *cls,
       }
       else
       {
-        struct TALER_EXCHANGE_DepositData dd = {
-          .exchange_pub = &exchange_pub,
-          .exchange_sig = &exchange_sig,
-          .wtid = &dwh->depconf.wtid,
-          .execution_time = execution_time,
-          .coin_contribution = &coin_contribution
-        };
-
+        dd.wtid = dwh->depconf.wtid;
         dwh->cb (dwh->cb_cls,
                  &hr,
                  &dd);
