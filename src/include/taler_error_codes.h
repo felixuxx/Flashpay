@@ -844,7 +844,7 @@ enum TALER_ErrorCode
   /**
    * The currency specified for the refund is different from the
    * currency of the coin.  This response is provided with HTTP status
-   * code #MHD_HTTP_PRECONDITION_FAILED.
+   * code #MHD_HTTP_BAD_REQUEST.
    */
   TALER_EC_REFUND_CURRENCY_MISMATCH = 1504,
 
@@ -1368,6 +1368,12 @@ enum TALER_ErrorCode
   TALER_EC_PAY_REFUNDS_EXCEED_PAYMENTS = 2133,
 
   /**
+   * Legacy stuff. Remove me with protocol v1. This response is provided
+   * with HTTP status code #MHD_HTTP_PREREQUISTE.
+   */
+  TALER_EC_PAY_ABORT_REFUND_REFUSED_PAYMENT_COMPLETE = 2134,
+
+  /**
    * The merchant failed to contact the exchange. This response is
    * provided with HTTP status code of #MHD_HTTP_FAILED_DEPENDENCY.
    */
@@ -1417,14 +1423,13 @@ enum TALER_ErrorCode
   /**
    * The payment was already completed and thus cannot be aborted
    * anymore. This response is provided with HTTP status code of
-   * #MHD_HTTP_FORBIDDEN.
+   * #MHD_HTTP_PRECONDITION_FAILED.
    */
   TALER_EC_ABORT_REFUND_REFUSED_PAYMENT_COMPLETE = 2157,
 
   /**
    * The hash provided by the wallet does not match the order. This
-   * response is provided with HTTP status code of
-   * #MHD_HTTP_BAD_REQUEST.
+   * response is provided with HTTP status code of #MHD_HTTP_FORBIDDEN.
    */
   TALER_EC_ABORT_CONTRACT_HASH_MISSMATCH = 2158,
 
