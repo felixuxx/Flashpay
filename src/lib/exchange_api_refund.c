@@ -156,6 +156,7 @@ handle_refund_finished (void *cls,
     .http_status = (unsigned int) response_code
   };
 
+
   rh->job = NULL;
   switch (response_code)
   {
