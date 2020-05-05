@@ -2199,6 +2199,25 @@ enum TALER_ErrorCode
   TALER_EC_TIP_PICKUP_UNBLIND_FAILURE = 2812,
 
   /**
+   * We failed to fetch contract terms from our merchant database. The
+   * response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_GET_ORDERS_DB_LOOKUP_ERROR = 2900,
+
+  /**
+   * We failed to find the contract terms from our merchant database.
+   * The response is provided with HTTP status code #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_GET_ORDERS_ID_UNKNOWN = 2901,
+
+  /**
+   * The contract hash provided by the wallet does not match the order.
+   * The response is provided with HTTP status code #MHD_HTTP_FORBIDDEN.
+   */
+  TALER_EC_GET_ORDERS_WRONG_CONTRACT = 2902,
+
+  /**
    * We failed to contract terms from our merchant database. The
    * response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
