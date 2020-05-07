@@ -58,6 +58,11 @@ struct InsertDepositState
   struct GNUNET_TIME_Relative wire_deadline;
 
   /**
+   * When did the exchange receive the deposit?
+   */
+  struct GNUNET_TIME_Absolute exchange_timestamp;
+
+  /**
    * Amount to deposit, inclusive of deposit fee.
    */
   const char *amount_with_fee;
@@ -210,6 +215,7 @@ insert_deposit_run (void *cls,
        (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         ids->dbc->plugin->insert_deposit (ids->dbc->plugin->cls,
                                           ids->dbc->session,
+                                          ids->exchange_timestamp,
                                           &deposit)) ||
        (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
         ids->dbc->plugin->commit (ids->dbc->plugin->cls,
@@ -275,6 +281,7 @@ insert_deposit_traits (void *cls,
  * @param dbc collects database plugin and session handles.
  * @param merchant_name Human-readable name of the merchant.
  * @param merchant_account merchant's account name (NOT a payto:// URI)
+ * @param exchange_timestamp when did the exchange receive the deposit
  * @param wire_deadline point in time where the aggregator should have
  *        wired money to the merchant.
  * @param amount_with_fee amount to deposit (inclusive of deposit fee)
@@ -282,21 +289,24 @@ insert_deposit_traits (void *cls,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_insert_deposit (const char *label,
-                                  const struct
-                                  TALER_TESTING_DatabaseConnection *dbc,
-                                  const char *merchant_name,
-                                  const char *merchant_account,
-                                  struct GNUNET_TIME_Relative wire_deadline,
-                                  const char *amount_with_fee,
-                                  const char *deposit_fee)
+TALER_TESTING_cmd_insert_deposit (
+  const char *label,
+  const struct TALER_TESTING_DatabaseConnection *dbc,
+  const char *merchant_name,
+  const char *merchant_account,
+  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Relative wire_deadline,
+  const char *amount_with_fee,
+  const char *deposit_fee)
 {
   struct InsertDepositState *ids;
 
+  GNUNET_TIME_round_abs (&exchange_timestamp);
   ids = GNUNET_new (struct InsertDepositState);
   ids->dbc = dbc;
   ids->merchant_name = merchant_name;
   ids->merchant_account = merchant_account;
+  ids->exchange_timestamp = exchange_timestamp;
   ids->wire_deadline = wire_deadline;
   ids->amount_with_fee = amount_with_fee;
   ids->deposit_fee = deposit_fee;

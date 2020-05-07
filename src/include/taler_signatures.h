@@ -363,7 +363,7 @@ struct TALER_DepositRequestPS
    * deposit request in a timely fashion (so back-dating is not
    * prevented).
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_AbsoluteNBO wallet_timestamp;
 
   /**
    * How much time does the merchant have to issue a refund request?
@@ -429,9 +429,10 @@ struct TALER_DepositConfirmationPS
   struct GNUNET_HashCode h_wire GNUNET_PACKED;
 
   /**
-   * Time when this confirmation was generated.
+   * Time when this confirmation was generated / when the exchange received
+   * the deposit request.
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_AbsoluteNBO exchange_timestamp;
 
   /**
    * How much time does the @e merchant have to issue a refund

@@ -114,11 +114,15 @@ test_dc (void *cls,
       .h_wire = dc->h_wire,
       .refund_deadline = dc->refund_deadline
     };
+    struct GNUNET_TIME_Absolute exchange_timestamp;
+    struct TALER_Amount deposit_fee;
 
     qs = TALER_ARL_edb->have_deposit (TALER_ARL_edb->cls,
                                       TALER_ARL_esession,
                                       &dep,
-                                      GNUNET_NO /* do not check refund deadline */);
+                                      GNUNET_NO /* do not check refund deadline */,
+                                      &deposit_fee,
+                                      &exchange_timestamp);
     if (qs > 0)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -137,7 +141,8 @@ test_dc (void *cls,
   TALER_ARL_report (report_deposit_confirmation_inconsistencies,
                     json_pack ("{s:o, s:o, s:I, s:o}",
                                "timestamp",
-                               TALER_ARL_json_from_time_abs (dc->timestamp),
+                               TALER_ARL_json_from_time_abs (
+                                 dc->exchange_timestamp),
                                "amount",
                                TALER_JSON_from_amount (&dc->amount_without_fee),
                                "rowid",

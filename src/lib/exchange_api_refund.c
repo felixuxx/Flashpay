@@ -148,7 +148,8 @@ handle_refund_finished (void *cls,
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP *ep = NULL;
   struct TALER_ExchangeSignatureP *es = NULL;
-  struct TALER_Amount *rf = NULL;
+  struct TALER_Amount ra;
+  const struct TALER_Amount *rf = NULL;
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .reply = j,
@@ -176,7 +177,9 @@ handle_refund_finished (void *cls,
     {
       ep = &exchange_pub;
       es = &exchange_sig;
-      rf = &rh->depconf.refund_fee;
+      TALER_amount_ntoh (&ra,
+                         &rh->depconf.refund_fee);
+      rf = &ra;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:

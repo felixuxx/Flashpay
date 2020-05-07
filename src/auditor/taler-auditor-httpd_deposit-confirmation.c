@@ -155,7 +155,7 @@ verify_and_execute_deposit_confirmation (
       .purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS)),
       .h_contract_terms = dc->h_contract_terms,
       .h_wire = dc->h_wire,
-      .timestamp = GNUNET_TIME_absolute_hton (dc->timestamp),
+      .exchange_timestamp = GNUNET_TIME_absolute_hton (dc->exchange_timestamp),
       .refund_deadline = GNUNET_TIME_absolute_hton (dc->refund_deadline),
       .coin_pub = dc->coin_pub,
       .merchant = dc->merchant
@@ -224,7 +224,8 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms", &dc.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("h_wire", &dc.h_wire),
-    GNUNET_JSON_spec_absolute_time ("timestamp", &dc.timestamp),
+    GNUNET_JSON_spec_absolute_time ("exchange_timestamp",
+                                    &dc.exchange_timestamp),
     GNUNET_JSON_spec_absolute_time ("refund_deadline", &dc.refund_deadline),
     TALER_JSON_spec_amount ("amount_without_fee", &dc.amount_without_fee),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &dc.coin_pub),

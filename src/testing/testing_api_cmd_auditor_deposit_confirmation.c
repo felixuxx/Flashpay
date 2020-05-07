@@ -203,6 +203,7 @@ deposit_confirmation_run (void *cls,
   const struct TALER_TESTING_Command *deposit_cmd;
   struct GNUNET_HashCode h_wire;
   struct GNUNET_HashCode h_contract_terms;
+  const struct GNUNET_TIME_Absolute *exchange_timestamp = NULL;
   struct GNUNET_TIME_Absolute timestamp;
   struct GNUNET_TIME_Absolute refund_deadline;
   struct TALER_Amount amount_without_fee;
@@ -238,6 +239,11 @@ deposit_confirmation_run (void *cls,
                  TALER_TESTING_get_trait_exchange_sig (deposit_cmd,
                                                        dcs->coin_index,
                                                        &exchange_sig));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_absolute_time (deposit_cmd,
+                                                        dcs->coin_index,
+                                                        &exchange_timestamp));
+  GNUNET_assert (NULL != exchange_timestamp);
   keys = TALER_EXCHANGE_get_keys (dcs->is->exchange);
   GNUNET_assert (NULL != keys);
   spk = TALER_EXCHANGE_get_signing_key_info (keys,
@@ -309,7 +315,7 @@ deposit_confirmation_run (void *cls,
   dcs->dc = TALER_AUDITOR_deposit_confirmation (dcs->auditor,
                                                 &h_wire,
                                                 &h_contract_terms,
-                                                timestamp,
+                                                *exchange_timestamp,
                                                 refund_deadline,
                                                 &amount_without_fee,
                                                 &coin_pub,
