@@ -756,6 +756,7 @@ struct TALER_EXCHANGE_DepositHandle;
  *
  * @param cls closure
  * @param hr HTTP response data
+ * @param deposit_timestamp time when the exchange generated the deposit confirmation
  * @param exchange_sig signature provided by the exchange
  * @param exchange_pub exchange key used to sign @a obj, or NULL
  */
@@ -763,6 +764,7 @@ typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
+  struct GNUNET_TIME_Absolute deposit_timestamp,
   const struct TALER_ExchangeSignatureP *exchange_sig,
   const struct TALER_ExchangePublicKeyP *exchange_pub);
 
