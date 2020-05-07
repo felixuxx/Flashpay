@@ -269,7 +269,7 @@ postgres_get_session (void *cls)
                             "(master_pub"
                             ",h_contract_terms"
                             ",h_wire"
-                            ",timestamp"
+                            ",exchange_timestamp"
                             ",refund_deadline"
                             ",amount_without_fee_val"
                             ",amount_without_fee_frac"
@@ -286,7 +286,7 @@ postgres_get_session (void *cls)
                             " serial_id"
                             ",h_contract_terms"
                             ",h_wire"
-                            ",timestamp"
+                            ",exchange_timestamp"
                             ",refund_deadline"
                             ",amount_without_fee_val"
                             ",amount_without_fee_frac"
@@ -1126,7 +1126,7 @@ postgres_insert_deposit_confirmation (
     GNUNET_PQ_query_param_auto_from_type (&dc->master_public_key),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_wire),
-    TALER_PQ_query_param_absolute_time (&dc->timestamp),
+    TALER_PQ_query_param_absolute_time (&dc->exchange_timestamp),
     TALER_PQ_query_param_absolute_time (&dc->refund_deadline),
     TALER_PQ_query_param_amount (&dc->amount_without_fee),
     GNUNET_PQ_query_param_auto_from_type (&dc->coin_pub),
@@ -1207,8 +1207,8 @@ deposit_confirmation_cb (void *cls,
                                             &dc.h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                             &dc.h_wire),
-      GNUNET_PQ_result_spec_absolute_time ("timestamp",
-                                           &dc.timestamp),
+      GNUNET_PQ_result_spec_absolute_time ("exchange_timestamp",
+                                           &dc.exchange_timestamp),
       GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
                                            &dc.refund_deadline),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_without_fee",

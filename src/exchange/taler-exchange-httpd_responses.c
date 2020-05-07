@@ -66,7 +66,7 @@ TEH_RESPONSE_compile_transaction_history (
           .purpose.size = htonl (sizeof (dr)),
           .h_contract_terms = deposit->h_contract_terms,
           .h_wire = deposit->h_wire,
-          .timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
+          .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
           .refund_deadline = GNUNET_TIME_absolute_hton (
             deposit->refund_deadline),
           .merchant = deposit->merchant_pub,

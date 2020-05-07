@@ -160,7 +160,7 @@ auditor_cb (void *cls,
     ah,
     &dh->depconf.h_wire,
     &dh->depconf.h_contract_terms,
-    GNUNET_TIME_absolute_ntoh (dh->depconf.timestamp),
+    GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp),
     GNUNET_TIME_absolute_ntoh (dh->depconf.refund_deadline),
     &amount_without_fee,
     &dh->depconf.coin_pub,
@@ -198,6 +198,8 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
+    GNUNET_JSON_spec_absolute_time_nbo ("exchange_timestamp",
+                                        &dh->depconf.exchange_timestamp),
     GNUNET_JSON_spec_end ()
   };
 
@@ -386,6 +388,7 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           &hr,
+          GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp),
           es,
           ep);
   TALER_EXCHANGE_deposit_cancel (dh);
@@ -429,7 +432,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
       .purpose.size = htonl (sizeof (dr)),
       .h_contract_terms = *h_contract_terms,
       .h_wire = *h_wire,
-      .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+      .wallet_timestamp = GNUNET_TIME_absolute_hton (timestamp),
       .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
       .merchant = *merchant_pub,
       .coin_pub = *coin_pub
@@ -658,7 +661,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
     TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dh->depconf.h_contract_terms = *h_contract_terms;
   dh->depconf.h_wire = h_wire;
-  dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  /* dh->depconf.exchange_timestamp; -- initialized later from exchange reply! */
   dh->depconf.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
   TALER_amount_hton (&dh->depconf.amount_without_fee,
                      &amount_without_fee);

@@ -524,7 +524,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_JSON_spec_fixed_auto ("h_wire",
                                      &dr.h_wire),
         GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-                                            &dr.timestamp),
+                                            &dr.wallet_timestamp),
         GNUNET_JSON_spec_absolute_time_nbo ("refund_deadline",
                                             &dr.refund_deadline),
         TALER_JSON_spec_amount_nbo ("deposit_fee",

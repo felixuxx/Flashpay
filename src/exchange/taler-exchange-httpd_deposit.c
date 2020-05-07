@@ -47,7 +47,7 @@
  * @param coin_pub public key of the coin
  * @param h_wire hash of wire details
  * @param h_contract_terms hash of contract details
- * @param timestamp client's timestamp
+ * @param exchange_timestamp exchange's timestamp
  * @param refund_deadline until when this deposit be refunded
  * @param merchant merchant public key
  * @param amount_without_fee fraction of coin value to deposit, without the fee
@@ -58,7 +58,7 @@ reply_deposit_success (struct MHD_Connection *connection,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        const struct GNUNET_HashCode *h_wire,
                        const struct GNUNET_HashCode *h_contract_terms,
-                       struct GNUNET_TIME_Absolute timestamp,
+                       struct GNUNET_TIME_Absolute exchange_timestamp,
                        struct GNUNET_TIME_Absolute refund_deadline,
                        const struct TALER_MerchantPublicKeyP *merchant,
                        const struct TALER_Amount *amount_without_fee)
@@ -70,7 +70,7 @@ reply_deposit_success (struct MHD_Connection *connection,
     .purpose.size = htonl (sizeof (dc)),
     .h_contract_terms = *h_contract_terms,
     .h_wire = *h_wire,
-    .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+    .exchange_timestamp = GNUNET_TIME_absolute_hton (exchange_timestamp),
     .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
     .coin_pub = *coin_pub,
     .merchant = *merchant
@@ -88,13 +88,16 @@ reply_deposit_success (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_BAD_CONFIGURATION,
                                        "no keys");
   }
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:o}",
-                                    "exchange_sig",
-                                    GNUNET_JSON_from_data_auto (&sig),
-                                    "exchange_pub",
-                                    GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_reply_json_pack (
+    connection,
+    MHD_HTTP_OK,
+    "{s:o, s:o, s:o}",
+    "exchange_timestamp",
+    GNUNET_JSON_from_time_abs (exchange_timestamp),
+    "exchange_sig",
+    GNUNET_JSON_from_data_auto (&sig),
+    "exchange_pub",
+    GNUNET_JSON_from_data_auto (&pub));
 }
 
 
@@ -109,11 +112,84 @@ struct DepositContext
   const struct TALER_EXCHANGEDB_Deposit *deposit;
 
   /**
+   * Our timestamp (when we received the request).
+   */
+  struct GNUNET_TIME_Absolute exchange_timestamp;
+
+  /**
    * Value of the coin.
    */
   struct TALER_Amount value;
 
 };
+
+
+/**
+ * Check if /deposit is already in the database.  IF it returns a non-error
+ * code, the transaction logic MUST NOT queue a MHD response.  IF it returns
+ * an hard error, the transaction logic MUST queue a MHD response and set @a
+ * mhd_ret.  We do return a "hard" error also if we found the deposit in the
+ * database and generated a regular response.
+ *
+ * @param cls a `struct DepositContext`
+ * @param connection MHD request context
+ * @param session database session and transaction to use
+ * @param[out] mhd_ret set to MHD status on error
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+deposit_precheck (void *cls,
+                  struct MHD_Connection *connection,
+                  struct TALER_EXCHANGEDB_Session *session,
+                  MHD_RESULT *mhd_ret)
+{
+  struct DepositContext *dc = cls;
+  const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
+  struct TALER_Amount deposit_fee;
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = TEH_plugin->have_deposit (TEH_plugin->cls,
+                                 session,
+                                 deposit,
+                                 GNUNET_YES /* check refund deadline */,
+                                 &deposit_fee,
+                                 &dc->exchange_timestamp);
+  if (qs < 0)
+  {
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
+                                             "Could not check for existing identical deposit");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    return qs;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+  {
+    struct TALER_Amount amount_without_fee;
+
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "/deposit replay, accepting again!\n");
+    GNUNET_assert (0 <=
+                   TALER_amount_subtract (&amount_without_fee,
+                                          &deposit->amount_with_fee,
+                                          &deposit_fee));
+    *mhd_ret = reply_deposit_success (connection,
+                                      &deposit->coin.coin_pub,
+                                      &deposit->h_wire,
+                                      &deposit->h_contract_terms,
+                                      dc->exchange_timestamp,
+                                      deposit->refund_deadline,
+                                      &deposit->merchant_pub,
+                                      &amount_without_fee);
+    /* Treat as 'hard' DB error as we want to rollback and
+       never try again. */
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+}
 
 
 /**
@@ -141,44 +217,15 @@ deposit_transaction (void *cls,
   struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = TEH_plugin->have_deposit (TEH_plugin->cls,
-                                 session,
-                                 deposit,
-                                 GNUNET_YES /* check refund deadline */);
+  /* Theoretically, someone other threat may have received
+     and committed the deposit in the meantime. Check now
+     that we are in the transaction scope. */
+  qs = deposit_precheck (cls,
+                         connection,
+                         session,
+                         mhd_ret);
   if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
-                                             "Could not check for existing identical deposit");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
     return qs;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-  {
-    struct TALER_Amount amount_without_fee;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "/deposit replay, accepting again!\n");
-    GNUNET_assert (0 <=
-                   TALER_amount_subtract (&amount_without_fee,
-                                          &deposit->amount_with_fee,
-                                          &deposit->deposit_fee));
-    *mhd_ret = reply_deposit_success (connection,
-                                      &deposit->coin.coin_pub,
-                                      &deposit->h_wire,
-                                      &deposit->h_contract_terms,
-                                      deposit->timestamp,
-                                      deposit->refund_deadline,
-                                      &deposit->merchant_pub,
-                                      &amount_without_fee);
-    /* Treat as 'hard' DB error as we want to rollback and
-       never try again. */
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
 
   /* Start with fee for THIS transaction */
   spent = deposit->amount_with_fee;
@@ -238,6 +285,7 @@ deposit_transaction (void *cls,
   }
   qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
                                    session,
+                                   dc->exchange_timestamp,
                                    deposit);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
@@ -248,45 +296,6 @@ deposit_transaction (void *cls,
                                            "Could not persist /deposit data");
   }
   return qs;
-}
-
-
-/**
- * Check that @a ts is reasonably close to our own RTC.
- *
- * @param ts timestamp to check
- * @return #GNUNET_OK if @a ts is reasonable
- */
-static int
-check_timestamp_current (struct GNUNET_TIME_Absolute ts)
-{
-  struct GNUNET_TIME_Relative r;
-  struct GNUNET_TIME_Relative tolerance;
-
-  /* Let's be VERY generous (after all, this is basically about
-     which year the deposit counts for in terms of tax purposes) */
-  tolerance = GNUNET_TIME_UNIT_MONTHS;
-  r = GNUNET_TIME_absolute_get_duration (ts);
-  if (r.rel_value_us > tolerance.rel_value_us)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Deposit timestamp too old: %llu vs %llu > %llu\n",
-                (unsigned long long) ts.abs_value_us,
-                (unsigned long long) GNUNET_TIME_absolute_get ().abs_value_us,
-                (unsigned long long) tolerance.rel_value_us);
-    return GNUNET_SYSERR;
-  }
-  r = GNUNET_TIME_absolute_get_remaining (ts);
-  if (r.rel_value_us > tolerance.rel_value_us)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Deposit timestamp too new: %llu vs %llu < - %llu\n",
-                (unsigned long long) ts.abs_value_us,
-                (unsigned long long) GNUNET_TIME_absolute_get ().abs_value_us,
-                (unsigned long long) tolerance.rel_value_us);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
 }
 
 
@@ -367,17 +376,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        TALER_EC_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
                                        "refund_deadline");
   }
-
-  if (GNUNET_OK !=
-      check_timestamp_current (deposit.timestamp))
-  {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_DEPOSIT_INVALID_TIMESTAMP,
-                                       "timestamp");
-  }
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (wire,
                                                &my_h_wire))
@@ -401,6 +399,26 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        "h_wire");
   }
 
+  /* Check for idempotency: did we get this request before? */
+  dc.deposit = &deposit;
+  {
+    MHD_RESULT mhd_ret;
+
+    if (GNUNET_OK !=
+        TEH_DB_run_transaction (connection,
+                                "precheck deposit",
+                                &mhd_ret,
+                                &deposit_precheck,
+                                &dc))
+    {
+      GNUNET_JSON_parse_free (spec);
+      return mhd_ret;
+    }
+  }
+
+  /* new deposit */
+  dc.exchange_timestamp = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&dc.exchange_timestamp);
   /* check denomination exists and is valid */
   {
     struct TEH_KS_StateHandle *key_state;
@@ -408,7 +426,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     enum TALER_ErrorCode ec;
     unsigned int hc;
 
-    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
+    key_state = TEH_KS_acquire (dc.exchange_timestamp);
     if (NULL == key_state)
     {
       TALER_LOG_ERROR ("Lacking keys to operate\n");
@@ -502,7 +520,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       .purpose.size = htonl (sizeof (dr)),
       .h_contract_terms = deposit.h_contract_terms,
       .h_wire = deposit.h_wire,
-      .timestamp = GNUNET_TIME_absolute_hton (deposit.timestamp),
+      .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit.timestamp),
       .refund_deadline = GNUNET_TIME_absolute_hton (deposit.refund_deadline),
       .merchant = deposit.merchant_pub,
       .coin_pub = deposit.coin.coin_pub
@@ -528,7 +546,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   }
 
   /* execute transaction */
-  dc.deposit = &deposit;
   {
     MHD_RESULT mhd_ret;
 
@@ -557,7 +574,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                  &deposit.coin.coin_pub,
                                  &deposit.h_wire,
                                  &deposit.h_contract_terms,
-                                 deposit.timestamp,
+                                 dc.exchange_timestamp,
                                  deposit.refund_deadline,
                                  &deposit.merchant_pub,
                                  &amount_without_fee);
