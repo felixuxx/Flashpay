@@ -1535,7 +1535,8 @@ refresh_session_cb (void *cls,
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
- * @param timestamp when did the deposit happen
+ * @param exchange_timestamp when did the exchange get the deposit
+ * @param wallet_timestamp when did the contract signing happen
  * @param merchant_pub public key of the merchant
  * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
@@ -1553,7 +1554,8 @@ refresh_session_cb (void *cls,
 static int
 deposit_cb (void *cls,
             uint64_t rowid,
-            struct GNUNET_TIME_Absolute timestamp,
+            struct GNUNET_TIME_Absolute exchange_timestamp,
+            struct GNUNET_TIME_Absolute wallet_timestamp,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
             const struct TALER_DenominationPublicKey *denom_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1611,7 +1613,7 @@ deposit_cb (void *cls,
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
       .purpose.size = htonl (sizeof (dr)),
       .h_contract_terms = *h_contract_terms,
-      .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+      .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
       .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
       .deposit_fee = issue->fee_deposit,
       .merchant = *merchant_pub,

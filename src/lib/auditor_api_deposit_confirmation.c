@@ -148,7 +148,7 @@ handle_deposit_confirmation_finished (void *cls,
  *
  * @param h_wire hash of merchant wire details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
- * @param timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param exchange_timestamp timestamp when the deposit was received by the wallet
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the auditor (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param amount_without_fee the amount confirmed to be wired by the exchange to the merchant
  * @param coin_pub coin’s public key
@@ -165,7 +165,7 @@ handle_deposit_confirmation_finished (void *cls,
 static int
 verify_signatures (const struct GNUNET_HashCode *h_wire,
                    const struct GNUNET_HashCode *h_contract_terms,
-                   struct GNUNET_TIME_Absolute timestamp,
+                   struct GNUNET_TIME_Absolute exchange_timestamp,
                    struct GNUNET_TIME_Absolute refund_deadline,
                    const struct TALER_Amount *amount_without_fee,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -184,7 +184,7 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
       .purpose.size = htonl (sizeof (dc)),
       .h_contract_terms = *h_contract_terms,
       .h_wire = *h_wire,
-      .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+      .exchange_timestamp = GNUNET_TIME_absolute_hton (exchange_timestamp),
       .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
       .coin_pub = *coin_pub,
       .merchant = *merchant_pub
@@ -256,7 +256,7 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
  * @param auditor the auditor handle; the auditor must be ready to operate
  * @param h_wire hash of merchant wire details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
- * @param timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param exchange_timestamp timestamp when deposit was received by the exchange
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the auditor (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param amount_without_fee the amount confirmed to be wired by the exchange to the merchant
  * @param coin_pub coin’s public key
@@ -278,7 +278,7 @@ TALER_AUDITOR_deposit_confirmation (
   struct TALER_AUDITOR_Handle *auditor,
   const struct GNUNET_HashCode *h_wire,
   const struct GNUNET_HashCode *h_contract_terms,
-  struct GNUNET_TIME_Absolute timestamp,
+  struct GNUNET_TIME_Absolute exchange_timestamp,
   struct GNUNET_TIME_Absolute refund_deadline,
   const struct TALER_Amount *amount_without_fee,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -298,7 +298,7 @@ TALER_AUDITOR_deposit_confirmation (
   json_t *deposit_confirmation_obj;
   CURL *eh;
 
-  (void) GNUNET_TIME_round_abs (&timestamp);
+  (void) GNUNET_TIME_round_abs (&exchange_timestamp);
   (void) GNUNET_TIME_round_abs (&refund_deadline);
   (void) GNUNET_TIME_round_abs (&ep_start);
   (void) GNUNET_TIME_round_abs (&ep_expire);
@@ -308,7 +308,7 @@ TALER_AUDITOR_deposit_confirmation (
   if (GNUNET_OK !=
       verify_signatures (h_wire,
                          h_contract_terms,
-                         timestamp,
+                         exchange_timestamp,
                          refund_deadline,
                          amount_without_fee,
                          coin_pub,
@@ -336,7 +336,8 @@ TALER_AUDITOR_deposit_confirmation (
                  "h_wire", GNUNET_JSON_from_data_auto (h_wire),
                  "h_contract_terms", GNUNET_JSON_from_data_auto (
                    h_contract_terms),
-                 "timestamp", GNUNET_JSON_from_time_abs (timestamp),
+                 "exchange_timestamp", GNUNET_JSON_from_time_abs (
+                   exchange_timestamp),
                  "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
                  "amount_without_fee", TALER_JSON_from_amount (
                    amount_without_fee),

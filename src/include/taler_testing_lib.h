@@ -1903,6 +1903,7 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  * @param dbc collects plugin and session handles
  * @param merchant_name Human-readable name of the merchant.
  * @param merchant_account merchant's account name (NOT a payto:// URI)
+ * @param exchange_timestamp when did the exchange receive the deposit
  * @param wire_deadline point in time where the aggregator should have
  *        wired money to the merchant.
  * @param amount_with_fee amount to deposit (inclusive of deposit fee)
@@ -1910,14 +1911,15 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_insert_deposit (const char *label,
-                                  const struct
-                                  TALER_TESTING_DatabaseConnection *dbc,
-                                  const char *merchant_name,
-                                  const char *merchant_account,
-                                  struct GNUNET_TIME_Relative wire_deadline,
-                                  const char *amount_with_fee,
-                                  const char *deposit_fee);
+TALER_TESTING_cmd_insert_deposit (
+  const char *label,
+  const struct TALER_TESTING_DatabaseConnection *dbc,
+  const char *merchant_name,
+  const char *merchant_account,
+  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Relative wire_deadline,
+  const char *amount_with_fee,
+  const char *deposit_fee);
 
 
 /**
