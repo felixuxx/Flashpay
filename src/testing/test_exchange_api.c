@@ -346,6 +346,8 @@ run (void *cls,
                                             NULL,
                                             0,
                                             MHD_HTTP_NOT_FOUND),
+    TALER_TESTING_cmd_sleep ("sleep-before-aggregator",
+                             1),
     /* Run transfers. Note that _actual_ aggregation will NOT
      * happen here, as each deposit operation is run with a
      * fresh merchant public key, so the aggregator will treat
