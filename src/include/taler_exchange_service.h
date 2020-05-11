@@ -1611,7 +1611,11 @@ struct TALER_EXCHANGE_TransferData
   struct GNUNET_TIME_Absolute execution_time;
 
   /**
+<<<<<<< HEAD
    * amount of the wire transfer; FIXME: total wired (without fee), or including @a wire_fee?
+=======
+   * amount of the wire transfer
+>>>>>>> eaa21af98e58dcfe2e8566a8a00ecae7a5482c40
    */
   struct TALER_Amount total_amount;
 
