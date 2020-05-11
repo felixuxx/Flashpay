@@ -1538,6 +1538,13 @@ enum TALER_ErrorCode
   TALER_EC_TRACK_TRANSACTION_CONFLICTING_REPORTS = 2308,
 
   /**
+   * We did failed to retrieve information from our database. The
+   * response is provided with an HTTP status of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_GET_TRANSFERS_DB_FETCH_ERROR = 2350,
+
+  /**
    * We failed to contact the exchange for the /track/transfer request.
    * This response is provided with HTTP status code
    * #MHD_HTTP_SERVICE_UNAVAILABLE.
