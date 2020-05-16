@@ -43,8 +43,8 @@ DROP TABLE IF EXISTS reserves CASCADE;
 DROP TABLE IF EXISTS denomination_revocations CASCADE;
 DROP TABLE IF EXISTS denominations CASCADE;
 
--- Drop versioning (0000.sql)
-DROP SCHEMA IF EXISTS _v CASCADE;
+-- Unregister patch (0001.sql)
+SELECT _v.unregister_patch('exchange-0001', NULL, NULL);
 
 -- And we're out of here...
 COMMIT;
