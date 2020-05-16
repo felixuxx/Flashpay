@@ -384,16 +384,16 @@ struct TALER_BANK_DebitDetails
   const char *exchange_base_url;
 
   /**
-   * payto://-URL of the source account that
+   * payto://-URI of the source account that
    * send the funds.
    */
-  const char *debit_account_url;
+  const char *debit_account_url; // FIXME: rename: url->uri
 
   /**
-   * payto://-URL of the target account that
+   * payto://-URI of the target account that
    * received the funds.
    */
-  const char *credit_account_url;
+  const char *credit_account_url; // FIXME: rename: url->uri
 
 };
 
