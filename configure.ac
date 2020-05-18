@@ -180,8 +180,6 @@ AS_IF([test "x$curl" = x1],[
  AC_CHECK_HEADER([curl/curl.h],
   AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=1],[curl=0],[[#include <curl/curl.h>]]),
   [curl=0])
- # need libcurl-gnutls.so, everything else is not acceptable
- AC_CHECK_LIB([curl-gnutls],[curl_easy_getinfo],,[curl=0])
  # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
 ])
 
