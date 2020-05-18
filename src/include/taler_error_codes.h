@@ -1998,6 +1998,18 @@ enum TALER_ErrorCode
   TALER_EC_REFUND_LOOKUP_NO_REFUND = 2607,
 
   /**
+   * The requested wire method is not supported by the exchange.
+   * Returned with an HTTP status of #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_RESERVES_POST_UNSUPPORTED_WIRE_METHOD = 2650,
+
+  /**
+   * The backend failed to commit the result to the database. Returned
+   * with an HTTP status of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_RESERVES_POST_DB_COMMIT_HARD_ERROR = 2651,
+
+  /**
    * The backend knows the instance that was supposed to support the
    * tip, but it was not configured for tipping (i.e. has no exchange
    * associated with it).  Likely to be a configuration error. Returned
