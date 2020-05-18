@@ -177,13 +177,9 @@ handle_refund_finished (void *cls,
     {
       ep = &exchange_pub;
       es = &exchange_sig;
-<<<<<<< HEAD
       TALER_amount_ntoh (&ra,
                          &rh->depconf.refund_fee);
       rf = &ra;
-=======
-      rf = &rh->depconf.refund_fee;
->>>>>>> return fee as well
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
