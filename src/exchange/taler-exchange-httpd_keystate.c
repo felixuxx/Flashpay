@@ -801,7 +801,7 @@ reload_keys_denom_iter (void *cls,
     handle_signal (SIGTERM);
     return GNUNET_SYSERR;
   }
-
+  GNUNET_assert (NULL != dki->denom_priv.rsa_private_key);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Adding denomination key `%s' (%s) to active set\n",
               alias,
@@ -1660,6 +1660,9 @@ reload_public_denoms_cb (
                 GNUNET_h2s (&issue->properties.denom_hash));
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Loaded denomination key %s from DB, no private key (hopefully revoked!)\n",
+              GNUNET_h2s (&issue->properties.denom_hash));
   /* we can assert here as we checked for duplicates just above */
   GNUNET_assert (GNUNET_OK == ret);
 }

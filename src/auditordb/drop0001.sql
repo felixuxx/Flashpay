@@ -43,8 +43,8 @@ DROP TABLE IF EXISTS auditor_denominations CASCADE;
 DROP TABLE IF EXISTS deposit_confirmations CASCADE;
 DROP TABLE IF EXISTS auditor_exchanges CASCADE;
 
--- Drop versioning (0000.sql)
-DROP SCHEMA IF EXISTS _v CASCADE;
+-- Drop versioning (auditor-0001.sql)
+SELECT _v.unregister_patch('auditor-0001');
 
 -- And we're out of here...
 COMMIT;
