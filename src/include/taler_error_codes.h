@@ -2268,6 +2268,67 @@ enum TALER_ErrorCode
   TALER_EC_GET_TIPS_ID_UNKNOWN = 2814,
 
   /**
+   * The merchant failed to contact the exchange. Returned with a
+   * response code of #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TIP_PICKUP_CONTACT_EXCHANGE_ERROR = 2815,
+
+  /**
+   * The merchant failed to obtain keys from the exchange. Returned with
+   * a response code of #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_KEYS_ERROR = 2816,
+
+  /**
+   * The merchant failed to store data in its own database. Returned
+   * with a response code of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_PICKUP_DB_STORE_HARD_ERROR = 2817,
+
+  /**
+   * The merchant failed to get a timely response from the exchange.
+   * Returned with a response code of #MHD_HTTP_REQUEST_TIMEOUT.
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_TIMEOUT = 2818,
+
+  /**
+   * The exchange returned a failure code for the withdraw operation.
+   * Returned with a response code of #MHD_HTTP_FAILED_DEPENDENCY.
+   */
+  TALER_EC_TIP_PICKUP_EXCHANGE_ERROR = 2819,
+
+  /**
+   * The merchant failed to add up the amounts to compute the pick up
+   * value. Returned with a response code of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_PICKUP_SUMMATION_FAILED = 2820,
+
+  /**
+   * The tip expired. Returned with a response code of #MHD_HTTP_GONE.
+   */
+  TALER_EC_TIP_PICKUP_HAS_EXPIRED = 2821,
+
+  /**
+   * The requested withdraw amount exceeds the amount remaining to be
+   * picked up. Returned with a response code of #MHD_HTTP_BAD_REQUEST.
+   */
+  TALER_EC_TIP_PICKUP_AMOUNT_EXCEEDS_TIP_REMAINING = 2822,
+
+  /**
+   * The merchant failed to store data in its own database. Returned
+   * with a response code of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_PICKUP_DB_STORE_SOFT_ERROR = 2823,
+
+  /**
+   * The merchant did not find the specified denomination key in the
+   * exchange's key set. Returned with a response code of
+   * #MHD_HTTP_CONFLICT.
+   */
+  TALER_EC_TIP_PICKUP_DENOMINATION_UNKNOWN = 2824,
+
+  /**
    * We failed to fetch contract terms from our merchant database. The
    * response is provided with HTTP status code
    * #MHD_HTTP_INTERNAL_SERVER_ERROR.
