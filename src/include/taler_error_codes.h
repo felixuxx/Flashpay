@@ -2010,6 +2010,13 @@ enum TALER_ErrorCode
   TALER_EC_RESERVES_POST_DB_COMMIT_HARD_ERROR = 2651,
 
   /**
+   * The backend failed to fetch the requested information from the
+   * database. Returned with an HTTP status of
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_GET_RESERVES_DB_LOOKUP_ERROR = 2652,
+
+  /**
    * The backend knows the instance that was supposed to support the
    * tip, but it was not configured for tipping (i.e. has no exchange
    * associated with it).  Likely to be a configuration error. Returned
@@ -2019,7 +2026,7 @@ enum TALER_ErrorCode
 
   /**
    * The reserve that was used to fund the tips has expired. Returned
-   * with an HTTP status code of #MHD_HTTP_NOT_FOUND.
+   * with an HTTP status code of #MHD_HTTP_GONE.
    */
   TALER_EC_TIP_AUTHORIZE_RESERVE_EXPIRED = 2702,
 
@@ -2147,6 +2154,18 @@ enum TALER_ErrorCode
   TALER_EC_TIP_QUERY_TIP_ID_UNKNOWN = 2720,
 
   /**
+   * The reserve could not be deleted due to a database failure.
+   * Returned with HTTP status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_RESERVES_DELETE_DB_HARD_FAILURE = 2721,
+
+  /**
+   * The reserve could not be deleted because it is unknown. Returned
+   * with HTTP status code #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_RESERVES_DELETE_NO_SUCH_RESERVE = 2722,
+
+  /**
    * The backend had trouble accessing the database to persist
    * information about enabling tips. Returned with an HTTP status code
    * of internal error.
@@ -2235,6 +2254,18 @@ enum TALER_ErrorCode
    * merchant. Generated client-side.
    */
   TALER_EC_TIP_PICKUP_UNBLIND_FAILURE = 2812,
+
+  /**
+   * Merchant failed to access its database to lookup the tip. Returned
+   * with a response code of #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_GET_TIPS_DB_LOOKUP_ERROR = 2813,
+
+  /**
+   * Merchant failed find the tip in its database. Returned with a
+   * response code of #MHD_HTTP_NOT_FOUND.
+   */
+  TALER_EC_GET_TIPS_ID_UNKNOWN = 2814,
 
   /**
    * We failed to fetch contract terms from our merchant database. The
