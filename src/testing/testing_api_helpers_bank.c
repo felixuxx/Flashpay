@@ -104,8 +104,7 @@ TALER_TESTING_has_in_name (const char *prog,
  * Start the (nexus) bank process.  Assume the port
  * is available and the database is clean.  Use the "prepare
  * bank" function to do such tasks.  This function is also
- * responsible to create the exchange EBICS subscriber at
- * the nexus.
+ * responsible to create the exchange user at Nexus.
  *
  * @param config_filename configuration filename.  Used to 
  * @return the process, or NULL if the process could not
@@ -127,6 +126,7 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
                 NULL, NULL, NULL,
                 "nexus",
                 "nexus",
+                "serve",
                 NULL);
   if (NULL == bank_proc)
   {
