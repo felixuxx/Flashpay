@@ -116,9 +116,10 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
   struct GNUNET_OS_Process *bank_proc;
   unsigned int iter;
   char *curl_check_cmd;
-  char *curl_cmd;
-  char *post_body;
-  char *register_url;
+
+  /* make the 'admin' user at nexus; note: this is the user
+     under which the exchange will request the services.  */
+  system ("nexus superuser admin --password x");
 
   bank_proc = GNUNET_OS_start_process
                 (GNUNET_NO,
@@ -160,35 +161,8 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
   }
   while (0 != system (curl_check_cmd));
 
-  GNUNET_asprintf (&post_body,
-                   "{ \
-                   \"ebicsURL\": \"http://mock\", \
-                   \"userID\": \"mock\", \
-                   \"partnerID\": \"mock\", \
-                   \"hostID\": \"mock\", \
-                   \"password\": \"%s\"}",
-                   bc->exchange_auth.details.basic.password);
-  GNUNET_asprintf (&register_url,
-                   "http://localhost:5001/ebics/%s/subscribers",
-                   bc->exchange_auth.details.basic.username);
-  GNUNET_asprintf (&curl_cmd,
-                   "curl -d'%s' -H'Content-Type: application/json' %s",
-                   post_body,
-                   register_url);
-
-  if (0 != system (curl_cmd))
-  {
-    GNUNET_free (curl_check_cmd);
-    GNUNET_free (curl_cmd);
-    GNUNET_free (post_body);
-    GNUNET_free (register_url);
-    BANK_FAIL (); // includes logging and return (!)
-  }
 
   GNUNET_free (curl_check_cmd);
-  GNUNET_free (curl_cmd);
-  GNUNET_free (post_body);
-  GNUNET_free (register_url);
   fprintf (stderr, "\n");
 
   return bank_proc;
