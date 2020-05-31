@@ -445,11 +445,11 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
 
-    end = GNUNET_STRINGS_data_to_string (&melt.coin_pub,
-                                         sizeof (struct
-                                                 TALER_CoinSpendPublicKeyP),
-                                         pub_str,
-                                         sizeof (pub_str));
+    end = GNUNET_STRINGS_data_to_string (
+      &melt.coin_pub,
+      sizeof (struct TALER_CoinSpendPublicKeyP),
+      pub_str,
+      sizeof (pub_str));
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
