@@ -2166,6 +2166,61 @@ enum TALER_ErrorCode
   TALER_EC_RESERVES_DELETE_NO_SUCH_RESERVE = 2722,
 
   /**
+   * The backend got an unexpected error trying to lookup reserve
+   * details from the backend. This response is provided with HTTP
+   * status code #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_LOOKUP_RESERVE_DB_FAILURE = 2723,
+
+  /**
+   * The backend repeatedly failed to serialize the transaction to
+   * authorize the tip. This response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_SERIALIZATION_FAILURE = 2724,
+
+  /**
+   * The backend failed to start the transaction to authorize the tip.
+   * This response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_START_FAILURE = 2725,
+
+  /**
+   * The backend failed looking up the reserve needed to authorize the
+   * tip. This response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_LOOKUP_RESERVE_FAILURE = 2726,
+
+  /**
+   * The backend failed to find a reserve needed to authorize the tip.
+   * This response is provided with HTTP status code
+   * #MHD_HTTP_SERVICE_UNAVAILABLE.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_RESERVE_NOT_FOUND = 2727,
+
+  /**
+   * The backend encountered an internal invariant violation. This
+   * response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_RESERVE_INVARIANT_FAILURE = 2728,
+
+  /**
+   * The selected exchange expired. This response is provided with HTTP
+   * status code #MHD_HTTP_GONE.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_RESERVE_EXPIRED = 2729,
+
+  /**
+   * The backend failed updating the reserve needed to authorize the
+   * tip. This response is provided with HTTP status code
+   * #MHD_HTTP_INTERNAL_SERVER_ERROR.
+   */
+  TALER_EC_TIP_AUTHORIZE_DB_UPDATE_RESERVE_FAILURE = 2730,
+
+  /**
    * The backend had trouble accessing the database to persist
    * information about enabling tips. Returned with an HTTP status code
    * of internal error.
