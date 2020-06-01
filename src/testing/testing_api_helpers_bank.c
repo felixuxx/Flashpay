@@ -106,7 +106,6 @@ TALER_TESTING_has_in_name (const char *prog,
  * bank" function to do such tasks.  This function is also
  * responsible to create the exchange user at Nexus.
  *
- * @param config_filename configuration filename.  Used to 
  * @return the process, or NULL if the process could not
  *         be started.
  */
@@ -116,10 +115,6 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
   struct GNUNET_OS_Process *bank_proc;
   unsigned int iter;
   char *curl_check_cmd;
-
-  /* make the 'admin' user at nexus; note: this is the user
-     under which the exchange will request the services.  */
-  system ("nexus superuser admin --password x");
 
   bank_proc = GNUNET_OS_start_process
                 (GNUNET_NO,
@@ -160,11 +155,16 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
     iter++;
   }
   while (0 != system (curl_check_cmd));
-
-
   GNUNET_free (curl_check_cmd);
   fprintf (stderr, "\n");
-
+  // Creates nexus user + bank loopback connection + Taler facade.
+  if (0 != system ("taler-nexus-prepare"))
+  {
+    GNUNET_OS_process_kill (bank_proc, SIGTERM);
+    GNUNET_OS_process_wait (bank_proc);
+    GNUNET_OS_process_destroy (bank_proc);
+    BANK_FAIL ();
+  }
   return bank_proc;
 }
 

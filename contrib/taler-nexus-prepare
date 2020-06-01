@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+# This file is in the public domain.
+
+from requests import get, post
+from subprocess import call
+import base64
+
+USERNAME="Exchange"
+USER_AUTHORIZATION_HEADER = "basic {}".format(
+    base64.b64encode(b"Exchange:x").decode("utf-8")
+)
+
+def assertResponse(response):
+    if response.status_code != 200:
+        print("Test failed on URL: {}".format(response.url))
+        # stdout/stderr from both services is A LOT of text.
+        # Confusing to dump all that to console.
+        print("Check nexus.log and sandbox.log, probably under /tmp")
+        exit(1)
+    # Allows for finer grained checks.
+    return response
+
+# Create a nexus (super-) user
+call(["nexus", "superuser", "Exchange", "--password", "x"])
+# Create a loopback bank connection.
+assertResponse(
+    post(
+        "http://localhost:5001/bank-connections",
+        json=dict(
+            name="my-local",
+            source="new",
+            type="local",
+            data=dict(
+                bankAccount="my-bank-account"
+            )
+        ),
+        headers=dict(Authorization=USER_AUTHORIZATION_HEADER),
+    )
+)
+# Create a facade
+assertResponse(
+    post(
+        "http://localhost:5001/facades",
+        json=dict(
+            name="my-facade",
+            type="taler-wire-gateway",
+            creator=USERNAME,
+            config=dict(
+                bankAccount="my-bank-account",
+                bankConnection="my-local",
+                reserveTransferLevel="UNUSED",
+                intervalIncremental="UNUSED"
+            )
+        ),
+        headers=dict(Authorization=USER_AUTHORIZATION_HEADER),
+    )
+)
