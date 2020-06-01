@@ -31,7 +31,10 @@ assertResponse(
             source="new",
             type="loopback",
             data=dict(
-                bankAccount="my-bank-account"
+                account="my-bank-account",
+                iban="x",
+                bic="x",
+                holder="x",
             )
         ),
         headers=dict(Authorization=USER_AUTHORIZATION_HEADER),

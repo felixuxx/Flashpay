@@ -192,7 +192,7 @@ main (int argc,
   } else if (GNUNET_YES == TALER_TESTING_has_in_name (argv[0],
                                                       "_with_nexus")) 
   {
-    TALER_LOG_DEBUG ("Running against Nexus.\n");
+    TALER_LOG_DEBUG ("Running with Nexus.\n");
     cfgfile = CONFIG_FILE_FAKEBANK;
     if (GNUNET_OK != TALER_TESTING_prepare_nexus (CONFIG_FILE_NEXUS,
                                                   GNUNET_YES,
@@ -207,14 +207,10 @@ main (int argc,
       GNUNET_break (0);
       return 77;
     }
-    GNUNET_OS_process_kill (bankd,
-                            SIGKILL);
-    GNUNET_OS_process_wait (bankd);
-    GNUNET_OS_process_destroy (bankd);
-    return 0;
   }
   else
   {
+    /* no bank service was ever invoked.  */
     GNUNET_break (0);
     return 77;
   }
