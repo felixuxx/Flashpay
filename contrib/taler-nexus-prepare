@@ -27,9 +27,9 @@ assertResponse(
     post(
         "http://localhost:5001/bank-connections",
         json=dict(
-            name="my-local",
+            name="my-loopback",
             source="new",
-            type="local",
+            type="loopback",
             data=dict(
                 bankAccount="my-bank-account"
             )
