@@ -263,6 +263,16 @@ AS_IF([test $libgnunetpq != 1],
 *** ]])])
 
 
+# Check for GNUnet's libgnunetsq
+libgnunetsq=0
+AC_MSG_CHECKING([for libgnunetsq])
+AC_CHECK_HEADERS([gnunet/gnunet_sq_lib.h],
+ [AC_CHECK_LIB([gnunetsq], [GNUNET_SQ_result_spec_string], libgnunetsq=1)],
+  [], [#ifdef HAVE_GNUNET_PLATFORM_H
+        #include <gnunet/platform.h>
+       #endif])
+
+
 # check for libmicrohttpd
 microhttpd=0
 AC_MSG_CHECKING([for microhttpd])
@@ -327,6 +337,35 @@ AM_CONDITIONAL(HAVE_POSTGRESQL, test x$postgres = xtrue)
 CFLAGS=$CFLAGS_SAVE
 LDFLAGS=$LDFLAGS_SAVE
 LIBS=$LIBS_SAVE
+
+# test for sqlite
+sqlite=false
+AC_MSG_CHECKING(for SQLite)
+AC_ARG_WITH(sqlite,
+  [  --with-sqlite=PFX       base of SQLite installation],
+  [AC_MSG_RESULT("$with_sqlite")
+   AS_CASE([$with_sqlite],
+     [no],[],
+     [yes],[
+      AC_CHECK_HEADERS(sqlite3.h,
+      sqlite=true)],
+     [
+    LDFLAGS="-L$with_sqlite/lib $LDFLAGS"
+    CPPFLAGS="-I$with_sqlite/include $CPPFLAGS"
+    AC_CHECK_HEADERS(sqlite3.h,
+     EXT_LIB_PATH="-L$with_sqlite/lib $EXT_LIB_PATH"
+     SQLITE_LDFLAGS="-L$with_sqlite/lib"
+     SQLITE_CPPFLAGS="-I$with_sqlite/include"
+     sqlite=true)
+    LDFLAGS=$SAVE_LDFLAGS
+    CPPFLAGS=$SAVE_CPPFLAGS
+    ])
+  ],
+  [AC_MSG_RESULT([--with-sqlite not specified])
+    AC_CHECK_HEADERS(sqlite3.h, sqlite=true)])
+AM_CONDITIONAL(HAVE_SQLITE, [test x$sqlite = xtrue] && [test $libgnunetsq = 1])
+AC_SUBST(SQLITE_CPPFLAGS)
+AC_SUBST(SQLITE_LDFLAGS)
 
 # check for libtalertwistertesting
 talertwister=0
@@ -461,6 +500,7 @@ AM_CONDITIONAL([ENABLE_DOC], [test "x$enable_doc" = "xyes"])
 AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [false])
 AM_CONDITIONAL([MHD_HAVE_EPOLL], [false])
 AM_CONDITIONAL([HAVE_POSTGRESQL], [false])
+AM_CONDITIONAL([HAVE_SQLITE], [false])
 AM_CONDITIONAL([HAVE_LIBCURL], [false])
 AM_CONDITIONAL([HAVE_LIBGNURL], [false])
 AM_CONDITIONAL([HAVE_DEVELOPER], [false])
@@ -490,6 +530,7 @@ AC_CONFIG_FILES([Makefile
                  src/json/Makefile
                  src/mhd/Makefile
                  src/pq/Makefile
+                 src/sq/Makefile
                  src/util/Makefile
                  ])
 AC_OUTPUT

@@ -81,6 +81,7 @@ src/wire-plugins/test_ebics_wireformat
 src/wire-plugins/test_wire_plugin
 src/wire-plugins/test_wire_plugin_transactions_taler_bank
 src/pq/test_pq
+src/sq/test_sq
 src/util/test_amount
 src/util/test_crypto
 src/util/test_json
