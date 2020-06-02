@@ -45,6 +45,7 @@ qconv_amount_nbo (void *cls,
 {
   const struct TALER_AmountNBO *amount = data;
 
+  (void) cls;
   GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
   if (SQLITE_OK != sqlite3_bind_int64 (stmt,
                                        (int) off,
@@ -59,7 +60,7 @@ qconv_amount_nbo (void *cls,
 
 
 /**
- * Generate query parameter for a currency, consisting of the three
+ * Generate query parameter for a currency, consisting of the
  * components "value", "fraction" in this order. The
  * types must be a 64-bit integer and a 64-bit integer.
  *
@@ -70,6 +71,219 @@ TALER_SQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
 {
   struct GNUNET_SQ_QueryParam res =
   { &qconv_amount_nbo, NULL, x, sizeof (*x), 2 };
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument, here a `struct TALER_Amount`
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param stmt sqlite statement to parameters for
+ * @param off offset of the argument to bind in @a stmt, numbered from 1,
+ *            so immediately suitable for passing to `sqlite3_bind`-functions.
+ * @return #GNUNET_SYSERR on error, #GNUNET_OK on success
+ */
+static int
+qconv_amount (void *cls,
+              const void *data,
+              size_t data_len,
+              sqlite3_stmt *stmt,
+              unsigned int off)
+{
+  const struct TALER_Amount *amount_hbo = data;
+  struct TALER_AmountNBO amount;
+
+  (void) cls;
+  GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
+  TALER_amount_hton (&amount,
+                     amount_hbo);
+  return qconv_amount_nbo (cls,
+                           &amount,
+                           sizeof (struct TALER_AmountNBO),
+                           stmt,
+                           off);
+}
+
+
+/**
+ * Generate query parameter for a currency, consisting of the
+ * components "value", "fraction" in this order. The
+ * types must be a 64-bit integer and a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_SQ_QueryParam
+TALER_SQ_query_param_amount (const struct TALER_Amount *x)
+{
+  struct GNUNET_SQ_QueryParam res =
+  { &qconv_amount, NULL, x, sizeof (*x), 2 };
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument, here a `struct TALER_Amount`
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param stmt sqlite statement to parameters for
+ * @param off offset of the argument to bind in @a stmt, numbered from 1,
+ *            so immediately suitable for passing to `sqlite3_bind`-functions.
+ * @return #GNUNET_SYSERR on error, #GNUNET_OK on success
+ */
+static int
+qconv_json (void *cls,
+            const void *data,
+            size_t data_len,
+            sqlite3_stmt *stmt,
+            unsigned int off)
+{
+  const json_t *json = data;
+  char *str;
+
+  (void) cls;
+  (void) data_len;
+  str = json_dumps (json, JSON_COMPACT);
+  if (NULL == str)
+    return GNUNET_SYSERR;
+
+  if (SQLITE_OK != sqlite3_bind_text (stmt,
+                                      (int) off,
+                                      str,
+                                      strlen (str) + 1,
+                                      SQLITE_TRANSIENT))
+    return GNUNET_SYSERR;
+  GNUNET_free (str);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Generate query parameter for a JSON object (stored as a string
+ * in the DB).  Note that @a x must really be a JSON object or array,
+ * passing just a value (string, integer) is not supported and will
+ * result in an abort.
+ *
+ * @param x pointer to the json object to pass
+ */
+struct GNUNET_SQ_QueryParam
+TALER_SQ_query_param_json (const json_t *x)
+{
+  struct GNUNET_SQ_QueryParam res =
+  { &qconv_json, NULL, x, sizeof (*x), 1 };
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument, here a `struct TALER_Amount`
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param stmt sqlite statement to parameters for
+ * @param off offset of the argument to bind in @a stmt, numbered from 1,
+ *            so immediately suitable for passing to `sqlite3_bind`-functions.
+ * @return #GNUNET_SYSERR on error, #GNUNET_OK on success
+ */
+static int
+qconv_round_time (void *cls,
+                  const void *data,
+                  size_t data_len,
+                  sqlite3_stmt *stmt,
+                  unsigned int off)
+{
+  const struct GNUNET_TIME_Absolute *at = data;
+  struct GNUNET_TIME_Absolute tmp;
+  struct GNUNET_TIME_AbsoluteNBO buf;
+
+  (void) cls;
+  GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) == data_len);
+  GNUNET_break (NULL == cls);
+  tmp = *at;
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&tmp));
+  buf = GNUNET_TIME_absolute_hton (tmp);
+  if (SQLITE_OK != sqlite3_bind_int64 (stmt,
+                                       (int) off,
+                                       (sqlite3_int64) buf.abs_value_us__))
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Generate query parameter for an absolute time value.
+ * In contrast to
+ * #GNUNET_SQ_query_param_absolute_time(), this function
+ * will abort (!) if the time given is not rounded!
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_SQ_QueryParam
+TALER_SQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x)
+{
+  struct GNUNET_SQ_QueryParam res =
+  { &qconv_round_time, NULL, x, sizeof (*x), 1 };
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument, here a `struct TALER_Amount`
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param stmt sqlite statement to parameters for
+ * @param off offset of the argument to bind in @a stmt, numbered from 1,
+ *            so immediately suitable for passing to `sqlite3_bind`-functions.
+ * @return #GNUNET_SYSERR on error, #GNUNET_OK on success
+ */
+static int
+qconv_round_time_abs (void *cls,
+                      const void *data,
+                      size_t data_len,
+                      sqlite3_stmt *stmt,
+                      unsigned int off)
+{
+  const struct GNUNET_TIME_AbsoluteNBO *at = data;
+  struct GNUNET_TIME_Absolute tmp;
+
+  (void) cls;
+  GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) == data_len);
+  GNUNET_break (NULL == cls);
+  tmp = GNUNET_TIME_absolute_ntoh (*at);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&tmp));
+  if (SQLITE_OK != sqlite3_bind_int64 (stmt,
+                                       (int) off,
+                                       (sqlite3_int64) at->abs_value_us__))
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Generate query parameter for an absolute time value.
+ * In contrast to
+ * #GNUNET_SQ_query_param_absolute_time(), this function
+ * will abort (!) if the time given is not rounded!
+ * The database must store a 64-bit integer.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_SQ_QueryParam
+TALER_SQ_query_param_absolute_time_nbo (const struct
+                                        GNUNET_TIME_AbsoluteNBO *x)
+{
+  struct GNUNET_SQ_QueryParam res =
+  { &qconv_round_time_abs, NULL, x, sizeof (*x), 1 };
   return res;
 }
 
