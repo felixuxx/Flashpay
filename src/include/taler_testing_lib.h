@@ -111,6 +111,20 @@ struct TALER_TESTING_DatabaseConnection
   struct TALER_EXCHANGEDB_Session *session;
 };
 
+struct TALER_TESTING_LibeufinServices
+{
+  /**
+   * Nexus
+   */
+  struct GNUNET_OS_Process *nexus;
+
+  /**
+   * Sandbox
+   */
+  struct GNUNET_OS_Process *sandbox;
+
+};
+
 /**
  * Prepare launching an exchange.  Checks that the configured
  * port is available, runs taler-exchange-keyup,
@@ -822,8 +836,8 @@ TALER_TESTING_run_bank (const char *config_filename,
  * @return the process, or NULL if the process could not
  *         be started.
  */
-struct GNUNET_OS_Process *
-TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc);
+struct TALER_TESTING_LibeufinServices
+TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc);
 
 /**
  * Runs the Fakebank by guessing / extracting the portnumber

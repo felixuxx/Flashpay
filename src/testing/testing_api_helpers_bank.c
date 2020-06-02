@@ -106,17 +106,19 @@ TALER_TESTING_has_in_name (const char *prog,
  * bank" function to do such tasks.  This function is also
  * responsible to create the exchange user at Nexus.
  *
- * @return the process, or NULL if the process could not
- *         be started.
+ * @return the pair of both service handles.  In case of
+ *         errors, each element of the pair will be set to NULL.
  */
-struct GNUNET_OS_Process *
-TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
+struct TALER_TESTING_LibeufinServices
+TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
 {
-  struct GNUNET_OS_Process *bank_proc;
+  struct GNUNET_OS_Process *nexus_proc;
+  struct GNUNET_OS_Process *sandbox_proc;
+  struct TALER_TESTING_LibeufinServices ret;
   unsigned int iter;
   char *curl_check_cmd;
 
-  bank_proc = GNUNET_OS_start_process
+  nexus_proc = GNUNET_OS_start_process
                 (GNUNET_NO,
                 GNUNET_OS_INHERIT_STD_NONE,
                 NULL, NULL, NULL,
@@ -124,14 +126,14 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
                 "nexus",
                 "serve",
                 NULL);
-  if (NULL == bank_proc)
+  if (NULL == nexus_proc)
   {
-    BANK_FAIL ();
+    GNUNET_break (0);
+    return ret;
   }
   GNUNET_asprintf (&curl_check_cmd,
                    "curl -s %s",
                    bc->exchange_auth.wire_gateway_url);
-
   /* give child time to start and bind against the socket */
   fprintf (stderr,
            "Waiting for `nexus' to be ready (via %s)\n", curl_check_cmd);
@@ -143,12 +145,13 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
       fprintf (
         stderr,
         "Failed to launch `nexus'\n");
-      GNUNET_OS_process_kill (bank_proc,
+      GNUNET_OS_process_kill (nexus_proc,
                               SIGTERM);
-      GNUNET_OS_process_wait (bank_proc);
-      GNUNET_OS_process_destroy (bank_proc);
+      GNUNET_OS_process_wait (nexus_proc);
+      GNUNET_OS_process_destroy (nexus_proc);
       GNUNET_free (curl_check_cmd);
-      BANK_FAIL ();
+      GNUNET_break (0);
+      return ret;
     }
     fprintf (stderr, ".");
     sleep (1);
@@ -157,15 +160,60 @@ TALER_TESTING_run_nexus (const struct TALER_TESTING_BankConfiguration *bc)
   while (0 != system (curl_check_cmd));
   GNUNET_free (curl_check_cmd);
   fprintf (stderr, "\n");
+
+  sandbox_proc = GNUNET_OS_start_process
+                  (GNUNET_NO,
+                   GNUNET_OS_INHERIT_STD_NONE,
+                   NULL, NULL, NULL,
+                   "sandbox",
+                   "sandbox",
+                   NULL);
+  if (NULL == sandbox_proc)
+  {
+    GNUNET_break (0);
+    return ret;
+  }
+
+  /* give child time to start and bind against the socket */
+  fprintf (stderr,
+           "Waiting for `sandbox' to be ready..\n");
+  iter = 0;
+  do
+  {
+    if (10 == iter)
+    {
+      fprintf (
+        stderr,
+        "Failed to launch `sandbox'\n");
+      GNUNET_OS_process_kill (sandbox_proc,
+                              SIGTERM);
+      GNUNET_OS_process_wait (sandbox_proc);
+      GNUNET_OS_process_destroy (sandbox_proc);
+      GNUNET_break (0);
+      return ret;
+    }
+    fprintf (stderr, ".");
+    sleep (1);
+    iter++;
+  }
+  while (0 != system ("curl http://localhost:5001/"));
+  fprintf (stderr, "\n");
+
   // Creates nexus user + bank loopback connection + Taler facade.
   if (0 != system ("taler-nexus-prepare"))
   {
-    GNUNET_OS_process_kill (bank_proc, SIGTERM);
-    GNUNET_OS_process_wait (bank_proc);
-    GNUNET_OS_process_destroy (bank_proc);
-    BANK_FAIL ();
+    GNUNET_OS_process_kill (nexus_proc, SIGTERM);
+    GNUNET_OS_process_wait (nexus_proc);
+    GNUNET_OS_process_destroy (nexus_proc);
+    GNUNET_OS_process_kill (sandbox_proc, SIGTERM);
+    GNUNET_OS_process_wait (sandbox_proc);
+    GNUNET_OS_process_destroy (sandbox_proc);
+    GNUNET_break (0);
+    return ret;
   }
-  return bank_proc;
+  ret.nexus = nexus_proc;
+  ret.sandbox = sandbox_proc;
+  return ret;
 }
 
 /**
