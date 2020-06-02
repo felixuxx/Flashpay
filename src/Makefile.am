@@ -3,6 +3,9 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
 if HAVE_POSTGRESQL
   PQ_DIR = pq
 endif
+if HAVE_SQLITE
+  SQ_DIR = sq
+endif
 
 pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
@@ -17,6 +20,7 @@ SUBDIRS = \
   json \
   curl \
   $(PQ_DIR) \
+  $(SQ_DIR) \
   mhd \
   bank-lib \
   exchangedb \
