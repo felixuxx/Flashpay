@@ -158,6 +158,8 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
     iter++;
   }
   while (0 != system (curl_check_cmd));
+
+  // start sandbox.
   GNUNET_free (curl_check_cmd);
   fprintf (stderr, "\n");
 
@@ -176,7 +178,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
 
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for `sandbox' to be ready..\n");
+           "Waiting for `sandbox' to be ready.\n");
   iter = 0;
   do
   {
@@ -196,7 +198,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
     sleep (1);
     iter++;
   }
-  while (0 != system ("curl http://localhost:5001/"));
+  while (0 != system ("curl -s http://localhost:5000/"));
   fprintf (stderr, "\n");
 
   // Creates nexus user + bank loopback connection + Taler facade.

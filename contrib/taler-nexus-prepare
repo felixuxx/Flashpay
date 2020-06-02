@@ -5,6 +5,21 @@ from requests import get, post
 from subprocess import call
 import base64
 
+# EBICS details
+EBICS_URL = "http://localhost:5000/ebicsweb"
+HOST_ID = "HOST01"
+PARTNER_ID = "PARTNER1"
+USER_ID = "USER1"
+EBICS_VERSION = "H004"
+
+SUBSCRIBER_IBAN = "ES9121000418450200051332"
+SUBSCRIBER_BIC = "BIC"
+SUBSCRIBER_NAME = "Exchange"
+
+BANK_ACCOUNT_LABEL = "my-bank-account"
+BANK_CONNECTION_LABEL = "my-bank-connection"
+FACADE_LABEL="my-facade"
+
 USERNAME="Exchange"
 USER_AUTHORIZATION_HEADER = "basic {}".format(
     base64.b64encode(b"Exchange:x").decode("utf-8")
@@ -27,34 +42,81 @@ assertResponse(
     post(
         "http://localhost:5001/bank-connections",
         json=dict(
-            name="my-loopback",
+            name=BANK_CONNECTION_LABEL,
             source="new",
-            type="loopback",
+            type="ebics",
             data=dict(
-                account="my-bank-account",
-                iban="x",
-                bic="x",
-                holder="x",
-            )
+                ebicsURL=EBICS_URL, hostID=HOST_ID, partnerID=PARTNER_ID, userID=USER_ID
+            ),
         ),
         headers=dict(Authorization=USER_AUTHORIZATION_HEADER),
     )
 )
+
 # Create a facade
 assertResponse(
     post(
         "http://localhost:5001/facades",
         json=dict(
-            name="my-facade",
+            name=FACADE_LABEL,
             type="taler-wire-gateway",
             creator=USERNAME,
             config=dict(
-                bankAccount="my-bank-account",
-                bankConnection="my-local",
+                bankAccount=BANK_ACCOUNT_LABEL,
+                bankConnection=BANK_CONNECTION_LABEL,
                 reserveTransferLevel="UNUSED",
                 intervalIncremental="UNUSED"
             )
         ),
+        headers=dict(Authorization=USER_AUTHORIZATION_HEADER),
+    )
+)
+
+# Create the EBICS host at the Sandbox.
+assertResponse(
+    post(
+        "http://localhost:5000/admin/ebics/host",
+        json=dict(hostID=HOST_ID, ebicsVersion=EBICS_VERSION),
+    )
+)
+
+# Create Exchange EBICS subscriber at the Sandbox.
+assertResponse(
+    post(
+        "http://localhost:5000/admin/ebics/subscribers",
+        json=dict(hostID=HOST_ID, partnerID=PARTNER_ID, userID=USER_ID),
+    )
+)
+
+# Create a bank account associated to the Exchange's EBICS subscriber,
+# again at the Sandbox.
+assertResponse(
+    post(
+        "http://localhost:5000/admin/ebics/bank-accounts",
+        json=dict(
+            subscriber=dict(hostID=HOST_ID, partnerID=PARTNER_ID, userID=USER_ID),
+            iban=SUBSCRIBER_IBAN,
+            bic=SUBSCRIBER_BIC,
+            name=SUBSCRIBER_NAME,
+            label=BANK_ACCOUNT_LABEL,
+        ),
+    )
+)
+
+# 'connect' to the bank: upload+download keys.
+assertResponse(
+    post(
+        "http://localhost:5001/bank-connections/{}/connect".format(BANK_CONNECTION_LABEL),
+        json=dict(),
+        headers=dict(Authorization=USER_AUTHORIZATION_HEADER),
+    )
+)
+
+# Download bank accounts.
+assertResponse(
+    post(
+        "http://localhost:5001/bank-connections/{}/ebics/import-accounts".format(BANK_CONNECTION_LABEL),
+        json=dict(),
         headers=dict(Authorization=USER_AUTHORIZATION_HEADER),
     )
 )
