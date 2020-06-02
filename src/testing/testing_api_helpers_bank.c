@@ -420,8 +420,8 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   bc->exchange_payto = exchange_payto_uri;
-  bc->user42_payto = "payto://x-taler-bank/localhost/42";
-  bc->user43_payto = "payto://x-taler-bank/localhost/43";
+  bc->user42_payto = "payto://iban/BIC/FR7630006000011234567890189?name=User42";
+  bc->user43_payto = "payto://iban/BIC/GB33BUKB20201555555555?name=User43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Relying on nexus %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
