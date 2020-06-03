@@ -39,15 +39,15 @@
  *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
  */
 static int
-extract_amount_nbo (void *cls,
-                    sqlite3_stmt *result,
-                    unsigned int column,
-                    size_t *dst_size,
-                    void *dst)
+extract_amount (void *cls,
+                sqlite3_stmt *result,
+                unsigned int column,
+                size_t *dst_size,
+                void *dst)
 {
-  struct TALER_AmountNBO *amount = dst;
+  struct TALER_Amount *amount = dst;
   const char *currency = cls;
-  if ((sizeof (struct TALER_AmountNBO) != *dst_size) ||
+  if ((sizeof (struct TALER_Amount) != *dst_size) ||
       (SQLITE_INTEGER != sqlite3_column_type (result,
                                               (int) column)) ||
       (SQLITE_INTEGER != sqlite3_column_type (result,
@@ -56,11 +56,13 @@ extract_amount_nbo (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  GNUNET_strlcpy (amount->currency, currency, TALER_CURRENCY_LEN);
+  GNUNET_strlcpy (amount->currency,
+                  currency,
+                  TALER_CURRENCY_LEN);
   amount->value = (uint64_t) sqlite3_column_int64 (result,
                                                    (int) column);
   uint64_t frac = (uint64_t) sqlite3_column_int64 (result,
-                                                   column + 1);
+                                                   (int) column + 1);
   amount->fraction = (uint32_t) frac;
   return GNUNET_YES;
 }
@@ -74,14 +76,14 @@ extract_amount_nbo (void *cls,
  * @return array entry for the result specification to use
  */
 struct GNUNET_SQ_ResultSpec
-TALER_SQ_result_spec_amount_nbo (const char *currency,
-                                 struct TALER_AmountNBO *amount)
+TALER_SQ_result_spec_amount (const char *currency,
+                             struct TALER_Amount *amount)
 {
   struct GNUNET_SQ_ResultSpec res = {
-    .conv = &extract_amount_nbo,
+    .conv = &extract_amount,
     .cls = (void *) currency,
     .dst = (void *) amount,
-    .dst_size = sizeof (struct TALER_AmountNBO),
+    .dst_size = sizeof (struct TALER_Amount),
     .num_params = 2
   };
 
@@ -102,29 +104,27 @@ TALER_SQ_result_spec_amount_nbo (const char *currency,
  *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
  */
 static int
-extract_amount (void *cls,
-                sqlite3_stmt *result,
-                unsigned int column,
-                size_t *dst_size,
-                void *dst)
+extract_amount_nbo (void *cls,
+                    sqlite3_stmt *result,
+                    unsigned int column,
+                    size_t *dst_size,
+                    void *dst)
 {
-  struct TALER_Amount *amount = dst;
-  struct TALER_AmountNBO amount_nbo;
-  if (GNUNET_YES == extract_amount_nbo (cls,
-                                        result,
-                                        column,
-                                        dst_size,
-                                        &amount_nbo))
+  struct TALER_AmountNBO *amount = dst;
+  struct TALER_Amount amount_hbo;
+  size_t amount_hbo_size = sizeof (struct TALER_Amount);
+  if (GNUNET_YES != extract_amount (cls,
+                                    result,
+                                    column,
+                                    &amount_hbo_size,
+                                    &amount_hbo))
   {
-    TALER_amount_ntoh (amount,
-                       &amount_nbo);
-    return GNUNET_YES;
-  }
-  else
-  {
+    GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
+  TALER_amount_hton (amount,
+                     &amount_hbo);
+  return GNUNET_YES;
 }
 
 
@@ -136,14 +136,14 @@ extract_amount (void *cls,
  * @return array entry for the result specification to use
  */
 struct GNUNET_SQ_ResultSpec
-TALER_SQ_result_spec_amount (const char *currency,
-                             struct TALER_Amount *amount)
+TALER_SQ_result_spec_amount_nbo (const char *currency,
+                                 struct TALER_AmountNBO *amount)
 {
   struct GNUNET_SQ_ResultSpec res = {
-    .conv = &extract_amount,
+    .conv = &extract_amount_nbo,
     .cls = (void *) currency,
     .dst = (void *) amount,
-    .dst_size = sizeof (struct TALER_Amount),
+    .dst_size = sizeof (struct TALER_AmountNBO),
     .num_params = 2
   };
 
@@ -264,7 +264,6 @@ extract_round_time (void *cls,
                     void *dst)
 {
   struct GNUNET_TIME_Absolute *udst = dst;
-  struct GNUNET_TIME_AbsoluteNBO res;
   struct GNUNET_TIME_Absolute tmp;
 
   (void) cls;
@@ -280,9 +279,8 @@ extract_round_time (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  res.abs_value_us__ = sqlite3_column_int64 (result,
-                                             (int) column);
-  tmp = GNUNET_TIME_absolute_ntoh (res);
+  tmp.abs_value_us = sqlite3_column_int64 (result,
+                                           (int) column);
   GNUNET_break (GNUNET_OK ==
                 GNUNET_TIME_round_abs (&tmp));
   *udst = tmp;
@@ -333,7 +331,6 @@ extract_round_time_nbo (void *cls,
                         void *dst)
 {
   struct GNUNET_TIME_AbsoluteNBO *udst = dst;
-  struct GNUNET_TIME_AbsoluteNBO res;
   struct GNUNET_TIME_Absolute tmp;
 
   (void) cls;
@@ -349,9 +346,8 @@ extract_round_time_nbo (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  res.abs_value_us__ = sqlite3_column_int64 (result,
-                                             (int) column);
-  tmp = GNUNET_TIME_absolute_ntoh (res);
+  tmp.abs_value_us = sqlite3_column_int64 (result,
+                                           (int) column);
   GNUNET_break (GNUNET_OK ==
                 GNUNET_TIME_round_abs (&tmp));
   *udst = GNUNET_TIME_absolute_hton (tmp);

@@ -29,7 +29,7 @@
  * Function called to convert input argument into SQL parameters.
  *
  * @param cls closure
- * @param data pointer to input argument, here a `struct TALER_AmountNBO`
+ * @param data pointer to input argument, here a `struct TALER_Amount`
  * @param data_len number of bytes in @a data (if applicable)
  * @param stmt sqlite statement to parameters for
  * @param off offset of the argument to bind in @a stmt, numbered from 1,
@@ -37,16 +37,16 @@
  * @return #GNUNET_SYSERR on error, #GNUNET_OK on success
  */
 static int
-qconv_amount_nbo (void *cls,
-                  const void *data,
-                  size_t data_len,
-                  sqlite3_stmt *stmt,
-                  unsigned int off)
+qconv_amount (void *cls,
+              const void *data,
+              size_t data_len,
+              sqlite3_stmt *stmt,
+              unsigned int off)
 {
-  const struct TALER_AmountNBO *amount = data;
+  const struct TALER_Amount *amount = data;
 
   (void) cls;
-  GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
+  GNUNET_assert (sizeof (struct TALER_Amount) == data_len);
   if (SQLITE_OK != sqlite3_bind_int64 (stmt,
                                        (int) off,
                                        (sqlite3_int64) amount->value))
@@ -67,10 +67,10 @@ qconv_amount_nbo (void *cls,
  * @param x pointer to the query parameter to pass
  */
 struct GNUNET_SQ_QueryParam
-TALER_SQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
+TALER_SQ_query_param_amount (const struct TALER_Amount *x)
 {
   struct GNUNET_SQ_QueryParam res =
-  { &qconv_amount_nbo, NULL, x, sizeof (*x), 2 };
+  { &qconv_amount, NULL, x, sizeof (*x), 2 };
   return res;
 }
 
@@ -79,7 +79,7 @@ TALER_SQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
  * Function called to convert input argument into SQL parameters.
  *
  * @param cls closure
- * @param data pointer to input argument, here a `struct TALER_Amount`
+ * @param data pointer to input argument, here a `struct TALER_AmountNBO`
  * @param data_len number of bytes in @a data (if applicable)
  * @param stmt sqlite statement to parameters for
  * @param off offset of the argument to bind in @a stmt, numbered from 1,
@@ -87,24 +87,23 @@ TALER_SQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
  * @return #GNUNET_SYSERR on error, #GNUNET_OK on success
  */
 static int
-qconv_amount (void *cls,
-              const void *data,
-              size_t data_len,
-              sqlite3_stmt *stmt,
-              unsigned int off)
+qconv_amount_nbo (void *cls,
+                  const void *data,
+                  size_t data_len,
+                  sqlite3_stmt *stmt,
+                  unsigned int off)
 {
-  const struct TALER_Amount *amount_hbo = data;
-  struct TALER_AmountNBO amount;
+  const struct TALER_AmountNBO *amount = data;
+  struct TALER_Amount amount_hbo;
 
   (void) cls;
-  GNUNET_assert (sizeof (struct TALER_AmountNBO) == data_len);
-  TALER_amount_hton (&amount,
-                     amount_hbo);
-  return qconv_amount_nbo (cls,
-                           &amount,
-                           sizeof (struct TALER_AmountNBO),
-                           stmt,
-                           off);
+  TALER_amount_ntoh (&amount_hbo,
+                     amount);
+  return qconv_amount (cls,
+                       &amount_hbo,
+                       sizeof (struct TALER_Amount),
+                       stmt,
+                       off);
 }
 
 
@@ -116,10 +115,10 @@ qconv_amount (void *cls,
  * @param x pointer to the query parameter to pass
  */
 struct GNUNET_SQ_QueryParam
-TALER_SQ_query_param_amount (const struct TALER_Amount *x)
+TALER_SQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
 {
   struct GNUNET_SQ_QueryParam res =
-  { &qconv_amount, NULL, x, sizeof (*x), 2 };
+  { &qconv_amount_nbo, NULL, x, sizeof (*x), 2 };
   return res;
 }
 
@@ -199,7 +198,6 @@ qconv_round_time (void *cls,
 {
   const struct GNUNET_TIME_Absolute *at = data;
   struct GNUNET_TIME_Absolute tmp;
-  struct GNUNET_TIME_AbsoluteNBO buf;
 
   (void) cls;
   GNUNET_assert (sizeof (struct GNUNET_TIME_AbsoluteNBO) == data_len);
@@ -207,10 +205,9 @@ qconv_round_time (void *cls,
   tmp = *at;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&tmp));
-  buf = GNUNET_TIME_absolute_hton (tmp);
   if (SQLITE_OK != sqlite3_bind_int64 (stmt,
                                        (int) off,
-                                       (sqlite3_int64) buf.abs_value_us__))
+                                       (sqlite3_int64) at->abs_value_us))
     return GNUNET_SYSERR;
   return GNUNET_OK;
 }
@@ -263,7 +260,7 @@ qconv_round_time_abs (void *cls,
                  GNUNET_TIME_round_abs (&tmp));
   if (SQLITE_OK != sqlite3_bind_int64 (stmt,
                                        (int) off,
-                                       (sqlite3_int64) at->abs_value_us__))
+                                       (sqlite3_int64) tmp.abs_value_us))
     return GNUNET_SYSERR;
   return GNUNET_OK;
 }
