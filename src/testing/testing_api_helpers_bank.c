@@ -125,6 +125,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
                 "nexus",
                 "nexus",
                 "serve",
+                "--db-name", "/tmp/nexus-exchange-test.sqlite3",
                 NULL);
   if (NULL == nexus_proc)
   {
@@ -169,6 +170,8 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
                    NULL, NULL, NULL,
                    "sandbox",
                    "sandbox",
+                   "serve",
+                   "--db-name", "/tmp/sandbox-exchange-test.sqlite3",
                    NULL);
   if (NULL == sandbox_proc)
   {
@@ -210,6 +213,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
     GNUNET_OS_process_kill (sandbox_proc, SIGTERM);
     GNUNET_OS_process_wait (sandbox_proc);
     GNUNET_OS_process_destroy (sandbox_proc);
+    TALER_LOG_ERROR ("Could not prepare nexus\n");
     GNUNET_break (0);
     return ret;
   }
@@ -353,9 +357,6 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
   unsigned long long port;
-  struct GNUNET_OS_Process *dbreset_proc;
-  enum GNUNET_OS_ProcessStatusType type;
-  unsigned long code;
   char *database = NULL; // silence compiler
   char *exchange_payto_uri;
 
@@ -413,15 +414,7 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   /* DB preparation */
   if (GNUNET_YES == reset_db)
   {
-    if (NULL ==
-        (dbreset_proc = GNUNET_OS_start_process (
-           GNUNET_NO,
-           GNUNET_OS_INHERIT_STD_NONE,
-           NULL, NULL, NULL,
-           "rm",
-           "rm",
-           "-f",
-           "libeufin-nexus.sqlite3", NULL)))
+    if (0 != system ("rm -f /tmp/nexus-exchange-test.sqlite3 && rm -f /tmp/sandbox-exchange-test.sqlite3"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to invoke db-removal command.\n");
@@ -429,36 +422,8 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
       GNUNET_CONFIGURATION_destroy (cfg);
       return GNUNET_SYSERR;
     }
-    if (GNUNET_SYSERR ==
-        GNUNET_OS_process_wait_status (dbreset_proc,
-                                       &type,
-                                       &code))
-    {
-      GNUNET_OS_process_destroy (dbreset_proc);
-      GNUNET_break (0);
-      GNUNET_CONFIGURATION_destroy (cfg);
-      return GNUNET_SYSERR;
-    }
-    if ( (type == GNUNET_OS_PROCESS_EXITED) &&
-         (0 != code) )
-    {
-      fprintf (stderr,
-               "db-removal command was unsuccessful\n");
-      GNUNET_break (0);
-      GNUNET_CONFIGURATION_destroy (cfg);
-      return GNUNET_SYSERR;
-    }
-    if ( (type != GNUNET_OS_PROCESS_EXITED) ||
-         (0 != code) )
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unexpected error running `rm libeufin-nexus.sqlite3'!\n");
-      GNUNET_break (0);
-      GNUNET_CONFIGURATION_destroy (cfg);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_OS_process_destroy (dbreset_proc);
   }
+
   if (GNUNET_OK !=
       TALER_BANK_auth_parse_cfg (cfg,
                                  config_section,
@@ -744,7 +709,7 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
               bc->exchange_payto);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
               bc->user42_payto);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user43_payto: %s\n",
               bc->user43_payto);
   return GNUNET_OK;
 }
