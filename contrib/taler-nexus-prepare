@@ -36,8 +36,14 @@ def assertResponse(response):
     return response
 
 # Create a nexus (super-) user
-call(["nexus", "superuser", "Exchange", "--password", "x"])
-# Create a loopback bank connection.
+call(["nexus",
+      "superuser",
+      "--db-name", "/tmp/nexus-exchange-test.sqlite3",
+      "Exchange",
+      "--password", "x"]
+)
+
+# Create a EBICS bank connection.
 assertResponse(
     post(
         "http://localhost:5001/bank-connections",
