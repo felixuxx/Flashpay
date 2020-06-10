@@ -30,9 +30,12 @@ main (int argc,
 {
   struct TALER_MasterPublicKeyP master_pub;
   struct TALER_MasterPrivateKeyP master_priv;
-  json_t *wire;
-  const char *payto = "payto://x-taler-bank/42";
-  char *p;
+  json_t *wire_xtalerbank;
+  json_t *wire_iban;
+  const char *payto_xtalerbank = "payto://x-taler-bank/42";
+  const char *payto_iban = "payto://iban/DE89370400440532013000";
+  char *p_xtalerbank;
+  char *p_iban;
 
   (void) argc;
   (void) argv;
@@ -42,15 +45,25 @@ main (int argc,
   GNUNET_CRYPTO_eddsa_key_create (&master_priv.eddsa_priv);
   GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
                                       &master_pub.eddsa_pub);
-  wire = TALER_JSON_exchange_wire_signature_make (payto,
-                                                  &master_priv);
-  p = TALER_JSON_wire_to_payto (wire);
-  GNUNET_assert (0 == strcmp (p, payto));
-  GNUNET_free (p);
+  wire_xtalerbank = TALER_JSON_exchange_wire_signature_make (payto_xtalerbank,
+                                                             &master_priv);
+  wire_iban = TALER_JSON_exchange_wire_signature_make (payto_iban,
+                                                       &master_priv);
+  p_xtalerbank = TALER_JSON_wire_to_payto (wire_xtalerbank);
+  p_iban = TALER_JSON_wire_to_payto (wire_iban);
+  GNUNET_assert (0 == strcmp (p_xtalerbank, payto_xtalerbank));
+  GNUNET_assert (0 == strcmp (p_iban, payto_iban));
+  GNUNET_free (p_xtalerbank);
+  GNUNET_free (p_iban);
+
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_exchange_wire_signature_check (wire,
+                 TALER_JSON_exchange_wire_signature_check (wire_xtalerbank,
                                                            &master_pub));
-  json_decref (wire);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_exchange_wire_signature_check (wire_iban,
+                                                           &master_pub));
+  json_decref (wire_xtalerbank);
+  json_decref (wire_iban);
 
   return 0;
 }
