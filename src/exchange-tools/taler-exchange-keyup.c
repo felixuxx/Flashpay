@@ -1017,7 +1017,7 @@ create_wire_fee_for_method (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid or missing amount in `%s' under `%s'\n",
-                  wiremethod,
+                  section,
                   opt);
       *ret = GNUNET_SYSERR;
       GNUNET_free (opt);
@@ -1039,7 +1039,7 @@ create_wire_fee_for_method (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid or missing amount in `%s' under `%s'\n",
-                  wiremethod,
+                  section,
                   opt);
       *ret = GNUNET_SYSERR;
       GNUNET_free (opt);
