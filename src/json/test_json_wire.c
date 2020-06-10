@@ -33,7 +33,7 @@ main (int argc,
   json_t *wire_xtalerbank;
   json_t *wire_iban;
   const char *payto_xtalerbank = "payto://x-taler-bank/42";
-  const char *payto_iban = "payto://iban/DE89370400440532013000";
+  const char *payto_iban = "payto://iban/BIC-TO-BE-SKIPPED/DE89370400440532013000";
   char *p_xtalerbank;
   char *p_iban;
 
@@ -49,6 +49,13 @@ main (int argc,
                                                              &master_priv);
   wire_iban = TALER_JSON_exchange_wire_signature_make (payto_iban,
                                                        &master_priv);
+  if (NULL == wire_iban)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not parse payto/IBAN (%s) into 'wire object'\n",
+                payto_iban);
+    return 1;
+  }
   p_xtalerbank = TALER_JSON_wire_to_payto (wire_xtalerbank);
   p_iban = TALER_JSON_wire_to_payto (wire_iban);
   GNUNET_assert (0 == strcmp (p_xtalerbank, payto_xtalerbank));
