@@ -281,7 +281,15 @@ validate_iban (const char *iban)
     j++;
   }
   for (j = 0; '\0' != nbuf[j]; j++)
-    GNUNET_assert (isdigit ( (unsigned char) nbuf[j]));
+  {
+    if (! isdigit ( (unsigned char) nbuf[j]))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "IBAN `%s' didn't convert to numeric format\n",
+                  iban);
+      return GNUNET_NO;
+    }
+  }
   GNUNET_assert (sizeof(dividend) >= 8);
   remainder = 0;
   for (unsigned int i = 0; i<j; i += 16)
