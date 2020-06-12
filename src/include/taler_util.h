@@ -298,4 +298,41 @@ char *
 TALER_xtalerbank_account_from_payto (const char *payto);
 
 
+/**
+ * Possible values for a binary filter.
+ */
+enum TALER_EXCHANGE_YesNoAll
+{
+  /**
+   * If condition is yes.
+   */
+  TALER_EXCHANGE_YNA_YES = 1,
+
+  /**
+  * If condition is no.
+  */
+  TALER_EXCHANGE_YNA_NO = 2,
+
+  /**
+   * Condition disabled.
+   */
+  TALER_EXCHANGE_YNA_ALL = 3
+};
+
+
+/**
+ * Convert query argument to @a yna value.
+ *
+ * @param connection connection to take query argument from
+ * @param arg argument to try for
+ * @param default_val value to assign if the argument is not present
+ * @param[out] value to set
+ * @return true on success, false if the parameter was malformed
+ */
+bool
+TALER_arg_to_yna (struct MHD_Connection *connection,
+                  const char *arg,
+                  enum TALER_EXCHANGE_YesNoAll default_val,
+                  enum TALER_EXCHANGE_YesNoAll *yna);
+
 #endif

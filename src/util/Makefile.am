@@ -42,6 +42,7 @@ libtalerutil_la_SOURCES = \
   payto.c \
   url.c \
   util.c \
+  yna.c \
   os_installation.c
 
 libtalerutil_la_LIBADD = \
