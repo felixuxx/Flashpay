@@ -119,14 +119,14 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   char *curl_check_cmd;
 
   nexus_proc = GNUNET_OS_start_process
-                (GNUNET_NO,
-                GNUNET_OS_INHERIT_STD_NONE,
-                NULL, NULL, NULL,
-                "nexus",
-                "nexus",
-                "serve",
-                "--db-name", "/tmp/nexus-exchange-test.sqlite3",
-                NULL);
+                 (GNUNET_NO,
+                 GNUNET_OS_INHERIT_STD_NONE,
+                 NULL, NULL, NULL,
+                 "nexus",
+                 "nexus",
+                 "serve",
+                 "--db-name", "/tmp/nexus-exchange-test.sqlite3",
+                 NULL);
   if (NULL == nexus_proc)
   {
     GNUNET_break (0);
@@ -165,7 +165,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   fprintf (stderr, "\n");
 
   sandbox_proc = GNUNET_OS_start_process
-                  (GNUNET_NO,
+                   (GNUNET_NO,
                    GNUNET_OS_INHERIT_STD_NONE,
                    NULL, NULL, NULL,
                    "sandbox",
@@ -221,6 +221,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   ret.sandbox = sandbox_proc;
   return ret;
 }
+
 
 /**
  * Start the (Python) bank process.  Assume the port
@@ -338,6 +339,7 @@ TALER_TESTING_run_bank (const char *config_filename,
 
 }
 
+
 /**
  * Prepare the Nexus execution.  Check if the port is available
  * and delete old database.
@@ -414,7 +416,8 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   /* DB preparation */
   if (GNUNET_YES == reset_db)
   {
-    if (0 != system ("rm -f /tmp/nexus-exchange-test.sqlite3 && rm -f /tmp/sandbox-exchange-test.sqlite3"))
+    if (0 != system (
+          "rm -f /tmp/nexus-exchange-test.sqlite3 && rm -f /tmp/sandbox-exchange-test.sqlite3"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to invoke db-removal command.\n");
@@ -435,8 +438,10 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   bc->exchange_payto = exchange_payto_uri;
-  bc->user42_payto = "payto://iban/BIC/FR7630006000011234567890189?name=User42";
-  bc->user43_payto = "payto://iban/BIC/GB33BUKB20201555555555?name=User43";
+  bc->user42_payto =
+    "payto://iban/BIC/FR7630006000011234567890189?receiver-name=User42";
+  bc->user43_payto =
+    "payto://iban/BIC/GB33BUKB20201555555555?receiver-name=User43";
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Relying on nexus %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
@@ -449,6 +454,7 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
               bc->user43_payto);
   return GNUNET_OK;
 }
+
 
 /**
  * Prepare the bank execution.  Check if the port is available
