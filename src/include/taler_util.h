@@ -335,4 +335,15 @@ TALER_arg_to_yna (struct MHD_Connection *connection,
                   enum TALER_EXCHANGE_YesNoAll default_val,
                   enum TALER_EXCHANGE_YesNoAll *yna);
 
+
+/**
+ * Convert YNA value to a string.
+ *
+ * @param yna value to convert
+ * @return string representation ("yes"/"no"/"all").
+ */
+const char *
+TALER_yna_to_string (enum TALER_EXCHANGE_YesNoAll yna);
+
+
 #endif
