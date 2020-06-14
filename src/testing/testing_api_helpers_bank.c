@@ -114,7 +114,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
 {
   struct GNUNET_OS_Process *nexus_proc;
   struct GNUNET_OS_Process *sandbox_proc;
-  struct TALER_TESTING_LibeufinServices ret;
+  struct TALER_TESTING_LibeufinServices ret = { 0 };
   unsigned int iter;
   char *curl_check_cmd;
 
@@ -122,8 +122,8 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
                  (GNUNET_NO,
                  GNUNET_OS_INHERIT_STD_NONE,
                  NULL, NULL, NULL,
-                 "nexus",
-                 "nexus",
+                 "libeufin-nexus",
+                 "libeufin-nexus",
                  "serve",
                  "--db-name", "/tmp/nexus-exchange-test.sqlite3",
                  NULL);
@@ -168,8 +168,8 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
                    (GNUNET_NO,
                    GNUNET_OS_INHERIT_STD_NONE,
                    NULL, NULL, NULL,
-                   "sandbox",
-                   "sandbox",
+                   "libeufin-sandbox",
+                   "libeufin-sandbox",
                    "serve",
                    "--db-name", "/tmp/sandbox-exchange-test.sqlite3",
                    NULL);

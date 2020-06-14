@@ -36,7 +36,7 @@ def assertResponse(response):
     return response
 
 # Create a nexus (super-) user
-call(["nexus",
+check_call(["libeufin-nexus",
       "superuser",
       "--db-name", "/tmp/nexus-exchange-test.sqlite3",
       "Exchange",
