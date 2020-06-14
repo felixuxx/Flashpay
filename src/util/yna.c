@@ -64,3 +64,25 @@ TALER_arg_to_yna (struct MHD_Connection *connection,
   }
   return false;
 }
+
+
+/**
+ * Convert YNA value to a string.
+ *
+ * @param yna value to convert
+ * @return string representation ("yes"/"no"/"all").
+ */
+const char *
+TALER_yna_to_string (enum TALER_EXCHANGE_YesNoAll yna)
+{
+  switch (yna)
+  {
+  case TALER_EXCHANGE_YNA_YES:
+    return "yes";
+  case TALER_EXCHANGE_YNA_NO:
+    return "no";
+  case TALER_EXCHANGE_YNA_ALL:
+    return "all";
+  }
+  GNUNET_assert (0);
+}
