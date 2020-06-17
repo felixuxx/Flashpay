@@ -1089,7 +1089,7 @@ TALER_TESTING_cmd_admin_add_incoming (
  * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @param ref reference to a command that can offer a reserve
- *        private key.
+ *        private key or public key.
  * @return the command.
  */
 struct TALER_TESTING_Command
