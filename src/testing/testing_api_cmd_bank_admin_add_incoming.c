@@ -82,6 +82,11 @@ struct AdminAddIncomingState
   struct TALER_ReservePrivateKeyP reserve_priv;
 
   /**
+   * Whether we know the private key or not.
+   */
+  bool reserve_priv_known;
+
+  /**
    * Reserve public key matching @e reserve_priv.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
@@ -271,6 +276,7 @@ admin_add_incoming_run (void *cls,
                         struct TALER_TESTING_Interpreter *is)
 {
   struct AdminAddIncomingState *fts = cls;
+  bool have_public = false;
 
   (void) cmd;
   /* Use reserve public key as subject */
@@ -278,6 +284,7 @@ admin_add_incoming_run (void *cls,
   {
     const struct TALER_TESTING_Command *ref;
     const struct TALER_ReservePrivateKeyP *reserve_priv;
+    const struct TALER_ReservePublicKeyP *reserve_pub;
 
     ref = TALER_TESTING_interpreter_lookup_command
             (is, fts->reserve_reference);
@@ -292,11 +299,23 @@ admin_add_incoming_run (void *cls,
                                               0,
                                               &reserve_priv))
     {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
+      if (GNUNET_OK != TALER_TESTING_get_trait_reserve_pub (ref,
+                                                            0,
+                                                            &reserve_pub))
+      {
+        GNUNET_break (0);
+        TALER_TESTING_interpreter_fail (is);
+        return;
+      }
+      have_public = true;
+      fts->reserve_pub.eddsa_pub = reserve_pub->eddsa_pub;
+      fts->reserve_priv_known = false;
     }
-    fts->reserve_priv.eddsa_priv = reserve_priv->eddsa_priv;
+    else
+    {
+      fts->reserve_priv.eddsa_priv = reserve_priv->eddsa_priv;
+      fts->reserve_priv_known = true;
+    }
   }
   else
   {
@@ -349,6 +368,7 @@ admin_add_incoming_run (void *cls,
         TALER_TESTING_interpreter_fail (is);
         return;
       }
+      fts->reserve_priv_known = true;
       GNUNET_free (keys);
       GNUNET_free (section);
       GNUNET_CONFIGURATION_destroy (cfg);
@@ -358,10 +378,12 @@ admin_add_incoming_run (void *cls,
       /* No referenced reserve, no instance to take priv
        * from, no explicit subject given: create new key! */
       GNUNET_CRYPTO_eddsa_key_create (&fts->reserve_priv.eddsa_priv);
+      fts->reserve_priv_known = true;
     }
   }
-  GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
-                                      &fts->reserve_pub.eddsa_pub);
+  if (! have_public)
+    GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
+                                        &fts->reserve_pub.eddsa_pub);
   fts->reserve_history.type = TALER_EXCHANGE_RTT_CREDIT;
   fts->reserve_history.amount = fts->amount;
   fts->reserve_history.details.in_details.sender_url
@@ -432,30 +454,58 @@ admin_add_incoming_traits (void *cls,
                            unsigned int index)
 {
   struct AdminAddIncomingState *fts = cls;
-  struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-    TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
-                                    fts->payto_debit_account),
-    /* Used as a marker, content does not matter */
-    TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
-                                    "payto://void/the-exchange"),
-    TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
-                                  fts->exchange_credit_url),
-    TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
-    TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
-    TALER_TESTING_make_trait_reserve_priv (0,
-                                           &fts->reserve_priv),
-    TALER_TESTING_make_trait_reserve_pub (0,
-                                          &fts->reserve_pub),
-    TALER_TESTING_make_trait_reserve_history (0,
-                                              &fts->reserve_history),
-    TALER_TESTING_trait_end ()
-  };
+  if (fts->reserve_priv_known)
+  {
+    struct TALER_TESTING_Trait traits[] = {
+      TALER_TESTING_make_trait_bank_row (&fts->serial_id),
+      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
+                                      fts->payto_debit_account),
+      /* Used as a marker, content does not matter */
+      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
+                                      "payto://void/the-exchange"),
+      TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
+                                    fts->exchange_credit_url),
+      TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
+      TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
+      TALER_TESTING_make_trait_reserve_priv (0,
+                                             &fts->reserve_priv),
+      TALER_TESTING_make_trait_reserve_pub (0,
+                                            &fts->reserve_pub),
+      TALER_TESTING_make_trait_reserve_history (0,
+                                                &fts->reserve_history),
+      TALER_TESTING_trait_end ()
+    };
 
-  return TALER_TESTING_get_trait (traits,
-                                  ret,
-                                  trait,
-                                  index);
+    return TALER_TESTING_get_trait (traits,
+                                    ret,
+                                    trait,
+                                    index);
+  }
+  else
+  {
+    struct TALER_TESTING_Trait traits[] = {
+      TALER_TESTING_make_trait_bank_row (&fts->serial_id),
+      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
+                                      fts->payto_debit_account),
+      /* Used as a marker, content does not matter */
+      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
+                                      "payto://void/the-exchange"),
+      TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
+                                    fts->exchange_credit_url),
+      TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
+      TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
+      TALER_TESTING_make_trait_reserve_pub (0,
+                                            &fts->reserve_pub),
+      TALER_TESTING_make_trait_reserve_history (0,
+                                                &fts->reserve_history),
+      TALER_TESTING_trait_end ()
+    };
+
+    return TALER_TESTING_get_trait (traits,
+                                    ret,
+                                    trait,
+                                    index);
+  }
 }
 
 
@@ -548,7 +598,7 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
  * @param payto_debit_account which account sends money
  * @param auth authentication data
  * @param ref reference to a command that can offer a reserve
- *        private key.
+ *        private key or public key.
  * @return the command.
  */
 struct TALER_TESTING_Command
