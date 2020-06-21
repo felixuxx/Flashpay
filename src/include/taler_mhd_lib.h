@@ -264,7 +264,8 @@ TALER_MHD_parse_post_cleanup_callback (void *con_cls);
 
 /**
  * Parse JSON object into components based on the given field
- * specification.
+ * specification.  If parsing fails, we return an HTTP
+ * status code of 400 (#MHD_HTTP_BAD_REQUEST).
  *
  * @param connection the connection to send an error response to
  * @param root the JSON node to start the navigation at.
@@ -280,6 +281,30 @@ enum GNUNET_GenericReturnValue
 TALER_MHD_parse_json_data (struct MHD_Connection *connection,
                            const json_t *root,
                            struct GNUNET_JSON_Specification *spec);
+
+
+/**
+ * Parse JSON object that we (the server!) generated into components based on
+ * the given field specification.  The difference to
+ * #TALER_MHD_parse_json_data() is that this function will fail
+ * with an HTTP failure of 500 (internal server error) in case
+ * parsing fails, instead of blaming it on the client with a
+ * 400 (#MHD_HTTP_BAD_REQUEST).
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param spec field specification for the parser
+ * @return
+ *    #GNUNET_YES if navigation was successful (caller is responsible
+ *                for freeing allocated variable-size data using
+ *                GNUNET_JSON_parse_free() when done)
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_internal_json_data (struct MHD_Connection *connection,
+                                    const json_t *root,
+                                    struct GNUNET_JSON_Specification *spec);
 
 
 /**
