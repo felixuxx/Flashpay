@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014--2019 Taler Systems SA
+  Copyright (C) 2014--2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -56,7 +56,7 @@
  *               (we could not even queue an error message,
  *                close HTTP session with MHD_NO)
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_post_json (struct MHD_Connection *connection,
                            void **con_cls,
                            const char *upload_data,
@@ -186,12 +186,12 @@ TALER_MHD_parse_request_arg_data (struct MHD_Connection *connection,
  *    #GNUNET_NO if json is malformed, error response was generated
  *    #GNUNET_SYSERR on internal error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_json_data (struct MHD_Connection *connection,
                            const json_t *root,
                            struct GNUNET_JSON_Specification *spec)
 {
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
   const char *error_json_name;
   unsigned int error_line;
 
@@ -221,6 +221,58 @@ TALER_MHD_parse_json_data (struct MHD_Connection *connection,
 
 
 /**
+ * Parse JSON object that we (the server!) generated into components based on
+ * the given field specification.  The difference to
+ * #TALER_MHD_parse_json_data() is that this function will fail
+ * with an HTTP failure of 500 (internal server error) in case
+ * parsing fails, instead of blaming it on the client with a
+ * 400 (#MHD_HTTP_BAD_REQUEST).
+ *
+ * @param connection the connection to send an error response to
+ * @param root the JSON node to start the navigation at.
+ * @param spec field specification for the parser
+ * @return
+ *    #GNUNET_YES if navigation was successful (caller is responsible
+ *                for freeing allocated variable-size data using
+ *                GNUNET_JSON_parse_free() when done)
+ *    #GNUNET_NO if json is malformed, error response was generated
+ *    #GNUNET_SYSERR on internal error
+ */
+enum GNUNET_GenericReturnValue
+TALER_MHD_parse_internal_json_data (struct MHD_Connection *connection,
+                                    const json_t *root,
+                                    struct GNUNET_JSON_Specification *spec)
+{
+  enum GNUNET_GenericReturnValue ret;
+  const char *error_json_name;
+  unsigned int error_line;
+
+  ret = GNUNET_JSON_parse (root,
+                           spec,
+                           &error_json_name,
+                           &error_line);
+  if (GNUNET_SYSERR == ret)
+  {
+    if (NULL == error_json_name)
+      error_json_name = "<no field>";
+    ret = (MHD_YES ==
+           TALER_MHD_reply_json_pack (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      "{s:s, s:I, s:s, s:I}",
+                                      "hint", "JSON parse error",
+                                      "code",
+                                      (json_int_t)
+                                      TALER_EC_INTERNAL_INVARIANT_FAILURE,
+                                      "field", error_json_name,
+                                      "line", (json_int_t) error_line))
+          ? GNUNET_NO : GNUNET_SYSERR;
+    return ret;
+  }
+  return GNUNET_YES;
+}
+
+
+/**
  * Parse JSON array into components based on the given field
  * specification.  Generates error response on parse errors.
  *
@@ -235,13 +287,13 @@ TALER_MHD_parse_json_data (struct MHD_Connection *connection,
  *    #GNUNET_NO if json is malformed, error response was generated
  *    #GNUNET_SYSERR on internal error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_MHD_parse_json_array (struct MHD_Connection *connection,
                             const json_t *root,
                             struct GNUNET_JSON_Specification *spec,
                             ...)
 {
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
   const char *error_json_name;
   unsigned int error_line;
   va_list ap;
