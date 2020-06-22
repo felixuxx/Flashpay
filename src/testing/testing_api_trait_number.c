@@ -28,6 +28,7 @@
 #include "taler_testing_lib.h"
 
 #define TALER_TESTING_TRAIT_UINT "uint"
+#define TALER_TESTING_TRAIT_UINT32 "uint-32"
 #define TALER_TESTING_TRAIT_UINT64 "uint-64"
 #define TALER_TESTING_TRAIT_BANK_ROW "bank-transaction-row"
 
@@ -66,6 +67,45 @@ TALER_TESTING_make_trait_uint (unsigned int index,
   struct TALER_TESTING_Trait ret = {
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_UINT,
+    .ptr = (const void *) n
+  };
+  return ret;
+}
+
+
+/**
+ * Obtain a "number" value from @a cmd, 32-bit version.
+ *
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
+ * @param[out] n set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_uint32 (const struct TALER_TESTING_Command *cmd,
+                                unsigned int index,
+                                const uint32_t **n)
+{
+  return cmd->traits (cmd->cls,
+                      (const void **) n,
+                      TALER_TESTING_TRAIT_UINT32,
+                      index);
+}
+
+
+/**
+ * Offer number trait, 32-bit version.
+ *
+ * @param index the number's index number.
+ * @param n number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_uint32 (unsigned int index,
+                                 const uint32_t *n)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_UINT32,
     .ptr = (const void *) n
   };
   return ret;

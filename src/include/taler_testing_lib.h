@@ -2338,6 +2338,31 @@ TALER_TESTING_make_trait_denom_sig (
 
 
 /**
+ * Offer number trait, 32-bit version.
+ *
+ * @param index the number's index number.
+ * @param n number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_uint32 (unsigned int index,
+                                 const uint32_t *n);
+
+
+/**
+ * Obtain a "number" value from @a cmd, 32-bit version.
+ *
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
+ * @param[out] n set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_uint32 (const struct TALER_TESTING_Command *cmd,
+                                unsigned int index,
+                                const uint32_t **n);
+
+
+/**
  * Offer number trait, 64-bit version.
  *
  * @param index the number's index number.
@@ -2851,5 +2876,34 @@ struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_absolute_time (
   unsigned int index,
   const struct GNUNET_TIME_Absolute *time);
+
+
+/**
+ * Obtain a relative time from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which time to pick if
+ *        @a cmd has multiple on offer.
+ * @param[out] time set to the wanted WTID.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_relative_time (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct GNUNET_TIME_Relative **time);
+
+
+/**
+ * Offer a relative time.
+ *
+ * @param index associate the object with this index
+ * @param time which object should be returned
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_relative_time (
+  unsigned int index,
+  const struct GNUNET_TIME_Relative *time);
 
 #endif

@@ -29,6 +29,7 @@
 #include "taler_testing_lib.h"
 
 #define TALER_TESTING_TRAIT_TIME_ABS "time-abs"
+#define TALER_TESTING_TRAIT_TIME_REL "time-rel"
 
 /**
  * Obtain a absolute time from @a cmd.
@@ -67,6 +68,49 @@ TALER_TESTING_make_trait_absolute_time
   struct TALER_TESTING_Trait ret = {
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_TIME_ABS,
+    .ptr = (const void *) time
+  };
+  return ret;
+}
+
+
+/**
+ * Obtain a relative time from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which time to pick if
+ *        @a cmd has multiple on offer.
+ * @param[out] time set to the wanted WTID.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_relative_time (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct GNUNET_TIME_Relative **time)
+{
+  return cmd->traits (cmd->cls,
+                      (const void **) time,
+                      TALER_TESTING_TRAIT_TIME_REL,
+                      index);
+}
+
+
+/**
+ * Offer a relative time.
+ *
+ * @param index associate the object with this index
+ * @param time which object should be returned
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_relative_time (
+  unsigned int index,
+  const struct GNUNET_TIME_Relative *time)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_TIME_REL,
     .ptr = (const void *) time
   };
   return ret;
