@@ -30,6 +30,7 @@
 #define TALER_TESTING_TRAIT_UINT "uint"
 #define TALER_TESTING_TRAIT_UINT32 "uint-32"
 #define TALER_TESTING_TRAIT_UINT64 "uint-64"
+#define TALER_TESTING_TRAIT_INT64 "int-64"
 #define TALER_TESTING_TRAIT_BANK_ROW "bank-transaction-row"
 
 
@@ -145,6 +146,45 @@ TALER_TESTING_make_trait_uint64 (unsigned int index,
   struct TALER_TESTING_Trait ret = {
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_UINT64,
+    .ptr = (const void *) n
+  };
+  return ret;
+}
+
+
+/**
+ * Obtain a "number" value from @a cmd, 64-bit signed version.
+ *
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
+ * @param[out] n set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_int64 (const struct TALER_TESTING_Command *cmd,
+                               unsigned int index,
+                               const int64_t **n)
+{
+  return cmd->traits (cmd->cls,
+                      (const void **) n,
+                      TALER_TESTING_TRAIT_INT64,
+                      index);
+}
+
+
+/**
+ * Offer number trait, 64-bit signed version.
+ *
+ * @param index the number's index number.
+ * @param n number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_int64 (unsigned int index,
+                                const int64_t *n)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_INT64,
     .ptr = (const void *) n
   };
   return ret;

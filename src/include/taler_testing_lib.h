@@ -2388,6 +2388,31 @@ TALER_TESTING_get_trait_uint64 (const struct TALER_TESTING_Command *cmd,
 
 
 /**
+ * Offer number trait, 64-bit signed version.
+ *
+ * @param index the number's index number.
+ * @param n number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_int64 (unsigned int index,
+                                const int64_t *n);
+
+
+/**
+ * Obtain a "number" value from @a cmd, 64-bit signed version.
+ *
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
+ * @param[out] n set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_int64 (const struct TALER_TESTING_Command *cmd,
+                               unsigned int index,
+                               const int64_t **n);
+
+
+/**
  * Offer a number.
  *
  * @param index the number's index number.
@@ -2534,6 +2559,33 @@ TALER_TESTING_get_trait_exchange_keys (const struct TALER_TESTING_Command *cmd,
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_exchange_keys (unsigned int index,
                                         const json_t *keys);
+
+
+/**
+ * Obtain json from @a cmd.
+ *
+ * @param cmd command to extract the json from.
+ * @param index index number associate with the json on offer.
+ * @param[out] json where to write the json.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_json (const struct TALER_TESTING_Command *cmd,
+                              unsigned int index,
+                              const json_t **json);
+
+
+/**
+ * Offer json in a trait.
+ *
+ * @param index index number associate with the json
+ *        on offer.
+ * @param json json to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_json (unsigned int index,
+                               const json_t *json);
 
 
 /**

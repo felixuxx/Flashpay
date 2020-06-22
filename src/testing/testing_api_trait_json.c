@@ -30,6 +30,7 @@
 
 #define TALER_TESTING_TRAIT_WIRE_DETAILS "wire-details"
 #define TALER_TESTING_TRAIT_EXCHANGE_KEYS "exchange-keys"
+#define TALER_TESTING_TRAIT_JSON "json"
 
 /**
  * Obtain serialized exchange keys from @a cmd.
@@ -115,6 +116,47 @@ TALER_TESTING_make_trait_wire_details
     .index = index,
     .trait_name = TALER_TESTING_TRAIT_WIRE_DETAILS,
     .ptr = (const json_t *) wire_details
+  };
+  return ret;
+}
+
+
+/**
+ * Obtain json from @a cmd.
+ *
+ * @param cmd command to extract the json from.
+ * @param index index number associate with the json on offer.
+ * @param[out] json where to write the json.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_json (const struct TALER_TESTING_Command *cmd,
+                              unsigned int index,
+                              const json_t **json)
+{
+  return cmd->traits (cmd->cls,
+                      (const void **) json,
+                      TALER_TESTING_TRAIT_JSON,
+                      index);
+}
+
+
+/**
+ * Offer json in a trait.
+ *
+ * @param index index number associate with the json
+ *        on offer.
+ * @param json json to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_json (unsigned int index,
+                               const json_t *json)
+{
+  struct TALER_TESTING_Trait ret = {
+    .index = index,
+    .trait_name = TALER_TESTING_TRAIT_JSON,
+    .ptr = (const json_t *) json
   };
   return ret;
 }
