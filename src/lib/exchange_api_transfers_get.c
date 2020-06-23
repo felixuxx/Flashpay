@@ -155,6 +155,12 @@ check_transfers_get_response_ok (
             GNUNET_JSON_parse (detail_j,
                                spec_detail,
                                NULL, NULL)) ||
+           (GNUNET_OK !=
+            TALER_amount_cmp_currency (&total_expected,
+                                       &detail->coin_value)) ||
+           (GNUNET_OK !=
+            TALER_amount_cmp_currency (&total_expected,
+                                       &detail->coin_fee)) ||
            (0 >
             TALER_amount_add (&total_expected,
                               &total_expected,
