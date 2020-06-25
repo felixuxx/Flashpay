@@ -1130,10 +1130,8 @@ struct TALER_ProposalDataPS
 struct PaymentResponsePS
 {
   /**
-   * Set to TALER_SIGNATURE_MERCHANT_PAYMENT_OK so far. Note that
-   * unsuccessful payments are usually proven by some exchange's signature,
-   * thus it is unlikely that a merchant needs to set a purpose other than
-   * the above mentioned
+   * Set to #TALER_SIGNATURE_MERCHANT_PAYMENT_OK. Note that
+   * unsuccessful payments are usually proven by some exchange's signature.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
