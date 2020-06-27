@@ -1332,6 +1332,16 @@ TALER_TESTING_cmd_status (const char *label,
                           unsigned int expected_response_code);
 
 /**
+ * Index of the deposit value trait of a deposit command.
+ */
+#define TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_VALUE 0
+
+/**
+ * Index of the deposit fee trait of a deposit command.
+ */
+#define TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_FEE 1
+
+/**
  * Create a "deposit" command.
  *
  * @param label command label.

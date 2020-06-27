@@ -53,6 +53,11 @@ struct DepositState
   struct TALER_Amount amount;
 
   /**
+   * Deposit fee.
+   */
+  struct TALER_Amount deposit_fee;
+
+  /**
    * Reference to any command that is able to provide a coin.
    */
   const char *coin_reference;
@@ -374,6 +379,7 @@ deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  ds->deposit_fee = denom_pub->fee_deposit;
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -541,8 +547,12 @@ deposit_traits (void *cls,
                                                ds->contract_terms),
       TALER_TESTING_make_trait_merchant_priv (0,
                                               &ds->merchant_priv),
-      TALER_TESTING_make_trait_amount_obj (0,
-                                           &ds->amount),
+      TALER_TESTING_make_trait_amount_obj (
+        TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_VALUE,
+        &ds->amount),
+      TALER_TESTING_make_trait_amount_obj (
+        TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_FEE,
+        &ds->deposit_fee),
       TALER_TESTING_make_trait_absolute_time (0,
                                               &ds->exchange_timestamp),
       TALER_TESTING_trait_end ()
