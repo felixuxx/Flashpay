@@ -745,6 +745,32 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh);
 
 
 /**
+ * Sign a deposit permission.  Function for wallets.
+ *
+ * @param amount the amount to be deposited
+ * @param deposit_fee the deposit fee we expect to pay
+ * @param h_wire hash of the merchant’s account details
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param coin_priv coin’s private key
+ * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT
+ */
+void
+TALER_EXCHANGE_deposit_permission_sign (
+  const struct TALER_Amount *amount,
+  const struct TALER_Amount *deposit_fee,
+  const struct GNUNET_HashCode *h_wire,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
  * @brief A Deposit Handle
  */
 struct TALER_EXCHANGE_DepositHandle;

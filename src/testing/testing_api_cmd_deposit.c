@@ -394,39 +394,26 @@ deposit_run (void *cls,
   else
   {
     ds->refund_deadline = ds->wallet_timestamp;
-    wire_deadline = GNUNET_TIME_relative_to_absolute
-                      (GNUNET_TIME_UNIT_ZERO);
+    wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_ZERO);
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
                                       &merchant_pub.eddsa_pub);
-
   (void) GNUNET_TIME_round_abs (&wire_deadline);
-
-  // FIXME: This should be part of TALER_EXCHANGE_deposit()!
   {
-    struct TALER_DepositRequestPS dr;
+    struct GNUNET_HashCode h_wire;
 
-    memset (&dr, 0, sizeof (dr));
-    dr.purpose.size = htonl
-                        (sizeof (struct TALER_DepositRequestPS));
-    dr.purpose.purpose = htonl
-                           (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-    dr.h_contract_terms = h_contract_terms;
     GNUNET_assert (GNUNET_OK ==
                    TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
-                                                            &dr.h_wire));
-    dr.wallet_timestamp = GNUNET_TIME_absolute_hton (ds->wallet_timestamp);
-    dr.refund_deadline = GNUNET_TIME_absolute_hton
-                           (ds->refund_deadline);
-    TALER_amount_hton (&dr.amount_with_fee,
-                       &ds->amount);
-    TALER_amount_hton (&dr.deposit_fee,
-                       &denom_pub->fee_deposit);
-    dr.merchant = merchant_pub;
-    dr.coin_pub = coin_pub;
-    GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
-                              &dr,
-                              &coin_sig.eddsa_signature);
+                                                            &h_wire));
+    TALER_EXCHANGE_deposit_permission_sign (&ds->amount,
+                                            &denom_pub->fee_deposit,
+                                            &h_wire,
+                                            &h_contract_terms,
+                                            coin_priv,
+                                            ds->wallet_timestamp,
+                                            &merchant_pub,
+                                            ds->refund_deadline,
+                                            &coin_sig);
   }
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,

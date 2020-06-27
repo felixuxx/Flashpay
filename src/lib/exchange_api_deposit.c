@@ -491,6 +491,59 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
 
 
 /**
+ * Sign a deposit permission.  Function for wallets.
+ *
+ * @param amount the amount to be deposited
+ * @param deposit_fee the deposit fee we expect to pay
+ * @param h_wire hash of the merchant’s account details
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param coin_priv coin’s private key
+ * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT
+ */
+void
+TALER_EXCHANGE_deposit_permission_sign (
+  const struct TALER_Amount *amount,
+  const struct TALER_Amount *deposit_fee,
+  const struct GNUNET_HashCode *h_wire,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_DepositRequestPS dr = {
+    .purpose.size = htonl
+                      (sizeof (dr)),
+    .purpose.purpose = htonl
+                         (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+    .h_contract_terms = *h_contract_terms,
+    .h_wire = *h_wire,
+    .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
+    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .merchant = *merchant_pub
+  };
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&wallet_timestamp));
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&refund_deadline));
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                      &dr.coin_pub.eddsa_pub);
+  TALER_amount_hton (&dr.amount_with_fee,
+                     amount);
+  TALER_amount_hton (&dr.deposit_fee,
+                     deposit_fee);
+  GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                            &dr,
+                            &coin_sig->eddsa_signature);
+}
+
+
+/**
  * Submit a deposit permission to the exchange and get the exchange's response.
  * Note that while we return the response verbatim to the caller for
  * further processing, we do already verify that the response is
