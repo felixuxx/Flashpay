@@ -57,12 +57,17 @@ they have all been addressed.
 \section{General remarks on the code}
 
 We understand that writing the code in another programming language may make
-certain checks for the auditor less work. However, other programming languages
-also have disadvantages (from the complexity of the languages to the
-complexity of the compilers to tool support).  We believe creating a parallel
-implementation in other languages would provide advantages, especially with
-respect to avoiding ``the implementation is the specification''-style issues.
-However, given limited resources will not make this a priority.
+certain checks for the auditor less work to implement. However, our choice of C
+is based on the advantages that make it superior to contemporary languages for
+our use case:  relatively low complexity of the language (compared to C++);
+availability of mature compilers, static and dynamic analysis tools;
+predictable performance; access to stable and battle-tested libraries; and
+future-proofness due to portability to older systems as well as new platforms.
+
+We believe creating a parallel implementation in other languages would provide
+advantages, especially with respect to avoiding ``the implementation is the
+specification''-style issues.  However, given limited resources will not make
+this a priority.
 
 We disagree that all modern software development has embraced the idea that
 memory errors are to be handled in ways other than terminating or restarting
@@ -214,11 +219,20 @@ exchange for production.
 
 \subsection{Reduce reliance on PostgreSQL}
 
-Using other mechanisms beyond the database as a ``Plan B'' would create
-serious availability and cost concerns, as now either mechanism may create
-serialization issues and require database rollbacks.  Also, any such
-append-only logging mechanism would itself have a similar complexity as the
-primary database.  Thus, we do not believe that the drastic complexity
-increase from the combined solution represents a valid security trade-off.
+CodeBlau's suggestion to use an append-only transaction logging service in
+addition to the PostgreSQL database is a reasonable suggestion for a
+production-grade deployment of GNU Taler, as it would allow partial disaster
+recovery even in the presence of an attacker that has gained write access to
+the exchange's database.
+
+We are currently still investigating whether the transaction logging should be
+implemented directly by the exchange service, or via the database's extensible
+replication mechanism.  Any implementation of such an append-only logging
+mechanism must be carefully designed to ensure it does not negatively impact
+the exchange's availability and does not interfere with serializability of
+database transactions.  As such we believe that transaction logging can only be
+provided on a best-effort basis.  Fortunately, even a best-effort append-only
+transaction log would serve to limit the financial damage incurred by the
+exchange in an active database compromise scenario.
 
 \end{document}
