@@ -40,7 +40,6 @@ stat_cleanup (void *cls,
   (void) cls;
   (void) cmd;
   /* nothing to clean.  */
-  return;
 }
 
 
