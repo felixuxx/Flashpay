@@ -388,10 +388,9 @@ struct TALER_TESTING_Interpreter
   void *final_cleanup_cb_cls;
 
   /**
-   * Instruction pointer.  Tells #interpreter_run() which
-   * instruction to run next.  Need (signed) int because
-   * it gets -1 when rewinding the interpreter to the first
-   * CMD.
+   * Instruction pointer.  Tells #interpreter_run() which instruction to run
+   * next.  Need (signed) int because it gets -1 when rewinding the
+   * interpreter to the first CMD.
    */
   int ip;
 
@@ -599,7 +598,22 @@ TALER_TESTING_interpreter_fail (struct TALER_TESTING_Interpreter *is);
  * @return a end-command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_end ();
+TALER_TESTING_cmd_end (void);
+
+
+/**
+ * Make the instruction pointer point to @a target_label
+ * only if @a counter is greater than zero.
+ *
+ * @param label command label
+ * @param target_label label of the new instruction pointer's destination after the jump;
+ *                     must be before the current instruction
+ * @param counter counts how many times the rewinding is to happen.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_rewind_ip (const char *label,
+                             const char *target_label,
+                             unsigned int counter);
 
 
 /**
@@ -816,7 +830,6 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
  * @param config_filename configuration filename.
  * @param bank_url base URL of the bank, used by `wget' to check
  *        that the bank was started right.
- *
  * @return the process, or NULL if the process could not
  *         be started.
  */
@@ -838,6 +851,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  */
 struct TALER_TESTING_LibeufinServices
 TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc);
+
 
 /**
  * Runs the Fakebank by guessing / extracting the portnumber
@@ -1895,6 +1909,18 @@ TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is);
  */
 struct TALER_TESTING_Command *
 TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd);
+
+
+/**
+ * Set what command the batch should be at.
+ *
+ * @param cmd current batch command
+ * @param new_ip where to move the IP
+ */
+void
+TALER_TESTING_cmd_batch_set_current (const struct TALER_TESTING_Command *cmd,
+                                     unsigned int new_ip);
+
 
 /**
  * Make a serialize-keys CMD.
