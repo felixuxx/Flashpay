@@ -251,7 +251,7 @@ TALER_JSON_spec_absolute_time (const char *name,
     .cls = NULL,
     .field = name,
     .ptr = r_time,
-    .ptr_size = sizeof(uint64_t),
+    .ptr_size = sizeof(struct GNUNET_TIME_Absolute),
     .size_ptr = NULL
   };
 
@@ -307,7 +307,92 @@ TALER_JSON_spec_absolute_time_nbo (const char *name,
     .cls = NULL,
     .field = name,
     .ptr = r_time,
-    .ptr_size = sizeof(uint64_t),
+    .ptr_size = sizeof(struct GNUNET_TIME_AbsoluteNBO),
+    .size_ptr = NULL
+  };
+
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to relative time.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static int
+parse_rel_time (void *cls,
+                json_t *root,
+                struct GNUNET_JSON_Specification *spec)
+{
+  struct GNUNET_TIME_Relative *rel = spec->ptr;
+  json_t *json_d_ms;
+  unsigned long long int tval;
+
+  if (! json_is_object (root))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  json_d_ms = json_object_get (root, "d_ms");
+  if (json_is_integer (json_d_ms))
+  {
+    tval = json_integer_value (json_d_ms);
+    /* Time is in milliseconds in JSON, but in microseconds in GNUNET_TIME_Absolute */
+    rel->rel_value_us = tval * 1000LL;
+    if ((rel->rel_value_us) / 1000LL != tval)
+    {
+      /* Integer overflow */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        GNUNET_TIME_round_rel (rel))
+    {
+      /* time not rounded */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  }
+  if (json_is_string (json_d_ms))
+  {
+    const char *val;
+    val = json_string_value (json_d_ms);
+    if ((0 == strcasecmp (val, "forever")))
+    {
+      *rel = GNUNET_TIME_UNIT_FOREVER_REL;
+      return GNUNET_OK;
+    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_break_op (0);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Provide specification to parse given JSON object to a relative time.
+ * The absolute time value is expected to be already rounded.
+ *
+ * @param name name of the time field in the JSON
+ * @param[out] r_time where the time has to be written
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_relative_time (const char *name,
+                               struct GNUNET_TIME_Relative *r_time)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_rel_time,
+    .cleaner = NULL,
+    .cls = NULL,
+    .field = name,
+    .ptr = r_time,
+    .ptr_size = sizeof(struct GNUNET_TIME_Relative),
     .size_ptr = NULL
   };
 

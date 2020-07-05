@@ -827,8 +827,8 @@ decode_keys_json (const json_t *resp_obj,
                                  &key_data->master_pub),
     TALER_JSON_spec_absolute_time ("list_issue_date",
                                    &key_data->list_issue_date),
-    GNUNET_JSON_spec_relative_time ("reserve_closing_delay",
-                                    &key_data->reserve_closing_delay),
+    TALER_JSON_spec_relative_time ("reserve_closing_delay",
+                                   &key_data->reserve_closing_delay),
     GNUNET_JSON_spec_end ()
   };
 
@@ -887,8 +887,6 @@ decode_keys_json (const json_t *resp_obj,
           GNUNET_JSON_parse (resp_obj,
                              (check_sig) ? mspec : &mspec[2],
                              NULL, NULL));
-  EXITIF (GNUNET_OK !=
-          GNUNET_TIME_round_rel (&key_data->reserve_closing_delay));
   /* parse the master public key and issue date of the response */
   if (check_sig)
     hash_context = GNUNET_CRYPTO_hash_context_start ();
