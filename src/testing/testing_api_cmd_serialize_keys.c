@@ -117,7 +117,7 @@ serialize_keys_cleanup (void *cls,
   {
     json_decref (sks->keys);
   }
-  GNUNET_free_non_null (sks->exchange_url);
+  GNUNET_free (sks->exchange_url);
   GNUNET_free (sks);
 }
 

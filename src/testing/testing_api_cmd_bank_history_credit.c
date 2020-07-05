@@ -549,7 +549,7 @@ history_cleanup (void *cls,
   GNUNET_free (hs->account_url);
   for (unsigned int off = 0; off<hs->total; off++)
     GNUNET_free (hs->h[off].url);
-  GNUNET_free_non_null (hs->h);
+  GNUNET_free (hs->h);
   GNUNET_free (hs);
 }
 

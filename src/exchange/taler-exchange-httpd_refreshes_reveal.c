@@ -608,7 +608,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
     if (GNUNET_OK != res)
     {
       for (unsigned int j = 0; j<i; j++)
-        GNUNET_free_non_null (rcds[j].coin_ev);
+        GNUNET_free (rcds[j].coin_ev);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
     rcd->dk = &dkis[i]->denom_pub;
@@ -792,7 +792,7 @@ cleanup:
     rctx->ev_sigs = NULL; /* just to be safe... */
   }
   for (unsigned int i = 0; i<num_fresh_coins; i++)
-    GNUNET_free_non_null (rcds[i].coin_ev);
+    GNUNET_free (rcds[i].coin_ev);
   return ret;
 }
 

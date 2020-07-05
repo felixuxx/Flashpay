@@ -425,8 +425,8 @@ TALER_EXCHANGE_free_reserve_history (
     switch (rhistory[i].type)
     {
     case TALER_EXCHANGE_RTT_CREDIT:
-      GNUNET_free_non_null (rhistory[i].details.in_details.wire_reference);
-      GNUNET_free_non_null (rhistory[i].details.in_details.sender_url);
+      GNUNET_free (rhistory[i].details.in_details.wire_reference);
+      GNUNET_free (rhistory[i].details.in_details.sender_url);
       break;
     case TALER_EXCHANGE_RTT_WITHDRAWAL:
       break;

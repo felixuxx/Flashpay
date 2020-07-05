@@ -1300,8 +1300,8 @@ main (int argc,
                  GNUNET_log_setup ("taler-exchange-httpd",
                                    (NULL == loglev) ? "INFO" : loglev,
                                    logfile));
-  GNUNET_free_non_null (loglev);
-  GNUNET_free_non_null (logfile);
+  GNUNET_free (loglev);
+  GNUNET_free (logfile);
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   TEH_cfg = GNUNET_CONFIGURATION_create ();
@@ -1312,10 +1312,10 @@ main (int argc,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Malformed configuration file `%s', exit ...\n",
                 cfgfile);
-    GNUNET_free_non_null (cfgfile);
+    GNUNET_free (cfgfile);
     return 1;
   }
-  GNUNET_free_non_null (cfgfile);
+  GNUNET_free (cfgfile);
   if (GNUNET_OK !=
       exchange_serve_process_config ())
     return 1;

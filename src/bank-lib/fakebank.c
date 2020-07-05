@@ -1314,7 +1314,7 @@ handle_mhd_request (void *cls,
                upload_data,
                upload_data_size,
                con_cls);
-  GNUNET_free_non_null (account);
+  GNUNET_free (account);
   return ret;
 }
 

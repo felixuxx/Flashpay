@@ -1135,7 +1135,7 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
   GNUNET_array_grow (key_data->auditors,
                      key_data->auditors_size,
                      0);
-  GNUNET_free_non_null (key_data->version);
+  GNUNET_free (key_data->version);
   key_data->version = NULL;
 }
 

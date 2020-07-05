@@ -111,10 +111,10 @@ main (int argc,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Malformed configuration file `%s', exit ...\n",
                 cfgfile);
-    GNUNET_free_non_null (cfgfile);
+    GNUNET_free (cfgfile);
     return 1;
   }
-  GNUNET_free_non_null (cfgfile);
+  GNUNET_free (cfgfile);
 
   if (! remove_flag)
   {

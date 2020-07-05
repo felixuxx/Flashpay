@@ -166,7 +166,7 @@ auditor_sign_cleanup (void *cls,
     GNUNET_OS_process_destroy (ass->auditor_sign_proc);
     ass->auditor_sign_proc = NULL;
   }
-  GNUNET_free_non_null (ass->signed_keys_out);
+  GNUNET_free (ass->signed_keys_out);
   GNUNET_free (ass);
 }
 

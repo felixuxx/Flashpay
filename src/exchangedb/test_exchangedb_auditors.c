@@ -164,6 +164,6 @@ EXITIF_exit:
   }
   if (NULL != cfg)
     GNUNET_CONFIGURATION_destroy (cfg);
-  GNUNET_free_non_null (tmpfile);
+  GNUNET_free (tmpfile);
   return ret;
 }

@@ -579,10 +579,10 @@ main (int argc,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Malformed configuration file `%s', exiting ...\n",
                 cfgfile);
-    GNUNET_free_non_null (cfgfile);
+    GNUNET_free (cfgfile);
     return 1;
   }
-  GNUNET_free_non_null (cfgfile);
+  GNUNET_free (cfgfile);
 
   if (GNUNET_OK !=
       auditor_serve_process_config ())

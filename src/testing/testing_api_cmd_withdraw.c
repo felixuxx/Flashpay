@@ -387,7 +387,7 @@ withdraw_cleanup (void *cls,
     TALER_EXCHANGE_destroy_denomination_key (ws->pk);
     ws->pk = NULL;
   }
-  GNUNET_free_non_null (ws->exchange_url);
+  GNUNET_free (ws->exchange_url);
   GNUNET_free (ws);
 }
 

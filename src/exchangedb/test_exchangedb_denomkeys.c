@@ -194,14 +194,14 @@ main (int argc,
   ret = 0;
 
 EXITIF_exit:
-  GNUNET_free_non_null (enc);
-  GNUNET_free_non_null (tmpfile);
+  GNUNET_free (enc);
+  GNUNET_free (tmpfile);
   if (NULL != tmpdir)
   {
     (void) GNUNET_DISK_directory_remove (tmpdir);
     GNUNET_free (tmpdir);
   }
-  GNUNET_free_non_null (enc_read);
+  GNUNET_free (enc_read);
   if (NULL != dki.denom_priv.rsa_private_key)
     GNUNET_CRYPTO_rsa_private_key_free (dki.denom_priv.rsa_private_key);
   if (NULL != dki.denom_pub.rsa_public_key)

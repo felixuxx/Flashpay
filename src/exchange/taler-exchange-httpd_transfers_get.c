@@ -395,7 +395,7 @@ free_ctx (struct WtidTransactionContext *ctx)
                                  wdd);
     GNUNET_free (wdd);
   }
-  GNUNET_free_non_null (ctx->wire_method);
+  GNUNET_free (ctx->wire_method);
   ctx->wire_method = NULL;
 }
 
