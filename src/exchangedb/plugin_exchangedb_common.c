@@ -40,8 +40,8 @@ common_free_reserve_history (void *cls,
         struct TALER_EXCHANGEDB_BankTransfer *bt;
 
         bt = rh->details.bank;
-        GNUNET_free_non_null (bt->sender_account_details);
-        GNUNET_free_non_null (bt->wire_reference);
+        GNUNET_free (bt->sender_account_details);
+        GNUNET_free (bt->wire_reference);
         GNUNET_free (bt);
         break;
       }
@@ -68,7 +68,7 @@ common_free_reserve_history (void *cls,
         struct TALER_EXCHANGEDB_ClosingTransfer *closing;
 
         closing = rh->details.closing;
-        GNUNET_free_non_null (closing->receiver_account_details);
+        GNUNET_free (closing->receiver_account_details);
         GNUNET_free (closing);
         break;
       }

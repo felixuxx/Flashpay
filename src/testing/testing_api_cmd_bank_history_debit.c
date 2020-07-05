@@ -552,7 +552,7 @@ history_cleanup (void *cls,
     GNUNET_free (hs->h[off].c_url);
     GNUNET_free (hs->h[off].d_url);
   }
-  GNUNET_free_non_null (hs->h);
+  GNUNET_free (hs->h);
   GNUNET_free (hs);
 }
 

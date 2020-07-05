@@ -111,6 +111,6 @@ TALER_curl_easy_post_finished (struct TALER_CURL_PostContext *ctx)
 {
   curl_slist_free_all (ctx->headers);
   ctx->headers = NULL;
-  GNUNET_free_non_null (ctx->json_enc);
+  GNUNET_free (ctx->json_enc);
   ctx->json_enc = NULL;
 }

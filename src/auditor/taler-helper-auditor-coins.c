@@ -1351,7 +1351,7 @@ refresh_session_cb (void *cls,
 
     if (GNUNET_OK != reveal_ctx.err)
     {
-      GNUNET_free_non_null (reveal_ctx.new_issues);
+      GNUNET_free (reveal_ctx.new_issues);
       return (GNUNET_SYSERR == reveal_ctx.err) ? GNUNET_SYSERR : GNUNET_OK;
     }
 
@@ -1458,7 +1458,7 @@ refresh_session_cb (void *cls,
                               &value);
       }
     }
-    GNUNET_free_non_null (reveal_ctx.new_issues);
+    GNUNET_free (reveal_ctx.new_issues);
   }
 
   /* update old coin's denomination balance */

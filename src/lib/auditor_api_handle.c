@@ -525,7 +525,7 @@ TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor)
     free_version_request (auditor->vr);
     auditor->vr = NULL;
   }
-  GNUNET_free_non_null (auditor->version);
+  GNUNET_free (auditor->version);
   if (NULL != auditor->retry_task)
   {
     GNUNET_SCHEDULER_cancel (auditor->retry_task);

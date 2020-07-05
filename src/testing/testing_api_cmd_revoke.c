@@ -85,7 +85,7 @@ revoke_cleanup (void *cls,
     GNUNET_OS_process_destroy (rs->revoke_proc);
     rs->revoke_proc = NULL;
   }
-  GNUNET_free_non_null (rs->dhks);
+  GNUNET_free (rs->dhks);
   GNUNET_free (rs);
 }
 

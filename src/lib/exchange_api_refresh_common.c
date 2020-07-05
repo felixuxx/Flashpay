@@ -61,7 +61,7 @@ TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
   }
 
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
-    GNUNET_free_non_null (md->fresh_coins[i]);
+    GNUNET_free (md->fresh_coins[i]);
   /* Finally, clean up a bit... */
   GNUNET_CRYPTO_zero_keys (md,
                            sizeof (struct MeltData));
@@ -613,8 +613,8 @@ TALER_EXCHANGE_refresh_prepare (
   for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
   {
     for (unsigned int j = 0; j < fresh_pks_len; j++)
-      GNUNET_free_non_null (rce[i].new_coins[j].coin_ev);
-    GNUNET_free_non_null (rce[i].new_coins);
+      GNUNET_free (rce[i].new_coins[j].coin_ev);
+    GNUNET_free (rce[i].new_coins);
   }
   TALER_EXCHANGE_free_melt_data_ (&md);
   return buf;

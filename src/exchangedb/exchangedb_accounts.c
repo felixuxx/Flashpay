@@ -125,7 +125,7 @@ check_for_account (void *cls,
   }
   GNUNET_free (payto_uri);
   GNUNET_free (method);
-  GNUNET_free_non_null (wire_response_filename);
+  GNUNET_free (wire_response_filename);
 }
 
 

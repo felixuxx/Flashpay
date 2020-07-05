@@ -1270,7 +1270,7 @@ verify_reserve_balance (void *cls,
                  GNUNET_CONTAINER_multihashmap_remove (rc->reserves,
                                                        key,
                                                        rs));
-  GNUNET_free_non_null (rs->sender_account);
+  GNUNET_free (rs->sender_account);
   GNUNET_free (rs);
   return ret;
 }

@@ -354,7 +354,7 @@ do_shutdown (void *cls)
     TALER_FAKEBANK_stop (is->fakebank);
     is->fakebank = NULL;
   }
-  GNUNET_free_non_null (is->commands);
+  GNUNET_free (is->commands);
 }
 
 
@@ -812,7 +812,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                           &main_ctx);
   if (NULL != is.final_cleanup_cb)
     is.final_cleanup_cb (is.final_cleanup_cb_cls);
-  GNUNET_free_non_null (main_ctx.exchange_url);
+  GNUNET_free (main_ctx.exchange_url);
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   GNUNET_DISK_pipe_close (sigpipe);
   sigpipe = NULL;

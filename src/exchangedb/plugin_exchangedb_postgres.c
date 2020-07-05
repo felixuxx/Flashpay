@@ -3782,9 +3782,9 @@ cleanup:
       GNUNET_CRYPTO_rsa_public_key_free (rrc->denom_pub.rsa_public_key);
     if (NULL != rrc->coin_sig.rsa_signature)
       GNUNET_CRYPTO_rsa_signature_free (rrc->coin_sig.rsa_signature);
-    GNUNET_free_non_null (rrc->coin_ev);
+    GNUNET_free (rrc->coin_ev);
   }
-  GNUNET_free_non_null (grctx.rrcs);
+  GNUNET_free (grctx.rrcs);
 
   return qs;
 }

@@ -706,12 +706,12 @@ drop:
   destroy_denom_key_pair (dkp);
   GNUNET_CRYPTO_rsa_signature_free (
     refresh_session.coin.denom_sig.rsa_signature);
-  GNUNET_free_non_null (new_denom_pubs);
+  GNUNET_free (new_denom_pubs);
   for (unsigned int cnt = 0;
        (NULL != new_dkp) && (cnt < MELT_NEW_COINS) && (NULL != new_dkp[cnt]);
        cnt++)
     destroy_denom_key_pair (new_dkp[cnt]);
-  GNUNET_free_non_null (new_dkp);
+  GNUNET_free (new_dkp);
   return ret;
 }
 

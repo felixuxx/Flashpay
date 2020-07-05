@@ -514,7 +514,7 @@ refresh_reveal_cleanup (void *cls,
   for (unsigned int j = 0; j < rrs->num_fresh_coins; j++)
     GNUNET_CRYPTO_rsa_signature_free (rrs->fresh_coins[j].sig.rsa_signature);
 
-  GNUNET_free_non_null (rrs->fresh_coins);
+  GNUNET_free (rrs->fresh_coins);
   rrs->fresh_coins = NULL;
   rrs->num_fresh_coins = 0;
   GNUNET_free (rrs);
@@ -1128,12 +1128,12 @@ melt_cleanup (void *cls,
     for (unsigned int i = 0; i < rms->num_fresh_coins; i++)
       GNUNET_CRYPTO_rsa_public_key_free (rms->fresh_pks[i].key.rsa_public_key);
   }
-  GNUNET_free_non_null (rms->fresh_pks);
+  GNUNET_free (rms->fresh_pks);
   rms->fresh_pks = NULL;
-  GNUNET_free_non_null (rms->refresh_data);
+  GNUNET_free (rms->refresh_data);
   rms->refresh_data = NULL;
   rms->refresh_data_length = 0;
-  GNUNET_free_non_null (rms->melt_fresh_amounts);
+  GNUNET_free (rms->melt_fresh_amounts);
   GNUNET_free (rms);
 }
 

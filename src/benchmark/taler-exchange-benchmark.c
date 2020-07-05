@@ -993,7 +993,7 @@ main (int argc,
                                    argc,
                                    argv)))
   {
-    GNUNET_free_non_null (cfg_filename);
+    GNUNET_free (cfg_filename);
     return BAD_CLI_ARG;
   }
   GNUNET_log_setup ("taler-exchange-benchmark",
@@ -1010,7 +1010,7 @@ main (int argc,
   else
   {
     TALER_LOG_ERROR ("Unknown mode given: '%s'\n", mode_str);
-    GNUNET_free_non_null (cfg_filename);
+    GNUNET_free (cfg_filename);
     return BAD_CONFIG_FILE;
   }
   if (NULL == cfg_filename)
