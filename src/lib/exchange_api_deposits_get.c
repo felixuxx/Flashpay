@@ -33,7 +33,7 @@
 
 
 /**
- * @brief A Deposit Wtid Handle
+ * @brief A Deposit Get Handle
  */
 struct TALER_EXCHANGE_DepositGetHandle
 {
@@ -84,31 +84,19 @@ struct TALER_EXCHANGE_DepositGetHandle
  *
  * @param dwh deposit wtid handle
  * @param json json reply with the signature
- * @param[out] exchange_pub set to the exchange's public key
+ * @param exchange_pub the exchange's public key
+ * @param exchange_sig the exchange's signature
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static int
 verify_deposit_wtid_signature_ok (
   const struct TALER_EXCHANGE_DepositGetHandle *dwh,
   const json_t *json,
-  struct TALER_ExchangePublicKeyP *exchange_pub)
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig)
 {
-  struct TALER_ExchangeSignatureP exchange_sig;
   const struct TALER_EXCHANGE_Keys *key_state;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
-    GNUNET_JSON_spec_end ()
-  };
 
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
   key_state = TALER_EXCHANGE_get_keys (dwh->exchange);
   if (GNUNET_OK !=
       TALER_EXCHANGE_test_signing_key (key_state,
@@ -120,7 +108,7 @@ verify_deposit_wtid_signature_ok (
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE,
                                   &dwh->depconf,
-                                  &exchange_sig.eddsa_signature,
+                                  &exchange_sig->eddsa_signature,
                                   &exchange_pub->eddsa_pub))
   {
     GNUNET_break_op (0);
@@ -144,12 +132,6 @@ handle_deposit_wtid_finished (void *cls,
                               const void *response)
 {
   struct TALER_EXCHANGE_DepositGetHandle *dwh = cls;
-  const struct TALER_WireTransferIdentifierRawP *wtid = NULL;
-  struct GNUNET_TIME_Absolute execution_time = GNUNET_TIME_UNIT_FOREVER_ABS;
-  const struct TALER_Amount *coin_contribution = NULL;
-  struct TALER_Amount coin_contribution_s;
-  struct TALER_ExchangePublicKeyP exchange_pub;
-  struct TALER_ExchangePublicKeyP *ep = NULL;
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .reply = j,
@@ -164,10 +146,13 @@ handle_deposit_wtid_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     {
+      struct TALER_EXCHANGE_DepositData dd;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
-        GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
-        TALER_JSON_spec_amount ("coin_contribution", &coin_contribution_s),
+        GNUNET_JSON_spec_absolute_time ("execution_time", &dd.execution_time),
+        TALER_JSON_spec_amount ("coin_contribution", &dd.coin_contribution),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &dd.exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &dd.exchange_pub),
         GNUNET_JSON_spec_end ()
       };
 
@@ -181,15 +166,15 @@ handle_deposit_wtid_finished (void *cls,
         hr.ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
         break;
       }
-      wtid = &dwh->depconf.wtid;
-      dwh->depconf.execution_time = GNUNET_TIME_absolute_hton (execution_time);
+      dwh->depconf.execution_time = GNUNET_TIME_absolute_hton (
+        dd.execution_time);
       TALER_amount_hton (&dwh->depconf.coin_contribution,
-                         &coin_contribution_s);
-      coin_contribution = &coin_contribution_s;
+                         &dd.coin_contribution);
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
                                             j,
-                                            &exchange_pub))
+                                            &dd.exchange_pub,
+                                            &dd.exchange_sig))
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
@@ -197,13 +182,19 @@ handle_deposit_wtid_finished (void *cls,
       }
       else
       {
-        ep = &exchange_pub;
+        dd.wtid = dwh->depconf.wtid;
+        dwh->cb (dwh->cb_cls,
+                 &hr,
+                 &dd);
+        TALER_EXCHANGE_deposits_get_cancel (dwh);
+        return;
       }
     }
     break;
   case MHD_HTTP_ACCEPTED:
     {
       /* Transaction known, but not executed yet */
+      struct GNUNET_TIME_Absolute execution_time;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
         GNUNET_JSON_spec_end ()
@@ -218,6 +209,18 @@ handle_deposit_wtid_finished (void *cls,
         hr.http_status = 0;
         hr.ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
         break;
+      }
+      else
+      {
+        struct TALER_EXCHANGE_DepositData dd = {
+          .execution_time = execution_time
+        };
+
+        dwh->cb (dwh->cb_cls,
+                 &hr,
+                 &dd);
+        TALER_EXCHANGE_deposits_get_cancel (dwh);
+        return;
       }
     }
     break;
@@ -259,10 +262,7 @@ handle_deposit_wtid_finished (void *cls,
   }
   dwh->cb (dwh->cb_cls,
            &hr,
-           ep,
-           wtid,
-           execution_time,
-           coin_contribution);
+           NULL);
   TALER_EXCHANGE_deposits_get_cancel (dwh);
 }
 

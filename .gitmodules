@@ -5,3 +5,6 @@
 	path = doc/prebuilt
 	url = https://git.taler.net/docs.git
 	branch = prebuilt
+[submodule "contrib/gana"]
+	path = contrib/gana
+	url = https://gnunet.org/git/gana.git

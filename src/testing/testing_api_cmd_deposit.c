@@ -53,6 +53,11 @@ struct DepositState
   struct TALER_Amount amount;
 
   /**
+   * Deposit fee.
+   */
+  struct TALER_Amount deposit_fee;
+
+  /**
    * Reference to any command that is able to provide a coin.
    */
   const char *coin_reference;
@@ -91,9 +96,9 @@ struct DepositState
   struct TALER_EXCHANGE_DepositHandle *dh;
 
   /**
-   * Timestamp of the /deposit operation.
+   * Timestamp of the /deposit operation in the wallet (contract signing time).
    */
-  struct GNUNET_TIME_Absolute timestamp;
+  struct GNUNET_TIME_Absolute wallet_timestamp;
 
   /**
    * Interpreter state.
@@ -125,6 +130,11 @@ struct DepositState
    * and we now can provide the resulting traits.
    */
   int deposit_succeeded;
+
+  /**
+   * When did the exchange receive the deposit?
+   */
+  struct GNUNET_TIME_Absolute exchange_timestamp;
 
   /**
    * Signing key used by the exchange to sign the
@@ -198,6 +208,7 @@ do_retry (void *cls)
  *
  * @param cls closure.
  * @param hr HTTP response details
+ * @param exchange_timestamp when did the exchange receive the deposit permission
  * @param exchange_sig signature provided by the exchange
  *        (NULL on errors)
  * @param exchange_pub public key of the exchange,
@@ -206,6 +217,7 @@ do_retry (void *cls)
 static void
 deposit_cb (void *cls,
             const struct TALER_EXCHANGE_HttpResponse *hr,
+            const struct GNUNET_TIME_Absolute exchange_timestamp,
             const struct TALER_ExchangeSignatureP *exchange_sig,
             const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
@@ -254,6 +266,7 @@ deposit_cb (void *cls,
   if (MHD_HTTP_OK == hr->http_status)
   {
     ds->deposit_succeeded = GNUNET_YES;
+    ds->exchange_timestamp = exchange_timestamp;
     ds->exchange_pub = *exchange_pub;
     ds->exchange_sig = *exchange_sig;
   }
@@ -305,7 +318,7 @@ deposit_run (void *cls,
     ds->coin_index = ods->coin_index;
     ds->wire_details = json_incref (ods->wire_details);
     ds->contract_terms = json_incref (ods->contract_terms);
-    ds->timestamp = ods->timestamp;
+    ds->wallet_timestamp = ods->wallet_timestamp;
     ds->refund_deadline = ods->refund_deadline;
     ds->amount = ods->amount;
     ds->merchant_priv = ods->merchant_priv;
@@ -366,6 +379,7 @@ deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  ds->deposit_fee = denom_pub->fee_deposit;
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -379,39 +393,27 @@ deposit_run (void *cls,
   }
   else
   {
-    ds->refund_deadline = ds->timestamp;
-    wire_deadline = GNUNET_TIME_relative_to_absolute
-                      (GNUNET_TIME_UNIT_ZERO);
+    ds->refund_deadline = ds->wallet_timestamp;
+    wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_ZERO);
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
                                       &merchant_pub.eddsa_pub);
-
   (void) GNUNET_TIME_round_abs (&wire_deadline);
-
   {
-    struct TALER_DepositRequestPS dr;
+    struct GNUNET_HashCode h_wire;
 
-    memset (&dr, 0, sizeof (dr));
-    dr.purpose.size = htonl
-                        (sizeof (struct TALER_DepositRequestPS));
-    dr.purpose.purpose = htonl
-                           (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
-    dr.h_contract_terms = h_contract_terms;
     GNUNET_assert (GNUNET_OK ==
                    TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
-                                                            &dr.h_wire));
-    dr.timestamp = GNUNET_TIME_absolute_hton (ds->timestamp);
-    dr.refund_deadline = GNUNET_TIME_absolute_hton
-                           (ds->refund_deadline);
-    TALER_amount_hton (&dr.amount_with_fee,
-                       &ds->amount);
-    TALER_amount_hton (&dr.deposit_fee,
-                       &denom_pub->fee_deposit);
-    dr.merchant = merchant_pub;
-    dr.coin_pub = coin_pub;
-    GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
-                              &dr,
-                              &coin_sig.eddsa_signature);
+                                                            &h_wire));
+    TALER_EXCHANGE_deposit_permission_sign (&ds->amount,
+                                            &denom_pub->fee_deposit,
+                                            &h_wire,
+                                            &h_contract_terms,
+                                            coin_priv,
+                                            ds->wallet_timestamp,
+                                            &merchant_pub,
+                                            ds->refund_deadline,
+                                            &coin_sig);
   }
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,
@@ -421,7 +423,7 @@ deposit_run (void *cls,
                                    &coin_pub,
                                    denom_pub_sig,
                                    &denom_pub->key,
-                                   ds->timestamp,
+                                   ds->wallet_timestamp,
                                    &merchant_pub,
                                    ds->refund_deadline,
                                    &coin_sig,
@@ -532,8 +534,14 @@ deposit_traits (void *cls,
                                                ds->contract_terms),
       TALER_TESTING_make_trait_merchant_priv (0,
                                               &ds->merchant_priv),
-      TALER_TESTING_make_trait_amount_obj (0,
-                                           &ds->amount),
+      TALER_TESTING_make_trait_amount_obj (
+        TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_VALUE,
+        &ds->amount),
+      TALER_TESTING_make_trait_amount_obj (
+        TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_FEE,
+        &ds->deposit_fee),
+      TALER_TESTING_make_trait_absolute_time (0,
+                                              &ds->exchange_timestamp),
       TALER_TESTING_trait_end ()
     };
 
@@ -599,12 +607,12 @@ TALER_TESTING_cmd_deposit (const char *label,
                 label);
     GNUNET_assert (0);
   }
-  ds->timestamp = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&ds->timestamp);
+  ds->wallet_timestamp = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&ds->wallet_timestamp);
 
   json_object_set_new (ds->contract_terms,
                        "timestamp",
-                       GNUNET_JSON_from_time_abs (ds->timestamp));
+                       GNUNET_JSON_from_time_abs (ds->wallet_timestamp));
   if (0 != refund_deadline.rel_value_us)
   {
     ds->refund_deadline = GNUNET_TIME_relative_to_absolute (refund_deadline);
@@ -687,12 +695,12 @@ TALER_TESTING_cmd_deposit_with_ref (const char *label,
                 label);
     GNUNET_assert (0);
   }
-  ds->timestamp = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&ds->timestamp);
+  ds->wallet_timestamp = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&ds->wallet_timestamp);
 
   json_object_set_new (ds->contract_terms,
                        "timestamp",
-                       GNUNET_JSON_from_time_abs (ds->timestamp));
+                       GNUNET_JSON_from_time_abs (ds->wallet_timestamp));
   if (0 != refund_deadline.rel_value_us)
   {
     ds->refund_deadline = GNUNET_TIME_relative_to_absolute (refund_deadline);

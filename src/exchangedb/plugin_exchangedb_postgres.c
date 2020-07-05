@@ -796,7 +796,7 @@ postgres_get_session (void *cls)
                               "(coin_pub"
                               ",amount_with_fee_val"
                               ",amount_with_fee_frac"
-                              ",timestamp"
+                              ",wallet_timestamp"
                               ",refund_deadline"
                               ",wire_deadline"
                               ",merchant_pub"
@@ -804,22 +804,28 @@ postgres_get_session (void *cls)
                               ",h_wire"
                               ",coin_sig"
                               ",wire"
+                              ",exchange_timestamp"
                               ") VALUES "
                               "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-                              " $11);",
-                              11),
+                              " $11, $12);",
+                              12),
       /* Fetch an existing deposit request, used to ensure idempotency
          during /deposit processing. Used in #postgres_have_deposit(). */
       GNUNET_PQ_make_prepare ("get_deposit",
                               "SELECT"
                               " amount_with_fee_val"
                               ",amount_with_fee_frac"
-                              ",timestamp"
+                              ",denominations.fee_deposit_val"
+                              ",denominations.fee_deposit_frac"
+                              ",wallet_timestamp"
+                              ",exchange_timestamp"
                               ",refund_deadline"
                               ",wire_deadline"
                               ",h_contract_terms"
                               ",h_wire"
                               " FROM deposits"
+                              " JOIN known_coins USING (coin_pub)"
+                              " JOIN denominations USING (denom_pub_hash)"
                               " WHERE ((coin_pub=$1)"
                               "    AND (merchant_pub=$3)"
                               "    AND (h_contract_terms=$2))"
@@ -830,7 +836,8 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " amount_with_fee_val"
                               ",amount_with_fee_frac"
-                              ",timestamp"
+                              ",wallet_timestamp"
+                              ",exchange_timestamp"
                               ",merchant_pub"
                               ",denom.denom_pub"
                               ",coin_pub"
@@ -881,6 +888,8 @@ postgres_get_session (void *cls)
                               ",wire"
                               ",merchant_pub"
                               ",coin_pub"
+                              ",exchange_timestamp"
+                              ",wallet_timestamp"
                               " FROM deposits"
                               "    JOIN known_coins USING (coin_pub)"
                               "    JOIN denominations denom USING (denom_pub_hash)"
@@ -900,6 +909,8 @@ postgres_get_session (void *cls)
                               ",denom.fee_deposit_val"
                               ",denom.fee_deposit_frac"
                               ",wire_deadline"
+                              ",exchange_timestamp"
+                              ",wallet_timestamp"
                               ",h_contract_terms"
                               ",coin_pub"
                               " FROM deposits"
@@ -945,7 +956,7 @@ postgres_get_session (void *cls)
                               ",amount_with_fee_frac"
                               ",denom.fee_deposit_val"
                               ",denom.fee_deposit_frac"
-                              ",timestamp"
+                              ",wallet_timestamp"
                               ",refund_deadline"
                               ",wire_deadline"
                               ",merchant_pub"
@@ -1801,8 +1812,12 @@ postgres_iterate_denomination_info (void *cls,
     .cb_cls = cb_cls,
     .pg = pc
   };
+  struct TALER_EXCHANGEDB_Session *session;
 
-  return GNUNET_PQ_eval_prepared_multi_select (postgres_get_session (pc)->conn,
+  session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
                                                "denomination_iterate",
                                                params,
                                                &domination_cb_helper,
@@ -2571,6 +2586,8 @@ postgres_get_reserve_history (void *cls,
  * @param session database connection
  * @param deposit deposit to search for
  * @param check_extras whether to check extra fields match or not
+ * @param[out] deposit_fee set to the deposit fee the exchange charged
+ * @param[out] exchange_timestamp set to the time when the exchange received the deposit
  * @return 1 if we know this operation,
  *         0 if this exact deposit is unknown to us,
  *         otherwise transaction error status
@@ -2579,7 +2596,9 @@ static enum GNUNET_DB_QueryStatus
 postgres_have_deposit (void *cls,
                        struct TALER_EXCHANGEDB_Session *session,
                        const struct TALER_EXCHANGEDB_Deposit *deposit,
-                       int check_extras)
+                       int check_extras,
+                       struct TALER_Amount *deposit_fee,
+                       struct GNUNET_TIME_Absolute *exchange_timestamp)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -2592,12 +2611,16 @@ postgres_have_deposit (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  &deposit2.amount_with_fee),
-    TALER_PQ_result_spec_absolute_time ("timestamp",
+    TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
                                         &deposit2.timestamp),
+    TALER_PQ_result_spec_absolute_time ("exchange_timestamp",
+                                        exchange_timestamp),
     TALER_PQ_result_spec_absolute_time ("refund_deadline",
                                         &deposit2.refund_deadline),
     TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                         &deposit2.wire_deadline),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                 deposit_fee),
     GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                           &deposit2.h_wire),
     GNUNET_PQ_result_spec_end
@@ -2776,6 +2799,8 @@ postgres_get_ready_deposit (void *cls,
   struct TALER_Amount amount_with_fee;
   struct TALER_Amount deposit_fee;
   struct GNUNET_TIME_Absolute wire_deadline;
+  struct GNUNET_TIME_Absolute wallet_timestamp;
+  struct GNUNET_TIME_Absolute exchange_timestamp;
   struct GNUNET_HashCode h_contract_terms;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -2788,6 +2813,10 @@ postgres_get_ready_deposit (void *cls,
                                  &amount_with_fee),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                  &deposit_fee),
+    TALER_PQ_result_spec_absolute_time ("exchange_timestamp",
+                                        &exchange_timestamp),
+    TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
+                                        &wallet_timestamp),
     TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                         &wire_deadline),
     GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
@@ -2817,6 +2846,8 @@ postgres_get_ready_deposit (void *cls,
 
   qs = deposit_cb (deposit_cb_cls,
                    serial_id,
+                   exchange_timestamp,
+                   wallet_timestamp,
                    &merchant_pub,
                    &coin_pub,
                    &amount_with_fee,
@@ -2898,6 +2929,8 @@ match_deposit_cb (void *cls,
   {
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
+    struct GNUNET_TIME_Absolute exchange_timestamp;
+    struct GNUNET_TIME_Absolute wallet_timestamp;
     struct GNUNET_TIME_Absolute wire_deadline;
     struct GNUNET_HashCode h_contract_terms;
     struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -2912,6 +2945,10 @@ match_deposit_cb (void *cls,
                                    &deposit_fee),
       TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                           &wire_deadline),
+      TALER_PQ_result_spec_absolute_time ("exchange_timestamp",
+                                          &exchange_timestamp),
+      TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
+                                          &wallet_timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
@@ -2930,6 +2967,8 @@ match_deposit_cb (void *cls,
     }
     qs = mdc->deposit_cb (mdc->deposit_cb_cls,
                           serial_id,
+                          exchange_timestamp,
+                          wallet_timestamp,
                           mdc->merchant_pub,
                           &coin_pub,
                           &amount_with_fee,
@@ -3033,6 +3072,8 @@ postgres_get_known_coin (void *cls,
   coin_info->coin_pub = *coin_pub;
   if (NULL == session)
     session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "get_known_coin",
                                                    params,
@@ -3072,6 +3113,8 @@ postgres_get_coin_denomination (
               TALER_B2S (coin_pub));
   if (NULL == session)
     session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "get_coin_denomination",
                                                    params,
@@ -3210,12 +3253,14 @@ postgres_ensure_coin_known (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session connection to the database
+ * @param exchange_timestamp time the exchange received the deposit request
  * @param deposit deposit information to store
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_deposit (void *cls,
                          struct TALER_EXCHANGEDB_Session *session,
+                         struct GNUNET_TIME_Absolute exchange_timestamp,
                          const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct GNUNET_PQ_QueryParam params[] = {
@@ -3229,6 +3274,7 @@ postgres_insert_deposit (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
     GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
     TALER_PQ_query_param_json (deposit->receiver_wire_account),
+    TALER_PQ_query_param_absolute_time (&exchange_timestamp),
     GNUNET_PQ_query_param_end
   };
 
@@ -3437,6 +3483,8 @@ postgres_get_melt (void *cls,
   melt->session.coin.denom_sig.rsa_signature = NULL;
   if (NULL == session)
     session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                  "get_melt",
                                                  params,
@@ -4042,7 +4090,7 @@ add_coin_deposit (void *cls,
                                      &deposit->amount_with_fee),
         TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                      &deposit->deposit_fee),
-        TALER_PQ_result_spec_absolute_time ("timestamp",
+        TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
                                             &deposit->timestamp),
         TALER_PQ_result_spec_absolute_time ("refund_deadline",
                                             &deposit->refund_deadline),
@@ -5462,14 +5510,17 @@ deposit_serial_helper_cb (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct TALER_EXCHANGEDB_Deposit deposit;
+    struct GNUNET_TIME_Absolute exchange_timestamp;
     struct TALER_DenominationPublicKey denom_pub;
     uint8_t done = 0;
     uint64_t rowid;
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    &deposit.amount_with_fee),
-      TALER_PQ_result_spec_absolute_time ("timestamp",
+      TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
                                           &deposit.timestamp),
+      TALER_PQ_result_spec_absolute_time ("exchange_timestamp",
+                                          &exchange_timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                             &deposit.merchant_pub),
       GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
@@ -5505,6 +5556,7 @@ deposit_serial_helper_cb (void *cls,
     }
     ret = dsc->cb (dsc->cb_cls,
                    rowid,
+                   exchange_timestamp,
                    deposit.timestamp,
                    &deposit.merchant_pub,
                    &denom_pub,

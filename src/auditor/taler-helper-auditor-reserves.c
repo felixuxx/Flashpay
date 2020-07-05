@@ -550,7 +550,6 @@ handle_reserve_out (void *cls,
   }
 
   /* check reserve_sig (first: setup remaining members of wsrd) */
-  wsrd.withdraw_fee = issue->fee_withdraw;
   TALER_amount_hton (&wsrd.amount_with_fee,
                      amount_with_fee);
   if (GNUNET_OK !=

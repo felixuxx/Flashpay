@@ -87,6 +87,16 @@ transfers that cannot be reversed. We will only refuse to execute transfers if
 the transfers are prohibited by a competent legal authority and we are ordered
 to do so.
 
+When using our Services, you agree to not take any action that intentionally
+imposes an unreasonable load on our infrastructure. If you find security
+problems in our Services, you agree to first report them to
+security@taler-systems.com and grant us the right to publish your report. We
+warrant that we will ourselves publicly disclose any issues reported within 3
+months, and that we will not prosecute anyone reporting security issues if
+they did not exploit the issue beyond a proof-of-concept, and followed the
+above responsible disclosure practice.
+
+
 Fees
 ----
 
@@ -104,16 +114,13 @@ We reserve the right to provide different types of rewards to users either in
 the form of discount for our Services or in any other form at our discretion
 and without prior notice to you.
 
-Eligibility
------------
+Eligibility and Financial self-responsibility
+---------------------------------------------
 
 To be eligible to use our Services, you must be able to form legally binding
 contracts or have the permission of your legal guardian. By using our
 Services, you represent and warrant that you meet all eligibility requirements
 that we outline in these Terms.
-
-Financial self-responsibility
------------------------------
 
 You will be responsible for maintaining the availability, integrity and
 confidentiality of the data stored in your wallet. When you setup a Taler
@@ -136,17 +143,6 @@ of Taler Systems SA. You are welcome to use the name in relation to processing
 payments using the Taler protocol, assuming your use is compatible with an
 official release from the GNU Project that is not older than two years.
 
-Your use of our services
-------------------------
-
-When using our Services, you agree to not take any action that intentionally
-imposes an unreasonable load on our infrastructure. If you find security
-problems in our Services, you agree to first report them to
-security@taler-systems.com and grant us the right to publish your report. We
-warrant that we will ourselves publicly disclose any issues reported within 3
-months, and that we will not prosecute anyone reporting security issues if
-they did not exploit the issue beyond a proof-of-concept, and followed the
-above responsible disclosure practice.
 
 Limitation of liability & disclaimer of warranties
 --------------------------------------------------
@@ -174,9 +170,6 @@ damages, or claims arising from:
 Any other terms, conditions, warranties, or representations associated with
 such content, are solely between you and such organizations and/or
 individuals.
-
-Limitation of liability
------------------------
 
 To the fullest extent permitted by applicable law, in no event will we or any
 of our officers, directors, representatives, agents, servants, counsel,
@@ -206,9 +199,6 @@ damages. Some jurisdictions do not allow the exclusion or limitation of
 liability for consequential or incidental damages, so the above limitation may
 not apply to you.
 
-Warranty disclaimer
--------------------
-
 Our services are provided "as is" and without warranty of any kind. To the
 maximum extent permitted by law, we disclaim all representations and
 warranties, express or implied, relating to the services and underlying
@@ -225,8 +215,8 @@ implied warranties, so the foregoing disclaimers may not apply to you. This
 paragraph gives you specific legal rights and you may also have other legal
 rights that vary from state to state.
 
-Indemnity
----------
+Indemnity and Time limitation on claims and Termination
+-------------------------------------------------------
 
 To the extent permitted by applicable law, you agree to defend, indemnify, and
 hold harmless the Taler Parties from and against any and all claims, damages,
@@ -236,32 +226,16 @@ the Services; (b) any feedback or submissions you provide to us concerning the
 Taler Wallet; (c) your violation of any term of this Agreement; or (d) your
 violation of any law, rule, or regulation, or the rights of any third party.
 
-Time limitation on claims
--------------------------
-
 You agree that any claim you may have arising out of or related to your
 relationship with us must be filed within one year after such claim arises,
 otherwise, your claim in permanently barred.
 
-Governing law
--------------
-
-No matter where you’re located, the laws of Switzerland will govern these
-Terms. If any provisions of these Terms are inconsistent with any applicable
-law, those provisions will be superseded or modified only to the extent such
-provisions are inconsistent. The parties agree to submit to the ordinary
-courts in Zurich, Switzerland for exclusive jurisdiction of any dispute
-arising out of or related to your use of the Services or your breach of these
-Terms.
-
-Termination
------------
-
 In the event of termination concerning your use of our Services, your
 obligations under this Agreement will still continue.
 
-Discontinuance of services
---------------------------
+
+Discontinuance of services and Force majeure
+--------------------------------------------
 
 We may, in our sole discretion and without cost to you, with or without prior
 notice, and at any time, modify or discontinue, temporarily or permanently,
@@ -273,24 +247,6 @@ or liable for any loss of funds in the event that we discontinue or depreciate
 the Services and your Taler Wallet fails to transfer out the coins within a
 three months notification period.
 
-No waiver
----------
-
-Our failure to exercise or delay in exercising any right, power, or privilege
-under this Agreement shall not operate as a waiver; nor shall any single or
-partial exercise of any right, power, or privilege preclude any other or
-further exercise thereof.
-
-Severability
-------------
-
-If it turns out that any part of this Agreement is invalid, void, or for any
-reason unenforceable, that term will be deemed severable and limited or
-eliminated to the minimum extent necessary.
-
-Force majeure
--------------
-
 We shall not be held liable for any delays, failure in performance, or
 interruptions of service which result directly or indirectly from any cause or
 condition beyond our reasonable control, including but not limited to: any
@@ -301,14 +257,29 @@ services, failure of equipment and/or software, other catastrophe, or any
 other occurrence which is beyond our reasonable control and shall not affect
 the validity and enforceability of any remaining provisions.
 
-Assignment
-----------
+
+Governing law, Waivers, Severability and Assignment
+------------------------------------------------
+
+No matter where you’re located, the laws of Switzerland will govern these
+Terms. If any provisions of these Terms are inconsistent with any applicable
+law, those provisions will be superseded or modified only to the extent such
+provisions are inconsistent. The parties agree to submit to the ordinary
+courts in Zurich, Switzerland for exclusive jurisdiction of any dispute
+arising out of or related to your use of the Services or your breach of these
+Terms.
+
+Our failure to exercise or delay in exercising any right, power, or privilege
+under this Agreement shall not operate as a waiver; nor shall any single or
+partial exercise of any right, power, or privilege preclude any other or
+further exercise thereof.
 
 You agree that we may assign any of our rights and/or transfer, sub-contract,
 or delegate any of our obligations under these Terms.
 
-Entire agreement
-----------------
+If it turns out that any part of this Agreement is invalid, void, or for any
+reason unenforceable, that term will be deemed severable and limited or
+eliminated to the minimum extent necessary.
 
 This Agreement sets forth the entire understanding and agreement as to the
 subject matter hereof and supersedes any and all prior discussions,
@@ -316,6 +287,7 @@ agreements, and understandings of any kind (including, without limitation, any
 prior versions of this Agreement) and every nature between us. Except as
 provided for above, any modification to this Agreement must be in writing and
 must be signed by both parties.
+
 
 Questions or comments
 ---------------------

@@ -33,7 +33,7 @@ Dependencies:
 These are the direct dependencies for running a Taler exchange:
 
 - GNUnet            >= 0.10.2
-- GNU libmicrohttpd >= 0.9.55
+- GNU libmicrohttpd >= 0.9.71
 - Postgres          >= 9.5
 
 

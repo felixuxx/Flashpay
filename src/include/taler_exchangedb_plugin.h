@@ -975,6 +975,8 @@ struct TALER_EXCHANGEDB_Session;
  * @param cls closure
  * @param rowid unique ID for the deposit in our DB, used for marking
  *              it as 'tiny' or 'done'
+ * @param exchange_timestamp when did the exchange receive the deposit
+ * @param wallet_timestamp when did the wallet sign the contract
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -990,6 +992,8 @@ typedef enum GNUNET_DB_QueryStatus
 (*TALER_EXCHANGEDB_DepositIterator)(
   void *cls,
   uint64_t rowid,
+  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *amount_with_fee,
@@ -1022,7 +1026,8 @@ typedef void
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
- * @param timestamp when did the deposit happen
+ * @param exchange_timestamp when did the deposit happen
+ * @param wallet_timestamp when did the contract happen
  * @param merchant_pub public key of the merchant
  * @param denom_pub denomination public key of @a coin_pub
  * @param coin_pub public key of the coin
@@ -1042,7 +1047,8 @@ typedef int
 (*TALER_EXCHANGEDB_DepositCallback)(
   void *cls,
   uint64_t rowid,
-  struct GNUNET_TIME_Absolute timestamp,
+  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1841,6 +1847,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session database connection
    * @param deposit deposit to search for
    * @param check_extras whether to check extra fields or not
+   * @param[out] deposit_fee set to the deposit fee the exchange charged
+   * @param[out] exchange_timestamp set to the time when the exchange received the deposit
    * @return 1 if we know this operation,
    *         0 if this exact deposit is unknown to us,
    *         otherwise transaction error status
@@ -1849,7 +1857,9 @@ struct TALER_EXCHANGEDB_Plugin
   (*have_deposit)(void *cls,
                   struct TALER_EXCHANGEDB_Session *session,
                   const struct TALER_EXCHANGEDB_Deposit *deposit,
-                  int check_extras);
+                  int check_extras,
+                  struct TALER_Amount *deposit_fee,
+                  struct GNUNET_TIME_Absolute *exchange_timestamp);
 
 
   /**
@@ -1857,12 +1867,14 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session connection to the database
+   * @param exchange_timestamp time the exchange received the deposit request
    * @param deposit deposit information to store
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
   (*insert_deposit)(void *cls,
                     struct TALER_EXCHANGEDB_Session *session,
+                    struct GNUNET_TIME_Absolute exchange_timestamp,
                     const struct TALER_EXCHANGEDB_Deposit *deposit);
 
 

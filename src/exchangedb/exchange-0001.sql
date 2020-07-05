@@ -254,7 +254,8 @@ CREATE TABLE IF NOT EXISTS deposits
   ,coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
-  ,timestamp INT8 NOT NULL
+  ,wallet_timestamp INT8 NOT NULL
+  ,exchange_timestamp INT8 NOT NULL
   ,refund_deadline INT8 NOT NULL
   ,wire_deadline INT8 NOT NULL
   ,merchant_pub BYTEA NOT NULL CHECK (LENGTH(merchant_pub)=32)

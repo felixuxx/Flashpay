@@ -228,5 +228,27 @@ TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd)
 {
   struct BatchState *bs = cmd->cls;
 
+  GNUNET_assert (cmd->run == &batch_run);
   return &bs->batch[bs->batch_ip];
+}
+
+
+/**
+ * Set what command the batch should be at.
+ *
+ * @param cmd current batch command
+ * @param new_ip where to move the IP
+ */
+void
+TALER_TESTING_cmd_batch_set_current (const struct TALER_TESTING_Command *cmd,
+                                     unsigned int new_ip)
+{
+  struct BatchState *bs = cmd->cls;
+
+  /* sanity checks */
+  GNUNET_assert (cmd->run == &batch_run);
+  for (unsigned int i = 0; i < new_ip; i++)
+    GNUNET_assert (NULL != bs->batch[i].label);
+  /* actual logic */
+  bs->batch_ip = new_ip;
 }

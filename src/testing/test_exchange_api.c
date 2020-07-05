@@ -346,6 +346,8 @@ run (void *cls,
                                             NULL,
                                             0,
                                             MHD_HTTP_NOT_FOUND),
+    TALER_TESTING_cmd_sleep ("sleep-before-aggregator",
+                             1),
     /* Run transfers. Note that _actual_ aggregation will NOT
      * happen here, as each deposit operation is run with a
      * fresh merchant public key, so the aggregator will treat
@@ -528,18 +530,15 @@ run (void *cls,
     TALER_TESTING_cmd_refund ("refund-ok",
                               MHD_HTTP_OK,
                               "EUR:5",
-                              "EUR:0.01",
                               "deposit-refund-1"),
     TALER_TESTING_cmd_refund ("refund-ok-double",
                               MHD_HTTP_OK,
                               "EUR:5",
-                              "EUR:0.01",
                               "deposit-refund-1"),
     /* Previous /refund(s) had id == 0.  */
     TALER_TESTING_cmd_refund_with_id ("refund-conflicting",
                                       MHD_HTTP_CONFLICT,
                                       "EUR:5",
-                                      "EUR:0.01",
                                       "deposit-refund-1",
                                       1),
     /**
@@ -573,7 +572,6 @@ run (void *cls,
     TALER_TESTING_cmd_refund ("refund-fail",
                               MHD_HTTP_GONE,
                               "EUR:4.99",
-                              "EUR:0.01",
                               "deposit-refund-2"),
     TALER_TESTING_cmd_check_bank_empty ("check-empty-after-refund"),
     /**
@@ -607,7 +605,6 @@ run (void *cls,
     TALER_TESTING_cmd_refund ("refund-ok-fast",
                               MHD_HTTP_OK,
                               "EUR:5",
-                              "EUR:0.01",
                               "deposit-refund-1b"),
     /**
      * Run transfers. This will do the transfer as refund deadline

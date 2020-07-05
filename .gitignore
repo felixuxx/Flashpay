@@ -32,6 +32,7 @@ GPATH
 GRTAGS
 GTAGS
 *.swp
+src/include/taler_error_codes.h
 src/lib/test_exchange_api
 doc/doxygen/doxygen_sqlite3.db
 src/auditor/taler-auditor-dbinit
@@ -81,6 +82,7 @@ src/wire-plugins/test_ebics_wireformat
 src/wire-plugins/test_wire_plugin
 src/wire-plugins/test_wire_plugin_transactions_taler_bank
 src/pq/test_pq
+src/sq/test_sq
 src/util/test_amount
 src/util/test_crypto
 src/util/test_json
@@ -126,3 +128,4 @@ uncrustify.cfg
 vgcore.*
 tags
 /.vscode
+src/testing/test_bank_api_with_nexus

@@ -421,6 +421,45 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
 
 
 /**
+ * Handle a "/seed" request.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param args array of additional options (must be empty for this function)
+ * @return MHD result code
+ */
+static MHD_RESULT
+handler_seed (const struct TEH_RequestHandler *rh,
+              struct MHD_Connection *connection,
+              const char *const args[])
+{
+#define SEED_SIZE 32
+  char *body;
+  MHD_RESULT ret;
+  struct MHD_Response *resp;
+
+  (void) rh;
+  body = malloc (SEED_SIZE); /* must use malloc(), because MHD will use free() */
+  if (NULL == body)
+    return MHD_NO;
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              body,
+                              SEED_SIZE);
+  resp = MHD_create_response_from_buffer (SEED_SIZE,
+                                          body,
+                                          MHD_RESPMEM_MUST_FREE);
+  TALER_MHD_add_global_headers (resp);
+  ret = MHD_queue_response (connection,
+                            MHD_HTTP_OK,
+                            resp);
+  GNUNET_break (MHD_YES == ret);
+  MHD_destroy_response (resp);
+  return ret;
+#undef SEED_SIZE
+}
+
+
+/**
  * Handle incoming HTTP request.
  *
  * @param cls closure for MHD daemon (unused)
@@ -471,6 +510,11 @@ handle_mhd_request (void *cls,
       .url = "agpl",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_agpl_redirect
+    },
+    {
+      .url = "seed",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &handler_seed
     },
     /* Terms of service */
     {
@@ -654,9 +698,10 @@ handle_mhd_request (void *cls,
     {
       struct TEH_RequestHandler *rh = &handlers[i];
 
-      if (0 != strncmp (tok,
-                        rh->url,
-                        tok_size))
+      if ( (0 != strncmp (tok,
+                          rh->url,
+                          tok_size)) ||
+           (tok_size != strlen (rh->url) ) )
         continue;
       found = GNUNET_YES;
       /* The URL is a match!  What we now do depends on the method. */
@@ -782,8 +827,8 @@ exchange_serve_process_config (void)
                                                     &TEH_master_public_key.
                                                     eddsa_pub))
     {
-      fprintf (stderr,
-               "Invalid master public key given in exchange configuration.");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid master public key given in exchange configuration.");
       GNUNET_free (master_public_key_str);
       return GNUNET_SYSERR;
     }
@@ -795,14 +840,18 @@ exchange_serve_process_config (void)
 
   if (GNUNET_OK !=
       TEH_WIRE_init (TEH_cfg))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to setup wire subsystem\n");
     return GNUNET_SYSERR;
+  }
 
 
   if (NULL ==
       (TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg)))
   {
-    fprintf (stderr,
-             "Failed to initialize DB subsystem\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem\n");
     TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }
@@ -814,6 +863,8 @@ exchange_serve_process_config (void)
                               &serve_unixpath,
                               &unixpath_mode))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to setup HTTPd subsystem\n");
     TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }

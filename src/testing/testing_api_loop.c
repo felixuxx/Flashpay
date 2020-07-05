@@ -69,6 +69,7 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
 #define BATCH_INDEX 1
       struct TALER_TESTING_Command *batch;
       struct TALER_TESTING_Command *current;
+      struct TALER_TESTING_Command *icmd;
       const struct TALER_TESTING_Command *match;
 
       current = TALER_TESTING_cmd_batch_get_current (cmd);
@@ -79,15 +80,15 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
       /* We must do the loop forward, but we can find the last match */
       match = NULL;
       for (unsigned int j = 0;
-           NULL != (cmd = &batch[j])->label;
+           NULL != (icmd = &batch[j])->label;
            j++)
       {
-        if (current == cmd)
+        if (current == icmd)
           break; /* do not go past current command */
-        if ( (NULL != cmd->label) &&
-             (0 == strcmp (cmd->label,
+        if ( (NULL != icmd->label) &&
+             (0 == strcmp (icmd->label,
                            label)) )
-          match = cmd;
+          match = icmd;
       }
       if (NULL != match)
         return match;

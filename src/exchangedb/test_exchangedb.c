@@ -833,6 +833,8 @@ static uint64_t deposit_rowid;
  * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
  * @param rowid unique ID for the deposit in our DB, used for marking
  *              it as 'tiny' or 'done'
+ * @param exchange_timestamp when did the deposit happen
+ * @param wallet_timestamp when did the wallet sign the contract
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -846,6 +848,8 @@ static uint64_t deposit_rowid;
 static enum GNUNET_DB_QueryStatus
 deposit_cb (void *cls,
             uint64_t rowid,
+            struct GNUNET_TIME_Absolute exchange_timestamp,
+            struct GNUNET_TIME_Absolute wallet_timestamp,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
@@ -890,7 +894,8 @@ deposit_cb (void *cls,
  *
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
- * @param timestamp when did the deposit happen
+ * @param exchange_timestamp when did the deposit happen
+ * @param wallet_timestamp when did the wallet sign the contract
  * @param merchant_pub public key of the merchant
  * @param denom_pub denomination of the @a coin_pub
  * @param coin_pub public key of the coin
@@ -908,7 +913,8 @@ deposit_cb (void *cls,
 static int
 audit_deposit_cb (void *cls,
                   uint64_t rowid,
-                  struct GNUNET_TIME_Absolute timestamp,
+                  struct GNUNET_TIME_Absolute exchange_timestamp,
+                  struct GNUNET_TIME_Absolute wallet_timestamp,
                   const struct TALER_MerchantPublicKeyP *merchant_pub,
                   const struct TALER_DenominationPublicKey *denom_pub,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -1878,15 +1884,27 @@ run (void *cls)
           plugin->ensure_coin_known (plugin->cls,
                                      session,
                                      &deposit.coin));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_deposit (plugin->cls,
+  {
+    struct GNUNET_TIME_Absolute now;
+    struct GNUNET_TIME_Absolute r;
+    struct TALER_Amount deposit_fee;
+
+    now = GNUNET_TIME_absolute_get ();
+    GNUNET_TIME_round_abs (&now);
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->insert_deposit (plugin->cls,
+                                    session,
+                                    now,
+                                    &deposit));
+    FAILIF (1 !=
+            plugin->have_deposit (plugin->cls,
                                   session,
-                                  &deposit));
-  FAILIF (1 !=
-          plugin->have_deposit (plugin->cls,
-                                session,
-                                &deposit,
-                                GNUNET_YES));
+                                  &deposit,
+                                  GNUNET_YES,
+                                  &deposit_fee,
+                                  &r));
+    FAILIF (now.abs_value_us != r.abs_value_us);
+  }
   {
     struct GNUNET_TIME_Absolute start_range;
     struct GNUNET_TIME_Absolute end_range;
@@ -1983,18 +2001,27 @@ run (void *cls)
                          session,
                          "test-2"));
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->have_deposit (plugin->cls,
-                                session,
-                                &deposit2,
-                                GNUNET_YES));
-  deposit2.merchant_pub = deposit.merchant_pub;
-  RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->have_deposit (plugin->cls,
-                                session,
-                                &deposit2,
-                                GNUNET_YES));
+  {
+    struct GNUNET_TIME_Absolute r;
+    struct TALER_Amount deposit_fee;
+
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+            plugin->have_deposit (plugin->cls,
+                                  session,
+                                  &deposit2,
+                                  GNUNET_YES,
+                                  &deposit_fee,
+                                  &r));
+    deposit2.merchant_pub = deposit.merchant_pub;
+    RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+            plugin->have_deposit (plugin->cls,
+                                  session,
+                                  &deposit2,
+                                  GNUNET_YES,
+                                  &deposit_fee,
+                                  &r));
+  }
   FAILIF (GNUNET_OK !=
           test_melting (session));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=

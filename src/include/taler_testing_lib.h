@@ -388,10 +388,9 @@ struct TALER_TESTING_Interpreter
   void *final_cleanup_cb_cls;
 
   /**
-   * Instruction pointer.  Tells #interpreter_run() which
-   * instruction to run next.  Need (signed) int because
-   * it gets -1 when rewinding the interpreter to the first
-   * CMD.
+   * Instruction pointer.  Tells #interpreter_run() which instruction to run
+   * next.  Need (signed) int because it gets -1 when rewinding the
+   * interpreter to the first CMD.
    */
   int ip;
 
@@ -599,7 +598,22 @@ TALER_TESTING_interpreter_fail (struct TALER_TESTING_Interpreter *is);
  * @return a end-command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_end ();
+TALER_TESTING_cmd_end (void);
+
+
+/**
+ * Make the instruction pointer point to @a target_label
+ * only if @a counter is greater than zero.
+ *
+ * @param label command label
+ * @param target_label label of the new instruction pointer's destination after the jump;
+ *                     must be before the current instruction
+ * @param counter counts how many times the rewinding is to happen.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_rewind_ip (const char *label,
+                             const char *target_label,
+                             unsigned int counter);
 
 
 /**
@@ -816,7 +830,6 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
  * @param config_filename configuration filename.
  * @param bank_url base URL of the bank, used by `wget' to check
  *        that the bank was started right.
- *
  * @return the process, or NULL if the process could not
  *         be started.
  */
@@ -838,6 +851,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  */
 struct TALER_TESTING_LibeufinServices
 TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc);
+
 
 /**
  * Runs the Fakebank by guessing / extracting the portnumber
@@ -1089,7 +1103,7 @@ TALER_TESTING_cmd_admin_add_incoming (
  * @param payto_debit_account which account sends money.
  * @param auth authentication data
  * @param ref reference to a command that can offer a reserve
- *        private key.
+ *        private key or public key.
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1344,6 +1358,16 @@ TALER_TESTING_cmd_status (const char *label,
                           const char *reserve_reference,
                           const char *expected_balance,
                           unsigned int expected_response_code);
+
+/**
+ * Index of the deposit value trait of a deposit command.
+ */
+#define TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_VALUE 0
+
+/**
+ * Index of the deposit fee trait of a deposit command.
+ */
+#define TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_FEE 1
 
 /**
  * Create a "deposit" command.
@@ -1670,7 +1694,6 @@ TALER_TESTING_cmd_check_bank_empty (const char *label);
  * @param label command label.
  * @param expected_response_code expected HTTP status code.
  * @param refund_amount the amount to ask a refund for.
- * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
  * @param refund_transaction_id transaction id to use
@@ -1682,7 +1705,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund_with_id (const char *label,
                                   unsigned int expected_response_code,
                                   const char *refund_amount,
-                                  const char *refund_fee,
                                   const char *deposit_reference,
                                   uint64_t refund_transaction_id);
 
@@ -1693,7 +1715,6 @@ TALER_TESTING_cmd_refund_with_id (const char *label,
  * @param label command label.
  * @param expected_response_code expected HTTP status code.
  * @param refund_amount the amount to ask a refund for.
- * @param refund_fee expected refund fee.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
  *
@@ -1703,7 +1724,6 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund (const char *label,
                           unsigned int expected_response_code,
                           const char *refund_amount,
-                          const char *refund_fee,
                           const char *deposit_reference);
 
 
@@ -1890,6 +1910,18 @@ TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is);
 struct TALER_TESTING_Command *
 TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd);
 
+
+/**
+ * Set what command the batch should be at.
+ *
+ * @param cmd current batch command
+ * @param new_ip where to move the IP
+ */
+void
+TALER_TESTING_cmd_batch_set_current (const struct TALER_TESTING_Command *cmd,
+                                     unsigned int new_ip);
+
+
 /**
  * Make a serialize-keys CMD.
  *
@@ -1921,6 +1953,7 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  * @param dbc collects plugin and session handles
  * @param merchant_name Human-readable name of the merchant.
  * @param merchant_account merchant's account name (NOT a payto:// URI)
+ * @param exchange_timestamp when did the exchange receive the deposit
  * @param wire_deadline point in time where the aggregator should have
  *        wired money to the merchant.
  * @param amount_with_fee amount to deposit (inclusive of deposit fee)
@@ -1928,14 +1961,15 @@ TALER_TESTING_cmd_connect_with_state (const char *label,
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_insert_deposit (const char *label,
-                                  const struct
-                                  TALER_TESTING_DatabaseConnection *dbc,
-                                  const char *merchant_name,
-                                  const char *merchant_account,
-                                  struct GNUNET_TIME_Relative wire_deadline,
-                                  const char *amount_with_fee,
-                                  const char *deposit_fee);
+TALER_TESTING_cmd_insert_deposit (
+  const char *label,
+  const struct TALER_TESTING_DatabaseConnection *dbc,
+  const char *merchant_name,
+  const char *merchant_account,
+  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Relative wire_deadline,
+  const char *amount_with_fee,
+  const char *deposit_fee);
 
 
 /**
@@ -2340,6 +2374,31 @@ TALER_TESTING_make_trait_denom_sig (
 
 
 /**
+ * Offer number trait, 32-bit version.
+ *
+ * @param index the number's index number.
+ * @param n number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_uint32 (unsigned int index,
+                                 const uint32_t *n);
+
+
+/**
+ * Obtain a "number" value from @a cmd, 32-bit version.
+ *
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
+ * @param[out] n set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_uint32 (const struct TALER_TESTING_Command *cmd,
+                                unsigned int index,
+                                const uint32_t **n);
+
+
+/**
  * Offer number trait, 64-bit version.
  *
  * @param index the number's index number.
@@ -2362,6 +2421,31 @@ int
 TALER_TESTING_get_trait_uint64 (const struct TALER_TESTING_Command *cmd,
                                 unsigned int index,
                                 const uint64_t **n);
+
+
+/**
+ * Offer number trait, 64-bit signed version.
+ *
+ * @param index the number's index number.
+ * @param n number to offer.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_int64 (unsigned int index,
+                                const int64_t *n);
+
+
+/**
+ * Obtain a "number" value from @a cmd, 64-bit signed version.
+ *
+ * @param cmd command to extract the number from.
+ * @param index the number's index number.
+ * @param[out] n set to the number coming from @a cmd.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_int64 (const struct TALER_TESTING_Command *cmd,
+                               unsigned int index,
+                               const int64_t **n);
 
 
 /**
@@ -2511,6 +2595,33 @@ TALER_TESTING_get_trait_exchange_keys (const struct TALER_TESTING_Command *cmd,
 struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_exchange_keys (unsigned int index,
                                         const json_t *keys);
+
+
+/**
+ * Obtain json from @a cmd.
+ *
+ * @param cmd command to extract the json from.
+ * @param index index number associate with the json on offer.
+ * @param[out] json where to write the json.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_json (const struct TALER_TESTING_Command *cmd,
+                              unsigned int index,
+                              const json_t **json);
+
+
+/**
+ * Offer json in a trait.
+ *
+ * @param index index number associate with the json
+ *        on offer.
+ * @param json json to offer.
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_json (unsigned int index,
+                               const json_t *json);
 
 
 /**
@@ -2853,5 +2964,34 @@ struct TALER_TESTING_Trait
 TALER_TESTING_make_trait_absolute_time (
   unsigned int index,
   const struct GNUNET_TIME_Absolute *time);
+
+
+/**
+ * Obtain a relative time from @a cmd.
+ *
+ * @param cmd command to extract trait from
+ * @param index which time to pick if
+ *        @a cmd has multiple on offer.
+ * @param[out] time set to the wanted WTID.
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_TESTING_get_trait_relative_time (
+  const struct TALER_TESTING_Command *cmd,
+  unsigned int index,
+  const struct GNUNET_TIME_Relative **time);
+
+
+/**
+ * Offer a relative time.
+ *
+ * @param index associate the object with this index
+ * @param time which object should be returned
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_relative_time (
+  unsigned int index,
+  const struct GNUNET_TIME_Relative *time);
 
 #endif

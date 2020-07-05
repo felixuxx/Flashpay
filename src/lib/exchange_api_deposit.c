@@ -160,7 +160,7 @@ auditor_cb (void *cls,
     ah,
     &dh->depconf.h_wire,
     &dh->depconf.h_contract_terms,
-    GNUNET_TIME_absolute_ntoh (dh->depconf.timestamp),
+    GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp),
     GNUNET_TIME_absolute_ntoh (dh->depconf.refund_deadline),
     &amount_without_fee,
     &dh->depconf.coin_pub,
@@ -196,8 +196,10 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("sig", exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("pub", exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig", exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
+    GNUNET_JSON_spec_absolute_time_nbo ("exchange_timestamp",
+                                        &dh->depconf.exchange_timestamp),
     GNUNET_JSON_spec_end ()
   };
 
@@ -386,6 +388,7 @@ handle_deposit_finished (void *cls,
   }
   dh->cb (dh->cb_cls,
           &hr,
+          GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp),
           es,
           ep);
   TALER_EXCHANGE_deposit_cancel (dh);
@@ -429,7 +432,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
       .purpose.size = htonl (sizeof (dr)),
       .h_contract_terms = *h_contract_terms,
       .h_wire = *h_wire,
-      .timestamp = GNUNET_TIME_absolute_hton (timestamp),
+      .wallet_timestamp = GNUNET_TIME_absolute_hton (timestamp),
       .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
       .merchant = *merchant_pub,
       .coin_pub = *coin_pub
@@ -484,6 +487,59 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
+}
+
+
+/**
+ * Sign a deposit permission.  Function for wallets.
+ *
+ * @param amount the amount to be deposited
+ * @param deposit_fee the deposit fee we expect to pay
+ * @param h_wire hash of the merchant’s account details
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param coin_priv coin’s private key
+ * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT
+ */
+void
+TALER_EXCHANGE_deposit_permission_sign (
+  const struct TALER_Amount *amount,
+  const struct TALER_Amount *deposit_fee,
+  const struct GNUNET_HashCode *h_wire,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_DepositRequestPS dr = {
+    .purpose.size = htonl
+                      (sizeof (dr)),
+    .purpose.purpose = htonl
+                         (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+    .h_contract_terms = *h_contract_terms,
+    .h_wire = *h_wire,
+    .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
+    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .merchant = *merchant_pub
+  };
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&wallet_timestamp));
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&refund_deadline));
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                      &dr.coin_pub.eddsa_pub);
+  TALER_amount_hton (&dr.amount_with_fee,
+                     amount);
+  TALER_amount_hton (&dr.deposit_fee,
+                     deposit_fee);
+  GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                            &dr,
+                            &coin_sig->eddsa_signature);
 }
 
 
@@ -658,7 +714,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
     TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dh->depconf.h_contract_terms = *h_contract_terms;
   dh->depconf.h_wire = h_wire;
-  dh->depconf.timestamp = GNUNET_TIME_absolute_hton (timestamp);
+  /* dh->depconf.exchange_timestamp; -- initialized later from exchange reply! */
   dh->depconf.refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline);
   TALER_amount_hton (&dh->depconf.amount_without_fee,
                      &amount_without_fee);

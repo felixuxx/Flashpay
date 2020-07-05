@@ -146,11 +146,12 @@ TALER_EXCHANGE_parse_reserve_history (
     {
       struct TALER_ReserveSignatureP sig;
       struct TALER_WithdrawRequestPS withdraw_purpose;
+      struct TALER_Amount withdraw_fee;
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                      &sig),
-        TALER_JSON_spec_amount_nbo ("withdraw_fee",
-                                    &withdraw_purpose.withdraw_fee),
+        TALER_JSON_spec_amount ("withdraw_fee",
+                                &withdraw_fee),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      &withdraw_purpose.h_denomination_pub),
         GNUNET_JSON_spec_fixed_auto ("h_coin_envelope",
@@ -189,26 +190,23 @@ TALER_EXCHANGE_parse_reserve_history (
       {
         const struct TALER_EXCHANGE_Keys *key_state;
         const struct TALER_EXCHANGE_DenomPublicKey *dki;
-        struct TALER_Amount fee;
 
         key_state = TALER_EXCHANGE_get_keys (exchange);
         dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
                                                            &withdraw_purpose.
                                                            h_denomination_pub);
-        TALER_amount_ntoh (&fee,
-                           &withdraw_purpose.withdraw_fee);
         if ( (GNUNET_YES !=
-              TALER_amount_cmp_currency (&fee,
+              TALER_amount_cmp_currency (&withdraw_fee,
                                          &dki->fee_withdraw)) ||
              (0 !=
-              TALER_amount_cmp (&fee,
+              TALER_amount_cmp (&withdraw_fee,
                                 &dki->fee_withdraw)) )
         {
           GNUNET_break_op (0);
           GNUNET_JSON_parse_free (withdraw_spec);
           return GNUNET_SYSERR;
         }
-        rh->details.withdraw.fee = fee;
+        rh->details.withdraw.fee = withdraw_fee;
       }
       rh->details.withdraw.out_authorization_sig
         = json_object_get (transaction,
@@ -526,7 +524,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_JSON_spec_fixed_auto ("h_wire",
                                      &dr.h_wire),
         GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-                                            &dr.timestamp),
+                                            &dr.wallet_timestamp),
         GNUNET_JSON_spec_absolute_time_nbo ("refund_deadline",
                                             &dr.refund_deadline),
         TALER_JSON_spec_amount_nbo ("deposit_fee",
@@ -634,9 +632,16 @@ TALER_EXCHANGE_verify_coin_history (
     else if (0 == strcasecmp (type,
                               "REFUND"))
     {
-      struct TALER_RefundRequestPS rr;
       struct TALER_MerchantSignatureP sig;
+      struct TALER_Amount refund_fee;
+      struct TALER_RefundRequestPS rr = {
+        .purpose.size = htonl (sizeof (rr)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
+        .coin_pub = *coin_pub
+      };
       struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount ("refund_fee",
+                                &refund_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
@@ -645,8 +650,6 @@ TALER_EXCHANGE_verify_coin_history (
                                      &rr.merchant),
         GNUNET_JSON_spec_uint64 ("rtransaction_id",
                                  &rr.rtransaction_id),
-        TALER_JSON_spec_amount_nbo ("refund_fee",
-                                    &rr.refund_fee),
         GNUNET_JSON_spec_end ()
       };
 
@@ -658,9 +661,6 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      rr.purpose.size = htonl (sizeof (rr));
-      rr.purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND);
-      rr.coin_pub = *coin_pub;
       TALER_amount_hton (&rr.refund_amount,
                          &amount);
       if (GNUNET_OK !=
@@ -683,13 +683,11 @@ TALER_EXCHANGE_verify_coin_history (
       /* check that refund fee matches our expectations from /keys! */
       if (NULL != dk)
       {
-        TALER_amount_ntoh (&fee,
-                           &rr.refund_fee);
         if ( (GNUNET_YES !=
-              TALER_amount_cmp_currency (&fee,
+              TALER_amount_cmp_currency (&refund_fee,
                                          &dk->fee_refund)) ||
              (0 !=
-              TALER_amount_cmp (&fee,
+              TALER_amount_cmp (&refund_fee,
                                 &dk->fee_refund)) )
         {
           GNUNET_break_op (0);

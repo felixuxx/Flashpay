@@ -745,6 +745,32 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh);
 
 
 /**
+ * Sign a deposit permission.  Function for wallets.
+ *
+ * @param amount the amount to be deposited
+ * @param deposit_fee the deposit fee we expect to pay
+ * @param h_wire hash of the merchant’s account details
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param coin_priv coin’s private key
+ * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT
+ */
+void
+TALER_EXCHANGE_deposit_permission_sign (
+  const struct TALER_Amount *amount,
+  const struct TALER_Amount *deposit_fee,
+  const struct GNUNET_HashCode *h_wire,
+  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
  * @brief A Deposit Handle
  */
 struct TALER_EXCHANGE_DepositHandle;
@@ -756,6 +782,7 @@ struct TALER_EXCHANGE_DepositHandle;
  *
  * @param cls closure
  * @param hr HTTP response data
+ * @param deposit_timestamp time when the exchange generated the deposit confirmation
  * @param exchange_sig signature provided by the exchange
  * @param exchange_pub exchange key used to sign @a obj, or NULL
  */
@@ -763,6 +790,7 @@ typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
+  struct GNUNET_TIME_Absolute deposit_timestamp,
   const struct TALER_ExchangeSignatureP *exchange_sig,
   const struct TALER_ExchangePublicKeyP *exchange_pub);
 
@@ -851,6 +879,7 @@ struct TALER_EXCHANGE_RefundHandle;
  *
  * @param cls closure
  * @param hr HTTP response data
+ * @param refund_fee the refund fee the exchange charged us
  * @param sign_key exchange key used to sign @a obj, or NULL
  * @param signature the actual signature, or NULL on error
  */
@@ -858,6 +887,7 @@ typedef void
 (*TALER_EXCHANGE_RefundCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
+  const struct TALER_Amount *refund_fee,
   const struct TALER_ExchangePublicKeyP *sign_key,
   const struct TALER_ExchangeSignatureP *signature);
 
@@ -878,7 +908,6 @@ typedef void
  * @param amount the amount to be refunded; must be larger than the refund fee
  *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
- * @param refund_fee fee applicable to this coin for the refund
  * @param h_contract_terms hash of the contact of the merchant with the customer that is being refunded
  * @param coin_pub coin’s public key of the coin from the original deposit operation
  * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
@@ -894,7 +923,6 @@ typedef void
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_Amount *amount,
-                       const struct TALER_Amount *refund_fee,
                        const struct GNUNET_HashCode *h_contract_terms,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        uint64_t rtransaction_id,
@@ -922,7 +950,6 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
  * @param amount the amount to be refunded; must be larger than the refund fee
  *        (as that fee is still being subtracted), and smaller than the amount
  *        (with deposit fee) of the original deposit contribution of this coin
- * @param refund_fee fee applicable to this coin for the refund
  * @param h_contract_terms hash of the contact of the merchant with the customer that is being refunded
  * @param coin_pub coin’s public key of the coin from the original deposit operation
  * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
@@ -939,7 +966,6 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_Amount *amount,
-                        const struct TALER_Amount *refund_fee,
                         const struct GNUNET_HashCode *h_contract_terms,
                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
                         uint64_t rtransaction_id,
@@ -1585,31 +1611,67 @@ struct TALER_EXCHANGE_TransfersGetHandle;
 
 
 /**
+ * Information the exchange returns per wire transfer.
+ */
+struct TALER_EXCHANGE_TransferData
+{
+
+  /**
+   * exchange key used to sign
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * exchange signature over the transfer data
+   */
+  struct TALER_ExchangeSignatureP exchange_sig;
+
+  /**
+   * hash of the wire transfer address the transfer went to
+   */
+  struct GNUNET_HashCode h_wire;
+
+  /**
+   * time when the exchange claims to have performed the wire transfer
+   */
+  struct GNUNET_TIME_Absolute execution_time;
+
+  /**
+   * Actual amount of the wire transfer, excluding the wire fee.
+   */
+  struct TALER_Amount total_amount;
+
+  /**
+   * wire fee that was charged by the exchange
+   */
+  struct TALER_Amount wire_fee;
+
+  /**
+   * length of the @e details array
+   */
+  unsigned int details_length;
+
+  /**
+   * array with details about the combined transactions
+   */
+  const struct TALER_TrackTransferDetails *details;
+
+};
+
+
+/**
  * Function called with detailed wire transfer data, including all
  * of the coin transactions that were combined into the wire transfer.
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param sign_key exchange key used to sign @a json, or NULL
- * @param h_wire hash of the wire transfer address the transfer went to, or NULL on error
- * @param execution_time time when the exchange claims to have performed the wire transfer
- * @param total_amount total amount of the wire transfer, or NULL if the exchange could
- *             not provide any @a wtid (set only if @a http_status is #MHD_HTTP_OK)
- * @param wire_fee wire fee that was charged by the exchange
- * @param details_length length of the @a details array
- * @param details array with details about the combined transactions
+ * @param ta transfer data, (set only if @a http_status is #MHD_HTTP_OK, otherwise NULL)
  */
 typedef void
 (*TALER_EXCHANGE_TransfersGetCallback)(
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ExchangePublicKeyP *sign_key,
-  const struct GNUNET_HashCode *h_wire,
-  struct GNUNET_TIME_Absolute execution_time,
-  const struct TALER_Amount *total_amount,
-  const struct TALER_Amount *wire_fee,
-  unsigned int details_length,
-  const struct TALER_TrackTransferDetails *details);
+  const struct TALER_EXCHANGE_TransferData *ta);
 
 
 /**
@@ -1651,24 +1713,56 @@ struct TALER_EXCHANGE_DepositGetHandle;
 
 
 /**
+ * Data returned for a successful GET /deposits/ request.  Note that
+ * most fields are only set if the status is #MHD_HTTP_OK.  Only
+ * the @e execution_time is available if the status is #MHD_HTTP_ACCEPTED.
+ */
+struct TALER_EXCHANGE_DepositData
+{
+
+  /**
+   * exchange key used to sign, all zeros if exchange did not
+   * yet execute the transaction
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * signature from the exchange over the deposit data, all zeros if exchange did not
+   * yet execute the transaction
+   */
+  struct TALER_ExchangeSignatureP exchange_sig;
+
+  /**
+   * wire transfer identifier used by the exchange, all zeros if exchange did not
+   * yet execute the transaction
+   */
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  /**
+   * actual or planned execution time for the wire transfer
+   */
+  struct GNUNET_TIME_Absolute execution_time;
+
+  /**
+   * contribution to the total amount by this coin, all zeros if exchange did not
+   * yet execute the transaction
+   */
+  struct TALER_Amount coin_contribution;
+};
+
+
+/**
  * Function called with detailed wire transfer data.
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param sign_key exchange key used to sign @a json, or NULL
- * @param wtid wire transfer identifier used by the exchange, NULL if exchange did not
- *                  yet execute the transaction
- * @param execution_time actual or planned execution time for the wire transfer
- * @param coin_contribution contribution to the total amount by this coin (can be NULL)
+ * @param dd details about the deposit (NULL on errors)
  */
 typedef void
 (*TALER_EXCHANGE_DepositGetCallback)(
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ExchangePublicKeyP *sign_key,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  struct GNUNET_TIME_Absolute execution_time,
-  const struct TALER_Amount *coin_contribution);
+  const struct TALER_EXCHANGE_DepositData *dd);
 
 
 /**

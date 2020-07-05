@@ -1872,6 +1872,12 @@ else
     fi
 fi
 
-check_with_database "auditor-basedb"
+# run tests with pre-build database, if one is available
+if test -x auditor-basedb.mpub
+then
+  check_with_database "auditor-basedb"
+else
+  fail=77
+fi
 
 exit $fail
