@@ -149,7 +149,7 @@ handle_deposit_wtid_finished (void *cls,
       struct TALER_EXCHANGE_DepositData dd;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
-        GNUNET_JSON_spec_absolute_time ("execution_time", &dd.execution_time),
+        TALER_JSON_spec_absolute_time ("execution_time", &dd.execution_time),
         TALER_JSON_spec_amount ("coin_contribution", &dd.coin_contribution),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig", &dd.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub", &dd.exchange_pub),
@@ -196,7 +196,7 @@ handle_deposit_wtid_finished (void *cls,
       /* Transaction known, but not executed yet */
       struct GNUNET_TIME_Absolute execution_time;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_absolute_time ("execution_time", &execution_time),
+        TALER_JSON_spec_absolute_time ("execution_time", &execution_time),
         GNUNET_JSON_spec_end ()
       };
 

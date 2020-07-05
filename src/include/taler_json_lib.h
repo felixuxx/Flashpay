@@ -81,6 +81,31 @@ TALER_JSON_spec_amount_nbo (const char *name,
 
 
 /**
+ * Provide specification to parse given JSON object to an absolute time.
+ * The absolute time value is expected to be already rounded.
+ *
+ * @param name name of the time field in the JSON
+ * @param[out] r_time where the time has to be written
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_absolute_time (const char *name,
+                               struct GNUNET_TIME_Absolute *r_time);
+
+
+/**
+ * Provide specification to parse given JSON object to an absolute time
+ * in network byte order.
+ * The absolute time value is expected to be already rounded.
+ *
+ * @param name name of the time field in the JSON
+ * @param[out] r_time where the time has to be written
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_absolute_time_nbo (const char *name,
+                                   struct GNUNET_TIME_AbsoluteNBO *r_time);
+
+
+/**
  * Generate line in parser specification for denomination public key.
  *
  * @param field name of the field

@@ -109,8 +109,8 @@ TALER_EXCHANGE_parse_reserve_history (
         GNUNET_JSON_spec_varsize ("wire_reference",
                                   &wire_reference,
                                   &wire_reference_size),
-        GNUNET_JSON_spec_absolute_time ("timestamp",
-                                        &timestamp),
+        TALER_JSON_spec_absolute_time ("timestamp",
+                                       &timestamp),
         GNUNET_JSON_spec_string ("sender_account_url",
                                  &wire_url),
         GNUNET_JSON_spec_end ()
@@ -256,8 +256,8 @@ TALER_EXCHANGE_parse_reserve_history (
                                      &rh->details.recoup_details.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &rh->details.recoup_details.exchange_pub),
-        GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-                                            &pc.timestamp),
+        TALER_JSON_spec_absolute_time_nbo ("timestamp",
+                                           &pc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -328,8 +328,8 @@ TALER_EXCHANGE_parse_reserve_history (
                                      &rh->details.close_details.exchange_pub),
         TALER_JSON_spec_amount_nbo ("closing_fee",
                                     &rcc.closing_fee),
-        GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-                                            &rcc.timestamp),
+        TALER_JSON_spec_absolute_time_nbo ("timestamp",
+                                           &rcc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -523,10 +523,10 @@ TALER_EXCHANGE_verify_coin_history (
                                      &dr.h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("h_wire",
                                      &dr.h_wire),
-        GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-                                            &dr.wallet_timestamp),
-        GNUNET_JSON_spec_absolute_time_nbo ("refund_deadline",
-                                            &dr.refund_deadline),
+        TALER_JSON_spec_absolute_time_nbo ("timestamp",
+                                           &dr.wallet_timestamp),
+        TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
+                                           &dr.refund_deadline),
         TALER_JSON_spec_amount_nbo ("deposit_fee",
                                     &dr.deposit_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
@@ -709,8 +709,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      &exchange_pub),
         GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                      &pc.reserve_pub),
-        GNUNET_JSON_spec_absolute_time_nbo ("timestamp",
-                                            &pc.timestamp),
+        TALER_JSON_spec_absolute_time_nbo ("timestamp",
+                                           &pc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 

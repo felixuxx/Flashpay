@@ -374,12 +374,12 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
                                  &sign_key_issue_sig),
     GNUNET_JSON_spec_fixed_auto ("key",
                                  &sign_key->key),
-    GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                    &sign_key->valid_from),
-    GNUNET_JSON_spec_absolute_time ("stamp_expire",
-                                    &sign_key->valid_until),
-    GNUNET_JSON_spec_absolute_time ("stamp_end",
-                                    &sign_key->valid_legal),
+    TALER_JSON_spec_absolute_time ("stamp_start",
+                                   &sign_key->valid_from),
+    TALER_JSON_spec_absolute_time ("stamp_expire",
+                                   &sign_key->valid_until),
+    TALER_JSON_spec_absolute_time ("stamp_end",
+                                   &sign_key->valid_legal),
     GNUNET_JSON_spec_end ()
   };
 
@@ -441,14 +441,14 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &denom_key->master_sig),
-    GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                    &denom_key->expire_deposit),
-    GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                    &denom_key->withdraw_valid_until),
-    GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                    &denom_key->valid_from),
-    GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
-                                    &denom_key->expire_legal),
+    TALER_JSON_spec_absolute_time ("stamp_expire_deposit",
+                                   &denom_key->expire_deposit),
+    TALER_JSON_spec_absolute_time ("stamp_expire_withdraw",
+                                   &denom_key->withdraw_valid_until),
+    TALER_JSON_spec_absolute_time ("stamp_start",
+                                   &denom_key->valid_from),
+    TALER_JSON_spec_absolute_time ("stamp_expire_legal",
+                                   &denom_key->expire_legal),
     TALER_JSON_spec_amount ("value",
                             &denom_key->value),
     TALER_JSON_spec_amount ("fee_withdraw",
@@ -825,8 +825,8 @@ decode_keys_json (const json_t *resp_obj,
        check_sig is false! */
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                  &key_data->master_pub),
-    GNUNET_JSON_spec_absolute_time ("list_issue_date",
-                                    &key_data->list_issue_date),
+    TALER_JSON_spec_absolute_time ("list_issue_date",
+                                   &key_data->list_issue_date),
     GNUNET_JSON_spec_relative_time ("reserve_closing_delay",
                                     &key_data->reserve_closing_delay),
     GNUNET_JSON_spec_end ()
@@ -887,7 +887,8 @@ decode_keys_json (const json_t *resp_obj,
           GNUNET_JSON_parse (resp_obj,
                              (check_sig) ? mspec : &mspec[2],
                              NULL, NULL));
-
+  EXITIF (GNUNET_OK !=
+          GNUNET_TIME_round_rel (&key_data->reserve_closing_delay));
   /* parse the master public key and issue date of the response */
   if (check_sig)
     hash_context = GNUNET_CRYPTO_hash_context_start ();
@@ -1568,8 +1569,8 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
                            &keys),
     GNUNET_JSON_spec_string ("exchange_url",
                              &url),
-    GNUNET_JSON_spec_absolute_time ("expire",
-                                    &expire),
+    TALER_JSON_spec_absolute_time ("expire",
+                                   &expire),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_Keys key_data;

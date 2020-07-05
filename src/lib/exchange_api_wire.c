@@ -148,10 +148,10 @@ parse_fees (json_t *fees)
                                 &wa->wire_fee),
         TALER_JSON_spec_amount ("closing_fee",
                                 &wa->closing_fee),
-        GNUNET_JSON_spec_absolute_time ("start_date",
-                                        &wa->start_date),
-        GNUNET_JSON_spec_absolute_time ("end_date",
-                                        &wa->end_date),
+        TALER_JSON_spec_absolute_time ("start_date",
+                                       &wa->start_date),
+        TALER_JSON_spec_absolute_time ("end_date",
+                                       &wa->end_date),
         GNUNET_JSON_spec_end ()
       };
 

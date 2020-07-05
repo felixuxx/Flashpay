@@ -184,8 +184,8 @@ handle_transfer_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("row_id",
                                  &row_id),
-        GNUNET_JSON_spec_absolute_time ("timestamp",
-                                        &timestamp),
+        TALER_JSON_spec_absolute_time ("timestamp",
+                                       &timestamp),
         GNUNET_JSON_spec_end ()
       };
 

@@ -24,6 +24,7 @@ taler_bank_transfer_SOURCES = \
 taler_bank_transfer_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/json/libtalerjson.la \
   libtalerbank.la \
   -lgnunetcurl \
   -lgnunetutil \

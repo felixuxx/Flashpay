@@ -198,8 +198,8 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
-    GNUNET_JSON_spec_absolute_time_nbo ("exchange_timestamp",
-                                        &dh->depconf.exchange_timestamp),
+    TALER_JSON_spec_absolute_time_nbo ("exchange_timestamp",
+                                       &dh->depconf.exchange_timestamp),
     GNUNET_JSON_spec_end ()
   };
 

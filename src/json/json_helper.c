@@ -175,6 +175,147 @@ TALER_JSON_spec_amount_nbo (const char *name,
 
 
 /**
+ * Parse given JSON object to *rounded* absolute time.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static int
+parse_abs_time (void *cls,
+                json_t *root,
+                struct GNUNET_JSON_Specification *spec)
+{
+  struct GNUNET_TIME_Absolute *abs = spec->ptr;
+  json_t *json_t_ms;
+  unsigned long long int tval;
+
+  if (! json_is_object (root))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  json_t_ms = json_object_get (root, "t_ms");
+  if (json_is_integer (json_t_ms))
+  {
+    tval = json_integer_value (json_t_ms);
+    /* Time is in milliseconds in JSON, but in microseconds in GNUNET_TIME_Absolute */
+    abs->abs_value_us = tval * 1000LL;
+    if ((abs->abs_value_us) / 1000LL != tval)
+    {
+      /* Integer overflow */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        GNUNET_TIME_round_abs (abs))
+    {
+      /* time not rounded */
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  }
+  if (json_is_string (json_t_ms))
+  {
+    const char *val;
+    val = json_string_value (json_t_ms);
+    if ((0 == strcasecmp (val, "never")))
+    {
+      *abs = GNUNET_TIME_UNIT_FOREVER_ABS;
+      return GNUNET_OK;
+    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_break_op (0);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Provide specification to parse given JSON object to an absolute time.
+ * The absolute time value is expected to be already rounded.
+ *
+ * @param name name of the time field in the JSON
+ * @param[out] r_time where the time has to be written
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_absolute_time (const char *name,
+                               struct GNUNET_TIME_Absolute *r_time)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_abs_time,
+    .cleaner = NULL,
+    .cls = NULL,
+    .field = name,
+    .ptr = r_time,
+    .ptr_size = sizeof(uint64_t),
+    .size_ptr = NULL
+  };
+
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to absolute time.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static int
+parse_abs_time_nbo (void *cls,
+                    json_t *root,
+                    struct GNUNET_JSON_Specification *spec)
+{
+  struct GNUNET_TIME_AbsoluteNBO *abs = spec->ptr;
+  struct GNUNET_TIME_Absolute a;
+  struct GNUNET_JSON_Specification ispec;
+
+  ispec = *spec;
+  ispec.parser = &parse_abs_time;
+  ispec.ptr = &a;
+  if (GNUNET_OK !=
+      parse_abs_time (NULL,
+                      root,
+                      &ispec))
+    return GNUNET_SYSERR;
+  *abs = GNUNET_TIME_absolute_hton (a);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Provide specification to parse given JSON object to an absolute time
+ * in network byte order.
+ * The absolute time value is expected to be already rounded.
+ *
+ * @param name name of the time field in the JSON
+ * @param[out] r_time where the time has to be written
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_absolute_time_nbo (const char *name,
+                                   struct GNUNET_TIME_AbsoluteNBO *r_time)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_abs_time_nbo,
+    .cleaner = NULL,
+    .cls = NULL,
+    .field = name,
+    .ptr = r_time,
+    .ptr_size = sizeof(uint64_t),
+    .size_ptr = NULL
+  };
+
+  return ret;
+}
+
+
+/**
  * Generate line in parser specification for denomination public key.
  *
  * @param field name of the field

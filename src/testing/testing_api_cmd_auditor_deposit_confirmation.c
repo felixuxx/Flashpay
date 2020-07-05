@@ -283,7 +283,7 @@ deposit_confirmation_run (void *cls,
   /* timestamp is mandatory */
   {
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_absolute_time ("timestamp", &timestamp),
+      TALER_JSON_spec_absolute_time ("timestamp", &timestamp),
       GNUNET_JSON_spec_end ()
     };
 
@@ -300,7 +300,7 @@ deposit_confirmation_run (void *cls,
   /* refund deadline is optional, defaults to zero */
   {
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_absolute_time ("refund_deadline", &refund_deadline),
+      TALER_JSON_spec_absolute_time ("refund_deadline", &refund_deadline),
       GNUNET_JSON_spec_end ()
     };
 

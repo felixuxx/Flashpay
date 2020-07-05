@@ -21,10 +21,11 @@ taler_exchange_keyup_SOURCES = \
   taler-exchange-keyup.c
 taler_exchange_keyup_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil $(XLIB)
 taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 

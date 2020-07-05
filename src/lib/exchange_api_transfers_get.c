@@ -93,7 +93,7 @@ check_transfers_get_response_ok (
     TALER_JSON_spec_amount ("wire_fee", &td.wire_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_wire", &td.h_wire),
-    GNUNET_JSON_spec_absolute_time ("execution_time", &td.execution_time),
+    TALER_JSON_spec_absolute_time ("execution_time", &td.execution_time),
     GNUNET_JSON_spec_json ("deposits", &details_j),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &td.exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", &td.exchange_pub),

@@ -336,12 +336,12 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                  &deposit.h_wire),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &deposit.csig),
-    GNUNET_JSON_spec_absolute_time ("timestamp",
-                                    &deposit.timestamp),
-    GNUNET_JSON_spec_absolute_time ("refund_deadline",
-                                    &deposit.refund_deadline),
-    GNUNET_JSON_spec_absolute_time ("wire_transfer_deadline",
-                                    &deposit.wire_deadline),
+    TALER_JSON_spec_absolute_time ("timestamp",
+                                   &deposit.timestamp),
+    TALER_JSON_spec_absolute_time ("refund_deadline",
+                                   &deposit.refund_deadline),
+    TALER_JSON_spec_absolute_time ("wire_transfer_deadline",
+                                   &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()
   };
 
