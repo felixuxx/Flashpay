@@ -827,8 +827,8 @@ exchange_serve_process_config (void)
                                                     &TEH_master_public_key.
                                                     eddsa_pub))
     {
-      fprintf (stderr,
-               "Invalid master public key given in exchange configuration.");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid master public key given in exchange configuration.");
       GNUNET_free (master_public_key_str);
       return GNUNET_SYSERR;
     }
@@ -840,14 +840,18 @@ exchange_serve_process_config (void)
 
   if (GNUNET_OK !=
       TEH_WIRE_init (TEH_cfg))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to setup wire subsystem\n");
     return GNUNET_SYSERR;
+  }
 
 
   if (NULL ==
       (TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg)))
   {
-    fprintf (stderr,
-             "Failed to initialize DB subsystem\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem\n");
     TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }
@@ -859,6 +863,8 @@ exchange_serve_process_config (void)
                               &serve_unixpath,
                               &unixpath_mode))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to setup HTTPd subsystem\n");
     TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }

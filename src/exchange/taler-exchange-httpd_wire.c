@@ -341,6 +341,8 @@ TEH_WIRE_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                     &ret);
     if (GNUNET_OK != ret)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Error setting up bank accounts\n");
       TEH_WIRE_done ();
       return GNUNET_SYSERR;
     }
@@ -349,6 +351,8 @@ TEH_WIRE_init (const struct GNUNET_CONFIGURATION_Handle *cfg)
        (0 == json_object_size (wire_fee_object)) )
   {
     TEH_WIRE_done ();
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "No bank accounts configured\n");
     return GNUNET_SYSERR;
   }
   wire_methods = json_pack ("{s:O, s:O, s:o}",

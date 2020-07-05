@@ -1812,8 +1812,12 @@ postgres_iterate_denomination_info (void *cls,
     .cb_cls = cb_cls,
     .pg = pc
   };
+  struct TALER_EXCHANGEDB_Session *session;
 
-  return GNUNET_PQ_eval_prepared_multi_select (postgres_get_session (pc)->conn,
+  session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
                                                "denomination_iterate",
                                                params,
                                                &domination_cb_helper,
@@ -3068,6 +3072,8 @@ postgres_get_known_coin (void *cls,
   coin_info->coin_pub = *coin_pub;
   if (NULL == session)
     session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "get_known_coin",
                                                    params,
@@ -3107,6 +3113,8 @@ postgres_get_coin_denomination (
               TALER_B2S (coin_pub));
   if (NULL == session)
     session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
   return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                    "get_coin_denomination",
                                                    params,
@@ -3475,6 +3483,8 @@ postgres_get_melt (void *cls,
   melt->session.coin.denom_sig.rsa_signature = NULL;
   if (NULL == session)
     session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                  "get_melt",
                                                  params,
