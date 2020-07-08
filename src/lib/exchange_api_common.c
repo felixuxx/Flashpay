@@ -523,6 +523,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      &dr.h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("h_wire",
                                      &dr.h_wire),
+        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                     &dr.h_denom_pub),
         TALER_JSON_spec_absolute_time_nbo ("timestamp",
                                            &dr.wallet_timestamp),
         TALER_JSON_spec_absolute_time_nbo ("refund_deadline",

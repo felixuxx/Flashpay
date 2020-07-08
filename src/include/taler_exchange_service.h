@@ -751,6 +751,7 @@ TALER_EXCHANGE_wire_cancel (struct TALER_EXCHANGE_WireHandle *wh);
  * @param deposit_fee the deposit fee we expect to pay
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_denom_pub hash of the coin denomination's public key
  * @param coin_priv coin’s private key
  * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
@@ -763,6 +764,7 @@ TALER_EXCHANGE_deposit_permission_sign (
   const struct TALER_Amount *deposit_fee,
   const struct GNUNET_HashCode *h_wire,
   const struct GNUNET_HashCode *h_contract_terms,
+  const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct GNUNET_TIME_Absolute wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,

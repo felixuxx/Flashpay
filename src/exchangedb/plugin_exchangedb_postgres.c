@@ -662,13 +662,15 @@ postgres_get_session (void *cls)
                               ",old_coin_sig"
                               ",amount_with_fee_val"
                               ",amount_with_fee_frac"
+                              ",kc.denom_pub_hash"
                               ",denom.fee_refresh_val "
                               ",denom.fee_refresh_frac "
                               ",melt_serial_id"
                               " FROM refresh_commitments"
-                              "    JOIN known_coins "
-                              "      ON (refresh_commitments.old_coin_pub = known_coins.coin_pub)"
-                              "    JOIN denominations denom USING (denom_pub_hash)"
+                              " JOIN known_coins kc"
+                              "   ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
+                              " JOIN denominations denom"
+                              "   USING (denom_pub_hash)"
                               " WHERE old_coin_pub=$1;",
                               1),
 
@@ -953,6 +955,7 @@ postgres_get_session (void *cls)
                               ",amount_with_fee_frac"
                               ",denom.fee_deposit_val"
                               ",denom.fee_deposit_frac"
+                              ",kc.denom_pub_hash"
                               ",wallet_timestamp"
                               ",refund_deadline"
                               ",wire_deadline"
@@ -963,7 +966,7 @@ postgres_get_session (void *cls)
                               ",coin_sig"
                               ",deposit_serial_id"
                               " FROM deposits"
-                              "    JOIN known_coins"
+                              "    JOIN known_coins kc"
                               "      USING (coin_pub)"
                               "    JOIN denominations denom"
                               "      USING (denom_pub_hash)"
@@ -1296,8 +1299,8 @@ postgres_get_session (void *cls)
                               ",coins.denom_sig"
                               ",recoup_refresh_uuid"
                               " FROM recoup_refresh"
-                              "    JOIN known_coins coins"
-                              "      USING (coin_pub)"
+                              " JOIN known_coins coins"
+                              "   USING (coin_pub)"
                               " WHERE h_blind_ev IN"
                               "   (SELECT rrc.h_coin_ev"
                               "    FROM refresh_commitments"
@@ -1340,6 +1343,7 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("recoup_by_coin",
                               "SELECT"
                               " ro.reserve_pub"
+                              ",coins.denom_pub_hash"
                               ",coin_sig"
                               ",coin_blind"
                               ",amount_val"
@@ -1347,8 +1351,10 @@ postgres_get_session (void *cls)
                               ",timestamp"
                               ",recoup_uuid"
                               " FROM recoup"
-                              "    JOIN reserves_out ro"
-                              "      USING (h_blind_ev)"
+                              " JOIN reserves_out ro"
+                              "   USING (h_blind_ev)"
+                              " JOIN known_coins coins"
+                              "   USING (coin_pub)"
                               " WHERE recoup.coin_pub=$1"
                               " FOR UPDATE;",
                               1),
@@ -4079,6 +4085,8 @@ add_coin_deposit (void *cls,
                                             &deposit->refund_deadline),
         TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                             &deposit->wire_deadline),
+        GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                              &deposit->h_denom_pub),
         GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                               &deposit->merchant_pub),
         GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
@@ -4144,6 +4152,8 @@ add_coin_melt (void *cls,
         GNUNET_PQ_result_spec_auto_from_type ("rc",
                                               &melt->rc),
         /* oldcoin_index not needed */
+        GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                              &melt->h_denom_pub),
         GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
                                               &melt->coin_sig),
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -4335,6 +4345,8 @@ add_coin_recoup (void *cls,
                                               &recoup->reserve_pub),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                               &recoup->coin_sig),
+        GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                              &recoup->h_denom_pub),
         GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
                                               &recoup->coin_blind),
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount",

@@ -336,6 +336,11 @@ struct TALER_EXCHANGEDB_RecoupListEntry
   struct TALER_CoinSpendSignatureP coin_sig;
 
   /**
+   * Hash of the public denomination key used to sign the coin.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
    * Public key of the reserve the coin was paid back into.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
@@ -609,6 +614,11 @@ struct TALER_EXCHANGEDB_DepositListEntry
   struct GNUNET_HashCode h_wire;
 
   /**
+   * Hash of the public denomination key used to sign the coin.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
    * Detailed information about the receiver for executing the transaction.
    * Includes URL in payto://-format and salt.
    */
@@ -780,6 +790,11 @@ struct TALER_EXCHANGEDB_MeltListEntry
    * Refresh commitment this coin is melted into.
    */
   struct TALER_RefreshCommitmentP rc;
+
+  /**
+   * Hash of the public denomination key used to sign the coin.
+   */
+  struct GNUNET_HashCode h_denom_pub;
 
   /**
    * How much value is being melted?  This amount includes the fees,

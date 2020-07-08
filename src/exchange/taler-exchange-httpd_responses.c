@@ -66,6 +66,7 @@ TEH_RESPONSE_compile_transaction_history (
           .purpose.size = htonl (sizeof (dr)),
           .h_contract_terms = deposit->h_contract_terms,
           .h_wire = deposit->h_wire,
+          .h_denom_pub = deposit->h_denom_pub,
           .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
           .refund_deadline = GNUNET_TIME_absolute_hton (
             deposit->refund_deadline),
@@ -94,7 +95,7 @@ TEH_RESPONSE_compile_transaction_history (
             json_array_append_new (
               history,
               json_pack (
-                "{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+                "{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                 "type",
                 "DEPOSIT",
                 "amount",
@@ -111,6 +112,8 @@ TEH_RESPONSE_compile_transaction_history (
                 GNUNET_JSON_from_data_auto (&deposit->h_contract_terms),
                 "h_wire",
                 GNUNET_JSON_from_data_auto (&deposit->h_wire),
+                "h_denom_pub",
+                GNUNET_JSON_from_data_auto (&deposit->h_denom_pub),
                 "coin_sig",
                 GNUNET_JSON_from_data_auto (&deposit->csig))))
         {
@@ -151,7 +154,7 @@ TEH_RESPONSE_compile_transaction_history (
         if (0 !=
             json_array_append_new (
               history,
-              json_pack ("{s:s, s:o, s:o, s:o, s:o}",
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                          "type",
                          "MELT",
                          "amount",
@@ -160,6 +163,8 @@ TEH_RESPONSE_compile_transaction_history (
                          TALER_JSON_from_amount (&melt->melt_fee),
                          "rc",
                          GNUNET_JSON_from_data_auto (&melt->rc),
+                         "h_denom_pub",
+                         GNUNET_JSON_from_data_auto (&melt->h_denom_pub),
                          "coin_sig",
                          GNUNET_JSON_from_data_auto (&melt->coin_sig))))
         {
@@ -267,7 +272,7 @@ TEH_RESPONSE_compile_transaction_history (
         if (0 !=
             json_array_append_new (
               history,
-              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
                          "type",
                          "OLD-COIN-RECOUP",
                          "amount",
@@ -278,6 +283,8 @@ TEH_RESPONSE_compile_transaction_history (
                          GNUNET_JSON_from_data_auto (&epub),
                          "coin_pub",
                          GNUNET_JSON_from_data_auto (&pr->coin.coin_pub),
+                         "h_denom_pub",
+                         GNUNET_JSON_from_data_auto (&pr->coin.denom_pub_hash),
                          "timestamp",
                          GNUNET_JSON_from_time_abs (pr->timestamp))))
         {
@@ -315,7 +322,7 @@ TEH_RESPONSE_compile_transaction_history (
         if (0 !=
             json_array_append_new (
               history,
-              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
                          "type",
                          "RECOUP",
                          "amount",
@@ -326,6 +333,8 @@ TEH_RESPONSE_compile_transaction_history (
                          GNUNET_JSON_from_data_auto (&epub),
                          "reserve_pub",
                          GNUNET_JSON_from_data_auto (&recoup->reserve_pub),
+                         "h_denom_pub",
+                         GNUNET_JSON_from_data_auto (&recoup->h_denom_pub),
                          "timestamp",
                          GNUNET_JSON_from_time_abs (recoup->timestamp))))
         {
@@ -369,7 +378,7 @@ TEH_RESPONSE_compile_transaction_history (
         if (0 !=
             json_array_append_new (
               history,
-              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
                          "type",
                          "RECOUP-REFRESH",
                          "amount",
@@ -380,6 +389,8 @@ TEH_RESPONSE_compile_transaction_history (
                          GNUNET_JSON_from_data_auto (&epub),
                          "old_coin_pub",
                          GNUNET_JSON_from_data_auto (&pr->old_coin_pub),
+                         "h_denom_pub",
+                         GNUNET_JSON_from_data_auto (&pr->coin.denom_pub_hash),
                          "timestamp",
                          GNUNET_JSON_from_time_abs (pr->timestamp))))
         {

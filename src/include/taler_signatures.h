@@ -351,6 +351,11 @@ struct TALER_DepositRequestPS
   struct GNUNET_HashCode h_wire GNUNET_PACKED;
 
   /**
+   * Hash over the denomination public key used to sign the coin.
+   */
+  struct GNUNET_HashCode h_denom_pub GNUNET_PACKED;
+
+  /**
    * Time when this request was generated.  Used, for example, to
    * assess when (roughly) the income was achieved for tax purposes.
    * Note that the Exchange will only check that the timestamp is not "too
@@ -578,6 +583,12 @@ struct TALER_RefreshMeltCoinAffirmationPS
    * Which melt commitment is made by the wallet.
    */
   struct TALER_RefreshCommitmentP rc GNUNET_PACKED;
+
+  /**
+   * Hash over the denomination public key used to sign the coin.
+   * FIXME: add here, initialize everywhere!
+   */
+  // struct GNUNET_HashCode h_denom_pub GNUNET_PACKED;
 
   /**
    * How much of the value of the coin should be melted?  This amount
