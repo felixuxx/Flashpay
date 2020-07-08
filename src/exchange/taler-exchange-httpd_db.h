@@ -27,6 +27,22 @@
 
 
 /**
+ * Ensure coin is known in the database, and handle conflicts and errors.
+ *
+ * @param coin the coin to make known
+ * @param connection MHD request context
+ * @param session database session and transaction to use
+ * @param[out] mhd_ret set to MHD status on error
+ * @return transaction status, negative on error (@a mhd_ret will be set in this case)
+ */
+enum GNUNET_DB_QueryStatus
+TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
+                     struct MHD_Connection *connection,
+                     struct TALER_EXCHANGEDB_Session *session,
+                     MHD_RESULT *mhd_ret);
+
+
+/**
  * Function implementing a database transaction.  Runs the transaction
  * logic; IF it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the

@@ -311,18 +311,12 @@ melt_transaction (void *cls,
   /* First, make sure coin is 'known' in database */
   if (! rmc->coin_is_dirty)
   {
-    qs = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
-                                        session,
-                                        &rmc->refresh_session.coin);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      *mhd_ret
-        = TALER_MHD_reply_with_error (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
-                                      "could not persist coin data");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
+    qs = TEH_make_coin_known (&rmc->refresh_session.coin,
+                              connection,
+                              session,
+                              mhd_ret);
+    if (qs < 0)
+      return qs;
   }
 
   /* Check if we already created a matching refresh_session */

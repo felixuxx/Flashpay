@@ -218,18 +218,12 @@ deposit_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   /* make sure coin is 'known' in database */
-  qs = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
-                                      session,
-                                      &deposit->coin);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    *mhd_ret
-      = TALER_MHD_reply_with_error (connection,
-                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                    TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
-                                    "could not persist coin data");
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
+  qs = TEH_make_coin_known (&deposit->coin,
+                            connection,
+                            session,
+                            mhd_ret);
+  if (qs < 0)
+    return qs;
 
   /* Theoretically, someone other threat may have received
      and committed the deposit in the meantime. Check now

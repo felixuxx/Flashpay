@@ -1841,7 +1841,33 @@ struct TALER_EXCHANGEDB_Plugin
    * @param coin the coin that must be made known
    * @return database transaction status, non-negative on success
    */
-  enum GNUNET_DB_QueryStatus
+  enum TALER_EXCHANGEDB_CoinKnownStatus
+  {
+    /**
+     * The coin was successfully added.
+     */
+    TALER_EXCHANGEDB_CKS_ADDED = 1,
+
+    /**
+     * The coin was already present.
+     */
+    TALER_EXCHANGEDB_CKS_PRESENT = 0,
+
+    /**
+     * Serialization failure.
+     */
+    TALER_EXCHANGEDB_CKS_SOFT_FAIL = -1,
+
+    /**
+     * Hard database failure.
+     */
+    TALER_EXCHANGEDB_CKS_HARD_FAIL = -2,
+
+    /**
+     * Conflicting coin (different denomination key) already in database.
+     */
+    TALER_EXCHANGEDB_CKS_CONFLICT = -3,
+  }
   (*ensure_coin_known)(void *cls,
                        struct TALER_EXCHANGEDB_Session *session,
                        const struct TALER_CoinPublicInfo *coin);

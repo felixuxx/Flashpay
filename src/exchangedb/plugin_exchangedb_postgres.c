@@ -3187,7 +3187,7 @@ postgres_count_known_coins (void *cls,
  * @param coin the coin that must be made known
  * @return database transaction status, non-negative on success
  */
-static enum GNUNET_DB_QueryStatus
+static enum TALER_EXCHANGEDB_CoinKnownStatus
 postgres_ensure_coin_known (void *cls,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_CoinPublicInfo *coin)
@@ -3207,33 +3207,45 @@ postgres_ensure_coin_known (void *cls,
 #endif
 
   /* check if the coin is already known */
+  // FIXME: modify to not also fetch the RSA signature, needlessly costly!
   qs = postgres_get_known_coin (pc,
                                 session,
                                 &coin->coin_pub,
                                 &known_coin);
-  if (0 > qs)
+  switch (qs)
   {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     GNUNET_CRYPTO_rsa_signature_free (known_coin.denom_sig.rsa_signature);
-    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;   /* no change! */
+    if (0 == GNUNET_memcmp (&known_coin.denom_pub_hash,
+                            &coin->denom_pub_hash))
+      return TALER_EXCHANGEDB_CKS_PRESENT;
+    GNUNET_break_op (0);
+    return TALER_EXCHANGEDB_CKS_CONFLICT;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    break;
   }
-  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
+
   /* if not known, insert it */
   qs = insert_known_coin (pc,
                           session,
                           coin);
-  if (0 >= qs)
+  switch (qs)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      qs = GNUNET_DB_STATUS_HARD_ERROR;   /* should be impossible */
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    break;
   }
-  return qs;
+  return TALER_EXCHANGEDB_CKS_ADDED;
 }
 
 

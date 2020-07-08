@@ -41,6 +41,78 @@
 
 
 /**
+ * Ensure coin is known in the database, and handle conflicts and errors.
+ *
+ * @param coin the coin to make known
+ * @param connection MHD request context
+ * @param session database session and transaction to use
+ * @param[out] mhd_ret set to MHD status on error
+ * @return transaction status, negative on error (@a mhd_ret will be set in this case)
+ */
+enum GNUNET_DB_QueryStatus
+TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
+                     struct MHD_Connection *connection,
+                     struct TALER_EXCHANGEDB_Session *session,
+                     MHD_RESULT *mhd_ret)
+{
+  enum TALER_EXCHANGEDB_CoinKnownStatus cks;
+
+  /* make sure coin is 'known' in database */
+  cks = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
+                                       session,
+                                       coin);
+  switch (cks)
+  {
+  case TALER_EXCHANGEDB_CKS_ADDED:
+    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  case TALER_EXCHANGEDB_CKS_PRESENT:
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  case TALER_EXCHANGEDB_CKS_SOFT_FAIL:
+    return GNUNET_DB_STATUS_SOFT_ERROR;
+  case TALER_EXCHANGEDB_CKS_HARD_FAIL:
+    *mhd_ret
+      = TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
+                                    "could not persist coin data");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  case TALER_EXCHANGEDB_CKS_CONFLICT:
+    break;
+  }
+
+  {
+    struct TALER_EXCHANGEDB_TransactionList *tl;
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+                                            session,
+                                            &coin->coin_pub,
+                                            GNUNET_NO,
+                                            &tl);
+    if (0 > qs)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
+          "could not fetch coin transaction history");
+      return qs;
+    }
+    *mhd_ret
+      = TEH_RESPONSE_reply_coin_insufficient_funds (
+          connection,
+          TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY,
+          &coin->coin_pub,
+          tl);
+    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                            tl);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+}
+
+
+/**
  * Run a database transaction for @a connection.
  * Starts a transaction and calls @a cb.  Upon success,
  * attempts to commit the transaction.  Upon soft failures,
