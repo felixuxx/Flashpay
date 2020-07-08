@@ -131,6 +131,7 @@ TEH_RESPONSE_compile_transaction_history (
           .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
           .purpose.size = htonl (sizeof (ms)),
           .rc = melt->rc,
+          .h_denom_pub = melt->h_denom_pub,
           .coin_pub = *coin_pub
         };
 

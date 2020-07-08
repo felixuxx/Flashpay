@@ -392,9 +392,11 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct MeltData *md;
   struct TALER_CoinSpendSignatureP confirm_sig;
-  struct TALER_RefreshMeltCoinAffirmationPS melt;
-  struct GNUNET_HashCode h_denom_pub;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
+  struct TALER_RefreshMeltCoinAffirmationPS melt = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
+    .purpose.size = htonl (sizeof (melt)),
+  };
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
@@ -405,9 +407,6 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
-  melt.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
-  melt.purpose.size = htonl (sizeof (struct
-                                     TALER_RefreshMeltCoinAffirmationPS));
   melt.rc = md->rc;
   TALER_amount_hton (&melt.amount_with_fee,
                      &md->melted_coin.melt_amount_with_fee);
@@ -415,16 +414,16 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                      &md->melted_coin.fee_melt);
   GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
                                       &melt.coin_pub.eddsa_pub);
+  GNUNET_CRYPTO_rsa_public_key_hash (md->melted_coin.pub_key.rsa_public_key,
+                                     &melt.h_denom_pub);
   GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
                             &melt,
                             &confirm_sig.eddsa_signature);
-  GNUNET_CRYPTO_rsa_public_key_hash (md->melted_coin.pub_key.rsa_public_key,
-                                     &h_denom_pub);
   melt_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
                         "coin_pub",
                         GNUNET_JSON_from_data_auto (&melt.coin_pub),
                         "denom_pub_hash",
-                        GNUNET_JSON_from_data_auto (&h_denom_pub),
+                        GNUNET_JSON_from_data_auto (&melt.h_denom_pub),
                         "denom_sig",
                         GNUNET_JSON_from_rsa_signature (
                           md->melted_coin.sig.rsa_signature),

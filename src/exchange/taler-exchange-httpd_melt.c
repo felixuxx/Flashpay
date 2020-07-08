@@ -380,6 +380,7 @@ handle_melt (struct MHD_Connection *connection,
       .purpose.size = htonl (sizeof (body)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
       .rc = rmc->refresh_session.rc,
+      .h_denom_pub = rmc->refresh_session.coin.denom_pub_hash,
       .coin_pub = rmc->refresh_session.coin.coin_pub
     };
 

@@ -1283,6 +1283,8 @@ refresh_session_cb (void *cls,
       .coin_pub = *coin_pub
     };
 
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+                                       &rmc.h_denom_pub);
     TALER_amount_hton (&rmc.amount_with_fee,
                        amount_with_fee);
     if (GNUNET_OK !=
@@ -1620,6 +1622,8 @@ deposit_cb (void *cls,
       .coin_pub = *coin_pub
     };
 
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
+                                       &dr.h_denom_pub);
     if (GNUNET_OK !=
         TALER_JSON_merchant_wire_signature_hash (receiver_wire_account,
                                                  &dr.h_wire))

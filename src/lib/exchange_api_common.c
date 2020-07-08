@@ -586,6 +586,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("rc",
                                      &rm.rc),
+        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                     &rm.h_denom_pub),
         TALER_JSON_spec_amount_nbo ("melt_fee",
                                     &rm.melt_fee),
         GNUNET_JSON_spec_end ()

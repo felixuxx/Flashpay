@@ -586,9 +586,8 @@ struct TALER_RefreshMeltCoinAffirmationPS
 
   /**
    * Hash over the denomination public key used to sign the coin.
-   * FIXME: add here, initialize everywhere!
    */
-  // struct GNUNET_HashCode h_denom_pub GNUNET_PACKED;
+  struct GNUNET_HashCode h_denom_pub GNUNET_PACKED;
 
   /**
    * How much of the value of the coin should be melted?  This amount
