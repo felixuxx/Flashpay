@@ -133,7 +133,7 @@ recoup_transaction (void *cls,
   int existing_recoup_found;
 
   /* make sure coin is 'known' in database */
-  qs = TEH_make_coin_known (&rmc->refresh_session.coin,
+  qs = TEH_make_coin_known (pc->coin,
                             connection,
                             session,
                             mhd_ret);
