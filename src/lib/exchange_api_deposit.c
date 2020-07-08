@@ -246,13 +246,18 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_deposit_signature_forbidden (
+verify_deposit_signature_conflict (
   const struct TALER_EXCHANGE_DepositHandle *dh,
   const json_t *json)
 {
   json_t *history;
   struct TALER_Amount total;
+  enum TALER_ErrorCode ec;
+  struct GNUNET_HashCode h_denom_pub;
 
+  memset (&h_denom_pub,
+          0,
+          sizeof (h_denom_pub));
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
@@ -260,30 +265,46 @@ verify_deposit_signature_forbidden (
                                           dh->dki.value.currency,
                                           &dh->depconf.coin_pub,
                                           history,
+                                          &h_denom_pub,
                                           &total))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (0 >
-      TALER_amount_add (&total,
-                        &total,
-                        &dh->amount_with_fee))
+  ec = TALER_JSON_get_error_code (json);
+  switch (ec)
   {
-    /* clearly not OK if our transaction would have caused
-       the overflow... */
-    return GNUNET_OK;
-  }
+  case TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS:
+    if (0 >
+        TALER_amount_add (&total,
+                          &total,
+                          &dh->amount_with_fee))
+    {
+      /* clearly not OK if our transaction would have caused
+         the overflow... */
+      return GNUNET_OK;
+    }
 
-  if (0 >= TALER_amount_cmp (&total,
-                             &dh->dki.value))
-  {
-    /* transaction should have still fit */
-    GNUNET_break (0);
+    if (0 >= TALER_amount_cmp (&total,
+                               &dh->dki.value))
+    {
+      /* transaction should have still fit */
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    /* everything OK, proof of double-spending was provided */
+    return GNUNET_OK;
+  case TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY:
+    if (0 != GNUNET_memcmp (&dh->dki.h_key,
+                            &h_denom_pub))
+      return GNUNET_OK; /* indeed, proof with different denomination key provided */
+    /* invalid proof provided */
+    return GNUNET_SYSERR;
+  default:
+    /* unexpected error code */
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  /* everything OK, proof of double-spending was provided */
-  return GNUNET_OK;
 }
 
 
@@ -343,8 +364,8 @@ handle_deposit_finished (void *cls,
   case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
     if (GNUNET_OK !=
-        verify_deposit_signature_forbidden (dh,
-                                            j))
+        verify_deposit_signature_conflict (dh,
+                                           j))
     {
       GNUNET_break_op (0);
       hr.http_status = 0;

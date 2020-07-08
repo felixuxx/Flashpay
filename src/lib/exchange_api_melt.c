@@ -178,6 +178,8 @@ verify_melt_signature_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
     GNUNET_JSON_spec_end ()
   };
   const struct MeltedCoin *mc;
+  enum TALER_ErrorCode ec;
+  struct GNUNET_HashCode h_denom_pub;
 
   /* parse JSON reply */
   if (GNUNET_OK !=
@@ -211,6 +213,9 @@ verify_melt_signature_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   }
 
   /* verify coin history */
+  memset (&h_denom_pub,
+          0,
+          sizeof (h_denom_pub));
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
@@ -218,6 +223,7 @@ verify_melt_signature_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
                                           original_value.currency,
                                           &coin_pub,
                                           history,
+                                          &h_denom_pub,
                                           &total))
   {
     GNUNET_break_op (0);
@@ -226,27 +232,43 @@ verify_melt_signature_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   }
   json_decref (history);
 
-  /* check if melt operation was really too expensive given history */
-  if (0 >
-      TALER_amount_add (&total,
-                        &total,
-                        &melt_value_with_fee))
+  ec = TALER_JSON_get_error_code (json);
+  switch (ec)
   {
-    /* clearly not OK if our transaction would have caused
-       the overflow... */
-    return GNUNET_OK;
-  }
+  case TALER_EC_MELT_INSUFFICIENT_FUNDS:
+    /* check if melt operation was really too expensive given history */
+    if (0 >
+        TALER_amount_add (&total,
+                          &total,
+                          &melt_value_with_fee))
+    {
+      /* clearly not OK if our transaction would have caused
+         the overflow... */
+      return GNUNET_OK;
+    }
 
-  if (0 >= TALER_amount_cmp (&total,
-                             &original_value))
-  {
-    /* transaction should have still fit */
-    GNUNET_break (0);
+    if (0 >= TALER_amount_cmp (&total,
+                               &original_value))
+    {
+      /* transaction should have still fit */
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+
+    /* everything OK, valid proof of double-spending was provided */
+    return GNUNET_OK;
+  case TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY:
+    if (0 != GNUNET_memcmp (&mh->dki.h_key,
+                            &h_denom_pub))
+      return GNUNET_OK; /* indeed, proof with different denomination key provided */
+    /* invalid proof provided */
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  default:
+    /* unexpected error code */
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
-  /* everything OK, valid proof of double-spending was provided */
-  return GNUNET_OK;
 }
 
 

@@ -175,7 +175,9 @@ insert_deposit_run (void *cls,
 
   GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
                                      &deposit.coin.denom_pub_hash);
-
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &deposit.coin.coin_pub,
+                              sizeof (deposit.coin.coin_pub));
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &hc);
   deposit.coin.denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv,
@@ -198,10 +200,9 @@ insert_deposit_run (void *cls,
                    deposit.receiver_wire_account,
                    &deposit.h_wire));
   deposit.timestamp = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&deposit.timestamp);
-  deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (
-    ids->wire_deadline);
-  GNUNET_TIME_round_abs (&deposit.wire_deadline);
+  (void) GNUNET_TIME_round_abs (&deposit.timestamp);
+  deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (ids->wire_deadline);
+  (void) GNUNET_TIME_round_abs (&deposit.wire_deadline);
 
   /* finally, actually perform the DB operation */
   if ( (GNUNET_OK !=
@@ -222,6 +223,8 @@ insert_deposit_run (void *cls,
                                   ids->dbc->session)) )
   {
     GNUNET_break (0);
+    ids->dbc->plugin->rollback (ids->dbc->plugin->cls,
+                                ids->dbc->session);
     TALER_TESTING_interpreter_fail (is);
   }
 

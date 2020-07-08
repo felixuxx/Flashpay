@@ -447,6 +447,7 @@ TALER_EXCHANGE_free_reserve_history (
  * @param currency expected currency for the coin
  * @param coin_pub public key of the coin
  * @param history history of the coin in json encoding
+ * @param[out] h_denom_pub set to the hash of the coin's denomination (if available)
  * @param[out] total how much of the coin has been spent according to @a history
  * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
  */
@@ -456,6 +457,7 @@ TALER_EXCHANGE_verify_coin_history (
   const char *currency,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   json_t *history,
+  struct GNUNET_HashCode *h_denom_pub,
   struct TALER_Amount *total)
 {
   size_t len;
@@ -558,6 +560,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      *h_denom_pub = dr.h_denom_pub;
       if (NULL != dk)
       {
         /* check that deposit fee matches our expectations from /keys! */
@@ -615,6 +618,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      *h_denom_pub = rm.h_denom_pub;
       if (NULL != dk)
       {
         /* check that melt fee matches our expectations from /keys! */
@@ -703,16 +707,34 @@ TALER_EXCHANGE_verify_coin_history (
     else if (0 == strcasecmp (type,
                               "RECOUP"))
     {
-      struct TALER_RecoupConfirmationPS pc;
+      struct TALER_RecoupConfirmationPS pc = {
+        .purpose.size = htonl (sizeof (pc)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
+        .coin_pub = *coin_pub
+      };
+      struct TALER_RecoupRequestPS rr = {
+        .purpose.size = htonl (sizeof (pc)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+        .coin_pub = *coin_pub
+      };
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct TALER_ExchangeSignatureP exchange_sig;
+      struct TALER_CoinSpendSignatureP coin_sig;
       struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount_nbo ("amount",
+                                    &pc.recoup_amount),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &exchange_pub),
         GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                      &pc.reserve_pub),
+        GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                     &coin_sig),
+        GNUNET_JSON_spec_fixed_auto ("coin_blind",
+                                     &rr.coin_blind),
+        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                     &rr.h_denom_pub),
         TALER_JSON_spec_absolute_time_nbo ("timestamp",
                                            &pc.timestamp),
         GNUNET_JSON_spec_end ()
@@ -726,9 +748,131 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      pc.purpose.size = htonl (sizeof (pc));
-      pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
-      pc.coin_pub = *coin_pub;
+      TALER_amount_hton (&pc.recoup_amount,
+                         &amount);
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
+                                      &pc,
+                                      &exchange_sig.eddsa_signature,
+                                      &exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
+                                      &rr,
+                                      &coin_sig.eddsa_signature,
+                                      &coin_pub->eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      *h_denom_pub = rr.h_denom_pub;
+      add = GNUNET_YES;
+    }
+    else if (0 == strcasecmp (type,
+                              "RECOUP-REFRESH"))
+    {
+      struct TALER_RecoupRefreshConfirmationPS pc = {
+        .purpose.size = htonl (sizeof (pc)),
+        .purpose.purpose = htonl (
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
+        .coin_pub = *coin_pub
+      };
+      struct TALER_RecoupRequestPS rr = {
+        .purpose.size = htonl (sizeof (pc)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+        .coin_pub = *coin_pub
+      };
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
+      struct TALER_CoinSpendSignatureP coin_sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount_nbo ("amount",
+                                    &pc.recoup_amount),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &exchange_pub),
+        GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                     &coin_sig),
+        GNUNET_JSON_spec_fixed_auto ("old_coin_pub",
+                                     &pc.old_coin_pub),
+        GNUNET_JSON_spec_fixed_auto ("coin_blind",
+                                     &rr.coin_blind),
+        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                     &rr.h_denom_pub),
+        TALER_JSON_spec_absolute_time_nbo ("timestamp",
+                                           &pc.timestamp),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      TALER_amount_hton (&pc.recoup_amount,
+                         &amount);
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (
+            TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH,
+            &pc,
+            &exchange_sig.eddsa_signature,
+            &exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
+                                      &rr,
+                                      &coin_sig.eddsa_signature,
+                                      &coin_pub->eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      *h_denom_pub = rr.h_denom_pub;
+      add = GNUNET_YES;
+    }
+    else if (0 == strcasecmp (type,
+                              "OLD-COIN-RECOUP"))
+    {
+      struct TALER_RecoupRefreshConfirmationPS pc = {
+        .purpose.size = htonl (sizeof (pc)),
+        .purpose.purpose = htonl (
+          TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
+        .old_coin_pub = *coin_pub
+      };
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_ExchangeSignatureP exchange_sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount_nbo ("amount",
+                                    &pc.recoup_amount),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &exchange_pub),
+        GNUNET_JSON_spec_fixed_auto ("coin_pub",
+                                     &pc.coin_pub),
+        TALER_JSON_spec_absolute_time_nbo ("timestamp",
+                                           &pc.timestamp),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       TALER_amount_hton (&pc.recoup_amount,
                          &amount);
       if (GNUNET_OK !=
@@ -749,6 +893,7 @@ TALER_EXCHANGE_verify_coin_history (
       GNUNET_assert (GNUNET_SYSERR == add);
       return GNUNET_SYSERR;
     }
+
     if (GNUNET_YES == add)
     {
       /* This amount should be added to the total */
@@ -779,8 +924,10 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+
     }
   }
+
 
   /* Finally, subtract 'rtotal' from total to handle the subtractions */
   if (0 >
