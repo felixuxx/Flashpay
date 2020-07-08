@@ -217,6 +217,20 @@ deposit_transaction (void *cls,
   struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
 
+  /* make sure coin is 'known' in database */
+  qs = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
+                                      session,
+                                      &deposit->coin);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    *mhd_ret
+      = TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
+                                    "could not persist coin data");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
   /* Theoretically, someone other threat may have received
      and committed the deposit in the meantime. Check now
      that we are in the transaction scope. */
@@ -491,26 +505,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
                                        "deposited amount smaller than depositing fee");
-  }
-
-  /* make sure coin is 'known' in database */
-  {
-    MHD_RESULT mhd_ret;
-    struct TEH_DB_KnowCoinContext kcc = {
-      .coin = &deposit.coin,
-      .connection = connection
-    };
-
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
-                                "know coin for deposit",
-                                &mhd_ret,
-                                &TEH_DB_know_coin_transaction,
-                                &kcc))
-    {
-      GNUNET_JSON_parse_free (spec);
-      return mhd_ret;
-    }
   }
 
   /* check deposit signature */

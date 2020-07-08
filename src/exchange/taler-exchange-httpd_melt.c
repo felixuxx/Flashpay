@@ -157,6 +157,12 @@ struct MeltContext
    */
   int zombie_required;
 
+  /**
+   * We already checked and noticed that the coin is known. Hence we
+   * can skip the "ensure_coin_known" step of the transaction.
+   */
+  bool coin_is_dirty;
+
 };
 
 
@@ -302,6 +308,23 @@ melt_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   uint32_t noreveal_index;
 
+  /* First, make sure coin is 'known' in database */
+  if (! rmc->coin_is_dirty)
+  {
+    qs = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
+                                        session,
+                                        &rmc->refresh_session.coin);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      *mhd_ret
+        = TALER_MHD_reply_with_error (connection,
+                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                      TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
+                                      "could not persist coin data");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  }
+
   /* Check if we already created a matching refresh_session */
   qs = TEH_plugin->get_melt_index (TEH_plugin->cls,
                                    session,
@@ -437,7 +460,6 @@ check_for_denomination_key (struct MHD_Connection *connection,
                             struct MeltContext *rmc)
 {
   struct TEH_KS_StateHandle *key_state;
-  int coin_is_dirty = GNUNET_NO;
 
   key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
   if (NULL == key_state)
@@ -507,8 +529,8 @@ check_for_denomination_key (struct MHD_Connection *connection,
         else
         {
           /* Minor optimization: no need to run the
-             #TEH_DB_know_coin_transaction below */
-          coin_is_dirty = GNUNET_YES;
+             "ensure_coin_known" part of the transaction */
+          rmc->coin_is_dirty = true;
         }
       }
     }
@@ -567,24 +589,6 @@ check_for_denomination_key (struct MHD_Connection *connection,
     }
   }
   TEH_KS_release (key_state);
-
-  /* run actual logic, now that the request was parsed */
-  /* First, make sure coin is 'known' in database */
-  if (GNUNET_NO == coin_is_dirty)
-  {
-    struct TEH_DB_KnowCoinContext kcc;
-    MHD_RESULT mhd_ret;
-
-    kcc.coin = &rmc->refresh_session.coin;
-    kcc.connection = connection;
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
-                                "know coin for melt",
-                                &mhd_ret,
-                                &TEH_DB_know_coin_transaction,
-                                &kcc))
-      return mhd_ret;
-  }
 
   /* sanity-check that "total melt amount > melt fee" */
   if (0 <

@@ -27,44 +27,6 @@
 
 
 /**
- * Type of closure for #TEH_DB_know_coin_transaction.
- */
-struct TEH_DB_KnowCoinContext
-{
-  /**
-   * The coin to make sure it is known.
-   */
-  const struct TALER_CoinPublicInfo *coin;
-
-  /**
-   * MHD connection to queue errors with.
-   */
-  struct MHD_Connection *connection;
-};
-
-
-/**
- * Execute database transaction to ensure coin is known. Run the transaction
- * logic; IF it returns a non-error code, the transaction logic MUST
- * NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
- * it returns the soft error code, the function MAY be called again to
- * retry and MUST not queue a MHD response.
- *
- * @param cls a `struct TEH_DB_KnowCoinContext`
- * @param connection MHD request context, must not be NULL
- * @param session database session and transaction to use
- * @param[out] mhd_ret set to MHD status on error, must not be NULL
- * @return transaction status
- */
-enum GNUNET_DB_QueryStatus
-TEH_DB_know_coin_transaction (void *cls,
-                              struct MHD_Connection *connection,
-                              struct TALER_EXCHANGEDB_Session *session,
-                              MHD_RESULT *mhd_ret);
-
-
-/**
  * Function implementing a database transaction.  Runs the transaction
  * logic; IF it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the

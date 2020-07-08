@@ -132,6 +132,20 @@ recoup_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   int existing_recoup_found;
 
+  /* make sure coin is 'known' in database */
+  qs = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
+                                      session,
+                                      pc->coin);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    *mhd_ret
+      = TALER_MHD_reply_with_error (connection,
+                                    MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                    TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
+                                    "could not persist coin data");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
   /* Check whether a recoup is allowed, and if so, to which
      reserve / account the money should go */
   if (pc->refreshed)
@@ -449,22 +463,6 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                       coin_ev_size,
                       &pc.h_blind);
   GNUNET_free (coin_ev);
-
-  /* make sure coin is 'known' in database */
-  {
-    struct TEH_DB_KnowCoinContext kcc;
-    MHD_RESULT mhd_ret;
-
-    kcc.coin = coin;
-    kcc.connection = connection;
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
-                                "know coin for recoup",
-                                &mhd_ret,
-                                &TEH_DB_know_coin_transaction,
-                                &kcc))
-      return mhd_ret;
-  }
 
   /* Perform actual recoup transaction */
   pc.coin_sig = coin_sig;
