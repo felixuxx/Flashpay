@@ -168,7 +168,8 @@ CREATE INDEX IF NOT EXISTS reserves_out_for_get_withdraw_info
 
 
 CREATE TABLE IF NOT EXISTS known_coins
-  (coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)
+  (known_coin_id BIGSERIAL UNIQUE
+  ,coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)
   ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
   ,denom_sig BYTEA NOT NULL
   );
