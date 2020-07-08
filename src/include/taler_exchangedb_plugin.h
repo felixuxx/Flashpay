@@ -975,6 +975,29 @@ struct TALER_EXCHANGEDB_Session;
  * @param cls closure
  * @param rowid unique ID for the deposit in our DB, used for marking
  *              it as 'tiny' or 'done'
+ * @param coin_pub public key of the coin
+ * @param amount_with_fee amount that was deposited including fee
+ * @param deposit_fee amount the exchange gets to keep as transaction fees
+ * @param h_contract_terms hash of the proposal data known to merchant and customer
+ * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
+ */
+typedef enum GNUNET_DB_QueryStatus
+(*TALER_EXCHANGEDB_MatchingDepositIterator)(
+  void *cls,
+  uint64_t rowid,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *deposit_fee,
+  const struct GNUNET_HashCode *h_contract_terms);
+
+
+/**
+ * Function called with details about deposits that have been made,
+ * with the goal of executing the corresponding wire transaction.
+ *
+ * @param cls closure
+ * @param rowid unique ID for the deposit in our DB, used for marking
+ *              it as 'tiny' or 'done'
  * @param exchange_timestamp when did the exchange receive the deposit
  * @param wallet_timestamp when did the wallet sign the contract
  * @param merchant_pub public key of the merchant
@@ -985,7 +1008,7 @@ struct TALER_EXCHANGEDB_Session;
  * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant, includes
- *        'url' in payto://-format; NULL from iterate_matching_deposits()
+ *        'url' in payto://-format;
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 typedef enum GNUNET_DB_QueryStatus
@@ -2019,7 +2042,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_wire,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
-    TALER_EXCHANGEDB_DepositIterator deposit_cb,
+    TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
     void *deposit_cb_cls,
     uint32_t limit);
 

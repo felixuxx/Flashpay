@@ -842,7 +842,7 @@ static uint64_t deposit_rowid;
  * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
- * @param wire wire details for the merchant, NULL from iterate_matching_deposits()
+ * @param wire wire details for the merchant
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 static enum GNUNET_DB_QueryStatus
@@ -862,10 +862,9 @@ deposit_cb (void *cls,
   struct GNUNET_HashCode h_wire;
 
   deposit_rowid = rowid;
-  if (NULL != wire)
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_merchant_wire_signature_hash (wire,
-                                                            &h_wire));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_merchant_wire_signature_hash (wire,
+                                                          &h_wire));
   if ( (0 != GNUNET_memcmp (merchant_pub,
                             &deposit->merchant_pub)) ||
        (0 != TALER_amount_cmp (amount_with_fee,
@@ -877,9 +876,51 @@ deposit_cb (void *cls,
        (0 != memcmp (coin_pub,
                      &deposit->coin.coin_pub,
                      sizeof (struct TALER_CoinSpendPublicKeyP))) ||
-       ( (NULL != wire) &&
-         (0 != GNUNET_memcmp (&h_wire,
-                              &deposit->h_wire)) ) )
+       (0 != GNUNET_memcmp (&h_wire,
+                            &deposit->h_wire)) )
+  {
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+}
+
+
+/**
+ * Function called with details about deposits that
+ * have been made.  Called in the test on the
+ * deposit given in @a cls.
+ *
+ * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
+ * @param rowid unique ID for the deposit in our DB, used for marking
+ *              it as 'tiny' or 'done'
+ * @param coin_pub public key of the coin
+ * @param amount_with_fee amount that was deposited including fee
+ * @param deposit_fee amount the exchange gets to keep as transaction fees
+ * @param h_contract_terms hash of the proposal data known to merchant and customer
+ * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
+ */
+static enum GNUNET_DB_QueryStatus
+matching_deposit_cb (void *cls,
+                     uint64_t rowid,
+                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     const struct TALER_Amount *amount_with_fee,
+                     const struct TALER_Amount *deposit_fee,
+                     const struct GNUNET_HashCode *h_contract_terms)
+{
+  struct TALER_EXCHANGEDB_Deposit *deposit = cls;
+
+  deposit_rowid = rowid;
+  if ( (0 != TALER_amount_cmp (amount_with_fee,
+                               &deposit->amount_with_fee)) ||
+       (0 != TALER_amount_cmp (deposit_fee,
+                               &deposit->deposit_fee)) ||
+       (0 != GNUNET_memcmp (h_contract_terms,
+                            &deposit->h_contract_terms)) ||
+       (0 != memcmp (coin_pub,
+                     &deposit->coin.coin_pub,
+                     sizeof (struct TALER_CoinSpendPublicKeyP))) )
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -1936,7 +1977,7 @@ run (void *cls)
                                              session,
                                              &deposit.h_wire,
                                              &deposit.merchant_pub,
-                                             &deposit_cb,
+                                             &matching_deposit_cb,
                                              &deposit,
                                              2));
   sleep (2); /* giv deposit time to be ready */

@@ -908,9 +908,6 @@ postgres_get_session (void *cls)
                               ",amount_with_fee_frac"
                               ",denom.fee_deposit_val"
                               ",denom.fee_deposit_frac"
-                              ",wire_deadline"
-                              ",exchange_timestamp"
-                              ",wallet_timestamp"
                               ",h_contract_terms"
                               ",coin_pub"
                               " FROM deposits"
@@ -2868,7 +2865,7 @@ struct MatchingDepositContext
   /**
    * Function to call for each result
    */
-  TALER_EXCHANGEDB_DepositIterator deposit_cb;
+  TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb;
 
   /**
    * Closure for @e deposit_cb.
@@ -2929,9 +2926,6 @@ match_deposit_cb (void *cls,
   {
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
-    struct GNUNET_TIME_Absolute exchange_timestamp;
-    struct GNUNET_TIME_Absolute wallet_timestamp;
-    struct GNUNET_TIME_Absolute wire_deadline;
     struct GNUNET_HashCode h_contract_terms;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     uint64_t serial_id;
@@ -2943,12 +2937,6 @@ match_deposit_cb (void *cls,
                                    &amount_with_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                    &deposit_fee),
-      TALER_PQ_result_spec_absolute_time ("wire_deadline",
-                                          &wire_deadline),
-      TALER_PQ_result_spec_absolute_time ("exchange_timestamp",
-                                          &exchange_timestamp),
-      TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
-                                          &wallet_timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
@@ -2967,15 +2955,10 @@ match_deposit_cb (void *cls,
     }
     qs = mdc->deposit_cb (mdc->deposit_cb_cls,
                           serial_id,
-                          exchange_timestamp,
-                          wallet_timestamp,
-                          mdc->merchant_pub,
                           &coin_pub,
                           &amount_with_fee,
                           &deposit_fee,
-                          &h_contract_terms,
-                          wire_deadline,
-                          NULL);
+                          &h_contract_terms);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
       break;
@@ -3003,7 +2986,7 @@ postgres_iterate_matching_deposits (
   struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_wire,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  TALER_EXCHANGEDB_DepositIterator deposit_cb,
+  TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
   void *deposit_cb_cls,
   uint32_t limit)
 {
