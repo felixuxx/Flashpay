@@ -623,10 +623,10 @@ run (void *cls,
      * config.
      */
     CMD_TRANSFER_TO_EXCHANGE ("recoup-create-reserve-1",
-                              "EUR:5.01"),
+                              "EUR:15.02"),
     TALER_TESTING_cmd_check_bank_admin_transfer (
       "recoup-create-reserve-1-check",
-      "EUR:5.01",
+      "EUR:15.02",
       bc.user42_payto,
       bc.exchange_payto,
       "recoup-create-reserve-1"),
@@ -639,12 +639,26 @@ run (void *cls,
                                        "recoup-create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
-    /* Make coin invalid */
+    /* Withdraw a 10 EUR coin, at fee of 1 ct */
+    TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-1b",
+                                       "recoup-create-reserve-1",
+                                       "EUR:10",
+                                       MHD_HTTP_OK),
+    /* melt 10 EUR coin to get 5 EUR refreshed coin */
+    TALER_TESTING_cmd_melt ("recoup-melt-coin-1b",
+                            "recoup-withdraw-coin-1b",
+                            MHD_HTTP_OK,
+                            "EUR:5",
+                            NULL),
+    TALER_TESTING_cmd_refresh_reveal ("recoup-reveal-coin-1b",
+                                      "recoup-melt-coin-1b",
+                                      MHD_HTTP_OK),
+    /* Revoke both 5 EUR coins */
     TALER_TESTING_cmd_revoke ("revoke-0-EUR:5",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
                               CONFIG_FILE),
-    /* Refund coin to bank account */
+    /* Recoup coin to reserve */
     TALER_TESTING_cmd_recoup ("recoup-1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
@@ -655,6 +669,34 @@ run (void *cls,
                               "recoup-create-reserve-1",
                               "EUR:5.0",
                               MHD_HTTP_OK),
+    /* Recoup-refresh coin to 10 EUR coin */
+    TALER_TESTING_cmd_recoup ("recoup-1b",
+                              MHD_HTTP_OK,
+                              "recoup-reveal-coin-1b",
+                              "recoup-melt-coin-1b",
+                              "EUR:5"),
+#if FIXME
+    /* "over-spend" 10 EUR recoup-refreshed coin */
+    TALER_TESTING_cmd_deposit ("recoup-refresh-deposit-failing",
+                               "recoup-withdraw-coin-1b",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:11.5",
+                               MHD_HTTP_OK),
+    // FIXME: yes, we expect 'CONFLICT', but the
+    // coin history we get is totally wrong!
+    /* "spend" 10 EUR recoup-refreshed coin */
+    TALER_TESTING_cmd_deposit ("recoup-refresh-deposit-ok",
+                               "recoup-withdraw-coin-1b",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:9.5", /* FIXME: pick 'right' amount! */
+                               MHD_HTTP_OK),
+#endif
     /* Re-withdraw from this reserve */
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-2",
                                        "recoup-create-reserve-1",
