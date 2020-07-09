@@ -95,6 +95,7 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_reserve_priv.c \
   testing_api_trait_string.c \
   testing_api_trait_time.c \
+  testing_api_trait_uuid.c \
   testing_api_trait_wtid.c
 libtalertesting_la_LIBADD = \
   $(top_builddir)/src/lib/libtalerexchange.la \

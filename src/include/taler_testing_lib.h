@@ -2938,6 +2938,35 @@ TALER_TESTING_get_trait_cmd (const struct TALER_TESTING_Command *cmd,
 
 
 /**
+ * Obtain a uuid from @a cmd.
+ *
+ * @param cmd command to extract the uuid from.
+ * @param index which amount to pick if @a cmd has multiple
+ *        on offer
+ * @param[out] uuid where to write the uuid.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_uuid (const struct TALER_TESTING_Command *cmd,
+                              unsigned int index,
+                              struct GNUNET_Uuid **uuid);
+
+
+/**
+ * Offer a uuid in a trait.
+ *
+ * @param index which uuid to offer, in case there are
+ *        multiple available.
+ * @param uuid the uuid to offer.
+ *
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_uuid (unsigned int index,
+                               const struct GNUNET_Uuid *uuid);
+
+
+/**
  * Obtain a absolute time from @a cmd.
  *
  * @param cmd command to extract trait from
