@@ -373,7 +373,7 @@ struct TALER_EXCHANGEDB_RecoupRefreshListEntry
 
   /**
    * Blinding factor supplied to prove to the exchange that
-   * the coin came from this reserve.
+   * the coin came from this @e old_coin_pub.
    */
   struct TALER_DenominationBlindingKeyP coin_blind;
 

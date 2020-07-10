@@ -250,7 +250,7 @@ TEH_RESPONSE_compile_transaction_history (
             TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
           .purpose.size = htonl (sizeof (pc)),
           .timestamp = GNUNET_TIME_absolute_hton (pr->timestamp),
-          .coin_pub = *coin_pub,
+          .coin_pub = pr->coin.coin_pub,
           .old_coin_pub = pr->old_coin_pub
         };
 
@@ -273,7 +273,7 @@ TEH_RESPONSE_compile_transaction_history (
         if (0 !=
             json_array_append_new (
               history,
-              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                          "type",
                          "OLD-COIN-RECOUP",
                          "amount",
@@ -284,8 +284,6 @@ TEH_RESPONSE_compile_transaction_history (
                          GNUNET_JSON_from_data_auto (&epub),
                          "coin_pub",
                          GNUNET_JSON_from_data_auto (&pr->coin.coin_pub),
-                         "coin_sig",
-                         GNUNET_JSON_from_data_auto (&pr->coin_sig),
                          "timestamp",
                          GNUNET_JSON_from_time_abs (pr->timestamp))))
         {

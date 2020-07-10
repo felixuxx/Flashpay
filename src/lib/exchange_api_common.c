@@ -876,10 +876,11 @@ TALER_EXCHANGE_verify_coin_history (
       TALER_amount_hton (&pc.recoup_amount,
                          &amount);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP,
-                                      &pc,
-                                      &exchange_sig.eddsa_signature,
-                                      &exchange_pub.eddsa_pub))
+          GNUNET_CRYPTO_eddsa_verify (
+            TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH,
+            &pc,
+            &exchange_sig.eddsa_signature,
+            &exchange_pub.eddsa_pub))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
@@ -890,6 +891,9 @@ TALER_EXCHANGE_verify_coin_history (
     {
       /* signature not supported, new version on server? */
       GNUNET_break_op (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected type `%s' in response\n",
+                  type);
       GNUNET_assert (GNUNET_SYSERR == add);
       return GNUNET_SYSERR;
     }

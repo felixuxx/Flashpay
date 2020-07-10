@@ -4553,6 +4553,11 @@ postgres_get_coin_transactions (
                                                params,
                                                work[i].cb,
                                                &chc);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Coin %s yielded %d transactions of type %s\n",
+                TALER_B2S (coin_pub),
+                qs,
+                work[i].statement);
     if ( (0 > qs) ||
          (chc.failed) )
     {
@@ -6913,6 +6918,9 @@ postgres_insert_recoup_request (
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Inserting recoup for coin %s\n",
+              TALER_B2S (&coin->coin_pub));
   expiry = GNUNET_TIME_absolute_add (timestamp,
                                      pg->legal_reserve_expiration_time);
   reserve.gc = GNUNET_TIME_absolute_max (expiry,
@@ -6976,6 +6984,9 @@ postgres_insert_recoup_refresh_request (
 
   (void) cls;
   /* now store actual recoup information */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Inserting recoup-refresh for coin %s\n",
+              TALER_B2S (&coin->coin_pub));
   qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
                                            "recoup_refresh_insert",
                                            params);

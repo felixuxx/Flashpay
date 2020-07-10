@@ -1219,7 +1219,7 @@ struct TALER_RecoupRequestPS
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * Hash of the denomination public key of the coin.
+   * Hash of the (revoked) denomination public key of the coin.
    */
   struct GNUNET_HashCode h_denom_pub;
 
