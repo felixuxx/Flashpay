@@ -76,6 +76,11 @@ struct TALER_EXCHANGE_MeltHandle
   struct MeltData *md;
 
   /**
+   * Public key of the coin being melted.
+   */
+  struct TALER_CoinSpendPublicKeyP coin_pub;
+
+  /**
    * @brief Public information about the coin's denomination key
    */
   struct TALER_EXCHANGE_DenomPublicKey dki;
@@ -155,6 +160,48 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
 
 /**
  * Verify that the signatures on the "409 CONFLICT" response from the
+ * exchange demonstrating customer denomination key differences
+ * resulting from coin private key reuse are valid.
+ *
+ * @param mh melt handle
+ * @param json json reply with the signature(s) and transaction history
+ * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
+ */
+static int
+verify_melt_signature_denom_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
+                                      const json_t *json)
+
+{
+  json_t *history;
+  struct TALER_Amount total;
+  struct GNUNET_HashCode h_denom_pub;
+
+  memset (&h_denom_pub,
+          0,
+          sizeof (h_denom_pub));
+  history = json_object_get (json,
+                             "history");
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_verify_coin_history (&mh->dki,
+                                          mh->dki.value.currency,
+                                          &mh->coin_pub,
+                                          history,
+                                          &h_denom_pub,
+                                          &total))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (0 != GNUNET_memcmp (&mh->dki.h_key,
+                          &h_denom_pub))
+    return GNUNET_OK; /* indeed, proof with different denomination key provided */
+  /* invalid proof provided */
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Verify that the signatures on the "409 CONFLICT" response from the
  * exchange demonstrating customer double-spending are valid.
  *
  * @param mh melt handle
@@ -162,8 +209,8 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
 static int
-verify_melt_signature_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
-                                const json_t *json)
+verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
+                                      const json_t *json)
 {
   json_t *history;
   struct TALER_Amount original_value;
@@ -329,15 +376,38 @@ handle_melt_finished (void *cls,
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
-    /* Double spending; check signatures on transaction history */
-    if (GNUNET_OK !=
-        verify_melt_signature_conflict (mh,
-                                        j))
+    hr.ec = TALER_JSON_get_error_code (j);
+    switch (hr.ec)
     {
+    case TALER_EC_MELT_INSUFFICIENT_FUNDS:
+      /* Double spending; check signatures on transaction history */
+      if (GNUNET_OK !=
+          verify_melt_signature_spend_conflict (mh,
+                                                j))
+      {
+        GNUNET_break_op (0);
+        hr.http_status = 0;
+        hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+        hr.hint = TALER_JSON_get_error_hint (j);
+      }
+      break;
+    case TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY:
+      if (GNUNET_OK !=
+          verify_melt_signature_denom_conflict (mh,
+                                                j))
+      {
+        GNUNET_break_op (0);
+        hr.http_status = 0;
+        hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+        hr.hint = TALER_JSON_get_error_hint (j);
+      }
+      break;
+    default:
       GNUNET_break_op (0);
       hr.http_status = 0;
       hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
       hr.hint = TALER_JSON_get_error_hint (j);
+      break;
     }
     break;
   case MHD_HTTP_FORBIDDEN:
@@ -485,6 +555,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   /* and now we can at last begin the actual request handling */
   mh = GNUNET_new (struct TALER_EXCHANGE_MeltHandle);
   mh->exchange = exchange;
+  mh->coin_pub = melt.coin_pub;
   mh->dki = *dki;
   mh->dki.key.rsa_public_key = NULL; /* lifetime not warranted, so better
                                          not copy the pointer */

@@ -136,12 +136,12 @@ run (void *cls,
      * Do another transfer to the same reserve
      */
     TALER_TESTING_cmd_admin_add_incoming_with_ref ("create-reserve-1.2",
-                                                   "EUR:1",
+                                                   "EUR:2.01",
                                                    &bc.exchange_auth,
                                                    bc.user42_payto,
                                                    "create-reserve-1"),
     TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1.2",
-                                                 "EUR:1",
+                                                 "EUR:2.01",
                                                  bc.user42_payto,
                                                  bc.exchange_payto,
                                                  "create-reserve-1.2"),
@@ -154,12 +154,28 @@ run (void *cls,
                                        "EUR:5",
                                        MHD_HTTP_OK),
     /**
+     * Withdraw EUR:1 using the SAME private coin key as for the previous coin
+     * (in violation of the specification, to be detected on spending!).
+     */
+    TALER_TESTING_cmd_withdraw_amount_reuse_key ("withdraw-coin-1x",
+                                                 "create-reserve-1",
+                                                 "EUR:1",
+                                                 "withdraw-coin-1",
+                                                 MHD_HTTP_OK),
+    /**
      * Check the reserve is depleted.
      */
     TALER_TESTING_cmd_status ("status-1",
                               "create-reserve-1",
                               "EUR:0",
                               MHD_HTTP_OK),
+    /*
+     * Try to overdraw.
+     */
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-2",
+                                       "create-reserve-1",
+                                       "EUR:5",
+                                       MHD_HTTP_CONFLICT),
     TALER_TESTING_cmd_end ()
   };
 
@@ -178,13 +194,14 @@ run (void *cls,
     TALER_TESTING_cmd_deposit_replay ("deposit-simple-replay",
                                       "deposit-simple",
                                       MHD_HTTP_OK),
-    /*
-     * Try to overdraw.
-     */
-    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-2",
-                                       "create-reserve-1",
-                                       "EUR:5",
-                                       MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_deposit ("deposit-reused-coin-key-failure",
+                               "withdraw-coin-1x",
+                               0,
+                               bc.user42_payto,
+                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
+                               GNUNET_TIME_UNIT_ZERO,
+                               "EUR:1",
+                               MHD_HTTP_CONFLICT),
     /**
      * Try to double spend using different wire details.
      */
@@ -225,6 +242,14 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command refresh[] = {
+    /**
+     * Try to melt the coin that shared the private key with another
+     * coin (should fail). */
+    TALER_TESTING_cmd_melt ("refresh-melt-reused-coin-key-failure",
+                            "withdraw-coin-1x",
+                            MHD_HTTP_CONFLICT,
+                            NULL),
+
     /* Fill reserve with EUR:5, 1ct is for fees. */
     CMD_TRANSFER_TO_EXCHANGE ("refresh-create-reserve-1",
                               "EUR:5.01"),

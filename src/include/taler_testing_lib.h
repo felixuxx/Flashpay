@@ -1296,6 +1296,30 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 
 
 /**
+ * Create a withdraw command, letting the caller specify
+ * the desired amount as string and also re-using an existing
+ * coin private key in the process (violating the specification,
+ * which will result in an error when spending the coin!).
+ *
+ * @param label command label.
+ * @param reserve_reference command providing us with a reserve to withdraw from
+ * @param amount how much we withdraw.
+ * @param coin_ref reference to (withdraw/reveal) command of a coin
+ *        from which we should re-use the private key
+ * @param expected_response_code which HTTP response code
+ *        we expect from the exchange.
+ * @return the withdraw command to be executed by the interpreter.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_withdraw_amount_reuse_key (
+  const char *label,
+  const char *reserve_reference,
+  const char *amount,
+  const char *coin_ref,
+  unsigned int expected_response_code);
+
+
+/**
  * Create withdraw command, letting the caller specify the
  * amount by a denomination key.
  *

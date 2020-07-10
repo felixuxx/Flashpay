@@ -60,6 +60,12 @@ struct WithdrawState
   const char *reserve_reference;
 
   /**
+   * Reference to a withdraw or reveal operation from which we should
+   * re-use the private coin key, or NULL for regular withdrawal.
+   */
+  const char *reuse_coin_key_ref;
+
+  /**
    * String describing the denomination value we should withdraw.
    * A corresponding denomination key must exist in the exchange's
    * offerings.  Can be NULL if @e pk is set instead.
@@ -275,6 +281,50 @@ reserve_withdraw_cb (void *cls,
 
 
 /**
+ * Parser reference to a coin.
+ *
+ * @param coin_reference of format $LABEL['#' $INDEX]?
+ * @param[out] cref where we return a copy of $LABEL
+ * @param[out] idx where we set $INDEX
+ * @return #GNUNET_SYSERR if $INDEX is present but not numeric
+ */
+static int
+parse_coin_reference (const char *coin_reference,
+                      char **cref,
+                      unsigned int *idx)
+{
+  const char *index;
+
+  /* We allow command references of the form "$LABEL#$INDEX" or
+     just "$LABEL", which implies the index is 0. Figure out
+     which one it is. */
+  index = strchr (coin_reference, '#');
+  if (NULL == index)
+  {
+    *idx = 0;
+    *cref = GNUNET_strdup (coin_reference);
+    return GNUNET_OK;
+  }
+  *cref = GNUNET_strndup (coin_reference,
+                          index - coin_reference);
+  if (1 != sscanf (index + 1,
+                   "%u",
+                   idx))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Numeric index (not `%s') required after `#' in command reference of command in %s:%u\n",
+                index,
+                __FILE__,
+                __LINE__);
+    GNUNET_free (*cref);
+    *cref = NULL;
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Run the command.
  */
 static void
@@ -307,7 +357,32 @@ withdraw_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  TALER_planchet_setup_random (&ws->ps);
+  if (NULL == ws->reuse_coin_key_ref)
+  {
+    TALER_planchet_setup_random (&ws->ps);
+  }
+  else
+  {
+    const struct TALER_CoinSpendPrivateKeyP *coin_priv;
+    const struct TALER_TESTING_Command *cref;
+    char *cstr;
+    unsigned int index;
+
+    GNUNET_assert (GNUNET_OK ==
+                   parse_coin_reference (ws->reuse_coin_key_ref,
+                                         &cstr,
+                                         &index));
+    cref = TALER_TESTING_interpreter_lookup_command (is,
+                                                     cstr);
+    GNUNET_assert (NULL != cref);
+    GNUNET_free (cstr);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_coin_priv (cref,
+                                                      index,
+                                                      &coin_priv));
+    TALER_planchet_setup_random (&ws->ps);
+    ws->ps.coin_priv = *coin_priv;
+  }
   ws->is = is;
   if (NULL == ws->pk)
   {
@@ -523,6 +598,44 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 
     return cmd;
   }
+}
+
+
+/**
+ * Create a withdraw command, letting the caller specify
+ * the desired amount as string and also re-using an existing
+ * coin private key in the process (violating the specification,
+ * which will result in an error when spending the coin!).
+ *
+ * @param label command label.
+ * @param reserve_reference command providing us with a reserve to withdraw from
+ * @param amount how much we withdraw.
+ * @param coin_ref reference to (withdraw/reveal) command of a coin
+ *        from which we should re-use the private key
+ * @param expected_response_code which HTTP response code
+ *        we expect from the exchange.
+ * @return the withdraw command to be executed by the interpreter.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_withdraw_amount_reuse_key (
+  const char *label,
+  const char *reserve_reference,
+  const char *amount,
+  const char *coin_ref,
+  unsigned int expected_response_code)
+{
+  struct TALER_TESTING_Command cmd;
+
+  cmd = TALER_TESTING_cmd_withdraw_amount (label,
+                                           reserve_reference,
+                                           amount,
+                                           expected_response_code);
+  {
+    struct WithdrawState *ws = cmd.cls;
+
+    ws->reuse_coin_key_ref = coin_ref;
+  }
+  return cmd;
 }
 
 
