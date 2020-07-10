@@ -675,7 +675,7 @@ run (void *cls,
                               "recoup-reveal-coin-1b",
                               "recoup-melt-coin-1b",
                               "EUR:5"),
-#if FIXME
+#if 1
     /* "over-spend" 10 EUR recoup-refreshed coin */
     TALER_TESTING_cmd_deposit ("recoup-refresh-deposit-failing",
                                "recoup-withdraw-coin-1b",
