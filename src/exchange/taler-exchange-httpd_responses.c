@@ -273,7 +273,7 @@ TEH_RESPONSE_compile_transaction_history (
         if (0 !=
             json_array_append_new (
               history,
-              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+              json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o, s:o}",
                          "type",
                          "OLD-COIN-RECOUP",
                          "amount",
