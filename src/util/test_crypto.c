@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015 Taler Systems SA
+  (C) 2015, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -119,6 +119,89 @@ test_planchets (void)
 }
 
 
+static int
+test_exchange_sigs ()
+{
+  const char *pt = "payto://x-taler-bank/localhost/Account";
+  struct TALER_MasterPrivateKeyP priv;
+  struct TALER_MasterPublicKeyP pub;
+  struct TALER_MasterSignatureP sig;
+
+  GNUNET_CRYPTO_eddsa_key_create (&priv.eddsa_priv);
+  TALER_exchange_wire_signature_make (pt,
+                                      &priv,
+                                      &sig);
+  GNUNET_CRYPTO_eddsa_key_get_public (&priv.eddsa_priv,
+                                      &pub.eddsa_pub);
+  if (GNUNET_OK !=
+      TALER_exchange_wire_signature_check (pt,
+                                           &pub,
+                                           &sig))
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  if (GNUNET_OK ==
+      TALER_exchange_wire_signature_check (
+        "payto://x-taler-bank/localhost/Other",
+        &pub,
+        &sig))
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  return 0;
+}
+
+
+static int
+test_merchant_sigs ()
+{
+  const char *pt = "payto://x-taler-bank/localhost/Account";
+  const char *salt = "my test salt";
+  struct TALER_MerchantPrivateKeyP priv;
+  struct TALER_MerchantPublicKeyP pub;
+  struct TALER_MerchantSignatureP sig;
+
+  GNUNET_CRYPTO_eddsa_key_create (&priv.eddsa_priv);
+  TALER_merchant_wire_signature_make (pt,
+                                      salt,
+                                      &priv,
+                                      &sig);
+  GNUNET_CRYPTO_eddsa_key_get_public (&priv.eddsa_priv,
+                                      &pub.eddsa_pub);
+  if (GNUNET_OK !=
+      TALER_merchant_wire_signature_check (pt,
+                                           salt,
+                                           &pub,
+                                           &sig))
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  if (GNUNET_OK ==
+      TALER_merchant_wire_signature_check (
+        "payto://x-taler-bank/localhost/Other",
+        salt,
+        &pub,
+        &sig))
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  if (GNUNET_OK ==
+      TALER_merchant_wire_signature_check (pt,
+                                           "other salt",
+                                           &pub,
+                                           &sig))
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  return 0;
+}
+
+
 int
 main (int argc,
       const char *const argv[])
@@ -128,7 +211,11 @@ main (int argc,
   if (0 != test_high_level ())
     return 1;
   if (0 != test_planchets ())
-    return 1;
+    return 2;
+  if (0 != test_exchange_sigs ())
+    return 3;
+  if (0 != test_merchant_sigs ())
+    return 4;
   return 0;
 }
 
