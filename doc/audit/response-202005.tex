@@ -15,9 +15,8 @@
 
 \section{Abstract}
 
-This is the preliminary response to the source code audit report CodeBlau
-created for GNU Taler in Q2/Q3 2020.  A final response with more details is
-expected later this year.
+This is the response to the source code audit report CodeBlau
+created for GNU Taler in Q2/Q3 2020. 
 
 \section{Management Summary}
 
@@ -44,10 +43,16 @@ We appreciate CodeBlau's extensive list of checks the Taler auditor performs,
 which was previously not documented adequately by us. We agree that the
 auditor still needs more comprehensive documentation.
 
-As for issue \#6416, we agree with the analysis and the proposed fix, even if
-the implications are not fully clear. It has not yet been implemented as we
-want to carefully review all of the SQL statements implicated in the
-resolution and ensure we fully understand the implications.
+As for issue \#6416, we agree with the analysis. However, the proposed fix
+of making the primary key include the denomination would create other problems,
+such as the exchange sometimes not having the denomination key (link, refund)
+and the code in various places relying on the assumption of the coin's
+public key being unique. Furthermore, allowing coin key re-use may validate
+a terrible practice. We thus decided it is better to ``fail early'', and
+modified the code to check that the coin public key is ``unique'' during
+deposit, refresh and recoup and ensured that the exchange returns a proof
+of non-uniqueness in case of a violation. The test suite was extended to
+cover the corner case.
 
 \section{Issues in GNUnet}
 
