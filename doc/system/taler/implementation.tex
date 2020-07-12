@@ -907,7 +907,7 @@ The following APIs are offered by the exchange:
     the merchant additionally can use the exchange's \texttt{/transfers/\$WTID} API that returns the list of deposits for a wire transfer
     identifier (WTID) included in the wire transfer to the merchant, as well as the \texttt{/deposits/\$H\_WIRE/\$MERCHANT\_PUB/\$H\_CONTRACT\_TERMS/\$COIN\_PUB} API to look up
     which wire transfer included the payment for a given deposit.
-  \item[Refresh] Refreshing consists of two stages. First, using \texttt{/coins/\$COIN\_PUB/melt} an old, possibly dirty coin is melted and thus devaluted. The committment made by the wallet during the melt and the resulting $\gamma$-challenge from the exchange are associated with a {\em refresh session}.  Then, using \texttt{/refreshes/$RCH/reveal} the wallet can answer the challenge and obtain fresh coins as change.  Finally, \texttt{/coins/\$COIN\_PUB/link} provides the link deterrent against refresh abuse.
+  \item[Refresh] Refreshing consists of two stages. First, using \texttt{/coins/\$COIN\_PUB/melt} an old, possibly dirty coin is melted and thus devaluted. The committment made by the wallet during the melt and the resulting $\gamma$-challenge from the exchange are associated with a {\em refresh session}.  Then, using \texttt{/refreshes/\$RCH/reveal} the wallet can answer the challenge and obtain fresh coins as change.  Finally, \texttt{/coins/\$COIN\_PUB/link} provides the link deterrent against refresh abuse.
   \item[Refunds] The refund API (\texttt{/coins/\$COIN\_PUB/refund}) can ``undo'' a deposit if the merchant gave their signature, and the aggregation deadline
     for the payment has not occurred yet.
   \item[Recoup]  The recoup API (\texttt{/coins/\$COIN\_PUB/recoup}) allows customers to be compensated

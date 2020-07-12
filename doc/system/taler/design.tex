@@ -150,16 +150,19 @@ funds.  If a wire transfer to the exchange does not include a valid reserve publ
 the exchange transfers the money back to the sender.
 
 Figure~\ref{fig:reserve:state} illustrates the state machine for a reserve.
-Long-terms states are shown in boxes, while actions are in circles.  The
-final state is in a double-circle.
-A reserve is first {\em filled} by a wire transfer. The amount in it is reduced
-by withdraw operations. If the balance reaches zero, the reserve is
-{\em drained}. If a reserve is not drained after a certain amount of time,
-it is automatically closed.  A reserve can also be filled via a recoup
-action in case that the denomination of an unspent coin that was
-withdrawn from the reserve is revoked.
+Long-terms states are shown in boxes, while actions are in circles.  The final
+state is in a double-circle.  A reserve is first {\em filled} by a wire
+transfer. The amount in it is reduced by withdraw operations. If the balance
+reaches zero, the reserve is {\em drained}. If a reserve is not drained after
+a certain amount of time, it is automatically closed.  A reserve can also be
+filled via a recoup action (see Section~\ref{sec:revocation-recoup}) in case
+that the denomination of an unspent coin that was withdrawn from the reserve
+is revoked.
+
 \begin{figure}
-  \includegraphics{reserve.pdf}
+  \begin{center}
+    \includegraphics{taler/reserve.pdf}
+  \end{center}
   \caption{State machine of a reserve.}
   \label{fig:reserve:states}
 \end{figure}
@@ -261,11 +264,13 @@ deposit confirmation or an error that indicates double spending.
 When a coin is used in a completed or attempted/aborted payment, the coin's
 public key is revealed to the merchant/exchange, and further payments with the
 remaining amount would be linkable to the first spending event.  To obtain
-unlinkable change for a partially spent (or otherwise revealed coin), GNU Taler
-introduces a \emph{refresh protocol}.  The refresh protocol allows the customer
-to obtain new coins for the remaining amount on a coin.  The old coin is marked
-as spent after it has been refreshed into new coins.  Using blind signatures to
-withdraw the refreshed coins makes them unlinkable from the old coin.
+unlinkable change for a partially spent (or otherwise revealed coin), GNU
+Taler introduces the \emph{refresh protocol}, which consists of three steps:
+\emph{melt}, \emph{reveal} and \emph{link}.  The refresh protocol allows the
+customer to obtain new coins for the remaining amount on a coin.  The old coin
+is marked as spent after it has been melted, while the reveal step generates
+the fresh coins.  Using blind signatures to withdraw the refreshed coins makes
+them unlinkable from the old coin.
 
 % FIXME: talk about logarithmic time, simulation
 
@@ -317,6 +322,7 @@ over the funds.  A useful application for sharing are peer-to-peer payments
 between mutually trusting parties, such as families and friends.
 
 \subsection{Aggregation}
+
 For each payment, the merchant can specify a deadline before which the exchange
 must issue a wire transfer to the merchant's bank account.  Before this
 deadline occurs, multiple payments from deposited coins to the same merchant
@@ -326,8 +332,38 @@ transaction.  To incentivize merchants to choose a longer wire transfer
 deadline, the exchange can charge the merchant a fee per aggregated wire
 transfer.
 
+Figure~\ref{fig:deposit:states} illustrates the state machine for processing
+deposits.  Long-terms states are shown in boxes, while actions are in circles.
+The final state is in a double-circle.  Dashed arrows show transitions based
+on timing and not external actions. A deposit is first {\em created} when a
+wallet makes a payment.  A deposit comes with a {\em refund deadline}, and the
+wire transfer must not happen before that deadline. Once the refund deadline
+has passed, the deposit becomes {\em ready}.  Even if a deposit is ready, it
+is not automatically wired. In fact, deposits may still be {\em refunded} in
+this state.  A refund may be full (resulting in the deposit being {\em done})
+or partial, in which case the remaining value is left in the same deposit
+state. A deposit comes with a second deadline, the {\em wire deadline}. Once
+that deadline has passed, the deposit is {\em due} and must be {\em
+  aggregated}.  Aggregation combines {\bf all} deposits that are {\em due},
+{\em tiny} or {\em ready} into one wire transfer.  However, the amount of even
+an aggregated deposit may be too small to be executed by the banking
+system. In this case, the deposit transitions into the special state {\em
+  tiny} until the aggregated amount meets the amount threshold.  Once
+aggregated, the deposits are {\em done}.  A wire transfer is first prepared
+and then {\em pending}. The transfer is {\em finished} once the bank has
+confirmed the {\em transfer}.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[scale=0.8]{taler/deposit.pdf}
+  \end{center}
+  \caption{State machine of a deposit.}
+  \label{fig:deposit:states}
+\end{figure}
+
 
 \subsection{Refunds}
+
 The aggregation period also opens the opportunity for cheap \emph{refunds}.  If
 a customer is not happy with their product, the merchant can instruct the
 exchange to give the customer a refund before the wire transfer deadline has
@@ -335,10 +371,10 @@ occurred.  This effectively ``undoes'' the deposit of the coin, and restores the
 available amount left on it.  The refresh protocol is then used by the customer
 on the coins involved in a refund, so that payments remain unlinkable.
 
-
 % FIXME: mention EU customer laws / 14 weeks?
 
 \subsection{Fees}
+
 In order to subsidize the operation of the exchange and enable a sustainable
 business model, the exchange can charge fees for most operations.  For
 withdrawal, refreshing, deposit and refunds, the fee is dependent on the denomination,
@@ -374,6 +410,7 @@ the total expected amount that it needs to pay for wire fees.
 
 
 \subsection{The Withdraw Loophole and Tipping}\label{taler:design:tipping}
+
 The withdraw protocol can be (ab)used to illicitly transfer money, when the
 receiver generates the coin's secret key, and gives the public key to the party
 executing the withdraw protocol.  We call this the ``withdraw loophole''.  This
@@ -437,12 +474,14 @@ financial regulator, fulfilling the following functionality:
 % FIXME: discuss indian merchant scenario
 
 \subsection{Exchange Compromise Modes}
+
 The exchange is an attractive target for hackers and insider threats.  We now
 discuss different ways that the exchange can be compromised, how to reduce the
 likelihood of such a compromise, and how to detect and react to such an event
 if it happens.
 
 \subsubsection{Compromise of Denomination Keys and Revocation}\label{sec:revocation-recoup}
+
 When a denomination key pair is compromised, an attacker can ``print money'' by
 using it to sign coins of that denomination.  An exchange (or its auditor) can
 detect this when the number of deposits for a certain denomination exceed the
@@ -512,7 +551,10 @@ pre-programmed with a limit on the number of signatures it can produce.  This
 might be mandated by certain auditors, who will also audit the operational
 security of an exchange as part of the certification process.
 
+
+
 \subsubsection{Compromise of Signing Keys}
+
 When a signing key is compromised, the attacker can pretend to be a
 merchant and forge deposit confirmations.  To forge a deposit
 confirmation, the attacker also needs to get a customer to sign a
@@ -594,6 +636,7 @@ probabilistic deposit auditing, and honest merchants have proper
 incentives to participate in the process.
 
 \subsubsection{Compromise of the Database}
+
 If an adversary would be able to modify the exchange, this would be detected
 rather quickly by the auditor, provided that the database has appropriate
 integrity mechanisms.  An attacker could also prevent database updates to block
@@ -602,6 +645,7 @@ equivalent to the compromise of signing keys, and can be detected with the same
 strategies.
 
 \subsubsection{Compromise of the Master Key}
+
 If the master key was compromised, an attacker could de-anonymize customers by
 announcing different sets of denomination keys to each of them.  If the
 exchange was audited, this would be detected quickly, as these denominations
@@ -668,6 +712,57 @@ plain blind signature.  With our approach, the attacker will always lose funds
 that they cannot immediately spend.  Unfortunately our approach is limited to a
 kidnapping scenario, and not applicable in those blackmail scenarios where the
 attacker can do damage after they find out that their funds have been erased.
+
+\subsection{Summary}
+
+Figure~\ref{fig:coin:states} illustrates the overall state machine for processing
+coins.  Long-terms states are shown in boxes, while actions are in circles.
+The final state is in a double-circle.  Dashed arrows show transitions based
+on timing and not external actions. The red arrow shows an action that is
+allowed by the exchange but should never be done by wallets as it would
+break unlinkability.
+
+A coin begins as an unsigned {\em planchet}, which is either signed as part of
+the {\em withdraw} protocol or the refresh protocol. The most common scenario
+is that the {\em fresh coin} is {\em deposited}. This payment creates a
+deposit (see Figure~\ref{fig:deposit:states}) and either a {\em dirty coin}
+(if the payment was for a fraction of the coin's value) or a {\em spent coin}.
+A spent coin can be {\em refunded} by the merchant (until the deposit is due),
+creating a {\em dirty coin}.
+
+A {\em fresh coin} may also be subject to key {\em revocation}, at which point
+the wallet ends up with a {\em revoked coin}.  At this point, the wallet can
+use the {\em recoup} protocol to recover the value of the coin.  If the coin
+originated from a {\em withdraw} operation, the value is added back into the
+reserve, which is {\em filled} in the process (see
+Figure~\ref{fig:reserve:states}).  If the coin originated from the {\em
+  refresh} operation, this results in the old coin turning into a {\em zombie
+  coin}, which can be refreshed again.
+
+Dirty coins and fresh coins can be {\em melted}.  Dirty coins should always be
+melted automatically by the wallet as soon as possible as this is the only
+good way to use them while preserving unlinkability.  A wallet should also
+automatically {\em melt} any {\em fresh coins} that are in danger of their
+denomination key nearing its (deposit) {\em expiration} time. If a wallet
+fails to do so, coins may {\em expire}, resulting in a loss for the coin's
+owner.  Dirty coins can also expire. In practice, this happens if the melt fee
+exceeds the residual value of the dirty coin.  To {\em melt} a coin, the
+wallet must commit to one or more {\em planchets} and then demonstrate honesty
+when the committment made for the {\em refresh session} is checked during the
+{\em reveal} step. If the wallet was honest, {\em reveal} yields {\em fresh
+  coins}.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[scale=0.75]{taler/coin.pdf}
+  \end{center}
+  \caption{State machine of a coin.}
+  \label{fig:coin:states}
+\end{figure}
+
+
+
+
 
 \section{Related Work}
 % FIXME: Stuff to review/include:

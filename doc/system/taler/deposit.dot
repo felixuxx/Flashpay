@@ -1,0 +1,31 @@
+digraph Deposit {
+
+  deposited [color=blue, label="deposit created", shape="box"];
+  ready [color=blue, label="deposit ready", shape="box"];
+  due [color=blue, label="deposit due", shape="box"];
+  tiny [color=blue, label="deposit tiny", shape="box"];
+  done [color=blue, label="deposit done", shape="doublecircle"];
+  wtid [color=blue, label="pending transfer", shape="box"];
+  finished [color=blue, label="finished transfer", shape="doublecircle"];
+
+  subgraph {
+    rank = same; due; tiny;
+  }
+
+  pay->deposited;
+  deposited->ready [style=dotted];
+  deposited->refund;
+  refund->deposited;
+  refund->ready;
+  refund->done;
+  ready->due [style=dotted];
+  ready->refund;
+  aggregate->tiny;
+  due->aggregate;
+  ready->aggregate;
+  tiny->aggregate;
+  aggregate->done;
+  aggregate->wtid;
+  wtid->transfer;
+  transfer->finished;
+}

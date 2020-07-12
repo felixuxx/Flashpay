@@ -1,0 +1,47 @@
+digraph Coin {
+
+  planchet [color=blue, shape="box"];
+  fresh [color=blue, label="fresh coin", shape="box"];
+  rs [color=blue, label="refresh session", shape="box"];
+  partial [color=blue, label="dirty coin", shape="box"];
+  revoked [color=blue, label="revoked coin", shape="box"];
+  zombie [color=blue, label="zombie coin", shape="box"];
+  spent [color=blue, label="spent coin", shape="doublecircle"];
+  expired [color=blue, label="expired coin", shape="doublecircle"];
+
+  subgraph {
+    rank = same; spent; expired;
+  }
+
+  subgraph {
+    withdraw; melt;
+  }
+
+  subgraph {
+    rank = same; melt; reveal; rs;
+  }
+
+
+  planchet->withdraw;
+  planchet->melt;
+  withdraw->fresh;
+  fresh->deposit;
+  fresh->melt;
+  deposit->partial;
+  deposit->spent;
+  melt->rs;
+  rs->reveal;
+  reveal->fresh;
+  melt->partial;
+  melt->spent;
+  spent->refund;
+  refund->partial;
+  partial->expired [style=dotted];
+  partial->melt;
+  partial->deposit [color=red];
+  fresh->expired [style=dotted];
+  fresh->revoked [style=dotted];
+  revoked->recoup;
+  recoup->zombie;
+  zombie->melt;
+}
