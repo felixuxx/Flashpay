@@ -140,7 +140,7 @@ creates a new reserve, but making another wire transfer with the same reserve
 public key simply adds funds to the existing reserve.  Even after all funds
 have been withdrawn from a reserve, customers should keep the reserve key pair
 until all coins from the corresponding reserve have been spent, as in the event
-of a denomination key revocation (see Section \ref{sec:revocation-payback}) the
+of a denomination key revocation (see Section \ref{sec:revocation-recoup}) the
 customer needs this key to recover coins of revoked denominations.
 
 The exchange automatically transfers back to the customer's bank account any
@@ -206,7 +206,7 @@ once more coins are redeemed than the total that was signed into existence
 using that denomination key.  Should such an incident occur, the exchange can allow authentic
 customers to redeem their unspent coins that were signed with the compromised
 private key, while refusing further deposits involving coins signed by the
-compromised denomination key (see Section~\ref{sec:revocation-payback}).  As a result, the
+compromised denomination key (see Section~\ref{sec:revocation-recoup}).  As a result, the
 financial damage of losing a private signing key is limited to at most the
 amount originally signed with that key, and denomination key rotation can be
 used to bound that risk.
@@ -428,7 +428,7 @@ discuss different ways that the exchange can be compromised, how to reduce the
 likelihood of such a compromise, and how to detect and react to such an event
 if it happens.
 
-\subsubsection{Compromise of Denomination Keys and Revocation}\label{sec:revocation-payback}
+\subsubsection{Compromise of Denomination Keys and Revocation}\label{sec:revocation-recoup}
 When a denomination key pair is compromised, an attacker can ``print money'' by
 using it to sign coins of that denomination.  An exchange (or its auditor) can
 detect this when the number of deposits for a certain denomination exceed the
@@ -437,14 +437,14 @@ number of withdrawals for that same denomination.
 We allow the exchange to revoke denomination keys, and wallets periodically
 check for such revocations.  We call a coin of a revoked denomination a revoked
 coin.  If a denomination key has been revoked, the wallets use the
-\emph{payback} protocol to recover funds from coins of revoked denominations.
+\emph{recoup} protocol to recover funds from coins of revoked denominations.
 Once a denomination is revoked, new coins of this denomination can't be
 withdrawn or used as the target denomination for a refresh operation. A revoked
 coin cannot be spent, and can only be refreshed if its public key was recorded
 in the exchange's database (as spending/refresh operations) before it was
 revoked.
 
-The following cases are possible for payback:
+The following cases are possible for recoup:
 \begin{enumerate}
   \item The revoked coin has never been seen by the exchange before, but the
     customer can prove via a withdraw protocol transcript and blinding factor
@@ -472,12 +472,12 @@ legitimate users $n$ times.  As soon as the exchange sees more
 than $n$ pairwise different $D$-coins, it must immediately
 revoke $D$.  An attacker can thus at most gain $nv$ by either
 refreshing into other non-revoked denominations or spending the forged $D$-coins.
-The legitimate users can then request a payback for their coins, resulting in
+The legitimate users can then request a recoup for their coins, resulting in
 a total financial damage of at most $2nv$.
 
-With one rare exception, the payback protocol does not negatively impact the
+With one rare exception, the recoup protocol does not negatively impact the
 anonymity of customers.  We show this by looking at the three different cases
-for payback on a revoked coin.  Specifically, in case (1), the coin obtained
+for recoup on a revoked coin.  Specifically, in case (1), the coin obtained
 from the credited reserve is blindly signed, in case (2) the refresh protocol
 guarantees unlinkability of the non-revoked change, and in case (3) the revoked
 coin $C_R$ is assumed to be fresh.  If $C_R$ from case (3) has been seen by a
@@ -487,7 +487,7 @@ aborted transaction coincides with revoked denomination, which should be rare
 in practice.
 
 Unlike most other operations, the
-payback protocol does not incur any transaction fees. The primary use of the
+recoup protocol does not incur any transaction fees. The primary use of the
 protocol is to limit the financial loss in cases where an audit reveals that
 the exchange's private keys were compromised, and to automatically pay back
 balances held in a customers' wallet if an exchange ever goes out of business.
@@ -622,7 +622,7 @@ The following modifications are made:
 
     This change is necessary to preserve anonymity in face of the second modification, but increases
     storage requirements and latency.
-  \item The payback protocol is changed so that a coin obtained
+  \item The recoup protocol is changed so that a coin obtained
     via refreshing must be recovered differently when revoked: to recover a revoked coin
     obtained via refreshing, the customer needs to show the transcripts for the
     chain of all refresh operations and the initial withdrawal operation
@@ -633,9 +633,9 @@ The following modifications are made:
 After an attacker has been paid ransom, the exchange simply revokes all currently offered denominations
 and registers a new set of denomination with the auditor.
 Reserves used to pay the attacker are marked as blocked in the exchange's
-database.  Normal users can use the payback protocol to obtain back the money
+database.  Normal users can use the recoup protocol to obtain back the money
 they've previously had in revoked denominations.  The attacker can try to
-recover funds via the (now modified) payback protocol, but this attempt will
+recover funds via the (now modified) recoup protocol, but this attempt will
 not be successful, as the initial reserve is blocked.  The criminal could also
 try to spend the e-cash anonymously before it is revoked, but this is likely
 difficult for large amounts, and furthermore due to income transparency all
@@ -643,7 +643,7 @@ transactions made between the payment of the ransom and the revocation can be
 traced back to merchants that might be complicit in laundering the ransom
 payment.
 
-Honest customers can always use the payback protocol to transfer the funds to
+Honest customers can always use the recoup protocol to transfer the funds to
 the initial reserve.  Due to modification (1), unlinkability of transactions is
 not affected, as only coins that were purely used for refreshing can now be
 correlated.

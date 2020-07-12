@@ -894,18 +894,23 @@ The following APIs are offered by the exchange:
     supported bank accounts, revoked keys and other general information needed
     to use the exchange's services via the \texttt{/keys} and \texttt{/wire}
     APIs.
+  \item[Obtaining entropy] As we cannot be sure that all client-devices have
+    an adequate random number generator, the exchange offers the \texttt{/seed}
+    endpoint to download some high-entropy value.  Clients should mix this
+    seed with their own, locally-generated entropy into an entropy pool.
   \item[Reserve status and withdrawal] After having wired money to the exchange,
-    the status of the reserve can be checked via the \texttt{/reserve/status} API.  Since
+    the status of the reserve can be checked via the \texttt{/reserve/\$RESERVE\_PUB/status} API.  Since
     the wire transfer usually takes some time to arrive at the exchange, wallets should periodically
-    poll this API, and initiate a withdrawal with \texttt{/reserve/withdraw} once the exchange received the funds.
+    poll this API, and initiate a withdrawal with \texttt{/reserve/\$RESERVE\_PUB/withdraw} once the exchange received the funds.
   \item[Deposits and tracking]  Merchants transmit deposit permissions they have received from customers
-    to the exchange via the \texttt{/deposit} API.  Since multiple deposits are aggregated into one wire transfer,
-    the merchant additionally can use the exchange's \texttt{/track/transfer} API that returns the list of deposits for an
-    identifier included in the wire transfer to the merchant, as well as the \texttt{/track/transaction} API to look up
+    to the exchange via the \texttt{/coins/\$COIN\_PUB/deposit} API.  Since multiple deposits are aggregated into one wire transfer,
+    the merchant additionally can use the exchange's \texttt{/transfers/\$WTID} API that returns the list of deposits for a wire transfer
+    identifier (WTID) included in the wire transfer to the merchant, as well as the \texttt{/deposits/\$H\_WIRE/\$MERCHANT\_PUB/\$H\_CONTRACT\_TERMS/\$COIN\_PUB} API to look up
     which wire transfer included the payment for a given deposit.
-  \item[Refunds] The refund API (\texttt{/refund}) can ``undo'' a deposit if the merchant gave their signature, and the aggregation deadline
+  \item[Refresh] Refreshing consists of two stages. First, using \texttt{/coins/\$COIN\_PUB/melt} an old, possibly dirty coin is melted and thus devaluted. The committment made by the wallet during the melt and the resulting $\gamma$-challenge from the exchange are associated with a {\em refresh session}.  Then, using \texttt{/refreshes/$RCH/reveal} the wallet can answer the challenge and obtain fresh coins as change.  Finally, \texttt{/coins/\$COIN\_PUB/link} provides the link deterrent against refresh abuse.
+  \item[Refunds] The refund API (\texttt{/coins/\$COIN\_PUB/refund}) can ``undo'' a deposit if the merchant gave their signature, and the aggregation deadline
     for the payment has not occurred yet.
-  \item[Emergency payback]  The emergency payback API (\texttt{/payback}) allows customers to be compensated
+  \item[Recoup]  The recoup API (\texttt{/coins/\$COIN\_PUB/recoup}) allows customers to be compensated
     for coins whose denomination key has been revoked.  Customers must send either a full withdrawal transcript that
     includes their private blinding factor, or a refresh transcript (of a refresh that had the revoked denominations as one of the targets)
     that includes blinding factors.  In the former case, the reserve is credited, in the latter case, the source coin of the
