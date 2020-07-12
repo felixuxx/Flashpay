@@ -1,0 +1,52 @@
+\chapter{Abstract}
+%As our society becomes more and more digitalized, an electronic version of cash
+%becomes inevitable.  The design of payment systems is not just a technological
+%matter, but has far-reaching sociopolitical consequences.
+\begin{samepage}
+We describe the design and implementation of GNU Taler, an electronic payment
+system based on an extension of Chaumian online e-cash with efficient change.
+In addition to anonymity for customers, it provides the novel notion of
+\emph{income transparency}, which guarantees that merchants can reliably
+receive a payment from an untrusted payer only when their income from the
+payment is visible to tax authorities.
+
+Income transparency is achieved by the introduction of a \emph{refresh
+protocol}, which gives anonymous change for a partially spent coin without
+introducing a tax evasion loophole.  In addition to income transparency, the
+refresh protocol can be used to implement Camenisch-style \emph{atomic swaps}, and to
+preserve anonymity in the presence of protocol \emph{aborts} and crash faults with
+data loss by participants.
+
+Furthermore, we show the provable security of our income-transparent anonymous
+e-cash, which, in addition to the usual \emph{anonymity} and
+\emph{unforgeability} properties of e-cash, also formally models
+\emph{conservation} of funds and income transparency.
+
+Our implementation of GNU Taler is usable by non-expert users and integrates
+with the modern Web architecture.  Our payment platform addresses a range of
+practical issues, such as tipping customers, providing refunds, integrating
+with banks and know-your-customer (KYC) checks, as well as Web platform
+security and reliability requirements.  On a single machine, we achieve
+transaction rates that rival those of global, commercial credit card
+processors.  We increase the robustness of the exchange---the component that
+keeps bank money in escrow in exchange for e-cash---by adding an auditor
+component, which verifies the correct operation of the system and allows to
+detect a compromise or misbehavior of the exchange early.
+
+Just like bank accounts have reason to exist besides bank notes, e-cash only
+serves as part of a whole payment system stack.  Distributed ledgers have
+recently gained immense popularity as potential replacement for parts of the
+traditional financial industry.  While cryptocurrencies based on proof-of-work
+such as Bitcoin have yet to scale to be useful as a replacement for established
+payment systems, other more efficient systems based on blockchains with more
+classical consensus algorithms might still have promising applications in the
+financial industry.
+
+We design, implement and analyze the performance of \emph{Byzantine Set Union
+Consensus} (BSC), a Byzantine consensus protocol that agrees on a (super-)set
+of elements at once, instead of sequentially agreeing on the individual
+elements of a set.  While BSC is interesting in itself, it can also be used as
+a building block for permissioned blockchains, where---just like in
+Nakamoto-style consensus---whole blocks of transactions are agreed upon at once,
+increasing the transaction rate.
+\end{samepage}

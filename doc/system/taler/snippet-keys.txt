@@ -1,0 +1,62 @@
+{
+  "version": "2:0:0",
+  "master_public_key": "CQQZ...",
+  "reserve_closing_delay": "/Delay(2419200)/",
+  "signkeys": [
+    {
+      "stamp_start": "/Date(1522223035)/",
+      "stamp_expire": "/Date(1533109435)/",
+      "stamp_end": "/Date(1585295035)/",
+      "master_sig": "842D...",
+      "key": "05XW..."
+    }
+  ],
+  "payback": [],
+  "denoms": [
+    {
+      "master_sig": "BHG5...",
+      "stamp_start": "/Date(1500450235)/",
+      "stamp_expire_withdraw": "/Date(1595058235)/",
+      "stamp_expire_deposit": "/Date(1658130235)/",
+      "stamp_expire_legal": "/Date(1815810235)/",
+      "denom_pub": "51RD...",
+      "value": "TESTKUDOS:10",
+      "fee_withdraw": "TESTKUDOS:0.01",
+      "fee_deposit": "TESTKUDOS:0.01",
+      "fee_refresh": "TESTKUDOS:0.01",
+      "fee_refund": "TESTKUDOS:0.01"
+    },
+    {
+      "master_sig": "QT0T...",
+      "stamp_start": "/Date(1500450235)/",
+      "stamp_expire_withdraw": "/Date(1595058235)/",
+      "stamp_expire_deposit": "/Date(1658130235)/",
+      "stamp_expire_legal": "/Date(1815810235)/",
+      "denom_pub": "51R7",
+      "value": "TESTKUDOS:0.1",
+      "fee_withdraw": "TESTKUDOS:0.01",
+      "fee_deposit": "TESTKUDOS:0.01",
+      "fee_refresh": "TESTKUDOS:0.01",
+      "fee_refund": "TESTKUDOS:0.01"
+    },
+  ],
+  "auditors": [
+    {
+      "denomination_keys": [
+        {
+          "denom_pub_h": "RNTQ...",
+          "auditor_sig": "6SC2..."
+        },
+        {
+          "denom_pub_h": "CP6B...",
+          "auditor_sig": "0GSE..."
+        }
+      ],
+      "auditor_url": "https://auditor.test.taler.net/",
+      "auditor_pub": "BW9DC..."
+    }
+  ],
+  "list_issue_date": "/Date(1530196508)/",
+  "eddsa_pub": "05XW...",
+  "eddsa_sig": "RXCD..."
+}

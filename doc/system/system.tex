@@ -1,0 +1,98 @@
+\documentclass[10pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{titlesec}
+\usepackage{xspace}
+\usepackage{microtype}
+\usepackage{amssymb,amsmath,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{hyperref}
+% bold math
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{adjustbox}
+\usepackage{array}
+\usepackage{verbatim}
+\usepackage{listings}
+\usepackage{multicol}
+
+
+% stuff like \ding for symbols
+\usepackage{pifont}
+
+\usepackage[
+  natbib=true,
+  style=alphabetic,
+  backref=true,
+  doi=false,
+  isbn=false,
+  maxbibnames=99,
+]{biblatex}
+\addbibresource{ref.bib}
+
+\usepackage{epsfig}
+\usepackage{textpos}
+\usepackage{ifthen}
+\usepackage{makeidx}
+\usepackage{float}
+\usepackage{calc}
+\usepackage{vmargin}
+\usepackage{letterspace}
+\usepackage[pass]{geometry}
+
+\usepackage{eurosym}
+\usepackage{bytefield}
+\usepackage[binary-units,detect-weight=true,detect-family=true]{siunitx}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\usepackage{qrcode}
+\usepackage{cryptocode}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+\usepackage{mdframed}
+% Typography
+\usepackage[sc,osf]{mathpazo}
+\linespread{1.05}
+\usepackage[scaled]{helvet} % ss
+\usepackage{courier} % tt
+\normalfont
+\usepackage[T1]{fontenc}
+
+\usepackage{pdfpages}
+
+\author{Florian Dold \and the GNU Taler Developers}
+\title{The GNU Taler System}
+
+\begin{document}
+
+\newcommand{\astfootnote}[1]{
+\let\oldthefootnote=\thefootnote%
+\setcounter{footnote}{0}%
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}%
+\footnote{#1}%
+\let\thefootnote=\oldthefootnote%
+}
+
+\frontmatter
+\include{abstract}
+\include{acknowledgements}
+\tableofcontents
+\listoffigures
+\mainmatter
+
+
+\include{introduction}
+\include{taler/design}
+\include{taler/security}
+\include{taler/implementation}
+\include{conclusions}
+
+\printbibliography[heading=bibintoc]
+
+\end{document}

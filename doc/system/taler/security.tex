@@ -1,0 +1,1729 @@
+\chapter{Security of Income-Transparent Anonymous E-Cash}\label{chapter:security}
+
+\def\Z{\mathbb{Z}}
+
+\def\mathperiod{.}
+\def\mathcomma{,}
+
+\newcommand*\ST[5]%
+{\left#1\,#4\vphantom{#5} \;\right#2 \left. #5 \vphantom{#4}\,\right#3}
+
+% uniform random selection from set
+\newcommand{\randsel}[0]{\ensuremath{\xleftarrow{\text{\$}}}}
+
+\newcommand{\Exp}[1]{\ensuremath{E\left[#1\right]}}
+
+% oracles
+\newcommand{\ora}[1]{\ensuremath{\mathcal{O}\mathsf{#1}}}
+% oracle set
+\newcommand{\oraSet}[1]{\ensuremath{\mathcal{O}\textsc{#1}}}
+% algorithm
+\newcommand{\algo}[1]{\ensuremath{\mathsf{#1}}}
+% party
+\newcommand{\prt}[1]{\ensuremath{\mathcal{#1}}}
+% long-form variable
+\let\V\relax % clashes with siunitx volt
+\newcommand{\V}[1]{\ensuremath{\mathsf{#1}}}
+
+% probability with square brackets of the right size
+\newcommand{\Prb}[1]{\ensuremath{\Pr\left [#1 \right ]}}
+
+\newcommand{\mycomment}[1]{~\\ {\small \textcolor{blue}{({#1})}}}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{corollary}
+\newtheorem{corollary}{Corollary}[section]
+
+
+%%%%%%%%%
+% TODOS
+%%%%%%%%
+% 
+% * our theorems don't really mention the security parameters "in the output",
+%   shouldn't we be able to talk about the bounds of the reduction?
+
+We so far discussed Taler's protocols and security properties only informally.
+In this chapter, we model a slightly simplified version of the system that we
+have implemented (see Chapter~\ref{chapter:implementation}), make our desired
+security properties more precise, and prove that our protocol instantiation
+satisfies those properties.
+
+\section{Introduction to Provable Security}
+Provable security
+\cite{goldwasser1982probabilistic,pointcheval2005provable,shoup2004sequences,coron2000exact} is a common
+approach for constructing formal arguments that support the security of a cryptographic
+protocol with respect to specific security properties and underlying
+assumptions on cryptographic primitives.
+
+The adversary we consider is computationally bounded, i.e., the run time is
+typically restricted to be polynomial in the security parameters (such as key
+length) of the protocol.
+
+Contrary to what the name might suggest, a protocol that is ``provably secure''
+is not necessarily secure in practice
+\cite{koblitz2007another,damgaard2007proof}.  Instead, provable security
+results are typically based on reductions of the form \emph{``if there is an
+effective adversary~$\mathcal{A}$ against my protocol $P$, then I can use
+$\mathcal{A}$ to construct an effective adversary~$\mathcal{A}'$ against
+$Q$''} where $Q$ is a protocol or primitive that is assumed to be secure or a
+computational problem that is assumed to be hard.  The practical value of a
+security proof depends on various factors:
+\begin{itemize}
+  \item How well-studied is $Q$? Some branches of cryptography, for example,
+    some pairing-based constructions, rely on rather complex and exotic
+    underlying problems that are assumed to be hard (but might not be)
+    \cite{koblitz2010brave}.
+  \item How tight is the reduction of $Q$ to $P$?  A security proof may only
+    show that if $P$ can be solved in time $T$, the underlying problem $Q$ can
+    be solved (using the hypothetical $\mathcal{A}$) in time, e.g., $f(T) = T^2$.
+    In practice, this might mean that for $P$ to be secure, it needs to be deployed
+    with a much larger key size or security parameter than $Q$ to be secure.
+  \item What other assumptions are used in the reduction?  A common and useful but
+    somewhat controversial
+    assumption is the Random Oracle Model (ROM) \cite{bellare1993random}, where
+    the usage of hash functions in a protocol is replaced with queries to a
+    black box (called the Random Oracle), which is effectively a trusted third
+    party that returns a truly random value for each input.  Subsequent queries
+    to the Random Oracle with the same value return the same result.  While
+    many consider ROM a practical assumption
+    \cite{koblitz2015random,bellare1993random}, it has been shown that there
+    exist carefully constructed protocols that are secure under the ROM, but
+    are insecure with any concrete hash function \cite{canetti2004random}.  It
+    is an open question whether this result carries over to practical
+    protocols, or just certain classes of artificially constructed protocols of
+    theoretical interest.
+\end{itemize}
+Furthermore, a provably secure protocol does not always lend itself easily to a secure
+implementation, since side channels and fault injection attacks \cite{hsueh1997fault,lomne2011side} are
+usually not modeled. Finally, the security properties stated might
+not be sufficient or complete for the application.
+
+For our purposes, we focus on game-based provable security
+\cite{bellare2006code,pointcheval2005provable,shoup2004sequences,guo2018introduction}
+as opposed to simulation-based provable security \cite{goldwasser1989knowledge,lindell2017simulate},
+which is another approach to provable security typically used for
+zero-knowledge proofs and secure multiparty computation protocols.
+
+\subsection{Algorithms, Oracles and Games}
+In order to analyze the security of a protocol, the protocol and its desired
+security properties against an adversary with specific capabilities must first
+be modeled formally.  This part is independent of a concrete instantiation of
+the protocol; the protocol is only described on a syntactic level.
+
+The possible operations of a protocol (i.e., the protocol syntax) are abstractly
+defined as the signatures of \emph{algorithms}.  Later, the protocol will be
+instantiated by providing a concrete implementation (formally a program for a
+probabilistic Turing machine) of each algorithm. A typical public key signature
+scheme, for example, might consist of the following algorithms:
+\begin{itemize}
+  \item $\algo{KeyGen}(1^\lambda) \mapsto (\V{sk}, \V{pk})$, a probabilistic algorithm
+    which on input $1^\lambda$ generates a fresh key pair consisting of secret key $\V{sk}$ of length $\lambda$ and
+    and the corresponding public key $\V{pk}$.  Note that $1^\lambda$ is the unary representation of $\lambda$.\footnote{%
+    This formality ensures that the size of the input of the Turing machine program implementing the algorithm will
+    be as least as big as the security parameter.  Otherwise the run-time complexity cannot be directly expressed
+    in relation to the size of the input tape.}
+  \item $\algo{Sign}(\V{sk}, m) \mapsto \sigma$, an algorithm
+    that signs the bit string $m$ with secret key $\V{sk}$ to output the signature $\sigma$.
+  \item $\algo{Verify}(\V{pk}, \sigma, m) \mapsto b$, an algorithm
+    that determines whether $\sigma$ is a valid signature on $m$ made with the secret key corresponding to the
+    public key $\V{pk}$.  It outputs the flag $b \in \{0, 1\}$ to indicate whether the signature
+    was valid (return value $1$) or invalid (return value $0$).
+\end{itemize}
+The abstract syntax could be instantiated with various concrete signature protocols.
+
+In addition to the computational power given to the adversary, the capabilities
+of the adversary are defined via oracles.  The oracles can be thought of as the
+API\footnote{In the modern sense of application programming interface (API),
+where some system exposes a service with well-defined semantics.} that is given
+to the adversary and allows the adversary to interact with the environment it
+is running in.  Unlike the algorithms, which the adversary has free access to,
+the access to oracles is often restricted, and oracles can keep state that is
+not accessible directly to the adversary.  Oracles typically allow the
+adversary to access information that it normally would not have direct access
+to, or to trigger operations in the environment running the protocol.
+
+Formally, oracles are an extension to the Turing machine that runs the
+adversary, which allow the adversary to submit queries to interact with the
+environment that is running the protocol.
+
+
+For a signature scheme, the adversary could be given access to an \ora{Sign}
+oracle, which the adversary uses to make the system produce signatures, with
+secret keys that the adversary does not have direct access to.  Different
+definitions of \ora{Sign} lead to different capabilities of the adversary and
+thus to different security properties later on:
+\begin{itemize}
+  \item If the signing oracle $\ora{Sign}(m)$ is defined to take a message $m$ and return
+    a signature $\sigma$ on that message, the adversary gains the power to do chosen message attacks.
+  \item If $\ora{Sign}(\cdot)$ was defined to return a pair $(\sigma, m)$ of a signature $\sigma$
+    on a random message $m$, the power of the adversary would be reduced to a known message attack.
+\end{itemize}
+
+While oracles are used to describe the possible interactions with a system, it
+is more convenient to describe complex, multi-round interactions involving
+multiple parties as a special form of an algorithm, called an \emph{interactive
+protocol}, that takes the identifiers of communicating parties and their
+(private) inputs as a parameter, and orchestrates the interaction between them.
+The adversary will then have an oracle to start an instance of that particular
+interactive protocol and (if desired by the security property being modeled)
+the ability to drop, modify or inject messages in the interaction.  The
+typically more cumbersome alternative would be to introduce one algorithm and
+oracle for every individual interaction step.
+
+Security properties are defined via \emph{games}, which are experiments that
+challenge the adversary to act in a way that would break the desired security
+property.  Games usually consist multiple phases, starting with the setup phase
+where the challenger generates the parameters (such as encryption keys) for the
+game.  In the subsequent query/response phase, the adversary is given some of
+the parameters (typically including public keys but excluding secrets) from the
+setup phase, and runs with access to oracles.  The challenger\footnote{ The
+challenger is conceptually the party or environment that runs the
+game/experiment.} answers oracle queries during that phase.  After the
+adversary's program terminates, the challenger invokes the adversary again with
+a challenge.  The adversary must now compute a final response to the
+challenger, sometimes with access to oracles.  Depending on the answer, the
+challenger decides if the adversary wins the game or not, i.e., the game returns
+$0$ if the adversary loses and $1$ if the adversary wins.
+
+A game for the existential unforgeability of signatures could be formulated like this:
+
+\bigskip
+\noindent $\mathit{Exp}_{\prt{A}}^{EUF}(1^\lambda)$:
+\vspace{-0.5\topsep}
+\begin{enumerate}
+  \setlength\itemsep{0em}
+  \item $(\V{sk}, \V{pk}) \leftarrow \algo{KeyGen}(1^\lambda)$
+  \item $(\sigma, m) \leftarrow \prt{A}^{\ora{Sign(\cdot)}}(\V{pk})$
+
+    (Run the adversary with input $\V{pk}$ and access to the $\ora{Sign}$ oracle.)
+  \item If the adversary has called $\ora{Sign}(\cdot)$ with $m$ as argument,
+    return $0$.
+  \item Return $\algo{Verify}(\V{pk}, \sigma, m)$.
+\end{enumerate}
+Here the adversary is run once, with access to the signing oracle.  Depending
+on which definition of $\ora{Sign}$ is chosen, the game models existential
+unforgeability under chosen message attack (EUF-CMA) or existential
+unforgeability under known message attack (EUF-KMA)
+
+The following modification to the game would model selective unforgeability
+(SUF-CMA / SUF-KMA):
+
+\bigskip
+\noindent $\mathit{Exp}_{\prt{A}}^{SUF}(1^\lambda)$:
+\vspace{-0.5\topsep}
+\begin{enumerate}
+  \setlength\itemsep{0em}
+  \item $m \leftarrow \prt{A}()$
+  \item $(\V{sk}, \V{pk}) \leftarrow \algo{KeyGen}(1^\lambda)$
+  \item $\sigma \leftarrow \prt{A}^{\ora{Sign(\cdot)}}(\V{pk}, m)$
+  \item If the adversary has called $\ora{Sign}(\cdot)$ with $m$ as argument,
+    return $0$.
+  \item Return $\algo{Verify}(\V{pk}, \sigma, m)$.
+\end{enumerate}
+Here the adversary has to choose a message to forge a signature for before
+knowing the message verification key.
+
+After having defined the game, we can now define a security property based on
+the probability of the adversary winning the game: we say that a signature
+scheme is secure against existential unforgeability attacks if for every
+adversary~\prt{A} (i.e., a polynomial-time probabilistic Turing machine
+program), the success probability
+\begin{equation*}
+  \Prb{\mathit{Exp}_{\prt{A}}^{EUF}(1^\lambda) = 1 }
+\end{equation*}
+of \prt{A} in the EUF game is \emph{negligible} (i.e., grows less fast with
+$\lambda$ than the inverse of any polynomial in $\lambda$).
+
+Note that the EUF and SUF games are related in the following way:  an adversary
+against the SUF game can be easily transformed into an adversary against the
+EUF game, while the converse does not necessarily hold.
+
+Often security properties are defined in terms of the \emph{advantage} of the
+adversary.  The advantage is a measure of how likely the adversary is to win
+against the real cryptographic protocol, compared to a perfectly secure version
+of the protocol.  For example, let $\mathit{Exp}_{\prt{A}}^{BIT}()$ be a game
+where the adversary has to guess the next bit in the output of a pseudo-random number
+generator (PRNG).  The idealized functionality would be a real random number generator,
+where the adversary's chance of a correct guess is $1/2$.  Thus, the adversary's advantage is
+\begin{equation*}
+  \left|\Prb{\mathit{Exp}_{\prt{A}}^{BIT}()} - 1/2\right|.
+\end{equation*}
+Note that the definition of advantage depends on the game.  The above
+definition, for example, would not work if the adversary had a way to
+``voluntarily'' lose the game by querying an oracle in a forbidden way
+
+
+\subsection{Assumptions, Reductions and Game Hopping}
+The goal of a security proof is to transform an attacker against
+the protocol under consideration into an attacker against the security
+of an underlying assumption.  Typical examples for common assumptions might be:
+\begin{itemize}
+  \item the difficulty of the decisional/computational Diffie--Hellman problem (nicely described by~\cite{boneh1998decision})
+  \item existential unforgeability under chosen message attack (EUF-CMA) of a signature scheme \cite{goldwasser1988digital}
+  \item indistinguishability against chosen-plaintext attacks (IND-CPA) of a symmetric
+    encryption algorithm \cite{bellare1998relations}
+\end{itemize}
+
+To construct a reduction from an adversary \prt{A} against $P$ to an adversary
+against $Q$, it is necessary to specify a program $R$ that both interacts as an
+adversary with the challenger for $Q$, but at the same time acts as a
+challenger for the adversary against $P$.  Most importantly, $R$ can chose how
+to respond to oracle queries from the adversary, as long as $R$ faithfully
+simulates a challenger for $P$.  The reduction must be efficient, i.e., $R$ must
+still be a polynomial-time algorithm.
+
+A well-known example for a non-trivial reduction proof is the security proof of
+FDH-RSA signatures \cite{coron2000exact}.
+% FIXME:  I think there's better reference, pointcheval maybe?
+
+In practice, reduction proofs are often complex and hard to verify.
+Game hopping has become a popular technique to manage the complexity of
+security proofs.  The idea behind game hopping proofs is to make a sequence of
+small modifications starting from initial game, until you arrive at a game
+where the success probability for the adversary becomes obvious, for example,
+because the winning state for the adversary becomes unreachable in the code
+that defines the final game, or because all values the adversary can observe to
+make a decision are drawn from a truly random and uniform distribution.  Each
+hop modifies the game in a way such that the success probability of game
+$\mathbb{G}_n$ and game $\mathbb{G}_{n+1}$ is negligibly close.
+
+Useful techniques for hops are, for example:
+\begin{itemize}
+  \item Bridging hops, where the game is syntactically changed but remains
+    semantically equivalent, i.e., $\Prb{\mathbb{G}_n = 1} = \Prb{\mathbb{G}_n = 1}$.
+  \item Indistinguishability hops, where some distribution is changed in a way that
+    an adversary that could distinguish between two adjacent games could be turned
+    into an adversary that distinguishes the two distributions.  If the success probability
+    to distinguish between those two distributions is $\epsilon$, then
+    $\left|\Prb{\mathbb{G}_n = 1} - \Prb{\mathbb{G}_n = 1}\right| \le \epsilon$
+  \item Hops based on small failure events.  Here adjacent games proceed
+    identically, until in one of the games a detectable failure event $F$ (such
+    as an adversary visibly forging a signature) occurs.  Both games most proceed
+    the same if $F$ does not occur.  Then it is easy to show \cite{shoup2004sequences}
+    that $\left|\Prb{\mathbb{G}_n = 1} - \Prb{\mathbb{G}_n = 1}\right| \le \Prb{F}$
+\end{itemize}
+
+A tutorial introduction to game hopping is given by Shoup \cite{shoup2004sequences}, while a more formal
+treatment with a focus on ``games as code'' can be found in \cite{bellare2006code}.  A
+version of the FDH-RSA security proof based on game hopping was generated with an
+automated theorem prover by Blanchet and Pointcheval \cite{blanchet2006automated}.
+
+% restore-from-backup
+
+% TODO:
+% - note about double spending vs overspending
+
+\subsection{Notation}
+We prefix public and secret keys with $\V{pk}$ and $\V{sk}$, and write $x
+\randsel S$ to randomly select an element $x$ from the set $S$ with uniform
+probability.
+
+\section{Model and Syntax for Taler}
+
+We consider a payment system with a single, static exchange and multiple,
+dynamically created customers and merchants.  The subset of the full Taler
+protocol that we model includes withdrawing digital coins, spending them with
+merchants and subsequently depositing them at the exchange, as well as
+obtaining unlinkable change for partially spent coins with an online
+``refresh'' protocol.
+
+The exchange offers digital coins in multiple denominations, and every
+denomination has an associated financial value; this mapping is not chosen by
+the adversary but is a system parameter.  We mostly ignore the denomination
+values here, including their impact on anonymity, in keeping with existing
+literature \cite{camenisch2007endorsed,pointcheval2017cut}.  For anonymity, we
+believe this amounts to assuming that all customers have similar financial
+behavior.  We note logarithmic storage, computation and bandwidth demands
+denominations distributed by powers of a fixed constant, like two.
+
+We do not model fees taken by the exchange.  Reserves\footnote{%
+  ``Reserve'' is Taler's terminology for funds submitted to the exchange that
+  can be converted to digital coins.
+}
+are also omitted.
+Instead of maintaining a reserve balance, withdrawals of different
+denominations are tracked, effectively assuming every customer has unlimited funds.
+
+Coins can be partially spent by specifying a fraction $0 < f \le 1$ of the
+total value associated with the coin's denomination.  Unlinkable change below
+the smallest denomination cannot be given.  In
+practice the unspendable, residual value should be seen as an additional fee
+charged by the exchange.
+
+Spending multiple coins is modeled non-atomically: to spend (fractions
+of) multiple coins, they must be spent one-by-one.  The individual
+spend/deposit operations are correlated by a unique identifier for the
+transaction.  In practice, this identifier is the hash $\V{transactionId} =
+H(\V{contractTerms})$ of the contract terms\footnote{The contract terms
+are a digital representation of an individual offer for a certain product or service the merchant sells
+for a certain price.}.  Contract terms include a nonce to make them
+unique, that merchant and customer agreed upon.  Note that this transaction
+identifier and the correlation between multiple spend operations for one
+payment need not be disclosed to the exchange (it might, however, be necessary
+to reveal during a detailed tax audit of the merchant):  When spending the $i$-th coin
+for the transaction with the identifier $\V{transactionId}$, messages to the
+exchange would only contain $H(i \Vert \V{transactionId})$.  This is preferable
+for merchants that might not want to disclose to the exchange the individual
+prices of products they sell to customers, but only the total transaction
+volume over time.  For simplicity, we do not include this extra feature in our
+model.
+
+Our system model tracks the total amount ($\equiv$ financial value) of coins
+withdrawn by each customer.
+Customers are identified by their public key $\V{pkCustomer}$.  Every
+customer's wallet keeps track of the following data:
+\begin{itemize}
+  \item $\V{wallet}[\V{pkCustomer}]$ contains sets of the customer's coin records,
+   which individually consist of the coin key pair, denomination and exchange's signature.
+  \item $\V{acceptedContracts}[\V{pkCustomer}]$ contains the sets of
+    transaction identifiers accepted by the customer during spending
+    operations, together with coins spent for it and their contributions $0 < f
+    \le 1$.
+  \item $\V{withdrawIds}[\V{pkCustomer}]$ contains the withdraw identifiers of
+    all withdraw operations that were created for this customer.
+  \item $\V{refreshIds}[\V{pkCustomer}]$ contains the refresh identifiers of
+    all refresh operations that were created for this customer.
+\end{itemize}
+
+
+The exchange in our model keeps track of the following data:
+\begin{itemize}
+  \item $\V{withdrawn}[\V{pkCustomer}]$ contains the total amount withdrawn by
+    each customer, i.e., the sum of the financial value of the denominations for
+    all coins that were withdrawn by $\V{pkCustomer}$.
+  \item The overspending database of the exchange is modeled by
+    $\V{deposited}[\V{pkCoin}]$ and $\V{refreshed}[\V{pkCoin}]$, which record
+    deposit and refresh operations respectively on each coin.  Note that since
+    partial deposits and multiple refreshes to smaller denominations are
+    possible, one deposit and multiple refresh operations can be recorded for a
+    single coin.
+\end{itemize}
+
+We say that a coin is \emph{fresh} if it appears in neither the $\V{deposited}$
+or $\V{refreshed}$ lists nor in $\V{acceptedContracts}$.  We say that a coin is
+being $\V{overspent}$ if recording an operation in $\V{deposited}$ or
+$\V{refreshed}$ would cause the total spent value from both lists to exceed
+the value of the coin's denomination.
+Note that the adversary does not have direct read or write access to these
+values; instead the adversary needs to use the oracles (defined later) to
+interact with the system.
+
+We parameterize our system with two security parameters:  The general security
+parameter $\lambda$, and the refresh security parameter $\kappa$.  While
+$\lambda$ determines the length of keys and thus the security level, using a
+larger $\kappa$ will only decrease the success chance of malicious merchants
+conspiring with customers to obtain unreported (and thus untaxable) income.
+
+\subsection{Algorithms}\label{sec:security-taler-syntax}
+
+The Taler e-cash scheme is modeled by the following probabilistic\footnote{Our
+Taler instantiations are not necessarily probabilistic (except, e.g., key
+generation), but we do not want to prohibit this for other instantiations}
+polynomial-time algorithms and interactive protocols.  The notation $P(X_1,\dots,X_n)$
+stands for a party $P \in \{\prt{E}, \prt{C}, \prt{M}\}$ (Exchange, Customer
+and Merchant respectively) in an interactive protocol, with $X_1,\dots,X_n$
+being the (possibly private) inputs contributed by the party to the protocol.
+Interactive protocols can access the state maintained by party $P$.
+
+While the adversary can freely execute the interactive protocols by creating
+their own parties, the adversary is not given direct access to the private data
+of parties maintained by the challenger in the security games we define later.
+
+\begin{itemize}
+  \item $\algo{ExchangeKeygen}(1^{\lambda}, 1^{\kappa}, \mathfrak{D}) \mapsto (\V{sksE}, \V{pksE})$:
+    Algorithm executed to generate keys for the exchange, with general security
+    parameter $\lambda$ and refresh security parameter $\kappa$, both given as
+    unary numbers.  The denomination specification $\mathfrak{D} = d_1,\dots,d_n$ is a
+    finite sequence of positive rational numbers that defines the financial
+    value of each generated denomination key pair.  We henceforth use $\mathfrak{D}$ to
+    refer to some appropriate denomination specification, but our analysis is
+    independent of a particular choice of $\mathfrak{D}$.
+
+    The algorithm generates the exchange's master signing key pair
+    $(\V{skESig}, \V{pkESig})$ and denomination secret and public keys
+    $(\V{skD}_1, \dots, \V{skD}_n), (\V{pkD}_1, \dots, \V{pkD}_n)$.  We write
+    $D(\V{pkD}_i)$, where $D : \{\V{pkD}_i\} \rightarrow \mathfrak{D}$ to look
+    up the financial value of denomination $\V{pkD_i}$.
+
+    We collectively refer to the exchange's secrets by $\V{sksE}$ and to the exchange's
+    public keys together with $\mathfrak{D}$ by $\V{pksE}$.
+
+  \item $\algo{CustomerKeygen}(1^\lambda,1^\kappa) \mapsto (\V{skCustomer}, \V{pkCustomer})$:
+    Key generation algorithm for customers with security parameters $\lambda$
+    and $\kappa$.
+
+  \item $\algo{MerchantKeygen}(1^\lambda,1^\kappa) \mapsto (\V{skMerchant},
+    \V{pkMerchant})$: Key generation algorithm for merchants.  Typically the
+    same as \algo{CustomerKeygen}.
+
+  \item $\algo{WithdrawRequest}(\prt{E}(\V{sksE}, \V{pkCustomer}),
+    \prt{C}(\V{skCustomer}, \V{pksE}, \V{pkD})) \mapsto (\mathcal{T}_{WR},
+    \V{wid})$: Interactive protocol between the exchange and a customer that
+    initiates withdrawing a single coin of a particular denomination.  
+
+    The customer obtains a withdraw identifier $\V{wid}$ from the protocol
+    execution and stores it in $\V{withdrawIds}[\V{pkCustomer}]$.
+
+    The \algo{WithdrawRequest} protocol only initiates a withdrawal.  The coin
+    is only obtained and stored in the customer's wallet by executing the
+    \algo{WithdrawPickup} protocol on the withdraw identifier \V{wid}.
+
+    The customer and exchange persistently store additional state (if required
+    by the instantiation) such that the customer can use
+    $\algo{WithdrawPickup}$ to complete withdrawal or to complete a previously
+    interrupted or unfinished withdrawal.
+
+    Returns a protocol transcript $\mathcal{T}_{WR}$ of all messages exchanged
+    between the exchange and customer, as well as the withdraw identifier
+    \V{wid}.
+
+  \item $\algo{WithdrawPickup}(\prt{E}(\V{sksE}, \V{pkCustomer}),
+    \prt{C}(\V{skCustomer}, \V{pksE}, \V{wid})) \mapsto (\mathcal{T}_{WP},
+    \V{coin})$: Interactive protocol between the exchange and a customer to
+    obtain the coin from a withdraw operation started with
+    $\algo{WithdrawRequest}$, identified by the withdraw identifier $\V{wid}$.
+
+    The first time $\algo{WithdrawPickup}$ is run with a particular withdraw
+    identifier $\V{wid}$, the exchange increments
+    $\V{withdrawn}[\V{pkCustomer}]$ by $D(\V{pkD})$, where $\V{pkD}$ is the
+    denomination requested in the corresponding $\algo{WithdrawRequest}$
+    execution.  How exactly $\V{pkD}$ is restored depends on the particular instantiation.
+
+    The resulting coin
+    \[ \V{coin} = (\V{skCoin}, \V{pkCoin}, \V{pkD}, \V{coinCert}), \]
+    consisting of secret key $\V{skCoin}$, public key
+    $\V{pkCoin}$, denomination public key $\V{pkD}$ and certificate $\V{coinCert}$ from the exchange, is stored
+    in the customers wallet $\V{wallet}[\V{pkCustomer}]$.
+
+    Executing the $\algo{WithdrawPickup}$ protocol multiple times with the same
+    customer and the same withdraw identifier does not result in any change of
+    the customer's withdraw balance $\V{withdrawn}[\V{pkCustomer}]$,
+    and results in (re-)adding the same coin to the customer's wallet.
+
+    Returns a protocol transcript $\mathcal{T}_{WP}$ of all messages exchanged
+    between the exchange and customer.
+
+  \item $\algo{Spend}(\V{transactionId}, f, \V{coin}, \V{pkMerchant}) \mapsto \V{depositPermission}$:
+    Algorithm to produce and sign a deposit permission \V{depositPermission}
+    for a coin under a particular transaction identifier.  The fraction $0 < f \le 1$ determines the
+    fraction of the coin's initial value that will be spent.
+
+    The contents of the deposit permission depend on the instantiation, but it
+    must be possible to derive the public coin identifier $\V{pkCoin}$ from
+    them.
+
+  \item $\algo{Deposit}(\prt{E}(\V{sksE}, \V{pkMerchant}), \prt{M}(\V{skMerchant}, \V{pksE}, \V{depositPermission})) \mapsto \mathcal{T}_D$:
+    Interactive protocol between the exchange and a merchant.
+
+    From the deposit permission we obtain the $\V{pkCoin}$ of the coin to be
+    deposited.  If $\V{pkCoin}$ is being overspent, the protocol is aborted with
+    an error message to the merchant.
+
+    On success, we add $\V{depositPermission}$ to $\V{deposited}[\V{pkCoin}]$.
+
+    Returns a protocol transcript $\mathcal{T}_D$ of all messages exchanged
+    between the exchange and merchant.
+
+  \item $\algo{RefreshRequest}(\prt{E}(\V{sksE}), \prt{C}(\V{pkCustomer}, \V{pksE}, \V{coin}_0, \V{pkD}_u))
+      \rightarrow (\mathcal{T}_{RR}, \V{rid})$
+    Interactive protocol between exchange and customer that initiates a refresh
+    of $\V{coin}_0$.  Together with $\algo{RefreshPickup}$, it allows the
+    customer to convert $D(\V{pkD}_u)$ of the remaining value on coin \[
+      \V{coin}_0 = (\V{skCoin}_0, \V{pkCoin}_0, \V{pkD}_0, \V{coinCert}_0) \]
+    into a new, unlinkable coin $\V{coin}_u$ of denomination $\V{pkD}_u$.
+
+    Multiple refreshes on the same coin are allowed, but each run subtracts the
+    respective financial value of $\V{coin}_u$ from the remaining value of
+    $\V{coin}_0$.
+
+    The customer only records the refresh operation identifier $\V{rid}$ in
+    $\V{refreshIds}[\V{pkCustomer}]$, but does not yet obtain the new coin.  To
+    obtain the new coin, \algo{RefreshPickup} must be used.
+
+    Returns the protocol transcript $\mathcal{T}_{RR}$ and a refresh identifier $\V{rid}$.
+
+  \item $\algo{RefreshPickup}(\prt{E}(\V{sksE}, \V{pkCustomer}),
+      \prt{C}(\V{skCustomer}, \V{pksE}, \V{rid})) \rightarrow (\mathcal{T}_{RP}, \V{coin}_u)$:
+    Interactive protocol between exchange and customer to obtain the new coin
+    for a refresh operation previously started with \algo{RefreshRequest},
+    identified by the refresh identifier $\V{rid}$.
+
+    The exchange learns the target denomination $\V{pkD}_u$ and signed
+    source coin $(\V{pkCoin}_0, \V{pkD}_0, \V{coinCert}_0)$.  If the source
+    coin is invalid, the exchange aborts the protocol.
+    
+    The first time \algo{RefreshPickup} is run for a particular refresh
+    identifier, the exchange records a  refresh operation of value
+    $D(\V{pkD}_u)$ in $\V{refreshed}[\V{pkCoin}_0]$.  If $\V{pkCoin}_0$ is
+    being overspent, the refresh operation is not recorded in
+    $\V{refreshed}[\V{pkCoin}_0]$, the exchange sends the customer the protocol
+    transcript of the previous deposits and refreshes and aborts the protocol.
+
+    If the customer \prt{C} plays honestly in \algo{RefreshRequest} and
+    \V{RefreshPickup}, the unlinkable coin $\V{coin}_u$ they obtain as change
+    will be stored in their wallet $\V{wallet}[\V{pkCustomer}]$.  If \prt{C} is
+    caught playing dishonestly, the \algo{RefreshPickup} protocol aborts.
+
+    An honest customer must be able to repeat a \algo{RefreshPickup} with the
+    same $\V{rid}$ multiple times and (re-)obtain the same coin, even if
+    previous $\algo{RefreshPickup}$ executions were aborted.
+
+    Returns a protocol transcript $\mathcal{T}_{RP}$.
+
+  \item $\algo{Link}(\prt{E}(\V{sksE}), \prt{C}(\V{skCustomer}, \V{pksE}, \V{coin}_0)) \rightarrow (\mathcal{T}, (\V{coin}_1, \dots, \V{coin}_n))$:
+    Interactive protocol between exchange and customer.  If $\V{coin}_0$ is a
+    coin that was refreshed, the customer can recompute all the coins obtained
+    from previous refreshes on $\V{coin}_0$, with data obtained from the
+    exchange during the protocol.  These coins are added to the customer's
+    wallet $\V{wallet}[\V{pkCustomer}]$ and returned together with the protocol
+    transcript.
+
+\end{itemize}
+
+\subsection{Oracles}
+We now specify how the adversary can interact with the system by defining
+oracles.  Oracles are queried by the adversary, and upon a query the challenger
+will act according to the oracle's specification.  Note that the adversary for
+the different security games is run with specific oracles, and does not
+necessarily have access to all oracles simultaneously.
+
+We refer to customers in the parameters to an oracle query simply by their
+public key.  The adversary needs the ability to refer to coins to trigger
+operations such as spending and refresh, but to model anonymity we cannot give
+the adversary access to the coins' public keys directly.  Therefore we allow
+the adversary to use the (successful) transcripts of the withdraw, refresh and
+link protocols to indirectly refer to coins.  We refer to this as a coin handle
+$\mathcal{H}$.  Since the execution of a link protocol results in a transcript
+$\mathcal{T}$ that can contain multiple coins, the adversary needs to select a
+particular coin from the transcript via the index $i$ as $\mathcal{H} =
+(\mathcal{T}, i)$.  The respective oracle tries to find the coin that resulted
+from the transcript given by the adversary.  If the transcript has not been
+seen before in the execution of a link, refresh or withdraw protocol; or the
+index for a link transcript is invalid, the oracle returns an error to the
+adversary.
+
+In oracles that trigger the execution of one of the interactive protocols
+defined in Section \ref{sec:security-taler-syntax}, we give the adversary the
+ability to actively control the communication channels between the exchange,
+customers and merchants; i.e., the adversary can effectively record, drop,
+modify and inject messages during the execution of the interactive protocol.
+Note that this allows the adversary to leave the execution of an interactive
+protocol in an unfinished state, where one or more parties are still waiting
+for messages.  We use $\mathcal{I}$ to refer to a handle to interactive
+protocols where the adversary can send and receive messages.
+
+\begin{itemize}
+  \item $\ora{AddCustomer}() \mapsto \V{pkCustomer}$:
+    Generates a key pair $(\V{skCustomer}, \V{pkCustomer})$ using the
+    \algo{CustomerKeygen} algorithm, and sets
+    \begin{align*}
+      \V{withdrawn}[\V{pkCustomer}] &:= 0\\
+      \V{acceptedContracts}[\V{pkCustomer}] &:= \{ \}\\
+      \V{wallet}[\V{pkCustomer}] &:= \{\} \\
+      \V{withdrawIds}[\V{pkCustomer}] &:= \{\} \\
+      \V{refreshIds}[\V{pkCustomer}] &:= \{\}.
+    \end{align*}
+    Returns the public key of the newly created customer.
+
+  \item $\ora{AddMerchant}() \mapsto \V{pkMerchant}$:
+    Generate a key pair $(\V{skMerchant}, \V{pkMerchant})$ using the
+    \algo{MerchantKeygen} algorithm.
+
+    Returns the public key of the newly created merchant.
+
+  \item $\ora{SendMessage}(\mathcal{I}, P_1, P_2, m) \mapsto ()$:
+    Send message $m$ on the channel from party $P_1$ to party $P_2$ in the
+    execution of interactive protocol $\mathcal{I}$.  The oracle does not have
+    a return value.
+
+  \item $\ora{ReceiveMessage}(\mathcal{I}, P_1, P_2) \mapsto m$:
+    Read message $m$ in the channel from party $P_1$ to party $P_2$ in the execution
+    of interactive protocol $\mathcal{I}$.  If no message is queued in the channel,
+    return $m = \bot$.
+
+  \item $\ora{WithdrawRequest}(\V{pkCustomer}, \V{pkD}) \mapsto \mathcal{I}$:
+    Triggers the execution of the \algo{WithdrawRequest} protocol.  the
+    adversary full control of the communication channels between customer and
+    exchange.
+
+  \item $\ora{WithdrawPickup}(\V{pkCustomer}, \V{pkD}, \mathcal{T}) \mapsto \mathcal{I}$:
+    Triggers the execution of the \algo{WithdrawPickup} protocol, additionally giving
+    the adversary full control of the communication channels between customer and exchange.
+
+    The customer and withdraw identifier $\V{wid}$ are obtained from the \algo{WithdrawRequest} transcript $\mathcal{T}$.
+
+  \item $\ora{RefreshRequest}(\mathcal{H}, \V{pkD}) \mapsto \mathcal{I}$:  Triggers the execution of the
+    \algo{RefreshRequest} protocol with the coin identified by coin handle
+    $\mathcal{H}$, additionally giving the adversary full control over the communication channels
+    between customer and exchange.
+
+  \item $\ora{RefreshPickup}(\mathcal{T}) \mapsto \mathcal{I}$:
+    Triggers the execution of the \algo{RefreshPickup} protocol, where the customer and refresh identifier $\V{rid}$
+    are obtained from the $\algo{RefreshRequest}$ protocol transcript $\mathcal{T}$.
+
+    Additionally gives the adversary full control over the communication channels
+    between customer and exchange.
+
+  \item $\ora{Link}(\mathcal{H}) \mapsto \mathcal{I}$:  Triggers the execution of the
+    \algo{Link} protocol for the coin referenced by handle $\mathcal{H}$,
+    additionally giving the adversary full control over the communication channels
+    between customer and exchange.
+
+  \item $\ora{Spend}(\V{transactionId}, \V{pkCustomer}, \mathcal{H}, \V{pkMerchant}) \mapsto \V{depositPermission}$:
+    Makes a customer sign a deposit permission over a coin identified by handle
+    $\mathcal{H}$.  Returns the deposit permission on success, or $\bot$ if $\mathcal{H}$
+    is not a coin handle that identifies a coin.
+
+    Note that $\ora{Spend}$ can be used to generate deposit permissions that,
+    when deposited, would result in an error due to overspending
+
+    Adds $(\V{transactionId}, \V{depositPermission})$ to $\V{acceptedContracts}[\V{pkCustomer}]$.
+
+  \item $\ora{Share}(\mathcal{H}, \V{pkCustomer}) \mapsto ()$:
+    Shares a coin (identified by handle $\mathcal{H}$) with the customer
+    identified by $\V{pkCustomer}$, i.e., puts the coin identified by $\mathcal{H}$
+    into $\V{wallet}[\V{pkCustomer}]$.  Intended to be used by the adversary in attempts to
+    violate income transparency.  Does not have a return value.
+
+    Note that this trivially violates anonymity (by sharing with a corrupted customer), thus the usage must
+    be restricted in some games.
+
+    % the share oracle is the reason why we don't need a second withdraw oracle
+
+  \item $\ora{CorruptCustomer}(\V{pkCustomer})\mapsto
+    \newline{}\qquad (\V{skCustomer}, \V{wallet}[\V{pkCustomer}],\V{acceptedContracts}[\V{pkCustomer}], 
+    \newline{}\qquad \phantom{(}\V{refreshIds}[\V{pkCustomer}], \V{withdrawIds}[\V{pkCustomer}])$:
+
+    Used by the adversary to corrupt a customer, giving the adversary access to
+    the customer's secret key, wallet, withdraw/refresh identifiers and accepted contracts.
+
+    Permanently marks the customer as corrupted.  There is nothing ``special''
+    about corrupted customers, other than that the adversary has used
+    \ora{CorruptCustomer} on them in the past.  The adversary cannot modify
+    corrupted customer's wallets directly, and must use the oracle again to
+    obtain an updated view on the corrupted customer's private data.
+
+  \item $\ora{Deposit}(\V{depositPermission}) \mapsto \mathcal{I}$:
+    Triggers the execution of the \algo{Deposit} protocol, additionally giving
+    the adversary full control over the communication channels between merchant and exchange.
+
+    Returns an error if the deposit permission is addressed to a merchant that was not registered
+    with $\ora{AddMerchant}$.
+    
+    This oracle does not give the adversary new information, but is used to
+    model the situation where there might be multiple conflicting deposit
+    permissions generated via $\algo{Spend}$, but only a limited number can be
+    deposited.
+\end{itemize}
+
+We write \oraSet{Taler} for the set of all the oracles we just defined,
+and $\oraSet{NoShare} := \oraSet{Taler} - \ora{Share}$ for all oracles except
+the share oracle.
+
+The exchange does not need to be corrupted with an oracle. A corrupted exchange
+is modeled by giving the adversary the appropriate oracles and the exchange
+secret key from the exchange key generation.
+
+If the adversary determines the exchange's secret key during the setup,
+invoking \ora{WithdrawRequest}, \ora{WithdrawPickup}, \ora{RefreshRequest},
+\ora{RefreshPickup} or \ora{Link} can be seen as the adversary playing the
+exchange.  Since the adversary is an active man-in-the-middle in these oracles,
+it can drop messages to the simulated exchange and make up its own response.
+If the adversary calls these oracles with a corrupted customer, the adversary
+plays as the customer.
+
+%\begin{mdframed}
+%The difference between algorithms and interactive protocols
+%is that the ``pure'' algorithms only deal with data, while the interactive protocols
+%take ``handles'' to parties that are communicating in the protocol.  The adversary can
+%always execute algorithms that don't depend on handles to communication partners.
+%However the adversary can't run the interactive protocols directly, instead it must
+%rely on the interaction oracles for it.  Different interaction oracles might allow the
+%adversary to play different roles in the same interactive protocol.
+%
+%While most algorithms in Taler are not probabilistic, we still say that they are, since
+%somebody else might come up with an instantiation of Taler that uses probabilistic algorithms,
+%and then the games should still apply.
+%
+%
+%While we do have a \algo{Deposit} protocol that's used in some of the games, having a deposit oracle is not necessary
+%since it does not give the adversary any additional power.
+%\end{mdframed}
+
+\section{Games}
+
+We now define four security games (anonymity, conservation, unforgeability and
+income transparency) that are later used to define the security properties for
+Taler.  Similar to \cite{bellare2006code} we assume that the game and adversary
+terminate in finite time, and thus random choices made by the challenger and
+adversary can be taken from a finite sample space.
+
+All games except income transpacency return $1$ to indicate that the adversary
+has won and $0$ to indicate that the adversary has lost.  The income
+transparency game returns $0$ if the adversary has lost, and a positive
+``laundering ratio'' if the adversary won.
+
+\subsection{Anonymity}
+Intuitively, an adversary~$\prt{A}$ (controlling the exchange and merchants) wins the
+anonymity game if they have a non-negligible advantage in correlating spending operations
+with the withdrawal or refresh operations that created a coin used in the
+spending operation.
+
+Let $b$ be the bit that will determine the mapping between customers and spend
+operations, which the adversary must guess.
+
+We define a helper procedure
+\begin{equation*}
+  \algo{Refresh}(\prt{E}(\V{sksE}), \prt{C}(\V{pkCustomer}, \V{pksE}, \V{coin}_0)) \mapsto \mathfrak{R}
+\end{equation*}
+that refreshes the whole remaining amount on $\V{coin}_0$ with repeated application of $\algo{RefreshRequest}$
+and $\algo{RefreshPickup}$ using the smallest possible set of target denominations, and returns all protocol transcripts
+in $\mathfrak{R}$.
+
+\begin{mdframed}
+\small
+\noindent $\mathit{Exp}_{\prt{A}}^{anon}(1^\lambda, 1^\kappa, b)$:
+\vspace{-0.5\topsep}
+\begin{enumerate}
+  \setlength\itemsep{0em}
+  \item $(\V{sksE}, \V{pksE}, \V{skM}, \V{pkM}) \leftarrow {\prt{A}}()$
+  \item $(\V{pkCustomer}_0, \V{pkCustomer}_1, \V{transactionId}_0, \V{transactionId}_1, f) \leftarrow {\prt{A}}^{\oraSet{NoShare}}()$
+  \item Select distinct fresh coins
+    \begin{align*}
+      \V{coin}_0 &\in \V{wallet}[\V{pkCustomer}_0]\\
+      \V{coin}_1 &\in \V{wallet}[\V{pkCustomer}_1]
+    \end{align*}
+    Return $0$ if either $\V{pkCustomer}_0$ or $\V{pkCustomer}_1$ are not registered customers with sufficient fresh coins.
+  \item  For $i \in \{0,1\}$ run
+      \begin{align*}
+        &\V{dp_i} \leftarrow \algo{Spend}(\V{transactionId}_i, f, \V{coin}_{i-b}, \V{pkM}) \\
+        &\algo{Deposit}(\prt{A}(), \prt{M}(\V{skM}, \V{pksE}, \V{dp}_i)) \\
+        &\mathfrak{R}_i \leftarrow \algo{Refresh}(\prt{A}(), \prt{C}(\V{pkCustomer}_i, \V{pksE}, \V{coin}_{i-b}))
+      \end{align*}
+  \item $b' \leftarrow {\cal A}^{\oraSet{NoShare}}(\mathfrak{R}_0, \mathfrak{R}_1)$ \\
+  \item Return $0$ if $\ora{Spend}$ was used by the adversary on the coin handles
+    for $\V{coin}_0$ or $\V{coin}_1$ or $\ora{CorruptCustomer}$ was used on $\V{pkCustomer}_0$ or $\V{pkCustomer}_1$.
+  \item If $b = b'$ return $1$, otherwise return $0$.
+\end{enumerate}
+\end{mdframed}
+
+Note that unlike some other anonymity games defined in the literature (such as
+\cite{pointcheval2017cut}), our anonymity game always lets both customers spend
+in order to avoid having to hide the missing coin in one customer's wallet
+from the adversary.
+
+\subsection{Conservation}
+The adversary wins the conservation game if it can bring an honest customer in a
+situation where the spendable financial value left in the user's wallet plus
+the value spent for transactions known to the customer is less than the value
+withdrawn by the same customer through by the exchange.
+
+In practice, this property is necessary to guarantee that aborted or partially
+completed withdrawals, payments or refreshes, as well as other (transient)
+misbehavior from the exchange or merchant do not result in the customer losing
+money.
+
+\begin{mdframed}
+\small
+\noindent $\mathit{Exp}_{\cal A}^{conserv}(1^\lambda, 1^\kappa)$:
+\vspace{-0.5\topsep}
+\begin{enumerate}
+  \setlength\itemsep{0em}
+  \item $(\V{sksE}, \V{pksE}) \leftarrow \mathrm{ExchangeKeygen}(1^\lambda, 1^\kappa, M)$
+  \item $\V{pkCustomer} \leftarrow {\cal A}^{\oraSet{NoShare}}(\V{pksE})$
+  \item Return $0$ if $\V{pkCustomer}$ is a corrupted user.
+  \item \label{game:conserv:run} Run $\algo{WithdrawPickup}$ for each withdraw identifier $\V{wid}$
+    and $\algo{RefreshPickup}$ for each refresh identifier $\V{rid}$ that the user
+    has recorded in $\V{withdrawIds}$ and $\V{refreshIds}$.  Run $\algo{Deposit}$
+    for all deposit permissions in $\V{acceptedContracts}$.
+  \item Let $v_{C}$ be the total financial value left on valid coins in $\V{wallet}[\V{pkCustomer}]$,
+    i.e., the denominated values minus the spend/refresh operations recorded in the exchange's database.
+    Let $v_{S}$ be the total financial value of contracts in $\V{acceptedContracts}[\V{pkCustomer}]$.
+  \item Return $1$ if $\V{withdrawn}[\V{pkCustomer}] > v_{C} + v_{S}$.
+\end{enumerate}
+\end{mdframed}
+
+
+Hence we ensure that:
+\begin{itemize}
+  \item if a coin was spent, it was spent for a contract that the customer
+    knows about, i.e., in practice the customer could prove that they ``own'' what they
+    paid for,
+  \item if a coin was refreshed, the customer ``owns'' the resulting coins,
+    even if the operation was aborted, and
+  \item if the customer withdraws, they can always obtain a coin whenever the
+    exchange accounted for a withdrawal, even when protocol executions are
+    intermittently aborted.
+\end{itemize}
+
+Note that we do not give the adversary access to the \ora{Share} oracle, since
+that would trivially allow the adversary to win the conservation game.  In
+practice, conservation only holds for customers that do not share coins with
+parties that they do not fully trust.
+
+\subsection{Unforgeability}
+
+Intuitively, adversarial customers win if they can obtain more valid coins than
+they legitimately withdraw.
+
+\begin{mdframed}
+\small
+\noindent $\mathit{Exp}_{\cal A}^{forge}(1^\lambda, 1^\kappa)$:
+\vspace{-0.5\topsep}
+\begin{enumerate}
+  \setlength\itemsep{0em}
+  \item $(skE, pkE) \leftarrow \mathrm{ExchangeKeygen}()$
+  \item $(C_0, \dots, C_\ell) \leftarrow \mathcal{A}^{\oraSet{All}}(pkExchange)$
+  \item Return $0$ if any $C_i$ is not of the form $(\V{skCoin}, \V{pkCoin}, \V{pkD}, \V{coinCert})$
+    or any $\V{coinCert}$ is not a valid signature by $\V{pkD}$ on the respective $\V{pkCoin}$.
+  \item Return $1$ if the sum of the unspent value of valid coins in $C_0
+    \dots, C_\ell$ exceeds the amount withdrawn by corrupted
+    customers, return $0$ otherwise.
+\end{enumerate}
+\end{mdframed}
+
+
+\subsection{Income Transparency}
+
+Intuitively, the adversary wins if coins are in exclusive control of corrupted
+customers, but the exchange has no record of withdrawal or spending for them.
+This presumes that the adversary cannot delete from non-corrupted customer's
+wallets, even though it can use oracles to force protocol interactions of
+non-corrupted customers.
+
+For practical e-cash systems, income transparency disincentivizes the emergence
+of ``black markets'' among mutually distrusting customers, where currency
+circulates without the transactions being visible.  This is in contrast to some
+other proposed e-cash systems and cryptocurrencies, where disintermediation is
+an explicit goal. The Link protocol introduces the threat of losing exclusive
+control of coins (despite having the option to refresh them) that were received
+without being visible as income to the exchange.
+
+\begin{mdframed}
+\small
+\noindent $\mathit{Exp}_{\cal A}^{income}(1^\lambda, 1^\kappa)$:
+\vspace{-0.5\topsep}
+\begin{enumerate}
+  \setlength\itemsep{0em}
+  \item $(skE, pkE) \leftarrow \mathrm{ExchangeKeygen}()$
+  \item $(\V{coin}_1, \dots, \V{coin}_\ell) \leftarrow \mathcal{A}^{\oraSet{All}}(pkExchange)$
+
+    (The $\V{coin}_i$ must be coins, including secret key and signature by the
+    denomination, for the adversary to win. However these coins need not be
+    present in any honest or corrupted customer's wallet.)
+  \item\label{game:income:spend} Augment the wallets of all non-corrupted customers with their
+    transitive closure using the \algo{Link} protocol.
+    Mark all remaining value on coins in wallets of non-corrupted customers as
+    spent in the exchange's database.
+  \item Let $L$ denote the sum of unspent value on valid coins in $(\V{coin}_1, \dots\, \V{coin}_\ell)$,
+    after accounting for the previous update of the exchange's database.
+    Also let $w'$ be the sum of coins withdrawn by corrupted customers.
+    Then $p := L - w'$ gives the adversary's untaxed income.
+  \item Let $w$ be the sum of coins withdrawn by non-corrupted customers, and
+    $s$ be the value marked as spent by non-corrupted customers, so that
+    $b := w - s$ gives the coins lost during refresh, that is the losses incurred attempting to hide income.
+  \item If $b+p \ne 0$, return $\frac{p}{b + p}$, i.e., the laundering ratio for attempting to obtain untaxed income.  Otherwise return $0$.
+\end{enumerate}
+\end{mdframed}
+
+\section{Security Definitions}\label{sec:security-properties}
+We now give security definitions based upon the games defined in the previous
+section.  Recall that $\lambda$ is the general security parameter, and $\kappa$ is the
+security parameter for income transparency.  A polynomial-time adversary is implied to
+be polynimial in $\lambda+\kappa$.
+
+\begin{definition}[Anonymity]
+  We say that an e-cash scheme satisfies \emph{anonymity} if the success
+  probability $\Prb{b \randsel \{0,1\}: \mathit{Exp}_{\cal A}^{anon}(1^\lambda,
+  1^\kappa, b) = 1}$ of the anonymity game is negligibly close to $1/2$ for any
+  polynomial-time adversary~$\mathcal{A}$.
+\end{definition}
+
+\begin{definition}[Conservation]
+  We say that an e-cash scheme satisfies \emph{conservation} if
+  the success probability $\Prb{\mathit{Exp}_{\cal A}^{conserv}(1^\lambda, 1^\kappa) = 1}$
+  of the conservation game is negligible for any polynomial-time adversary~$\mathcal{A}$.
+\end{definition}
+
+\begin{definition}[Unforgeability]
+  We say that an e-cash scheme satisfies \emph{unforgeability} if the success
+  probability $\Prb{\mathit{Exp}_{\cal A}^{forge}(1^\lambda, 1^\kappa) = 1}$ of
+  the unforgeability game is negligible for any polynomial-time adversary
+  $\mathcal{A}$.
+\end{definition}
+
+\begin{definition}[Strong Income Transparency]
+  We say that an e-cash scheme satisfies \emph{strong income transparency} if
+  the success probability $\Prb{\mathit{Exp}_{\cal A}^{income}(1^\lambda, 1^\kappa) \ne 0}$
+  for the income transparency game is negligible for any polynomial-time adversary~$\mathcal{A}$.
+\end{definition}
+The adversary is said to win one execution of the strong income transparency
+game if the game's return value is non-zero, i.e., there was at least one
+successful attempt to obtain untaxed income.
+
+
+\begin{definition}[Weak Income Transparency]
+  We say that an e-cash scheme satisfies \emph{weak income transparency}
+  if, for any polynomial-time adversary~$\mathcal{A}$,
+  the return value of the income transparency game satisfies
+  \begin{equation}\label{eq:income-transparency-expectation}
+    E\left[\mathit{Exp}_{\cal A}^{income}(1^\lambda, 1^\kappa)\right] \le {\frac{1}{\kappa}} \mathperiod
+  \end{equation}
+  In (\ref{eq:income-transparency-expectation}), the expectation runs over 
+  any probability space used by the adversary and challenger.
+\end{definition}
+
+For some instantiations, e.g., ones based on zero-knowledge proofs, $\kappa$
+might be a security parameter in the traditional sense.  However for an e-cash
+scheme to be useful in practice, the adversary does not need to have only
+negligible success probability to win the income transparency game.  It
+suffices that the financial losses of the adversary in the game are a
+deterrent, after all our purpose of the game is to characterize tax evasion.
+
+Taler does not fulfill strong income transparency, since for Taler $\kappa$ must
+be a small cut-and-choose parameter, as the complexity of our cut-and-choose
+protocol grows linearly with $\kappa$.  Instead we show that Taler satisfies
+weak income transparency, which is a statement about the adversary's financial
+loss when winning the game instead of the winning probability.  The
+return-on-investment (represented by the game's return value) is bounded by
+$1/\kappa$.
+
+We still characterize strong income transparency, since it might be useful
+for other instantiations that provide more absolute guarantees.
+
+\section{Instantiation}
+We give an instantiation of our protocol syntax that is generic over
+a blind signature scheme, a signature scheme, a combined signature scheme / key
+exchange, a collision-resistant hash function and a pseudo-random function family (PRF).
+
+\subsection{Generic Instantiation}\label{sec:crypto:instantiation}
+Let $\textsc{BlindSign}$ be a blind signature scheme with the following syntax, where the party $\mathcal{S}$
+is the signer and $\mathcal{R}$ is the signature requester:
+\begin{itemize}
+  \item $\algo{KeyGen}_{BS}(1^\lambda) \mapsto (\V{sk}, \V{pk})$ is the key generation algorithm
+    for the signer of the blind signature protocol.
+  \item $\algo{Blind}_{BS}(\mathcal{S}(\V{sk}), \mathcal{R}(\V{pk}, m)) \mapsto (\overline{m}, r)$ is a possibly interactive protocol
+    to blind a message $m$ that is to be signed later.  The result is a blinded message $\overline{m}$ and
+    a residual $r$ that allows to unblind a blinded signature on $m$ made by $\V{sk}$.
+  \item $\algo{Sign}_{BS}(\mathcal{S}(\V{sk}), \mathcal{R}(\overline{m})) \mapsto
+    \overline{\sigma}$ is an algorithm to sign a blinded message $\overline{m}$.
+    The result $\overline{\sigma}$ is a blinded signature that must be unblinded
+    using the $r$ returned from the corresponding blinding operation before
+    verification.
+  \item $\algo{UnblindSig}_{BS}(r, m, \overline{\sigma}) \mapsto \sigma$
+    is an algorithm to unblind a blinded signature.
+  \item $\algo{Verify}_{BS}(\V{pk}, m, \sigma) \mapsto b$ is an algorithm to
+    check the validity of an unblinded blind signature.  Returns $1$ if the
+    signature $\sigma$ was valid for $m$ and $0$ otherwise.
+\end{itemize}
+
+Note that this syntax excludes some blind signature protocols, such as those
+with interactive/probabilistic verification or those without a ``blinding
+factor'', where the $\algo{Blind}_{BS}$ and $\algo{Sign}_{BS}$ and
+$\algo{UnblindSig}_{BS}$ would be merged into one interactive signing protocol.
+Such blind signature protocols have already been used to construct e-cash
+\cite{camenisch2005compact}.
+
+We require the following two security properties for $\textsc{BlindSign}$:
+\begin{itemize}
+  \item \emph{blindness}: It should be computationally infeasible for a
+    malicious signer to decide which of two messages has been signed first
+    in two executions with an honest user.  The corresponding game can be defined as
+    in Abe and Okamoto \cite{abe2000provably}, with the additional enhancement
+    that the adversary generates the signing key \cite{schroder2017security}.
+  \item \emph{unforgeability}:  An adversary that requests $k$ signatures with $\algo{Sign}_{BS}$
+    is unable to produce $k+1$ valid signatures with non-negligible probability.
+\end{itemize}
+For more generalized notions of the security of blind signatures see, e.g.,
+\cite{fischlin2009security,schroder2017security}.
+
+Let $\textsc{CoinSignKx}$ be combination of a signature scheme and key exchange protocol:
+
+\begin{itemize}
+  \item $\algo{KeyGenSec}_{CSK}(1^\lambda) \mapsto \V{sk}$ is a secret key generation algorithm.
+  \item $\algo{KeyGenPub}_{CSK}(\V{sk}) \mapsto \V{pk}$ produces the corresponding public key.
+  \item $\algo{Sign}_{CSK}(\V{sk}, m) \mapsto \sigma$ produces a signature $\sigma$ over message $m$.
+  \item $\algo{Verify}_{CSK}(\V{pk}, m, \sigma) \mapsto b$ is a signature verification algorithm.
+    Returns $1$ if the signature $\sigma$ is a valid signature on $m$ by $\V{pk}$, and $0$ otherwise.
+  \item $\algo{Kx}_{CSK}(\V{sk}_1, \V{pk}_2) \mapsto x$ is a key exchange algorithm that computes
+    the shared secret $x$ from secret key $\V{sk}_1$ and public key $\V{pk}_2$.
+\end{itemize}
+
+We occasionally need these key generation algorithms separately, but
+we usually combine them into $\algo{KeyGen}_{CSK}(1^\lambda) \mapsto (\V{sk}, \V{pk})$.
+
+We require the following security properties to hold for $\textsc{CoinSignKx}$:
+\begin{itemize}
+  \item \emph{unforgeability}:  The signature scheme $(\algo{KeyGen}_{CSK}, \algo{Sign}_{CSK}, \algo{Verify}_{CSK})$
+    must satisfy existential unforgeability under chosen message attacks (EUF-CMA).
+
+  \item \emph{key exchange completeness}:
+    Any probabilistic polynomial-time adversary has only negligible chance to find
+    a degenerate key pair $(\V{sk}_A, \V{pk}_A)$ such that for some
+    honestly generated key pair 
+    $(\V{sk}_B, \V{pk}_B) \leftarrow \algo{KeyGen}_{CSK}(1^\lambda)$
+    the key exchange fails, that is
+      $\algo{Kex}_{CSK}(\V{sk}_A, \V{pk}_B) \neq \algo{Kex}_{CSK}(\V{sk}_B, \V{pk}_A)$,
+    while the adversary can still produce a pair $(m, \sigma)$ such that $\algo{Verify}_{BS}(\V{pk}_A, m, \sigma) = 1$.
+
+  \item \emph{key exchange security}:  The output of $\algo{Kx}_{CSK}$ must be computationally
+    indistinguishable from a random shared secret of the same length, for inputs that have been
+    generated with $\algo{KeyGen}_{CSK}$.
+\end{itemize}
+
+Let $\textsc{Sign} = (\algo{KeyGen}_{S}, \algo{Sign}_{S}, \algo{Verify}_{S})$ be a signature
+scheme that satisfies selective unforgeability under chosen message attacks (SUF-CMA).
+
+Let $\V{PRF}$ be a pseudo-random function family and $H : \{0,1\}^* \rightarrow \{0,1\}^\lambda$
+a collision-resistant hash function.
+
+Using these primitives, we now instantiate the syntax of our income-transparent e-cash scheme:
+
+\begin{itemize}
+  \item $\algo{ExchangeKeygen}(1^{\lambda}, 1^{\kappa}, \mathfrak{D})$:
+
+    Generate the exchange's signing key pair $\V{skESig} \leftarrow \algo{KeyGen}_{S}(1^\lambda)$.
+    
+    For each element in the sequence $\mathfrak{D} = d_1,\dots,d_n$, generate
+    denomination key pair $(\V{skD}_i, \V{pkD}_i) \leftarrow \algo{KeyGen}_{BS}(1^\lambda)$.
+  \item $\algo{CustomerKeygen}(1^\lambda,1^\kappa)$:
+    Return key pair $\algo{KeyGen}_S(1^\lambda)$.
+  \item $\algo{MerchantKeygen}(1^\lambda,1^\kappa)$:
+    Return key pair $\algo{KeyGen}_S(1^\lambda)$.
+
+  \item $\algo{WithdrawRequest}(\prt{E}(\V{sksE}, \V{pkCustomer}), \prt{C}(\V{skCustomer}, \V{pksE}, \V{pkD}))$:
+
+    Let $\V{skD}$ be the exchange's denomination secret key corresponding to $\V{pkD}$.
+
+    \begin{enumerate}
+      \item \prt{C} generates coin key pair $(\V{skCoin}, \V{pkCoin}) \leftarrow \algo{KeyGen}_{CSK}(1^\lambda)$
+      \item \prt{C} runs $(\overline{m}, r) \leftarrow \algo{Blind}_{CSK}(\mathcal{E}(\V{skCoin}), \mathcal{C}(m))$ with the exchange
+    \end{enumerate}
+
+    The withdraw identifier is then
+    \begin{equation*}
+      \V{wid} := (\V{skCoin}, \V{pkCoin}, \overline{m}, r)
+    \end{equation*}
+
+
+  \item $\algo{WithdrawPickup}(\prt{E}(\V{sksE}, \V{pkCustomer}), \prt{C}(\V{skCustomer}, \V{pksE}, \V{wid}))$:
+
+    The customer looks up $\V{skCoin}$, $\V{pkCoin}$, \V{pkD} $\overline{m}$
+    and $r$ via the withdraw identifier $\V{wid}$.
+
+    \begin{enumerate}
+      \item \prt{C} runs $\overline{\sigma} \leftarrow \algo{Sign}_{BS}(\mathcal{E}(\V{skD}), \mathcal{C}(\overline{m}))$ with the exchange
+      \item \prt{C} unblinds the signature $\sigma \leftarrow \algo{UnblindSig}_{BS}(\overline{\sigma}, r, \overline{m})$
+        and stores the coin $(\V{skCoin}, \V{pkCoin}, \V{pkD}, \sigma)$ in their wallet.
+    \end{enumerate}
+
+  \item $\algo{Spend}(\V{transactionId}, f, \V{coin}, \V{pkMerchant})$:
+    Let $(\V{skCoin}, \V{pkCoin}, \V{pkD}, \sigma_C) := \V{coin}$.
+    The deposit permission is computed as
+    \begin{equation*}
+      \V{depositPermission} := (\V{pkCoin}, \sigma_D, m),
+    \end{equation*}
+    where
+    \begin{align*}
+      m &:= (\V{pkCoin}, \V{pkD}, \V{sigma}_C, \V{transactionId}, f, \V{pkMerchant}) \\
+      \sigma_D &\leftarrow \algo{Sign}_{CSK}(\V{skCoin}, m).
+    \end{align*}
+
+  \item $\algo{Deposit}(\prt{E}(\V{sksE}, \V{pkMerchant}), \prt{M}(\V{skMerchant}, \V{pksE}, \V{depositPermission}))$:
+    The merchant sends \V{depositPermission} to the exchange.
+
+    The exchange checks that the deposit permission is well-formed and sets
+    \begin{align*}
+      (\V{pkCoin}, \V{pkD}, \sigma_C, \sigma_D, \V{transactionId}, f, \V{pkMerchant})) &:= \V{depositPermission}
+    \end{align*}
+
+    The exchange checks the signature on the deposit permission and the validity of the coin with
+    \begin{align*}
+      b_1 := \algo{Verify}_{CSK}(\V{pkCoin}, \sigma_D, m) \\
+      b_2 := \algo{Verify}_{BS}(\V{pkD}, \sigma_C, \V{pkCoin})
+    \end{align*}
+    and aborts of $b_1 = 0$ or $b_2=0$.
+
+    The exchange aborts if spending $f$ would result in overspending
+    $\V{pkCoin}$ based on existing deposit/refresh records, and otherwise marks
+    $\V{pkCoin}$ as spent for $D(\V{pkD})$.
+
+  \item $\algo{RefreshRequest}(\prt{E}(\V{sksE}, \V{pkCustomer}), \prt{C}(\V{skCustomer}, \V{pksE}, \V{coin}_0, \V{pkD}_u))$:
+
+    Let $\V{skD}_u$ be the secret key corresponding to $\V{pkD}_u$.
+
+    We write
+    \[ \algo{Blind}^*_{BS}(\mathcal{S}(\V{sk}, \V{skESig}), \mathcal{R}(R, \V{skR}, \V{pk}, m)) \mapsto (\overline{m}, r, \mathcal{T}_{B*}) \]
+    for a modified version of $\algo{Blind}_{BS}$ where the signature requester
+    $\mathcal{R}$ takes all randomness from the sequence
+    $\left(\V{PRF}(R,\texttt{"blind"}\Vert n)\right)_{n>0}$, the messages from
+    the exchange are recorded in transcript $\mathcal{T}_{B*}$, all
+    messages sent by $\mathcal{R}$ are signed with $\V{skR}$ and all messages sent by $\mathcal{S}$
+    are signed with $\V{skESig}$.
+
+    Furthermore, we write \[ \algo{KeyGen}^*_{CSK}(R, 1^\lambda) \mapsto
+    (\V{sk}, \V{pk}) \] for a modified version of the key generation algorithm
+    that takes randomness from the sequence $\left(\V{PRF}(R,\texttt{"key"}\Vert
+    n)\right)_{n>0}$.
+
+    For each $i\in \{1,\dots,\kappa \}$, the customer
+    \begin{enumerate}
+      \item generates seed $s_i \randsel \{1, \dots, 1^\lambda\}$
+      \item generates transfer key pair $(t_i, T_i) \leftarrow \algo{KeyGen}^*_{CSK}(s_i, 1^\lambda)$
+      \item computes transfer secret $x_i \leftarrow \algo{Kx}(t_i, \V{pkCoin}_0)$
+      \item computes coin key pair $(\V{skCoin}_i, \V{pkCoin}_i) \leftarrow
+        \algo{KeyGen}^*_{CSK}(x_i, 1^\lambda)$
+      \item and executes the modified blinding protocol
+      \[
+        (\overline{m}_i, r_i, \mathcal{T}_{(B*,i)}) \leftarrow
+          \algo{Blind}^*_{BS}(\mathcal{E}(\V{skD_u}), \mathcal{C}(x_i, \V{skCoin}_0, \V{pkD}_u, \V{pkCoin}_i))
+      \]
+        with the exchange.
+    \end{enumerate}
+
+    The customer stores the refresh identifier
+    \begin{equation}
+      \V{rid} := (\V{coin}_0, \V{pkD}_u, \{ s_i \}, \{ \overline{m}_i \}, \{r_i\}, \{\mathcal{T}_{(B*,i)}\} ).
+    \end{equation}
+
+  \item $\algo{RefreshPickup}(\prt{E}(\V{sksE}, \V{pkCustomer}), \prt{C}(\V{skCustomer}, \V{pksE}, \V{rid})) \rightarrow \mathcal{T}$:
+    The customer looks up the refresh identifier $\V{rid}$ and recomputes the transfer key pairs,
+    transfer secrets and new coin key pairs.
+
+    Then customer sends the commitment $\pi_1 = (\V{pkCoin}_0, \V{pkD}_u, h_C)$ together with signature $\V{sig}_1
+    \leftarrow \algo{Sign}_{CSK}(\V{skCoin}_0, \pi_1)$ to the exchange, where
+    \begin{align*}
+      h_T &:= H(T_1, \dots, T_\kappa)\\
+      h_{\overline{m}} &:= H(\overline{m}_1, \dots, \overline{m}_\kappa)\\
+      h_C &:= H(h_T \Vert h_{\overline{m}})
+    \end{align*}
+
+    The exchange checks the signature $\V{sig}_1$, and aborts if invalid.  Otherwise,
+    depending on the commitment:
+    \begin{enumerate}
+      \item If the exchange did not see $\pi_1$ before, it marks $\V{pkCoin}_0$
+        as spent for $D(\V{pkD}_u)$, chooses a uniform random $0 \le \gamma < \kappa$, stores it,
+        and sends this choice in a signed message $(\gamma, \V{sig}_2)$ to the customer,
+        where $\V{sig}_2 \leftarrow \algo{Sign}_{S}(\V{skESig}, \gamma)$.
+      \item Otherwise, the exchange sends back the same $\pi_2$ as it sent for the last
+        equivalent $\pi_1$.
+    \end{enumerate}
+
+    The customer checks if $\pi_2$ differs from a previously received $\pi_2'$ for the same
+    request $\pi_1$, and aborts if such a conflicting response was found.
+    Otherwise, the customer in response to $\pi_2$ sends the reveal message
+    \begin{equation*}
+      \pi_3 = T_\gamma, \overline{m}_\gamma,
+      (s_1, \dots, s_{\gamma-1}, s_{\gamma+1}, \dots, s_\kappa)
+    \end{equation*}
+    and signature
+    \begin{equation*}
+      \V{sig}_{3'} \leftarrow \algo{Sign}_{CSK}(\V{skCoin}_0, (\V{pkCoin}_0,
+      \V{pkD}_u, \mathcal{T}_{(B*,\gamma)}, T_\gamma, \overline{m}_\gamma))
+    \end{equation*} to the exchange.  Note that $\V{sig}_{3'}$ is not a signature
+    over the full reveal message, but is primarily used in the linking protocol for
+    checks by the customer.
+    
+    The exchange checks the signature $\V{sig}_{3'}$ and then computes for $i \ne \gamma$:
+    \begin{align*}
+      (t_i', T_i') &\leftarrow \algo{KeyGen}^*_{CSK}(s_i, 1^\lambda)\\
+      x_i' &\leftarrow \algo{Kx}(t_i, \V{pkCoin}_0)\\
+      (\V{skCoin}_i', \V{pkCoin}_i') &\leftarrow
+              \algo{KeyGen}^*_{CSK}(x_i', 1^\lambda) \\
+      h_T' &:= H(T'_1, \dots, T_{\gamma-1}', T_\gamma, T_{\gamma+1}', \dots, T_\kappa')
+    \end{align*}
+    and simulates the blinding protocol with recorded transcripts (without signing each message,
+    as indicated by the dot ($\cdot$) instead of a signing secret key), obtaining
+    \begin{align*}
+      (\overline{m}_i', r_i', \mathcal{T}_i) &\leftarrow
+          \algo{Blind}^*_{BS}(\mathcal{S}(\V{skD}_u), \mathcal{R}(x_i', \cdot, \V{pkD}_u, \V{skCoin}'_i))\\
+    \end{align*}
+    and finally
+    \begin{align*}
+      h_{\overline{m}}' &:= H(\overline{m}_1', \dots, \overline{m}_{\gamma-1}', \overline{m}_\gamma, \overline{m}_{\gamma+1}',\dots, \overline{m}_\kappa')\\
+      h_C' &:= H(h_T' \Vert h_{\overline{m}}').
+    \end{align*}
+
+    Now the exchange checks if $h_C = h_C'$, and aborts the protocol if the check fails.
+    Otherwise, the exchange sends a message back to $\prt{C}$ that the commitment verification succeeded and includes
+    the signature
+    \begin{equation*}
+      \overline{\sigma}_\gamma := \algo{Sign}_{BS}(\mathcal{E}(\V{skD}_u), \mathcal{C}(\overline{m}_\gamma)).
+    \end{equation*}
+
+    As a last step, the customer obtains the signature $\sigma_\gamma$ on the new coin's public key $\V{pkCoin}_u$ with
+    \begin{equation*}
+      \sigma_\gamma := \algo{UnblindSig}(r_\gamma, \V{pkCoin}_\gamma, \overline{\sigma}_\gamma).
+    \end{equation*}
+
+    Thus, the new, unlinkable coin is $\V{coin}_u := (\V{skCoin}_\gamma, \V{pkCoin}_\gamma, \V{pkD}_u, \sigma_\gamma)$.
+
+  \item $\algo{Link}(\prt{E}(\V{sksE}), \prt{C}(\V{skCustomer}, \V{pksE}, \V{coin}_0))$:
+    The customer sends the public key $\V{pkCoin}_0$ of $\V{coin}_0$ to the exchange.
+
+    For each completed refresh on $\V{pkCoin}_0$ recorded in the exchange's
+    database, the exchange sends the following data back to the customer: the
+    signed commit message $(\V{sig}_1, \pi_1)$, the transfer public key
+    $T_\gamma$, the signature $\V{sig}_{3'}$, the blinded signature $\overline{\sigma}_\gamma$, and the
+    transcript $\mathcal{T}_{(B*,\gamma)}$ of the customer's and exchange's messages
+    during the $\algo{Blind}^*_{BS}$ protocol execution.
+
+    The following logic is repeated by the customer for each response:
+    \begin{enumerate}
+      \item Verify the signatures (both from $\V{pkESig}$ and $\V{pkCoin}_0$) on the transcript $\mathcal{T}_{(B*,\gamma)}$,
+        abort otherwise.
+      \item Verify that $\V{sig}_1$ is a valid signature on $\pi_1$ by $\V{pkCoin}_0$, abort otherwise.
+      \item Re-compute the transfer secret and the new coin's key pair as
+        \begin{align*}
+          x_\gamma &\leftarrow \algo{Kx}_{CSK}(\V{skCoin}_0, T_\gamma)\\
+          (\V{skCoin}_\gamma, \V{pkCoin}_\gamma) &\leftarrow \algo{KeyGen}_{CSK}^*(x_\gamma, 1^\lambda).
+        \end{align*}
+      \item Simulate the blinding protocol with the message transcript received from the exchange to obtain
+        $(\overline{m}_\gamma, r_\gamma)$.
+      \item Check that $\algo{Verify}_{CSK}(\V{pkCoin}_0,
+        \V{pkD}_u, \V{skCoin}_0,(\mathcal{T}_{(B*,\gamma)}, \overline{m}_\gamma), \V{sig}_{3'})$
+        indicates a valid signature, abort otherwise.
+      \item Unblind the signature to obtain $\sigma_\gamma \leftarrow \algo{UnblindSig}(r_\gamma, \V{pkCoin}_\gamma, \overline{\sigma}_\gamma)$
+      \item (Re-)add the coin $(\V{skCoin}_\gamma, \V{pkCoin}_\gamma, \V{pkD}_u, \sigma_\gamma)$ to the customer's wallet.
+    \end{enumerate}
+
+\end{itemize}
+
+\subsection{Concrete Instantiation}
+We now give a concrete instantiation that is used in the implementation
+of GNU Taler for the schemes \textsc{BlindSign}, \textsc{CoinSignKx} and \textsc{Sign}.
+
+For \textsc{BlindSign}, we use RSA-FDH blind signatures
+\cite{chaum1983blind,bellare1996exact}.  From the information-theoretic
+security of blinding, the computational blindness property follows directly.  For
+the unforgeability property, we additionally rely on the RSA-KTI assumption as
+discussed in \cite{bellare2003onemore}.  Note that since the blinding step in
+RSA blind signatures is non-interactive, storage and verification of the
+transcript is omitted in refresh and link.
+
+We instantiate \textsc{CoinSignKx} with signatures and key exchange operations
+on elliptic curves in Edwards form, where the same key is used for signatures
+and the Diffie--Hellman key exchange operations.  In practice, we use Ed25519
+\cite{bernstein2012high} / Curve25519 \cite{bernstein2006curve25519} for
+$\lambda=256$.  We caution that some other elliptic curve key exchange
+implementation might not satisfy the completeness property that we require, due
+to the lack of complete addition laws.
+
+For \textsc{Sign}, we use elliptic-curve signatures, concretely Ed25519.  For
+the collision-resistant hash function $H$ we use SHA-512 \cite{rfc4634} and
+HKDF \cite{rfc5869} as a PRF.
+
+%In Taler's refresh, we avoid key exchange failures entirely because the
+%Edwards addition law is complete abelian group operation on the curve,
+%and the signature scheme verifies that the point lies on the curve.
+%% https://safecurves.cr.yp.to/refs.html#2007/bernstein-newelliptic
+%% https://safecurves.cr.yp.to/complete.html
+%We warn however that Weierstrass curves have incomplete addition formulas
+%that permit an adversarial merchant to pick transfer keys that yields failures.
+%There are further implementation mistakes that might enable collaborative
+%key exchange failures, like if the exchange does not enforce the transfer
+%private key being a multiple of the cofactor.
+%
+%In this vein, almost all post-quantum key exchanges suffer from key exchange
+%failures that permit invalid key attacks against non-ephemeral keys.  
+%All these schemes support only one ephemeral party by revealing the
+%ephemeral party's private key to the non-ephemeral party,
+% ala the Fujisaki-Okamoto transform~\cite{fujisaki-okamoto} or similar.
+%We cannot reveal the old coin's private key to the exchange when
+%verifying the transfer private keys though, which
+% complicates verifying honest key generation of the old coin's key.
+
+
+\section{Proofs}
+%\begin{mdframed}
+%  Currently the proofs don't have any explicit tightess bounds.
+%  Because we don't know where to ``inject'' the value that we get from the challenger when carrying out
+%  a reduction, we need to randomly guess in which coin/signature we should ``hijack'' our challenge value.
+%  Thus for the proofs to work fully formally, we need to bound the total number of oracle invocations,
+%  and our exact bound for the tightness of the reduction depends on this limit.
+%\end{mdframed}
+
+We now give proofs for the security properties defined in Section \ref{sec:security-properties}
+with the generic instantiation of Taler.
+
+\subsection{Anonymity}
+
+\begin{theorem}
+  Assuming
+  \begin{itemize}
+    \item the blindness of \textsc{BlindSign},
+    \item the unforgeability and key exchange security of \textsc{CoinSignKx}, and
+    \item the collision resistance of $H$,
+  \end{itemize}
+  our instantiation satisfies anonymity.
+\end{theorem}
+
+\begin{proof}
+  We give a proof via a sequence of games $\mathbb{G}_0(b), \mathbb{G}_1(b),
+  \mathbb{G}_2(b)$, where $\mathbb{G}_0(b)$ is the original anonymity game
+  $\mathit{Exp}_{\cal A}^{anon}(1^\lambda, 1^\kappa, b)$.  We show that the
+  adversary can distinguish between subsequent games with only negligible
+  probability.  Let $\epsilon_{HC}$ and $\epsilon_{KX}$ be the advantage of an
+  adversary for finding hash collisions and for breaking the security of the
+  key exchange, respectively.
+
+  We define $\mathbb{G}_1$ by replacing the link oracle \ora{Link} with a
+  modified version that behaves the same as \ora{Link}, unless the adversary
+  responds with link data that did not occur in the transcript of a successful
+  refresh operation, but despite of that still passes the customer's
+  verification.  In that case, the game is aborted instead.
+
+  Observe that in case this failure event happens, the adversary must have forged a
+  signature on $\V{sig}_{3}$ on values not signed by the customer, yielding
+  an existential forgery.  Thus, $\left| \Prb{\mathbb{G}_0 = 1} - \Prb{\mathbb{G}_1 = 1}
+  \right|$ is negligible.
+
+  In $\mathbb{G}_2$, the refresh oracle is modified so that the customer
+  responds with value drawn from a uniform random distribution $D_1$ for the
+  $\gamma$-th commitment instead of using the key exchange function.  We must
+  handle the fact that $\gamma$ is chosen by the adversary after seeing the
+  commitments, so the challenger first makes a guess $\gamma^*$ and replaces
+  only the $\gamma^*$-th commitment with a uniform random value.  If the
+  $\gamma$ chosen by the adversary does not match $\gamma^*$, then the
+  challenger rewinds \prt{A} to the point where the refresh oracle was called.
+  Note that we only replace the one commitment that
+  will not be opened to the adversary later.
+
+  Since $\kappa \ll \lambda$ and the security property of $\algo{Kx}$
+  guarantees that the adversary cannot distinguish the result of a key exchange
+  from randomness, the runtime complexity of the challenger still stays
+  polynomial in $\lambda$.  An adversary that could with high probability
+  choose a $\gamma$ that would cause a rewind, could also distinguish
+  randomness from the output of $\algo{Kx}$.
+
+  %\mycomment{Tighness bound also missing}
+
+  We now show that $\left| \Prb{\mathbb{G}_1 = 1} - \Prb{\mathbb{G}_2 = 1}
+  \right| \le \epsilon_{KX}$ by defining a distinguishing game $\mathbb{G}_{1
+  \sim 2}$ for the key exchange as follows:
+
+  \bigskip
+  \noindent $\mathbb{G}_{1 \sim 2}(b)$:
+  \vspace{-0.5\topsep}
+  \begin{enumerate}
+    \setlength\itemsep{0em}
+    \item If $b=0$, set
+      \[
+        D_0 := \{ (A, B, \V{Kex}(a, B)) \mid (a, A) \leftarrow \V{KeyGen}(1^\lambda),(b, B) \leftarrow \V{KeyGen}(1^\lambda) \}.
+      \]
+      Otherwise, set
+      \[
+        D_1 := \{ (A, B, C) \mid (a, A) \leftarrow \V{KeyGen}(1^\lambda),
+           (b, B) \leftarrow \V{KeyGen}(1^\lambda),
+           C \randsel \{1,\dots,2^\lambda\} \}.
+      \]
+
+    \item Return $\mathit{Exp'}_{\cal A}^{anon}(b, D_b)$
+
+      (Modified anonymity game where the $\gamma$-th commitment in the
+      refresh oracle is drawn uniformly from $D_b$ (using rewinding).  Technically, we need to
+      draw from $D_b$ on withdraw for the coin secret key, write it to a table, look it up on refresh and
+      use the matching tuple, so that with $b=0$ we perfectly simulate $\mathbb{G}_1$.)
+  \end{enumerate}
+
+  Depending on the coin flip $b$, we either simulate
+  $\mathbb{G}_1$ or $\mathbb{G}_2$ perfectly for our adversary~$\mathcal{A}$
+  against $\mathbb{G}_1$.  At the same time $b$ determines whether \prt{A}
+  receives the result of the key exchange or real randomness.  Thus, $\left|
+  \Prb{\mathbb{G}_1 = 1} - \Prb{\mathbb{G}_2 = 1} \right| = \epsilon_{KX}$ is
+  exactly the advantage of $\mathbb{G}_{1 \sim 2}$.
+
+  We observe in $\mathbb{G}_2$ that as $x_\gamma$ is uniform random and not
+  learned by the adversary,  the generation of $(\V{skCoin}_\gamma,
+  \V{pkCoin}_\gamma)$ and the execution of the blinding protocol is equivalent (under the PRF assumption)
+  to using the randomized algorithms
+  $\algo{KeyGen}_{CSK}$ and $\algo{Blind}_{BS}$.
+
+  By the blindness of the $\textsc{BlindSign}$ scheme, the adversary is not
+  able to distinguish blinded values from randomness.  Thus, the adversary is
+  unable to correlate a $\algo{Sign}_{BS}$ operation in refresh or withdraw
+  with the unblinded value observed during $\algo{Deposit}$.
+
+  We conclude the success probability for $\mathbb{G}_2$ must be $1/2$ and
+  hence the success probability for $\mathit{Exp}_{\cal A}^{anon}(1^\lambda,
+  \kappa, b)$ is at most $1/2 + \epsilon(\lambda)$, where $\epsilon$ is a
+  negligible function.
+\end{proof}
+% RSA ratios vs CDH in BLS below
+
+\subsection{Conservation}
+
+\begin{theorem}
+  Assuming existential unforgeability (EUF-CMA) of \textsc{CoinSignKx}, our instantiation satisfies conservation.
+\end{theorem}
+
+\begin{proof}
+
+% FIXME: argue that reduction is tight when you have malleability
+  In honest executions, we have $\V{withdrawn}[\V{pkCustomer}] = v_C + v_S$, i.e.,
+  the coins withdrawn add up to the coins still available and the coins spent
+  for known transactions.
+
+  In order to win the conservation game, the adversary must increase
+  $\V{withdrawn}[\V{pkCustomer}]$ or decrease $v_C$ or $v_S$.  An adversary can
+  abort withdraw operations, thus causing $\V{withdrawn}[\V{pkCustomer}]$ to increase,
+  while the customer does not obtain any coins.  However, in step
+  \ref{game:conserv:run}, the customer obtains coins from interrupted withdraw
+  operations.  Similarly, for the refresh protocol, aborted \algo{RefreshRequest} / \algo{RefreshPickup}
+  operations that result in a coin's remaining value being reduced are completed
+  in step \ref{game:conserv:run}.
+
+  Thus, the only remaining option for the adversary is to decrease $v_C$ or $v_S$
+  with the $\ora{RefreshPickup}$ and $\ora{Deposit}$ oracles, respectively.
+
+  Since the exchange verifies signatures made by the secret key of the coin
+  that is being spent/refreshed, the adversary must forge this signature or have
+  access to the coin's secret key.  As we do not give the adversary access to
+  the sharing oracle, it does not have direct access to any of the honest
+  customer's coin secret keys.
+
+  Thus, the adversary must either compute the coin's secret key from observing
+  the coin's public key (e.g., during a partial deposit operation), or forge
+  signatures directly.  Both possibilities allow us to carry out a reduction
+  against the unforgeability property of the $\textsc{CoinSignKx}$ scheme, by
+  injecting the challenger's public key into one of the coins.
+
+\end{proof}
+
+\subsection{Unforgeability}
+
+\begin{theorem}
+Assuming the unforgeability of \textsc{BlindSign}, our instantiation satisfies {unforgeability}.
+\end{theorem}
+
+\begin{proof}
+The adversary must have produced at least one coin that was not blindly
+signed by the exchange.
+In order to carry out a reduction from this adversary to a blind signature
+forgery, we inject the challenger's public key into one randomly chosen
+denomination.  Since we do not have access to the corresponding secret key
+of the challenger, signing operations for this denomination are replaced
+with calls to the challenger's signing oracle in \ora{WithdrawPickup} and
+\ora{RefreshPickup}.  For $n$ denominations, an adversary against the
+unforgeability game would produce a blind signature forgery with probability $1/n$.
+\end{proof}
+
+%TODO: RSA-KTI
+
+\subsection{Income Transparency}
+\begin{theorem}
+  Assuming
+  \begin{itemize}
+    \item the unforgeability of \textsc{BlindSign},
+    \item the key exchange completeness of \textsc{CoinSignKx},
+    \item the pseudo-random function property of \V{PRF}, and
+    \item the collision resistance of $H$,
+  \end{itemize}
+  our instantiation satisfies {weak income transparency}.
+\end{theorem}
+
+\begin{proof}
+  We consider the directed forest on coins induced by the refresh protocol.
+  It follows from unforgeability that any coin must originate from some
+  customer's withdraw in this graph.
+  We may assume that all $\V{coin}_1, \dots, \V{coin}_l$ originate from
+  non-corrupted users, for some $l \leq \ell$.  % So $\ell \leq w + |X|$.
+
+  For any $i \leq l$, there is a final refresh operation $R_i$ in which
+  a non-corrupted user could obtain the coin $C'$ consumed in the refresh
+  via the linking protocol, but no non-corrupted user could obtain the
+  coin provided by the refresh, as otherwise $\V{coin}_i$ gets marked as
+  spent in step step \ref{game:income:spend}.
+  Set $F := \{ R_i \mid i \leq l \}$.
+
+  During each $R_i \in F$, our adversary  must have submitted a blinded
+  coin and transfer public key for which the linking protocol fails to
+  produce the resulting coin correctly, otherwise the coin would have
+  been spent in step \ref{game:income:spend}.  In this case, we consider
+  several non-exclusive cases
+  \begin{enumerate}
+    \item the execution of the refresh protocol is incomplete,
+    \item the commitment for the $\gamma$-th blinded coin and transfer
+      public key is dishonest,
+    \item a commitment for a blinded coin and transfer public key other
+	  than the $\gamma$-th is dishonest,
+  \end{enumerate}
+
+  We show these to be exhaustive by assuming their converses all hold: As the
+  commitment is signed by $\V{skCoin}_0$, our key exchange completeness
+  assumption of $\textsc{CoinSignKx}$ applies to the coin public key.
+  Any revealed values must match our honestly computed commitments,
+  as otherwise a collision in $H$ would have been found.
+  We assumed
+  the revealed $\gamma$-th transfer public key is honest.  Hence our key
+  exchange completeness assumption of $\textsc{CoinSignKx}$ yields
+  $\algo{Kex}_{CSK}(t,C') = \algo{Kex}_{CSK}(c',T)$ where $T =
+  \algo{KeyGenPub}_{CSK}(t)$ is the transfer key, thus the customer obtains the
+  correct transfer secret.  We assumed the refresh concluded and all
+  submissions besides the $\gamma$-th were honest, so the exchange correctly
+  reveals the signed blinded coin.  We assumed the $\gamma$-th blinded coin is
+  correct too, so customer now re-compute the new coin correctly, violating
+  $R_i \in F$.
+
+  We shall prove
+  \begin{equation}\label{eq:income-transparency-proof}
+    \Exp{{\frac{p}{b + p}} \middle| F \neq \emptyset} = {\frac{1}{\kappa}}
+  \end{equation}
+  where the expectation runs over
+  any probability space used by the adversary and challenger.
+
+  We shall now consider executions of the income transparency game with an
+  optimal adversary with respect to maximizing $\frac{p}{b + p}$.  Note that this
+  is permissible since we are not carring out a reduction, but are interested
+  in the expectation of the game's return value.
+
+  As a reminder, if a refresh operation is initiated using a false commitment
+  that is detected by the exchange, then the new coin cannot be obtained, and
+  contributes to the lost coins $b := w - s$ instead of the winnings $p := L -
+  w'$.  We also note $b + p$ gives the value of
+  refreshes attempted with false commitments.  As these are non-negative, 
+  $\frac{p}{b + p}$ is undefined if and only if $p = 0$ and $b = 0$, which happens if and
+  only if the adversary does not use false commitments, i.e., $F = \emptyset$.
+
+  We may now assume for optimality that $\mathcal{A}$ submits a false
+  commitment for at most one choice of $\gamma$ in any $R_i \in F$, as
+  otherwise the refresh always fails.  Furthermore, for an optimal adversary we
+  can exclude refreshes in $F$ that are incomplete, but that would be possible
+  to complete successfully, as completing such a refresh would only increase the
+  adversaries winnings.
+
+  We emphasize that an adversary that loses an $R_i$ loses the coin that would
+  have resulted from it completely, while an optimal adversary who wins an
+  $R_i$ should not gamble again.  Indeed, an adversary has no reason to touch
+  its winnings from an $R_i$.
+
+% There is no way to influence $p$ or $b$ through withdrawals or spends
+% by corrupted users of course.  In principle, one could decrease $b$ by
+%  sharing from a corrupted user to a non-corrupted users,
+% but we may assume this does not occur either, again by optimality.
+
+  For any $R_i$, there are $\kappa$ game runs identical up through the
+  commitment phase of $R_i$ and exhibiting different outcomes based on the
+  challenger's random choice of $\gamma$.
+  If $v_i$ is the financial value of the coin resulting from refresh operation
+  $R_i$ then one of the possible runs adds $v_i$ to $p$, while the remaining
+  $\kappa-1$ runs add $v_i$ to $b$.
+
+  We define $p_i$ and $b_i$ to be these contributions summed over the $\kappa$ possible
+  runs, i.e.,
+  \begin{align*}
+    p_i &:= v_i\\
+    b_i &= (\kappa - 1)v_i
+  \end{align*}
+  The adversary will succeed in $1/\kappa$ runs ($p_i=v$) and loses in
+  $(\kappa-1)/\kappa$ runs ($p_i=0$). Hence:
+  \begin{align*}
+    \Exp{{\frac{p}{b + p}} \middle| F \neq \emptyset}
+        &= \frac{1}{|F|} \sum_{R_i\in F} {p_i \over b_i + p_i} \\
+        &= \frac{1}{\kappa |F|} \sum_{R_i\in F} {\frac{v_i}{0 + v_i}} + \frac{\kappa-1}{\kappa |F|} \sum_{R_i \in F} {\frac{0}{v_i + 0}} \\
+        &= {\frac{1}{\kappa}},
+  \end{align*}
+  which yields the equality (\ref{eq:income-transparency-proof}).
+
+As for $F = \emptyset$, the return value of the game must be $0$, we conclude
+\begin{equation*}
+  E\left[\mathit{Exp}_{\cal A}^{income}(1^\lambda, 1^\kappa)\right] \le {\frac{1}{\kappa}}.
+\end{equation*}
+
+\end{proof}
+
+\section{Discussion}
+
+\subsection{Limitations}
+Not all features of our implementation are part of the security model and proofs.
+In particular, the following features are left out of the formal discussion:
+
+\begin{itemize}
+  \item Reserves.  In our formal model, we effectively assume that every customer has access
+    to exactly one unlimited reserve.
+  \item Offline and online keys.  In our implementation, the exchange
+    has one offline master signing key, and online signing keys with
+    a shorter live span.
+  \item Refunds allow merchants to effectively ``undo'' a deposit operation
+    before the exchange settles the transaction with the merchant.  This simple
+    extension preserves unlinkability of payments through refresh.
+  %\item Indian merchant scenario.  In some markets (such as India), it is more
+  %  likely for the customer to have Internet access (via smart phones) than for
+  %  merchants, who in the case of street vendors often have simple phones
+  %  without Internet access or support for apps.  To use Taler in this case,
+  %  it must be possible 
+  \item Timeouts.  In practice, a merchant gives the customer a deadline until
+    which the payment for a contract must have been completed, potentially by
+    using multiple coins.
+
+    If a customer is unable to complete a payment (e.g., because they notice
+    that their coins are already spent after a restore from backup), a refund
+    for this partial payment can be requested from the merchant.
+
+    Should the merchant become unavailable after a partially completed payment,
+    there are two possibilities: Either the customer can deposit the coins on
+    behalf of the merchant to obtain proof of their on-time payment, which can
+    be used in a later arbitration if necessary.  Alternatively, the customer
+    can ask the exchange to undo the partial payments, though this requires the
+    exchange to know (or learn from the customer) the exact amount to be payed
+    for the contract.
+
+    %A complication in practice is that merchants may not want to reveal their
+    %full bank account information to the customer, but this information is
+    %necessary for the exchange to process the deposit, since we do not require
+    %merchants to register beforehand the exchange (as the merchant might
+    %support all exchanges audited by a specific auditor). We discuss a protocol
+    %extension that allows customers to deposit coins on behalf of merchants
+    %in~\ref{XXX}.
+
+  \item The fees incurred for operations, the protocols for backup and
+    synchronization as well as other possible extensions like tick payments are
+    not formally modeled.
+
+  %\item FIXME: auditor
+\end{itemize}
+
+We note that customer tipping (see \ref{taler:design:tipping}) basically amounts to an execution
+of the \algo{Withdraw} protocol where the party that generates the coin keys
+and blinding factors (in that case the merchant's customer) is different from
+the party that signs the withdraw request (the merchant with a ``customer'' key
+pair tied to the merchant's bank account).  While this is desirable in some
+cases, we discussed in \ref{taler:design:fixing-withdraw-loophole} how this ``loophole'' for a one-hop untaxed
+payment could be avoided.
+
+\subsection{Other Properties}
+
+\subsubsection{Exculpability}
+Exculpability is a property of offline e-cash which guarantees that honest users
+cannot be falsely blamed for misbehavior such as double spending.  For online
+e-cash it is not necessary, since coins are spent online with the exchange.  In
+practice, even offline e-cash systems that provide exculpability are often
+undesirable, since hardware failures can result in unintentional overspending
+by honest users.  If a device crashes after an offline coin has been sent to
+the merchant but before the write operation has been permanently recorded on
+the user's device (e.g.,  because it was not yet flushed from the cache to a
+hard drive), the next payment will cause a double spend, resulting in anonymity
+loss and a penalty for the customer.
+
+% FIXME: move this to design or implementation
+\subsubsection{Fair Exchange}\label{sec:security:atomic-swaps}
+
+% FIXME: we should mention "atomic swap" here
+
+The Endorsed E-Cash system by Camenisch et al. \cite{camenisch2007endorsed}
+allows for fair exchange---sometimes called atomic swap in the context of
+cryptocurrencies---of online or offline e-cash against digital goods.  The
+online version of Camenisch's protocol does not protect the customer against
+loss of anonymity from linkability of aborted fair exchanges.
+
+Taler's refresh protocol can be used for fair exchange of online e-cash against
+digital goods, without any loss of anonymity due to linkability of aborted
+transactions, with the following small extension: The customer asks the
+exchange to \emph{lock coins to a merchant} until a timeout.  Until the timeout
+occurs, the exchange provides the merchant with a guarantee that these coins can
+only be spent with this specific merchant, or not at all.  The
+fair exchange exchanges the merchant's digital goods against the customer's
+deposit permissions for the locked coins.  On aborted fair exchanges,
+the customer refreshes to obtain unlinkable coins.
+
