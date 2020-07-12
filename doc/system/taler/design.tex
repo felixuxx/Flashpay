@@ -149,7 +149,7 @@ customers that lost their reserve private key to eventually recover their
 funds.  If a wire transfer to the exchange does not include a valid reserve public key,
 the exchange transfers the money back to the sender.
 
-Figure~\ref{fig:reserve:state} illustrates the state machine for a reserve.
+Figure~\ref{fig:reserve:states} illustrates the state machine for a reserve.
 Long-terms states are shown in boxes, while actions are in circles.  The final
 state is in a double-circle.  A reserve is first {\em filled} by a wire
 transfer. The amount in it is reduced by withdraw operations. If the balance
