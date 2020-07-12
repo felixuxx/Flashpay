@@ -125,8 +125,8 @@ payment.
 
 % FIXME:  who needs to be trusted for anonymity?
 
-
 \subsection{Reserves}
+
 A \emph{reserve} refers to a customer's non-anonymous funds at an exchange,
 identified by a reserve public key.  Suppose a customer wants to convert money
 into anonymized digital coins.  To do that, the customer first creates a
@@ -149,7 +149,20 @@ customers that lost their reserve private key to eventually recover their
 funds.  If a wire transfer to the exchange does not include a valid reserve public key,
 the exchange transfers the money back to the sender.
 
-% FIXME:  this really needs a diagram
+Figure~\ref{fig:reserve:state} illustrates the state machine for a reserve.
+Long-terms states are shown in boxes, while actions are in circles.  The
+final state is in a double-circle.
+A reserve is first {\em filled} by a wire transfer. The amount in it is reduced
+by withdraw operations. If the balance reaches zero, the reserve is
+{\em drained}. If a reserve is not drained after a certain amount of time,
+it is automatically closed.  A reserve can also be filled via a recoup
+action in case that the denomination of an unspent coin that was
+withdrawn from the reserve is revoked.
+\begin{figure}
+  \includegraphics{reserve.pdf}
+  \caption{State machine of a reserve.}
+  \label{fig:reserve:states}
+\end{figure}
 
 Instead of requiring the customer to manually generate reserve key pairs and
 copy them onto a wire transfer form, banks can offer tight integration with the
@@ -187,6 +200,7 @@ for acceptance as an IETF Internet Standard.
 % FIXME: withdrawal strategy, coin selection
 
 \subsection{Coins and Denominations}
+
 Unlike plain Chaumian e-cash, where a coin just contains a serial number, a
 \emph{coin} in Taler is a public/private key pair where the private key is only
 known to the owner of the coin.

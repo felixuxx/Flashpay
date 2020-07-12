@@ -1,0 +1,14 @@
+digraph Reserve {
+
+  filled [color=blue, label="filled reserve", shape="box"];
+  drained [color=blue, label="drained reserve", shape="doublecircle"];
+
+  transfer->filled;
+  recoup->filled;
+  filled->withdraw;
+  withdraw->drained;
+  withdraw->filled;
+  filled->close;
+  close->drained;
+  drained->recoup;
+}
