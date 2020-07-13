@@ -155,7 +155,7 @@ state is in a double-circle.  A reserve is first {\em filled} by a wire
 transfer. The amount in it is reduced by withdraw operations. If the balance
 reaches zero, the reserve is {\em drained}. If a reserve is not drained after
 a certain amount of time, it is automatically closed.  A reserve can also be
-filled via a recoup action (see Section~\ref{sec:revocation-recoup}) in case
+{\em refilled} via a recoup action (see Section~\ref{sec:revocation-recoup}) in case
 that the denomination of an unspent coin that was withdrawn from the reserve
 is revoked.
 
@@ -446,8 +446,10 @@ these additional mitigations might not even be justified considering their addit
 
 
 \section{Auditing}
+
 The auditor is a component of GNU Taler which would typically be deployed by a
 financial regulator, fulfilling the following functionality:
+
 \begin{itemize}
   \item It regularly examines the exchange's database and
     bank transaction history to detect discrepancies.
@@ -662,6 +664,7 @@ in~\cite{fc2014murdoch}.  In particular, in providing the cryptographic proofs
 as evidence none of the participants have to disclose their core secrets.
 
 \subsection{Perfect Crime Scenarios}\label{sec:design:blackmailing}
+
 GNU Taler can be slightly modified to thwart blackmailing or kidnapping
 attempts by criminals who intend to use the anonymity properties of the system
 and demand to be paid ransom in anonymous e-cash.
@@ -727,8 +730,9 @@ the {\em withdraw} protocol or the refresh protocol. The most common scenario
 is that the {\em fresh coin} is {\em deposited}. This payment creates a
 deposit (see Figure~\ref{fig:deposit:states}) and either a {\em dirty coin}
 (if the payment was for a fraction of the coin's value) or a {\em spent coin}.
-A spent coin can be {\em refunded} by the merchant (until the deposit is due),
-creating a {\em dirty coin}.
+A spent coin can be {\em refunded} by the merchant, creating a {\em dirty
+  coin}. Once the exchange has aggregated a coin and wired the amount to the
+merchant, a coin can no longer be refunded.
 
 A {\em fresh coin} may also be subject to key {\em revocation}, at which point
 the wallet ends up with a {\em revoked coin}.  At this point, the wallet can
@@ -754,7 +758,7 @@ when the committment made for the {\em refresh session} is checked during the
 
 \begin{figure}
   \begin{center}
-    \includegraphics[scale=0.75]{taler/coin.pdf}
+    \includegraphics[scale=0.65]{taler/coin.pdf}
   \end{center}
   \caption{State machine of a coin.}
   \label{fig:coin:states}

@@ -934,19 +934,37 @@ certify these keys with the \texttt{taler-auditor-sign} tool.
 
 This process is illustrated in Figure~\ref{figure:keyup}.
 
+
 \section{Auditor}
-The auditor consists of two processes that are regularly run and generate
-auditing reports.  Both processes access the exchange's database, either
-directly (for exchange-internal auditing as part if its operational security)
-or over a replica (in the case of external auditors).
 
-The \texttt{taler-wire-auditor} process checks that the incoming and outgoing
-transfers recorded in the exchange's database match wire transfers of the
-underlying bank account.  To access the transaction history (typically recorded
-by the bank), the wire auditor uses a wire plugin, with the same interface and
-implementation as the exchange's wire plugins.
+The auditor consists of several main components:
+\begin{itemize}
+ \item the \texttt{taler-auditor-dbinit} tool to setup,
+   upgrade or garbage-collect an auditor's database,
+ \item the \texttt{taler-auditor-exchange} tool to add an
+   exchange to the list of audited exchanges,
+ \item the \texttt{taler-auditor-sign} tool to sign an exchange's
+   keys to affirm that the auditor is auditing this exchange,
+ \item an HTTP service (\texttt{taler-auditor-httpd}) which
+   receives deposit confirmations from merchants, and
+ \item the \texttt{taler-auditor} script which must be regularly
+   run to generate audit reports.
+\end{itemize}
 
-The \texttt{taler-auditor} process generates a report with the following information:
+\subsection{Database synchronization}
+
+FIXME: describe issue of how to synchronize exchange and auditor
+databases, and how we solved it (once we did solve it!) here.
+
+\subsection{The \texttt{taler-auditor} tool}
+
+The \texttt{taler-auditor} script uses several helper processes.  These helper
+processes access the exchange's database, either directly (for
+exchange-internal auditing as part if its operational security) or over a
+replica (in the case of external auditors).
+
+The \texttt{taler-auditor} script ultimately generates a report with the
+following information:
 \begin{itemize}
   \item Do the operations stored in a reserve's history match the reserve's balance?
   \item Did the exchange record outgoing transactions to the right merchant for
@@ -962,7 +980,21 @@ The \texttt{taler-auditor} process generates a report with the following informa
   \item What is the income if the exchange from different fees?
 \end{itemize}
 
-The operation of both auditor processes is incremental.  There is a separate
+\subsubsection{Report generation}
+
+The \texttt{taler-auditor} script invokes its helper processes, each of
+which generates a JSON file with the key findings. The master script then
+uses Jinja2 templating to fill a LaTeX template with the key findings, and
+runs \texttt{pdflatex} to generate the final PDF.
+
+It is also possible to run the helper processes manually, and given that only
+one of them requires read-only access to the bank account of the exchange,
+this may be useful to improve parallelism or enhance privilege
+separation. Thus, \texttt{taler-auditor} is really only a convenience script.
+
+\subsubsection{Incremental processing}
+
+The operation of all auditor helper processes is incremental.  There is a separate
 database to checkpoint the auditing progress and to store intermediate results
 for the incremental computation.  Most database tables used by the exchange are
 append-only:  rows are only added but never removed or changed.  Tables that
@@ -971,17 +1003,105 @@ on the append-only tables.  Each append-only table has a monotonically
 increasing row ID.  Thus, the auditor's checkpoint simply consists of the set of
 row IDs that were last seen.
 
-The auditor exposes a web server with the \texttt{taler-auditor-httpd} process.
-Currently, it only shows a website that allows the customer to add the auditor
-to the list of trusted auditors in their wallet.  In future versions, the
-auditor will also have HTTP endpoints that allow merchants to submit samples of
-deposit confirmations, which will be checked against the deposit permissions in
-the exchange's database to detect compromised signing keys or missing writes.
-Furthermore, in deployments that require the merchant to register with the
-exchange beforehand, the auditor also offers a list of exchanges it audits, so that
-the merchant backend can automatically register with all exchanges it transitively trusts.
+\subsubsection{The \texttt{taler-helper-auditor-aggregation}}
+
+FIXME: describe!
+
+The list of invariants checked by this tool thus includes:
+\begin{itemize}
+  \item FIXME
+\end{itemize}
+
+
+\subsubsection{The \texttt{taler-helper-auditor-coins}}
+
+FIXME: describe!
+
+The list of invariants checked by this tool thus includes:
+\begin{itemize}
+  \item FIXME
+\end{itemize}
+
+
+\subsubsection{The \texttt{taler-helper-auditor-deposits}}
+
+FIXME: describe!
+
+The list of invariants checked by this tool thus includes:
+\begin{itemize}
+  \item FIXME
+\end{itemize}
+
+
+\subsubsection{The \texttt{taler-helper-auditor-reserves}}
+
+FIXME: describe!
+
+The list of invariants checked by this tool thus includes:
+\begin{itemize}
+  \item FIXME
+\end{itemize}
+
+
+\subsubsection{The \texttt{taler-helper-auditor-wire}}
+
+This helper process checks that the incoming and outgoing transfers recorded
+in the exchange's database match wire transfers of the underlying bank
+account.  To access the transaction history (typically recorded by the bank),
+the wire auditor helper is special in that it must be provided the necessary
+credentials to access the exchange's bank account.  In a production setting,
+this will typically require the configuration and operation of a Nexus
+instance (of LibEuFin) at the auditor.
+
+The actual logic of the wire auditor is pretty boring: it goes over all bank
+transactions that are in the exchange's database, and verifies that they are
+present in the records from the bank, and then it goes over all bank
+transactions reported by the bank, and again checks that they are also in the
+exchange's database. This applies for both incoming and outgoing wire
+transfers.  The tool reports any inconsistencies, be they in terms of wire
+transfer subject, bank accounts involved, amount that was transferred, or
+timestamp.
+
+For incoming wire transfers, this check protects against the following
+failures: An exchange reporting the wrong amount may wrongfully allow or
+refuse the withdrawal of coins from a reserve. The wrong wire transfer subject
+might allow the wrong wallet to withdraw, and reject the rightful owner.  The
+wrong bank account could result in the wrong recipient receiving funds if the
+reserve is closed. Timestamp differences are usually pretty harmless, and
+small differences may even occur due to rounding or clock synchronization
+issues. However, they are still reported as they may be indicative of other
+problems.
+
+For outgoing wire transfers, the implications arising from an exchange making
+the wrong wire transfers should be obvious.
+
+The list of invariants checked by this tool thus includes:
+\begin{itemize}
+  \item FIXME
+\end{itemize}
+
+
+\subsection{The Auditor's HTTP service}
+
+The auditor exposes a web server with the \texttt{taler-auditor-httpd}
+process.  Currently, it shows a website that allows the customer to add the
+auditor to the list of trusted auditors in their wallet.
+
+It also exposes an endpoint for merchants to submit deposit confirmations.
+These merchant-submitted deposit confirmations are checked against the deposit
+permissions in the exchange's database to detect compromised signing keys or
+missing writes, as described in
+Section~\ref{sec:compromised-signing-key-detection}.
+
+In the future, we plan for the auditor to expose additional endpoints where
+wallets and merchant backends can submit (cryptographic) proofs of
+missbehavior from an exchange. The goal would be to automatically verify the
+proofs, take corrective action by including the information in the audit
+report and possibly even compensating the victim.
+
 
 \section{Merchant Backend}
+
 \begin{figure}
     \includegraphics[width=\textwidth]{diagrams/taler-diagram-merchant.png}
     \caption{Architecture of the merchant reference implementation}
@@ -1008,6 +1128,7 @@ merchant to view information about payments that customers made and that integra
 with other components such as order processing and shipping.
 
 \subsection{Processing payments}\label{sec:processing-payments}
+
 To process a payment, the storefront first instructs the backend to create an
 \emph{order}.  The order contains information relevant to the purchase, and is
 in fact a subset of the information contained in the contract terms.  The
@@ -1049,6 +1170,7 @@ with the given request body / query parameters.
 
 
 \subsection{Back Office APIs}
+
 The back office API allows the merchant to query information about the history
 and status of payments, as well as correlate wire transfers to the merchant's
 bank account with the respective GNU Taler payment.  This API is necessary to
@@ -1059,6 +1181,7 @@ allow integration with other parts of the merchant's e-commerce infrastructure.
 %than one logical merchant.  
 
 \subsection{Example Merchant Frontends}
+
 We implemented the following applications using the merchant backend API.
 
 \begin{description}
@@ -1082,7 +1205,9 @@ The code for these examples is available at \url{https://git.taler.net/} in the
 repositories \texttt{blog}, \texttt{donations}, \texttt{codeless}, \texttt{survey}
 and \texttt{backoffice} respectively.
 
+
 \section{Wallet}
+
 \begin{figure}
     \includegraphics[width=\textwidth]{diagrams/taler-diagram-wallet.png}
     \caption{Architecture of the wallet reference implementation}

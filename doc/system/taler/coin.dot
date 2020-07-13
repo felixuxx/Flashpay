@@ -6,7 +6,8 @@ digraph Coin {
   partial [color=blue, label="dirty coin", shape="box"];
   revoked [color=blue, label="revoked coin", shape="box"];
   zombie [color=blue, label="zombie coin", shape="box"];
-  spent [color=blue, label="spent coin", shape="doublecircle"];
+  spent [color=blue, label="spent coin", shape="box"];
+  wired [color=blue, label="wired coin", shape="doublecircle"];
   expired [color=blue, label="expired coin", shape="doublecircle"];
 
   subgraph {
@@ -36,6 +37,7 @@ digraph Coin {
   melt->spent;
   spent->refund;
   refund->partial;
+  spent->wired [style=dotted];
   partial->expired [style=dotted];
   partial->melt;
   partial->deposit [color=red];
