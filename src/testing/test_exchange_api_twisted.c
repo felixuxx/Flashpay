@@ -33,7 +33,7 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-#include <taler/taler_twister_testing_lib.h>
+#include "taler_twister_testing_lib.h"
 #include <taler/taler_twister_service.h>
 
 /**
@@ -153,7 +153,8 @@ run (void *cls,
    * NOTE: not all CMDs actually need the twister,
    * so it may be better to move those into the "main"
    * lib test suite.
-   */struct TALER_TESTING_Command refund[] = {
+   */
+  struct TALER_TESTING_Command refund[] = {
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r1",
                               "EUR:5.01"),
     CMD_EXEC_WIREWATCH ("wirewatch-r1"),
@@ -208,11 +209,39 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  /**
+   * Test that we don't get errors when the keys from the exchange
+   * are out of date.
+   */
+  struct TALER_TESTING_Command expired_keys[] = {
+    TALER_TESTING_cmd_modify_header_dl ("modify-expiration",
+                                        CONFIG_FILE,
+                                        MHD_HTTP_HEADER_EXPIRES,
+                                        "Wed, 19 Jan 586524 08:01:49 GMT"),
+    TALER_TESTING_cmd_check_keys_pull_all_keys (
+      "check-keys-expiration-0",
+      2,
+      5),
+    /**
+     * Run some normal commands after this to make sure everything is fine.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r2",
+                              "EUR:55.01"),
+    CMD_EXEC_WIREWATCH ("wirewatch-r2"),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-r2",
+                                       "create-reserve-r2",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_batch ("refresh-reveal-409-conflict",
                              refresh_409_conflict),
     TALER_TESTING_cmd_batch ("refund",
                              refund),
+    TALER_TESTING_cmd_batch ("expired-keys",
+                             expired_keys),
     TALER_TESTING_cmd_end ()
   };
 

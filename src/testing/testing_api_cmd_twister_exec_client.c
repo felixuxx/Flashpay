@@ -496,6 +496,39 @@ modify_object_ul_run (void *cls,
 
 
 /**
+ * Run a "modify header" CMD
+ *
+ * @param cls closure.
+ * @param cmd the command being run.
+ * @param is the interpreter state.
+ */
+static void
+modify_header_dl_run (void *cls,
+                      const struct TALER_TESTING_Command *cmd,
+                      struct TALER_TESTING_Interpreter *is)
+{
+  struct ModifyObjectState *mos = cls;
+
+  mos->proc = GNUNET_OS_start_process (GNUNET_NO,
+                                       GNUNET_OS_INHERIT_STD_ALL,
+                                       NULL, NULL, NULL,
+                                       "taler-twister",
+                                       "taler-twister",
+                                       "-H", mos->path,
+                                       "--value", mos->value,
+                                       "-c", mos->config_filename,
+                                       NULL);
+  if (NULL == mos->proc)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+  TALER_TESTING_wait_for_sigchld (is);
+}
+
+
+/**
  * Create a "delete object" CMD.  This command deletes
  * the JSON object pointed by @a path.
  *
@@ -1011,6 +1044,41 @@ TALER_TESTING_cmd_modify_object_ul (const char *label,
   struct TALER_TESTING_Command cmd = {
     .label = label,
     .run = &modify_object_ul_run,
+    .cleanup = &modify_object_cleanup,
+    .traits = &modify_object_traits,
+    .cls = mos
+  };
+
+  return cmd;
+}
+
+
+/**
+ * Create a "modify header" CMD.  This command instructs
+ * the twister to modify a header in the next HTTP response.
+ *
+ * @param label command label
+ * @param config_filename configuration filename.
+ * @param header name of the header to modify.
+ * @param value value to set the header to.
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_modify_header_dl (const char *label,
+                                    const char *config_filename,
+                                    const char *path,
+                                    const char *value)
+{
+  struct ModifyObjectState *mos;
+
+  mos = GNUNET_new (struct ModifyObjectState);
+  mos->path = path;
+  mos->value = value;
+  mos->config_filename = config_filename;
+
+  struct TALER_TESTING_Command cmd = {
+    .label = label,
+    .run = &modify_header_dl_run,
     .cleanup = &modify_object_cleanup,
     .traits = &modify_object_traits,
     .cls = mos

@@ -100,6 +100,23 @@ TALER_TESTING_cmd_modify_object_ul (const char *label,
 
 
 /**
+ * Create a "modify header" CMD.  This command instructs
+ * the twister to modify a header in the next HTTP response.
+ *
+ * @param label command label
+ * @param config_filename configuration filename.
+ * @param header name of the header to modify.
+ * @param value value to set the header to.
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_modify_header_dl (const char *label,
+                                    const char *config_filename,
+                                    const char *path,
+                                    const char *value);
+
+
+/**
  * Create a "malform response" CMD.  This command makes
  * the next response randomly malformed (by truncating it).
  *
