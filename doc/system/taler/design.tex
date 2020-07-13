@@ -727,8 +727,9 @@ the {\em withdraw} protocol or the refresh protocol. The most common scenario
 is that the {\em fresh coin} is {\em deposited}. This payment creates a
 deposit (see Figure~\ref{fig:deposit:states}) and either a {\em dirty coin}
 (if the payment was for a fraction of the coin's value) or a {\em spent coin}.
-A spent coin can be {\em refunded} by the merchant (until the deposit is due),
-creating a {\em dirty coin}.
+A spent coin can be {\em refunded} by the merchant, creating a {\em dirty
+  coin}. Once the exchange has aggregated a coin and wired the amount to the
+merchant, a coin can no longer be refunded.
 
 A {\em fresh coin} may also be subject to key {\em revocation}, at which point
 the wallet ends up with a {\em revoked coin}.  At this point, the wallet can
@@ -754,7 +755,7 @@ when the committment made for the {\em refresh session} is checked during the
 
 \begin{figure}
   \begin{center}
-    \includegraphics[scale=0.75]{taler/coin.pdf}
+    \includegraphics[scale=0.65]{taler/coin.pdf}
   \end{center}
   \caption{State machine of a coin.}
   \label{fig:coin:states}
