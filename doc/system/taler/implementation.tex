@@ -239,6 +239,7 @@ denomination keys to different customers in an attempt to deanonymize them.
 
 
 \subsubsection{Coins and Denominations}\label{sec:implementation:denoms}
+
 Denominations are the RSA public keys used to blindly sign coins of a fixed amount, together with information about their
 validity and associated fees.  The following information is signed by the exchanges master key for every denomination:
 \begin{itemize}
@@ -1005,41 +1006,109 @@ row IDs that were last seen.
 
 \subsubsection{The \texttt{taler-helper-auditor-aggregation}}
 
-FIXME: describe!
+This tool checks that the exchange properly aggregates
+individual deposits into wire transfers
+(see Figure~\ref{fig:deposit:states}).  
 
 The list of invariants checked by this tool thus includes:
 \begin{itemize}
-  \item FIXME
+\item That the fees charged by the exchange are those
+  the exchange provided to the auditor earlier, and that the
+  fee calculations (deposit fee, refund fee, wire fee)
+  are correct.  Refunds are relevant because refunded amounts
+  are not included in the aggregate balance.
+\item The sanity of fees, as fees may not exceed the contribution
+  of a coin (so the deposit fee cannot be larger than the
+  deposited value, and the wire fee cannot exceed the
+  wired amount).  Similarly, a coin cannot receive refunds
+  that exceed the deposited value of the coin, and the
+  deposit value must not exceed the coin's denomination value.
+\item That the start and end dates for the wire
+  fee structure are sane, that is cover the timeframe without
+  overlap or gaps.
+\item That denomination signatures on the coins are valid
+  and match denomination keys known to the auditor.
+\item That the target account of the outgoing aggregate wire
+  transfer is well-formed and matches the account specified
+  in the deposit.
+\item That coins that have been claimed in an aggregation have
+  a supporting history.
+\item That coins which should be aggregated are listed in an
+  aggregation list, and that the timestamps match the
+  expected dates.
 \end{itemize}
 
 
 \subsubsection{The \texttt{taler-helper-auditor-coins}}
 
-FIXME: describe!
+This helper focuses on checking the history of individual coins (as described
+in Figure~\ref{fig:coin:states}), ensuring that the coin is not double-spent
+(or over-spent) and that refreshes, refunds and recoups are processed
+properly.
+
+Additionally, this tool includes checks for denomination key abuse by
+verifying that the value and number of coins deposited in any denomination
+does not exceed the value and number of coins issued in that denomination.
+
+Finally, the auditor will also complain if the exchange processes
+denominations that it did not properly report (with fee structure) to the
+auditor.
 
 The list of invariants checked by this tool thus includes:
 \begin{itemize}
-  \item FIXME
+\item emergency on denominations because the value or number
+  of coins deposited exceeds the value or number of coins
+  issued; if this happens, the exchange should revoke the
+  respective denomination.
+\item various arithmetic inconsistencies from exchanges
+  not properly calculating balances or fees during the
+  various coin operations (withdraw, deposit, melt, refund);
+\item signatures being wrong for denomination key revocation,
+  coin denomination signature,
+  or coin operations (deposit, melt, refund, recoup)
+\item denomination keys not being known to the auditor
+\item denomination keys being actually revoked if a recoup
+  is granted
+\item coins being melted but not (yet) recouped
+  (this can be harmless and no fault of the exchange, but
+  could also be indicative of an exchange failing to process
+  certain requests in a timely fashion)
 \end{itemize}
 
 
 \subsubsection{The \texttt{taler-helper-auditor-deposits}}
 
-FIXME: describe!
-
-The list of invariants checked by this tool thus includes:
-\begin{itemize}
-  \item FIXME
-\end{itemize}
-
+This tool verifies that the deposit confirmations reported by merchants
+directly to the auditor are also included in the database we got from the
+exchange.  This is to ensure that the exchange cannot defraud merchants by
+simply not reporting deposits to the auditor or an
+exchange signing key being compromised (as described in
+Section~\label{sec:signkey:compromise}).
 
 \subsubsection{The \texttt{taler-helper-auditor-reserves}}
 
-FIXME: describe!
+This figure checks the exchange's processing of the
+balance of an individual reserve, as described
+in Figure~\ref{fig:reserve:states}.
 
 The list of invariants checked by this tool thus includes:
 \begin{itemize}
-  \item FIXME
+\item Correctness of the signatures that legitimized
+  withdraw and recoup operations.
+\item Correct calculation of the reserve balance given
+  the history of operations (incoming wire transfers,
+  withdraws, recoups and closing operations)
+  involving the reserve.
+\item That the exchange closed reserves when required,
+  and that the exchange wired the funds back to the
+  correct (originating) wire account.
+\item Knowledge of the auditor of the denomination keys
+  involved in withdraw operations and of the
+  applicable closing fee.
+\item That denomination keys were valid for use in a
+  withdraw operation at the reported time of withdrawal.
+\item That denomination keys were eligible for recoup
+  at the time of a recoup.
 \end{itemize}
 
 
@@ -1077,7 +1146,16 @@ the wrong wire transfers should be obvious.
 
 The list of invariants checked by this tool thus includes:
 \begin{itemize}
-  \item FIXME
+\item The exchange correctly listing all incoming wire transfers.
+\item The bank/Nexus having correctly suppressed incoming wire
+  transfers with non-unique wire transfer subjects, and having
+  assigned each wire transfer a unique row ID/offset.
+\item The exchange correctly listing all outgoing wire transfers
+  including having the appropriate justifications (aggregation
+  or reserve closure) for the respective amounts and target accounts.
+\item Wire transfers that the exchange has failed to execute that
+  were due. Note that small delays here can be normal as
+  wire transfers may be in flight.
 \end{itemize}
 
 
