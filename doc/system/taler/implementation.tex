@@ -1056,23 +1056,29 @@ auditor.
 
 The list of invariants checked by this tool thus includes:
 \begin{itemize}
-\item emergency on denominations because the value or number
+\item Testing for an
+  emergency on denominations because the value or number
   of coins deposited exceeds the value or number of coins
   issued; if this happens, the exchange should revoke the
   respective denomination.
-\item various arithmetic inconsistencies from exchanges
+\item Checking for arithmetic inconsistencies from exchanges
   not properly calculating balances or fees during the
   various coin operations (withdraw, deposit, melt, refund);
-\item signatures being wrong for denomination key revocation,
-  coin denomination signature,
-  or coin operations (deposit, melt, refund, recoup)
-\item denomination keys not being known to the auditor
-\item denomination keys being actually revoked if a recoup
-  is granted
-\item coins being melted but not (yet) recouped
+\item That signatures are correct for denomination key revocation,
+  coin denominations,
+  and coin operations (deposit, melt, refund, recoup)
+\item That denomination keys are known to the auditor.
+\item That denomination keys were actually revoked if a recoup
+  is granted.
+\item Whether there exists refresh sessions from coins that
+  have been melted but not (yet) revealed
   (this can be harmless and no fault of the exchange, but
   could also be indicative of an exchange failing to process
-  certain requests in a timely fashion)
+  certain requests in a timely fashion).
+\item That the refund deadline is not after
+  the wire deadline (while harmless, such a deposit
+  makes inconsistent requirements and should have been
+  rejected by the exchange).
 \end{itemize}
 
 
