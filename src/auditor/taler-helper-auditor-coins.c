@@ -1574,7 +1574,6 @@ deposit_cb (void *cls,
   struct DenominationSummary *ds;
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) wire_deadline;
   (void) done;
   GNUNET_assert (rowid >= ppc.last_deposit_serial_id); /* should be monotonically increasing */
   ppc.last_deposit_serial_id = rowid + 1;
@@ -1588,6 +1587,13 @@ deposit_cb (void *cls,
                               rowid,
                               "denomination key not found");
     return GNUNET_OK;
+  }
+  if (refund_deadline.abs_value_us >
+      wire_deadline.abs_value_us)
+  {
+    report_row_inconsistency ("deposits",
+                              rowid,
+                              "refund deadline past wire deadline");
   }
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
