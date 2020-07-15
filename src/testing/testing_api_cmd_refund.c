@@ -168,8 +168,8 @@ refund_run (void *cls,
     return;
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_hash (contract_terms,
-                                  &h_contract_terms));
+                 TALER_JSON_contract_hash (contract_terms,
+                                           &h_contract_terms));
 
   /* Hunting for a coin .. */
   if (GNUNET_OK !=

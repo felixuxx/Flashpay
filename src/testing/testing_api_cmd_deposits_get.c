@@ -246,8 +246,8 @@ track_transaction_run (void *cls,
        TALER_JSON_merchant_wire_signature_hash (wire_details,
                                                 &h_wire_details)) &&
     (GNUNET_OK ==
-     TALER_JSON_hash (contract_terms,
-                      &h_contract_terms)) );
+     TALER_JSON_contract_hash (contract_terms,
+                               &h_contract_terms)) );
 
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_merchant_priv (transaction_cmd,

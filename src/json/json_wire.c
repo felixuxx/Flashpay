@@ -343,7 +343,7 @@ validate_payto_iban (const char *account_url)
                         IBAN_PREFIX,
                         strlen (IBAN_PREFIX)))
     return GNUNET_NO;
-  
+
   iban = strrchr (account_url, '/') + 1;
 #undef IBAN_PREFIX
   q = strchr (iban,

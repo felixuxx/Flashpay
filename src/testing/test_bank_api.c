@@ -88,7 +88,7 @@ run (void *cls,
                                             &bc.exchange_auth,
                                             bc.user42_payto),
       TALER_TESTING_cmd_sleep ("Waiting 4s for 'credit-1' to settle",
-		               4),
+                               4),
       TALER_TESTING_cmd_bank_credits ("history-1c",
                                       &bc.exchange_auth,
                                       NULL,
@@ -110,7 +110,7 @@ run (void *cls,
                                   "http://exchange.example.com/"),
 
       TALER_TESTING_cmd_sleep ("Waiting 5s for 'debit-1' to settle",
-		               5),
+                               5),
       TALER_TESTING_cmd_bank_debits ("history-2b",
                                      &bc.exchange_auth,
                                      NULL,
@@ -203,8 +203,9 @@ main (int argc,
       GNUNET_break (0);
       return 77;
     }
-  } else if (GNUNET_YES == TALER_TESTING_has_in_name (argv[0],
-                                                      "_with_nexus")) 
+  }
+  else if (GNUNET_YES == TALER_TESTING_has_in_name (argv[0],
+                                                    "_with_nexus"))
   {
     TALER_LOG_DEBUG ("Running with Nexus.\n");
     with_libeufin = GNUNET_YES;
@@ -218,7 +219,8 @@ main (int argc,
       return 77;
     }
     libeufin_services = TALER_TESTING_run_libeufin (&bc);
-    if ( (NULL == libeufin_services.nexus) || (NULL == libeufin_services.sandbox) )
+    if ( (NULL == libeufin_services.nexus) || (NULL ==
+                                               libeufin_services.sandbox) )
     {
       GNUNET_break (0);
       return 77;
@@ -242,7 +244,7 @@ main (int argc,
   if (GNUNET_NO == with_fakebank)
   {
     // -> pybank
-    if (GNUNET_NO == with_libeufin) 
+    if (GNUNET_NO == with_libeufin)
     {
 
       GNUNET_OS_process_kill (bankd,
@@ -255,13 +257,13 @@ main (int argc,
       GNUNET_OS_process_kill (libeufin_services.nexus,
                               SIGKILL);
       GNUNET_OS_process_wait (libeufin_services.nexus);
-      GNUNET_OS_process_destroy (libeufin_services.nexus);   
+      GNUNET_OS_process_destroy (libeufin_services.nexus);
 
       GNUNET_OS_process_kill (libeufin_services.sandbox,
                               SIGKILL);
       GNUNET_OS_process_wait (libeufin_services.sandbox);
-      GNUNET_OS_process_destroy (libeufin_services.sandbox);   
-    } 
+      GNUNET_OS_process_destroy (libeufin_services.sandbox);
+    }
   }
 
   return rv;

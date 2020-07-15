@@ -372,8 +372,8 @@ deposit_run (void *cls,
                                            ds->coin_index,
                                            &denom_pub_sig)) ||
        (GNUNET_OK !=
-        TALER_JSON_hash (ds->contract_terms,
-                         &h_contract_terms)) )
+        TALER_JSON_contract_hash (ds->contract_terms,
+                                  &h_contract_terms)) )
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);

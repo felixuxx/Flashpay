@@ -33,7 +33,8 @@ main (int argc,
   json_t *wire_xtalerbank;
   json_t *wire_iban;
   const char *payto_xtalerbank = "payto://x-taler-bank/42";
-  const char *payto_iban = "payto://iban/BIC-TO-BE-SKIPPED/DE89370400440532013000";
+  const char *payto_iban =
+    "payto://iban/BIC-TO-BE-SKIPPED/DE89370400440532013000";
   char *p_xtalerbank;
   char *p_iban;
 
