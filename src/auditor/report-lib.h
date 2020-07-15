@@ -302,6 +302,17 @@ TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
 
 
 /**
+ * Test if the audit should be aborted because the user
+ * pressed CTRL-C.
+ *
+ * @return false to continue the audit, true to terminate
+ *         cleanly as soon as possible
+ */
+bool
+TALER_ARL_do_abort (void);
+
+
+/**
  * Setup global variables based on configuration.
  *
  * @param c configuration to use
