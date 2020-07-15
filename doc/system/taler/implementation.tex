@@ -1536,9 +1536,30 @@ We write $\mathbb{Z}^*_N$ for the multiplicative group of integers modulo $N$.
 Given an $r \in \mathbb{Z}^*_N$, we write $r^{-1}$ for the multiplicative
 inverse modulo $N$ of $r$.
 
-We write $H(m)$ for the SHA-512 hash of a bit string,
-and $\FDH(N,m)$ for the full domain hash that maps the bit string $m$ to an element
-of $\mathbb{Z}^*_N$.
+We write $H(m)$ for the SHA-512 hash of a bit string.
+
+We write $\FDH(N,m)$ for the full domain hash that maps the bit string $m$ to
+an element of $\mathbb{Z}^*_N$.  Specifically, $\FDH(N,m)$ is computed by
+first computing $H(m)$. Let $b := \lceil \log_2 N\rceil$.  The full domain
+hash is then computed by iteratively computing a HKDF to obtain $b$ bits of
+output until the $b$-bit value is below $N$.  The inputs to the HKDF are a
+``secret key'', a fixed context plus a 16-bit counter (in big endian) as a
+context chunk that is incremented until the computation succeeds.  For the
+source key material, we use a binary encoding of the public RSA key with
+modulus $N$.\footnote{So technically, it is $\FDH(N,e,m)$, but we use the
+  simplified notation $\FDH(N,m)$.}  Here, the public RSA key is encoded by
+first expressing the number of bits of the modulus and the public exponent as
+16-bit numbers in big endian, followed by the two numbers (again in unsigned
+big endian encoding).\footnote{See
+  \texttt{GNUNET\_CRYPTO\_rsa\_public\_key\_encode()}.}  For the context, the
+C-string ``RSA-FDA FTpsW!'' (without 0-termination) is used.  For the KDF, we
+instantiate the HKDF described in RFC 5869~\cite{rfc5869} using HMAC-SHA512 as
+XTR and HMAC-SHA256 as PRF*.\footnote{As suggested in
+  \url{http://eprint.iacr.org/2010/264.pdf}} Let the result of the first
+successful iteration of the HKDF function be $r$ with $0 \le r < N$.  Then, to
+protect against a malicious exchange when blinding values, the $FDH(N,m)$
+function checks that $\gcd(r,n) = 1$. If not, the $\FDH(n,m)$ calculation
+fails because $n$ is determined to be malicious.
 
 The expression $x \randsel X$ denotes uniform random selection of an element
 $x$ from set $X$.  We use $\algo{SelectSeeded}(s, X) \mapsto x$ for pseudo-random uniform
