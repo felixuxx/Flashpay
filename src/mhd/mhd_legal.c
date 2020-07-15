@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019 Taler Systems SA
+  Copyright (C) 2019, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -80,7 +80,8 @@ struct TALER_MHD_Legal
 /**
  * Check if @a mime matches the @a accept_pattern.
  *
- * @param accept_pattern a mime pattern like text/plain or image/STAR
+ * @param accept_pattern a mime pattern like "text/plain"
+ *        or "image/STAR"
  * @param mime the mime type to match
  * @return true if @a mime matches the @a accept_pattern
  */
@@ -104,6 +105,38 @@ mime_matches (const char *accept_pattern,
     ( (0 == strcmp (da, "/*")) ||
       (0 == strcasecmp (da,
                         dm)) );
+}
+
+
+/**
+ * Check if @a mime matches the @a accept_pattern.  For this function, the @a
+ * accept_pattern may include multiple values separated by ";".
+ *
+ * @param accept_pattern a mime pattern like "text/plain"
+ *        or "image/STAR" or "text/plain; text/xml"
+ * @param mime the mime type to match
+ * @return true if @a mime matches the @a accept_pattern
+ */
+static bool
+xmime_matches (const char *accept_pattern,
+               const char *mime)
+{
+  char *ap = GNUNET_strdup (accept_pattern);
+  char *sptr;
+
+  for (const char *tok = strtok_r (ap, ";", &sptr);
+       NULL != tok;
+       tok = strtok_r (NULL, ";", &sptr))
+  {
+    if (mime_matches (tok,
+                      mime))
+    {
+      GNUNET_free (ap);
+      return true;
+    }
+  }
+  GNUNET_free (ap);
+  return false;
 }
 
 
@@ -218,12 +251,12 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
       struct Terms *p = &legal->terms[i];
 
       if ( (NULL == t) ||
-           (mime_matches (mime,
-                          p->mime_type)) )
+           (xmime_matches (mime,
+                           p->mime_type)) )
       {
         if ( (NULL == t) ||
-             (! mime_matches (mime,
-                              t->mime_type)) ||
+             (! xmime_matches (mime,
+                               t->mime_type)) ||
              (language_matches (lang,
                                 p->language) >
               language_matches (lang,
