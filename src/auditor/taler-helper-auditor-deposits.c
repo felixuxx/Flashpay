@@ -96,8 +96,9 @@ struct DepositConfirmationContext
  * @param cls our `struct DepositConfirmationContext`
  * @param serial_id row of the @a dc in the database
  * @param dc the deposit confirmation we know
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERROR to stop iterating
  */
-static void
+static int
 test_dc (void *cls,
          uint64_t serial_id,
          const struct TALER_AUDITORDB_DepositConfirmation *dc)
@@ -128,13 +129,15 @@ test_dc (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Found deposit %s in exchange database\n",
                   GNUNET_h2s (&dc->h_contract_terms));
-      return; /* found, all good */
+      if (TALER_ARL_do_abort ())
+        return GNUNET_SYSERR;
+      return GNUNET_OK; /* found, all good */
     }
     if (qs < 0)
     {
       GNUNET_break (0); /* DB error, complain */
       dcc->qs = qs;
-      return;
+      return GNUNET_SYSERR;
     }
   }
   /* deposit confirmation missing! report! */
@@ -155,6 +158,9 @@ test_dc (void *cls,
   TALER_ARL_amount_add (&dcc->missed_amount,
                         &dcc->missed_amount,
                         &dc->amount_without_fee);
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
 }
 
 

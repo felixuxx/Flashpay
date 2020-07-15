@@ -456,6 +456,8 @@ handle_reserve_in (void *cls,
                                      idle_reserve_expiration_time);
   rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
                                                     expiry);
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -524,6 +526,8 @@ handle_reserve_out (void *cls,
     report_row_inconsistency ("withdraw",
                               rowid,
                               "denomination key not found");
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
 
@@ -569,7 +573,9 @@ handle_reserve_out (void *cls,
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           amount_with_fee);
-    return GNUNET_OK;   /* exit here, we cannot add this to the legitimate withdrawals */
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
+    return GNUNET_OK;   /* exit function here, we cannot add this to the legitimate withdrawals */
   }
 
   GNUNET_CRYPTO_hash (reserve_pub,
@@ -620,6 +626,8 @@ handle_reserve_out (void *cls,
   TALER_ARL_amount_add (&rs->total_fee,
                         &rs->total_fee,
                         &withdraw_fee);
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -813,6 +821,8 @@ handle_recoup_by_reserve (
                                      idle_reserve_expiration_time);
   rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
                                                     expiry);
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -980,6 +990,8 @@ handle_reserve_closed (
               "Additional closing operation for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
               TALER_amount2s (amount_with_fee));
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 

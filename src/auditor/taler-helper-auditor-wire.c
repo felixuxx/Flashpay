@@ -1002,6 +1002,8 @@ wire_out_cb (void *cls,
     TALER_ARL_amount_add (&total_bad_amount_out_minus,
                           &total_bad_amount_out_minus,
                           amount);
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   {
@@ -1102,6 +1104,8 @@ cleanup:
                            &key,
                            roi));
   wa->pp.last_wire_out_serial_id = rowid + 1;
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1491,9 +1495,13 @@ reserve_in_cb (void *cls,
                                    &rii->row_off_hash),
                                  "diagnostic", "duplicate wire offset"));
     GNUNET_free (rii);
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   wa->pp.last_reserve_in_serial_id = rowid + 1;
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1866,6 +1874,8 @@ reserve_closed_cb (void *cls,
                                  "diagnostic",
                                  "closing fee above total amount"));
     GNUNET_free (rc);
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   pp.last_reserve_close_uuid
@@ -1882,6 +1892,8 @@ reserve_closed_cb (void *cls,
                                             &key,
                                             rc,
                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_MULTIPLE);
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 

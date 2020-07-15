@@ -1176,11 +1176,15 @@ check_wire_out_cb (void *cls,
                                  TALER_JSON_from_amount (&final_amount),
                                  "claimed",
                                  TALER_JSON_from_amount (amount)));
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Aggregation unit %s is OK\n",
               TALER_B2S (wtid));
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 

@@ -1236,9 +1236,11 @@ deposit_confirmation_cb (void *cls,
       return;
     }
     dcc->qs = i + 1;
-    dcc->cb (dcc->cb_cls,
-             serial_id,
-             &dc);
+    if (GNUNET_OK !=
+        dcc->cb (dcc->cb_cls,
+                 serial_id,
+                 &dc))
+      break;
   }
 }
 

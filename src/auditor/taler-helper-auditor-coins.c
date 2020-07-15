@@ -991,6 +991,8 @@ withdraw_cb (void *cls,
     report_row_inconsistency ("withdraw",
                               rowid,
                               "denomination key not found");
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1032,6 +1034,8 @@ withdraw_cb (void *cls,
   TALER_ARL_amount_add (&ds->denom_risk,
                         &ds->denom_risk,
                         &value);
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1252,6 +1256,8 @@ refresh_session_cb (void *cls,
     report_row_inconsistency ("melt",
                               rowid,
                               "denomination key not found");
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1346,6 +1352,8 @@ refresh_session_cb (void *cls,
       TALER_ARL_amount_add (&total_refresh_hanging,
                             &total_refresh_hanging,
                             amount_with_fee);
+      if (TALER_ARL_do_abort ())
+        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
     if (GNUNET_SYSERR == reveal_ctx.err)
@@ -1354,7 +1362,11 @@ refresh_session_cb (void *cls,
     if (GNUNET_OK != reveal_ctx.err)
     {
       GNUNET_free (reveal_ctx.new_issues);
-      return (GNUNET_SYSERR == reveal_ctx.err) ? GNUNET_SYSERR : GNUNET_OK;
+      if (GNUNET_SYSERR == reveal_ctx.err)
+        return GNUNET_SYSERR;
+      if (TALER_ARL_do_abort ())
+        return GNUNET_SYSERR;
+      return GNUNET_OK;
     }
 
     /* Check that the resulting amounts are consistent with the value being
@@ -1527,6 +1539,8 @@ refresh_session_cb (void *cls,
                           &total_melt_fee_income,
                           &rfee);
   }
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1586,6 +1600,8 @@ deposit_cb (void *cls,
     report_row_inconsistency ("deposits",
                               rowid,
                               "denomination key not found");
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (refund_deadline.abs_value_us >
@@ -1645,6 +1661,8 @@ deposit_cb (void *cls,
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount_with_fee);
+      if (TALER_ARL_do_abort ())
+        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
     TALER_amount_hton (&dr.amount_with_fee,
@@ -1669,6 +1687,8 @@ deposit_cb (void *cls,
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount_with_fee);
+      if (TALER_ARL_do_abort ())
+        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
   }
@@ -1746,7 +1766,8 @@ deposit_cb (void *cls,
                           &total_deposit_fee_income,
                           &dfee);
   }
-
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1797,7 +1818,9 @@ refund_cb (void *cls,
     report_row_inconsistency ("refunds",
                               rowid,
                               "denomination key not found");
-    return GNUNET_SYSERR;
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
@@ -1835,6 +1858,8 @@ refund_cb (void *cls,
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount_with_fee);
+      if (TALER_ARL_do_abort ())
+        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
   }
@@ -1851,6 +1876,8 @@ refund_cb (void *cls,
                                             &amount_without_fee,
                                             &refund_fee,
                                             -1);
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
 
@@ -1893,6 +1920,8 @@ refund_cb (void *cls,
   TALER_ARL_amount_add (&total_refund_fee_income,
                         &total_refund_fee_income,
                         &refund_fee);
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
@@ -1947,6 +1976,8 @@ check_recoup (struct CoinContext *cc,
     report_row_inconsistency (operation,
                               rowid,
                               "denomination key not found");
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
     return GNUNET_OK;
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1994,6 +2025,8 @@ check_recoup (struct CoinContext *cc,
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount);
+      if (TALER_ARL_do_abort ())
+        return GNUNET_SYSERR;
       return GNUNET_OK;
     }
   }
@@ -2032,6 +2065,8 @@ check_recoup (struct CoinContext *cc,
                           &total_recoup_loss,
                           amount);
   }
+  if (TALER_ARL_do_abort ())
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
