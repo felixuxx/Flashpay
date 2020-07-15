@@ -679,9 +679,6 @@ get_denomination_type_params (const char *ct,
                                "VALUE",
                                &params->value))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "VALUE");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -690,9 +687,6 @@ get_denomination_type_params (const char *ct,
                                "FEE_WITHDRAW",
                                &params->fee_withdraw))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "FEE_WITHDRAW");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -701,9 +695,6 @@ get_denomination_type_params (const char *ct,
                                "FEE_DEPOSIT",
                                &params->fee_deposit))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "FEE_DEPOSIT");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -712,9 +703,6 @@ get_denomination_type_params (const char *ct,
                                "FEE_REFRESH",
                                &params->fee_refresh))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "FEE_REFRESH");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -723,9 +711,6 @@ get_denomination_type_params (const char *ct,
                                "fee_refund",
                                &params->fee_refund))
   {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "FEE_REFUND");
     return GNUNET_SYSERR;
   }
 
@@ -1016,7 +1001,8 @@ create_wire_fee_for_method (void *cls,
                            af->wire_fee.currency)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid or missing amount for option `%s' in section `%s'\n",
+                  "Need amount with currency `%s' for option `%s' in section `%s'\n",
+                  currency,
                   opt,
                   section);
       *ret = GNUNET_SYSERR;
@@ -1038,7 +1024,8 @@ create_wire_fee_for_method (void *cls,
                            af->closing_fee.currency)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid or missing amount for option `%s' in section `%s'\n",
+                  "Need amount with currency `%s' for option `%s' in section `%s'\n",
+                  currency,
                   opt,
                   section);
       *ret = GNUNET_SYSERR;

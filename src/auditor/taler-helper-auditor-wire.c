@@ -2076,10 +2076,6 @@ run (void *cls,
                                "TINY_AMOUNT",
                                &tiny_amount))
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "auditor",
-                               "TINY_AMOUNT",
-                               "invalid amount");
     global_ret = 1;
     return;
   }

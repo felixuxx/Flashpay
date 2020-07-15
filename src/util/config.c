@@ -45,11 +45,21 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                              section,
                                              option,
                                              &str))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               option);
     return GNUNET_NO;
-  if (GNUNET_OK != TALER_string_to_amount (str,
-                                           denom))
+  }
+  if (GNUNET_OK !=
+      TALER_string_to_amount (str,
+                              denom))
   {
     GNUNET_free (str);
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               option,
+                               "valid amount");
     return GNUNET_SYSERR;
   }
   GNUNET_free (str);

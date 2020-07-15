@@ -161,7 +161,7 @@ parse_wirewatch_config (void)
          (0 != currency_round_unit.value) ) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Invalid value specified in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
+                "Need non-zero amount in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
     return GNUNET_SYSERR;
   }
 

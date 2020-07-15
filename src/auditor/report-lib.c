@@ -701,14 +701,16 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     return GNUNET_SYSERR;
   }
   {
-    if (GNUNET_OK !=
-        TALER_config_get_amount (TALER_ARL_cfg,
-                                 "taler",
-                                 "CURRENCY_ROUND_UNIT",
-                                 &TALER_ARL_currency_round_unit))
+    if ( (GNUNET_OK !=
+          TALER_config_get_amount (TALER_ARL_cfg,
+                                   "taler",
+                                   "CURRENCY_ROUND_UNIT",
+                                   &TALER_ARL_currency_round_unit)) ||
+         ( (0 != TALER_ARL_currency_round_unit.fraction) &&
+           (0 != TALER_ARL_currency_round_unit.value) ) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid or missing amount in `TALER' under `CURRENCY_ROUND_UNIT'\n");
+                  "Need non-zero value in section `TALER' under `CURRENCY_ROUND_UNIT'\n");
       return GNUNET_SYSERR;
     }
   }
