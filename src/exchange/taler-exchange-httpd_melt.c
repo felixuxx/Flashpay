@@ -151,11 +151,11 @@ struct MeltContext
   struct TALER_Amount coin_refresh_fee;
 
   /**
-   * Set to #GNUNET_YES if this coin's denomination was revoked and the operation
+   * Set to true if this coin's denomination was revoked and the operation
    * is thus only allowed for zombie coins where the transaction
    * history includes a #TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP.
    */
-  int zombie_required;
+  bool zombie_required;
 
   /**
    * We already checked and noticed that the coin is known. Hence we
@@ -216,11 +216,11 @@ refresh_check_melt (struct MHD_Connection *connection,
     {
       if (TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP == tp->type)
       {
-        rmc->zombie_required = GNUNET_NO; /* clear flag: was satisfied! */
+        rmc->zombie_required = false; /* clear flag: was satisfied! */
         break;
       }
     }
-    if (GNUNET_YES == rmc->zombie_required)
+    if (rmc->zombie_required)
     {
       /* zombie status not satisfied */
       GNUNET_break_op (0);
@@ -541,7 +541,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
                                                     &ec,
                                                     &hc);
       if (NULL != dki)
-        rmc->zombie_required = GNUNET_YES; /* check later that zombie is satisfied */
+        rmc->zombie_required = true; /* check later that zombie is satisfied */
     }
     if (NULL == dki)
     {

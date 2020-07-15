@@ -2017,11 +2017,13 @@ TEH_KS_denomination_key_lookup_by_hash (
   struct GNUNET_TIME_Absolute now;
   const struct GNUNET_CONTAINER_MultiHashMap *map;
 
-  map = (TEH_KS_DKU_RECOUP == use) ? key_state->revoked_map :
-        key_state->denomkey_map;
+  map = (TEH_KS_DKU_RECOUP == use)
+        ? key_state->revoked_map
+        : key_state->denomkey_map;
   dki = GNUNET_CONTAINER_multihashmap_get (map,
                                            denom_pub_hash);
-  if ( (NULL == dki) && (TEH_KS_DKU_ZOMBIE == use))
+  if ( (NULL == dki) &&
+       (TEH_KS_DKU_ZOMBIE == use) )
     dki = GNUNET_CONTAINER_multihashmap_get (key_state->revoked_map,
                                              denom_pub_hash);
   if (NULL == dki)
