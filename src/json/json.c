@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014, 2015, 2016, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -25,7 +25,235 @@
 
 
 /**
- * Hash a JSON object for binary signing.
+ * Dump the @a json to a string and hash it.
+ *
+ * @param json value to hash
+ * @param salt salt value to include when using HKDF,
+ *        NULL to not use any salt and to use SHA512
+ * @param[out] hc where to store the hash
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ */
+static int
+dump_and_hash (const json_t *json,
+               const char *salt,
+               struct GNUNET_HashCode *hc)
+{
+  char *wire_enc;
+  size_t len;
+
+  if (NULL == (wire_enc = json_dumps (json,
+                                      JSON_COMPACT | JSON_SORT_KEYS)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  len = strlen (wire_enc) + 1;
+  if (NULL == salt)
+  {
+    GNUNET_CRYPTO_hash (wire_enc,
+                        len,
+                        hc);
+  }
+  else
+  {
+    if (GNUNET_YES !=
+        GNUNET_CRYPTO_kdf (hc,
+                           sizeof (*hc),
+                           salt,
+                           strlen (salt) + 1,
+                           wire_enc,
+                           len,
+                           NULL,
+                           0))
+    {
+      free (wire_enc);
+      return GNUNET_SYSERR;
+    }
+  }
+  free (wire_enc);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Replace "forgettable" parts of a JSON object with its salted hash.
+ *
+ * @param[in] in some JSON value
+ * @return NULL on error
+ */
+static json_t *
+forget (const json_t *in)
+{
+  if (json_is_array (in))
+  {
+    /* array is a JSON array */
+    size_t index;
+    json_t *value;
+    json_t *ret;
+
+    ret = json_array ();
+    if (NULL == ret)
+    {
+      GNUNET_break (0);
+      return NULL;
+    }
+    json_array_foreach (in, index, value) {
+      json_t *t;
+
+      t = forget (value);
+      if (NULL == t)
+      {
+        GNUNET_break (0);
+        json_decref (ret);
+        return NULL;
+      }
+      if (0 != json_array_append_new (ret, t))
+      {
+        GNUNET_break (0);
+        json_decref (ret);
+        return NULL;
+      }
+    }
+    return ret;
+  }
+  if (! json_is_object (in))
+  {
+    json_t *ret;
+    const char *key;
+    json_t *value;
+    json_t *fg;
+    json_t *rx;
+
+    fg = json_object_get (in,
+                          "_forgettable");
+    rx = json_object_get (in,
+                          "_forgotten");
+    if (NULL != rx)
+      rx = json_deep_copy (rx); /* should be shallow
+                                   by structure, but
+                                   deep copy is safer */
+    ret = json_object ();
+    if (NULL == ret)
+    {
+      GNUNET_break (0);
+      return NULL;
+    }
+    json_object_foreach ((json_t*) in, key, value) {
+      json_t *t;
+      json_t *salt;
+
+      if (0 == strcmp (key,
+                       "_forgettable"))
+        continue; /* skip! */
+      if (rx == value)
+        continue; /* skip! */
+      t = forget (value);
+      if (NULL == t)
+      {
+        GNUNET_break (0);
+        json_decref (ret);
+        json_decref (rx);
+        return NULL;
+      }
+      if ( (NULL != fg) &&
+           (NULL != (salt = json_object_get (fg,
+                                             key))) )
+      {
+        /* 't' is to be forgotten! */
+        struct GNUNET_HashCode hc;
+
+        if (! json_is_string (salt))
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
+        if (GNUNET_OK !=
+            dump_and_hash (t,
+                           json_string_value (salt),
+                           &hc))
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
+        if (NULL == rx)
+          rx = json_object ();
+        if (NULL == rx)
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
+        if (0 !=
+            json_object_set_new (rx,
+                                 key,
+                                 GNUNET_JSON_from_data_auto (&hc)))
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
+        if (0 !=
+            json_object_set_new (ret,
+                                 key,
+                                 json_null ()))
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
+
+      }
+      else
+      {
+        /* 't' to be used without 'forgetting' */
+        if (0 !=
+            json_object_set_new (ret,
+                                 key,
+                                 t))
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
+      }
+    } /* json_object_foreach */
+    if (0 !=
+        json_object_set_new (ret,
+                             "_forgotten",
+                             rx))
+    {
+      GNUNET_break (0);
+      json_decref (ret);
+      return NULL;
+    }
+    return ret;
+  }
+  return json_incref ((json_t *) in);
+}
+
+
+/**
+ * Hash a JSON contract for binary signing.
+ *
+ * Contracts can contain "forgettable" parts. Those components of the JSON
+ * object are indicated in a "_forgettable" field containing key-value
+ * pairs. The keys are the names of other fields that are forgettable, and the
+ * values are salt values to be used in the HKDF when hashing the forgettable
+ * field. To compute the overall hash, the values of all "_forgettable" fields
+ * are replaced with 'null', and the "_forgettable" field itself is removed,
+ * and a special "_forgotten" field is added with a map of forgotten entries
+ * to the respective HKDF values (see also #6365).
+ *
+ * Forgetting parts is not only applied at the top-level entry of the
+ * contract, but recursively to all entries.
  *
  * See https://tools.ietf.org/html/draft-rundgren-json-canonicalization-scheme-15
  * for fun JSON canonicalization problems.  Callers must ensure that
@@ -41,20 +269,172 @@ int
 TALER_JSON_contract_hash (const json_t *json,
                           struct GNUNET_HashCode *hc)
 {
-  char *wire_enc;
-  size_t len;
+  int ret;
+  json_t *cjson;
 
-  if (NULL == (wire_enc = json_dumps (json,
-                                      JSON_COMPACT | JSON_SORT_KEYS)))
+  cjson = forget (json);
+  if (NULL == cjson)
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  len = strlen (wire_enc) + 1;
-  GNUNET_CRYPTO_hash (wire_enc,
-                      len,
-                      hc);
-  free (wire_enc);
+  ret = dump_and_hash (cjson,
+                       NULL,
+                       hc);
+  json_decref (cjson);
+  return ret;
+}
+
+
+/**
+ * Mark part of a contract object as 'forgettable'.
+ *
+ * @param[in,out] json some JSON object to modify
+ * @param field name of the field to mark as forgettable
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_JSON_contract_mark_forgettable (json_t *json,
+                                      const char *field)
+{
+  json_t *fg;
+  struct GNUNET_ShortHashCode salt;
+
+  if (! json_is_object (json))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (NULL == json_object_get (json,
+                               field))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  fg = json_object_get (json,
+                        "_forgettable");
+  if (NULL == fg)
+  {
+    fg = json_object ();
+    if (0 !=
+        json_object_set_new (json,
+                             "_forgettable",
+                             fg))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              &salt,
+                              sizeof (salt));
+  if (0 !=
+      json_object_set_new (fg,
+                           field,
+                           GNUNET_JSON_from_data_auto (&salt)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Forget part of a contract object.
+ *
+ * @param[in,out] json some JSON object to modify
+ * @param field name of the field to forget
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_JSON_contract_part_forget (json_t *json,
+                                 const char *field)
+{
+  const json_t *fg;
+  const json_t *part;
+  json_t *fp;
+  json_t *rx;
+  struct GNUNET_HashCode hc;
+  const char *salt;
+
+  if (! json_is_object (json))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (NULL == (part = json_object_get (json,
+                                       field)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  fg = json_object_get (json,
+                        "_forgettable");
+  if (NULL == fg)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  salt = json_string_value (json_object_get (fg,
+                                             field));
+  if (NULL == salt)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  /* need to recursively forget to compute 'hc' */
+  fp = forget (part);
+  if (NULL == fp)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      dump_and_hash (fp,
+                     salt,
+                     &hc))
+  {
+    json_decref (fp);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  json_decref (fp);
+
+  rx = json_object_get (json,
+                        "_forgotten");
+  if (NULL == rx)
+  {
+    rx = json_object ();
+    if (0 !=
+        json_object_set_new (json,
+                             "_forgotten",
+                             rx))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  /* remember field as 'forgotten' */
+  if (0 !=
+      json_object_set_new (rx,
+                           field,
+                           GNUNET_JSON_from_data_auto (&hc)))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* finally, set 'forgotten' field to null */
+  if (0 !=
+      json_object_set_new (json,
+                           field,
+                           json_null ()))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 

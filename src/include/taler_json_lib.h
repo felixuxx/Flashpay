@@ -158,6 +158,31 @@ int
 TALER_JSON_contract_hash (const json_t *json,
                           struct GNUNET_HashCode *hc);
 
+
+/**
+ * Mark part of a contract object as 'forgettable'.
+ *
+ * @param[in,out] json some JSON object to modify
+ * @param field name of the field to mark as forgettable
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_JSON_contract_mark_forgettable (json_t *json,
+                                      const char *field);
+
+
+/**
+ * Forget part of a contract object.
+ *
+ * @param[in,out] json some JSON object to modify
+ * @param field name of the field to forget
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ */
+int
+TALER_JSON_contract_part_forget (json_t *json,
+                                 const char *field);
+
+
 /**
  * Extract the Taler error code from the given @a json object.
  * Note that #TALER_EC_NONE is returned if no "code" is present.
