@@ -128,8 +128,9 @@ check_keys_run (void *cls,
     GNUNET_break
       (0 == TALER_EXCHANGE_check_keys_current
         (is->exchange,
-        GNUNET_YES,
-        cks->pull_all_keys).abs_value_us);
+        cks->pull_all_keys
+        ? TALER_EXCHANGE_CKF_FORCE_ALL_NOW
+        : TALER_EXCHANGE_CKF_FORCE_DOWNLOAD).abs_value_us);
     return;
   }
 

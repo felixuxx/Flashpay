@@ -504,19 +504,49 @@ TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
+ * Flags for #TALER_EXCHANGE_check_keys_current().
+ */
+enum TALER_EXCHANGE_CheckKeysFlags
+{
+  /**
+   * No special options.
+   */
+  TALER_EXCHANGE_CKF_NONE,
+
+  /**
+   * Force downloading /keys now, even if /keys is still valid
+   * (that is, the period advertised by the exchange for re-downloads
+   * has not yet expired).
+   */
+  TALER_EXCHANGE_CKF_FORCE_DOWNLOAD = 1,
+
+  /**
+   * Pull all keys again, resetting the client state to the original state.
+   * Using this flag disables the incremental download, and also prevents using
+   * the context until the re-download has completed.
+   */
+  TALER_EXCHANGE_CKF_PULL_ALL_KEYS = 2,
+
+  /**
+   * Force downloading all keys now.
+   */
+  TALER_EXCHANGE_CKF_FORCE_ALL_NOW = TALER_EXCHANGE_CKF_FORCE_DOWNLOAD
+                                     | TALER_EXCHANGE_CKF_PULL_ALL_KEYS
+
+};
+
+
+/**
  * Check if our current response for /keys is valid, and if
  * not, trigger /keys download.
  *
  * @param exchange exchange to check keys for
- * @param force_download #GNUNET_YES to force download even if /keys is still valid
- * @param pull_all_keys if #GNUNET_YES, then the exchange state is reset to #MHS_INIT,
- *        and all denoms will be redownloaded.
- * @return until when the response is current, 0 if we are re-downloading
+ * @param flags options controlling when to download what
+ * @return until when the existing response is current, 0 if we are re-downloading now
  */
 struct GNUNET_TIME_Absolute
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
-                                   int force_download,
-                                   int pull_all_keys);
+                                   enum TALER_EXCHANGE_CheckKeysFlags flags);
 
 
 /**

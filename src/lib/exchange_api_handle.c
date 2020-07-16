@@ -801,7 +801,7 @@ denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
  * and store the data in the @a key_data.
  *
  * @param[in] resp_obj JSON object to parse
- * @param check_sig #GNUNET_YES if we should check the signature
+ * @param check_sig true if we should check the signature
  * @param[out] key_data where to store the results we decoded
  * @param[out] vc where to store version compatibility data
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
@@ -809,7 +809,7 @@ denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
  */
 static int
 decode_keys_json (const json_t *resp_obj,
-                  int check_sig,
+                  bool check_sig,
                   struct TALER_EXCHANGE_Keys *key_data,
                   enum TALER_EXCHANGE_VersionCompatibility *vc)
 {
@@ -1195,27 +1195,27 @@ TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
  * not trigger download.
  *
  * @param exchange exchange to check keys for
- * @param force_download #GNUNET_YES to force download even if /keys is still valid
- * @param pull_all_keys if #GNUNET_YES, then the exchange state is reset to #MHS_INIT,
- *        and all denoms will be redownloaded.
+ * @param flags options controlling when to download what
  * @return until when the response is current, 0 if we are re-downloading
  */
 struct GNUNET_TIME_Absolute
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
-                                   int force_download,
-                                   int pull_all_keys)
+                                   enum TALER_EXCHANGE_CheckKeysFlags flags)
 {
+  bool force_download = 0 != (flags & TALER_EXCHANGE_CKF_FORCE_DOWNLOAD);
+  bool pull_all_keys = 0 != (flags & TALER_EXCHANGE_CKF_PULL_ALL_KEYS);
+
   if (NULL != exchange->kr)
     return GNUNET_TIME_UNIT_ZERO_ABS;
 
-  if (GNUNET_YES == pull_all_keys)
+  if (pull_all_keys)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Forcing re-download of all exchange keys\n");
     GNUNET_break (GNUNET_YES == force_download);
     exchange->state = MHS_INIT;
   }
-  if ( (GNUNET_NO == force_download) &&
+  if ( (! force_download) &&
        (0 < GNUNET_TIME_absolute_get_remaining (
           exchange->key_data_expiration).rel_value_us) )
     return exchange->key_data_expiration;
@@ -1320,7 +1320,7 @@ keys_completed_cb (void *cls,
     /* Old auditors got just copied into new ones.  */
     if (GNUNET_OK !=
         decode_keys_json (j,
-                          GNUNET_YES,
+                          true,
                           &kd,
                           &vc))
     {
@@ -1605,7 +1605,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
           sizeof (struct TALER_EXCHANGE_Keys));
   if (GNUNET_OK !=
       decode_keys_json (keys,
-                        GNUNET_NO,
+                        false,
                         &key_data,
                         &vc))
   {
@@ -2211,8 +2211,7 @@ const struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 {
   (void) TALER_EXCHANGE_check_keys_current (exchange,
-                                            GNUNET_NO,
-                                            GNUNET_NO);
+                                            TALER_EXCHANGE_CKF_NONE);
   return &exchange->key_data;
 }
 
@@ -2228,8 +2227,7 @@ json_t *
 TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
 {
   (void) TALER_EXCHANGE_check_keys_current (exchange,
-                                            GNUNET_NO,
-                                            GNUNET_NO);
+                                            TALER_EXCHANGE_CKF_NONE);
   return json_deep_copy (exchange->key_data_raw);
 }
 
