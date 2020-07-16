@@ -41,8 +41,11 @@ dump_and_hash (const json_t *json,
   char *wire_enc;
   size_t len;
 
+  GNUNET_break (NULL != json);
   if (NULL == (wire_enc = json_dumps (json,
-                                      JSON_COMPACT | JSON_SORT_KEYS)))
+                                      JSON_ENCODE_ANY
+                                      | JSON_COMPACT
+                                      | JSON_SORT_KEYS)))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -116,7 +119,7 @@ forget (const json_t *in)
     }
     return ret;
   }
-  if (! json_is_object (in))
+  if (json_is_object (in))
   {
     json_t *ret;
     const char *key;
@@ -147,6 +150,23 @@ forget (const json_t *in)
         continue; /* skip! */
       if (rx == value)
         continue; /* skip! */
+      if ( (NULL != rx) &&
+           (NULL !=
+            json_object_get (rx,
+                             key)) )
+      {
+        if (0 !=
+            json_object_set_new (ret,
+                                 key,
+                                 json_null ()))
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
+        continue; /* already forgotten earlier */
+      }
       t = forget (value);
       if (NULL == t)
       {
@@ -208,7 +228,6 @@ forget (const json_t *in)
           json_decref (rx);
           return NULL;
         }
-
       }
       else
       {
@@ -225,10 +244,11 @@ forget (const json_t *in)
         }
       }
     } /* json_object_foreach */
-    if (0 !=
-        json_object_set_new (ret,
-                             "_forgotten",
-                             rx))
+    if ( (NULL != rx) &&
+         (0 !=
+          json_object_set_new (ret,
+                               "_forgotten",
+                               rx)) )
     {
       GNUNET_break (0);
       json_decref (ret);
