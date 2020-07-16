@@ -484,11 +484,10 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
   ctx = TEAH_handle_to_context (exchange);
-  lh->job = GNUNET_CURL_job_add (ctx,
-                                 eh,
-                                 GNUNET_YES,
-                                 &handle_link_finished,
-                                 lh);
+  lh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
+                                              eh,
+                                              &handle_link_finished,
+                                              lh);
   return lh;
 }
 

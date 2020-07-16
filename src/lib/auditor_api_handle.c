@@ -500,7 +500,6 @@ request_version (void *cls)
                                   (long) 300));
   vr->job = GNUNET_CURL_job_add (auditor->ctx,
                                  eh,
-                                 GNUNET_NO,
                                  &version_completed_cb,
                                  vr);
   auditor->vr = vr;

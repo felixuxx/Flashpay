@@ -425,11 +425,10 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
   ctx = TEAH_handle_to_context (exchange);
-  wh->job = GNUNET_CURL_job_add (ctx,
-                                 eh,
-                                 GNUNET_YES,
-                                 &handle_wire_finished,
-                                 wh);
+  wh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
+                                              eh,
+                                              &handle_wire_finished,
+                                              wh);
   return wh;
 }
 

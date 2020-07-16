@@ -390,7 +390,6 @@ TALER_EXCHANGE_deposits_get (
   ctx = TEAH_handle_to_context (exchange);
   dwh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
-                                  GNUNET_NO,
                                   &handle_deposit_wtid_finished,
                                   dwh);
   return dwh;

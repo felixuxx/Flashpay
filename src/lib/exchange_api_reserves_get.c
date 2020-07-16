@@ -301,7 +301,6 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
   ctx = TEAH_handle_to_context (exchange);
   rgh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
-                                  GNUNET_NO,
                                   &handle_reserves_get_finished,
                                   rgh);
   return rgh;

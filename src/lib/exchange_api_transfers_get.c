@@ -390,11 +390,10 @@ TALER_EXCHANGE_transfers_get (
     return NULL;
   }
   ctx = TEAH_handle_to_context (exchange);
-  wdh->job = GNUNET_CURL_job_add (ctx,
-                                  eh,
-                                  GNUNET_YES,
-                                  &handle_transfers_get_finished,
-                                  wdh);
+  wdh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
+                                               eh,
+                                               &handle_transfers_get_finished,
+                                               wdh);
   return wdh;
 }
 

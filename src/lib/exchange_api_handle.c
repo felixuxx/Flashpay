@@ -2016,11 +2016,10 @@ request_keys (void *cls)
                  curl_easy_setopt (eh,
                                    CURLOPT_HEADERDATA,
                                    kr));
-  kr->job = GNUNET_CURL_job_add (exchange->ctx,
-                                 eh,
-                                 GNUNET_YES,
-                                 &keys_completed_cb,
-                                 kr);
+  kr->job = GNUNET_CURL_job_add_with_ct_json (exchange->ctx,
+                                              eh,
+                                              &keys_completed_cb,
+                                              kr);
   exchange->kr = kr;
 }
 

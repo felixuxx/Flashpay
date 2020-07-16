@@ -236,7 +236,6 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
   ctx = TALER_AUDITOR_handle_to_context_ (auditor);
   leh->job = GNUNET_CURL_job_add (ctx,
                                   eh,
-                                  GNUNET_NO,
                                   &handle_exchanges_finished,
                                   leh);
   return leh;
