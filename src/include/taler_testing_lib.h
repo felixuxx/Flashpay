@@ -973,6 +973,17 @@ TALER_TESTING_cmd_transfer (const char *label,
 
 
 /**
+ * Modify a transfer command to enable retries when the reserve is not yet
+ * full or we get other transient errors from the bank.
+ *
+ * @param cmd a fakebank transfer command
+ * @return the command with retries enabled
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_transfer_retry (struct TALER_TESTING_Command cmd);
+
+
+/**
  * Make the "exec-auditor" CMD.
  *
  * @param label command label.

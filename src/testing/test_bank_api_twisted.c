@@ -82,18 +82,29 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
+  struct TALER_WireTransferIdentifierRawP wtid;
+
+  memset (&wtid, 0x5aff, sizeof (wtid));
+
+  /* Route our commands through twister. */
+  struct TALER_BANK_AuthenticationData exchange_auth_twisted;
+  memcpy (&exchange_auth_twisted,
+          &bc.exchange_auth,
+          sizeof (struct TALER_BANK_AuthenticationData));
+  exchange_auth_twisted.wire_gateway_url = "http://localhost:8888/2/";
 
   struct TALER_TESTING_Command commands[] = {
-    /**
-     * Can't use the "wait service" CMD here because the
-     * fakebank runs inside the same process of the test.
-     */
-    TALER_TESTING_cmd_wait_service ("wait-service",
-                                    twister_url),
-    TALER_TESTING_cmd_bank_credits ("history-0",
-                                    &bc.exchange_auth,
-                                    NULL,
-                                    5),
+    /* Test retrying transfer after failure. */
+    TALER_TESTING_cmd_malform_response ("malform-transfer",
+                                        CONFIG_FILE_FAKEBANK),
+    TALER_TESTING_cmd_transfer_retry (
+      TALER_TESTING_cmd_transfer ("debit-1",
+                                  "KUDOS:3.22",
+                                  &exchange_auth_twisted,
+                                  bc.exchange_payto,
+                                  bc.user42_payto,
+                                  &wtid,
+                                  "http://exchange.example.com/")),
     TALER_TESTING_cmd_end ()
   };
 
