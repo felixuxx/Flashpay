@@ -705,9 +705,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                 remote_cmd);
 
     GNUNET_assert (NULL != (exchange_slave_pipe =
-                              GNUNET_DISK_pipe (GNUNET_YES,
-                                                GNUNET_YES,
-                                                0, 0)));
+                              GNUNET_DISK_pipe (GNUNET_DISK_PF_BLOCKING_RW)));
 
     exchange_slave = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_OUT_AND_ERR,
                                               exchange_slave_pipe, NULL, NULL,

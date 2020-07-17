@@ -790,8 +790,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
           sizeof (is));
   is.exchanged = exchanged;
   is.cfg = cfg;
-  sigpipe = GNUNET_DISK_pipe (GNUNET_NO, GNUNET_NO,
-                              GNUNET_NO, GNUNET_NO);
+  sigpipe = GNUNET_DISK_pipe (GNUNET_DISK_PF_NONE);
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install
                (GNUNET_SIGCHLD,
