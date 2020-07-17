@@ -118,15 +118,14 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   unsigned int iter;
   char *curl_check_cmd;
 
-  nexus_proc = GNUNET_OS_start_process
-                 (GNUNET_NO,
-                 GNUNET_OS_INHERIT_STD_NONE,
-                 NULL, NULL, NULL,
-                 "libeufin-nexus",
-                 "libeufin-nexus",
-                 "serve",
-                 "--db-name", "/tmp/nexus-exchange-test.sqlite3",
-                 NULL);
+  nexus_proc = GNUNET_OS_start_process (
+    GNUNET_OS_INHERIT_STD_NONE,
+    NULL, NULL, NULL,
+    "libeufin-nexus",
+    "libeufin-nexus",
+    "serve",
+    "--db-name", "/tmp/nexus-exchange-test.sqlite3",
+    NULL);
   if (NULL == nexus_proc)
   {
     GNUNET_break (0);
@@ -164,15 +163,14 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   GNUNET_free (curl_check_cmd);
   fprintf (stderr, "\n");
 
-  sandbox_proc = GNUNET_OS_start_process
-                   (GNUNET_NO,
-                   GNUNET_OS_INHERIT_STD_NONE,
-                   NULL, NULL, NULL,
-                   "libeufin-sandbox",
-                   "libeufin-sandbox",
-                   "serve",
-                   "--db-name", "/tmp/sandbox-exchange-test.sqlite3",
-                   NULL);
+  sandbox_proc = GNUNET_OS_start_process (
+    GNUNET_OS_INHERIT_STD_NONE,
+    NULL, NULL, NULL,
+    "libeufin-sandbox",
+    "libeufin-sandbox",
+    "serve",
+    "--db-name", "/tmp/sandbox-exchange-test.sqlite3",
+    NULL);
   if (NULL == sandbox_proc)
   {
     GNUNET_break (0);
@@ -290,15 +288,14 @@ TALER_TESTING_run_bank (const char *config_filename,
   if (0 != strcmp ("http", serve_cfg))
     serve_arg = "serve-uwsgi";
   GNUNET_free (serve_cfg);
-  bank_proc = GNUNET_OS_start_process
-                (GNUNET_NO,
-                GNUNET_OS_INHERIT_STD_NONE,
-                NULL, NULL, NULL,
-                "taler-bank-manage-testing",
-                "taler-bank-manage-testing",
-                config_filename,
-                database,
-                serve_arg, NULL);
+  bank_proc = GNUNET_OS_start_process (
+    GNUNET_OS_INHERIT_STD_NONE,
+    NULL, NULL, NULL,
+    "taler-bank-manage-testing",
+    "taler-bank-manage-testing",
+    config_filename,
+    database,
+    serve_arg, NULL);
   GNUNET_free (database);
   if (NULL == bank_proc)
   {
@@ -550,7 +547,6 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   {
     if (NULL ==
         (dbreset_proc = GNUNET_OS_start_process (
-           GNUNET_NO,
            GNUNET_OS_INHERIT_STD_NONE,
            NULL, NULL, NULL,
            "taler-bank-manage",
