@@ -29,7 +29,7 @@ if existence uncrustify; then
     # Install uncrustify format symlink (if possible)
     ln -s contrib/uncrustify.cfg uncrustify.cfg 2> /dev/null || true
     # Install pre-commit hook (if possible)
-    ln -s ../../contrib/uncrustify_precommit .git/hooks/pre-commit 2> /dev/null
+    ln -s ../../contrib/uncrustify_precommit .git/hooks/pre-commit 2> /dev/null || true
 else
     echo "Uncrustify not detected, hook not installed. Please install uncrustify if you plan on doing development"
 fi
