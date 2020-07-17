@@ -27,7 +27,7 @@ existence()
 if existence uncrustify; then
     echo "Installing uncrustify hook and configuration"
     # Install uncrustify format symlink (if possible)
-    ln -s contrib/uncrustify.cfg uncrustify.cfg 2> /dev/null
+    ln -s contrib/uncrustify.cfg uncrustify.cfg 2> /dev/null || true
     # Install pre-commit hook (if possible)
     ln -s ../../contrib/uncrustify_precommit .git/hooks/pre-commit 2> /dev/null
 else
