@@ -232,15 +232,14 @@ hack_response_code_run (void *cls,
   GNUNET_asprintf (&http_status, "%u",
                    hrcs->http_status);
 
-  hrcs->proc = GNUNET_OS_start_process
-                 (GNUNET_NO,
-                 GNUNET_OS_INHERIT_STD_ALL,
-                 NULL, NULL, NULL,
-                 "taler-twister",
-                 "taler-twister",
-                 "-c", hrcs->config_filename,
-                 "--responsecode", http_status,
-                 NULL);
+  hrcs->proc = GNUNET_OS_start_process (
+    GNUNET_OS_INHERIT_STD_ALL,
+    NULL, NULL, NULL,
+    "taler-twister",
+    "taler-twister",
+    "-c", hrcs->config_filename,
+    "--responsecode", http_status,
+    NULL);
   if (NULL == hrcs->proc)
   {
     GNUNET_break (0);
@@ -355,8 +354,7 @@ delete_object_run (void *cls,
 {
   struct DeleteObjectState *dos = cls;
 
-  dos->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  dos->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",
@@ -443,8 +441,7 @@ modify_object_dl_run (void *cls,
 {
   struct ModifyObjectState *mos = cls;
 
-  mos->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  mos->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",
@@ -476,8 +473,7 @@ modify_object_ul_run (void *cls,
 {
   struct ModifyObjectState *mos = cls;
 
-  mos->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  mos->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",
@@ -509,8 +505,7 @@ modify_header_dl_run (void *cls,
 {
   struct ModifyObjectState *mos = cls;
 
-  mos->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  mos->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",
@@ -631,8 +626,7 @@ flip_upload_run (void *cls,
 {
   struct FlipObjectState *fos = cls;
 
-  fos->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  fos->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",
@@ -663,8 +657,7 @@ flip_download_run (void *cls,
 {
   struct FlipObjectState *fos = cls;
 
-  fos->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  fos->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",
@@ -813,8 +806,7 @@ malform_request_run (void *cls,
 {
   struct MalformRequestState *mrs = cls;
 
-  mrs->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  mrs->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",
@@ -900,8 +892,7 @@ malform_response_run (void *cls,
 {
   struct MalformResponseState *mrs = cls;
 
-  mrs->proc = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  mrs->proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-twister",
                                        "taler-twister",

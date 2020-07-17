@@ -164,8 +164,7 @@ revoke_run (void *cls,
     &denom_pub->h_key,
     sizeof (struct GNUNET_HashCode));
 
-  rs->revoke_proc = GNUNET_OS_start_process (GNUNET_NO,
-                                             GNUNET_OS_INHERIT_STD_ALL,
+  rs->revoke_proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                              NULL, NULL, NULL,
                                              "taler-exchange-keyup",
                                              "taler-exchange-keyup",

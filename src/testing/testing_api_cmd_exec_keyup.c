@@ -76,28 +76,28 @@ keyup_run (void *cls,
 
   if (GNUNET_YES == ks->with_now)
   {
-    ks->keyup_proc = GNUNET_OS_start_process
-                       (GNUNET_NO,
-                       GNUNET_OS_INHERIT_STD_ALL,
-                       NULL, NULL, NULL,
-                       "taler-exchange-keyup",
-                       "taler-exchange-keyup",
-                       "-c", ks->config_filename,
-                       "-o", "auditor.in",
-                       "--time",
-                       GNUNET_STRINGS_absolute_time_to_string (ks->now),
-                       NULL);
+    ks->keyup_proc
+      = GNUNET_OS_start_process
+          (GNUNET_OS_INHERIT_STD_ALL,
+          NULL, NULL, NULL,
+          "taler-exchange-keyup",
+          "taler-exchange-keyup",
+          "-c", ks->config_filename,
+          "-o", "auditor.in",
+          "--time",
+          GNUNET_STRINGS_absolute_time_to_string (ks->now),
+          NULL);
   }
   else
-    ks->keyup_proc = GNUNET_OS_start_process
-                       (GNUNET_NO,
-                       GNUNET_OS_INHERIT_STD_ALL,
-                       NULL, NULL, NULL,
-                       "taler-exchange-keyup",
-                       "taler-exchange-keyup",
-                       "-c", ks->config_filename,
-                       "-o", "auditor.in",
-                       NULL);
+    ks->keyup_proc
+      = GNUNET_OS_start_process
+          (GNUNET_OS_INHERIT_STD_ALL,
+          NULL, NULL, NULL,
+          "taler-exchange-keyup",
+          "taler-exchange-keyup",
+          "-c", ks->config_filename,
+          "-o", "auditor.in",
+          NULL);
 
   if (NULL == ks->keyup_proc)
   {

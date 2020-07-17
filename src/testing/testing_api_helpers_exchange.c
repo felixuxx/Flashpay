@@ -110,8 +110,7 @@ TALER_TESTING_run_keyup (const char *config_filename,
 {
   struct GNUNET_OS_Process *proc;
 
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
                                   "taler-exchange-keyup",
                                   "taler-exchange-keyup",
@@ -149,8 +148,7 @@ TALER_TESTING_run_auditor_sign (const char *config_filename,
 {
   struct GNUNET_OS_Process *proc;
 
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
                                   "taler-auditor-sign",
                                   "taler-auditor-sign",
@@ -195,8 +193,7 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
                    exchange_base_url,
                    exchange_master_pub);
 
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
                                   "taler-auditor-exchange",
                                   "taler-auditor-exchange",
@@ -244,8 +241,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
 
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
                                   "taler-exchange-dbinit",
                                   "taler-exchange-dbinit",
@@ -302,8 +298,7 @@ TALER_TESTING_auditor_db_reset (const char *config_filename)
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
 
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
                                   "taler-auditor-dbinit",
                                   "taler-auditor-dbinit",
@@ -782,8 +777,7 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
     }
   }
   GNUNET_free (serve);
-  exchanged = GNUNET_OS_start_process (GNUNET_NO,
-                                       GNUNET_OS_INHERIT_STD_ALL,
+  exchanged = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
@@ -887,8 +881,7 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (void *cls,
     }
   }
   GNUNET_free (serve);
-  auditord = GNUNET_OS_start_process (GNUNET_NO,
-                                      GNUNET_OS_INHERIT_STD_ALL,
+  auditord = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                       NULL, NULL, NULL,
                                       "taler-auditor-httpd",
                                       "taler-auditor-httpd",

@@ -103,8 +103,7 @@ closer_run (void *cls,
     as->reserve_pub = *reserve_pubp;
   }
   as->closer_proc
-    = GNUNET_OS_start_process (GNUNET_NO,
-                               GNUNET_OS_INHERIT_STD_ALL,
+    = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                NULL, NULL, NULL,
                                "taler-exchange-closer",
                                "taler-exchange-closer",

@@ -599,8 +599,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
   if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {
     /* start exchange */
-    exchanged = GNUNET_OS_start_process (GNUNET_NO,
-                                         GNUNET_OS_INHERIT_STD_ALL,
+    exchanged = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                          NULL, NULL, NULL,
                                          "taler-exchange-httpd",
                                          "taler-exchange-httpd",
@@ -626,8 +625,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       return 77;
     }
     /* start auditor */
-    auditord = GNUNET_OS_start_process (GNUNET_NO,
-                                        GNUNET_OS_INHERIT_STD_ALL,
+    auditord = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                         NULL, NULL, NULL,
                                         "taler-auditor-httpd",
                                         "taler-auditor-httpd",
@@ -658,8 +656,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
       return 77;
     }
     /* start exchange wirewatch */
-    wirewatch = GNUNET_OS_start_process (GNUNET_NO,
-                                         GNUNET_OS_INHERIT_STD_ALL,
+    wirewatch = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                          NULL, NULL, NULL,
                                          "taler-exchange-wirewatch",
                                          "taler-exchange-wirewatch",
@@ -712,8 +709,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                                                 GNUNET_YES,
                                                 0, 0)));
 
-    exchange_slave = GNUNET_OS_start_process (GNUNET_NO,
-                                              GNUNET_OS_INHERIT_STD_OUT_AND_ERR,
+    exchange_slave = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_OUT_AND_ERR,
                                               exchange_slave_pipe, NULL, NULL,
                                               "ssh",
                                               "ssh",
@@ -1087,8 +1083,7 @@ main (int argc,
     struct GNUNET_OS_Process *compute_wire_response;
 
     compute_wire_response
-      = GNUNET_OS_start_process (GNUNET_NO,
-                                 GNUNET_OS_INHERIT_STD_ALL,
+      = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                  NULL, NULL, NULL,
                                  "taler-exchange-wire",
                                  "taler-exchange-wire",

@@ -93,8 +93,7 @@ TALER_TWISTER_run_twister (const char *config_filename)
   unsigned long code;
   enum GNUNET_OS_ProcessStatusType type;
 
-  proc = GNUNET_OS_start_process (GNUNET_NO,
-                                  GNUNET_OS_INHERIT_STD_ALL,
+  proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                   NULL, NULL, NULL,
                                   "taler-twister-service",
                                   "taler-twister-service",
@@ -103,8 +102,7 @@ TALER_TWISTER_run_twister (const char *config_filename)
   if (NULL == proc)
     TWISTER_FAIL ();
 
-  client_proc = GNUNET_OS_start_process (GNUNET_NO,
-                                         GNUNET_OS_INHERIT_STD_ALL,
+  client_proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                          NULL, NULL, NULL,
                                          "taler-twister",
                                          "taler-twister",

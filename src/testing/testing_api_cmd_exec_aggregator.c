@@ -62,8 +62,7 @@ aggregator_run (void *cls,
 
   (void) cmd;
   as->aggregator_proc
-    = GNUNET_OS_start_process (GNUNET_NO,
-                               GNUNET_OS_INHERIT_STD_ALL,
+    = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                NULL, NULL, NULL,
                                "taler-exchange-aggregator",
                                "taler-exchange-aggregator",

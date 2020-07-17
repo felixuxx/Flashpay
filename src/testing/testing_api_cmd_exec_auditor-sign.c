@@ -121,18 +121,17 @@ auditor_sign_run (void *cls,
 
   GNUNET_CONFIGURATION_destroy (cfg);
 
-  ass->auditor_sign_proc = GNUNET_OS_start_process
-                             (GNUNET_NO,
-                             GNUNET_OS_INHERIT_STD_ALL,
-                             NULL, NULL, NULL,
-                             "taler-auditor-sign",
-                             "taler-auditor-sign",
-                             "-c", ass->config_filename,
-                             "-u", "http://auditor/",
-                             "-m", exchange_master_pub,
-                             "-r", "auditor.in",
-                             "-o", ass->signed_keys_out,
-                             NULL);
+  ass->auditor_sign_proc
+    = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                               NULL, NULL, NULL,
+                               "taler-auditor-sign",
+                               "taler-auditor-sign",
+                               "-c", ass->config_filename,
+                               "-u", "http://auditor/",
+                               "-m", exchange_master_pub,
+                               "-r", "auditor.in",
+                               "-o", ass->signed_keys_out,
+                               NULL);
   GNUNET_free (exchange_master_pub);
   if (NULL == ass->auditor_sign_proc)
   {
