@@ -38,7 +38,8 @@ struct Terms
   const char *mime_type;
 
   /**
-   * The terms (NOT 0-terminated!).
+   * The terms (NOT 0-terminated!), mmap()'ed. Do not free,
+   * use munmap() instead.
    */
   void *terms;
 
@@ -48,9 +49,22 @@ struct Terms
   char *language;
 
   /**
+   * deflated @e terms, to return if client supports deflate compression.
+   * malloc()'ed.  NULL if @e terms does not compress.
+   */
+  void *compressed_terms;
+
+  /**
    * Number of bytes in @e terms.
    */
   size_t terms_size;
+
+  /**
+   * Number of bytes in @e compressed_terms.
+   */
+  size_t compressed_terms_size;
+
+
 };
 
 
@@ -290,29 +304,17 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
   if (MHD_YES ==
       TALER_MHD_can_compress (conn))
   {
-    void *buf = GNUNET_memdup (t->terms,
-                               t->terms_size);
-    size_t buf_size = t->terms_size;
-
-    if (TALER_MHD_body_compress (&buf,
-                                 &buf_size))
+    resp = MHD_create_response_from_buffer (t->compressed_terms_size,
+                                            t->compressed_terms,
+                                            MHD_RESPMEM_PERSISTENT);
+    if (MHD_NO ==
+        MHD_add_response_header (resp,
+                                 MHD_HTTP_HEADER_CONTENT_ENCODING,
+                                 "deflate"))
     {
-      resp = MHD_create_response_from_buffer (buf_size,
-                                              buf,
-                                              MHD_RESPMEM_MUST_FREE);
-      if (MHD_NO ==
-          MHD_add_response_header (resp,
-                                   MHD_HTTP_HEADER_CONTENT_ENCODING,
-                                   "deflate"))
-      {
-        GNUNET_break (0);
-        MHD_destroy_response (resp);
-        resp = NULL;
-      }
-    }
-    else
-    {
-      GNUNET_free (buf);
+      GNUNET_break (0);
+      MHD_destroy_response (resp);
+      resp = NULL;
     }
   }
   if (NULL == resp)
@@ -458,31 +460,22 @@ load_terms (struct TALER_MHD_Legal *legal,
       return;
     }
     {
-      char *buf;
+      void *buf;
       size_t bsize;
-      ssize_t ret;
 
       bsize = (size_t) st.st_size;
-      buf = GNUNET_malloc_large (bsize);
-      if (NULL == buf)
-      {
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                             "malloc");
-        GNUNET_break (0 == close (fd));
-        GNUNET_free (fn);
-        return;
-      }
-      ret = read (fd,
-                  buf,
-                  bsize);
-      if ( (ret < 0) ||
-           (bsize != ((size_t) ret)) )
+      buf = mmap (NULL,
+                  bsize,
+                  PROT_READ,
+                  MAP_SHARED,
+                  fd,
+                  0);
+      if (MAP_FAILED == buf)
       {
         GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                  "read",
+                                  "mmap",
                                   fn);
         GNUNET_break (0 == close (fd));
-        GNUNET_free (buf);
         GNUNET_free (fn);
         return;
       }
@@ -498,6 +491,18 @@ load_terms (struct TALER_MHD_Legal *legal,
           .terms_size = bsize
         };
 
+        buf = GNUNET_memdup (t.terms,
+                             t.terms_size);
+        if (TALER_MHD_body_compress (&buf,
+                                     &bsize))
+        {
+          t.compressed_terms = buf;
+          t.compressed_terms_size = bsize;
+        }
+        else
+        {
+          GNUNET_free (buf);
+        }
         GNUNET_array_append (legal->terms,
                              legal->terms_len,
                              t);
@@ -554,8 +559,7 @@ load_language (struct TALER_MHD_Legal *legal,
  *
  * @param cfg configuration to use
  * @param section section to load values from
- * @param diroption name of the option with the
- *        path to the legal documents
+ * @param diroption name of the option with the path to the legal documents
  * @param tagoption name of the files to use
  *        for the legal documents and the Etag
  * @return NULL on error
@@ -639,7 +643,10 @@ TALER_MHD_legal_free (struct TALER_MHD_Legal *legal)
     struct Terms *t = &legal->terms[i];
 
     GNUNET_free (t->language);
-    GNUNET_free (t->terms);
+    GNUNET_free (t->compressed_terms);
+    if (0 != munmap (t->terms, t->terms_size))
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                           "munmap");
   }
   GNUNET_array_grow (legal->terms,
                      legal->terms_len,
