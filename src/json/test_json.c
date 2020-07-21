@@ -56,6 +56,36 @@ test_amount (void)
 }
 
 
+struct TestPath_Closure
+{
+  const char **object_ids;
+
+  const json_t **parents;
+
+  unsigned int results_length;
+
+  int cmp_result;
+};
+
+
+static void
+path_cb (void *cls,
+         const char *object_id,
+         json_t *parent)
+{
+  struct TestPath_Closure *cmp = cls;
+  if (NULL == cmp)
+    return;
+  unsigned int i = cmp->results_length;
+  if ((0 != strcmp (cmp->object_ids[i],
+                    object_id)) ||
+      (1 != json_equal (cmp->parents[i],
+                        parent)))
+    cmp->cmp_result = 1;
+  cmp->results_length += 1;
+}
+
+
 static int
 test_contract ()
 {
@@ -64,6 +94,7 @@ test_contract ()
   json_t *c1;
   json_t *c2;
   json_t *c3;
+  json_t *c4;
 
   c1 = json_pack ("{s:s, s:{s:s, s:{s:s}}}",
                   "k1", "v1",
@@ -113,6 +144,119 @@ test_contract ()
                  TALER_JSON_contract_hash (c3,
                                            &h2));
   json_decref (c3);
+  c4 = json_pack ("{s:{s:s}, s:[{s:s}, {s:s}, {s:s}]}",
+                  "abc1",
+                  "xyz", "value",
+                  "fruit",
+                  "name", "banana",
+                  "name", "apple",
+                  "name", "orange");
+  GNUNET_assert (NULL != c4);
+  GNUNET_assert (GNUNET_SYSERR ==
+                 TALER_JSON_expand_path (c4,
+                                         "%.xyz",
+                                         &path_cb,
+                                         NULL));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_expand_path (c4,
+                                         "$.nonexistent_id",
+                                         &path_cb,
+                                         NULL));
+  GNUNET_assert (GNUNET_SYSERR ==
+                 TALER_JSON_expand_path (c4,
+                                         "$.fruit[n]",
+                                         &path_cb,
+                                         NULL));
+
+  {
+    const char *object_ids[] = { "xyz" };
+    const json_t *parents[] = {
+      json_object_get (c4,
+                       "abc1")
+    };
+    struct TestPath_Closure tp = {
+      .object_ids = object_ids,
+      .parents = parents,
+      .results_length = 0,
+      .cmp_result = 0
+    };
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_expand_path (c4,
+                                           "$.abc1.xyz",
+                                           &path_cb,
+                                           &tp));
+    GNUNET_assert (1 == tp.results_length);
+    GNUNET_assert (0 == tp.cmp_result);
+  }
+  {
+    const char *object_ids[] = { "name" };
+    const json_t *parents[] = {
+      json_array_get (json_object_get (c4,
+                                       "fruit"),
+                      0)
+    };
+    struct TestPath_Closure tp = {
+      .object_ids = object_ids,
+      .parents = parents,
+      .results_length = 0,
+      .cmp_result = 0
+    };
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_expand_path (c4,
+                                           "$.fruit[0].name",
+                                           &path_cb,
+                                           &tp));
+    GNUNET_assert (1 == tp.results_length);
+    GNUNET_assert (0 == tp.cmp_result);
+  }
+  {
+    const char *object_ids[] = { "name", "name", "name" };
+    const json_t *parents[] = {
+      json_array_get (json_object_get (c4,
+                                       "fruit"),
+                      0),
+      json_array_get (json_object_get (c4,
+                                       "fruit"),
+                      1),
+      json_array_get (json_object_get (c4,
+                                       "fruit"),
+                      2)
+    };
+    struct TestPath_Closure tp = {
+      .object_ids = object_ids,
+      .parents = parents,
+      .results_length = 0,
+      .cmp_result = 0
+    };
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_expand_path (c4,
+                                           "$.fruit[*].name",
+                                           &path_cb,
+                                           &tp));
+    GNUNET_assert (3 == tp.results_length);
+    GNUNET_assert (0 == tp.cmp_result);
+  }
+  {
+    const char *object_ids[] = { "fruit[0]" };
+    const json_t *parents[] = {
+      json_object_get (c4,
+                       "fruit")
+    };
+    struct TestPath_Closure tp = {
+      .object_ids = object_ids,
+      .parents = parents,
+      .results_length = 0,
+      .cmp_result = 0
+    };
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_JSON_expand_path (c4,
+                                           "$.fruit[0]",
+                                           &path_cb,
+                                           &tp));
+    GNUNET_assert (1 == tp.results_length);
+    GNUNET_assert (0 == tp.cmp_result);
+  }
+  json_decref (c4);
   if (0 !=
       GNUNET_memcmp (&h1,
                      &h2))

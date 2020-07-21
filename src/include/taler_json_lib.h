@@ -184,6 +184,38 @@ TALER_JSON_contract_part_forget (json_t *json,
 
 
 /**
+ * Called for each path found after expanding a path.
+ *
+ * @param cls the closure.
+ * @param object_id the name of the object that is pointed to.
+ * @param parent the parent of the object at @e object_id.
+ */
+typedef void
+(*TALER_JSON_ExpandPathCallback) (
+  void *cls,
+  const char *object_id,
+  json_t *parent);
+
+
+/**
+ * Expands a path for a json object. May call the callback several times
+ * if the path contains a wildcard.
+ *
+ * @param json the json object the path references.
+ * @param path the path to expand. Must begin with "$." and follow dot notation,
+ *        and may include array indices and wildcards.
+ * @param cb the callback.
+ * @param cb_cls closure for the callback.
+ * @return GNUNET_OK on success, GNUNET_SYSERR if @e path is invalid.
+ */
+int
+TALER_JSON_expand_path (json_t *json,
+                        const char *path,
+                        TALER_JSON_ExpandPathCallback cb,
+                        void *cb_cls);
+
+
+/**
  * Extract the Taler error code from the given @a json object.
  * Note that #TALER_EC_NONE is returned if no "code" is present.
  *

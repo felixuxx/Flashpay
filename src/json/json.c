@@ -460,6 +460,149 @@ TALER_JSON_contract_part_forget (json_t *json,
 
 
 /**
+ * Parse a json path.
+ *
+ * @param obj the object that the path is relative to.
+ * @param prev the parent of @e obj.
+ * @param path the path to parse.
+ * @param cb the callback to call, if we get to the end of @e path.
+ * @param cb_cls the closure for the callback.
+ * @return GNUNET_OK on success, GNUNET_SYSERR if @e path is malformed.
+ */
+static int
+parse_path (json_t *obj,
+            json_t *prev,
+            const char *path,
+            TALER_JSON_ExpandPathCallback cb,
+            void *cb_cls)
+{
+  char *id = GNUNET_strdup (path);
+  char *next_id = strchr (id,
+                          '.');
+  char *next_path;
+  char *bracket;
+  json_t *parent = obj;
+  json_t *next_obj = NULL;
+
+  if (NULL != next_id)
+  {
+    bracket = strchr (next_id,
+                      '[');
+    *next_id = '\0';
+    next_id++;
+    next_path = GNUNET_strdup (next_id);
+    char *next_dot = strchr (next_id,
+                             '.');
+    if (NULL != next_dot)
+      *next_dot = '\0';
+  }
+  else
+  {
+    cb (cb_cls,
+        id,
+        prev);
+    return GNUNET_OK;
+  }
+
+  /* If this is the first time this is called, make sure id is "$" */
+  if ((NULL == prev) &&
+      (0 != strcmp (id,
+                    "$")))
+    return GNUNET_SYSERR;
+
+  /* Check for bracketed indices */
+  if (NULL != bracket)
+  {
+    char *end_bracket = strchr (bracket,
+                                ']');
+    if (NULL == end_bracket)
+      return GNUNET_SYSERR;
+    *end_bracket = '\0';
+
+    *bracket = '\0';
+    bracket++;
+
+    parent = json_object_get (obj,
+                              next_id);
+    if (0 == strcmp (bracket,
+                     "*"))
+    {
+      size_t index;
+      json_t *value;
+      int ret = GNUNET_OK;
+      json_array_foreach (parent, index, value) {
+        ret = parse_path (value,
+                          obj,
+                          next_path,
+                          cb,
+                          cb_cls);
+        if (GNUNET_OK != ret)
+        {
+          GNUNET_free (id);
+          return ret;
+        }
+      }
+    }
+    else
+    {
+      unsigned int index;
+      if (1 != sscanf (bracket,
+                       "%u",
+                       &index))
+        return GNUNET_SYSERR;
+      next_obj = json_array_get (parent,
+                                 index);
+    }
+  }
+  else
+  {
+    /* No brackets, so just fetch the object by name */
+    next_obj = json_object_get (obj,
+                                next_id);
+  }
+
+  if (NULL != next_obj)
+  {
+    return parse_path (next_obj,
+                       parent,
+                       next_path,
+                       cb,
+                       cb_cls);
+  }
+
+  GNUNET_free (id);
+  GNUNET_free (next_path);
+
+  return GNUNET_OK;
+}
+
+
+/**
+ * Expands a path for a json object. May call the callback several times
+ * if the path contains a wildcard.
+ *
+ * @param json the json object the path references.
+ * @param path the path to expand. Must begin with "$." and follow dot notation,
+ *        and may include array indices and wildcards.
+ * @param cb the callback.
+ * @param cb_cls closure for the callback.
+ * @return GNUNET_OK on success, GNUNET_SYSERR if @e path is invalid.
+ */
+int
+TALER_JSON_expand_path (json_t *json,
+                        const char *path,
+                        TALER_JSON_ExpandPathCallback cb,
+                        void *cb_cls)
+{
+  return parse_path (json,
+                     NULL,
+                     path,
+                     cb,
+                     cb_cls);
+}
+
+
+/**
  * Extract the Taler error code from the given @a json object.
  * Note that #TALER_EC_NONE is returned if no "code" is present.
  *
