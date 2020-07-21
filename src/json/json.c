@@ -481,7 +481,6 @@ parse_path (json_t *obj,
                           '.');
   char *next_path;
   char *bracket;
-  json_t *parent = obj;
   json_t *next_obj = NULL;
 
   if (NULL != next_id)
@@ -522,15 +521,15 @@ parse_path (json_t *obj,
     *bracket = '\0';
     bracket++;
 
-    parent = json_object_get (obj,
-                              next_id);
+    json_t *array = json_object_get (obj,
+                                     next_id);
     if (0 == strcmp (bracket,
                      "*"))
     {
       size_t index;
       json_t *value;
       int ret = GNUNET_OK;
-      json_array_foreach (parent, index, value) {
+      json_array_foreach (array, index, value) {
         ret = parse_path (value,
                           obj,
                           next_path,
@@ -550,7 +549,7 @@ parse_path (json_t *obj,
                        "%u",
                        &index))
         return GNUNET_SYSERR;
-      next_obj = json_array_get (parent,
+      next_obj = json_array_get (array,
                                  index);
     }
   }
@@ -564,7 +563,7 @@ parse_path (json_t *obj,
   if (NULL != next_obj)
   {
     return parse_path (next_obj,
-                       parent,
+                       obj,
                        next_path,
                        cb,
                        cb_cls);

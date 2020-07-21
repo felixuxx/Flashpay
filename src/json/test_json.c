@@ -236,26 +236,6 @@ test_contract ()
     GNUNET_assert (3 == tp.results_length);
     GNUNET_assert (0 == tp.cmp_result);
   }
-  {
-    const char *object_ids[] = { "fruit[0]" };
-    const json_t *parents[] = {
-      json_object_get (c4,
-                       "fruit")
-    };
-    struct TestPath_Closure tp = {
-      .object_ids = object_ids,
-      .parents = parents,
-      .results_length = 0,
-      .cmp_result = 0
-    };
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_expand_path (c4,
-                                           "$.fruit[0]",
-                                           &path_cb,
-                                           &tp));
-    GNUNET_assert (1 == tp.results_length);
-    GNUNET_assert (0 == tp.cmp_result);
-  }
   json_decref (c4);
   if (0 !=
       GNUNET_memcmp (&h1,
