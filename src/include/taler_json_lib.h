@@ -206,7 +206,7 @@ typedef void
  *        and may include array indices and wildcards.
  * @param cb the callback.
  * @param cb_cls closure for the callback.
- * @return GNUNET_OK on success, GNUNET_SYSERR if @e path is invalid.
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if @e path is invalid.
  */
 int
 TALER_JSON_expand_path (json_t *json,
