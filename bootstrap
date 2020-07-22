@@ -7,15 +7,7 @@ if ! git --version >/dev/null; then
   exit 1
 fi
 
-git submodule update --init
-
-# Generate taler-error-codes.h in gana and copy it to
-# src/include/taler_error_codes.h
-cd contrib/gana/gnu-taler-error-codes
-make
-cd ../../..
-cp contrib/gana/gnu-taler-error-codes/taler_error_codes.h src/include/taler_error_codes.h
-cp contrib/gana/gnu-taler-error-codes/taler_error_codes.c src/util/taler_error_codes.c
+./contrib/gana.sh
 
 # This is more portable than `which' but comes with
 # the caveat of not(?) properly working on busybox's ash:
