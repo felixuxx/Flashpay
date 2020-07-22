@@ -562,7 +562,7 @@ struct TALER_RefundConfirmationPS
    * minus the @e refund_fee is the amount that will be credited to
    * the original coin.
    */
-  struct TALER_AmountNBO refund_fee;
+  struct TALER_AmountNBO refund_fee; // FIXME: kill! => also do not return refund_fee (from exchange + merchant APIs)
 
 };
 
