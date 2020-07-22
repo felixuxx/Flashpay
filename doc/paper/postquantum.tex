@@ -95,7 +95,7 @@ when coins are double spent \cite{B??}.
 Importantly, there are reasons why exchanges must replace coins that
 do not involve actual financial transactons, like to reissue a coin
 before the exchange rotates the denomination key that signed it, or
-protect users' anonymity after a merchant recieves a coin, but fails
+protect users' anonymity after a merchant receives a coin, but fails
 to process it or deliver good.
 
 In Taler, coins can be partially spent by signing with the coin's key
@@ -111,7 +111,7 @@ as well as for coin replacement due to denomination key roration.
 
 If this protocol were simply a second transaction, then customers
 would retain information theoreticaly secure anonymity.  
-In Taler however, we require that the exchange learns acurate income
+In Taler however, we require that the exchange learns accurate income
 information for merchants.  If we use a regular transaction, then
 a customer could conspire to help the merchant hide their income
 \cite[]{Taler??}.
@@ -138,14 +138,14 @@ These provide strong post-quantum security so long as the underlying
 scheme remains secure; however, these schemes' youth leaves them
 relatively untested.
 
-Second, we propose a hash based scheme whose anonymity garentee needs
+Second, we propose a hash based scheme whose anonymity guarantee needs
 only the one-way assumption on our hash function.  In this scheme,
-the vible security paramater is numerically far smaller than in the
+the vible security parameter is numerically far smaller than in the
 key exchange systems, but covers query complexity which we believe
 suffices.
 
 We describe this hash based proof-of-encryption-to-self scheme to
-align the discription of all our schemes.
+align the description of all our schemes.
 
 ...
 
@@ -191,9 +191,9 @@ We label place holders $\eta$, $\lambda$, $\Lambda$, $\mu$, and $\Mu$
 for key material involved in post-quantum operations.  
 We view $\Lambda$ and $\Mu$ as public keys with respective
  private keys $\lambda$ and $\mu$, and
-$\eta$ as the symetric key resulting from the key exchange between them.
+$\eta$ as the symmetric key resulting from the key exchange between them.
 
-We need effeciently computable functions
+We need efficiently computable functions
   $\CPK$, $\CSK$, $\LPK$, $\LSK$, $\KEX_2$ and $\KEX_3$  such that 
 \begin{itemize}
 \item  $\mu = \CSK(s)$ for a random bitstring $s$,
@@ -216,10 +216,10 @@ A coin $(C,\Mu,S)$ consists of
   a post-quantum public key $\Mu$, and
   an RSA-FDH signature $S = S_d(C || \Mu)$ by a denomination key $d$.
 A coin is spent by signing a contract with $C$.  The contract must
-specify the recipiant merchant and what portion of the value denoted
-by the denomination $d$ they recieve.
+specify the recipient merchant and what portion of the value denoted
+by the denomination $d$ they receive.
 If $\Mu$ is large, we may replace it by $H(C || \Mu)$ to make signing
-contracts more efficent.
+contracts more efficient.
 
 There was of course a blinding factor $b$ used in the creation of
 the coin's signature $S$.  In addition, there was a private seed $s$
@@ -234,7 +234,7 @@ $$ c = H(\textrm{"Ed25519"} || s)
 We begin refresh with a possibly tainted coin $(C,\Mu,S)$ that
 we wish to refresh into $n \le \theta$ untainted coins.  
 
-In the change sitaution, our coin $(C,\Mu,S)$ was partially spent and 
+In the change situation, our coin $(C,\Mu,S)$ was partially spent and 
 retains only a part of the value determined by the denominaton $d$.
 There is usually no denomination that matchets this risidual value
 so we must refresh from one coin into $n \le \theta$.
@@ -291,8 +291,8 @@ In other words, $c'$, $\mu'$, and $b_j$ are derived from $s_j$,
 \item  For $j = 1 \cdots \kappa$ except $\gamma$:
    \begin{itemize}
    \item  Create a proof $\lambda_j^{\textrm{proof}}$ that
-          $\lambda_j$ is compatable with $\Lambda_j$ and $\Mu$.
-   \item  Set a responce tuple
+          $\lambda_j$ is compatible with $\Lambda_j$ and $\Mu$.
+   \item  Set a response tuple
           $R_j = (\zeta_j,l_j,\lambda_j,\lambda_j^{\textrm{proof}})$.
    \end{itemize}
 \item  Send $S_C(R_j \quad\textrm{for}\quad j \ne \gamma )$.
@@ -321,7 +321,7 @@ We could optionally save long-term storage space by
 replacing $\Gamma_*$ with both $\Gamma_{\gamma,0}$ and
  $S_C(\Eta_{j,i} \quad\textrm{for}\quad j \ne \gamma )$.
 It's clear this requires the wallet send that signature in some phase,
-but also the wallet must accept a phase 2 responce to a phase 1 request.
+but also the wallet must accept a phase 2 response to a phase 1 request.
 
 \smallskip
 
@@ -356,7 +356,7 @@ This rigidity makes constructing signature schemes with SIDH hard
 \cite{??SIDHsig??}, but does not impact our use case.  
 
 We let $\mu$ and $\Mu$ be the SIDH 2-torsion private and public keys,
-repectively.  We simlarly let $\lambda$ and $\Lambda$ be the
+respectively.  We similarly let $\lambda$ and $\Lambda$ be the
 SIDH 3-torsion private and public keys.  
 
 We envision the 2-torsion secret key generation function $\CSK(s)$
@@ -396,7 +396,7 @@ groups \cite{??,??}, but also a reasuring relationship with NP-hard
 problems.
 
 We again let $\mu$ and $\Mu$ denote the Alice (initator) side the
-private and public keys, repectively.  We likewise let $\lambda$
+private and public keys, respectively.  We likewise let $\lambda$
 and $\Lambda$ be the Bob (respondent) private and public keys. 
 % DO IT?
 Again now, $\CPK$, $\CSK$, $\LPK$, $\LSK$, $\KEX_2$ and $\KEX_3$
@@ -407,12 +407,12 @@ the Ring-LWE key exchange itself being broken because $\lambda_j$
 and $\Lambda_j$ are constructed using the public key $\Mu$. 
 
 First, the polynomial $a$ commonly depends upon $\Mu$, like in
-\cite{NewHope}, so unlinkability explicity depends upon the Ring-LWE
+\cite{NewHope}, so unlinkability explicitly depends upon the Ring-LWE
 problem\cite{}.  [[ PROOF ??? ]]
 
 Second, the reconciliation information in $\Lambda$ might leak
 additional information about $\lambda$.  
-[[ LITTERATURE ADDRESSES THIS POINT ??? ]]
+[[ LITERATURE ADDRESSES THIS POINT ??? ]]
 
 Ring-LWE key exchanges require that both Alice and Bob's keys be
 ephemeral because the success or failure of the key exchange
@@ -423,7 +423,7 @@ schemes\cite{??RLWEsig??}, and this situation impacts us as well.
 A Taler wallet should control both sides during the refresh protocol,
  which produces an interesting connundrum.
 An honest wallet could ensure that the key exchange always succeeds.
-If wallets were honest, then one could tune the Ring-LWE paramaters
+If wallets were honest, then one could tune the Ring-LWE parameters
 to leave the probability of failure rather high,
  saving the exchange bandwidth, storage, and verification time.
 A dishonest wallet and merchant could conversely search the key space
@@ -432,25 +432,25 @@ merchant in tax evasion.
 
 [[ IS THE FOLLOWING IMPOSSIBLE ??? ]]
 
-If possible, we should  tune the Ring-LWE paramaters to reduce costs
+If possible, we should  tune the Ring-LWE parameters to reduce costs
 to the exchange, and boost the unlinkability for the users, while 
 simultaniously
 
 % \smallskip
 % \subsection{Comparson}
 
-At present, the SIDH implemention in \cite{SIDH16} requires about
+At present, the SIDH implementation in \cite{SIDH16} requires about
 one third the key material and 100?? times as much CPU time as the
-Ring-LWE implemention in \cite{NewHope}.
+Ring-LWE implementation in \cite{NewHope}.
 [[ We believe this provides a strong reason to continue exploring 
-paramater choices for Ring-LWE key exchange along with protocol tweaks.  
+parameter choices for Ring-LWE key exchange along with protocol tweaks.  
 ... ]]
 
 
 \section{Hashed-based one-sided public keys}
 
 We now define our hash-based encryption scheme.
-Let $\delta$ denote our query security paramater and
+Let $\delta$ denote our query security parameter and
  let $\mu$ be a bit string.
 For $j \le \kappa$, we define a Merkle tree $T_j$ of height $\delta$
 with leaves $\eta_j = H(\mu || "YeyCoins!" || t || j)$
@@ -500,8 +500,8 @@ an attacker to pursue $\eta_j$ alone unless they expect to break
 curve25519 in the future, either through mathematical advances or
 by building a quantum computer.  
 
-We therefore view $\delta$ as a query complexity paramater whose 
-optimial setting depends upo nthe strength of the overall protocoll. 
+We therefore view $\delta$ as a query complexity parameter whose 
+optimial setting depends upo nthe strength of the overall protocol. 
 
 \smallskip
 
@@ -510,7 +510,7 @@ We can magnify the effective $\delta$ by using multiple $\eta_j$.
 ... analysis ...
 % multiple withdrawals
 
-We believe this provides sufficent post-quantum security for
+We believe this provides sufficient post-quantum security for
 refreshing change.  
 
 
@@ -518,11 +518,11 @@ refreshing change.
 
 We noted in \S\ref{subsec:withdrawal} above that exchange might
 require that initial withdrawals employs a refresh-like operation.
-In this scenarion, we refresh from a pseudo-coin $(C,\Mu)$ where
+In this scenario, we refresh from a pseudo-coin $(C,\Mu)$ where
  $C$ is the user's reserve key \cite[??]{Taler} and
  $\Mu$ s a post-quantum public key kept with $C$.
 As a result, our hash-based scheme should increase the security
-paramater $\delta$ to allow a query for every  withdrawal operation.
+parameter $\delta$ to allow a query for every  withdrawal operation.
 
 Instead, ...
 [[ ??? we propose using a Merkle tree of Alice side Ring-LWE keys,
@@ -565,7 +565,7 @@ Crazy pants ideas :
 
 Use a larger Mrkle tree with start points seeded throughout 
 
-Use a Merkle tree of SWIFFT hash functions becuase
+Use a Merkle tree of SWIFFT hash functions because
  their additive homomorphic property lets you keep the form of a polynomial
 
 

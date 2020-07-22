@@ -74,11 +74,11 @@ $n_\mu$ denote the maximum number of coins returned by a refresh.
 
 \smallskip
 
-Let $\iota$ denote a coin idetity paramater that
+Let $\iota$ denote a coin idetity parameter that
  links together the different commitments but must reemain secret
  from the exchange. 
 
-Let $n_\nu$ denote the identity security paramater.
+Let $n_\nu$ denote the identity security parameter.
 An online coin's identity commitment $\Nu$ is the empty string.
 In the offline coin case, we begin with a reserve public key $R$
 and a private identity commitment seed $\nu$.  
@@ -97,8 +97,8 @@ A coin $(C,\Nu,S)$ consists of
   an optional set of offline identity commitments $\Nu = \{\Nu_k | k \in \Gamma \}$
   an RSA-FDH signature $S = S_d(\FDH(C) * \Pi_{k \in \Gamma} \FDH(\Nu_k))$ by a denomination key $d$.
 A coin is spent by signing a contract with $C$.  The contract must
-specify the recipiant merchant and what portion of the value denoted
-by the denomination $d$ they recieve.
+specify the recipient merchant and what portion of the value denoted
+by the denomination $d$ they receive.
 
 There was of course a blinding factor $b$ used in the creation of
 the coin's signature $S$.  In addition, there was a private seed $s$
@@ -114,7 +114,7 @@ We generate $\nu = H("Offline" || s)$ from $s$ as well,
 We begin refresh with a possibly tainted coin $(C,S)$ whose value
 we wish to save by refreshing it into untainted coins.  
 
-In the change sitaution, our coin $(C,\Nu,S)$ was partially spent and 
+In the change situation, our coin $(C,\Nu,S)$ was partially spent and 
 retains only a part of the value determined by the denominaton $d$.
 
 For $x$ amongst the symbols $c$, $C$, $b$, and $s$,

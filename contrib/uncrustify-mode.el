@@ -114,7 +114,7 @@
                               (message "uncrustify error: <%s> <%s>" ret (buffer-string)))
                             nil))))))
 
-          ;; This goto-line is outside the save-excursion becuase it'd get
+          ;; This goto-line is outside the save-excursion because it'd get
           ;; removed otherwise.  I hate this bug. It makes things so ugly.
           (goto-line original-line)
           (not result)))

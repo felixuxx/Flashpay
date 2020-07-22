@@ -118,7 +118,7 @@ is less a currency and more an open protocol for creating new
 currencies. So what? And why do altcoins become a ponzi scheme? (Noting
 that you do not say that they might become one, rather that they do).
 
-> We have adjusted that langauge, as some like Dogecoin have removed
+> We have adjusted that language, as some like Dogecoin have removed
 > the 21 billion BTC cap to reduce the ponzi-like tendencies.  
 > There remains a large trend towards ponzi schemes in the altcoin
 > world however, amusingly noted by https://ponzico.win/ and 
@@ -307,7 +307,7 @@ scheme suggests that a any transfers of value should be taxed. However,
 the issuing protocol in 4.1 can be abused to transfer a coin, without
 paying tax, and in an unlikable manner.
 
-> Technically 4.1 is not transfering a coin, as it is issuing a coin.
+> Technically 4.1 is not transferring a coin, as it is issuing a coin.
 > Again, the loophole is/was discussed in the paper.
 
 The party withdrawing the coin

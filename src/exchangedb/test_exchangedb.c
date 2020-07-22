@@ -191,7 +191,7 @@ struct DenomKeyPair
 /**
  * Destroy a denomination key pair.  The key is not necessarily removed from the DB.
  *
- * @param dkp the keypair to destroy
+ * @param dkp the key pair to destroy
  */
 static void
 destroy_denom_key_pair (struct DenomKeyPair *dkp)

@@ -220,11 +220,11 @@ wanting this features is that it enables refunds from a merchant that
 later can be refreshed into "clean" coins that are unlinkable to the
 refunded coins. The protocol is based on what appears to be a standard
 cut-and-choose approach, which does not appear to be particularly
-novel. On the postive side, the problem appears a natural and if it
+novel. On the positive side, the problem appears a natural and if it
 hasn't been done before certainly useful. On the negative side, since
 the paper does not contain any formal definitions, or even semi-formal
 specifications of the desiderata, it is very hard to understand what
-actually is acheived. Furthermore, no proofs of security are given,
+actually is achieved. Furthermore, no proofs of security are given,
 and even the protocol is hard to fully understand. As such, I would
 suggest the authors to first formalize their approach and
 resubmitting.

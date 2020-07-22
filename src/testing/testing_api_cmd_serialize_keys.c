@@ -39,7 +39,7 @@ struct SerializeKeysState
   /**
    * Exchange URL.  Needed because the exchange gets disconnected
    * from, after keys serialization.  This value is then needed by
-   * subsequent commands that have to reconnect to the exchagne.
+   * subsequent commands that have to reconnect to the exchange.
    */
   char *exchange_url;
 };

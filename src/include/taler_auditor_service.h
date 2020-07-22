@@ -309,7 +309,7 @@ struct TALER_AUDITOR_ExchangeInfo
 
 
 /**
- * Function called with the result from /exchagnes.
+ * Function called with the result from /exchanges.
  *
  * @param cls closure
  * @param hr HTTP response data

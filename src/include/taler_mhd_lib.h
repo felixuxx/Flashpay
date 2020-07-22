@@ -330,7 +330,7 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
 
 
 /**
- * Extraxt fixed-size base32crockford encoded data from request.
+ * Extract fixed-size base32crockford encoded data from request.
  *
  * Queues an error response to the connection if the parameter is missing or
  * invalid.

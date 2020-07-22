@@ -247,7 +247,7 @@ enum TALER_ARL_SubtractionResult
 /**
  * Perform subtraction of amounts. Negative results should be signalled by the
  * return value (leaving @a diff set to 'invalid'). If the subtraction fails
- * for other reasons (currency missmatch, normalization failure), logs a
+ * for other reasons (currency mismatch, normalization failure), logs a
  * detailed error and calls exit() to terminate the process (!).
  *
  * Do not call this function directly, use #TALER_ARL_amount_subtract_neg().
@@ -274,7 +274,7 @@ TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
 /**
  * Perform subtraction of amounts.  Negative results should be signalled by
  * the return value (leaving @a diff set to 'invalid'). If the subtraction
- * fails for other reasons (currency missmatch, normalization failure), logs a
+ * fails for other reasons (currency mismatch, normalization failure), logs a
  * detailed error and calls exit() to terminate the process (!).
  *
  * @param[out] diff where to store (@a a1 - @a a2)

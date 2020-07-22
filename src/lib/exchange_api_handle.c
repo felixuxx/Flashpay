@@ -1499,7 +1499,7 @@ parse_date_string (const char *date,
 /**
  * Function called for each header in the HTTP /keys response.
  * Finds the "Expire:" header and parses it, storing the result
- * in the "expire" field fo the keys request.
+ * in the "expire" field of the keys request.
  *
  * @param buffer header data received
  * @param size size of an item in @a buffer
