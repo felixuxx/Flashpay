@@ -76,7 +76,6 @@ struct RefundState
  *
  * @param cls closure
  * @param hr HTTP response details
- * @param refund_fee the refund fee the exchange charged
  * @param exchange_pub public key the exchange
  *        used for signing @a obj.
  * @param exchange_sig actual signature confirming the refund
@@ -84,7 +83,6 @@ struct RefundState
 static void
 refund_cb (void *cls,
            const struct TALER_EXCHANGE_HttpResponse *hr,
-           const struct TALER_Amount *refund_fee,
            const struct TALER_ExchangePublicKeyP *exchange_pub,
            const struct TALER_ExchangeSignatureP *exchange_sig)
 {
@@ -92,7 +90,6 @@ refund_cb (void *cls,
   struct RefundState *rs = cls;
   struct TALER_TESTING_Command *refund_cmd;
 
-  (void) refund_fee;
   refund_cmd = &rs->is->commands[rs->is->ip];
   rs->rh = NULL;
   if (rs->expected_response_code != hr->http_status)

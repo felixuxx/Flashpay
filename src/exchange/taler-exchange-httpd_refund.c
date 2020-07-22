@@ -61,8 +61,6 @@ reply_refund_success (struct MHD_Connection *connection,
 
   TALER_amount_hton (&rc.refund_amount,
                      &refund->refund_amount);
-  TALER_amount_hton (&rc.refund_fee,
-                     &refund->refund_fee);
   if (GNUNET_OK !=
       TEH_KS_sign (&rc,
                    &pub,
@@ -76,8 +74,7 @@ reply_refund_success (struct MHD_Connection *connection,
   return TALER_MHD_reply_json_pack (
     connection,
     MHD_HTTP_OK,
-    "{s:o, s:o, s:o}",
-    "refund_fee", TALER_JSON_from_amount (&refund->refund_fee),
+    "{s:o, s:o}",
     "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
     "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
 }

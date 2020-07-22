@@ -97,7 +97,6 @@ verify_refund_signature_ok (struct TALER_EXCHANGE_RefundHandle *rh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
-    TALER_JSON_spec_amount_nbo ("refund_fee", &rh->depconf.refund_fee),
     GNUNET_JSON_spec_end ()
   };
 
@@ -148,8 +147,6 @@ handle_refund_finished (void *cls,
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP *ep = NULL;
   struct TALER_ExchangeSignatureP *es = NULL;
-  struct TALER_Amount ra;
-  const struct TALER_Amount *rf = NULL;
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .reply = j,
@@ -178,9 +175,6 @@ handle_refund_finished (void *cls,
     {
       ep = &exchange_pub;
       es = &exchange_sig;
-      TALER_amount_ntoh (&ra,
-                         &rh->depconf.refund_fee);
-      rf = &ra;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
@@ -239,7 +233,6 @@ handle_refund_finished (void *cls,
   }
   rh->cb (rh->cb_cls,
           &hr,
-          rf,
           ep,
           es);
   TALER_EXCHANGE_refund_cancel (rh);

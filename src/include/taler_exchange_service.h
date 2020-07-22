@@ -911,7 +911,6 @@ struct TALER_EXCHANGE_RefundHandle;
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param refund_fee the refund fee the exchange charged us
  * @param sign_key exchange key used to sign @a obj, or NULL
  * @param signature the actual signature, or NULL on error
  */
@@ -919,7 +918,6 @@ typedef void
 (*TALER_EXCHANGE_RefundCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_Amount *refund_fee,
   const struct TALER_ExchangePublicKeyP *sign_key,
   const struct TALER_ExchangeSignatureP *signature);
 

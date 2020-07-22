@@ -509,7 +509,6 @@ struct TALER_RefundRequestPS
    * exchange to the customer.
    */
   struct TALER_AmountNBO refund_amount;
-
 };
 
 
@@ -552,18 +551,6 @@ struct TALER_RefundConfirmationPS
    * exchange to the customer.
    */
   struct TALER_AmountNBO refund_amount;
-
-  /**
-   * Refund fee charged by the exchange.  This must match the
-   * Exchange's denomination key's refund fee.  If the client puts in
-   * an invalid refund fee (too high or too low) that does not match
-   * the Exchange's denomination key, the refund operation is invalid
-   * and will be rejected by the exchange.  The @e amount_with_fee
-   * minus the @e refund_fee is the amount that will be credited to
-   * the original coin.
-   */
-  struct TALER_AmountNBO refund_fee; // FIXME: kill! => also do not return refund_fee (from exchange + merchant APIs)
-
 };
 
 
