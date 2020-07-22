@@ -15,6 +15,9 @@ cd contrib/gana/gnu-taler-error-codes
 make
 cd ../../..
 cp contrib/gana/gnu-taler-error-codes/taler-error-codes.h src/include/taler_error_codes.h
+cp contrib/gana/gnu-taler-error-codes/taler-error-codes.c src/util/taler_error_codes.c
+# Change the include in the source file so it can find the header
+sed -i '' 's/taler\-error\-codes\.h/taler_error_codes.h/g' src/util/taler_error_codes.c
 
 # This is more portable than `which' but comes with
 # the caveat of not(?) properly working on busybox's ash:

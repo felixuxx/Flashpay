@@ -40,6 +40,7 @@ libtalerutil_la_SOURCES = \
   getopt.c \
   mhd.c \
   payto.c \
+  taler_error_codes.c \
   url.c \
   util.c \
   yna.c \
