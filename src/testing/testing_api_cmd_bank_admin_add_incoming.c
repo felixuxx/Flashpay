@@ -319,67 +319,10 @@ admin_add_incoming_run (void *cls,
   }
   else
   {
-    if (NULL != fts->instance)
-    {
-      char *section;
-      char *keys;
-      struct GNUNET_CONFIGURATION_Handle *cfg;
-
-      GNUNET_assert (NULL != fts->config_filename);
-      cfg = GNUNET_CONFIGURATION_create ();
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_load (cfg,
-                                     fts->config_filename))
-      {
-        GNUNET_break (0);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-
-      GNUNET_asprintf (&section,
-                       "instance-%s",
-                       fts->instance);
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_filename
-            (cfg,
-            section,
-            "TIP_RESERVE_PRIV_FILENAME",
-            &keys))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Configuration fails to specify reserve"
-                    " private key filename in section %s\n",
-                    section);
-        GNUNET_free (section);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-      if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_key_from_file (keys,
-                                             GNUNET_NO,
-                                             &fts->reserve_priv.eddsa_priv))
-      {
-        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                   section,
-                                   "TIP_RESERVE_PRIV_FILENAME",
-                                   "Failed to read private key");
-        GNUNET_free (section);
-        GNUNET_free (keys);
-        TALER_TESTING_interpreter_fail (is);
-        return;
-      }
-      fts->reserve_priv_known = true;
-      GNUNET_free (keys);
-      GNUNET_free (section);
-      GNUNET_CONFIGURATION_destroy (cfg);
-    }
-    else
-    {
-      /* No referenced reserve, no instance to take priv
-       * from, no explicit subject given: create new key! */
-      GNUNET_CRYPTO_eddsa_key_create (&fts->reserve_priv.eddsa_priv);
-      fts->reserve_priv_known = true;
-    }
+    /* No referenced reserve, no instance to take priv
+     * from, no explicit subject given: create new key! */
+    GNUNET_CRYPTO_eddsa_key_create (&fts->reserve_priv.eddsa_priv);
+    fts->reserve_priv_known = true;
   }
   if (! have_public)
     GNUNET_CRYPTO_eddsa_key_get_public (&fts->reserve_priv.eddsa_priv,
@@ -615,47 +558,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
                   auth,
                   payto_debit_account);
   fts->reserve_reference = ref;
-  return make_command (label,
-                       fts);
-}
-
-
-/**
- * Create "/admin/add-incoming" CMD, letting the caller specifying
- * the merchant instance.  This version is useful when a tip
- * reserve should be topped up, in fact the interpreter will need
- * the "tipping instance" in order to get the instance public key
- * and make a wire transfer subject out of it.
- *
- * @param label command label.
- * @param amount amount to transfer.
- * @param payto_debit_account which account (expressed as a number)
- *        gives money
- * @param auth authentication data
- * @param instance the instance that runs the tipping.  Under this
- *        instance, the configuration file will provide the private
- *        key of the tipping reserve.  This data will then used to
- *        construct the wire transfer subject line.
- * @param config_filename configuration file to use.
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_with_instance
-  (const char *label,
-  const char *amount,
-  const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account,
-  const char *instance,
-  const char *config_filename)
-{
-  struct AdminAddIncomingState *fts;
-
-  fts = make_fts (amount,
-                  auth,
-                  payto_debit_account);
-  fts->instance = instance;
-  fts->config_filename = config_filename;
-
   return make_command (label,
                        fts);
 }

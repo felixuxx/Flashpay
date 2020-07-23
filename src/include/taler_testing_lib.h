@@ -1127,34 +1127,6 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (
 
 
 /**
- * Create "fakebank transfer" CMD, letting the caller specifying
- * the merchant instance.  This version is useful when a tip
- * reserve should be topped up, in fact the interpreter will need
- * the "tipping instance" in order to get the instance public key
- * and make a wire transfer subject out of it.
- *
- * @param label command label.
- * @param amount amount to transfer.
- * @param payto_debit_account which account sends money.
- * @param auth authentication data
- * @param instance the instance that runs the tipping.  Under this
- *        instance, the configuration file will provide the private
- *        key of the tipping reserve.  This data will then used to
- *        construct the wire transfer subject line.
- * @param config_filename configuration file to use.
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_with_instance (
-  const char *label,
-  const char *amount,
-  const struct TALER_BANK_AuthenticationData *auth,
-  const char *payto_debit_account,
-  const char *instance,
-  const char *config_filename);
-
-
-/**
  * Modify a fakebank transfer command to enable retries when the
  * reserve is not yet full or we get other transient errors from
  * the fakebank.

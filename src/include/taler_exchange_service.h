@@ -962,50 +962,6 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 
 
 /**
- * Submit a refund request to the exchange and get the exchange's
- * response.  This API is used by a merchant.  Note that
- * while we return the response verbatim to the caller for further
- * processing, we do already verify that the response is well-formed
- * (i.e. that signatures included in the response are all valid).  If
- * the exchange's reply is not well-formed, we return an HTTP status code
- * of zero to @a cb.
- *
- * The @a exchange must be ready to operate (i.e.  have
- * finished processing the /keys reply).  If this check fails, we do
- * NOT initiate the transaction with the exchange and instead return NULL.
- *
- * FIXME: We can probably DEPRECATE this API and only use #TALER_EXCHANGE_refund()!
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param amount the amount to be refunded; must be larger than the refund fee
- *        (as that fee is still being subtracted), and smaller than the amount
- *        (with deposit fee) of the original deposit contribution of this coin
- * @param h_contract_terms hash of the contact of the merchant with the customer that is being refunded
- * @param coin_pub coin’s public key of the coin from the original deposit operation
- * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
- *                        this is needed as we may first do a partial refund and later a full refund.  If both
- *                        refunds are also over the same amount, we need the @a rtransaction_id to make the disjoint
- *                        refund requests different (as requests are idempotent and otherwise the 2nd refund might not work).
- * @param merchant_pub public key of the merchant
- * @param merchant_sig signature affirming the refund from the merchant
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @return a handle for this request; NULL if the inputs are invalid (i.e.
- *         signatures fail to verify).  In this case, the callback is not called.
- */
-struct TALER_EXCHANGE_RefundHandle *
-TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
-                        const struct TALER_Amount *amount,
-                        const struct GNUNET_HashCode *h_contract_terms,
-                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                        uint64_t rtransaction_id,
-                        const struct TALER_MerchantPublicKeyP *merchant_pub,
-                        const struct TALER_MerchantSignatureP *merchant_sig,
-                        TALER_EXCHANGE_RefundCallback cb,
-                        void *cb_cls);
-
-
-/**
  * Cancel a refund permission request.  This function cannot be used
  * on a request handle if a response is already served for it.  If
  * this function is called, the refund may or may not have happened.

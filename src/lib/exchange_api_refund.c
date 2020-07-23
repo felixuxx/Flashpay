@@ -295,59 +295,7 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_sign (&merchant_priv->eddsa_priv,
                             &rr,
                             &merchant_sig.eddsa_sig);
-  return TALER_EXCHANGE_refund2 (exchange,
-                                 amount,
-                                 h_contract_terms,
-                                 coin_pub,
-                                 rtransaction_id,
-                                 &rr.merchant,
-                                 &merchant_sig,
-                                 cb,
-                                 cb_cls);
-}
 
-
-/**
- * Submit a refund request to the exchange and get the exchange's
- * response.  This API is used by a merchant.  Note that
- * while we return the response verbatim to the caller for further
- * processing, we do already verify that the response is well-formed
- * (i.e. that signatures included in the response are all valid).  If
- * the exchange's reply is not well-formed, we return an HTTP status code
- * of zero to @a cb.
- *
- * The @a exchange must be ready to operate (i.e.  have
- * finished processing the /keys reply).  If this check fails, we do
- * NOT initiate the transaction with the exchange and instead return NULL.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param amount the amount to be refunded; must be larger than the refund fee
- *        (as that fee is still being subtracted), and smaller than the amount
- *        (with deposit fee) of the original deposit contribution of this coin
- * @param h_contract_terms hash of the contact of the merchant with the customer that is being refunded
- * @param coin_pub coin’s public key of the coin from the original deposit operation
- * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
- *                        this is needed as we may first do a partial refund and later a full refund.  If both
- *                        refunds are also over the same amount, we need the @a rtransaction_id to make the disjoint
- *                        refund requests different (as requests are idempotent and otherwise the 2nd refund might not work).
- * @param merchant_pub public key of the merchant
- * @param merchant_sig signature affirming the refund from the merchant
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @return a handle for this request; NULL if the inputs are invalid (i.e.
- *         signatures fail to verify).  In this case, the callback is not called.
- */
-struct TALER_EXCHANGE_RefundHandle *
-TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
-                        const struct TALER_Amount *amount,
-                        const struct GNUNET_HashCode *h_contract_terms,
-                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                        uint64_t rtransaction_id,
-                        const struct TALER_MerchantPublicKeyP *merchant_pub,
-                        const struct TALER_MerchantSignatureP *merchant_sig,
-                        TALER_EXCHANGE_RefundCallback cb,
-                        void *cb_cls)
-{
   struct TALER_EXCHANGE_RefundHandle *rh;
   struct GNUNET_CURL_Context *ctx;
   json_t *refund_obj;
@@ -378,9 +326,9 @@ TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
                             h_contract_terms),
                           "rtransaction_id", (json_int_t) rtransaction_id,
                           "merchant_pub", GNUNET_JSON_from_data_auto (
-                            merchant_pub),
+                            &rr.merchant),
                           "merchant_sig", GNUNET_JSON_from_data_auto (
-                            merchant_sig)
+                            &merchant_sig)
                           );
   if (NULL == refund_obj)
   {
@@ -398,7 +346,7 @@ TALER_EXCHANGE_refund2 (struct TALER_EXCHANGE_Handle *exchange,
   rh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
   rh->depconf.h_contract_terms = *h_contract_terms;
   rh->depconf.coin_pub = *coin_pub;
-  rh->depconf.merchant = *merchant_pub;
+  rh->depconf.merchant = rr.merchant;
   rh->depconf.rtransaction_id = GNUNET_htonll (rtransaction_id);
   TALER_amount_hton (&rh->depconf.refund_amount,
                      amount);
