@@ -130,3 +130,4 @@ tags
 /.vscode
 src/testing/test_bank_api_with_nexus
 src/util/taler_error_codes.c
+.deps/
