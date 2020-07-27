@@ -132,7 +132,7 @@ do_shutdown (void *cls)
     TALER_BANK_debit_history_cancel (dhh);
     dhh = NULL;
   }
-  if (NULL != eh)
+  if ( (NULL != eh) && (0 != global_ret))
   {
     TALER_BANK_transfer_cancel (eh);
     eh = NULL;
