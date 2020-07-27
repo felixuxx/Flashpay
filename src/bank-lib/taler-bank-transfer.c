@@ -439,7 +439,7 @@ execute_wire_transfer ()
   params = strchr (credit_account,
                    (unsigned char) '&');
   if (NULL != params)
-    params = '\0';
+    *params = '\0';
   TALER_BANK_prepare_transfer (credit_account,
                                &amount,
                                "http://exchange.example.com/",
