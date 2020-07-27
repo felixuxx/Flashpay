@@ -401,6 +401,7 @@ execute_wire_transfer ()
   struct TALER_WireTransferIdentifierRawP wtid;
   void *buf;
   size_t buf_size;
+  char *params;
 
   if (NULL != debit_account)
   {
@@ -435,6 +436,10 @@ execute_wire_transfer ()
                                 &wtid,
                                 sizeof (wtid));
   }
+  params = strchr (credit_account,
+                   (unsigned char) '&');
+  if (NULL != params)
+    params = '\0';
   TALER_BANK_prepare_transfer (credit_account,
                                &amount,
                                "http://exchange.example.com/",
