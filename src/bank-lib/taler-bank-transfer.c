@@ -372,6 +372,7 @@ confirmation_cb (void *cls,
                  struct GNUNET_TIME_Absolute timestamp)
 {
   (void) cls;
+  eh = NULL;
   if (MHD_HTTP_OK != response_code)
   {
     fprintf (stderr,
