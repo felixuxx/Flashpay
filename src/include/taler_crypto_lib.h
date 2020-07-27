@@ -296,6 +296,19 @@ struct TALER_RefreshCommitmentP
 };
 
 
+/**
+ * Token used for access control to the merchant's unclaimed
+ * orders.
+ */
+struct TALER_ClaimTokenP
+{
+  /**
+   * The token is a 128-bit UUID.
+   */
+  struct GNUNET_Uuid token;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 
