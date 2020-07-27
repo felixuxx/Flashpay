@@ -29,6 +29,45 @@
 
 
 /**
+ * Extract the subject value from the URI parameters.
+ *
+ * @param payto_uri the URL to parse
+ * @return NULL if the subject parameter is not found.
+ *         The caller should free the returned value.
+ */
+char *
+TALER_payto_get_subject (const char *payto_uri)
+{
+  const char *key;
+  const char *value_start;
+  const char *value_end;
+
+  key = strchr (payto_uri,
+                (unsigned char) '?');
+  if (NULL == key)
+    return NULL;
+
+  do {
+    if (0 == strncasecmp (++key,
+			  "subject",
+			  strlen ("subject")))
+    {
+      value_start = strchr (key,
+	                    (unsigned char) '=');
+      if (NULL == value_start)
+        return NULL;
+      value_end = strchrnul (value_start,
+	                     (unsigned char) '&');
+
+      return GNUNET_strndup (value_start + 1,
+	                     value_end - value_start - 1);
+    }
+  } while ( (key = strchr (key,
+			 (unsigned char) '&')) );
+  return NULL;
+}
+
+/**
  * Obtain the payment method from a @a payto_uri. The
  * format of a payto URI is 'payto://$METHOD/$SOMETHING'.
  * We return $METHOD.

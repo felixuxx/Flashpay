@@ -22,6 +22,8 @@
 #include "taler_util.h"
 
 #define CHECK(a,b) do { \
+    GNUNET_assert (a != NULL); \
+    GNUNET_assert (b != NULL); \
     if (0 != strcmp (a,b)) {   \
       GNUNET_break (0); \
       fprintf (stderr, "Got %s, wanted %s\n", b, a); \
@@ -52,6 +54,15 @@ main (int argc,
     "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1");
   CHECK ("alice",
          r);
+
+  r = TALER_payto_get_subject (
+    "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1");
+  CHECK ("hello",
+	 r);
+
+  r = TALER_payto_get_subject (
+    "payto://x-taler-bank/localhost:1080/alice");
+  GNUNET_assert (r == NULL);
   return 0;
 }
 

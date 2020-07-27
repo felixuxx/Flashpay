@@ -409,6 +409,10 @@ execute_wire_transfer ()
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+
+  // See if subject was given as a payto-parameter.
+  if (NULL == subject)
+    subject = TALER_payto_get_subject (credit_account);
   if (NULL != subject)
   {
     if (GNUNET_OK !=
