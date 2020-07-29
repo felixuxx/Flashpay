@@ -2974,6 +2974,35 @@ TALER_TESTING_make_trait_uuid (unsigned int index,
 
 
 /**
+ * Obtain a claim token from @a cmd.
+ *
+ * @param cmd command to extract the token from.
+ * @param index which amount to pick if @a cmd has multiple
+ *        on offer
+ * @param[out] ct where to write the token.
+ * @return #GNUNET_OK on success.
+ */
+int
+TALER_TESTING_get_trait_claim_token (const struct TALER_TESTING_Command *cmd,
+                                     unsigned int index,
+                                     const struct TALER_ClaimTokenP **ct);
+
+
+/**
+ * Offer a claim token in a trait.
+ *
+ * @param index which token to offer, in case there are
+ *        multiple available.
+ * @param ct the token to offer.
+ *
+ * @return the trait.
+ */
+struct TALER_TESTING_Trait
+TALER_TESTING_make_trait_claim_token (unsigned int index,
+                                      const struct TALER_ClaimTokenP *ct);
+
+
+/**
  * Obtain a absolute time from @a cmd.
  *
  * @param cmd command to extract trait from
