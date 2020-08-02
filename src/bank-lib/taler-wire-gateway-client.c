@@ -729,7 +729,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-bank-transfer",
-                          "Execute bank transfer to the exchange",
+                          "Client tool of the Taler Wire Gateway",
                           options,
                           &run, NULL))
     return 1;
