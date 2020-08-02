@@ -165,9 +165,9 @@ xmime_matches (const char *accept_pattern,
  * @return q-weight given for @a lang in @a language_pattern, 1.0 if no weights are given;
  *         0 if @a lang is not in @a language_pattern
  */
-static double
-language_matches (const char *language_pattern,
-                  const char *lang)
+double
+TALER_MHD_language_matches (const char *language_pattern,
+                            const char *lang)
 {
   char *p = GNUNET_strdup (language_pattern);
   char *sptr;
@@ -271,10 +271,10 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
         if ( (NULL == t) ||
              (! xmime_matches (mime,
                                t->mime_type)) ||
-             (language_matches (lang,
-                                p->language) >
-              language_matches (lang,
-                                t->language) ) )
+             (TALER_MHD_language_matches (lang,
+                                          p->language) >
+              TALER_MHD_language_matches (lang,
+                                          t->language) ) )
           t = p;
       }
     }
