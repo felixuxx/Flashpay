@@ -254,6 +254,10 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_try_execute ("SET auto_explain.log_min_duration=50;"),
       GNUNET_PQ_make_try_execute ("SET auto_explain.log_timing=TRUE;"),
       GNUNET_PQ_make_try_execute ("SET auto_explain.log_analyze=TRUE;"),
+      /* https://wiki.postgresql.org/wiki/Serializable suggests to really
+         force the default to 'serializable' if SSI is to be used. */
+      GNUNET_PQ_make_try_execute (
+        "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE;"),
       GNUNET_PQ_make_try_execute ("SET enable_sort=OFF;"),
       GNUNET_PQ_make_try_execute ("SET enable_seqscan=OFF;"),
       GNUNET_PQ_EXECUTE_STATEMENT_END
@@ -356,8 +360,7 @@ postgres_get_session (void *cls)
                               ",gc_date"
                               " FROM reserves"
                               " WHERE reserve_pub=$1"
-                              " LIMIT 1"
-                              " FOR UPDATE;",
+                              " LIMIT 1;",
                               1),
       /* Used in #postgres_reserves_in_insert() when the reserve is new */
       GNUNET_PQ_make_prepare ("reserve_create",
@@ -461,8 +464,7 @@ postgres_get_session (void *cls)
                               ",execution_date"
                               ",sender_account_details"
                               " FROM reserves_in"
-                              " WHERE reserve_pub=$1"
-                              " FOR UPDATE;",
+                              " WHERE reserve_pub=$1;",
                               1),
       /* Lock withdraw table; NOTE: we may want to eventually shard the
          deposit table to avoid this lock being the main point of
@@ -507,8 +509,7 @@ postgres_get_session (void *cls)
                               " FROM reserves_out"
                               "    JOIN denominations denom"
                               "      USING (denom_pub_hash)"
-                              " WHERE h_blind_ev=$1"
-                              " FOR UPDATE;",
+                              " WHERE h_blind_ev=$1;",
                               1),
       /* Used during #postgres_get_reserve_history() to
          obtain all of the /reserve/withdraw operations that
@@ -528,8 +529,7 @@ postgres_get_session (void *cls)
                               " FROM reserves_out"
                               "    JOIN denominations denom"
                               "      USING (denom_pub_hash)"
-                              " WHERE reserve_pub=$1"
-                              " FOR UPDATE",
+                              " WHERE reserve_pub=$1;",
                               1),
       /* Used in #postgres_select_withdrawals_above_serial_id() */
       GNUNET_PQ_make_prepare ("audit_get_reserves_out_incr",
@@ -564,8 +564,7 @@ postgres_get_session (void *cls)
                               " denom_pub_hash"
                               ",denom_sig"
                               " FROM known_coins"
-                              " WHERE coin_pub=$1"
-                              " FOR UPDATE;",
+                              " WHERE coin_pub=$1;",
                               1),
       /* Used in #postgres_get_coin_denomination() to fetch
          the denomination public key hash for
@@ -701,8 +700,7 @@ postgres_get_session (void *cls)
                               "    JOIN denominations denom "
                               "      USING (denom_pub_hash)"
                               " WHERE rc=$1"
-                              "   ORDER BY freshcoin_index ASC"
-                              " FOR UPDATE;",
+                              "   ORDER BY freshcoin_index ASC;",
                               1),
 
       /* Used in #postgres_insert_refresh_reveal() to store the transfer
@@ -830,8 +828,7 @@ postgres_get_session (void *cls)
                               " JOIN denominations USING (denom_pub_hash)"
                               " WHERE ((coin_pub=$1)"
                               "    AND (merchant_pub=$3)"
-                              "    AND (h_contract_terms=$2))"
-                              " FOR UPDATE;",
+                              "    AND (h_contract_terms=$2));",
                               3),
       /* Fetch deposits with rowid '\geq' the given parameter */
       GNUNET_PQ_make_prepare ("audit_get_deposits_incr",
@@ -970,8 +967,7 @@ postgres_get_session (void *cls)
                               "      USING (coin_pub)"
                               "    JOIN denominations denom"
                               "      USING (denom_pub_hash)"
-                              " WHERE coin_pub=$1"
-                              " FOR UPDATE;",
+                              " WHERE coin_pub=$1;",
                               1),
 
       /* Used in #postgres_get_link_data(). */
@@ -1282,8 +1278,7 @@ postgres_get_session (void *cls)
                               "      USING (coin_pub)"
                               "    JOIN reserves_out ro"
                               "      USING (h_blind_ev)"
-                              " WHERE ro.reserve_pub=$1"
-                              " FOR UPDATE;",
+                              " WHERE ro.reserve_pub=$1;",
                               1),
       /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
          affecting old coins of refreshed coins */
@@ -1306,8 +1301,7 @@ postgres_get_session (void *cls)
                               "    FROM refresh_commitments"
                               "       JOIN refresh_revealed_coins rrc"
                               "           USING (rc)"
-                              "    WHERE old_coin_pub=$1)"
-                              " FOR UPDATE;",
+                              "    WHERE old_coin_pub=$1);",
                               1),
       /* Used in #postgres_get_reserve_history() */
       GNUNET_PQ_make_prepare ("close_by_reserve",
@@ -1320,8 +1314,7 @@ postgres_get_session (void *cls)
                               ",receiver_account"
                               ",wtid"
                               " FROM reserves_close"
-                              " WHERE reserve_pub=$1"
-                              " FOR UPDATE",
+                              " WHERE reserve_pub=$1;",
                               1),
       /* Used in #postgres_get_expired_reserves() */
       GNUNET_PQ_make_prepare ("get_expired_reserves",
@@ -1355,8 +1348,7 @@ postgres_get_session (void *cls)
                               "   USING (h_blind_ev)"
                               " JOIN known_coins coins"
                               "   USING (coin_pub)"
-                              " WHERE recoup.coin_pub=$1"
-                              " FOR UPDATE;",
+                              " WHERE recoup.coin_pub=$1;",
                               1),
       /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
          for a refreshed coin */
@@ -1378,8 +1370,7 @@ postgres_get_session (void *cls)
                               "      ON (rrc.rc = rc.rc)"
                               "    JOIN known_coins coins"
                               "      USING (coin_pub)"
-                              " WHERE coin_pub=$1"
-                              " FOR UPDATE;",
+                              " WHERE coin_pub=$1;",
                               1),
       /* Used in #postgres_get_reserve_by_h_blind() */
       GNUNET_PQ_make_prepare ("reserve_by_h_blind",
@@ -1387,8 +1378,7 @@ postgres_get_session (void *cls)
                               " reserve_pub"
                               " FROM reserves_out"
                               " WHERE h_blind_ev=$1"
-                              " LIMIT 1"
-                              " FOR UPDATE;",
+                              " LIMIT 1;",
                               1),
       /* Used in #postgres_get_old_coin_by_h_blind() */
       GNUNET_PQ_make_prepare ("old_coin_by_h_blind",
@@ -1398,8 +1388,7 @@ postgres_get_session (void *cls)
                               "   JOIN refresh_commitments rcom"
                               "      USING (rc)"
                               " WHERE h_coin_ev=$1"
-                              " LIMIT 1"
-                              " FOR UPDATE;",
+                              " LIMIT 1;",
                               1),
       /* used in #postgres_commit */
       GNUNET_PQ_make_prepare ("do_commit",
