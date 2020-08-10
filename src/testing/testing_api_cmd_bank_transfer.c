@@ -209,7 +209,7 @@ confirmation_cb (void *cls,
     }
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fakebank returned HTTP status %u/%d\n",
+                "Bank returned HTTP status %u/%d\n",
                 http_status,
                 (int) ec);
     TALER_TESTING_interpreter_fail (is);
@@ -252,8 +252,8 @@ transfer_run (void *cls,
                                &buf_size);
   fts->is = is;
   fts->weh
-    = TALER_BANK_transfer
-        (TALER_TESTING_interpreter_get_context (is),
+    = TALER_BANK_transfer (
+        TALER_TESTING_interpreter_get_context (is),
         &fts->auth,
         buf,
         buf_size,

@@ -44,13 +44,16 @@ TALER_TWISTER_prepare_twister (const char *config_filename)
 
   cfg = GNUNET_CONFIGURATION_create ();
 
-  if (GNUNET_OK != GNUNET_CONFIGURATION_load
-        (cfg, config_filename))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 config_filename))
     TWISTER_FAIL ();
 
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_number
-        (cfg, "twister",
-        "HTTP_PORT", &port))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "twister",
+                                             "HTTP_PORT",
+                                             &port))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "twister",
@@ -61,8 +64,9 @@ TALER_TWISTER_prepare_twister (const char *config_filename)
 
   GNUNET_CONFIGURATION_destroy (cfg);
 
-  if (GNUNET_OK != GNUNET_NETWORK_test_port_free
-        (IPPROTO_TCP, (uint16_t) port))
+  if (GNUNET_OK !=
+      GNUNET_NETWORK_test_port_free (IPPROTO_TCP,
+                                     (uint16_t) port))
   {
     fprintf (stderr,
              "Required port %llu not available, skipping.\n",
@@ -119,8 +123,10 @@ TALER_TWISTER_run_twister (const char *config_filename)
   }
 
 
-  if (GNUNET_SYSERR == GNUNET_OS_process_wait_status
-        (client_proc, &type, &code))
+  if (GNUNET_SYSERR ==
+      GNUNET_OS_process_wait_status (client_proc,
+                                     &type,
+                                     &code))
   {
     GNUNET_OS_process_destroy (client_proc);
     GNUNET_OS_process_kill (proc, SIGTERM);
@@ -131,7 +137,8 @@ TALER_TWISTER_run_twister (const char *config_filename)
   if ( (type == GNUNET_OS_PROCESS_EXITED) &&
        (0 != code) )
   {
-    fprintf (stderr, "Failed to check twister works.\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to check twister works.\n");
     GNUNET_OS_process_destroy (client_proc);
     GNUNET_OS_process_kill (proc, SIGTERM);
     GNUNET_OS_process_wait (proc);
@@ -141,8 +148,8 @@ TALER_TWISTER_run_twister (const char *config_filename)
   if ( (type != GNUNET_OS_PROCESS_EXITED) ||
        (0 != code) )
   {
-    fprintf (stderr, "Unexpected error running"
-             " `taler-twister'!\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected error running `taler-twister'!\n");
     GNUNET_OS_process_destroy (client_proc);
     GNUNET_OS_process_kill (proc, SIGTERM);
     GNUNET_OS_process_wait (proc);

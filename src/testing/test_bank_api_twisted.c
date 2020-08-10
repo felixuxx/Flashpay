@@ -174,8 +174,8 @@ main (int argc,
   else
     cfgfilename = CONFIG_FILE_PYBANK;
 
-  if (NULL == (twister_url = TALER_TWISTER_prepare_twister
-                               (cfgfilename)))
+  if (NULL == (twister_url = TALER_TWISTER_prepare_twister (
+                 cfgfilename)))
   {
     GNUNET_break (0);
     return 77;
@@ -189,7 +189,6 @@ main (int argc,
     GNUNET_free (twister_url);
     return 77;
   }
-
   if (GNUNET_YES == with_fakebank)
   {
     TALER_LOG_DEBUG ("Running against the Fakebank.\n");
@@ -217,9 +216,9 @@ main (int argc,
       return 77;
     }
 
-    if (NULL == (bankd = TALER_TESTING_run_bank (cfgfilename,
-                                                 bc.exchange_auth.
-                                                 wire_gateway_url)))
+    if (NULL == (bankd = TALER_TESTING_run_bank (
+                   cfgfilename,
+                   bc.exchange_auth.wire_gateway_url)))
     {
       GNUNET_break (0);
       GNUNET_free (twister_url);
@@ -227,6 +226,7 @@ main (int argc,
     }
   }
 
+  sleep (5);
   ret = GNUNET_CONFIGURATION_parse_and_run (cfgfilename,
                                             &setup_with_cfg,
                                             NULL);

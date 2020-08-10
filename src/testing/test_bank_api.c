@@ -197,9 +197,9 @@ main (int argc,
       return 77;
     }
 
-    if (NULL == (bankd = TALER_TESTING_run_bank (CONFIG_FILE_PYBANK,
-                                                 bc.exchange_auth.
-                                                 wire_gateway_url)))
+    if (NULL == (bankd = TALER_TESTING_run_bank (
+                   CONFIG_FILE_PYBANK,
+                   bc.exchange_auth.wire_gateway_url)))
     {
       GNUNET_break (0);
       return 77;
