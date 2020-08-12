@@ -643,6 +643,7 @@ TALER_EXCHANGE_verify_coin_history (
     {
       struct TALER_MerchantSignatureP sig;
       struct TALER_Amount refund_fee;
+      struct TALER_Amount sig_amount;
       struct TALER_RefundRequestPS rr = {
         .purpose.size = htonl (sizeof (rr)),
         .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
@@ -658,7 +659,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &rr.merchant),
         GNUNET_JSON_spec_uint64 ("rtransaction_id",
-                                 &rr.rtransaction_id), // FIXME: shouldn't this be NBO!?
+                                 &rr.rtransaction_id),
         GNUNET_JSON_spec_end ()
       };
 
@@ -670,9 +671,19 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      abort (); // FIXME: this shows the case is not tested! ...
+      if (0 >
+          TALER_amount_add (&sig_amount,
+                            &refund_fee,
+                            &amount))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
       TALER_amount_hton (&rr.refund_amount,
-                         &amount);
+                         &sig_amount);
+      rr.rtransaction_id = GNUNET_htonll (rr.rtransaction_id);
+      TALER_amount_hton (&rr.refund_amount,
+                         &sig_amount);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
                                       &rr,

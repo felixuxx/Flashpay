@@ -337,7 +337,6 @@ refund_transaction (void *cls,
   if (1 == TALER_amount_cmp (&refund_total,
                              &deposit_total) )
   {
-    GNUNET_break_op (0); /* cannot refund more than original value */
     *mhd_ret = TALER_MHD_reply_json_pack (
       connection,
       MHD_HTTP_CONFLICT,
