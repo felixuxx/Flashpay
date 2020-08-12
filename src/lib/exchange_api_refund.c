@@ -130,6 +130,363 @@ verify_refund_signature_ok (struct TALER_EXCHANGE_RefundHandle *rh,
 
 
 /**
+ * Verify that the information in the "409 Conflict" response
+ * from the exchange is valid and indeed shows that the refund
+ * amount requested is too high.
+ *
+ * @param[in,out] rh refund handle (refund fee added)
+ * @param json json reply with the coin transaction history
+ * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
+ */
+static int
+verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
+                            const json_t *json)
+{
+  json_t *history;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("history",
+                           &history),
+    GNUNET_JSON_spec_end ()
+  };
+  size_t len;
+  struct TALER_Amount dtotal;
+  bool have_deposit;
+  struct TALER_Amount rtotal;
+  bool have_refund;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  // FIXME: check that 'history' contains a coin history that
+  // demonstrates that another refund would exceed the deposit amount!
+
+
+  len = json_array_size (history);
+  if (0 == len)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  have_deposit = false;
+  have_refund = false;
+  for (size_t off = 0; off<len; off++)
+  {
+    json_t *transaction;
+    struct TALER_Amount amount;
+    const char *type;
+    struct GNUNET_JSON_Specification spec_glob[] = {
+      TALER_JSON_spec_amount ("amount",
+                              &amount),
+      GNUNET_JSON_spec_string ("type",
+                               &type),
+      GNUNET_JSON_spec_end ()
+    };
+
+    transaction = json_array_get (history,
+                                  off);
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (transaction,
+                           spec_glob,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_YES !=
+        TALER_amount_cmp_currency (&amount,
+                                   &rtotal))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (0 == strcasecmp (type,
+                         "DEPOSIT"))
+    {
+      struct TALER_DepositRequestPS dr = {
+        .purpose.size = htonl (sizeof (dr)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+        .coin_pub = rh->depconf.coin_pub
+      };
+      struct TALER_CoinSpendSignatureP sig;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("coin_sig",
+                                     &sig),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                     &dr.h_contract_terms),
+        GNUNET_JSON_spec_fixed_auto ("h_wire",
+                                     &dr.h_wire),
+        GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                     &dr.h_denom_pub),
+        TALER_JSON_spec_absolute_time_nbo ("timestamp",
+                                           &dr.wallet_timestamp),
+        TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
+                                           &dr.refund_deadline),
+        TALER_JSON_spec_amount_nbo ("deposit_fee",
+                                    &dr.deposit_fee),
+        GNUNET_JSON_spec_fixed_auto ("merchant_pub",
+                                     &dr.merchant),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      TALER_amount_hton (&dr.amount_with_fee,
+                         &amount);
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+                                      &dr,
+                                      &sig.eddsa_signature,
+                                      &rh->depconf.coin_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if ( (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
+                                &dr.h_contract_terms)) ||
+           (0 != GNUNET_memcmp (&rh->depconf.merchant,
+                                &dr.merchant)) )
+      {
+        /* deposit information is about a different merchant/contract */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (have_deposit)
+      {
+        /* this cannot really happen, but we conservatively support it anyway */
+        GNUNET_break (0 <=
+                      TALER_amount_add (&dtotal,
+                                        &dtotal,
+                                        &amount));
+      }
+      else
+      {
+        dtotal = amount;
+        have_deposit = true;
+      }
+    }
+    else if (0 == strcasecmp (type,
+                              "REFUND"))
+    {
+      struct TALER_MerchantSignatureP sig;
+      struct TALER_Amount refund_fee;
+      struct TALER_RefundRequestPS rr = {
+        .purpose.size = htonl (sizeof (rr)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
+        .coin_pub = rh->depconf.coin_pub
+      };
+      struct GNUNET_JSON_Specification spec[] = {
+        TALER_JSON_spec_amount ("refund_fee",
+                                &refund_fee),
+        GNUNET_JSON_spec_fixed_auto ("merchant_sig",
+                                     &sig),
+        GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                     &rr.h_contract_terms),
+        GNUNET_JSON_spec_fixed_auto ("merchant_pub",
+                                     &rr.merchant),
+        GNUNET_JSON_spec_uint64 ("rtransaction_id",
+                                 &rr.rtransaction_id), // FIXME: shouldn't this be NBO!?
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (transaction,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      TALER_amount_hton (&rr.refund_amount,
+                         &amount);
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
+                                      &rr,
+                                      &sig.eddsa_sig,
+                                      &rr.merchant.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+
+      if ( (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
+                                &rr.h_contract_terms)) ||
+           (0 != GNUNET_memcmp (&rh->depconf.merchant,
+                                &rr.merchant)) )
+      {
+        /* refund is about a different merchant/contract */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      if (rr.rtransaction_id == rh->depconf.rtransaction_id)
+      {
+        /* Eh, this shows either a dependency failure or idempotency,
+           but must not happen in a conflict reply. Fail! */
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+
+      if (have_refund)
+      {
+        GNUNET_break (0 <=
+                      TALER_amount_add (&rtotal,
+                                        &rtotal,
+                                        &amount));
+      }
+      else
+      {
+        rtotal = amount;
+        have_refund = true;
+      }
+    }
+    else
+    {
+      /* unexpected type, new version on server? */
+      GNUNET_break_op (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected type `%s' in response\n",
+                  type);
+      return GNUNET_SYSERR;
+    }
+  }
+
+  {
+    struct TALER_Amount amount;
+
+    TALER_amount_ntoh (&amount,
+                       &rh->depconf.refund_amount);
+    if (0 >
+        TALER_amount_add (&rtotal,
+                          &rtotal,
+                          &amount))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  if (-1 == TALER_amount_cmp (&dtotal,
+                              &rtotal))
+  {
+    /* dtotal < rtotal: good! */
+    return GNUNET_OK;
+  }
+  /* this fails to prove a conflict */
+  GNUNET_break_op (0);
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Verify that the information on the "412 Dependency Failed" response
+ * from the exchange is valid and indeed shows that there is a refund
+ * transaction ID reuse going on.
+ *
+ * @param[in,out] rh refund handle (refund fee added)
+ * @param json json reply with the signature
+ * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
+ */
+static int
+verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
+                             const json_t *json)
+{
+  json_t *h;
+  json_t *e;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("history", &h),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (json,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if ( (! json_is_array (h)) ||
+       (1 != json_array_size (h) ) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  e = json_array_get (h, 0);
+  {
+    struct TALER_Amount amount;
+    const char *type;
+    struct TALER_MerchantSignatureP sig;
+    struct TALER_Amount refund_fee;
+    struct TALER_RefundRequestPS rr = {
+      .purpose.size = htonl (sizeof (rr)),
+      .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
+      .coin_pub = rh->depconf.coin_pub
+    };
+    uint64_t rtransaction_id;
+    struct GNUNET_JSON_Specification spec[] = {
+      TALER_JSON_spec_amount ("amount",
+                              &amount),
+      GNUNET_JSON_spec_string ("type",
+                               &type),
+      TALER_JSON_spec_amount ("refund_fee",
+                              &refund_fee),
+      GNUNET_JSON_spec_fixed_auto ("merchant_sig",
+                                   &sig),
+      GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
+                                   &rr.h_contract_terms),
+      GNUNET_JSON_spec_fixed_auto ("merchant_pub",
+                                   &rr.merchant),
+      GNUNET_JSON_spec_uint64 ("rtransaction_id",
+                               &rtransaction_id),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (e,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    rr.rtransaction_id = GNUNET_htonll (rtransaction_id);
+    TALER_amount_hton (&rr.refund_amount,
+                       &amount);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
+                                    &rr,
+                                    &sig.eddsa_sig,
+                                    &rh->depconf.merchant.eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if ( (rr.rtransaction_id != rh->depconf.rtransaction_id) ||
+         (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
+                              &rr.h_contract_terms)) ||
+         (0 != GNUNET_memcmp (&rh->depconf.merchant,
+                              &rr.merchant)) ||
+         (0 == TALER_amount_cmp_nbo (&rh->depconf.refund_amount,
+                                     &rr.refund_amount)) )
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Function called when we're done processing the
  * HTTP /refund request.
  *
@@ -199,10 +556,17 @@ handle_refund_finished (void *cls,
     break;
   case MHD_HTTP_CONFLICT:
     /* Requested total refunds exceed deposited amount */
+    if (GNUNET_OK !=
+        verify_conflict_history_ok (rh,
+                                    j))
+    {
+      GNUNET_break (0);
+      hr.ec = TALER_EC_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
+      hr.hint = "conflict information provided by exchange is invalid";
+      break;
+    }
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
-    // FIXME: check that 'history' contains a coin history that
-    // demonstrates that another refund would exceed the deposit amount!
     break;
   case MHD_HTTP_GONE:
     /* Kind of normal: the money was already sent to the merchant
@@ -211,12 +575,19 @@ handle_refund_finished (void *cls,
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_PRECONDITION_FAILED:
+    if (GNUNET_OK !=
+        verify_failed_dependency_ok (rh,
+                                     j))
+    {
+      GNUNET_break (0);
+      hr.ec = TALER_EC_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
+      hr.hint = "failed precondition proof returned by exchange is invalid";
+      break;
+    }
     /* Two different refund requests were made about the same deposit, but
        carrying identical refund transaction ids.  */
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
-    // FIXME: check that 'history' contains a duly signed refund request
-    // for the same rtransaction ID but a different amount!
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API

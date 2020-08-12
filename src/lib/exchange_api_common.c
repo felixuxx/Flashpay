@@ -516,7 +516,11 @@ TALER_EXCHANGE_verify_coin_history (
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
-      struct TALER_DepositRequestPS dr;
+      struct TALER_DepositRequestPS dr = {
+        .purpose.size = htonl (sizeof (dr)),
+        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+        .coin_pub = *coin_pub
+      };
       struct TALER_CoinSpendSignatureP sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
@@ -546,11 +550,8 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      dr.purpose.size = htonl (sizeof (dr));
-      dr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT);
       TALER_amount_hton (&dr.amount_with_fee,
                          &amount);
-      dr.coin_pub = *coin_pub;
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                       &dr,
@@ -657,7 +658,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &rr.merchant),
         GNUNET_JSON_spec_uint64 ("rtransaction_id",
-                                 &rr.rtransaction_id),
+                                 &rr.rtransaction_id), // FIXME: shouldn't this be NBO!?
         GNUNET_JSON_spec_end ()
       };
 
@@ -669,6 +670,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
+      abort (); // FIXME: this shows the case is not tested! ...
       TALER_amount_hton (&rr.refund_amount,
                          &amount);
       if (GNUNET_OK !=

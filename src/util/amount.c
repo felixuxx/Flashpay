@@ -391,6 +391,35 @@ TALER_amount_cmp (const struct TALER_Amount *a1,
 
 
 /**
+ * Compare the value/fraction of two amounts.  Does not compare the currency.
+ * Comparing amounts of different currencies will cause the program to abort().
+ * If unsure, check with #TALER_amount_cmp_currency() first to be sure that
+ * the currencies of the two amounts are identical. NBO variant.
+ *
+ * @param a1 first amount
+ * @param a2 second amount
+ * @return result of the comparison
+ *         -1 if `a1 < a2`
+ *          1 if `a1 > a2`
+ *          0 if `a1 == a2`.
+ */
+int
+TALER_amount_cmp_nbo (const struct TALER_AmountNBO *a1,
+                      const struct TALER_AmountNBO *a2)
+{
+  struct TALER_Amount h1;
+  struct TALER_Amount h2;
+
+  TALER_amount_ntoh (&h1,
+                     a1);
+  TALER_amount_ntoh (&h2,
+                     a2);
+  return TALER_amount_cmp (&h1,
+                           &h2);
+}
+
+
+/**
  * Perform saturating subtraction of amounts.
  *
  * @param[out] diff where to store (@a a1 - @a a2), or invalid if @a a2 > @a a1
