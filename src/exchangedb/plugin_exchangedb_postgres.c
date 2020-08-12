@@ -986,6 +986,7 @@ postgres_get_session (void *cls)
                               ",wire"
                               ",coin_sig"
                               ",deposit_serial_id"
+                              ",done"
                               " FROM deposits"
                               "    JOIN known_coins kc"
                               "      USING (coin_pub)"
@@ -2178,7 +2179,7 @@ postgres_insert_withdraw_info (
     return qs;
   }
 
-#if 0
+#if 1
   /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -4124,6 +4125,7 @@ add_coin_deposit (void *cls,
     chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_DepositListEntry);
     {
+      uint8_t done = 0;
       struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                      &deposit->amount_with_fee),
@@ -4149,6 +4151,8 @@ add_coin_deposit (void *cls,
                                               &deposit->csig),
         GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
                                       &serial_id),
+        GNUNET_PQ_result_spec_auto_from_type ("done",
+                                              &done),
         GNUNET_PQ_result_spec_end
       };
 
@@ -4162,6 +4166,7 @@ add_coin_deposit (void *cls,
         chc->failed = true;
         return;
       }
+      deposit->done = (0 != done);
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;

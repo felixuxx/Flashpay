@@ -238,7 +238,7 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
                            root);
   return TALER_MHD_reply_with_error (connection,
                                      MHD_HTTP_NOT_FOUND,
-                                     TALER_EC_OPERATION_INVALID,
+                                     TALER_EC_OPERATION_UNKNOWN,
                                      "requested operation on coin unknown");
 }
 
@@ -1145,7 +1145,7 @@ run_main_loop (int fh,
                         (-1 == fh) ? serve_port : 0,
                         NULL, NULL,
                         &handle_mhd_request, NULL,
-                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 32,
+                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 4,
                         MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
                         MHD_OPTION_LISTEN_SOCKET, fh,
                         MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,

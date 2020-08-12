@@ -665,6 +665,11 @@ struct TALER_EXCHANGEDB_DepositListEntry
    */
   struct TALER_Amount deposit_fee;
 
+  /**
+   * Has the deposit been wired?
+   */
+  bool done;
+
 };
 
 

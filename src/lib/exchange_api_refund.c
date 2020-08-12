@@ -153,7 +153,6 @@ handle_refund_finished (void *cls,
     .http_status = (unsigned int) response_code
   };
 
-
   rh->job = NULL;
   switch (response_code)
   {
@@ -179,7 +178,9 @@ handle_refund_finished (void *cls,
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
-       (or API version conflict); just pass JSON reply to the application */
+       (or API version conflict); also can happen if the currency
+       differs (which we should obviously never support).
+       Just pass JSON reply to the application */
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
@@ -196,6 +197,13 @@ handle_refund_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_CONFLICT:
+    /* Requested total refunds exceed deposited amount */
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    // FIXME: check that 'history' contains a coin history that
+    // demonstrates that another refund would exceed the deposit amount!
+    break;
   case MHD_HTTP_GONE:
     /* Kind of normal: the money was already sent to the merchant
        (it was too late for the refund). */
@@ -203,16 +211,12 @@ handle_refund_finished (void *cls,
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_PRECONDITION_FAILED:
-    /* Client request was inconsistent; might be a currency mismatch
-       problem.  */
+    /* Two different refund requests were made about the same deposit, but
+       carrying identical refund transaction ids.  */
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
-    break;
-  case MHD_HTTP_CONFLICT:
-    /* Two refund requests were made about the same deposit, but
-       carrying different refund transaction ids.  */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    // FIXME: check that 'history' contains a duly signed refund request
+    // for the same rtransaction ID but a different amount!
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API

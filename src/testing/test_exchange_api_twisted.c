@@ -202,7 +202,7 @@ run (void *cls,
                               "EUR:5",
                               "deposit-refund-to-fail"),
     TALER_TESTING_cmd_refund ("refund-insufficient-funds",
-                              MHD_HTTP_PRECONDITION_FAILED,
+                              MHD_HTTP_CONFLICT,
                               "EUR:50",
                               "deposit-refund-1"),
     TALER_TESTING_cmd_end ()
