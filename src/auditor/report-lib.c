@@ -656,7 +656,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 {
   TALER_ARL_cfg = c;
   start_time = GNUNET_TIME_absolute_get ();
-  if (0 == GNUNET_is_zero (&TALER_ARL_master_pub))
+  if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_master_pub))
   {
     /* -m option not given, try configuration */
     char *TALER_ARL_master_public_key_str;

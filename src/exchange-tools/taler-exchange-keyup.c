@@ -1386,7 +1386,7 @@ run (void *cls,
 
 
   /* finally, do actual work */
-  if (0 != GNUNET_is_zero (&revoke_dkh))
+  if (GNUNET_NO == GNUNET_is_zero (&revoke_dkh))
   {
     if (GNUNET_OK != revoke_denomination (&revoke_dkh))
     {
