@@ -399,30 +399,6 @@ postgres_get_session (void *cls)
                               " WHERE"
                               " reserve_pub=$5;",
                               5),
-      /* Used in #insert_withdraw_info() when coins are withdrawn from the reserve */
-      GNUNET_PQ_make_prepare ("reserve_reduce",
-                              "UPDATE reserves"
-                              " SET"
-                              " gc_date="
-                              " CASE WHEN (reserves.gc_date > $2)"
-                              "      THEN reserves.gc_date"
-                              "      ELSE $2"
-                              " END"
-                              ",current_balance_val="
-                              " CASE WHEN (reserves.current_balance_frac >= $4)"
-                              "      THEN reserves.current_balance_val - $3"
-                              "      ELSE reserves.current_balance_val - $3 - 1"
-                              " END"
-                              ",current_balance_frac="
-                              " CASE WHEN (reserves.current_balance_frac >= $4)"
-                              "      THEN reserves.current_balance_frac - $4"
-                              "      ELSE 100000000 + reserves.current_balance_frac - $4"
-                              " END"
-                              " WHERE reserve_pub=$1"
-                              "  AND current_balance_val >= $3"
-                              "  AND ( (current_balance_frac >= $4) OR"
-                              "        (current_balance_val > $3) )",
-                              4),
       /* Used in #postgres_reserves_in_insert() to store transaction details */
       GNUNET_PQ_make_prepare ("reserves_in_add_transaction",
                               "INSERT INTO reserves_in "
@@ -2179,7 +2155,6 @@ postgres_insert_withdraw_info (
     return qs;
   }
 
-#if 1
   /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -2220,30 +2195,6 @@ postgres_insert_withdraw_info (
     GNUNET_break (0);
     qs = GNUNET_DB_STATUS_HARD_ERROR;
   }
-#else
-  {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
-      TALER_PQ_query_param_absolute_time (&expiry),
-      TALER_PQ_query_param_amount (&collectable->amount_with_fee),
-      GNUNET_PQ_query_param_end
-    };
-
-    expiry = GNUNET_TIME_absolute_add (now,
-                                       pg->legal_reserve_expiration_time);
-    qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "reserve_reduce",
-                                             params);
-    if (0 == qs)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Withdrawal from reserve `%s' refused due to balance mismatch.\n",
-                  TALER_B2S (&collectable->reserve_pub));
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-  }
-
-#endif
   return qs;
 }
 
