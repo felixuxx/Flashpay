@@ -91,7 +91,12 @@ run (void *cls,
   memcpy (&exchange_auth_twisted,
           &bc.exchange_auth,
           sizeof (struct TALER_BANK_AuthenticationData));
-  exchange_auth_twisted.wire_gateway_url = "http://localhost:8888/2/";
+  if (with_fakebank)
+    exchange_auth_twisted.wire_gateway_url =
+      "http://localhost:8888/2/";
+  else
+    exchange_auth_twisted.wire_gateway_url =
+      "http://localhost:8888/taler-wire-gateway/Exchange/";
 
   struct TALER_TESTING_Command commands[] = {
     /* Test retrying transfer after failure. */
@@ -156,7 +161,7 @@ int
 main (int argc,
       char *const *argv)
 {
-  unsigned int ret;
+  int ret;
   const char *cfgfilename;
 
   /* These environment variables get in the way... */

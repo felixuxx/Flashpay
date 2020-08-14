@@ -70,9 +70,10 @@ static struct GNUNET_OS_Process *twisterd;
  * @param label label to use for the command.
  */
 static struct TALER_TESTING_Command
-CMD_EXEC_WIREWATCH (char *label)
+CMD_EXEC_WIREWATCH (const char *label)
 {
-  return TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE);
+  return TALER_TESTING_cmd_exec_wirewatch (label,
+                                           CONFIG_FILE);
 }
 
 
@@ -85,7 +86,8 @@ CMD_EXEC_WIREWATCH (char *label)
  * @param url exchange_url
  */
 static struct TALER_TESTING_Command
-CMD_TRANSFER_TO_EXCHANGE (char *label, char *amount)
+CMD_TRANSFER_TO_EXCHANGE (const char *label,
+                          const char *amount)
 {
   return TALER_TESTING_cmd_admin_add_incoming (label,
                                                amount,
@@ -258,7 +260,8 @@ run (void *cls,
 static void
 purge_process (struct GNUNET_OS_Process *process)
 {
-  GNUNET_OS_process_kill (process, SIGINT);
+  GNUNET_OS_process_kill (process,
+                          SIGINT);
   GNUNET_OS_process_wait (process);
   GNUNET_OS_process_destroy (process);
 }
@@ -268,25 +271,23 @@ int
 main (int argc,
       char *const *argv)
 {
-  unsigned int ret;
+  int ret;
+
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-exchange-api-twisted",
-                    "DEBUG", NULL);
-
+                    "DEBUG",
+                    NULL);
   if (GNUNET_OK !=
       TALER_TESTING_prepare_fakebank (CONFIG_FILE,
                                       "exchange-account-2",
                                       &bc))
     return 77;
-
   if (NULL == (twister_url = TALER_TWISTER_prepare_twister
                                (CONFIG_FILE)))
     return 77;
-
   TALER_TESTING_cleanup_files (CONFIG_FILE);
-
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
                                           GNUNET_YES,
                                           &ec))
@@ -296,12 +297,9 @@ main (int argc,
     return 1;
   case GNUNET_NO:
     return 77;
-
   case GNUNET_OK:
-
     if (NULL == (twisterd = TALER_TWISTER_run_twister (CONFIG_FILE)))
       return 77;
-
     ret = TALER_TESTING_setup_with_exchange (&run,
                                              NULL,
                                              CONFIG_FILE);
