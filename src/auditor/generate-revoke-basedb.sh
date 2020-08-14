@@ -139,11 +139,17 @@ echo " DONE"
 
 # run wallet CLI
 echo "Running wallet"
-taler-wallet-cli --wallet-db=$WALLET_DB --no-throttle \
-                 testing withdraw \
-                 -e $EXCHANGE_URL \
-                 -b $BANK_URL \
-                 -a TESTKUDOS:8
+
+taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'withdrawTestBalance' \
+  "$(jq -n '
+    {
+      amount: "TESTKUDOS:8",
+      bankBaseUrl: $BANK_URL,
+      exchangeBaseUrl: $BANK_URL,
+    }' \
+    --arg BANK_URL $BANK_URL \
+    --arg EXCHANGE_URL $EXCHANGE_URL
+  )"
 
 
 export coins=$(taler-wallet-cli --wallet-db=$WALLET_DB advanced dump-coins)
