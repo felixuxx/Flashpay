@@ -377,13 +377,20 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
 
     TALER_amount_ntoh (&amount,
                        &rh->depconf.refund_amount);
-    if (0 >
-        TALER_amount_add (&rtotal,
-                          &rtotal,
-                          &amount))
+    if (have_refund)
     {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
+      if (0 >
+          TALER_amount_add (&rtotal,
+                            &rtotal,
+                            &amount))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+    }
+    else
+    {
+      rtotal = amount;
     }
   }
   if (-1 == TALER_amount_cmp (&dtotal,
