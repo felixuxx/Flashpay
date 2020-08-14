@@ -130,12 +130,11 @@ echo " DONE"
 
 # run wallet CLI
 echo "Running wallet"
-taler-wallet-cli testing integrationtest -e $EXCHANGE_URL -m $MERCHANT_URL -b $BANK_URL
 
 taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
   "$(jq -n '
     {
-      amountToSpend: "TESTKUDOS:5",
+      amountToSpend: "TESTKUDOS:4",
       amountToWithdraw: "TESTKUDOS:10",
       bankBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
