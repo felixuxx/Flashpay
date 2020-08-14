@@ -15,8 +15,6 @@
 #
 set -eu
 
-echo "Script disabled: taler-wallet-cli integration test known to fail right now!"
-exit 1
 
 trap "kill `jobs -p` &> /dev/null || true" ERR
 
@@ -133,6 +131,22 @@ echo " DONE"
 # run wallet CLI
 echo "Running wallet"
 taler-wallet-cli testing integrationtest -e $EXCHANGE_URL -m $MERCHANT_URL -b $BANK_URL
+
+taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
+  "$(jq -n '
+    {
+      amountToSpend: "TESTKUDOS:5",
+      amountToWithdraw: "TESTKUDOS:10",
+      bankBaseUrl: $BANK_URL,
+      exchangeBaseUrl: $EXCHANGE_URL,
+      merchantApiKey: "sandbox",
+      merchantBaseUrl: $MERCHANT_URL,
+    }' \
+    --arg MERCHANT_URL "$MERCHANT_URL" \
+    --arg EXCHANGE_URL "$EXCHANGE_URL" \
+    --arg BANK_URL "$BANK_URL"
+  )"
+
 
 echo "Shutting down services"
 kill `jobs -p`

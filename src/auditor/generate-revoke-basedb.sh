@@ -8,10 +8,6 @@
 set -eu
 
 
-echo "Script disabled: taler-wallet-cli integration test known to fail right now!"
-exit 1
-
-
 trap "kill `jobs -p` &> /dev/null || true" ERR
 
 # Exit, with status code "skip" (no 'real' failure)
@@ -183,9 +179,17 @@ taler-wallet-cli --wallet-db=$WALLET_DB run-until-done
 
 # Now we buy something, only the coins resulting from recouped will be
 # used, as other ones are suspended
-taler-wallet-cli --wallet-db=$WALLET_DB testing test-pay \
-                 -m $MERCHANT_URL -k sandbox \
-                 -a "TESTKUDOS:1" -s "foo"
+taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'testPay' \
+  "$(jq -n '
+    {
+      amount: "TESTKUDOS:1",
+      merchantApiKey: "sandbox",
+      merchantBaseUrl: $MERCHANT_URL,
+      summary: "foo",
+    }' \
+    --arg MERCHANT_URL $MERCHANT_URL
+  )"
+
 taler-wallet-cli --wallet-db=$WALLET_DB run-until-done
 
 echo "Purchase with recoup'ed coin (via reserve) done"
