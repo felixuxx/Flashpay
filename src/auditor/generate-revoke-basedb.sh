@@ -145,7 +145,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'withdrawTestBalance' 
     {
       amount: "TESTKUDOS:8",
       bankBaseUrl: $BANK_URL,
-      exchangeBaseUrl: $BANK_URL,
+      exchangeBaseUrl: $EXCHANGE_URL,
     }' \
     --arg BANK_URL $BANK_URL \
     --arg EXCHANGE_URL $EXCHANGE_URL
