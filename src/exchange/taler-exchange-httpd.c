@@ -24,6 +24,7 @@
 #include <gnunet/gnunet_util_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
+#include <sched.h>
 #include <pthread.h>
 #include <sys/resource.h>
 #include "taler_mhd_lib.h"
@@ -115,6 +116,13 @@ struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
  * Default timeout in seconds for HTTP requests.
  */
 static unsigned int connection_timeout = 30;
+
+/**
+ * How many threads to use.
+ * The default value (0) sets the actual number of threads
+ * based on the number of available cores.
+ */
+static unsigned int num_threads = 0;
 
 /**
  * The HTTP Daemon.
@@ -1137,6 +1145,8 @@ run_main_loop (int fh,
 {
   int ret;
 
+  GNUNET_assert (0 < num_threads);
+
   mhd
     = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
                         | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
@@ -1145,7 +1155,7 @@ run_main_loop (int fh,
                         (-1 == fh) ? serve_port : 0,
                         NULL, NULL,
                         &handle_mhd_request, NULL,
-                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 4,
+                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) num_threads,
                         MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
                         MHD_OPTION_LISTEN_SOCKET, fh,
                         MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
@@ -1267,6 +1277,11 @@ main (int argc,
                                &connection_timeout),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
+    GNUNET_GETOPT_option_uint ('n',
+                               "num-threads",
+                               "NUM_THREADS",
+                               "size of the thread pool",
+                               &num_threads),
 #if HAVE_DEVELOPER
     GNUNET_GETOPT_option_filename ('f',
                                    "file-input",
@@ -1292,6 +1307,15 @@ main (int argc,
                          options,
                          argc, argv))
     return 1;
+  if (0 == num_threads)
+  {
+    cpu_set_t mask;
+    GNUNET_assert (0 ==
+                   sched_getaffinity (0,
+                                      sizeof (cpu_set_t),
+                                      &mask));
+    num_threads = CPU_COUNT (&mask);
+  }
   go = TALER_MHD_GO_NONE;
   if (connection_close)
     go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
