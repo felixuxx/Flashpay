@@ -38,6 +38,7 @@ libtalerutil_la_SOURCES = \
   crypto.c \
   crypto_wire.c \
   getopt.c \
+  lang.c \
   mhd.c \
   payto.c \
   taler_error_codes.c \

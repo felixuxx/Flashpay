@@ -294,6 +294,37 @@ TALER_JSON_exchange_wire_signature_make (
 
 
 /**
+ * Extract a string from @a object under the field @a field, but respecting
+ * the Taler i18n rules and the language preferences expressed in @a
+ * language_pattern.
+ *
+ * Basically, the @a object may optionally contain a sub-object
+ * "${field}_i18n" with a map from IETF BCP 47 language tags to a localized
+ * version of the string. If this map exists and contains an entry that
+ * matches the @a language pattern, that object (usually a string) is
+ * returned. If the @a language_pattern does not match any entry, or if the
+ * i18n sub-object does not exist, we simply return @a field of @a object
+ * (also usually a string).
+ *
+ * If @a object does not have a member @a field we return NULL (error).
+ *
+ * @param object the object to extract internationalized
+ *        content from
+ * @param language_pattern a language preferences string
+ *        like "fr-CH, fr;q=0.9, en;q=0.8, *;q=0.1", following
+ *        https://tools.ietf.org/html/rfc7231#section-5.3.1
+ * @param field name of the field to extract
+ * @return NULL on error, otherwise the member from
+ *        @a object. Note that the reference counter is
+ *        NOT incremented.
+ */
+const json_t *
+TALER_JSON_extract_i18n (const json_t *object,
+                         const char *language_pattern,
+                         const char *field);
+
+
+/**
  * Obtain the wire method associated with the given
  * wire account details.  @a wire_s must contain a payto://-URL
  * under 'url'.

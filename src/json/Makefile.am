@@ -10,6 +10,7 @@ lib_LTLIBRARIES = \
   libtalerjson.la
 
 libtalerjson_la_SOURCES = \
+  i18n.c \
   json.c \
   json_helper.c \
   json_wire.c
