@@ -36,10 +36,18 @@ function exit_skip() {
 # Exit, with error message (hard failure)
 function exit_fail() {
     echo $1
-    kill `jobs -p` >/dev/null 2>/dev/null || true
-    wait
     exit 1
 }
+
+# Cleanup to run whenever we exit
+function cleanup()
+{
+    kill `jobs -p` >/dev/null 2>/dev/null || true
+    wait
+}
+
+# Install cleanup handler (except for kill -9)
+trap cleanup EXIT
 
 
 # Operations to run before the actual audit
