@@ -1283,6 +1283,11 @@ run (void *cls,
     /* The user gave "--now", use it! */
     now = now_tmp;
   }
+  else
+  {
+    /* get current time again, we may be timetraveling! */
+    now = GNUNET_TIME_absolute_get ();
+  }
   GNUNET_TIME_round_abs (&now);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
