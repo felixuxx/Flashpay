@@ -69,10 +69,10 @@ reply_melt_insufficient_funds (
     connection,
     MHD_HTTP_CONFLICT,
     "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
+    "hint",
     TALER_ErrorCode_get_hint (TALER_EC_MELT_INSUFFICIENT_FUNDS),
     "code",
-    (json_int_t)
-    TALER_EC_MELT_INSUFFICIENT_FUNDS,
+    (json_int_t) TALER_EC_MELT_INSUFFICIENT_FUNDS,
     "coin_pub",
     GNUNET_JSON_from_data_auto (coin_pub),
     "original_value",
