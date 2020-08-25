@@ -651,7 +651,8 @@ TALER_JSON_get_error_hint (const json_t *json)
     GNUNET_break_op (0);
     return NULL;
   }
-  jc = json_object_get (json, "hint");
+  jc = json_object_get (json,
+                        "hint");
   if (NULL == jc)
     return NULL; /* no hint, is allowed */
   if (! json_is_string (jc))

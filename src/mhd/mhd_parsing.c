@@ -76,11 +76,11 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
   case GNUNET_JSON_PR_OUT_OF_MEMORY:
     GNUNET_break (NULL == *json);
     return (MHD_NO ==
-            TALER_MHD_reply_with_error
-              (connection,
+            TALER_MHD_reply_with_error (
+              connection,
               MHD_HTTP_INTERNAL_SERVER_ERROR,
               TALER_EC_PARSER_OUT_OF_MEMORY,
-              "out of memory")) ? GNUNET_SYSERR : GNUNET_NO;
+              NULL)) ? GNUNET_SYSERR : GNUNET_NO;
 
   case GNUNET_JSON_PR_CONTINUE:
     GNUNET_break (NULL == *json);
@@ -96,7 +96,7 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
             TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_BAD_REQUEST,
                                         TALER_EC_JSON_INVALID,
-                                        "invalid JSON uploaded"))
+                                        NULL))
            ? GNUNET_NO : GNUNET_SYSERR;
   case GNUNET_JSON_PR_SUCCESS:
     GNUNET_break (NULL != *json);
@@ -204,15 +204,15 @@ TALER_MHD_parse_json_data (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s, s:I, s:s, s:I}",
-                                      "hint", "JSON parse error",
-                                      "code",
-                                      (json_int_t)
-                                      TALER_EC_JSON_INVALID_WITH_DETAILS,
-                                      "field", error_json_name,
-                                      "line", (json_int_t) error_line))
+           TALER_MHD_reply_json_pack (
+             connection,
+             MHD_HTTP_BAD_REQUEST,
+             "{s:s, s:I, s:s, s:I}",
+             "hint", TALER_ErrorCode_get_hint (
+               TALER_EC_JSON_INVALID_WITH_DETAILS),
+             "code", (json_int_t) TALER_EC_JSON_INVALID_WITH_DETAILS,
+             "field", error_json_name,
+             "line", (json_int_t) error_line))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -256,15 +256,15 @@ TALER_MHD_parse_internal_json_data (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (connection,
-                                      MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                      "{s:s, s:I, s:s, s:I}",
-                                      "hint", "JSON parse error",
-                                      "code",
-                                      (json_int_t)
-                                      TALER_EC_INTERNAL_INVARIANT_FAILURE,
-                                      "field", error_json_name,
-                                      "line", (json_int_t) error_line))
+           TALER_MHD_reply_json_pack (
+             connection,
+             MHD_HTTP_INTERNAL_SERVER_ERROR,
+             "{s:s, s:I, s:s, s:I}",
+             "hint", TALER_ErrorCode_get_hint (
+               TALER_EC_INTERNAL_INVARIANT_FAILURE),
+             "code", (json_int_t) TALER_EC_INTERNAL_INVARIANT_FAILURE,
+             "field", error_json_name,
+             "line", (json_int_t) error_line))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -311,14 +311,15 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
   if (NULL == root)
   {
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s, s:I, s:I}",
-                                      "hint", "expected array",
-                                      "code",
-                                      (json_int_t)
-                                      TALER_EC_JSON_INVALID_WITH_DETAILS,
-                                      "dimension", dim))
+           TALER_MHD_reply_json_pack (
+             connection,
+             MHD_HTTP_BAD_REQUEST,
+             "{s:s, s:I, s:s, s:I}",
+             "hint", TALER_ErrorCode_get_hint (
+               TALER_EC_JSON_INVALID_WITH_DETAILS),
+             "code", (json_int_t) TALER_EC_JSON_INVALID_WITH_DETAILS,
+             "detail", "expected array",
+             "dimension", dim))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -331,14 +332,15 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (connection,
-                                      MHD_HTTP_BAD_REQUEST,
-                                      "{s:s, s:I, s:I}",
-                                      "hint", error_json_name,
-                                      "code",
-                                      (json_int_t)
-                                      TALER_EC_JSON_INVALID_WITH_DETAILS,
-                                      "line", (json_int_t) error_line))
+           TALER_MHD_reply_json_pack (
+             connection,
+             MHD_HTTP_BAD_REQUEST,
+             "{s:s, s:s, s:I, s:I}",
+             "detail", error_json_name,
+             "hint", TALER_ErrorCode_get_hint (
+               TALER_EC_JSON_INVALID_WITH_DETAILS),
+             "code", (json_int_t) TALER_EC_JSON_INVALID_WITH_DETAILS,
+             "line", (json_int_t) error_line))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }

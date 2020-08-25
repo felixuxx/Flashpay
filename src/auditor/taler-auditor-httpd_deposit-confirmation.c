@@ -86,7 +86,7 @@ verify_and_execute_deposit_confirmation (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                       "master_sig (expired)");
+                                       "master signature expired");
   }
 
   /* check our cache */
@@ -105,7 +105,7 @@ verify_and_execute_deposit_confirmation (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_DB_SETUP_FAILED,
-                                       "failed to establish session with database");
+                                       NULL);
   }
   if (! cached)
   {
@@ -120,7 +120,7 @@ verify_and_execute_deposit_confirmation (
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                         "master_sig");
+                                         "master signature invalid");
     }
 
     /* execute transaction */
@@ -134,7 +134,7 @@ verify_and_execute_deposit_confirmation (
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR,
-                                         "failed to persist exchange signing key");
+                                         NULL);
     }
 
     /* Cache it, due to concurreny it might already be in the cache,
@@ -174,7 +174,7 @@ verify_and_execute_deposit_confirmation (
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                         "exchange_sig");
+                                         "exchange signature invalid");
     }
   }
 
@@ -189,7 +189,7 @@ verify_and_execute_deposit_confirmation (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR,
-                                       "failed to persist deposit-confirmation data");
+                                       NULL);
   }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,

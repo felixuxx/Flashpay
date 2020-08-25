@@ -161,7 +161,7 @@ deposit_precheck (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
-                                             "Could not check for existing identical deposit");
+                                             NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     return qs;
@@ -255,7 +255,7 @@ deposit_transaction (void *cls,
           connection,
           MHD_HTTP_INTERNAL_SERVER_ERROR,
           TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
-          "could not fetch coin transaction history");
+          NULL);
       return qs;
     }
     if (GNUNET_OK !=
@@ -269,7 +269,7 @@ deposit_transaction (void *cls,
         connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
-        "could not calculate historic coin amount total");
+        NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     /* Check that cost of all transactions (including the current one) is
@@ -301,7 +301,7 @@ deposit_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_DEPOSIT_STORE_DB_ERROR,
-                                           "Could not persist /deposit data");
+                                           NULL);
   }
   return qs;
 }
@@ -382,7 +382,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
-                                       "refund_deadline");
+                                       NULL);
   }
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (wire,
@@ -394,7 +394,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
-                                       "wire");
+                                       NULL);
   }
   if (0 != GNUNET_memcmp (&deposit.h_wire,
                           &my_h_wire))
@@ -404,7 +404,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
-                                       "h_wire");
+                                       NULL);
   }
 
   /* Check for idempotency: did we get this request before? */
@@ -457,7 +457,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
-                                         "Could not find denomination key used in deposit");
+                                         NULL);
     }
     TALER_amount_ntoh (&deposit.deposit_fee,
                        &dki->issue.properties.fee_deposit);
@@ -471,7 +471,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_DEPOSIT_CURRENCY_MISMATCH,
-                                         "contribution");
+                                         deposit.deposit_fee.currency);
     }
     /* check coin signature */
     if (GNUNET_YES !=
@@ -484,7 +484,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_UNAUTHORIZED,
                                          TALER_EC_DEPOSIT_DENOMINATION_SIGNATURE_INVALID,
-                                         "ub_sig");
+                                         NULL);
     }
     TALER_amount_ntoh (&dc.value,
                        &dki->issue.properties.value);
@@ -498,7 +498,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
-                                       "deposited amount smaller than depositing fee");
+                                       NULL);
   }
 
   /* check deposit signature */
@@ -530,7 +530,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_UNAUTHORIZED,
                                          TALER_EC_DEPOSIT_COIN_SIGNATURE_INVALID,
-                                         "coin_sig");
+                                         NULL);
     }
   }
 

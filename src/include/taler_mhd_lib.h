@@ -133,14 +133,14 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
  * @param connection the MHD connection to use
  * @param ec error code uniquely identifying the error
  * @param http_status HTTP status code to use
- * @param hint human readable hint about the error
+ * @param detail additional optional detail about the error
  * @return a MHD result code
  */
 MHD_RESULT
 TALER_MHD_reply_with_error (struct MHD_Connection *connection,
                             unsigned int http_status,
                             enum TALER_ErrorCode ec,
-                            const char *hint);
+                            const char *detail);
 
 
 /**
@@ -169,12 +169,12 @@ TALER_MHD_make_json_pack (const char *fmt,
  * Create a response indicating an internal error.
  *
  * @param ec error code to return
- * @param hint hint about the internal error's nature
+ * @param detail additional optional detail about the error, can be NULL
  * @return a MHD response object
  */
 struct MHD_Response *
 TALER_MHD_make_error (enum TALER_ErrorCode ec,
-                      const char *hint);
+                      const char *detail);
 
 
 /**

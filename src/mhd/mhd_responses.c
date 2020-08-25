@@ -404,16 +404,17 @@ TALER_MHD_make_json_pack (const char *fmt,
  * Create a response indicating an internal error.
  *
  * @param ec error code to return
- * @param hint hint about the internal error's nature
+ * @param detail additional optional detail about the error, can be NULL
  * @return a MHD response object
  */
 struct MHD_Response *
 TALER_MHD_make_error (enum TALER_ErrorCode ec,
-                      const char *hint)
+                      const char *detail)
 {
-  return TALER_MHD_make_json_pack ("{s:I, s:s}",
+  return TALER_MHD_make_json_pack ("{s:I, s:s, s:s?}",
                                    "code", (json_int_t) ec,
-                                   "hint", hint);
+                                   "hint", TALER_ErrorCode_get_hint (ec),
+                                   "detail", detail);
 }
 
 
@@ -423,20 +424,21 @@ TALER_MHD_make_error (enum TALER_ErrorCode ec,
  * @param connection the MHD connection to use
  * @param ec error code uniquely identifying the error
  * @param http_status HTTP status code to use
- * @param hint human readable hint about the error
+ * @param detail additional optional detail about the error, can be NULL
  * @return a MHD result code
  */
 MHD_RESULT
 TALER_MHD_reply_with_error (struct MHD_Connection *connection,
                             unsigned int http_status,
                             enum TALER_ErrorCode ec,
-                            const char *hint)
+                            const char *detail)
 {
   return TALER_MHD_reply_json_pack (connection,
                                     http_status,
-                                    "{s:I, s:s}",
+                                    "{s:I, s:s, s:s?}",
                                     "code", (json_int_t) ec,
-                                    "hint", hint);
+                                    "hint", TALER_ErrorCode_get_hint (ec),
+                                    "detail", detail);
 }
 
 

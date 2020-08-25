@@ -64,25 +64,25 @@ reply_melt_insufficient_funds (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
-                                       "Failed to compile transaction history");
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_CONFLICT,
-                                    "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
-                                    "hint",
-                                    "insufficient funds",
-                                    "code",
-                                    (json_int_t)
-                                    TALER_EC_MELT_INSUFFICIENT_FUNDS,
-                                    "coin_pub",
-                                    GNUNET_JSON_from_data_auto (coin_pub),
-                                    "original_value",
-                                    TALER_JSON_from_amount (coin_value),
-                                    "residual_value",
-                                    TALER_JSON_from_amount (residual),
-                                    "requested_value",
-                                    TALER_JSON_from_amount (requested),
-                                    "history",
-                                    history);
+                                       NULL);
+  return TALER_MHD_reply_json_pack (
+    connection,
+    MHD_HTTP_CONFLICT,
+    "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
+    TALER_ErrorCode_get_hint (TALER_EC_MELT_INSUFFICIENT_FUNDS),
+    "code",
+    (json_int_t)
+    TALER_EC_MELT_INSUFFICIENT_FUNDS,
+    "coin_pub",
+    GNUNET_JSON_from_data_auto (coin_pub),
+    "original_value",
+    TALER_JSON_from_amount (coin_value),
+    "residual_value",
+    TALER_JSON_from_amount (residual),
+    "requested_value",
+    TALER_JSON_from_amount (requested),
+    "history",
+    history);
 }
 
 
@@ -202,7 +202,7 @@ refresh_check_melt (struct MHD_Connection *connection,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_MELT_DB_FETCH_ERROR,
-                                             "failed to fetch old coin history");
+                                             NULL);
     return qs;
   }
   if (rmc->zombie_required)
@@ -229,7 +229,7 @@ refresh_check_melt (struct MHD_Connection *connection,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_BAD_REQUEST,
                                              TALER_EC_MELT_COIN_EXPIRED_NO_ZOMBIE,
-                                             "denomination expired");
+                                             NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -244,7 +244,7 @@ refresh_check_melt (struct MHD_Connection *connection,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_MELT_COIN_HISTORY_COMPUTATION_FAILED,
-                                           "failed to compute coin transaction history");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -341,7 +341,7 @@ melt_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_MELT_DB_FETCH_ERROR,
-                                             "failed to fetch melt index");
+                                             NULL);
     return qs;
   }
 
@@ -367,7 +367,7 @@ melt_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_MELT_DB_STORE_SESSION_ERROR,
-                                             "failed to persist melt data");
+                                             NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     return qs;
@@ -417,7 +417,7 @@ handle_melt (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_MELT_COIN_SIGNATURE_INVALID,
-                                         "confirm_sig");
+                                         NULL);
     }
   }
 
@@ -509,7 +509,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
           return TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_MELT_DB_FETCH_ERROR,
-                                             "failed to find information about old coin");
+                                             NULL);
         }
         /* sanity check */
         GNUNET_break (0 ==
@@ -549,7 +549,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
-                                         "unknown denomination");
+                                         NULL);
     }
 
     TALER_amount_ntoh (&rmc->coin_refresh_fee,
@@ -566,7 +566,8 @@ check_for_denomination_key (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_MELT_CURRENCY_MISMATCH,
-                                         "value_with_fee");
+                                         rmc->refresh_session.amount_with_fee.
+                                         currency);
 
     }
     /* check coin is actually properly signed */
@@ -579,7 +580,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_MELT_DENOMINATION_SIGNATURE_INVALID,
-                                         "denom_sig");
+                                         NULL);
     }
   }
   TEH_KS_release (key_state);
@@ -593,7 +594,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_MELT_FEES_EXCEED_CONTRIBUTION,
-                                       "melt amount smaller than melting fee");
+                                       NULL);
   }
   return handle_melt (connection,
                       rmc);

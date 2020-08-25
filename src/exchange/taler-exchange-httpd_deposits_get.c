@@ -234,7 +234,7 @@ deposits_get_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_DEPOSITS_GET_DB_FETCH_FAILED,
-                                             "failed to fetch transaction data");
+                                             NULL);
     }
     return qs;
   }
@@ -243,7 +243,7 @@ deposits_get_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_DEPOSITS_GET_NOT_FOUND,
-                                           "transaction unknown");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
@@ -289,7 +289,7 @@ handle_track_transaction_request (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_DEPOSITS_GET_DB_FEE_INCONSISTENT,
-                                       "fees are inconsistent");
+                                       NULL);
   return reply_deposit_details (connection,
                                 &tps->h_contract_terms,
                                 &tps->h_wire,
@@ -333,7 +333,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSITS_INVALID_H_WIRE,
-                                       "wire hash malformed");
+                                       args[0]);
   }
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[1],
@@ -345,7 +345,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSITS_INVALID_MERCHANT_PUB,
-                                       "merchant public key malformed");
+                                       args[1]);
   }
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[2],
@@ -357,7 +357,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSITS_INVALID_H_CONTRACT_TERMS,
-                                       "contract terms hash malformed");
+                                       args[2]);
   }
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[3],
@@ -369,7 +369,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_DEPOSITS_INVALID_COIN_PUB,
-                                       "coin public key malformed");
+                                       args[3]);
   }
   res = TALER_MHD_parse_request_arg_data (connection,
                                           "merchant_sig",
@@ -389,7 +389,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_DEPOSITS_GET_MERCHANT_SIGNATURE_INVALID,
-                                       "merchant_sig");
+                                       NULL);
   }
 
   return handle_track_transaction_request (connection,

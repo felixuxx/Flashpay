@@ -51,7 +51,7 @@ reply_reserve_history_success (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_RESERVE_STATUS_DB_ERROR,
-                                       "balance calculation failure");
+                                       NULL);
   json_balance = TALER_JSON_from_amount (&balance);
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
@@ -143,7 +143,7 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_RESERVES_INVALID_RESERVE_PUB,
-                                       "reserve public key malformed");
+                                       args[0]);
   }
   rsc.rh = NULL;
   if (GNUNET_OK !=
@@ -156,14 +156,10 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
 
   /* generate proper response */
   if (NULL == rsc.rh)
-    return TALER_MHD_reply_json_pack (connection,
-                                      MHD_HTTP_NOT_FOUND,
-                                      "{s:s, s:s, s:I}",
-                                      "hint", "Reserve not found",
-                                      "parameter", "reserve_pub",
-                                      "code",
-                                      (json_int_t)
-                                      TALER_EC_RESERVE_STATUS_UNKNOWN);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_NOT_FOUND,
+                                       TALER_EC_RESERVE_STATUS_UNKNOWN,
+                                       args[0]);
   mhd_ret = reply_reserve_history_success (connection,
                                            rsc.rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,

@@ -24,6 +24,7 @@
 #include <gnunet/gnunet_json_lib.h>
 #include <jansson.h>
 #include <microhttpd.h>
+#include "taler_util.h"
 #include "taler_mhd_lib.h"
 
 

@@ -125,9 +125,9 @@ refund_transaction (void *cls,
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_NOT_FOUND,
-                                             TALER_EC_REFUND_COIN_NOT_FOUND,
-                                             "database transaction failure");
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_REFUND_DATABASE_LOOKUP_ERROR,
+                                             NULL);
     return qs;
   }
   deposit_found = false;
@@ -163,7 +163,7 @@ refund_transaction (void *cls,
             *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                    MHD_HTTP_GONE,
                                                    TALER_EC_REFUND_MERCHANT_ALREADY_PAID,
-                                                   "money already sent to merchant");
+                                                   NULL);
             return GNUNET_DB_STATUS_HARD_ERROR;
           }
 
@@ -230,9 +230,11 @@ refund_transaction (void *cls,
           *mhd_ret = TALER_MHD_reply_json_pack (
             connection,
             MHD_HTTP_PRECONDITION_FAILED,
-            "{s:s, s:I, s:o}",
-            "hint",
+            "{s:s, s:s, s:I, s:o}",
+            "detail",
             "conflicting refund with different amount but same refund transaction ID",
+            "hint", TALER_ErrorCode_get_hint (
+              TALER_EC_REFUND_INCONSISTENT_AMOUNT),
             "code", (json_int_t) TALER_EC_REFUND_INCONSISTENT_AMOUNT,
             "history", TEH_RESPONSE_compile_transaction_history (
               &refund->coin.coin_pub,
@@ -306,7 +308,7 @@ refund_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_REFUND_DEPOSIT_NOT_FOUND,
-                                           "deposit unknown");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -321,7 +323,7 @@ refund_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_REFUND_CURRENCY_MISMATCH,
-                                           "currencies involved do not match");
+                                           deposit_total.currency);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -340,13 +342,16 @@ refund_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_json_pack (
       connection,
       MHD_HTTP_CONFLICT,
-      "{s:s, s:I, s:o}",
-      "hint",
+      "{s:s, s:s, s:I, s:o}",
+      "detail",
       "total amount refunded exceeds total amount deposited for this coin",
-      "code", (json_int_t) TALER_EC_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT,
-      "history", TEH_RESPONSE_compile_transaction_history (
-        &refund->coin.coin_pub,
-        tlx));
+      "hint",
+      TALER_ErrorCode_get_hint (TALER_EC_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT),
+      "code",
+      (json_int_t) TALER_EC_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT,
+      "history",
+      TEH_RESPONSE_compile_transaction_history (&refund->coin.coin_pub,
+                                                tlx));
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tlx);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -365,7 +370,7 @@ refund_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_REFUND_STORE_DB_ERROR,
-                                           "could not persist store information");
+                                           NULL);
     return qs;
   }
   /* Success or soft failure */
@@ -411,7 +416,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
-                                         "merchant_sig");
+                                         NULL);
     }
   }
 
@@ -425,11 +430,18 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                             &denom_hash);
     if (0 > qs)
     {
+      MHD_RESULT res;
+      char *dhs;
+
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_NOT_FOUND,
-                                         TALER_EC_REFUND_COIN_NOT_FOUND,
-                                         "denomination of coin to be refunded not found in DB");
+      dhs = GNUNET_STRINGS_data_to_string_alloc (&denom_hash,
+                                                 sizeof (denom_hash));
+      res = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_NOT_FOUND,
+                                        TALER_EC_REFUND_COIN_NOT_FOUND,
+                                        dhs);
+      GNUNET_free (dhs);
+      return res;
     }
   }
 
@@ -465,7 +477,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
         return TALER_MHD_reply_with_error (connection,
                                            hc,
                                            ec,
-                                           "denomination not found, but coin known");
+                                           NULL);
       }
       TALER_amount_ntoh (&refund->details.refund_fee,
                          &dki->issue.properties.fee_refund);

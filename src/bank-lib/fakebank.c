@@ -760,14 +760,19 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
                                           &row_id);
       if (GNUNET_OK != ret)
       {
+        MHD_RESULT res;
+        char *uids;
+
         GNUNET_break (0);
+        uids = GNUNET_STRINGS_data_to_string_alloc (&uuid,
+                                                    sizeof (uuid));
         json_decref (json);
-        return TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_CONFLICT,
-                                           TALER_EC_BANK_TRANSFER_REQUEST_UID_REUSED,
-                                           "transfer request UID was reused");
-
-
+        res = TALER_MHD_reply_with_error (connection,
+                                          MHD_HTTP_CONFLICT,
+                                          TALER_EC_BANK_TRANSFER_REQUEST_UID_REUSED,
+                                          uids);
+        GNUNET_free (uids);
+        return res;
       }
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Receiving incoming wire transfer: %s->%s, subject: %s, amount: %s, from %s\n",

@@ -74,7 +74,7 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
                                     TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
-                                    "could not persist coin data");
+                                    NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_CONFLICT:
     break;
@@ -96,7 +96,7 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
           connection,
           MHD_HTTP_INTERNAL_SERVER_ERROR,
           TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
-          "could not fetch coin transaction history");
+          NULL);
       return qs;
     }
     *mhd_ret
@@ -146,7 +146,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_DB_SETUP_FAILED,
-                                             "could not establish database session");
+                                             NULL);
     return GNUNET_SYSERR;
   }
   for (unsigned int retries = 0;
@@ -165,7 +165,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_DB_START_FAILED,
-                                               "could not begin transaction");
+                                               NULL);
       return GNUNET_SYSERR;
     }
     qs = cb (cb_cls,
@@ -186,7 +186,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_DB_COMMIT_FAILED_HARD,
-                                               "could not commit database transaction");
+                                               NULL);
       return GNUNET_SYSERR;
     }
     /* make sure callback did not violate invariants! */
@@ -202,7 +202,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_DB_COMMIT_FAILED_ON_RETRY,
-                                           "repatedly failed to serialize database transaction");
+                                           NULL);
   return GNUNET_SYSERR;
 }
 

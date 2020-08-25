@@ -156,7 +156,7 @@ recoup_transaction (void *cls,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_RECOUP_DB_FETCH_FAILED,
-                                               "failed to fetch old coin of blind coin");
+                                               NULL);
       }
       return qs;
     }
@@ -175,7 +175,7 @@ recoup_transaction (void *cls,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_RECOUP_DB_FETCH_FAILED,
-                                               "failed to fetch reserve of blinded coin");
+                                               NULL);
       }
       return qs;
     }
@@ -188,7 +188,7 @@ recoup_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_RECOUP_WITHDRAW_NOT_FOUND,
-                                           "envelope unknown");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -206,7 +206,7 @@ recoup_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_RECOUP_DB_FETCH_FAILED,
-                                             "failed to fetch coin transaction history");
+                                             NULL);
     }
     return qs;
   }
@@ -241,7 +241,7 @@ recoup_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_RECOUP_HISTORY_DB_ERROR,
-                                           "failed to calculate old coin transaction history");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -261,7 +261,7 @@ recoup_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_RECOUP_COIN_BALANCE_NEGATIVE,
-                                           "calculated negative coin balance");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if ( (0 == pc->amount.fraction) &&
@@ -328,7 +328,7 @@ recoup_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_RECOUP_DB_PUT_FAILED,
-                                             "failed to persist recoup data");
+                                             NULL);
     }
     return qs;
   }
@@ -392,7 +392,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
-                                         "denomination not valid for recoup");
+                                         NULL);
     }
     TALER_amount_ntoh (&pc.value,
                        &dki->issue.properties.value);
@@ -407,7 +407,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_RECOUP_DENOMINATION_SIGNATURE_INVALID,
-                                         "denom_sig");
+                                         NULL);
     }
 
     /* check recoup request signature */
@@ -431,7 +431,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
         return TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_FORBIDDEN,
                                            TALER_EC_RECOUP_SIGNATURE_INVALID,
-                                           "coin_sig");
+                                           NULL);
       }
     }
     GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
@@ -449,7 +449,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_RECOUP_BLINDING_FAILED,
-                                         "coin_bks");
+                                         NULL);
     }
     TEH_KS_release (key_state);
   }

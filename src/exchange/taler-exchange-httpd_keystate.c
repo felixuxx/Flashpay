@@ -2502,7 +2502,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_KEYS_HAVE_NOT_NUMERIC,
-                                         "last_issue_date");
+                                         have_cherrypick);
     }
     /* The following multiplication may overflow; but this should not really
        be a problem, as giving back 'older' data than what the client asks for
@@ -2531,7 +2531,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_KEYS_HAVE_NOT_NUMERIC,
-                                         "now");
+                                         have_fakenow);
     }
     if (TEH_allow_keys_timetravel)
     {
@@ -2547,7 +2547,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_KEYS_TIMETRAVEL_FORBIDDEN,
-                                         "timetravel not allowed by this exchange");
+                                         NULL);
     }
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -2567,7 +2567,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_BAD_CONFIGURATION,
-                                         "no keys for requested time");
+                                         NULL);
     }
     krd = bsearch (&last_issue_date,
                    key_state->krd_array,
@@ -2599,7 +2599,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_KEYS_MISSING,
-                                         "no key response found");
+                                         NULL);
     }
     ret = MHD_queue_response (connection,
                               MHD_HTTP_OK,

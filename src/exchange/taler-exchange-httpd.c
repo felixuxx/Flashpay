@@ -236,7 +236,7 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_COINS_INVALID_COIN_PUB,
-                                       "coin public key malformed");
+                                       args[0]);
   }
   for (unsigned int i = 0; NULL != h[i].op; i++)
     if (0 == strcmp (h[i].op,
@@ -247,7 +247,7 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
   return TALER_MHD_reply_with_error (connection,
                                      MHD_HTTP_NOT_FOUND,
                                      TALER_EC_OPERATION_UNKNOWN,
-                                     "requested operation on coin unknown");
+                                     args[1]);
 }
 
 
@@ -331,7 +331,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_URI_TOO_LONG,
                                        TALER_EC_URI_TOO_LONG,
-                                       "The URI given is too long");
+                                       url);
   }
 
   /* All POST endpoints come with a body in JSON format. So we parse
@@ -745,7 +745,7 @@ handle_mhd_request (void *cls,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_METHOD_NOT_ALLOWED,
                                          TALER_EC_METHOD_INVALID,
-                                         "The HTTP method used is invalid for this URL");
+                                         method);
     }
   }
 
@@ -756,7 +756,7 @@ handle_mhd_request (void *cls,
     ret = TALER_MHD_reply_with_error (connection,
                                       MHD_HTTP_NOT_FOUND,
                                       TALER_EC_ENDPOINT_UNKNOWN,
-                                      "No handler found for the given URL");
+                                      url);
     GNUNET_async_scope_restore (&old_scope);
     return ret;
   }

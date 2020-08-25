@@ -445,13 +445,13 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_COIN_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
-                                       "failed to convert transaction history to JSON");
+                                       TALER_EC_JSON_ALLOCATION_FAILURE,
+                                       "Failed to generated proof of insufficient funds");
   }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_CONFLICT,
                                     "{s:s, s:I, s:o}",
-                                    "hint", "insufficient funds",
+                                    "hint", TALER_ErrorCode_get_hint (ec),
                                     "code", (json_int_t) ec,
                                     "history", history);
 }

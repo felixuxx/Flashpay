@@ -90,7 +90,7 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_DB_SETUP_FAILED,
-                                       "failed to establish session with database");
+                                       NULL);
   }
   ja = json_array ();
   GNUNET_break (NULL != ja);
@@ -106,7 +106,7 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_LIST_EXCHANGES_DB_ERROR,
-                                       "Could not fetch exchange list from database");
+                                       NULL);
   }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,

@@ -446,7 +446,7 @@ get_transfer_deposits (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_TRANSFERS_GET_DB_FETCH_FAILED,
-                                             "failed to fetch transaction data");
+                                             NULL);
     }
     return qs;
   }
@@ -456,7 +456,7 @@ get_transfer_deposits (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_TRANSFERS_GET_DB_INCONSISTENT,
-                                           "exchange database internally inconsistent");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_NO == ctx->is_valid)
@@ -464,7 +464,7 @@ get_transfer_deposits (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_TRANSFERS_GET_WTID_NOT_FOUND,
-                                           "wtid");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TEH_plugin->get_wire_fee (TEH_plugin->cls,
@@ -485,7 +485,7 @@ get_transfer_deposits (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_TRANSFERS_GET_WIRE_FEE_NOT_FOUND,
-                                             "did not find wire fee");
+                                             NULL);
     }
     return qs;
   }
@@ -498,7 +498,7 @@ get_transfer_deposits (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_TRANSFERS_GET_WIRE_FEE_INCONSISTENT,
-                                           "could not subtract wire fee");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
@@ -535,7 +535,7 @@ TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_TRANSFERS_INVALID_WTID,
-                                       "wire transfer identifier malformed");
+                                       args[0]);
   }
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,

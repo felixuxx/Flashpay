@@ -257,7 +257,7 @@ refreshes_reveal_preflight (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_REVEAL_DB_FETCH_REVEAL_ERROR,
-                                           "failed to fetch reveal data");
+                                           NULL);
     rctx->preflight_ok = GNUNET_SYSERR;
     return GNUNET_DB_STATUS_HARD_ERROR;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -309,7 +309,7 @@ refreshes_reveal_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_REVEAL_SESSION_UNKNOWN,
-                                           "rc");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -321,7 +321,7 @@ refreshes_reveal_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_REVEAL_DB_FETCH_SESSION_ERROR,
-                                           "failed to fetch valid challenge from database");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -409,16 +409,17 @@ refreshes_reveal_transaction (void *cls,
                             &rc_expected))
     {
       GNUNET_break_op (0);
-      *mhd_ret = TALER_MHD_reply_json_pack (connection,
-                                            MHD_HTTP_CONFLICT,
-                                            "{s:s, s:I, s:o}",
-                                            "hint", "commitment violation",
-                                            "code",
-                                            (json_int_t)
-                                            TALER_EC_REVEAL_COMMITMENT_VIOLATION,
-                                            "rc_expected",
-                                            GNUNET_JSON_from_data_auto (
-                                              &rc_expected));
+      *mhd_ret = TALER_MHD_reply_json_pack (
+        connection,
+        MHD_HTTP_CONFLICT,
+        "{s:s, s:I, s:o}",
+        "hint",
+        TALER_ErrorCode_get_hint (TALER_EC_REVEAL_COMMITMENT_VIOLATION),
+        "code",
+        (json_int_t) TALER_EC_REVEAL_COMMITMENT_VIOLATION,
+        "rc_expected",
+        GNUNET_JSON_from_data_auto (
+          &rc_expected));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   } /* end of checking "rc_expected" */
@@ -451,7 +452,7 @@ refreshes_reveal_transaction (void *cls,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_REVEAL_COST_CALCULATION_OVERFLOW,
-                                               "failed to add up refresh costs");
+                                               NULL);
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
@@ -462,7 +463,7 @@ refreshes_reveal_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_REVEAL_AMOUNT_INSUFFICIENT,
-                                             "melted coin value is insufficient to cover cost of operation");
+                                             NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -517,7 +518,7 @@ refreshes_reveal_persist (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_REVEAL_DB_COMMIT_ERROR,
-                                           "failed to persist reveal data");
+                                           NULL);
   }
   return qs;
 }
@@ -582,7 +583,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
-                                         "failed to find denomination key");
+                                         NULL);
     }
     /* #TEH_KS_DKU_WITHDRAW should warrant that we only get denomination
        keys where we did not yet forget the private key */
@@ -630,13 +631,13 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_NOT_FOUND,
                                           TALER_EC_REVEAL_SESSION_UNKNOWN,
-                                          "rc");
+                                          NULL);
         break;
       case GNUNET_DB_STATUS_HARD_ERROR:
         ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
                                           TALER_EC_REVEAL_DB_FETCH_SESSION_ERROR,
-                                          "failed to fetch session data");
+                                          NULL);
         break;
       case GNUNET_DB_STATUS_SOFT_ERROR:
       default:
@@ -644,7 +645,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
                                           TALER_EC_INTERNAL_INVARIANT_FAILURE,
-                                          "assertion failed (unexpected database serialization error)");
+                                          NULL);
         break;
       }
       goto cleanup;
@@ -689,7 +690,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         ret = TALER_MHD_reply_with_error (connection,
                                           MHD_HTTP_FORBIDDEN,
                                           TALER_EC_REVEAL_LINK_SIGNATURE_INVALID,
-                                          "link_sig");
+                                          NULL);
         goto cleanup;
       }
     }
@@ -716,7 +717,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       ret = TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
                                         TALER_EC_REVEAL_SIGNING_ERROR,
-                                        "internal signing error");
+                                        NULL);
       goto cleanup;
     }
   }
@@ -831,7 +832,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_REVEAL_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
-                                       "new_denoms_h");
+                                       NULL);
 
   }
   if (json_array_size (new_denoms_h_json) !=
@@ -945,7 +946,7 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_REVEAL_INVALID_RCH,
-                                       "refresh commitment hash malformed");
+                                       args[0]);
   }
   if (0 != strcmp (args[1],
                    "reveal"))
@@ -954,7 +955,7 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_OPERATION_INVALID,
-                                       "expected 'reveal' operation");
+                                       args[1]);
   }
 
   {
@@ -979,7 +980,7 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID,
-                                       "transfer_privs");
+                                       NULL);
   }
 
   {

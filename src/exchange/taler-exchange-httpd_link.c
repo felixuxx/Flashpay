@@ -157,7 +157,7 @@ link_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            ctx->ec,
-                                           "coin_pub");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -165,7 +165,7 @@ link_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_LINK_COIN_UNKNOWN,
-                                           "coin_pub");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return qs;
@@ -202,7 +202,7 @@ TEH_handler_link (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_COINS_INVALID_COIN_PUB,
-                                       "coin public key malformed");
+                                       args[0]);
   }
   ctx.mlist = json_array ();
   if (NULL == ctx.mlist)

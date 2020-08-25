@@ -66,7 +66,7 @@ reply_withdraw_insufficient_funds (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
-                                       "reserve balance calculation failure");
+                                       NULL);
   if (0 !=
       TALER_amount_cmp (&balance,
                         ebalance))
@@ -76,18 +76,20 @@ reply_withdraw_insufficient_funds (
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_WITHDRAW_RESERVE_BALANCE_CORRUPT,
-                                       "internal balance inconsistency error");
+                                       NULL);
   }
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_CONFLICT,
-                                    "{s:s, s:I, s:o, s:o}",
-                                    "hint", "insufficient funds",
-                                    "code",
-                                    (json_int_t)
-                                    TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
-                                    "balance", TALER_JSON_from_amount (
-                                      &balance),
-                                    "history", json_history);
+  return TALER_MHD_reply_json_pack (
+    connection,
+    MHD_HTTP_CONFLICT,
+    "{s:s, s:I, s:o, s:o}",
+    "hint",
+    TALER_ErrorCode_get_hint (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS),
+    "code",
+    (json_int_t) TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
+    "balance",
+    TALER_JSON_from_amount (&balance),
+    "history",
+    json_history);
 }
 
 
@@ -197,7 +199,7 @@ withdraw_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_WITHDRAW_DB_FETCH_ERROR,
-                                             "failed to fetch withdraw data");
+                                             NULL);
     wc->collectable.sig = denom_sig;
     return qs;
   }
@@ -232,7 +234,7 @@ withdraw_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_WITHDRAW_DB_FETCH_ERROR,
-                                             "failed to fetch reserve data");
+                                             NULL);
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -240,7 +242,7 @@ withdraw_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_WITHDRAW_RESERVE_UNKNOWN,
-                                           "reserve_pub");
+                                           NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 < TALER_amount_cmp (&wc->amount_required,
@@ -274,7 +276,7 @@ withdraw_transaction (void *cls,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_WITHDRAW_DB_FETCH_ERROR,
-                                               "failed to fetch reserve history");
+                                               NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     *mhd_ret = reply_withdraw_insufficient_funds (connection,
@@ -299,7 +301,7 @@ withdraw_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_WITHDRAW_SIGNATURE_FAILED,
-                                             "Failed to create blind signature");
+                                             NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -319,7 +321,7 @@ withdraw_transaction (void *cls,
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_WITHDRAW_DB_STORE_ERROR,
-                                             "failed to persist withdraw data");
+                                             NULL);
     return qs;
   }
   return qs;
@@ -370,7 +372,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_RESERVES_INVALID_RESERVE_PUB,
-                                       "reserve public key malformed");
+                                       args[0]);
   }
 
   {
@@ -408,7 +410,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
-                                         "could not find denomination key");
+                                         NULL);
     }
   }
   GNUNET_assert (NULL != wc.dki->denom_priv.rsa_private_key);
@@ -430,7 +432,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_WITHDRAW_AMOUNT_FEE_OVERFLOW,
-                                         "amount overflow for value plus withdraw fee");
+                                         NULL);
     }
     TALER_amount_hton (&wc.wsrd.amount_with_fee,
                        &wc.amount_required);
@@ -459,7 +461,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_WITHDRAW_RESERVE_SIGNATURE_INVALID,
-                                       "reserve_sig");
+                                       NULL);
   }
 
 #if OPTIMISTIC_SIGN
@@ -476,7 +478,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_WITHDRAW_SIGNATURE_FAILED,
-                                       "Failed to sign");
+                                       NULL);
   }
 #endif
 
