@@ -347,11 +347,8 @@ handle_reserve_withdraw_finished (void *cls,
  * same arguments in case of failures.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param pk kind of coin to create
- * @param reserve_sig signature from the reserve authorizing the withdrawal
- * @param reserve_pub public key of the reserve to withdraw from
- * @param ps secrets of the planchet
- *        caller must have committed this value to disk before the call (with @a pk)
+ * @param pd planchet details of the planchet to withdraw
+ * @param reserve_priv private key of the reserve to withdraw from
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for @a res_cb
  * @return NULL

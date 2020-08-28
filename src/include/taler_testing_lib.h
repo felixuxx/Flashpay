@@ -844,8 +844,7 @@ TALER_TESTING_run_bank (const char *config_filename,
  * responsible to create the exchange EBICS subscriber at
  * the nexus.
  *
- * @param bank_url base URL of the bank, used by `wget' to check
- *        that the bank was started right.
+ * @param bc bank configuration of the bank
  * @return the process, or NULL if the process could not
  *         be started.
  */

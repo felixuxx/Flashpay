@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-bank-transfer.c
+ * @file taler-wire-gateway-client.c
  * @brief Execute wire transfer.
  * @author Christian Grothoff
  */

@@ -158,10 +158,28 @@
       <anchorfile>gnunet_pq_lib.h</anchorfile>
       <arglist>(const struct GNUNET_TIME_AbsoluteNBO *x)</arglist>
     </member>
+    <member kind="function">
+      <type>struct GNUNET_SQ_QueryParam</type>
+      <name>GNUNET_SQ_query_param_absolute_time</name>
+      <anchorfile>gnunet_sq_lib.h</anchorfile>
+      <arglist>(const struct GNUNET_TIME_Absolute *x)</arglist>
+    </member>
+    <member kind="function">
+      <type>struct GNUNET_SQ_QueryParam</type>
+      <name>GNUNET_PQ_query_param_absolute_time_nbo</name>
+      <anchorfile>gnunet_sq_lib.h</anchorfile>
+      <arglist>(const struct GNUNET_TIME_AbsoluteNBO *x)</arglist>
+    </member>
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_PQ_query_param_end</name>
       <anchorfile>gnunet_pq_lib.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>GNUNET_SQ_query_param_end</name>
+      <anchorfile>gnunet_sq_lib.h</anchorfile>
       <arglist></arglist>
     </member>
     <member kind="typedef">
@@ -169,6 +187,12 @@
       <name>GNUNET_PQ_ResultConverter</name>
       <anchorfile>gnunet_pq_lib.h</anchorfile>
       <arglist>)(void *cls, PGresult *result, int row, const char *fname, size_t *dst_size, void *dst)</arglist>
+    </member>
+    <member kind="typedef">
+      <type>int</type>
+      <name>GNUNET_SQ_ResultConverter</name>
+      <anchorfile>gnunet_sq_lib.h</anchorfile>
+      <arglist>)(void *cls, sqlite3_stmt *result, unsigned int column, size_t *dst_size, void *dst)</arglist>
     </member>
   </compound>
 </tagfile>

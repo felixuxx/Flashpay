@@ -583,7 +583,7 @@ TALER_ARL_amount_subtract_ (struct TALER_Amount *diff,
  * @param filename where is the addition called
  * @param functionname name of the function where the addition is called
  * @param line line number of the addition
- * @return #TALER_ARL_SR_NEGATIVE if the result was negative (and @a diff is now invalid),
+ * @return #TALER_ARL_SR_INVALID_NEGATIVE if the result was negative (and @a diff is now invalid),
  *         #TALER_ARL_SR_ZERO if the result was zero,
  *         #TALER_ARL_SR_POSITIVE if the result is positive
  */

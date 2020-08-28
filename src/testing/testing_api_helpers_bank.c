@@ -106,6 +106,7 @@ TALER_TESTING_has_in_name (const char *prog,
  * bank" function to do such tasks.  This function is also
  * responsible to create the exchange user at Nexus.
  *
+ * @param bc bank configuration of the bank
  * @return the pair of both service handles.  In case of
  *         errors, each element of the pair will be set to NULL.
  */

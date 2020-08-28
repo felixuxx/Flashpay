@@ -266,12 +266,11 @@ TAGFILES               = ../../contrib/gnunet.tag ../../contrib/microhttpd.tag
 GENERATE_TAGFILE       = taler-exchange.tag
 ALLEXTERNALS           = NO
 EXTERNAL_GROUPS        = YES
-PERL_PATH              = /usr/bin/perl
+
 #---------------------------------------------------------------------------
 # Configuration options related to the dot tool
 #---------------------------------------------------------------------------
 CLASS_DIAGRAMS         = YES
-MSCGEN_PATH            =
 HIDE_UNDOC_RELATIONS   = YES
 HAVE_DOT               = YES
 CLASS_GRAPH            = NO

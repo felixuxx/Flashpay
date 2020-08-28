@@ -234,7 +234,7 @@ typedef void
  * @param auditor the auditor handle; the auditor must be ready to operate
  * @param h_wire hash of merchant wire details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the auditor)
- * @param timestamp timestamp when the contract was finalized, must not be too far in the future
+ * @param exchange_timestamp timestamp when the contract was finalized, must not be too far in the future
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the auditor (can be zero if refunds are not allowed); must not be after the @a wire_deadline
  * @param amount_without_fee the amount confirmed to be wired by the exchange to the merchant
  * @param coin_pub coin’s public key

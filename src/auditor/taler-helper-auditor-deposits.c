@@ -96,7 +96,7 @@ struct DepositConfirmationContext
  * @param cls our `struct DepositConfirmationContext`
  * @param serial_id row of the @a dc in the database
  * @param dc the deposit confirmation we know
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERROR to stop iterating
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 static int
 test_dc (void *cls,
