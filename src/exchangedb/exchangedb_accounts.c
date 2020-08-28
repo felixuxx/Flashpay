@@ -52,6 +52,11 @@ struct FindAccountContext
    * Closure for @e cb.
    */
   void *cb_cls;
+
+  /**
+   * Set to #GNUNET_SYSERR if the configuration is invalid.
+   */
+  int res;
 };
 
 
@@ -86,6 +91,7 @@ check_for_account (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
                                section,
                                "PAYTO_URI");
+    ctx->res = GNUNET_SYSERR;
     return;
   }
   method = TALER_payto_get_method (payto_uri);
@@ -94,6 +100,7 @@ check_for_account (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "payto URI in config ([%s]/PAYTO_URI) malformed\n",
                 section);
+    ctx->res = GNUNET_SYSERR;
     GNUNET_free (payto_uri);
     return;
   }
@@ -135,20 +142,24 @@ check_for_account (void *cls,
  * @param cfg configuration to use
  * @param cb callback to invoke
  * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK if the configuration seems valid, #GNUNET_SYSERR if not
  */
-void
+int
 TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                 TALER_EXCHANGEDB_AccountCallback cb,
                                 void *cb_cls)
 {
-  struct FindAccountContext ctx;
+  struct FindAccountContext ctx = {
+    .cfg = cfg,
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .res = GNUNET_OK
+  };
 
-  ctx.cfg = cfg;
-  ctx.cb = cb;
-  ctx.cb_cls = cb_cls;
   GNUNET_CONFIGURATION_iterate_sections (cfg,
                                          &check_for_account,
                                          &ctx);
+  return ctx.res;
 }
 
 

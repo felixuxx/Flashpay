@@ -169,9 +169,14 @@ run (void *cls,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Signing /wire responses\n");
-  TALER_EXCHANGEDB_find_accounts (cfg,
-                                  &sign_account_data,
-                                  NULL);
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_find_accounts (cfg,
+                                      &sign_account_data,
+                                      NULL))
+  {
+    global_ret = 1;
+    return;
+  }
 }
 
 

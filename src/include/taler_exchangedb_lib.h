@@ -438,8 +438,9 @@ typedef void
  * @param cfg configuration to use
  * @param cb callback to invoke
  * @param cb_cls closure for @a cb
+ * @return #GNUNET_OK if the configuration seems valid, #GNUNET_SYSERR if not
  */
-void
+int
 TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                 TALER_EXCHANGEDB_AccountCallback cb,
                                 void *cb_cls);
