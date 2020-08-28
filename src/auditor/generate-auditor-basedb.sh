@@ -61,6 +61,7 @@ echo " FOUND"
 
 
 # Clean up
+
 DATA_DIR=`taler-config -f -c $CONF -s PATHS -o TALER_HOME`
 rm -rf $DATA_DIR || true
 
@@ -137,6 +138,12 @@ if [ 1 != $OK ]
 then
     exit_skip "Failed to launch services"
 fi
+
+# Setup merchant
+
+curl -H "Content-Type: application/json" -X POST -d '{"payto_uris":["payto://x-taler-bank/localhost:8082/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/private/instances
+
+
 echo " DONE"
 
 # run wallet CLI

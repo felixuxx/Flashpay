@@ -122,7 +122,6 @@ function post_audit () {
     taler-exchange-dbinit -g || exit_fail "exchange DB GC failed"
 
     cleanup
-    echo "DONE"
     echo -n "TeXing ."
     taler-helper-auditor-render.py test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json test-audit-wire.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
@@ -1882,10 +1881,11 @@ else
 fi
 
 # run tests with pre-build database, if one is available
-if test -x auditor-basedb.mpub
+if test -r auditor-basedb.mpub
 then
   check_with_database "auditor-basedb"
 else
+  echo "Lacking auditor-basedb.mpub, skipping test"
   fail=77
 fi
 

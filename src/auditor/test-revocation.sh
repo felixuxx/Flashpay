@@ -553,7 +553,7 @@ else
 fi
 
 # run tests with pre-build database, if one is available
-if test -x revoke-basedb.mpub
+if test -r revoke-basedb.mpub
 then
   check_with_database "revoke-basedb"
 else
