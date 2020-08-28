@@ -84,7 +84,7 @@ run (void *cls,
 {
   struct TALER_WireTransferIdentifierRawP wtid;
 
-  memset (&wtid, 0x5aff, sizeof (wtid));
+  memset (&wtid, 0x5a, sizeof (wtid));
 
   /* Route our commands through twister. */
   struct TALER_BANK_AuthenticationData exchange_auth_twisted;
