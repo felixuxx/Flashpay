@@ -168,6 +168,9 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'withdrawTestBalance' 
 
 export coins=$(taler-wallet-cli --wallet-db=$WALLET_DB advanced dump-coins)
 
+echo -n "COINS are:"
+echo $coins
+
 # Find coin we want to revoke
 export rc=$(echo "$coins" | jq -r '[.coins[] | select((.denom_value == "TESTKUDOS:2"))][0] | .coin_pub')
 # Find the denom
