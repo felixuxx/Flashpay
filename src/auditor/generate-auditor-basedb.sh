@@ -15,8 +15,19 @@
 #
 set -eu
 
+# Cleanup to run whenever we exit
+function cleanup()
+{
+    for n in `jobs -p`
+    do
+        kill $n 2> /dev/null || true
+    done
+    wait
+}
 
-trap "kill `jobs -p` &> /dev/null || true" ERR
+# Install cleanup handler (except for kill -9)
+trap cleanup EXIT
+
 
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
@@ -31,6 +42,8 @@ BASEDB=${1:-"auditor-basedb"}
 # Will be dropped, do NOT use anything that might be used
 # elsewhere
 TARGET_DB=taler-auditor-basedb
+
+WALLET_DB=${BASEDB:-"wallet"}.wdb
 
 # Configuration file will be edited, so we create one
 # from the template.
@@ -122,8 +135,6 @@ done
 
 if [ 1 != $OK ]
 then
-    kill `jobs -p`
-    wait
     exit_skip "Failed to launch services"
 fi
 echo " DONE"
@@ -148,8 +159,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
 
 
 echo "Shutting down services"
-kill `jobs -p`
-wait
+cleanup
 
 # Dump database
 echo "Dumping database"

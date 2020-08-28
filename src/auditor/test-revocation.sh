@@ -42,7 +42,10 @@ function exit_fail() {
 # Cleanup to run whenever we exit
 function cleanup()
 {
-    kill `jobs -p` >/dev/null 2>/dev/null || true
+    for n in `jobs -p`
+    do
+        kill $n 2> /dev/null || true
+    done
     wait
 }
 
@@ -117,9 +120,7 @@ function audit_only () {
 
 # Cleanup to run after the auditor
 function post_audit () {
-    kill -TERM `jobs -p` >/dev/null 2>/dev/null || true
-    echo -n "Waiting for servers to die ..."
-    wait
+    cleanup
     echo "DONE"
     echo -n "TeXing ."
     taler-helper-auditor-render.py test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json test-audit-wire.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
