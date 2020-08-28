@@ -1655,7 +1655,7 @@ echo "UPDATE auditor_denominations SET fee_withdraw_frac=5000000 WHERE coin_val=
 run_audit
 
 echo -n "Testing inconsistency detection... "
-AMOUNT=`jq -r .total_balance_summary_delta_plus < test-audit-reserves.json`
+AMOUNT=`jq -r .total_balance_summary_delta_minus < test-audit-reserves.json`
 if test "x$AMOUNT" == "xTESTKUDOS:0"
 then
     exit_fail "Reported total amount wrong: $AMOUNT"
@@ -1826,7 +1826,7 @@ check_with_database()
         fi
     done
     echo "Cleanup (disabled, leaving database $DB behind)"
-    dropdb $DB
+    # dropdb $DB
     rm -r $WIRE_FEE_DIR
 }
 

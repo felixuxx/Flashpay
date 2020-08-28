@@ -45,6 +45,10 @@ TARGET_DB=taler-auditor-basedb
 
 WALLET_DB=${BASEDB:-"wallet"}.wdb
 
+# delete existing wallet database
+rm -f $WALLET_DB
+
+
 # Configuration file will be edited, so we create one
 # from the template.
 CONF=generate-auditor-basedb-prod.conf
@@ -68,6 +72,7 @@ rm -rf $DATA_DIR || true
 # reset database
 dropdb $TARGET_DB >/dev/null 2>/dev/null || true
 createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
+
 
 # obtain key configuration data
 MASTER_PRIV_FILE=`taler-config -f -c $CONF -s EXCHANGE -o MASTER_PRIV_FILE`
@@ -141,13 +146,14 @@ fi
 
 # Setup merchant
 
-curl -H "Content-Type: application/json" -X POST -d '{"payto_uris":["payto://x-taler-bank/localhost:8082/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/private/instances
+curl -H "Content-Type: application/json" -X POST -d '{"payto_uris":["payto://x-taler-bank/localhost/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/private/instances
 
 
 echo " DONE"
 
 # run wallet CLI
 echo "Running wallet"
+
 
 taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
   "$(jq -n '

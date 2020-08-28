@@ -491,6 +491,8 @@ handle_reserve_out (void *cls,
   struct ReserveSummary *rs;
   const struct TALER_DenominationKeyValidityPS *issue;
   struct TALER_Amount withdraw_fee;
+  struct TALER_Amount auditor_value;
+  struct TALER_Amount auditor_amount_with_fee;
   struct GNUNET_TIME_Absolute valid_start;
   struct GNUNET_TIME_Absolute expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
@@ -578,6 +580,23 @@ handle_reserve_out (void *cls,
     return GNUNET_OK;   /* exit function here, we cannot add this to the legitimate withdrawals */
   }
 
+  TALER_amount_ntoh (&withdraw_fee,
+                     &issue->fee_withdraw);
+  TALER_amount_ntoh (&auditor_value,
+                     &issue->value);
+  TALER_ARL_amount_add (&auditor_amount_with_fee,
+                        &auditor_value,
+                        &withdraw_fee);
+  if (0 !=
+      TALER_amount_cmp (&auditor_amount_with_fee,
+                        amount_with_fee))
+  {
+    report_row_inconsistency ("withdraw",
+                              rowid,
+                              "amount with fee from exchange does not match denomination value plus fee");
+  }
+
+
   GNUNET_CRYPTO_hash (reserve_pub,
                       sizeof (*reserve_pub),
                       &key);
@@ -587,7 +606,7 @@ handle_reserve_out (void *cls,
   {
     rs = GNUNET_new (struct ReserveSummary);
     rs->reserve_pub = *reserve_pub;
-    rs->total_out = *amount_with_fee;
+    rs->total_out = auditor_amount_with_fee;
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (amount_with_fee->currency,
                                           &rs->total_in));
@@ -612,14 +631,12 @@ handle_reserve_out (void *cls,
   {
     TALER_ARL_amount_add (&rs->total_out,
                           &rs->total_out,
-                          amount_with_fee);
+                          &auditor_amount_with_fee);
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Reserve `%s' reduced by %s from withdraw\n",
               TALER_B2S (reserve_pub),
-              TALER_amount2s (amount_with_fee));
-  TALER_amount_ntoh (&withdraw_fee,
-                     &issue->fee_withdraw);
+              TALER_amount2s (&auditor_amount_with_fee));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Increasing withdraw profits by fee %s\n",
               TALER_amount2s (&withdraw_fee));

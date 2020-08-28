@@ -1017,7 +1017,7 @@ wire_out_cb (void *cls,
          we should count the wire transfer as entirely spurious, and
          additionally consider the justified wire transfer as missing. */
       TALER_ARL_report (report_wire_out_inconsistencies,
-                        json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+                        json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s, s:s}",
                                    "row", (json_int_t) rowid,
                                    "amount_wired", TALER_JSON_from_amount (
                                      &roi->details.amount),
@@ -1027,12 +1027,13 @@ wire_out_cb (void *cls,
                                    "timestamp", TALER_ARL_json_from_time_abs (
                                      date),
                                    "diagnostic", "receiver account mismatch",
+                                   "target", payto_uri,
                                    "account_section", wa->section_name));
       TALER_ARL_amount_add (&total_bad_amount_out_plus,
                             &total_bad_amount_out_plus,
                             &roi->details.amount);
       TALER_ARL_report (report_wire_out_inconsistencies,
-                        json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s}",
+                        json_pack ("{s:I, s:o, s:o, s:o, s:o, s:s, s:s, s:s}",
                                    "row", (json_int_t) rowid,
                                    "amount_wired", TALER_JSON_from_amount (
                                      &zero),
@@ -1042,6 +1043,7 @@ wire_out_cb (void *cls,
                                    "timestamp", TALER_ARL_json_from_time_abs (
                                      date),
                                    "diagnostic", "receiver account mismatch",
+                                   "target", roi->details.credit_account_url,
                                    "account_section", wa->section_name));
       TALER_ARL_amount_add (&total_bad_amount_out_minus,
                             &total_bad_amount_out_minus,
