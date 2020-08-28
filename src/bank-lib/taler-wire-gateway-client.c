@@ -617,7 +617,7 @@ run (void *cls,
     }
   }
   if ( (GNUNET_YES == incoming_history) &&
-       (GNUNET_YES == incoming_history) )
+       (GNUNET_YES == outgoing_history) )
   {
     fprintf (stderr,
              "Please specify only -i or -o, but not both.\n");
