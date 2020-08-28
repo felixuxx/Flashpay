@@ -363,7 +363,7 @@ handle_melt_finished (void *cls,
       mh->melt_cb (mh->melt_cb_cls,
                    &hr,
                    noreveal_index,
-                   (0 == response_code)
+                   (0 == hr.http_status)
                    ? NULL
                    : &exchange_pub);
       mh->melt_cb = NULL;
