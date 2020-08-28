@@ -83,11 +83,12 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_WireTransferIdentifierRawP wtid;
-
-  memset (&wtid, 0x5a, sizeof (wtid));
-
   /* Route our commands through twister. */
   struct TALER_BANK_AuthenticationData exchange_auth_twisted;
+
+  memset (&wtid,
+          0x5a,
+          sizeof (wtid));
   memcpy (&exchange_auth_twisted,
           &bc.exchange_auth,
           sizeof (struct TALER_BANK_AuthenticationData));
