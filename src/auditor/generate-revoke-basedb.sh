@@ -7,8 +7,18 @@
 #
 set -eu
 
+# Cleanup to run whenever we exit
+function cleanup()
+{
+    for n in `jobs -p`
+    do
+        kill $n 2> /dev/null || true
+    done
+    wait
+}
 
-trap "kill `jobs -p` &> /dev/null || true" ERR
+# Install cleanup handler (except for kill -9)
+trap cleanup EXIT
 
 # Exit, with status code "skip" (no 'real' failure)
 function exit_skip() {
@@ -131,11 +141,15 @@ done
 
 if [ 1 != $OK ]
 then
-    kill `jobs -p`
-    wait
+    cleanup
     exit_skip "Failed to launch services"
 fi
 echo " DONE"
+
+# Setup merchant
+
+curl -H "Content-Type: application/json" -X POST -d '{"payto_uris":["payto://x-taler-bank/localhost:8082/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/private/instances
+
 
 # run wallet CLI
 echo "Running wallet"
@@ -303,8 +317,7 @@ taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
 echo "Bought something with refresh-recouped coin"
 
 echo "Shutting down services"
-kill `jobs -p`
-wait
+cleanup
 
 
 # Dump database
