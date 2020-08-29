@@ -313,7 +313,7 @@ done
 
 # Now we buy something, only the coins resulting from recoup+refresh will be
 # used, as other ones are suspended
-taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'testPay' \
+taler-wallet-cli $TIMETRAVEL --no-throttle --wallet-db=$WALLET_DB api 'testPay' \
   "$(jq -n '
     {
       amount: "TESTKUDOS:0.02",
