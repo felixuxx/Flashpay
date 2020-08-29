@@ -52,7 +52,7 @@ invalidate (struct TALER_Amount *a)
  * @return #GNUNET_OK if the string is a valid monetary amount specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_string_to_amount (const char *str,
                         struct TALER_Amount *amount)
 {
@@ -191,7 +191,7 @@ TALER_string_to_amount (const char *str,
  * @return #GNUNET_OK if the string is a valid amount specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_string_to_amount_nbo (const char *str,
                             struct TALER_AmountNBO *amount_nbo)
 {
@@ -255,7 +255,7 @@ TALER_amount_ntoh (struct TALER_Amount *res,
  * @return #GNUNET_OK if @a cur is a valid currency specification,
  *         #GNUNET_SYSERR if it is invalid.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_amount_get_zero (const char *cur,
                        struct TALER_Amount *amount)
 {
@@ -280,10 +280,10 @@ TALER_amount_get_zero (const char *cur,
  * @param amount amount to check
  * @return #GNUNET_OK if @a amount is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_amount_is_valid (const struct TALER_Amount *amount)
 {
-  return ('\0' != amount->currency[0]);
+  return ('\0' != amount->currency[0]) ? GNUNET_OK : GNUNET_NO;
 }
 
 
@@ -294,10 +294,10 @@ TALER_amount_is_valid (const struct TALER_Amount *amount)
  * @return #GNUNET_YES if valid,
  *         #GNUNET_NO if invalid
  */
-static int
+static enum GNUNET_GenericReturnValue
 test_valid_nbo (const struct TALER_AmountNBO *a)
 {
-  return ('\0' != a->currency[0]);
+  return ('\0' != a->currency[0]) ? GNUNET_YES : GNUNET_NO;
 }
 
 
@@ -310,7 +310,7 @@ test_valid_nbo (const struct TALER_AmountNBO *a)
  *         #GNUNET_NO if the currencies are different,
  *         #GNUNET_SYSERR if either amount is invalid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_amount_cmp_currency (const struct TALER_Amount *a1,
                            const struct TALER_Amount *a2)
 {
@@ -333,7 +333,7 @@ TALER_amount_cmp_currency (const struct TALER_Amount *a1,
  *         #GNUNET_NO if the currencies are different,
  *         #GNUNET_SYSERR if either amount is invalid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_amount_cmp_currency_nbo (const struct TALER_AmountNBO *a1,
                                const struct TALER_AmountNBO *a2)
 {
@@ -556,7 +556,7 @@ TALER_amount_add (struct TALER_Amount *sum,
  *         #GNUNET_NO if value was already normalized
  *         #GNUNET_SYSERR if value was invalid or could not be normalized
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_amount_normalize (struct TALER_Amount *amount)
 {
   uint32_t overflow;
@@ -732,7 +732,7 @@ TALER_amount_divide (struct TALER_Amount *result,
  * @return #GNUNET_OK on success, #GNUNET_NO if rounding was unnecessary,
  *         #GNUNET_SYSERR if the amount or currency or @a round_unit was invalid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_amount_round_down (struct TALER_Amount *amount,
                          const struct TALER_Amount *round_unit)
 {
