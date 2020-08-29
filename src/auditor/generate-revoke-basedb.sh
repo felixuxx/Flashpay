@@ -183,7 +183,7 @@ export susp=$(echo "$coins" | jq --arg rc "$rc" '[.coins[] | select(.coin_pub !=
 # Do the revocation
 taler-exchange-keyup -o e2a2.dat -c $CONF -r $rd
 taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a2.dat -o a2e2.dat -m $MASTER_PUB
-rm e2a2.dat
+rm -f e2a2.dat
 mv a2e2.dat $ABD
 
 # Restart the exchange...
@@ -277,7 +277,7 @@ export susp=$(echo "$coins" | jq --arg freshc "$freshc" '[.coins[] | select(.coi
 echo "Revoking ${fresh_denom} (to affect coin ${freshc})"
 taler-exchange-keyup -c $CONF -o e2a3.dat -r $fresh_denom
 taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a3.dat -o a2e3.dat -m $MASTER_PUB
-rm e2a3.dat
+rm -f e2a3.dat
 mv a2e3.dat $ABD
 
 # Restart the exchange...
@@ -343,10 +343,10 @@ date +%s > ${BASEDB}.age
 
 
 # clean up
-echo "Final clean up (disabled)"
+echo "Final clean up"
 dropdb $TARGET_DB
-rm -r $DATA_DIR || true
-rm $CONF
+rm -rf $DATA_DIR || true
+rm -f $CONF
 rm -r $TMP_DIR
 
 echo "====================================="
