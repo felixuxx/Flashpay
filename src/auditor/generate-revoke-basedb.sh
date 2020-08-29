@@ -165,6 +165,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'withdrawTestBalance' 
     --arg EXCHANGE_URL $EXCHANGE_URL
   )"
 
+taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB run-until-done
 
 export coins=$(taler-wallet-cli --wallet-db=$WALLET_DB advanced dump-coins)
 
@@ -312,9 +313,16 @@ done
 
 # Now we buy something, only the coins resulting from recoup+refresh will be
 # used, as other ones are suspended
-taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB testing test-pay \
-                 -m $MERCHANT_URL -k sandbox \
-                 -a "TESTKUDOS:0.02" -s "bar"
+taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'testPay' \
+  "$(jq -n '
+    {
+      amount: "TESTKUDOS:0.02",
+      merchantApiKey: "sandbox",
+      merchantBaseUrl: $MERCHANT_URL,
+      summary: "bar",
+    }' \
+    --arg MERCHANT_URL $MERCHANT_URL
+  )"
 taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB run-until-done
 
 echo "Bought something with refresh-recouped coin"
