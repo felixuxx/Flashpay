@@ -254,11 +254,20 @@ refresh_check_melt (struct MHD_Connection *connection,
                             &spent))
   {
     struct TALER_Amount coin_residual;
+    struct TALER_Amount spent_already;
 
+    /* First subtract the melt cost from 'spent' to
+       compute the total amount already spent of the coin */
     GNUNET_assert (0 <=
-                   TALER_amount_subtract (&coin_residual,
+                   TALER_amount_subtract (&spent_already,
                                           &spent,
                                           &rmc->refresh_session.amount_with_fee));
+    /* The residual coin value is the original coin value minus
+       what we have spent (before the melt) */
+    GNUNET_assert (0 <=
+                   TALER_amount_subtract (&coin_residual,
+                                          &rmc->coin_value,
+                                          &spent_already));
     *mhd_ret = reply_melt_insufficient_funds (
       connection,
       &rmc->refresh_session.coin.coin_pub,
