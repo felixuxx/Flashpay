@@ -36,6 +36,9 @@ EXTRA_DIST = \
   $(ppen_DATA) \
   update-tos.sh \
   update-pp.sh \
+  gana-update.sh \
+  gana/gnu-taler-error-codes/registry.rec \
+  gana/gnu-taler-error-codes/Makefile \
   tos/Makefile \
   tos/README \
   tos/tos.rst \

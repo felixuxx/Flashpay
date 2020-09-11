@@ -20,7 +20,9 @@ talerinclude_HEADERS = \
   taler_util.h \
   taler_mhd_lib.h \
   taler_pq_lib.h \
-  taler_signatures.h
+  taler_signatures.h \
+  taler_sq_lib.h \
+  taler_twister_testing_lib.h
 
 EXTRA_DIST = \
   backoff.h \
