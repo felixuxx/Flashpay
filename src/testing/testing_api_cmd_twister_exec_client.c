@@ -1050,7 +1050,7 @@ TALER_TESTING_cmd_modify_object_ul (const char *label,
  *
  * @param label command label
  * @param config_filename configuration filename.
- * @param header name of the header to modify.
+ * @param path identifies the location to modify
  * @param value value to set the header to.
  * @return the command
  */

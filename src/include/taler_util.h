@@ -351,7 +351,7 @@ enum TALER_EXCHANGE_YesNoAll
  * @param connection connection to take query argument from
  * @param arg argument to try for
  * @param default_val value to assign if the argument is not present
- * @param[out] value to set
+ * @param[out] yna value to set
  * @return true on success, false if the parameter was malformed
  */
 bool

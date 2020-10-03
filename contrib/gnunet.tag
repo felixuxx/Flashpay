@@ -118,6 +118,12 @@
     </member>
     <member kind="define">
       <type>#define</type>
+      <anchorfile>gnunet_sq_lib.h</anchorfile>
+      <name>GNUNET_SQ_result_spec_absolute_time_nbo</name>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
       <anchorfile>gnunet_pq_lib.h</anchorfile>
       <name>GNUNET_PQ_result_spec_auto_from_type</name>
       <arglist>(name, dst)</arglist>
@@ -161,6 +167,12 @@
     <member kind="function">
       <type>struct GNUNET_SQ_QueryParam</type>
       <name>GNUNET_SQ_query_param_absolute_time</name>
+      <anchorfile>gnunet_sq_lib.h</anchorfile>
+      <arglist>(const struct GNUNET_TIME_Absolute *x)</arglist>
+    </member>
+    <member kind="function">
+      <type>struct GNUNET_SQ_QueryParam</type>
+      <name>GNUNET_SQ_query_param_absolute_time_nbo</name>
       <anchorfile>gnunet_sq_lib.h</anchorfile>
       <arglist>(const struct GNUNET_TIME_Absolute *x)</arglist>
     </member>

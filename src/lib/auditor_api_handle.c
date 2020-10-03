@@ -187,7 +187,7 @@ free_version_request (struct VersionRequest *vr)
  * in the @a key_data.
  *
  * @param[in] resp_obj JSON object to parse
- * @param[out] vi where to store the results we decoded
+ * @param[out] auditor where to store the results we decoded
  * @param[out] vc where to store version compatibility data
  * @return #TALER_EC_NONE on success
  */

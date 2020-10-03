@@ -364,7 +364,7 @@ struct TALER_AUDITORDB_DepositConfirmation
  * @param cls closure
  * @param serial_id location of the @a dc in the database
  * @param dc the deposit confirmation itself
- * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERROR to stop iterating
+ * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop iterating
  */
 typedef int
 (*TALER_AUDITORDB_DepositConfirmationCallback)(

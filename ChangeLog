@@ -1,3 +1,8 @@
+Sat 03 Oct 2020 03:59:45 PM CEST
+    Various minor fixes, code cleanup, updates to more recent
+    GNUnet APIs, new error codes, and timetravel test support.
+    Releasing GNU Taler 0.8.0. -CG
+
 Sun 29 Mar 2020 08:53:46 PM CEST
     Changed protocol to be more RESTful. Expanded auditor tests.
     Completed transition to new wire gateway API for bank interaction.

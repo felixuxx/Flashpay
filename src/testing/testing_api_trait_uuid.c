@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/testing_api_trait_uuid.c
+ * @file testing/testing_api_trait_uuid.c
  * @brief offer any trait that is passed over as a uuid.
  * @author Jonathan Buchanan
  */
