@@ -115,7 +115,7 @@ mv a2e.dat $ABD
 
 # Launch services
 echo "Launching services"
-taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve-http &
+taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
