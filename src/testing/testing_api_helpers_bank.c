@@ -241,8 +241,6 @@ TALER_TESTING_run_bank (const char *config_filename,
   unsigned int iter;
   char *wget_cmd;
   char *database;
-  char *serve_cfg;
-  char *serve_arg;
   struct GNUNET_CONFIGURATION_Handle *cfg;
 
   cfg = GNUNET_CONFIGURATION_create ();
@@ -268,27 +266,7 @@ TALER_TESTING_run_bank (const char *config_filename,
     GNUNET_CONFIGURATION_destroy (cfg);
     exit (77);
   }
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (cfg,
-                                             "bank",
-                                             "serve",
-                                             &serve_cfg))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
-                               "bank",
-                               "serve");
-    GNUNET_break (0);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    GNUNET_free (database);
-    exit (77);
-  }
   GNUNET_CONFIGURATION_destroy (cfg);
-
-  serve_arg = "serve-http";
-  if (0 != strcmp ("http", serve_cfg))
-    serve_arg = "serve-uwsgi";
-  GNUNET_free (serve_cfg);
   bank_proc = GNUNET_OS_start_process (
     GNUNET_OS_INHERIT_STD_NONE,
     NULL, NULL, NULL,
@@ -296,7 +274,7 @@ TALER_TESTING_run_bank (const char *config_filename,
     "taler-bank-manage-testing",
     config_filename,
     database,
-    serve_arg, NULL);
+    "serve", NULL);
   GNUNET_free (database);
   if (NULL == bank_proc)
   {
