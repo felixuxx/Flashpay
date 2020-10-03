@@ -57,7 +57,7 @@ trap cleanup EXIT
 function pre_audit () {
     # Launch bank
     echo -n "Launching bank "
-    taler-bank-manage-testing $CONF postgres:///$DB serve-http 2>bank.err >bank.log &
+    taler-bank-manage-testing $CONF postgres:///$DB serve 2>bank.err >bank.log &
     for n in `seq 1 80`
     do
         echo -n "."
@@ -370,7 +370,7 @@ echo -n "Testing inconsistency detection... "
 ROW=`jq .reserve_in_amount_inconsistencies[0].row < test-audit-wire.json`
 if test $ROW != 1
 then
-    exit_fail "Row wrong"
+    exit_fail "Row $ROW is wrong"
 fi
 WIRED=`jq -r .reserve_in_amount_inconsistencies[0].amount_wired < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:10"
