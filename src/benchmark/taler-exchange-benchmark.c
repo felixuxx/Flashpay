@@ -381,7 +381,8 @@ run (void *cls,
       wl = add_label (withdraw_label);
       GNUNET_asprintf (&order_enc,
                        "{\"nonce\": %llu}",
-                       i + (howmany_coins * j));
+                       ((unsigned long long) i) + (howmany_coins
+                                                   * (unsigned long long) j));
       unit[0] =
         TALER_TESTING_cmd_withdraw_with_retry
           (TALER_TESTING_cmd_withdraw_amount (wl,

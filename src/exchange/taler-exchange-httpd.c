@@ -897,7 +897,7 @@ write_stats (void)
   if (NULL == benchmark_dir)
     return;
   GNUNET_asprintf (&s,
-                   "%s/taler-exchange-%llu-%llu.txt",
+                   "%s/taler-exchange-%llu.txt",
                    benchmark_dir,
                    (unsigned long long) pid);
   fh = GNUNET_DISK_file_open (s,
