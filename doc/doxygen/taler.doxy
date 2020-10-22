@@ -148,7 +148,13 @@ FILE_PATTERNS          = *.c \
 RECURSIVE              = YES
 EXCLUDE                =
 EXCLUDE_SYMLINKS       = NO
-EXCLUDE_PATTERNS       = */test_* */.svn/* */.git/* */perf_* .*
+EXCLUDE_PATTERNS       = */test_* \
+                         */.svn/* \
+                         */.git/* \
+                         */perf_* .* \
+                         .* \
+                         */src/mustach/mustach* \
+                         */gnu-taler-error-codes/*
 EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       = *
