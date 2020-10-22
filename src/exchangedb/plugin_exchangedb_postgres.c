@@ -1488,7 +1488,6 @@ postgres_start (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param session the database connection
- * @return #GNUNET_OK on success
  */
 static void
 postgres_rollback (void *cls,
