@@ -2545,7 +2545,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
     {
       /* Option not allowed by configuration */
       return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
+                                         MHD_HTTP_FORBIDDEN,
                                          TALER_EC_KEYS_TIMETRAVEL_FORBIDDEN,
                                          NULL);
     }

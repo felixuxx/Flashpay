@@ -159,8 +159,7 @@ main (int argc,
                    (unsigned long long) start.abs_value_us);
   GNUNET_asprintf (&revdir,
                    "%s/revocations/",
-                   tmpdir,
-                   TALER_EXCHANGEDB_DIR_DENOMINATION_KEYS);
+                   tmpdir);
   EXITIF (GNUNET_OK !=
           TALER_EXCHANGEDB_denomination_key_write (tmpfile,
                                                    &dki));

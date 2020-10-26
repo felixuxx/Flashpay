@@ -461,7 +461,7 @@ refreshes_reveal_transaction (void *cls,
     {
       GNUNET_break_op (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             MHD_HTTP_BAD_REQUEST,
                                              TALER_EC_REVEAL_AMOUNT_INSUFFICIENT,
                                              NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
