@@ -50,6 +50,8 @@ TALER_language_matches (const char *language_pattern,
     char *qp = strtok_r (NULL, ";", &sptr2);
     double q = 1.0;
 
+    if (NULL == lp)
+      continue; /* should be impossible, but makes static analysis happy */
     while (isspace ((int) *lp))
       lp++;
     if (NULL != qp)

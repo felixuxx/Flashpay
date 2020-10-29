@@ -2501,7 +2501,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC,  // FIXME: use more GENERIC code!
                                          have_cherrypick);
     }
     /* The following multiplication may overflow; but this should not really
@@ -2530,7 +2530,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC,
+                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC, // FIXME: use more GENERIC code!
                                          have_fakenow);
     }
     if (TEH_allow_keys_timetravel)
