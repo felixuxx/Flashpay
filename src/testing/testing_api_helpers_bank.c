@@ -120,7 +120,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   char *curl_check_cmd;
 
   nexus_proc = GNUNET_OS_start_process (
-    GNUNET_OS_INHERIT_STD_NONE,
+    GNUNET_OS_INHERIT_STD_ERR,
     NULL, NULL, NULL,
     "libeufin-nexus",
     "libeufin-nexus",
@@ -165,7 +165,7 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
   fprintf (stderr, "\n");
 
   sandbox_proc = GNUNET_OS_start_process (
-    GNUNET_OS_INHERIT_STD_NONE,
+    GNUNET_OS_INHERIT_STD_ERR,
     NULL, NULL, NULL,
     "libeufin-sandbox",
     "libeufin-sandbox",
@@ -268,7 +268,7 @@ TALER_TESTING_run_bank (const char *config_filename,
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   bank_proc = GNUNET_OS_start_process (
-    GNUNET_OS_INHERIT_STD_NONE,
+    GNUNET_OS_INHERIT_STD_ERR,
     NULL, NULL, NULL,
     "taler-bank-manage-testing",
     "taler-bank-manage-testing",
@@ -524,9 +524,11 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   /* DB preparation */
   if (GNUNET_YES == reset_db)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Flushing bank database\n");
     if (NULL ==
         (dbreset_proc = GNUNET_OS_start_process (
-           GNUNET_OS_INHERIT_STD_NONE,
+           GNUNET_OS_INHERIT_STD_ERR,
            NULL, NULL, NULL,
            "taler-bank-manage",
            "taler-bank-manage",
@@ -542,7 +544,6 @@ TALER_TESTING_prepare_bank (const char *config_filename,
       GNUNET_CONFIGURATION_destroy (cfg);
       return GNUNET_SYSERR;
     }
-    GNUNET_free (database);
 
     if (GNUNET_SYSERR ==
         GNUNET_OS_process_wait_status (dbreset_proc,
@@ -552,17 +553,21 @@ TALER_TESTING_prepare_bank (const char *config_filename,
       GNUNET_OS_process_destroy (dbreset_proc);
       GNUNET_break (0);
       GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_free (database);
       return GNUNET_SYSERR;
     }
     if ( (type == GNUNET_OS_PROCESS_EXITED) &&
          (0 != code) )
     {
       fprintf (stderr,
-               "Failed to setup database\n");
+               "Failed to setup database `%s'\n",
+               database);
       GNUNET_break (0);
       GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_free (database);
       return GNUNET_SYSERR;
     }
+    GNUNET_free (database);
     if ( (type != GNUNET_OS_PROCESS_EXITED) ||
          (0 != code) )
     {
@@ -591,11 +596,14 @@ TALER_TESTING_prepare_bank (const char *config_filename,
               "Using pybank %s on port %u\n",
               bc->exchange_auth.wire_gateway_url,
               (unsigned int) port);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "exchange payto: %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "exchange payto: %s\n",
               bc->exchange_payto);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "user42_payto: %s\n",
               bc->user42_payto);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO, "user42_payto: %s\n",
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "user43_payto: %s\n",
               bc->user43_payto);
   return GNUNET_OK;
 }

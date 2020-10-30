@@ -220,8 +220,28 @@ confirmation_cb (void *cls,
   fts->reserve_history.details.in_details.wire_reference_size
     = sizeof (fts->row_id_nbo);
   fts->aih = NULL;
-  if (MHD_HTTP_OK != http_status)
+  switch (http_status)
   {
+  case MHD_HTTP_OK:
+    fts->serial_id = serial_id;
+    fts->timestamp = timestamp;
+    TALER_TESTING_interpreter_next (is);
+    return;
+  case MHD_HTTP_UNAUTHORIZED:
+    switch (fts->auth.method)
+    {
+    case TALER_BANK_AUTH_NONE:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Authentication required, but none configure.\n");
+      break;
+    case TALER_BANK_AUTH_BASIC:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Basic authentication (%s) failed.\n",
+                  fts->auth.details.basic.username);
+      break;
+    }
+    break;
+  default:
     if (0 != fts->do_retry)
     {
       fts->do_retry--;
@@ -229,8 +249,8 @@ confirmation_cb (void *cls,
            (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
-        GNUNET_log
-          (GNUNET_ERROR_TYPE_INFO,
+        GNUNET_log (
+          GNUNET_ERROR_TYPE_INFO,
           "Retrying fakebank transfer failed with %u/%d\n",
           http_status,
           (int) ec);
@@ -241,25 +261,21 @@ confirmation_cb (void *cls,
           fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff,
                                                          MAX_BACKOFF);
         fts->is->commands[fts->is->ip].num_tries++;
-        fts->retry_task = GNUNET_SCHEDULER_add_delayed
-                            (fts->backoff,
-                            &do_retry,
-                            fts);
+        fts->retry_task = GNUNET_SCHEDULER_add_delayed (
+          fts->backoff,
+          &do_retry,
+          fts);
         return;
       }
     }
-    GNUNET_break (0);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Fakebank returned HTTP status %u/%d\n",
-                http_status,
-                (int) ec);
-    TALER_TESTING_interpreter_fail (is);
-    return;
+    break;
   }
-
-  fts->serial_id = serial_id;
-  fts->timestamp = timestamp;
-  TALER_TESTING_interpreter_next (is);
+  GNUNET_break (0);
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "Fakebank returned HTTP status %u/%d\n",
+              http_status,
+              (int) ec);
+  TALER_TESTING_interpreter_fail (is);
 }
 
 
