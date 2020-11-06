@@ -1302,11 +1302,13 @@ main (int argc,
   int fh = -1;
   enum TALER_MHD_GlobalOptions go;
 
-  if (0 >=
-      GNUNET_GETOPT_run ("taler-exchange-httpd",
-                         options,
-                         argc, argv))
+  ret = GNUNET_GETOPT_run ("taler-exchange-httpd",
+                           options,
+                           argc, argv);
+  if (ret < 0)
     return 1;
+  if (0 == ret)
+    return 0;
   if (0 == num_threads)
   {
     cpu_set_t mask;
