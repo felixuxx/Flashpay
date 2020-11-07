@@ -355,7 +355,7 @@ reveal_cb (void *cls,
     {
       rrs->do_retry--;
       if ( (0 == hr->http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -363,7 +363,7 @@ reveal_cb (void *cls,
                     hr->http_status,
                     (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
           rrs->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           rrs->backoff = GNUNET_TIME_randomized_backoff (rrs->backoff,
@@ -592,7 +592,7 @@ link_cb (void *cls,
     {
       rls->do_retry--;
       if ( (0 == hr->http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -600,7 +600,7 @@ link_cb (void *cls,
                     hr->http_status,
                     (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
           rls->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           rls->backoff = GNUNET_TIME_randomized_backoff (rls->backoff,
@@ -895,7 +895,7 @@ melt_cb (void *cls,
     {
       rms->do_retry--;
       if ( (0 == hr->http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -903,7 +903,7 @@ melt_cb (void *cls,
                     hr->http_status,
                     (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
           rms->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           rms->backoff = GNUNET_TIME_randomized_backoff (rms->backoff,

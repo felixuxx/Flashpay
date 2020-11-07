@@ -219,7 +219,7 @@ handle_wire_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -242,7 +242,7 @@ handle_wire_finished (void *cls,
         /* bogus reply */
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_SERVER_JSON_INVALID;
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       if (0 == (num_accounts = json_array_size (accounts)))
@@ -251,7 +251,7 @@ handle_wire_finished (void *cls,
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (spec);
         hr.http_status = 0;
-        hr.ec = TALER_EC_SERVER_JSON_INVALID;
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       if (NULL == (fm = parse_fees (fees)))
@@ -260,7 +260,7 @@ handle_wire_finished (void *cls,
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (spec);
         hr.http_status = 0;
-        hr.ec = TALER_EC_SERVER_JSON_INVALID;
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
 
@@ -289,7 +289,7 @@ handle_wire_finished (void *cls,
             /* bogus reply */
             GNUNET_break_op (0);
             hr.http_status = 0;
-            hr.ec = TALER_EC_SERVER_SIGNATURE_INVALID;
+            hr.ec = TALER_EC_EXCHANGE_WIRE_SIGNATURE_INVALID;
             break;
           }
           if (GNUNET_OK !=
@@ -300,7 +300,7 @@ handle_wire_finished (void *cls,
             /* bogus reply */
             GNUNET_break_op (0);
             hr.http_status = 0;
-            hr.ec = TALER_EC_SERVER_JSON_INVALID;
+            hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
             break;
           }
           if (NULL == (method = TALER_payto_get_method (wa->payto_uri)))
@@ -308,7 +308,7 @@ handle_wire_finished (void *cls,
             /* bogus reply */
             GNUNET_break_op (0);
             hr.http_status = 0;
-            hr.ec = TALER_EC_SERVER_JSON_INVALID;
+            hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
             break;
           }
           if (NULL == (wa->fees = lookup_fee (fm,
@@ -317,7 +317,7 @@ handle_wire_finished (void *cls,
             /* bogus reply */
             GNUNET_break_op (0);
             hr.http_status = 0;
-            hr.ec = TALER_EC_SERVER_JSON_INVALID;
+            hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
             GNUNET_free (method);
             break;
           }

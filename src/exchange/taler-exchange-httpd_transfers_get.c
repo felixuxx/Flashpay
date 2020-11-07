@@ -105,7 +105,7 @@ reply_transfer_details (struct MHD_Connection *connection,
   {
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_JSON_ALLOCATION_FAILURE,
+                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        "json_array() failed");
 
   }
@@ -144,7 +144,7 @@ reply_transfer_details (struct MHD_Connection *connection,
       GNUNET_CRYPTO_hash_context_abort (hash_context);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_JSON_ALLOCATION_FAILURE,
+                                         TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                          "json_array_append_new() failed");
     }
   }
@@ -166,7 +166,7 @@ reply_transfer_details (struct MHD_Connection *connection,
     json_decref (deposits);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        "no keys");
   }
 
@@ -445,8 +445,8 @@ get_transfer_deposits (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_TRANSFERS_GET_DB_FETCH_FAILED,
-                                             NULL);
+                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                             "wire transfer");
     }
     return qs;
   }
@@ -455,15 +455,15 @@ get_transfer_deposits (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_TRANSFERS_GET_DB_INCONSISTENT,
-                                           NULL);
+                                           TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+                                           "wire history malformed");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_NO == ctx->is_valid)
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_TRANSFERS_GET_WTID_NOT_FOUND,
+                                           TALER_EC_EXCHANGE_TRANSFERS_GET_WTID_NOT_FOUND,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -484,7 +484,7 @@ get_transfer_deposits (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_TRANSFERS_GET_WIRE_FEE_NOT_FOUND,
+                                             TALER_EC_EXCHANGE_TRANSFERS_GET_WIRE_FEE_NOT_FOUND,
                                              NULL);
     }
     return qs;
@@ -497,7 +497,7 @@ get_transfer_deposits (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_TRANSFERS_GET_WIRE_FEE_INCONSISTENT,
+                                           TALER_EC_EXCHANGE_TRANSFERS_GET_WIRE_FEE_INCONSISTENT,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -534,7 +534,7 @@ TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_TRANSFERS_INVALID_WTID,
+                                       TALER_EC_EXCHANGE_TRANSFERS_GET_WTID_MALFORMED,
                                        args[0]);
   }
   if (GNUNET_OK !=

@@ -194,12 +194,12 @@ reserve_withdraw_cb (void *cls,
   {
     if (0 != ws->do_retry)
     {
-      if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
+      if (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
         ws->do_retry--; /* we don't count reserve unknown as failures here */
       if ( (0 == hr->http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
-           (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS == hr->ec) ||
-           (TALER_EC_WITHDRAW_RESERVE_UNKNOWN == hr->ec) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
+           (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS == hr->ec) ||
+           (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN == hr->ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -207,9 +207,9 @@ reserve_withdraw_cb (void *cls,
                     hr->http_status,
                     (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
           ws->backoff = GNUNET_TIME_UNIT_ZERO;
-        else if (TALER_EC_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
+        else if (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
           ws->backoff = EXCHANGE_LIB_BACKOFF (ws->backoff);
         else
           ws->backoff = GNUNET_TIME_relative_max (UNKNOWN_MIN_BACKOFF,

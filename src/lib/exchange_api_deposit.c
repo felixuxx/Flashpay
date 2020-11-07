@@ -274,7 +274,7 @@ verify_deposit_signature_conflict (
   ec = TALER_JSON_get_error_code (json);
   switch (ec)
   {
-  case TALER_EC_DEPOSIT_INSUFFICIENT_FUNDS:
+  case TALER_EC_EXCHANGE_DEPOSIT_INSUFFICIENT_FUNDS:
     if (0 >
         TALER_amount_add (&total,
                           &total,
@@ -294,7 +294,7 @@ verify_deposit_signature_conflict (
     }
     /* everything OK, proof of double-spending was provided */
     return GNUNET_OK;
-  case TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY:
+  case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
     if (0 != GNUNET_memcmp (&dh->dki.h_key,
                             &h_denom_pub))
       return GNUNET_OK; /* indeed, proof with different denomination key provided */
@@ -336,7 +336,7 @@ handle_deposit_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -347,7 +347,7 @@ handle_deposit_finished (void *cls,
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+      hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     else
     {
@@ -369,7 +369,7 @@ handle_deposit_finished (void *cls,
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+      hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     else
     {

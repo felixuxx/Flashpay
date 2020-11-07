@@ -146,7 +146,7 @@ exchanges_cb (void *cls,
     {
       es->do_retry--;
       if ( (0 == hr->http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -154,7 +154,7 @@ exchanges_cb (void *cls,
                     hr->http_status,
                     (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
           es->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           es->backoff = GNUNET_TIME_randomized_backoff (es->backoff,

@@ -235,7 +235,7 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_COINS_INVALID_COIN_PUB,
+                                       TALER_EC_EXCHANGE_GENERIC_COINS_INVALID_COIN_PUB,
                                        args[0]);
   }
   for (unsigned int i = 0; NULL != h[i].op; i++)
@@ -246,7 +246,7 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
                            root);
   return TALER_MHD_reply_with_error (connection,
                                      MHD_HTTP_NOT_FOUND,
-                                     TALER_EC_OPERATION_UNKNOWN,
+                                     TALER_EC_EXCHANGE_GENERIC_OPERATION_UNKNOWN,
                                      args[1]);
 }
 
@@ -330,7 +330,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_URI_TOO_LONG,
-                                       TALER_EC_URI_TOO_LONG,
+                                       TALER_EC_GENERIC_URI_TOO_LONG,
                                        url);
   }
 
@@ -399,7 +399,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
           json_decref (root);
         return TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_WRONG_NUMBER_OF_SEGMENTS,
+                                           TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
                                            emsg);
       }
     }
@@ -744,7 +744,7 @@ handle_mhd_request (void *cls,
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_METHOD_NOT_ALLOWED,
-                                         TALER_EC_METHOD_INVALID,
+                                         TALER_EC_GENERIC_METHOD_INVALID,
                                          method);
     }
   }
@@ -755,7 +755,7 @@ handle_mhd_request (void *cls,
 
     ret = TALER_MHD_reply_with_error (connection,
                                       MHD_HTTP_NOT_FOUND,
-                                      TALER_EC_ENDPOINT_UNKNOWN,
+                                      TALER_EC_GENERIC_ENDPOINT_UNKNOWN,
                                       url);
     GNUNET_async_scope_restore (&old_scope);
     return ret;

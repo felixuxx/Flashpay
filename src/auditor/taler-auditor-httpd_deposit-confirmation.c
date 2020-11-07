@@ -85,7 +85,7 @@ verify_and_execute_deposit_confirmation (
     TALER_LOG_WARNING ("Expired exchange signing key\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                       TALER_EC_AUDITOR_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                        "master signature expired");
   }
 
@@ -104,7 +104,7 @@ verify_and_execute_deposit_confirmation (
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_DB_SETUP_FAILED,
+                                       TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
   if (! cached)
@@ -119,7 +119,7 @@ verify_and_execute_deposit_confirmation (
       TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                         TALER_EC_AUDITOR_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                          "master signature invalid");
     }
 
@@ -133,8 +133,8 @@ verify_and_execute_deposit_confirmation (
       TALER_LOG_WARNING ("Failed to store exchange signing key in database\n");
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_AUDITOR_EXCHANGE_STORE_DB_ERROR,
-                                         NULL);
+                                         TALER_EC_GENERIC_DB_STORE_FAILED,
+                                         "exchange signing key");
     }
 
     /* Cache it, due to concurreny it might already be in the cache,
@@ -173,7 +173,7 @@ verify_and_execute_deposit_confirmation (
         "Invalid signature on /deposit-confirmation request\n");
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                         TALER_EC_AUDITOR_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
                                          "exchange signature invalid");
     }
   }
@@ -188,8 +188,8 @@ verify_and_execute_deposit_confirmation (
     TALER_LOG_WARNING ("Failed to store /deposit-confirmation in database\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_DEPOSIT_CONFIRMATION_STORE_DB_ERROR,
-                                       NULL);
+                                       TALER_EC_GENERIC_DB_STORE_FAILED,
+                                       "deposit confirmation");
   }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,

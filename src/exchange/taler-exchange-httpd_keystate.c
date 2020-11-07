@@ -2029,21 +2029,7 @@ TEH_KS_denomination_key_lookup_by_hash (
   if (NULL == dki)
   {
     *hc = MHD_HTTP_NOT_FOUND;
-    switch (use)
-    {
-    case TEH_KS_DKU_RECOUP:
-      *ec = TALER_EC_RECOUP_DENOMINATION_KEY_UNKNOWN;
-      break;
-    case TEH_KS_DKU_ZOMBIE:
-      *ec = TALER_EC_REFRESH_RECOUP_DENOMINATION_KEY_NOT_FOUND;
-      break;
-    case TEH_KS_DKU_WITHDRAW:
-      *ec = TALER_EC_WITHDRAW_DENOMINATION_KEY_NOT_FOUND;
-      break;
-    case TEH_KS_DKU_DEPOSIT:
-      *ec = TALER_EC_DEPOSIT_DENOMINATION_KEY_UNKNOWN;
-      break;
-    }
+    *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
     return NULL;
   }
   now = GNUNET_TIME_absolute_get ();
@@ -2054,21 +2040,7 @@ TEH_KS_denomination_key_lookup_by_hash (
                 "Not returning DKI for %s, as start time is in the future\n",
                 GNUNET_h2s (denom_pub_hash));
     *hc = MHD_HTTP_PRECONDITION_FAILED;
-    switch (use)
-    {
-    case TEH_KS_DKU_RECOUP:
-      *ec = TALER_EC_RECOUP_DENOMINATION_VALIDITY_IN_FUTURE;
-      break;
-    case TEH_KS_DKU_ZOMBIE:
-      *ec = TALER_EC_REFRESH_RECOUP_DENOMINATION_VALIDITY_IN_FUTURE;
-      break;
-    case TEH_KS_DKU_WITHDRAW:
-      *ec = TALER_EC_WITHDRAW_VALIDITY_IN_FUTURE;
-      break;
-    case TEH_KS_DKU_DEPOSIT:
-      *ec = TALER_EC_DEPOSIT_DENOMINATION_VALIDITY_IN_FUTURE;
-      break;
-    }
+    *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE;
     return NULL;
   }
   now = GNUNET_TIME_absolute_get ();
@@ -2082,7 +2054,7 @@ TEH_KS_denomination_key_lookup_by_hash (
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as time to create coins has passed\n",
                   GNUNET_h2s (denom_pub_hash));
-      *ec = TALER_EC_WITHDRAW_VALIDITY_IN_PAST;
+      *ec = TALER_EC_EXCHANGE_WITHDRAW_VALIDITY_IN_PAST;
       *hc = MHD_HTTP_GONE;
       return NULL;
     }
@@ -2091,7 +2063,7 @@ TEH_KS_denomination_key_lookup_by_hash (
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Not returning DKI of %s for WITHDRAW operation as we lack the private key, even though the withdraw period did not yet expire!\n",
                   GNUNET_h2s (denom_pub_hash));
-      *ec = TALER_EC_DENOMINATION_KEY_LOST;
+      *ec = TALER_EC_EXCHANGE_WITHDRAW_DENOMINATION_KEY_LOST;
       *hc = MHD_HTTP_SERVICE_UNAVAILABLE;
       return NULL;
     }
@@ -2104,7 +2076,7 @@ TEH_KS_denomination_key_lookup_by_hash (
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as time to spend coin has passed\n",
                   GNUNET_h2s (denom_pub_hash));
-      *ec = TALER_EC_DEPOSIT_DENOMINATION_EXPIRED;
+      *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED;
       *hc = MHD_HTTP_GONE;
       return NULL;
     }
@@ -2117,7 +2089,7 @@ TEH_KS_denomination_key_lookup_by_hash (
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as time to recoup coin has passed\n",
                   GNUNET_h2s (denom_pub_hash));
-      *ec = TALER_EC_REFRESH_RECOUP_DENOMINATION_EXPIRED;
+      *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED;
       *hc = MHD_HTTP_GONE;
       return NULL;
     }
@@ -2130,7 +2102,7 @@ TEH_KS_denomination_key_lookup_by_hash (
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as legal expiration of coin has passed\n",
                   GNUNET_h2s (denom_pub_hash));
-      *ec = TALER_EC_REFRESH_ZOMBIE_DENOMINATION_EXPIRED;
+      *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED;
       *hc = MHD_HTTP_GONE;
       return NULL;
     }
@@ -2501,7 +2473,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC,  // FIXME: use more GENERIC code!
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          have_cherrypick);
     }
     /* The following multiplication may overflow; but this should not really
@@ -2530,7 +2502,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_KEYS_HAVE_NOT_NUMERIC, // FIXME: use more GENERIC code!
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          have_fakenow);
     }
     if (TEH_allow_keys_timetravel)
@@ -2546,7 +2518,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       /* Option not allowed by configuration */
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_KEYS_TIMETRAVEL_FORBIDDEN,
+                                         TALER_EC_EXCHANGE_KEYS_TIMETRAVEL_FORBIDDEN,
                                          NULL);
     }
   }
@@ -2566,7 +2538,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
          to be our fault, so let's speculatively assume we are to blame ;-) */
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                          NULL);
     }
     krd = bsearch (&last_issue_date,
@@ -2598,7 +2570,7 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_KEYS_MISSING,
+                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                          NULL);
     }
     ret = MHD_queue_response (connection,

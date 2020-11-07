@@ -50,7 +50,7 @@ reply_reserve_history_success (struct MHD_Connection *connection,
   if (NULL == json_history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_RESERVE_STATUS_DB_ERROR,
+                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        NULL);
   json_balance = TALER_JSON_from_amount (&balance);
   return TALER_MHD_reply_json_pack (connection,
@@ -142,7 +142,7 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_RESERVES_INVALID_RESERVE_PUB,
+                                       TALER_EC_MERCHANT_GENERIC_RESERVE_PUB_MALFORMED,
                                        args[0]);
   }
   rsc.rh = NULL;
@@ -158,7 +158,7 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
   if (NULL == rsc.rh)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_NOT_FOUND,
-                                       TALER_EC_RESERVE_STATUS_UNKNOWN,
+                                       TALER_EC_EXCHANGE_RESERVES_GET_STATUS_UNKNOWN,
                                        args[0]);
   mhd_ret = reply_reserve_history_success (connection,
                                            rsc.rh);

@@ -246,7 +246,7 @@ confirmation_cb (void *cls,
     {
       fts->do_retry--;
       if ( (0 == http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == http_status) )
       {
         GNUNET_log (
@@ -255,7 +255,7 @@ confirmation_cb (void *cls,
           http_status,
           (int) ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == ec)
           fts->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           fts->backoff = GNUNET_TIME_randomized_backoff (fts->backoff,

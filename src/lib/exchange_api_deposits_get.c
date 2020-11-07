@@ -142,7 +142,7 @@ handle_deposit_wtid_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -163,7 +163,7 @@ handle_deposit_wtid_finished (void *cls,
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       dwh->depconf.execution_time = GNUNET_TIME_absolute_hton (
@@ -178,7 +178,7 @@ handle_deposit_wtid_finished (void *cls,
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_DEPOSITS_INVALID_SIGNATURE_BY_EXCHANGE;
+        hr.ec = TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_SIGNATURE_BY_EXCHANGE;
       }
       else
       {
@@ -207,7 +207,7 @@ handle_deposit_wtid_finished (void *cls,
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_DEPOSITS_INVALID_BODY_BY_EXCHANGE;
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       else

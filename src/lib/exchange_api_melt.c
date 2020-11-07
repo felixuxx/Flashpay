@@ -282,7 +282,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   ec = TALER_JSON_get_error_code (json);
   switch (ec)
   {
-  case TALER_EC_MELT_INSUFFICIENT_FUNDS:
+  case TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS:
     /* check if melt operation was really too expensive given history */
     if (0 >
         TALER_amount_add (&total,
@@ -304,7 +304,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
 
     /* everything OK, valid proof of double-spending was provided */
     return GNUNET_OK;
-  case TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY:
+  case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
     if (0 != GNUNET_memcmp (&mh->dki.h_key,
                             &h_denom_pub))
       return GNUNET_OK; /* indeed, proof with different denomination key provided */
@@ -345,7 +345,7 @@ handle_melt_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -356,7 +356,7 @@ handle_melt_finished (void *cls,
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+      hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     if (NULL != mh->melt_cb)
     {
@@ -379,7 +379,7 @@ handle_melt_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     switch (hr.ec)
     {
-    case TALER_EC_MELT_INSUFFICIENT_FUNDS:
+    case TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS:
       /* Double spending; check signatures on transaction history */
       if (GNUNET_OK !=
           verify_melt_signature_spend_conflict (mh,
@@ -387,25 +387,25 @@ handle_melt_finished (void *cls,
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+        hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
         hr.hint = TALER_JSON_get_error_hint (j);
       }
       break;
-    case TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY:
+    case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
       if (GNUNET_OK !=
           verify_melt_signature_denom_conflict (mh,
                                                 j))
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+        hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
         hr.hint = TALER_JSON_get_error_hint (j);
       }
       break;
     default:
       GNUNET_break_op (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+      hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
       hr.hint = TALER_JSON_get_error_hint (j);
       break;
     }

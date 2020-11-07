@@ -65,7 +65,7 @@ reply_withdraw_insufficient_funds (
   if (NULL == json_history)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_WITHDRAW_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
+                                       TALER_EC_EXCHANGE_WITHDRAW_HISTORY_ERROR_INSUFFICIENT_FUNDS,
                                        NULL);
   if (0 !=
       TALER_amount_cmp (&balance,
@@ -75,17 +75,17 @@ reply_withdraw_insufficient_funds (
     json_decref (json_history);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_WITHDRAW_RESERVE_BALANCE_CORRUPT,
-                                       NULL);
+                                       TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+                                       "reserve balance corrupt");
   }
   return TALER_MHD_reply_json_pack (
     connection,
     MHD_HTTP_CONFLICT,
     "{s:s, s:I, s:o, s:o}",
     "hint",
-    TALER_ErrorCode_get_hint (TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS),
+    TALER_ErrorCode_get_hint (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
     "code",
-    (json_int_t) TALER_EC_WITHDRAW_INSUFFICIENT_FUNDS,
+    (json_int_t) TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS,
     "balance",
     TALER_JSON_from_amount (&balance),
     "history",
@@ -198,8 +198,8 @@ withdraw_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_WITHDRAW_DB_FETCH_ERROR,
-                                             NULL);
+                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                             "withdraw details");
     wc->collectable.sig = denom_sig;
     return qs;
   }
@@ -233,15 +233,15 @@ withdraw_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_WITHDRAW_DB_FETCH_ERROR,
-                                             NULL);
+                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                             "reserves");
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_WITHDRAW_RESERVE_UNKNOWN,
+                                           TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -275,8 +275,8 @@ withdraw_transaction (void *cls,
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_WITHDRAW_DB_FETCH_ERROR,
-                                               NULL);
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "reserve history");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     *mhd_ret = reply_withdraw_insufficient_funds (connection,
@@ -300,7 +300,7 @@ withdraw_transaction (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_WITHDRAW_SIGNATURE_FAILED,
+                                             TALER_EC_EXCHANGE_WITHDRAW_SIGNATURE_FAILED,
                                              NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
@@ -320,8 +320,8 @@ withdraw_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_WITHDRAW_DB_STORE_ERROR,
-                                             NULL);
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "withdraw details");
     return qs;
   }
   return qs;
@@ -371,7 +371,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_RESERVES_INVALID_RESERVE_PUB,
+                                       TALER_EC_MERCHANT_GENERIC_RESERVE_PUB_MALFORMED,
                                        args[0]);
   }
 
@@ -391,7 +391,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        "no keys");
   }
   {
@@ -431,7 +431,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       TEH_KS_release (wc.key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_WITHDRAW_AMOUNT_FEE_OVERFLOW,
+                                         TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
                                          NULL);
     }
     TALER_amount_hton (&wc.wsrd.amount_with_fee,
@@ -460,7 +460,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     TEH_KS_release (wc.key_state);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_WITHDRAW_RESERVE_SIGNATURE_INVALID,
+                                       TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
                                        NULL);
   }
 
@@ -477,7 +477,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     TEH_KS_release (wc.key_state);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_WITHDRAW_SIGNATURE_FAILED,
+                                       TALER_EC_EXCHANGE_WITHDRAW_SIGNATURE_FAILED,
                                        NULL);
   }
 #endif

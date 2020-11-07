@@ -116,7 +116,7 @@ handle_link_data (void *cls,
   }
   return;
 fail:
-  ctx->ec = TALER_EC_JSON_ALLOCATION_FAILURE;
+  ctx->ec = TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE;
   json_decref (ctx->mlist);
   ctx->mlist = NULL;
 }
@@ -164,7 +164,7 @@ link_transaction (void *cls,
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_LINK_COIN_UNKNOWN,
+                                           TALER_EC_EXCHANGE_LINK_COIN_UNKNOWN,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -201,7 +201,7 @@ TEH_handler_link (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_COINS_INVALID_COIN_PUB,
+                                       TALER_EC_EXCHANGE_GENERIC_COINS_INVALID_COIN_PUB,
                                        args[0]);
   }
   ctx.mlist = json_array ();
@@ -210,7 +210,7 @@ TEH_handler_link (const struct TEH_RequestHandler *rh,
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_JSON_ALLOCATION_FAILURE,
+                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        "json_array() call failed");
   }
   if (GNUNET_OK !=

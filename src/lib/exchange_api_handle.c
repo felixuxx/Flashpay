@@ -1326,7 +1326,7 @@ keys_completed_cb (void *cls,
     {
       TALER_LOG_ERROR ("Could not decode /keys response\n");
       hr.http_status = 0;
-      hr.ec = TALER_EC_KEYS_INVALID;
+      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       for (unsigned int i = 0; i<kd.num_auditors; i++)
       {
         struct TALER_EXCHANGE_AuditorInformation *anew = &kd.auditors[i];

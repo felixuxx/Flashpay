@@ -98,7 +98,7 @@ handle_exchanges_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     ja = json_object_get (json,
@@ -107,7 +107,7 @@ handle_exchanges_finished (void *cls,
          (! json_is_array (ja)) )
     {
       GNUNET_break (0);
-      hr.ec = TALER_EC_AUDITOR_EXCHANGES_REPLY_MALFORMED;
+      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       hr.http_status = 0;
       break;
     }
@@ -116,7 +116,7 @@ handle_exchanges_finished (void *cls,
     if (ja_len > MAX_EXCHANGES)
     {
       GNUNET_break (0);
-      hr.ec = TALER_EC_AUDITOR_EXCHANGES_REPLY_MALFORMED;
+      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       hr.http_status = 0;
       break;
     }
@@ -141,7 +141,7 @@ handle_exchanges_finished (void *cls,
         {
           GNUNET_break_op (0);
           ok = GNUNET_NO;
-          hr.ec = TALER_EC_AUDITOR_EXCHANGES_REPLY_MALFORMED;
+          hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
           hr.http_status = 0;
           break;
         }

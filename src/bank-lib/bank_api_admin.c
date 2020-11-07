@@ -84,7 +84,7 @@ handle_admin_add_incoming_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    ec = TALER_EC_INVALID_RESPONSE;
+    ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
@@ -103,7 +103,7 @@ handle_admin_add_incoming_finished (void *cls,
       {
         GNUNET_break_op (0);
         response_code = 0;
-        ec = TALER_EC_INVALID_RESPONSE;
+        ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
       ec = TALER_EC_NONE;

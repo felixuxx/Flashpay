@@ -89,7 +89,7 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_DB_SETUP_FAILED,
+                                       TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
   ja = json_array ();
@@ -105,8 +105,8 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
     TALER_LOG_WARNING ("Failed to handle /exchanges in database\n");
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_LIST_EXCHANGES_DB_ERROR,
-                                       NULL);
+                                       TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                       "exchanges");
   }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,

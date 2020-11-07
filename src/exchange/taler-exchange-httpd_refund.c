@@ -68,7 +68,7 @@ reply_refund_success (struct MHD_Connection *connection,
   {
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        "no online signing key");
   }
   return TALER_MHD_reply_json_pack (
@@ -126,8 +126,8 @@ refund_transaction (void *cls,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_REFUND_DATABASE_LOOKUP_ERROR,
-                                             NULL);
+                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                             "coin transactions");
     return qs;
   }
   deposit_found = false;
@@ -162,7 +162,7 @@ refund_transaction (void *cls,
             /* money was already transferred to merchant, can no longer refund */
             *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                    MHD_HTTP_GONE,
-                                                   TALER_EC_REFUND_MERCHANT_ALREADY_PAID,
+                                                   TALER_EC_EXCHANGE_REFUND_MERCHANT_ALREADY_PAID,
                                                    NULL);
             return GNUNET_DB_STATUS_HARD_ERROR;
           }
@@ -230,12 +230,12 @@ refund_transaction (void *cls,
           *mhd_ret = TALER_MHD_reply_json_pack (
             connection,
             MHD_HTTP_PRECONDITION_FAILED,
-            "{s:s, s:s, s:I, s:o}",
+            "{s:o, s:s, s:I, s:o}",
             "detail",
-            "conflicting refund with different amount but same refund transaction ID",
+            TALER_JSON_from_amount (&ref->refund_amount),
             "hint", TALER_ErrorCode_get_hint (
-              TALER_EC_REFUND_INCONSISTENT_AMOUNT),
-            "code", (json_int_t) TALER_EC_REFUND_INCONSISTENT_AMOUNT,
+              TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT),
+            "code", (json_int_t) TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT,
             "history", TEH_RESPONSE_compile_transaction_history (
               &refund->coin.coin_pub,
               tli));
@@ -307,7 +307,7 @@ refund_transaction (void *cls,
                                             tlx);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_REFUND_DEPOSIT_NOT_FOUND,
+                                           TALER_EC_EXCHANGE_REFUND_DEPOSIT_NOT_FOUND,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -322,7 +322,7 @@ refund_transaction (void *cls,
                                             tlx);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_REFUND_CURRENCY_MISMATCH,
+                                           TALER_EC_GENERIC_CURRENCY_MISMATCH,
                                            deposit_total.currency);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -346,9 +346,10 @@ refund_transaction (void *cls,
       "detail",
       "total amount refunded exceeds total amount deposited for this coin",
       "hint",
-      TALER_ErrorCode_get_hint (TALER_EC_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT),
+      TALER_ErrorCode_get_hint (
+        TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT),
       "code",
-      (json_int_t) TALER_EC_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT,
+      (json_int_t) TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT,
       "history",
       TEH_RESPONSE_compile_transaction_history (&refund->coin.coin_pub,
                                                 tlx));
@@ -369,8 +370,8 @@ refund_transaction (void *cls,
     TALER_LOG_WARNING ("Failed to store /refund information in database\n");
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_REFUND_STORE_DB_ERROR,
-                                           NULL);
+                                           TALER_EC_GENERIC_DB_STORE_FAILED,
+                                           "refund");
     return qs;
   }
   /* Success or soft failure */
@@ -415,7 +416,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
       TALER_LOG_WARNING ("Invalid signature on refund request\n");
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_REFUND_MERCHANT_SIGNATURE_INVALID,
+                                         TALER_EC_EXCHANGE_REFUND_MERCHANT_SIGNATURE_INVALID,
                                          NULL);
     }
   }
@@ -438,7 +439,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                                  sizeof (denom_hash));
       res = TALER_MHD_reply_with_error (connection,
                                         MHD_HTTP_NOT_FOUND,
-                                        TALER_EC_REFUND_COIN_NOT_FOUND,
+                                        TALER_EC_EXCHANGE_REFUND_COIN_NOT_FOUND,
                                         dhs);
       GNUNET_free (dhs);
       return res;
@@ -454,7 +455,7 @@ verify_and_execute_refund (struct MHD_Connection *connection,
       TALER_LOG_ERROR ("Lacking keys to operate\n");
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                          "no keys");
     }
     /* Obtain information about the coin's denomination! */

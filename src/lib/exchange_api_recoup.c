@@ -162,7 +162,7 @@ handle_recoup_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -170,7 +170,7 @@ handle_recoup_finished (void *cls,
                                  j))
     {
       GNUNET_break_op (0);
-      hr.ec = TALER_EC_RECOUP_REPLY_MALFORMED;
+      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       hr.http_status = 0;
       break;
     }
@@ -204,7 +204,7 @@ handle_recoup_finished (void *cls,
       {
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_RECOUP_REPLY_MALFORMED;
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       }
       else
       {
@@ -214,7 +214,7 @@ handle_recoup_finished (void *cls,
       ec = TALER_JSON_get_error_code (j);
       switch (ec)
       {
-      case TALER_EC_RECOUP_COIN_BALANCE_ZERO:
+      case TALER_EC_EXCHANGE_RECOUP_COIN_BALANCE_ZERO:
         if (0 > TALER_amount_cmp (&total,
                                   &dki->value))
         {
@@ -224,20 +224,21 @@ handle_recoup_finished (void *cls,
              exchange is here. We should look at the key
              structure of ph->exchange, and find the smallest
              _currently withdrawable_ denomination and check
-             if the value remaining would suffice... */GNUNET_break_op (0);
+             if the value remaining would suffice... *///
+          GNUNET_break_op (0);
           hr.http_status = 0;
-          hr.ec = TALER_EC_RECOUP_REPLY_MALFORMED;
+          hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
           break;
         }
         break;
-      case TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY:
+      case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
         if (0 == GNUNET_memcmp (&ph->pk.h_key,
                                 &h_denom_pub))
         {
           /* invalid proof provided */
           GNUNET_break_op (0);
           hr.http_status = 0;
-          hr.ec = TALER_EC_RECOUP_REPLY_MALFORMED;
+          hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
           break;
         }
         /* valid error from exchange */
@@ -245,7 +246,7 @@ handle_recoup_finished (void *cls,
       default:
         GNUNET_break_op (0);
         hr.http_status = 0;
-        hr.ec = TALER_EC_RECOUP_REPLY_MALFORMED;
+        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       ph->cb (ph->cb_cls,

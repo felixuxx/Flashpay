@@ -153,7 +153,7 @@ deposit_confirmation_cb (void *cls,
     {
       dcs->do_retry--;
       if ( (0 == hr->http_status) ||
-           (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
            (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -161,7 +161,7 @@ deposit_confirmation_cb (void *cls,
                     hr->http_status,
                     (int) hr->ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_DB_COMMIT_FAILED_ON_RETRY == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
           dcs->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           dcs->backoff = GNUNET_TIME_randomized_backoff (dcs->backoff,

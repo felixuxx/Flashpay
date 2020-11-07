@@ -254,7 +254,7 @@ handle_reserve_withdraw_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -263,7 +263,7 @@ handle_reserve_withdraw_finished (void *cls,
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_WITHDRAW_REPLY_MALFORMED;
+      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       break;
     }
     GNUNET_assert (NULL == wh->cb);
@@ -284,7 +284,7 @@ handle_reserve_withdraw_finished (void *cls,
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_WITHDRAW_REPLY_MALFORMED;
+      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
     else
     {

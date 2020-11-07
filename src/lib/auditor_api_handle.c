@@ -212,7 +212,7 @@ decode_version_json (const json_t *resp_obj,
   if (JSON_OBJECT != json_typeof (resp_obj))
   {
     GNUNET_break_op (0);
-    return TALER_EC_JSON_INVALID;
+    return TALER_EC_GENERIC_JSON_INVALID;
   }
   /* check the version */
   if (GNUNET_OK !=
@@ -221,7 +221,7 @@ decode_version_json (const json_t *resp_obj,
                          NULL, NULL))
   {
     GNUNET_break_op (0);
-    return TALER_EC_JSON_INVALID;
+    return TALER_EC_GENERIC_JSON_INVALID;
   }
   if (3 != sscanf (ver,
                    "%u:%u:%u",
@@ -230,7 +230,7 @@ decode_version_json (const json_t *resp_obj,
                    &age))
   {
     GNUNET_break_op (0);
-    return TALER_EC_VERSION_MALFORMED;
+    return TALER_EC_GENERIC_VERSION_MALFORMED;
   }
   auditor->version = GNUNET_strdup (ver);
   vi->version = auditor->version;
@@ -307,7 +307,7 @@ version_completed_cb (void *cls,
       GNUNET_break_op (0);
       TALER_LOG_WARNING ("NULL body for a 200-OK /version\n");
       hr.http_status = 0;
-      hr.ec = TALER_EC_INVALID_RESPONSE;
+      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
       break;
     }
     hr.ec = decode_version_json (resp_obj,

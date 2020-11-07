@@ -445,7 +445,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_JSON_ALLOCATION_FAILURE,
+                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        "Failed to generated proof of insufficient funds");
   }
   return TALER_MHD_reply_json_pack (connection,

@@ -155,8 +155,8 @@ recoup_transaction (void *cls,
         GNUNET_break (0);
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_RECOUP_DB_FETCH_FAILED,
-                                               NULL);
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "old coin by h_blind");
       }
       return qs;
     }
@@ -174,8 +174,8 @@ recoup_transaction (void *cls,
         GNUNET_break (0);
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_RECOUP_DB_FETCH_FAILED,
-                                               NULL);
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "reserve by h_blind");
       }
       return qs;
     }
@@ -187,7 +187,7 @@ recoup_transaction (void *cls,
                 GNUNET_h2s (&pc->h_blind));
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_RECOUP_WITHDRAW_NOT_FOUND,
+                                           TALER_EC_EXCHANGE_RECOUP_WITHDRAW_NOT_FOUND,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -205,8 +205,8 @@ recoup_transaction (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_RECOUP_DB_FETCH_FAILED,
-                                             NULL);
+                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                             "coin transaction list");
     }
     return qs;
   }
@@ -240,8 +240,8 @@ recoup_transaction (void *cls,
                                             tl);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_RECOUP_HISTORY_DB_ERROR,
-                                           NULL);
+                                           TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+                                           "coin transaction history");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -260,7 +260,7 @@ recoup_transaction (void *cls,
                                             tl);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_RECOUP_COIN_BALANCE_NEGATIVE,
+                                           TALER_EC_EXCHANGE_RECOUP_COIN_BALANCE_NEGATIVE,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -276,7 +276,7 @@ recoup_transaction (void *cls,
     {
       /* Refuse: insufficient funds for recoup */
       *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
-                                                             TALER_EC_RECOUP_COIN_BALANCE_ZERO,
+                                                             TALER_EC_EXCHANGE_RECOUP_COIN_BALANCE_ZERO,
                                                              &pc->coin->coin_pub,
                                                              tl);
       ret = GNUNET_DB_STATUS_HARD_ERROR;
@@ -327,8 +327,8 @@ recoup_transaction (void *cls,
       TALER_LOG_WARNING ("Failed to store recoup information in database\n");
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_RECOUP_DB_PUT_FAILED,
-                                             NULL);
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "recoup request");
     }
     return qs;
   }
@@ -376,7 +376,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       TALER_LOG_ERROR ("Lacking keys to operate\n");
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                          "no keys");
     }
     dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
@@ -406,7 +406,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_RECOUP_DENOMINATION_SIGNATURE_INVALID,
+                                         TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
                                          NULL);
     }
 
@@ -430,7 +430,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
         TEH_KS_release (key_state);
         return TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_FORBIDDEN,
-                                           TALER_EC_RECOUP_SIGNATURE_INVALID,
+                                           TALER_EC_EXCHANGE_RECOUP_SIGNATURE_INVALID,
                                            NULL);
       }
     }
@@ -448,7 +448,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_RECOUP_BLINDING_FAILED,
+                                         TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
                                          NULL);
     }
     TEH_KS_release (key_state);

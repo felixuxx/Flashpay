@@ -75,7 +75,7 @@ reply_deposit_details (struct MHD_Connection *connection,
   {
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_BAD_CONFIGURATION,
+                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        "no keys");
   }
   return TALER_MHD_reply_json_pack (connection,
@@ -233,7 +233,7 @@ deposits_get_transaction (void *cls,
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_DEPOSITS_GET_DB_FETCH_FAILED,
+                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
                                              NULL);
     }
     return qs;
@@ -242,7 +242,7 @@ deposits_get_transaction (void *cls,
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_DEPOSITS_GET_NOT_FOUND,
+                                           TALER_EC_EXCHANGE_DEPOSITS_GET_NOT_FOUND,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -288,8 +288,8 @@ handle_track_transaction_request (
   if (GNUNET_SYSERR == ctx.pending)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_DEPOSITS_GET_DB_FEE_INCONSISTENT,
-                                       NULL);
+                                       TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+                                       "wire fees exceed aggregate in database");
   return reply_deposit_details (connection,
                                 &tps->h_contract_terms,
                                 &tps->h_wire,
@@ -332,7 +332,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_DEPOSITS_INVALID_H_WIRE,
+                                       TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_H_WIRE,
                                        args[0]);
   }
   if (GNUNET_OK !=
@@ -344,7 +344,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_DEPOSITS_INVALID_MERCHANT_PUB,
+                                       TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_MERCHANT_PUB,
                                        args[1]);
   }
   if (GNUNET_OK !=
@@ -356,7 +356,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_DEPOSITS_INVALID_H_CONTRACT_TERMS,
+                                       TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_H_CONTRACT_TERMS,
                                        args[2]);
   }
   if (GNUNET_OK !=
@@ -368,7 +368,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_DEPOSITS_INVALID_COIN_PUB,
+                                       TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_COIN_PUB,
                                        args[3]);
   }
   res = TALER_MHD_parse_request_arg_data (connection,
@@ -388,7 +388,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
-                                       TALER_EC_DEPOSITS_GET_MERCHANT_SIGNATURE_INVALID,
+                                       TALER_EC_EXCHANGE_DEPOSITS_GET_MERCHANT_SIGNATURE_INVALID,
                                        NULL);
   }
 

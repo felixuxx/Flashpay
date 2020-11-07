@@ -182,7 +182,7 @@ handle_reserves_get_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -190,7 +190,7 @@ handle_reserves_get_finished (void *cls,
                                 j))
     {
       hr.http_status = 0;
-      hr.ec = TALER_EC_RESERVE_STATUS_REPLY_MALFORMED;
+      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
     }
     break;
   case MHD_HTTP_BAD_REQUEST:

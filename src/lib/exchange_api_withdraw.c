@@ -113,7 +113,7 @@ handle_reserve_withdraw_finished (
       struct TALER_EXCHANGE_HttpResponse hrx = {
         .reply = hr->reply,
         .http_status = 0,
-        .ec = TALER_EC_WITHDRAW_UNBLIND_FAILURE
+        .ec = TALER_EC_EXCHANGE_WITHDRAW_UNBLIND_FAILURE
       };
 
       wh->cb (wh->cb_cls,

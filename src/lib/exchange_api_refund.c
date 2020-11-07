@@ -533,7 +533,7 @@ handle_refund_finished (void *cls,
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_INVALID_RESPONSE;
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -544,7 +544,7 @@ handle_refund_finished (void *cls,
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_REFUND_INVALID_SIGNATURE_BY_EXCHANGE;
+      hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     else
     {
@@ -581,7 +581,7 @@ handle_refund_finished (void *cls,
     {
       GNUNET_break (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
+      hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
       hr.hint = "conflict information provided by exchange is invalid";
       break;
     }
@@ -601,7 +601,7 @@ handle_refund_finished (void *cls,
     {
       GNUNET_break (0);
       hr.http_status = 0;
-      hr.ec = TALER_EC_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
+      hr.ec = TALER_EC_EXCHANGE_REFUND_INVALID_FAILURE_PROOF_BY_EXCHANGE;
       hr.hint = "failed precondition proof returned by exchange is invalid";
       break;
     }

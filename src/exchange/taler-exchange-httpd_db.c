@@ -73,7 +73,7 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
     *mhd_ret
       = TALER_MHD_reply_with_error (connection,
                                     MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                    TALER_EC_DB_COIN_HISTORY_STORE_ERROR,
+                                    TALER_EC_GENERIC_DB_STORE_FAILED,
                                     NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   case TALER_EXCHANGEDB_CKS_CONFLICT:
@@ -95,14 +95,14 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
         *mhd_ret = TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_INTERNAL_SERVER_ERROR,
-          TALER_EC_DEPOSIT_HISTORY_DB_ERROR,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
           NULL);
       return qs;
     }
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
-          TALER_EC_COIN_CONFLICTING_DENOMINATION_KEY,
+          TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY,
           &coin->coin_pub,
           tl);
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
@@ -145,7 +145,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     if (NULL != mhd_ret)
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_DB_SETUP_FAILED,
+                                             TALER_EC_GENERIC_DB_SETUP_FAILED,
                                              NULL);
     return GNUNET_SYSERR;
   }
@@ -164,7 +164,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
       if (NULL != mhd_ret)
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_DB_START_FAILED,
+                                               TALER_EC_GENERIC_DB_START_FAILED,
                                                NULL);
       return GNUNET_SYSERR;
     }
@@ -185,7 +185,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
       if (NULL != mhd_ret)
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_DB_COMMIT_FAILED_HARD,
+                                               TALER_EC_GENERIC_DB_COMMIT_FAILED,
                                                NULL);
       return GNUNET_SYSERR;
     }
@@ -201,7 +201,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
   if (NULL != mhd_ret)
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_DB_COMMIT_FAILED_ON_RETRY,
+                                           TALER_EC_GENERIC_DB_SOFT_FAILURE,
                                            NULL);
   return GNUNET_SYSERR;
 }
