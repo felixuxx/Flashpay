@@ -362,7 +362,7 @@ echo "OK"
 function test_2() {
 
 echo "===========2: reserves_in inconsistency==========="
-echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -Aqt $DB
+echo "UPDATE reserves_in SET credit_val=5 WHERE reserve_in_serial_id=1" | psql -At $DB
 
 run_audit
 
@@ -1848,7 +1848,7 @@ CONF=test-auditor.conf
 echo "Testing for jq"
 jq -h > /dev/null || exit_skip "jq required"
 echo "Testing for taler-bank-manage"
-taler-bank-manage -h >/dev/null </dev/null || exit_skip "taler-bank-manage required"
+taler-bank-manage --help >/dev/null </dev/null || exit_skip "taler-bank-manage required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 

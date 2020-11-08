@@ -17,8 +17,7 @@
 -- Everything in one big transaction
 BEGIN;
 
--- This script DROPs all of the tables we create, including the
--- versioning schema!
+-- This script DROPs all of the tables we create.
 --
 -- Unlike the other SQL files, it SHOULD be updated to reflect the
 -- latest requirements for dropping tables.

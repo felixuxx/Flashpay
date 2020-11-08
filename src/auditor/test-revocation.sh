@@ -520,7 +520,7 @@ CONF=test-auditor.conf
 echo "Testing for jq"
 jq -h > /dev/null || exit_skip "jq required"
 echo "Testing for taler-bank-manage"
-taler-bank-manage -h >/dev/null </dev/null || exit_skip "taler-bank-manage required"
+taler-bank-manage --help >/dev/null </dev/null || exit_skip "taler-bank-manage required"
 echo "Testing for pdflatex"
 which pdflatex > /dev/null </dev/null || exit_skip "pdflatex required"
 
