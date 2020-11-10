@@ -1,3 +1,9 @@
+Tue 10 Nov 2020 01:03:22 PM CET
+    Updates to error codes and HTTP status codes for improved
+    consistency. Fixed spelling issues. Ensure main() returns
+    0 when called with '-h' or '--help'.
+    Releasing GNU Taler 0.8.1. -CG
+
 Sat 03 Oct 2020 03:59:45 PM CEST
     Various minor fixes, code cleanup, updates to more recent
     GNUnet APIs, new error codes, and timetravel test support.
