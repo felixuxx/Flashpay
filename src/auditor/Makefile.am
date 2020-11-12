@@ -73,7 +73,8 @@ taler_helper_auditor_reserves_LDADD = \
   libauditorreport.la \
   -ljansson \
   -lgnunetjson \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 taler_helper_auditor_coins_SOURCES = \
   taler-helper-auditor-coins.c
@@ -87,7 +88,8 @@ taler_helper_auditor_coins_LDADD = \
   libauditorreport.la \
   -ljansson \
   -lgnunetjson \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 taler_helper_auditor_aggregation_SOURCES = \
   taler-helper-auditor-aggregation.c
@@ -101,7 +103,8 @@ taler_helper_auditor_aggregation_LDADD = \
   libauditorreport.la \
   -ljansson \
   -lgnunetjson \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 taler_helper_auditor_deposits_SOURCES = \
   taler-helper-auditor-deposits.c
@@ -115,7 +118,8 @@ taler_helper_auditor_deposits_LDADD = \
   libauditorreport.la \
   -ljansson \
   -lgnunetjson \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 taler_helper_auditor_wire_SOURCES = \
   taler-helper-auditor-wire.c
@@ -130,7 +134,8 @@ taler_helper_auditor_wire_LDADD = \
   -ljansson \
   -lgnunetjson \
   -lgnunetcurl \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 
 taler_auditor_httpd_SOURCES = \
@@ -148,7 +153,8 @@ taler_auditor_httpd_LDADD = \
   -ljansson \
   -lgnunetjson \
   -lgnunetutil \
-  -lz
+  -lz \
+  $(XLIB)
 
 taler_auditor_sign_SOURCES = \
   taler-auditor-sign.c
@@ -157,7 +163,8 @@ taler_auditor_sign_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 
 
 taler_auditor_exchange_SOURCES = \
@@ -166,7 +173,8 @@ taler_auditor_exchange_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  -lgnunetutil $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 
 check_SCRIPTS = \
   test-auditor.sh \

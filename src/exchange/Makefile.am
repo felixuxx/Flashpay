@@ -33,7 +33,8 @@ taler_exchange_aggregator_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -ljansson \
   -lgnunetcurl \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 
 taler_exchange_closer_SOURCES = \
@@ -46,7 +47,8 @@ taler_exchange_closer_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -ljansson \
   -lgnunetcurl \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 taler_exchange_wirewatch_SOURCES = \
   taler-exchange-wirewatch.c
@@ -58,7 +60,8 @@ taler_exchange_wirewatch_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -ljansson \
   -lgnunetcurl \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 taler_exchange_transfer_SOURCES = \
   taler-exchange-transfer.c
@@ -70,7 +73,8 @@ taler_exchange_transfer_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -ljansson \
   -lgnunetcurl \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
@@ -103,7 +107,8 @@ taler_exchange_httpd_LDADD = \
   -lgnunetjson \
   -ljansson \
   -lz \
-  -lpthread
+  -lpthread \
+  $(XLIB)
 
 # Testcases
 

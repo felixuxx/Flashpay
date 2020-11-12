@@ -26,7 +26,8 @@ taler_exchange_keyup_LDADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 
@@ -40,7 +41,8 @@ taler_exchange_wire_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetutil \
-  -ljansson $(XLIB)
+  -ljansson \
+  $(XLIB)
 taler_exchange_wire_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 taler_exchange_keycheck_SOURCES = \
@@ -49,7 +51,8 @@ taler_exchange_keycheck_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil  $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 taler_exchange_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 taler_exchange_dbinit_SOURCES = \
@@ -59,7 +62,8 @@ taler_exchange_dbinit_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil  $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 taler_exchange_dbinit_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)
 taler_exchange_dbinit_CPPFLAGS = \

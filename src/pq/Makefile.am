@@ -12,22 +12,21 @@ lib_LTLIBRARIES = \
 libtalerpq_la_SOURCES = \
   pq_query_helper.c \
   pq_result_helper.c
-
 libtalerpq_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la  \
   -lgnunetutil -ljansson \
-  -lpq $(XLIB)
-
+  -lpq \
+  $(XLIB)
 libtalerpq_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
 
-TESTS = \
- test_pq
-
 check_PROGRAMS= \
  test_pq
+
+TESTS = \
+ $(check_PROGRAMS)
 
 test_pq_SOURCES = \
   test_pq.c
@@ -37,4 +36,5 @@ test_pq_LDADD = \
   -lgnunetpq \
   -lgnunetutil \
   -ljansson \
-  -lpq $(XLIB)
+  -lpq \
+  $(XLIB)

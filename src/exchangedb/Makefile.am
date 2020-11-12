@@ -43,7 +43,8 @@ libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lpq \
   -lgnunetpq \
-  -lgnunetutil $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 
 lib_LTLIBRARIES = \
   libtalerexchangedb.la
@@ -59,7 +60,8 @@ libtalerexchangedb_la_SOURCES = \
 libtalerexchangedb_la_LIBADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil  $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 libtalerexchangedb_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
   -version-info 1:0:0 \
@@ -86,28 +88,32 @@ test_exchangedb_auditors_SOURCES = \
 test_exchangedb_auditors_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 test_exchangedb_denomkeys_SOURCES = \
   test_exchangedb_denomkeys.c
 test_exchangedb_denomkeys_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 test_exchangedb_fees_SOURCES = \
   test_exchangedb_fees.c
 test_exchangedb_fees_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 test_exchangedb_signkeys_SOURCES = \
   test_exchangedb_signkeys.c
 test_exchangedb_signkeys_LDADD = \
   libtalerexchangedb.la \
   $(top_srcdir)/src/util/libtalerutil.la \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 test_exchangedb_postgres_SOURCES = \
   test_exchangedb.c
@@ -117,7 +123,8 @@ test_exchangedb_postgres_LDADD = \
   $(top_srcdir)/src/util/libtalerutil.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
   -ljansson \
-  -lgnunetutil
+  -lgnunetutil \
+  $(XLIB)
 
 EXTRA_test_exchangedb_postgres_DEPENDENCIES = \
   libtaler_plugin_exchangedb_postgres.la

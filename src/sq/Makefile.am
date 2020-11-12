@@ -12,22 +12,21 @@ lib_LTLIBRARIES = \
 libtalersq_la_SOURCES = \
   sq_query_helper.c \
   sq_result_helper.c
-
 libtalersq_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la  \
   -lgnunetutil -ljansson \
-  -lsqlite3 $(XLIB)
-
+  -lsqlite3 \
+  $(XLIB)
 libtalersq_la_LDFLAGS = \
   $(SQLITE_LDFLAGS) \
   -version-info 0:0:0 \
   -export-dynamic -no-undefined
 
-TESTS = \
- test_sq
-
 check_PROGRAMS= \
  test_sq
+
+TESTS = \
+ $(check_PROGRAMS)
 
 test_sq_SOURCES = \
   test_sq.c
@@ -37,4 +36,5 @@ test_sq_LDADD = \
   -lgnunetsq \
   -lgnunetutil \
   -ljansson \
-  -lsqlite3 $(XLIB)
+  -lsqlite3 \
+  $(XLIB)

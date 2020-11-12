@@ -150,7 +150,8 @@ test_auditor_api_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_auditor_api_version_SOURCES = \
   test_auditor_api_version.c
@@ -161,7 +162,8 @@ test_auditor_api_version_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_bank_api_with_nexus_SOURCES = \
   test_bank_api.c
@@ -169,7 +171,8 @@ test_bank_api_with_nexus_LDADD = \
   libtalertesting.la \
   -ltalerexchange \
   -lgnunetutil \
-  $(top_builddir)/src/bank-lib/libtalerbank.la
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(XLIB)
 
 test_bank_api_with_fakebank_SOURCES = \
   test_bank_api.c
@@ -177,7 +180,8 @@ test_bank_api_with_fakebank_LDADD = \
   libtalertesting.la \
   -ltalerexchange \
   -lgnunetutil \
-  $(top_builddir)/src/bank-lib/libtalerbank.la
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(XLIB)
 
 test_bank_api_with_pybank_SOURCES = \
   test_bank_api.c
@@ -185,7 +189,8 @@ test_bank_api_with_pybank_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   -lgnunetutil \
-  $(top_builddir)/src/bank-lib/libtalerbank.la
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(XLIB)
 
 test_exchange_api_SOURCES = \
   test_exchange_api.c
@@ -199,7 +204,8 @@ test_exchange_api_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_exchange_api_revocation_SOURCES = \
   test_exchange_api_revocation.c
@@ -213,7 +219,8 @@ test_exchange_api_revocation_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_exchange_api_keys_cherry_picking_SOURCES = \
   test_exchange_api_keys_cherry_picking.c
@@ -226,7 +233,8 @@ test_exchange_api_keys_cherry_picking_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_exchange_api_overlapping_keys_bug_SOURCES = \
   test_exchange_api_overlapping_keys_bug.c
@@ -239,7 +247,8 @@ test_exchange_api_overlapping_keys_bug_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_taler_exchange_aggregator_postgres_SOURCES = \
   test_taler_exchange_aggregator.c
@@ -254,7 +263,8 @@ test_taler_exchange_aggregator_postgres_LDADD = \
   -lgnunetutil \
   -lgnunetjson \
   -ljansson \
-  -lpthread
+  -lpthread \
+  $(XLIB)
 
 test_taler_exchange_wirewatch_postgres_SOURCES = \
   test_taler_exchange_wirewatch.c
@@ -270,7 +280,8 @@ test_taler_exchange_wirewatch_postgres_LDADD = \
   -lgnunetjson \
   -lgnunetpq \
   -ljansson \
-  -lpthread
+  -lpthread \
+  $(XLIB)
 
 test_exchange_api_twisted_SOURCES = \
   test_exchange_api_twisted.c
@@ -286,7 +297,8 @@ test_exchange_api_twisted_LDADD = \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_bank_api_with_fakebank_twisted_SOURCES = \
   test_bank_api_twisted.c
@@ -300,7 +312,8 @@ test_bank_api_with_fakebank_twisted_LDADD = \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson \
+  $(XLIB)
 
 test_bank_api_with_pybank_twisted_SOURCES = \
   test_bank_api_twisted.c
@@ -314,7 +327,8 @@ test_bank_api_with_pybank_twisted_LDADD = \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
-  -ljansson
+  -ljansson  \
+  $(XLIB)
 
 
 # Distribution

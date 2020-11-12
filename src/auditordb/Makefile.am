@@ -42,18 +42,17 @@ libtaler_plugin_auditordb_postgres_la_LDFLAGS = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lpq \
   -lgnunetpq \
-  -lgnunetutil $(XLIB)
+  -lgnunetutil \
+  $(XLIB)
 
 lib_LTLIBRARIES = \
   libtalerauditordb.la
 
 libtalerauditordb_la_SOURCES = \
   auditordb_plugin.c
-
 libtalerauditordb_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil  $(XLIB)
-
 libtalerauditordb_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
   -version-info 0:0:0 \
@@ -77,4 +76,5 @@ test_auditordb_postgres_LDADD = \
   libtalerauditordb.la \
   $(top_srcdir)/src/pq/libtalerpq.la \
   $(top_srcdir)/src/util/libtalerutil.la \
-  -lgnunetutil
+  -lgnunetutil  \
+  $(XLIB)
