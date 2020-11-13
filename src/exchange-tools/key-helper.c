@@ -105,7 +105,7 @@ get_and_check_master_key (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                        sizeof (mpub_cfg)))
     {
       fprintf (stderr,
-               "MASTER_PUBLIC_KEY value `%s' specified in section [exchange] of the configuration is a valid public key\n",
+               "MASTER_PUBLIC_KEY value `%s' specified in section [exchange] of the configuration is not a valid public key\n",
                masters);
       GNUNET_free (masters);
       GNUNET_free (fn);
