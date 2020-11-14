@@ -2430,6 +2430,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Function called to mark wire transfer as failed.
+   *
+   * @param cls closure
+   * @param session database connection
+   * @param rowid which entry to mark as failed
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*wire_prepare_data_mark_failed)(void *cls,
+                                   struct TALER_EXCHANGEDB_Session *session,
+                                   uint64_t rowid);
+
+
+  /**
    * Function called to get an unfinished wire transfer
    * preparation data. Fetches at most one item.
    *

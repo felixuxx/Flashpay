@@ -17,7 +17,9 @@ sqldir = $(prefix)/share/taler/sql/exchange/
 sql_DATA = \
   exchange-0000.sql \
   exchange-0001.sql \
-  drop0001.sql
+  exchange-0002.sql \
+  drop0001.sql \
+  drop0002.sql
 
 EXTRA_DIST = \
   exchangedb.conf \

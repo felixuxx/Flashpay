@@ -264,8 +264,26 @@ wire_confirm_cb (void *cls,
   (void) row_id;
   (void) wire_timestamp;
   wpd->eh = NULL;
-  if (MHD_HTTP_OK != http_status_code)
+  switch (http_status_code)
   {
+  case MHD_HTTP_OK:
+    qs = db_plugin->wire_prepare_data_mark_finished (db_plugin->cls,
+                                                     session,
+                                                     wpd->row_id);
+    /* continued below */
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Wire transaction %llu failed: %u/%d\n",
+                (unsigned long long) wpd->row_id,
+                http_status_code,
+                ec);
+    qs = db_plugin->wire_prepare_data_mark_failed (db_plugin->cls,
+                                                   session,
+                                                   wpd->row_id);
+    /* continued below */
+    break;
+  default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Wire transaction failed: %u/%d\n",
                 http_status_code,
@@ -278,9 +296,6 @@ wire_confirm_cb (void *cls,
     wpd = NULL;
     return;
   }
-  qs = db_plugin->wire_prepare_data_mark_finished (db_plugin->cls,
-                                                   session,
-                                                   wpd->row_id);
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);

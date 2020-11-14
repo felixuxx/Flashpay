@@ -1,3 +1,10 @@
+Sat 14 Nov 2020 05:47:30 PM CET
+    Modify taler-exchange-transfer to continue even after a
+    wire transfer failed due to the bank refusing it because
+    the target account does not exist. Changed the database
+    to track such failures in the respective table.
+    Opens new issue #6647.  -CG
+
 Tue 10 Nov 2020 01:03:22 PM CET
     Updates to error codes and HTTP status codes for improved
     consistency. Fixed spelling issues. Ensure main() returns

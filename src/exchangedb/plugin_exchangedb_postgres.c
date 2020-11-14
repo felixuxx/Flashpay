@@ -1098,7 +1098,13 @@ postgres_get_session (void *cls)
       /* Used in #postgres_wire_prepare_data_mark_finished() */
       GNUNET_PQ_make_prepare ("wire_prepare_data_mark_done",
                               "UPDATE prewire"
-                              " SET finished=true"
+                              " SET finished=TRUE"
+                              " WHERE prewire_uuid=$1;",
+                              1),
+      /* Used in #postgres_wire_prepare_data_mark_failed() */
+      GNUNET_PQ_make_prepare ("wire_prepare_data_mark_failed",
+                              "UPDATE prewire"
+                              " SET failed=TRUE"
                               " WHERE prewire_uuid=$1;",
                               1),
       /* Used in #postgres_wire_prepare_data_get() */
@@ -1108,11 +1114,11 @@ postgres_get_session (void *cls)
                               ",type"
                               ",buf"
                               " FROM prewire"
-                              " WHERE finished=false"
+                              " WHERE finished=FALSE"
+                              "   AND failed=FALSE"
                               " ORDER BY prewire_uuid ASC"
                               " LIMIT 1;",
                               0),
-
       /* Used in #postgres_select_deposits_missing_wire */
       GNUNET_PQ_make_prepare ("deposits_get_overdue",
                               "SELECT"
@@ -5224,10 +5230,10 @@ postgres_wire_prepare_data_insert (void *cls,
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_wire_prepare_data_mark_finished (void *cls,
-                                          struct TALER_EXCHANGEDB_Session *
-                                          session,
-                                          uint64_t rowid)
+postgres_wire_prepare_data_mark_finished (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t rowid)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rowid),
@@ -5237,6 +5243,32 @@ postgres_wire_prepare_data_mark_finished (void *cls,
   (void) cls;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "wire_prepare_data_mark_done",
+                                             params);
+}
+
+
+/**
+ * Function called to mark wire transfer commit data as failed.
+ *
+ * @param cls closure
+ * @param session database connection
+ * @param rowid which entry to mark as failed
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_wire_prepare_data_mark_failed (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  uint64_t rowid)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&rowid),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "wire_prepare_data_mark_failed",
                                              params);
 }
 
@@ -7379,6 +7411,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->wire_prepare_data_insert = &postgres_wire_prepare_data_insert;
   plugin->wire_prepare_data_mark_finished =
     &postgres_wire_prepare_data_mark_finished;
+  plugin->wire_prepare_data_mark_failed =
+    &postgres_wire_prepare_data_mark_failed;
   plugin->wire_prepare_data_get = &postgres_wire_prepare_data_get;
   plugin->start_deferred_wire_out = &postgres_start_deferred_wire_out;
   plugin->store_wire_transfer_out = &postgres_store_wire_transfer_out;
