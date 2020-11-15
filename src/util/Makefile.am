@@ -38,6 +38,7 @@ taler_helper_crypto_rsa_SOURCES = \
 taler_helper_crypto_rsa_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
+  -lpthread \
   $(LIBGCRYPT_LIBS) \
   $(XLIB)
 

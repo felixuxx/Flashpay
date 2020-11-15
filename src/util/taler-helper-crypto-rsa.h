@@ -44,7 +44,7 @@ struct TALER_CRYPTO_RsaKeyAvailableNotification
   /**
    * Number of bytes of the section name.
    */
-  uint16_t section_name;
+  uint16_t section_name_len;
 
   /**
    * When does the key become available?

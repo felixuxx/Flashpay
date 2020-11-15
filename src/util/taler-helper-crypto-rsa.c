@@ -290,25 +290,69 @@ read_job (void *cls)
 /**
  * Notify @a client about @a dk becoming available.
  *
- * @param client the client to notify
+ * @param[in,out] client the client to notify; possible freed if transmission fails
  * @param dk the key to notify @a client about
  * @return #GNUNET_OK on success
  */
 static int
-notify_client_dk_add (const struct Client *client,
+notify_client_dk_add (struct Client *client,
                       const struct DenominationKey *dk)
 {
   struct TALER_CRYPTO_RsaKeyAvailableNotification *an;
+  struct Denomination *denom = dk->denom;
+  size_t nlen = strlen (denom->section) + 1;
+  size_t buf_len;
+  void *buf;
+  void *p;
+  ssize_t ret;
+  size_t tlen;
 
-  // FIXME: send msg!
-  return GNUNET_SYSERR;
+  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub.rsa_public_key,
+                                                 &buf);
+  GNUNET_assert (buf_len < UINT16_MAX);
+  GNUNET_assert (nlen < UINT16_MAX);
+  tlen = buf_len + nlen + sizeof (*an);
+  GNUNET_assert (tlen < UINT16_MAX);
+  an = GNUNET_malloc (tlen);
+  an->header.size = htons ((uint16_t) tlen);
+  an->header.type = htons (TALER_HELPER_RSA_MT_AVAIL);
+  an->pub_size = htons ((uint16_t) buf_len);
+  an->section_name_len = htons ((uint16_t) nlen);
+  an->anchor_time = GNUNET_TIME_absolute_hton (dk->anchor);
+  an->duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw);
+  p = (void *) &an[1];
+  memcpy (p,
+          buf,
+          buf_len);
+  GNUNET_free (buf);
+  memcpy (p + buf_len,
+          denom->section,
+          nlen);
+  ret = send (GNUNET_NETWORK_get_fd (client->sock),
+              an,
+              tlen,
+              0);
+  if (tlen != ret)
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                         "send");
+    GNUNET_free (an);
+    GNUNET_NETWORK_socket_close (client->sock);
+    GNUNET_CONTAINER_DLL_remove (clients_head,
+                                 clients_tail,
+                                 client);
+    GNUNET_free (client);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (an);
+  return GNUNET_OK;
 }
 
 
 /**
  * Notify @a client about @a dk being purged.
  *
- * @param client the client to notify
+ * @param[in,out] client the client to notify; possible freed if transmission fails
  * @param dk the key to notify @a client about
  * @return #GNUNET_OK on success
  */
@@ -1246,7 +1290,7 @@ main (int argc,
   };
   int ret;
 
-  umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
+  (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
