@@ -27,6 +27,9 @@
 #define TALER_HELPER_RSA_MT_REQ_SIGN 3
 #define TALER_HELPER_RSA_MT_REQ_REVOKE 4
 
+#define TALER_HELPER_RSA_MT_RES_SIGNATURE 5
+#define TALER_HELPER_RSA_MT_RES_SIGN_FAILURE 6
+
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
@@ -110,11 +113,7 @@ struct TALER_CRYPTO_SignRequest
    */
   struct GNUNET_HashCode h_denom_pub;
 
-  /**
-   * Hash of the value to sign (FDH still to be computed!).
-   */
-  struct GNUNET_HashCode h_message;
-
+  /* followed by message to sign */
 };
 
 
@@ -137,6 +136,43 @@ struct TALER_CRYPTO_RevokeRequest
    * Hash of the public key of the revoked RSA key.
    */
   struct GNUNET_HashCode h_denom_pub;
+
+};
+
+
+/**
+ * Message sent if a signature was successfully computed.
+ */
+struct TALER_CRYPTO_SignResponse
+{
+  /**
+   * Type is #TALER_HELPER_RSA_MT_RES_SIGNATURE.
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * For now, always zero.
+   */
+  uint32_t reserved;
+
+  /* followed by RSA signature */
+};
+
+
+/**
+ * Message sent if signing failed.
+ */
+struct TALER_CRYPTO_SignFailure
+{
+  /**
+   * Type is #TALER_HELPER_RSA_MT_RES_SIGN_FAILURE.
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * If available, Taler error code. In NBO.
+   */
+  uint32_t ec;
 
 };
 

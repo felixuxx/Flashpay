@@ -18,10 +18,10 @@
  * @brief Standalone process to perform private key RSA operations
  * @author Christian Grothoff
  *
- * NOTES:
+ * INTEGRATION NOTES:
  * - Option 'DURATION_OVERLAP' renamed to 'OVERLAP_DURATION' for consistency;
  *   => need to update in deployment scripts and default configuration!
- * - option 'KEYDIR' moved from section 'exchange' to 'taler-helper-crypto-rsa'!
+ * - option 'KEY_DIR' moved from section 'exchange' to 'taler-helper-crypto-rsa'!
  *
  * Key design points:
  * - EVERY thread of the exchange will have its own pair of connections to the
@@ -36,10 +36,6 @@
  *   we must ensure that all signers are done before we fully free() the
  *   private key. This is done by reference counting (as work is always
  *   assigned and collected by the main thread).
- *
- * TODO:
- * - networking: sending signature replies
- * - actual signing
  */
 #include "platform.h"
 #include "taler_util.h"
@@ -47,7 +43,7 @@
 #include <gcrypt.h>
 #include <pthread.h>
 #include <sys/eventfd.h>
-
+#include "taler_error_codes.h"
 
 /**
  * Information we keep per denomination.
@@ -233,9 +229,20 @@ struct WorkItem
   struct DenominationKey *dk;
 
   /**
-   * Hash of the value to sign (FDH still to be computed!).
+   * RSA signature over @e blinded_msg using @e dk. Result of doing the
+   * work. Initially NULL.
    */
-  struct GNUNET_HashCode h_message;
+  struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+
+  /**
+   * Coin_ev value to sign.
+   */
+  void *blinded_msg;
+
+  /**
+   * Number of bytes in #blinded_msg.
+   */
+  size_t blinded_msg_size;
 
 };
 
@@ -393,18 +400,6 @@ static unsigned int num_workers;
 
 
 /**
- * Function that performs the actual signature for the work @a wi
- *
- * @param[in,out] wi signature work we should do
- */
-static void
-do_sign (struct WorkItem *wi)
-{
-  // FIXME!
-}
-
-
-/**
  * Main function of a worker thread that signs.
  *
  * @param cls NULL
@@ -427,7 +422,10 @@ sign_worker (void *cls)
                                    wi);
       work_counter--;
       GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
-      do_sign (wi);
+      wi->rsa_signature
+        = GNUNET_CRYPTO_rsa_sign_blinded (wi->dk->denom_priv.rsa_private_key,
+                                          wi->blinded_msg,
+                                          wi->blinded_msg_size);
       /* put completed work into done queue */
       GNUNET_assert (0 == pthread_mutex_lock (&done_lock));
       GNUNET_CONTAINER_DLL_insert (done_head,
@@ -524,6 +522,34 @@ free_dk (struct DenominationKey *dk)
 
 
 /**
+ * Send a message starting with @a hdr to @a client.
+ *
+ * @param client where to send @a hdr
+ * @param hdr beginning of the message, length indicated in size field
+ * @return #GNUNET_OK on success
+ */
+static int
+transmit_to_client (struct Client *client,
+                    const struct GNUNET_MessageHeader *hdr)
+{
+  ssize_t ret;
+
+  ret = send (GNUNET_NETWORK_get_fd (client->sock),
+              hdr,
+              ntohs (hdr->size),
+              0);
+  if (ret != ntohs (hdr->size))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                         "send");
+    free_client (client);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Process completed tasks that are in the #done_head queue, sending
  * the result back to the client (and resuming the client).
  *
@@ -555,7 +581,27 @@ handle_done (void *cls)
                                  done_tail,
                                  wi);
     GNUNET_assert (0 == pthread_mutex_unlock (&done_lock));
-    // FIXME: send response to client!
+    {
+      struct TALER_CRYPTO_SignResponse *sr;
+      void *buf;
+      size_t buf_size;
+      size_t tsize;
+
+      buf_size = GNUNET_CRYPTO_rsa_signature_encode (wi->rsa_signature,
+                                                     &buf);
+      tsize = sizeof (*sr) + buf_size;
+      GNUNET_assert (tsize < UINT16_MAX);
+      sr = GNUNET_malloc (tsize);
+      sr->header.size = htons (tsize);
+      sr->header.type = htons (TALER_HELPER_RSA_MT_RES_SIGNATURE);
+      memcpy (&sr[1],
+              buf,
+              buf_size);
+      GNUNET_free (buf);
+      (void) transmit_to_client (wi->client,
+                                 &sr->header);
+      GNUNET_free (sr);
+    }
     GNUNET_free (wi);
     GNUNET_assert (0 == pthread_mutex_lock (&done_lock));
   }
@@ -578,14 +624,23 @@ handle_sign_request (struct Client *client,
 {
   struct DenominationKey *dk;
   struct WorkItem *wi;
+  const void *blinded_msg = &sr[1];
+  size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (sr);
 
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
                                           &sr->h_denom_pub);
   if (NULL == dk)
   {
+    struct TALER_CRYPTO_SignFailure sf = {
+      .header.size = htons (sizeof (sr)),
+      .header.type = htons (TALER_HELPER_RSA_MT_RES_SIGN_FAILURE),
+      .ec = htonl (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN)
+    };
+
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Signing request failed, denomination key unknown\n");
-    // FIXME: send failure response to client!
+    transmit_to_client (client,
+                        &sf.header);
     client_next (client);
     return;
   }
@@ -594,7 +649,9 @@ handle_sign_request (struct Client *client,
   wi->client = client;
   wi->dk = dk;
   dk->rc++;
-  wi->h_message = sr->h_message;
+  wi->blinded_msg = GNUNET_memdup (blinded_msg,
+                                   blinded_msg_size);
+  wi->blinded_msg_size = blinded_msg_size;
   GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
   work_counter++;
   GNUNET_CONTAINER_DLL_insert (work_head,
@@ -622,8 +679,8 @@ notify_client_dk_add (struct Client *client,
   size_t buf_len;
   void *buf;
   void *p;
-  ssize_t ret;
   size_t tlen;
+  int ret;
 
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub.rsa_public_key,
                                                  &buf);
@@ -646,20 +703,10 @@ notify_client_dk_add (struct Client *client,
   memcpy (p + buf_len,
           denom->section,
           nlen);
-  ret = send (GNUNET_NETWORK_get_fd (client->sock),
-              an,
-              tlen,
-              0);
-  if (tlen != ret)
-  {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "send");
-    GNUNET_free (an);
-    free_client (client);
-    return GNUNET_SYSERR;
-  }
+  ret = transmit_to_client (client,
+                            &an->header);
   GNUNET_free (an);
-  return GNUNET_OK;
+  return ret;
 }
 
 
@@ -679,20 +726,9 @@ notify_client_dk_del (struct Client *client,
     .header.size = htons (sizeof (pn)),
     .h_denom_pub = dk->h_pub
   };
-  ssize_t ret;
 
-  ret = send (GNUNET_NETWORK_get_fd (client->sock),
-              &pn,
-              sizeof (pn),
-              0);
-  if (sizeof (pn) != ret)
-  {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "send");
-    free_client (client);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
+  return transmit_to_client (client,
+                             &pn.header);
 }
 
 
@@ -926,7 +962,7 @@ read_job (void *cls)
   switch (ntohs (hdr.type))
   {
   case TALER_HELPER_RSA_MT_REQ_SIGN:
-    if (ntohs (hdr.size) != sizeof (struct TALER_CRYPTO_SignRequest))
+    if (ntohs (hdr.size) <= sizeof (struct TALER_CRYPTO_SignRequest))
     {
       GNUNET_break_op (0);
       free_client (client);
