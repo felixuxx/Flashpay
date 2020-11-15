@@ -24,6 +24,9 @@
 #define TALER_HELPER_RSA_MT_PURGE 1
 #define TALER_HELPER_RSA_MT_AVAIL 2
 
+#define TALER_HELPER_RSA_MT_REQ_SIGN 3
+#define TALER_HELPER_RSA_MT_REQ_REVOKE 4
+
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
@@ -81,6 +84,57 @@ struct TALER_CRYPTO_RsaKeyPurgeNotification
 
   /**
    * Hash of the public key of the purged RSA key.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+};
+
+
+/**
+ * Message sent if a signature is requested.
+ */
+struct TALER_CRYPTO_SignRequest
+{
+  /**
+   * Type is #TALER_HELPER_RSA_MT_SIGN.
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * For now, always zero.
+   */
+  uint32_t reserved;
+
+  /**
+   * Hash of the public key of the RSA key to use for the signature.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
+   * Hash of the value to sign (FDH still to be computed!).
+   */
+  struct GNUNET_HashCode h_message;
+
+};
+
+
+/**
+ * Message sent if a key was revoked.
+ */
+struct TALER_CRYPTO_RevokeRequest
+{
+  /**
+   * Type is #TALER_HELPER_RSA_MT_REVOKE.
+   */
+  struct GNUNET_MessageHeader header;
+
+  /**
+   * For now, always zero.
+   */
+  uint32_t reserved;
+
+  /**
+   * Hash of the public key of the revoked RSA key.
    */
   struct GNUNET_HashCode h_denom_pub;
 

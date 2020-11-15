@@ -12,7 +12,8 @@ libexecdir = $(pkglibdir)/libexec/
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
-  paths.conf
+  paths.conf \
+  taler-helper-crypto-rsa.conf
 
 EXTRA_DIST = \
   paths.conf \
