@@ -7,6 +7,8 @@ if USE_COVERAGE
 endif
 
 
+libexecdir = $(pkglibdir)/libexec/
+
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
@@ -15,6 +17,9 @@ pkgcfg_DATA = \
 EXTRA_DIST = \
   paths.conf \
   taler-config.in
+
+libexec_PROGRAMS = \
+  taler-helper-crypto-rsa
 
 bin_SCRIPTS = \
   taler-config
@@ -28,6 +33,13 @@ taler-config: taler-config.in
 	mv $@.tmp $@
 
 
+taler_helper_crypto_rsa_SOURCES = \
+  taler-helper-crypto-rsa.c taler-helper-crypto-rsa.h
+taler_helper_crypto_rsa_LDADD = \
+  libtalerutil.la \
+  -lgnunetutil \
+  $(LIBGCRYPT_LIBS) \
+  $(XLIB)
 
 lib_LTLIBRARIES = \
   libtalerutil.la

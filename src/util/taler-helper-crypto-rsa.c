@@ -214,7 +214,7 @@ static const struct GNUNET_CONFIGURATION_Handle *kcfg;
 /**
  * Where do we store the keys?
  */
-static const char *keydir;
+static char *keydir;
 
 /**
  * How much should coin creation (@e duration_withdraw) duration overlap
@@ -227,11 +227,6 @@ static struct GNUNET_TIME_Relative overlap_duration;
  * How long into the future do we pre-generate keys?
  */
 static struct GNUNET_TIME_Relative lookahead_sign;
-
-/**
- * Until what time do we provide keys?
- */
-static struct GNUNET_TIME_Absolute lookahead_sign_stamp;
 
 /**
  * All of our denominations, in a DLL. Sorted?
@@ -303,6 +298,7 @@ static int
 notify_client_dk_add (const struct Client *client,
                       const struct DenominationKey *dk)
 {
+  struct TALER_CRYPTO_RsaKeyAvailableNotification *an;
 
   // FIXME: send msg!
   return GNUNET_SYSERR;
@@ -317,7 +313,7 @@ notify_client_dk_add (const struct Client *client,
  * @return #GNUNET_OK on success
  */
 static int
-notify_client_dk_del (const struct Client *client,
+notify_client_dk_del (struct Client *client,
                       const struct DenominationKey *dk)
 {
   struct TALER_CRYPTO_RsaKeyPurgeNotification pn = {
@@ -336,8 +332,8 @@ notify_client_dk_del (const struct Client *client,
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                          "send");
     GNUNET_NETWORK_socket_close (client->sock);
-    GNUNET_CONTAINER_DLL_remove (client_head,
-                                 client_tail,
+    GNUNET_CONTAINER_DLL_remove (clients_head,
+                                 clients_tail,
                                  client);
     GNUNET_free (client);
     return GNUNET_SYSERR;
@@ -372,10 +368,10 @@ accept_job (void *cls)
     GNUNET_CONTAINER_DLL_insert (clients_head,
                                  clients_tail,
                                  client);
-    client->task = GNUNET_SCHEDULER_add_read (GNUNET_TIME_UNIT_FOREVER_REL,
-                                              sock,
-                                              &read_job,
-                                              client);
+    client->task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
+                                                  sock,
+                                                  &read_job,
+                                                  client);
     for (struct Denomination *denom = denom_head;
          NULL != denom;
          denom = denom->next)
@@ -397,10 +393,10 @@ accept_job (void *cls)
         break;
     }
   }
-  accept_task = GNUNET_SCHEDULER_add_read (GNUNET_TIME_UNIT_FOREVER_REL,
-                                           lsock,
-                                           &accept_job,
-                                           NULL);
+  accept_task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
+                                               lsock,
+                                               &accept_job,
+                                               NULL);
 }
 
 
@@ -423,11 +419,11 @@ create_key (struct Denomination *denom)
   if (NULL == denom->keys_tail)
   {
     anchor = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_absolute_round (&anchor);
+    (void) GNUNET_TIME_round_abs (&anchor);
   }
   else
   {
-    anchor = GNUNET_TIME_absolute_add (denom->keys_tail.anchor,
+    anchor = GNUNET_TIME_absolute_add (denom->keys_tail->anchor,
                                        GNUNET_TIME_relative_subtract (
                                          denom->duration_withdraw,
                                          overlap_duration));
@@ -447,22 +443,23 @@ create_key (struct Denomination *denom)
     GNUNET_CRYPTO_rsa_private_key_free (priv);
     GNUNET_SCHEDULER_shutdown ();
     global_ret = 41;
-    return;
+    return GNUNET_SYSERR;
   }
   buf_size = GNUNET_CRYPTO_rsa_private_key_encode (priv,
                                                    &buf);
   dk = GNUNET_new (struct DenominationKey);
   dk->denom = denom;
   dk->anchor = anchor;
-  dk->denom_priv.rsa_priv = priv;
+  dk->denom_priv.rsa_private_key = priv;
   GNUNET_CRYPTO_rsa_public_key_hash (pub,
                                      &dk->h_pub);
-  dk->denom_pub.rsa_pub = pub;
+  dk->denom_pub.rsa_public_key = pub;
   GNUNET_asprintf (&dk->filename,
                    "%s/%s/%llu",
                    keydir,
                    denom->section,
-                   anchor.abs_value_us / GNUNET_TIME_UNIT_SECONDS.rel_value_us);
+                   (unsigned long long) (anchor.abs_value_us
+                                         / GNUNET_TIME_UNIT_SECONDS.rel_value_us));
   if (buf_size !=
       GNUNET_DISK_fn_write (dk->filename,
                             buf,
@@ -496,10 +493,10 @@ create_key (struct Denomination *denom)
     GNUNET_free (dk);
     GNUNET_SCHEDULER_shutdown ();
     global_ret = 43;
-    return;
+    return GNUNET_SYSERR;
   }
-  GNUNET_CONTAINER_DLL_insert_tail (denom_keys_head,
-                                    denom_keys_tail,
+  GNUNET_CONTAINER_DLL_insert_tail (denom->keys_head,
+                                    denom->keys_tail,
                                     dk);
   {
     struct Client *nxt;
@@ -518,6 +515,7 @@ create_key (struct Denomination *denom)
       }
     }
   }
+  return GNUNET_OK;
 }
 
 
@@ -594,7 +592,7 @@ purge_key (struct DenominationKey *dk)
     dk->purge = true;
     return;
   }
-  GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv.rsa_priv);
+  GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv.rsa_private_key);
   GNUNET_free (dk);
 }
 
@@ -610,15 +608,15 @@ static void
 update_keys (struct Denomination *denom)
 {
   /* create new denomination keys */
-  while ( (NULL == denom->denom_tail) ||
+  while ( (NULL == denom->keys_tail) ||
           (0 ==
-           GNUNET_TIME_absolute_get_remaining
-           GNUNET_TIME_absolute_subtract (
+           GNUNET_TIME_absolute_get_remaining (
              GNUNET_TIME_absolute_subtract (
-               GNUNET_TIME_absolute_add (denom->keys_tail->anchor,
-                                         denom->duration_withdraw),
-               lookahead_sign),
-             overlap_duration)) )
+               GNUNET_TIME_absolute_subtract (
+                 GNUNET_TIME_absolute_add (denom->keys_tail->anchor,
+                                           denom->duration_withdraw),
+                 lookahead_sign),
+               overlap_duration)).rel_value_us) )
     if (GNUNET_OK !=
         create_key (denom))
     {
@@ -628,12 +626,12 @@ update_keys (struct Denomination *denom)
       return;
     }
   /* remove expired denomination keys */
-  while ( (NULL != denom->denom_head) &&
+  while ( (NULL != denom->keys_head) &&
           (0 ==
            GNUNET_TIME_absolute_get_remaining
-             (GNUNET_TIME_absolute_add (denom->denom_head.anchor,
-                                        denom->duration_withdraw))) )
-    purge_key (denom->denom_head);
+             (GNUNET_TIME_absolute_add (denom->keys_head->anchor,
+                                        denom->duration_withdraw)).rel_value_us) )
+    purge_key (denom->keys_head);
 
   /* Update position of 'denom' in #denom_head DLL: sort by action time */
   {
@@ -677,9 +675,9 @@ update_denominations (void *cls)
     denom = denom_head;
     update_keys (denom);
   } while (denom != denom_head);
-  keygen_task = GNUNET_SCHEDULER_add_at (TIME,
+  keygen_task = GNUNET_SCHEDULER_add_at (denomination_action_time (denom),
                                          &update_denominations,
-                                         denomination_action_time (denom));
+                                         NULL);
 }
 
 
@@ -723,8 +721,8 @@ parse_key (struct Denomination *denom,
                 filename);
     return;
   }
-  anchor.abs_time_us = anchor_ll * GNUNET_TIME_UNIT_SECONDS.rel_value_us;
-  if (anchor_ll != anchor.abs_time_us / GNUNET_TIME_UNIT_SECONDS.rel_value_us)
+  anchor.abs_value_us = anchor_ll * GNUNET_TIME_UNIT_SECONDS.rel_value_us;
+  if (anchor_ll != anchor.abs_value_us / GNUNET_TIME_UNIT_SECONDS.rel_value_us)
   {
     /* Integer overflow. Bad, invalid filename. */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -756,13 +754,13 @@ parse_key (struct Denomination *denom,
       return;
     }
     dk = GNUNET_new (struct DenominationKey);
-    dk->denom_priv.rsa_priv = priv;
-    dk->denomination = denom;
+    dk->denom_priv.rsa_private_key = priv;
+    dk->denom = denom;
     dk->anchor = anchor;
     dk->filename = GNUNET_strdup (filename);
     GNUNET_CRYPTO_rsa_public_key_hash (pub,
                                        &dk->h_pub);
-    dk->denom_pub.rsa_pub = pub;
+    dk->denom_pub.rsa_public_key = pub;
     if (GNUNET_OK !=
         GNUNET_CONTAINER_multihashmap_put (
           keys,
@@ -809,7 +807,6 @@ import_key (void *cls,
   struct Denomination *denom = cls;
   struct GNUNET_DISK_FileHandle *fh;
   struct GNUNET_DISK_MapHandle *map;
-  off_t fsize;
   void *ptr;
   int fd;
   struct stat sbuf;
@@ -820,9 +817,9 @@ import_key (void *cls,
     if (0 != lstat (filename,
                     &lsbuf))
     {
-      GNUNET_log_strerror_filename (GNUNET_ERROR_TYPE_WARNING,
-                                    "lstat",
-                                    filename);
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "lstat",
+                                filename);
       return GNUNET_OK;
     }
     if (! S_ISREG (lsbuf.st_mode))
@@ -838,17 +835,17 @@ import_key (void *cls,
              O_CLOEXEC);
   if (-1 == fd)
   {
-    GNUNET_log_strerror_filename (GNUNET_ERROR_TYPE_WARNING,
-                                  "open",
-                                  filename);
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "open",
+                              filename);
     return GNUNET_OK;
   }
   if (0 != fstat (fd,
                   &sbuf))
   {
-    GNUNET_log_strerror_filename (GNUNET_ERROR_TYPE_WARNING,
-                                  "stat",
-                                  filename);
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "stat",
+                              filename);
     return GNUNET_OK;
   }
   if (! S_ISREG (sbuf.st_mode))
@@ -865,9 +862,9 @@ import_key (void *cls,
         fchmod (fd,
                 S_IRUSR))
     {
-      GNUNET_log_strerror_filename (GNUNET_ERROR_TYPE_WARNING,
-                                    "fchmod",
-                                    filename);
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "fchmod",
+                                filename);
       /* refuse to use key if file has wrong permissions */
       GNUNET_break (0 == close (fd));
       return GNUNET_OK;
@@ -876,9 +873,9 @@ import_key (void *cls,
   fh = GNUNET_DISK_get_handle_from_int_fd (fd);
   if (NULL == fh)
   {
-    GNUNET_log_strerror_filename (GNUNET_ERROR_TYPE_WARNING,
-                                  "open",
-                                  filename);
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "open",
+                              filename);
     GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
@@ -896,9 +893,9 @@ import_key (void *cls,
                               (size_t) sbuf.st_size);
   if (NULL == ptr)
   {
-    GNUNET_log_strerror_filename (GNUNET_ERROR_TYPE_WARNING,
-                                  "mmap",
-                                  filename);
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "mmap",
+                              filename);
     GNUNET_DISK_file_close (fh);
     return GNUNET_OK;
   }
@@ -908,6 +905,67 @@ import_key (void *cls,
              (size_t) sbuf.st_size);
   GNUNET_DISK_file_unmap (map);
   GNUNET_DISK_file_close (fh);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Parse configuration for denomination type parameters.  Also determines
+ * our anchor by looking at the existing denominations of the same type.
+ *
+ * @param ct section in the configuration file giving the denomination type parameters
+ * @param[out] denom set to the denomination parameters from the configuration
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if the configuration is invalid
+ */
+static int
+parse_denomination_cfg (const char *ct,
+                        struct Denomination *denom)
+{
+  unsigned long long rsa_keysize;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           ct,
+                                           "DURATION_WITHDRAW",
+                                           &denom->duration_withdraw))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "DURATION_WITHDRAW");
+    return GNUNET_SYSERR;
+  }
+  GNUNET_TIME_round_rel (&denom->duration_withdraw);
+  if (overlap_duration.rel_value_us >=
+      denom->duration_withdraw.rel_value_us)
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "OVERLAP_DURATION",
+                               "Value given must be smaller than value for DURATION_WITHDRAW!");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (kcfg,
+                                             ct,
+                                             "RSA_KEYSIZE",
+                                             &rsa_keysize))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               ct,
+                               "RSA_KEYSIZE");
+    return GNUNET_SYSERR;
+  }
+  if ( (rsa_keysize > 4 * 2048) ||
+       (rsa_keysize < 1024) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "RSA_KEYSIZE",
+                               "Given RSA keysize outside of permitted range [1024,8192]\n");
+    return GNUNET_SYSERR;
+  }
+  denom->rsa_keysize = (unsigned int) rsa_keysize;
+  denom->section = GNUNET_strdup (ct);
   return GNUNET_OK;
 }
 
@@ -992,68 +1050,6 @@ load_durations (void)
   }
   GNUNET_TIME_round_rel (&lookahead_sign);
 
-  return GNUNET_OK;
-}
-
-
-/**
- * Parse configuration for denomination type parameters.  Also determines
- * our anchor by looking at the existing denominations of the same type.
- *
- * @param ct section in the configuration file giving the denomination type parameters
- * @param[out] denom set to the denomination parameters from the configuration
- * @return #GNUNET_OK on success, #GNUNET_SYSERR if the configuration is invalid
- */
-static int
-parse_denomination_cfg (const char *ct,
-                        struct Denomination *denom)
-{
-  const char *dir;
-  unsigned long long rsa_keysize;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           ct,
-                                           "DURATION_WITHDRAW",
-                                           &denom->duration_withdraw))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "DURATION_WITHDRAW");
-    return GNUNET_SYSERR;
-  }
-  GNUNET_TIME_round_rel (&denom->duration_withdraw);
-  if (duration_overlap.rel_value_us >=
-      denom->duration_withdraw.rel_value_us)
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchangedb",
-                               "DURATION_OVERLAP",
-                               "Value given for DURATION_OVERLAP must be smaller than value for DURATION_WITHDRAW!");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_number (kcfg,
-                                             ct,
-                                             "RSA_KEYSIZE",
-                                             &rsa_keysize))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               ct,
-                               "RSA_KEYSIZE");
-    return GNUNET_SYSERR;
-  }
-  if ( (rsa_keysize > 4 * 2048) ||
-       (rsa_keysize < 1024) )
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "exchangedb",
-                               "RSA_KEYSIZE",
-                               "Given RSA keysize outside of permitted range [1024,8192]\n");
-    return GNUNET_SYSERR;
-  }
-  denom->rsa_keysize = (unsigned int) rsa_keysize;
-  denom->section = GNUNET_strdup (ct);
   return GNUNET_OK;
 }
 

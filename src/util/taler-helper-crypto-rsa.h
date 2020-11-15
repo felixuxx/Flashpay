@@ -21,6 +21,9 @@
 #ifndef TALER_HELPER_CRYPTO_RSA_H
 #define TALER_HELPER_CRYPTO_RSA_H
 
+#define TALER_HELPER_RSA_MT_PURGE 1
+#define TALER_HELPER_RSA_MT_AVAIL 2
+
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
@@ -29,7 +32,7 @@ GNUNET_NETWORK_STRUCT_BEGIN
 struct TALER_CRYPTO_RsaKeyAvailableNotification
 {
   /**
-   * Type is PURGE.
+   * Type is #TALER_HELPER_RSA_MT_AVAIL
    */
   struct GNUNET_MessageHeader header;
 
@@ -67,7 +70,7 @@ struct TALER_CRYPTO_RsaKeyAvailableNotification
 struct TALER_CRYPTO_RsaKeyPurgeNotification
 {
   /**
-   * Type is PURGE.
+   * Type is #TALER_HELPER_RSA_MT_PURGE.
    */
   struct GNUNET_MessageHeader header;
 
