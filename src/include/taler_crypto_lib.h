@@ -24,7 +24,7 @@
 
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
-
+#include "taler_error_codes.h"
 #include <gcrypt.h>
 
 
@@ -736,6 +736,123 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
                               const struct TALER_RefreshCommitmentEntry *rcs,
                               const struct TALER_CoinSpendPublicKeyP *coin_pub,
                               const struct TALER_Amount *amount_with_fee);
+
+/* **************** Helper-based RSA operations **************** */
+
+/**
+ * Handle for talking to an Denomination key signing helper.
+ */
+struct TALER_CRYPTO_DenominationHelper;
+
+/**
+ * Function called with information about available keys for signing.  Usually
+ * only called once per key upon connect. Also called again in case a key is
+ * being revoked, in that case with an @a end_time of zero.
+ *
+ * @param cls closure
+ * @param section_name name of the denomination type in the configuration;
+ *                 NULL if the key has been revoked or purged
+ * @param start_time when does the key become available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param validity_duration how long does the key remain available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param h_denom_pub hash of the @a denom_pub that is available (or was purged)
+ * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ */
+typedef void
+(*TALER_CRYPTO_DenominationKeyStatusCallback)(
+  void *cls,
+  const char *section_name,
+  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Relative validity_duration,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
+ * Initiate connection to an denomination key helper.
+ *
+ * @param cfg configuration to use
+ * @param dkc function to call with key information
+ * @param dkc_cls closure for @a dkc
+ * @return NULL on error (such as bad @a cfg).
+ */
+struct TALER_CRYPTO_DenominationHelper *
+TALER_CRYPTO_helper_denom_connect (
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  TALER_CRYPTO_DenominationKeyStatusCallback dkc,
+  void *dkc_cls);
+
+
+/**
+ * Function to call to 'poll' for updates to the available key material.
+ * Should be called whenever it is important that the key material status is
+ * current, like when handling a "/keys" request.  This function basically
+ * briefly checks if there are messages from the helper announcing changes to
+ * denomination keys.
+ *
+ * @param dh helper process connection
+ */
+void
+TALER_CRYPTO_helper_poll (struct TALER_CRYPTO_DenominationHelper *dh);
+
+
+/**
+ * Request helper @a dh to sign @a msg using the public key corresponding to
+ * @a h_denom_pub.
+ *
+ * This operation will block until the signature has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper process connection
+ * @param h_denom_pub hash of the public key to use to sign
+ * @param msg message to sign
+ * @param msg_size number of bytes in @a msg
+ * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
+ * @return signature, the value inside the structure will be NULL on failure,
+ *         see @a ec for details about the failure
+ */
+struct TALER_DenominationSignature
+TALER_CRYPTO_helper_denom_sign (
+  struct TALER_CRYPTO_DenominationHelper *dh,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const void *msg,
+  size_t msg_size,
+  enum TALER_ErrorCode *ec);
+
+
+/**
+ * Ask the helper to revoke the public key associated with @param h_denom_pub.
+ * Will cause the helper to tell all clients that the key is now unavailable,
+ * and to create a replacement key.
+ *
+ * This operation will block until the revocation request has been
+ * transmitted.  Should this process receive a signal (that is not ignored)
+ * while the operation is pending, the operation may fail. If the key is
+ * unknown, this function will also appear to have succeeded. To be sure that
+ * the revocation worked, clients must watch the denomination key status
+ * callback.
+ *
+ * @param dh helper to process connection
+ * @param h_denom_pub hash of the public key to revoke
+ */
+void
+TALER_CRYPTO_helper_denom_revoke (
+  struct TALER_CRYPTO_DenominationHelper *dh,
+  const struct GNUNET_HashCode *h_denom_pub);
+
+
+/**
+ * Close connection to @a dh.
+ *
+ * @param[in] dh connection to close
+ */
+void
+TALER_CRYPTO_helper_denom_disconnect (
+  struct TALER_CRYPTO_DenominationHelper *dh);
 
 
 /* **************** /wire account offline signing **************** */

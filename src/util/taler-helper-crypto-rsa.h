@@ -99,7 +99,7 @@ struct TALER_CRYPTO_RsaKeyPurgeNotification
 struct TALER_CRYPTO_SignRequest
 {
   /**
-   * Type is #TALER_HELPER_RSA_MT_SIGN.
+   * Type is #TALER_HELPER_RSA_MT_REQ_SIGN.
    */
   struct GNUNET_MessageHeader header;
 
@@ -123,7 +123,7 @@ struct TALER_CRYPTO_SignRequest
 struct TALER_CRYPTO_RevokeRequest
 {
   /**
-   * Type is #TALER_HELPER_RSA_MT_REVOKE.
+   * Type is #TALER_HELPER_RSA_MT_REQ_REVOKE.
    */
   struct GNUNET_MessageHeader header;
 
