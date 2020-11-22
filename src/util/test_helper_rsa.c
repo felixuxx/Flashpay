@@ -33,6 +33,11 @@
  */
 #define NUM_REVOKES 10
 
+/**
+ * How many iterations of the successful signing test should we run?
+ */
+#define NUM_SIGN_TESTS 100
+
 
 /**
  * Number of keys currently in #keys.
@@ -189,7 +194,7 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
                GNUNET_h2s (&keys[j].h_denom_pub));
       TALER_CRYPTO_helper_denom_revoke (dh,
                                         &keys[j].h_denom_pub);
-      for (unsigned int k = 0; k<80; k++)
+      for (unsigned int k = 0; k<1000; k++)
       {
         TALER_CRYPTO_helper_poll (dh);
         if (! keys[j].revoked)
@@ -205,6 +210,7 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
         TALER_CRYPTO_helper_denom_disconnect (dh);
         return 2;
       }
+      fprintf (stderr, "\n");
       break;
     }
   }
@@ -225,7 +231,11 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
   enum TALER_ErrorCode ec;
   bool success = false;
   struct GNUNET_HashCode m_hash;
+  struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
 
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &bks,
+                              sizeof (bks));
   GNUNET_CRYPTO_hash ("Hello",
                       strlen ("Hello"),
                       &m_hash);
@@ -233,11 +243,26 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
   {
     if (! keys[i].valid)
       continue;
-    ds = TALER_CRYPTO_helper_denom_sign (dh,
-                                         &keys[i].h_denom_pub,
-                                         &m_hash,
-                                         sizeof (m_hash),
-                                         &ec);
+    {
+      void *buf;
+      size_t buf_size;
+      GNUNET_assert (GNUNET_YES ==
+                     GNUNET_CRYPTO_rsa_blind (&m_hash,
+                                              &bks,
+                                              keys[i].denom_pub.rsa_public_key,
+                                              &buf,
+                                              &buf_size));
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Requesting signature over %u bytes with key %s\n",
+                  (unsigned int) buf_size,
+                  GNUNET_h2s (&keys[i].h_denom_pub));
+      ds = TALER_CRYPTO_helper_denom_sign (dh,
+                                           &keys[i].h_denom_pub,
+                                           buf,
+                                           buf_size,
+                                           &ec);
+      GNUNET_free (buf);
+    }
     switch (ec)
     {
     case TALER_EC_NONE:
@@ -255,21 +280,38 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         GNUNET_break (0);
         return 5;
       }
-      if (GNUNET_OK !=
-          GNUNET_CRYPTO_rsa_verify (&m_hash,
-                                    ds.rsa_signature,
-                                    keys[i].denom_pub.rsa_public_key))
       {
-        /* signature invalid */
-        GNUNET_break (0);
+        struct GNUNET_CRYPTO_RsaSignature *rs;
+
+        rs = GNUNET_CRYPTO_rsa_unblind (ds.rsa_signature,
+                                        &bks,
+                                        keys[i].denom_pub.rsa_public_key);
+        if (NULL == rs)
+        {
+          GNUNET_break (0);
+          return 6;
+        }
         GNUNET_CRYPTO_rsa_signature_free (ds.rsa_signature);
-        return 6;
+        if (GNUNET_OK !=
+            GNUNET_CRYPTO_rsa_verify (&m_hash,
+                                      rs,
+                                      keys[i].denom_pub.rsa_public_key))
+        {
+          /* signature invalid */
+          GNUNET_break (0);
+          GNUNET_CRYPTO_rsa_signature_free (rs);
+          return 7;
+        }
+        GNUNET_CRYPTO_rsa_signature_free (rs);
       }
-      GNUNET_CRYPTO_rsa_signature_free (ds.rsa_signature);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Received valid signature for key %s\n",
+                  GNUNET_h2s (&keys[i].h_denom_pub));
       success = true;
       break;
-#if FIXME
-    case TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_INVALID:
+    case TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY:
+      /* This 'failure' is expected, we're testing also for the
+         error handling! */
       if ( (0 ==
             GNUNET_TIME_absolute_get_remaining (
               keys[i].start_time).rel_value_us) &&
@@ -282,7 +324,6 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         return 6;
       }
       break;
-#endif
     default:
       /* unexpected error */
       GNUNET_break (0);
@@ -313,7 +354,90 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
       GNUNET_break (0);
       return 17;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signing with invalid key %s failed as desired\n",
+                GNUNET_h2s (&rnd));
   }
+  return 0;
+}
+
+
+/**
+ * Benchmark signing logic.
+ *
+ * @param dh handle to the helper
+ * @return 0 on success
+ */
+static int
+perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
+{
+  struct TALER_DenominationSignature ds;
+  enum TALER_ErrorCode ec;
+  bool success = false;
+  struct GNUNET_HashCode m_hash;
+  struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
+  struct GNUNET_TIME_Relative duration;
+
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                              &bks,
+                              sizeof (bks));
+  GNUNET_CRYPTO_hash ("Hello",
+                      strlen ("Hello"),
+                      &m_hash);
+  duration = GNUNET_TIME_UNIT_ZERO;
+  for (unsigned int j = 0; j<NUM_SIGN_TESTS;)
+  {
+    TALER_CRYPTO_helper_poll (dh);
+    for (unsigned int i = 0; i<MAX_KEYS; i++)
+    {
+      if (! keys[i].valid)
+        continue;
+      if (GNUNET_TIME_absolute_get_remaining (keys[i].start_time).rel_value_us >
+          GNUNET_TIME_UNIT_SECONDS.rel_value_us)
+        continue;
+      if (GNUNET_TIME_absolute_get_duration (keys[i].start_time).rel_value_us >
+          keys[i].validity_duration.rel_value_us)
+        continue;
+      {
+        void *buf;
+        size_t buf_size;
+
+        GNUNET_assert (GNUNET_YES ==
+                       GNUNET_CRYPTO_rsa_blind (&m_hash,
+                                                &bks,
+                                                keys[i].denom_pub.rsa_public_key,
+                                                &buf,
+                                                &buf_size));
+        /* use this key as long as it works */
+        while (1)
+        {
+          struct GNUNET_TIME_Absolute start = GNUNET_TIME_absolute_get ();
+          struct GNUNET_TIME_Relative delay;
+
+          ds = TALER_CRYPTO_helper_denom_sign (dh,
+                                               &keys[i].h_denom_pub,
+                                               buf,
+                                               buf_size,
+                                               &ec);
+          if (TALER_EC_NONE != ec)
+            break;
+          delay = GNUNET_TIME_absolute_get_duration (start);
+          duration = GNUNET_TIME_relative_add (duration,
+                                               delay);
+          GNUNET_CRYPTO_rsa_signature_free (ds.rsa_signature);
+          j++;
+          if (NUM_SIGN_TESTS == j)
+            break;
+        }
+        GNUNET_free (buf);
+      }
+    } /* for i */
+  } /* for j */
+  fprintf (stderr,
+           "%u (sequential) signature operations took %s\n",
+           (unsigned int) NUM_SIGN_TESTS,
+           GNUNET_STRINGS_relative_time_to_string (duration,
+                                                   GNUNET_YES));
   return 0;
 }
 
@@ -350,7 +474,7 @@ run_test (void)
   }
   /* wait for helper to start and give us keys */
   fprintf (stderr, "Waiting for helper to start ");
-  for (unsigned int i = 0; i<80; i++)
+  for (unsigned int i = 0; i<1000; i++)
   {
     TALER_CRYPTO_helper_poll (dh);
     if (0 != num_keys)
@@ -370,15 +494,12 @@ run_test (void)
            num_keys);
 
   ret = 0;
-#if 1
   if (0 == ret)
     ret = test_revocation (dh);
-#endif
-#if 0
   if (0 == ret)
     ret = test_signing (dh);
-#endif
-
+  if (0 == ret)
+    ret = perf_signing (dh);
   TALER_CRYPTO_helper_denom_disconnect (dh);
   /* clean up our state */
   for (unsigned int i = 0; i<MAX_KEYS; i++)
@@ -407,7 +528,7 @@ main (int argc,
   (void) argc;
   (void) argv;
   GNUNET_log_setup ("test-helper-rsa",
-                    "INFO",
+                    "WARNING",
                     NULL);
   GNUNET_OS_init (TALER_project_data_default ());
   libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_LIBEXECDIR);
@@ -423,7 +544,7 @@ main (int argc,
                                     "-c",
                                     "test_helper_rsa.conf",
                                     "-L",
-                                    "INFO",
+                                    "WARNING",
                                     NULL);
   if (NULL == helper)
   {

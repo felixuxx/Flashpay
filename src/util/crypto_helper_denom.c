@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/crypto_helper.c
+ * @file util/crypto_helper_denom.c
  * @brief utility functions for running out-of-process private key operations
  * @author Christian Grothoff
  */
@@ -238,6 +238,97 @@ TALER_CRYPTO_helper_denom_connect (
 }
 
 
+/**
+ * Handle a #TALER_HELPER_RSA_MT_AVAIL message from the helper.
+ *
+ * @param dh helper context
+ * @param hdr message that we received
+ * @return #GNUNET_OK on success
+ */
+static int
+handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
+                 const struct GNUNET_MessageHeader *hdr)
+{
+  const struct TALER_CRYPTO_RsaKeyAvailableNotification *kan
+    = (const struct TALER_CRYPTO_RsaKeyAvailableNotification *) hdr;
+  const char *buf = (const char *) &kan[1];
+  const char *section_name;
+
+  if (sizeof (*kan) > ntohs (hdr->size))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  if (ntohs (hdr->size) !=
+      sizeof (*kan)
+      + ntohs (kan->pub_size)
+      + ntohs (kan->section_name_len))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  section_name = &buf[ntohs (kan->pub_size)];
+  if ('\0' != section_name[ntohs (kan->section_name_len) - 1])
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+
+  {
+    struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_HashCode h_denom_pub;
+
+    denom_pub.rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_decode (buf,
+                                             ntohs (kan->pub_size));
+    if (NULL == denom_pub.rsa_public_key)
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
+                                       &h_denom_pub);
+    dh->dkc (dh->dkc_cls,
+             section_name,
+             GNUNET_TIME_absolute_ntoh (kan->anchor_time),
+             GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
+             &h_denom_pub,
+             &denom_pub);
+    GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Handle a #TALER_HELPER_RSA_MT_PURGE message from the helper.
+ *
+ * @param dh helper context
+ * @param hdr message that we received
+ * @return #GNUNET_OK on success
+ */
+static int
+handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
+                 const struct GNUNET_MessageHeader *hdr)
+{
+  const struct TALER_CRYPTO_RsaKeyPurgeNotification *pn
+    = (const struct TALER_CRYPTO_RsaKeyPurgeNotification *) hdr;
+
+  if (sizeof (*pn) != ntohs (hdr->size))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  dh->dkc (dh->dkc_cls,
+           NULL,
+           GNUNET_TIME_UNIT_ZERO_ABS,
+           GNUNET_TIME_UNIT_ZERO,
+           &pn->h_denom_pub,
+           NULL);
+  return GNUNET_OK;
+}
+
+
 void
 TALER_CRYPTO_helper_poll (struct TALER_CRYPTO_DenominationHelper *dh)
 {
@@ -275,73 +366,23 @@ TALER_CRYPTO_helper_poll (struct TALER_CRYPTO_DenominationHelper *dh)
     switch (ntohs (hdr->type))
     {
     case TALER_HELPER_RSA_MT_AVAIL:
+      if (GNUNET_OK !=
+          handle_mt_avail (dh,
+                           hdr))
       {
-        const struct TALER_CRYPTO_RsaKeyAvailableNotification *kan
-          = (const struct TALER_CRYPTO_RsaKeyAvailableNotification *) buf;
-        const char *section_name;
-        struct TALER_DenominationPublicKey denom_pub;
-        struct GNUNET_HashCode h_denom_pub;
-
-        if (sizeof (*kan) > ret)
-        {
-          GNUNET_break_op (0);
-          do_disconnect (dh);
-          return;
-        }
-        if (ret !=
-            sizeof (*kan)
-            + ntohs (kan->pub_size)
-            + ntohs (kan->section_name_len))
-        {
-          GNUNET_break_op (0);
-          do_disconnect (dh);
-          return;
-        }
-        if ('\0' != buf[ret - 1])
-        {
-          GNUNET_break_op (0);
-          do_disconnect (dh);
-          return;
-        }
-        denom_pub.rsa_public_key
-          = GNUNET_CRYPTO_rsa_public_key_decode (&buf[sizeof (*kan)],
-                                                 ntohs (kan->pub_size));
-        if (NULL == denom_pub.rsa_public_key)
-        {
-          GNUNET_break_op (0);
-          do_disconnect (dh);
-          return;
-        }
-        section_name = &buf[sizeof (*kan) + ntohs (kan->pub_size)];
-        GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                           &h_denom_pub);
-        dh->dkc (dh->dkc_cls,
-                 section_name,
-                 GNUNET_TIME_absolute_ntoh (kan->anchor_time),
-                 GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
-                 &h_denom_pub,
-                 &denom_pub);
-        GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
+        GNUNET_break_op (0);
+        do_disconnect (dh);
+        return;
       }
       break;
     case TALER_HELPER_RSA_MT_PURGE:
+      if (GNUNET_OK !=
+          handle_mt_purge (dh,
+                           hdr))
       {
-        const struct TALER_CRYPTO_RsaKeyPurgeNotification *pn
-          = (const struct TALER_CRYPTO_RsaKeyPurgeNotification *) buf;
-
-        if (sizeof (*pn) != ret)
-        {
-          GNUNET_break_op (0);
-          do_disconnect (dh);
-          return;
-        }
-
-        dh->dkc (dh->dkc_cls,
-                 NULL,
-                 GNUNET_TIME_UNIT_ZERO_ABS,
-                 GNUNET_TIME_UNIT_ZERO,
-                 &pn->h_denom_pub,
-                 NULL);
+        GNUNET_break_op (0);
+        do_disconnect (dh);
+        return;
       }
       break;
     default:
@@ -399,6 +440,7 @@ TALER_CRYPTO_helper_denom_sign (
     GNUNET_break (((size_t) ret) == sizeof (buf));
   }
 
+  while (1)
   {
     char buf[UINT16_MAX];
     ssize_t ret;
@@ -433,7 +475,7 @@ TALER_CRYPTO_helper_denom_sign (
         GNUNET_break_op (0);
         do_disconnect (dh);
         *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-        break;
+        return ds;
       }
       {
         const struct TALER_CRYPTO_SignResponse *sr =
@@ -447,7 +489,7 @@ TALER_CRYPTO_helper_denom_sign (
           GNUNET_break_op (0);
           do_disconnect (dh);
           *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-          break;
+          return ds;
         }
         *ec = TALER_EC_NONE;
         ds.rsa_signature = rsa_signature;
@@ -459,25 +501,44 @@ TALER_CRYPTO_helper_denom_sign (
         GNUNET_break_op (0);
         do_disconnect (dh);
         *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-        break;
+        return ds;
       }
       {
         const struct TALER_CRYPTO_SignFailure *sf =
           (const struct TALER_CRYPTO_SignFailure *) buf;
 
         *ec = (enum TALER_ErrorCode) ntohl (sf->ec);
-        break;
+        return ds;
       }
-    // FIXME: *could* also receive change in key status!
-    // Handle that here, and then try again!
+    case TALER_HELPER_RSA_MT_AVAIL:
+      if (GNUNET_OK !=
+          handle_mt_avail (dh,
+                           hdr))
+      {
+        GNUNET_break_op (0);
+        do_disconnect (dh);
+        *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+        return ds;
+      }
+      break; /* while(1) loop ensures we recvfrom() again */
+    case TALER_HELPER_RSA_MT_PURGE:
+      if (GNUNET_OK !=
+          handle_mt_purge (dh,
+                           hdr))
+      {
+        GNUNET_break_op (0);
+        do_disconnect (dh);
+        *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+        return ds;
+      }
+      break; /* while(1) loop ensures we recvfrom() again */
     default:
       GNUNET_break_op (0);
       do_disconnect (dh);
       *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-      break;
+      return ds;
     }
   }
-  return ds;
 }
 
 
@@ -524,4 +585,4 @@ TALER_CRYPTO_helper_denom_disconnect (
 }
 
 
-/* end of crypto_helper.c */
+/* end of crypto_helper_denom.c */

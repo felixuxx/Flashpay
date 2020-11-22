@@ -551,6 +551,21 @@ handle_done (void *cls)
                                  done_tail,
                                  wi);
     GNUNET_assert (0 == pthread_mutex_unlock (&done_lock));
+    if (NULL == wi->rsa_signature)
+    {
+      struct TALER_CRYPTO_SignFailure sf = {
+        .header.size = htons (sizeof (sf)),
+        .header.type = htons (TALER_HELPER_RSA_MT_RES_SIGN_FAILURE),
+        .ec = htonl (TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE)
+      };
+
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Signing request failed, worker failed to produce signature\n");
+      (void) transmit (&wi->addr,
+                       wi->addr_size,
+                       &sf.header);
+    }
+    else
     {
       struct TALER_CRYPTO_SignResponse *sr;
       void *buf;
@@ -598,7 +613,7 @@ handle_sign_request (const struct sockaddr_un *addr,
   struct DenominationKey *dk;
   struct WorkItem *wi;
   const void *blinded_msg = &sr[1];
-  size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (sr);
+  size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
 
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
                                           &sr->h_denom_pub);
@@ -618,9 +633,29 @@ handle_sign_request (const struct sockaddr_un *addr,
                      &sf.header);
     return;
   }
-  // FIXME: check denomination key is valid for signing
-  // at this time!
+  if (0 !=
+      GNUNET_TIME_absolute_get_remaining (dk->anchor).rel_value_us)
+  {
+    /* it is too early */
+    struct TALER_CRYPTO_SignFailure sf = {
+      .header.size = htons (sizeof (sr)),
+      .header.type = htons (TALER_HELPER_RSA_MT_RES_SIGN_FAILURE),
+      .ec = htonl (TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY)
+    };
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signing request failed, denomination key %s is not yet valid\n",
+                GNUNET_h2s (&sr->h_denom_pub));
+    (void) transmit (addr,
+                     addr_size,
+                     &sf.header);
+    return;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received request to sign over %u bytes with key %s\n",
+              (unsigned int) blinded_msg_size,
+              GNUNET_h2s (&sr->h_denom_pub));
   wi = GNUNET_new (struct WorkItem);
   wi->addr = *addr;
   wi->addr_size = addr_size;
@@ -1038,11 +1073,13 @@ create_key (struct Denomination *denom)
 {
   struct DenominationKey *dk;
   struct GNUNET_TIME_Absolute anchor;
+  struct GNUNET_TIME_Absolute now;
 
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   if (NULL == denom->keys_tail)
   {
-    anchor = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&anchor);
+    anchor = now;
   }
   else
   {
@@ -1050,6 +1087,8 @@ create_key (struct Denomination *denom)
                                        GNUNET_TIME_relative_subtract (
                                          denom->duration_withdraw,
                                          overlap_duration));
+    if (now.abs_value_us > anchor.abs_value_us)
+      anchor = now;
   }
   dk = GNUNET_new (struct DenominationKey);
   dk->denom = denom;

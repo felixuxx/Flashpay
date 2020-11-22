@@ -51,7 +51,7 @@ libtalerutil_la_SOURCES = \
   amount.c \
   config.c \
   crypto.c \
-  crypto_helper.c \
+  crypto_helper_denom.c \
   crypto_wire.c \
   getopt.c \
   lang.c \
