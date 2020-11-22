@@ -92,7 +92,7 @@ struct DenominationKey
   /**
    * Hash of this denomination's public key.
    */
-  struct GNUNET_HashCode h_pub;
+  struct GNUNET_HashCode h_denom_pub;
 
   /**
    * Time at which this key is supposed to become valid.
@@ -181,26 +181,14 @@ struct Client
   struct Client *prev;
 
   /**
-   * Work created by this client, NULL for none.
+   * Client address.
    */
-  struct WorkItem *work;
+  struct sockaddr_un addr;
 
   /**
-   * Client socket.
+   * Number of bytes used in @e addr.
    */
-  struct GNUNET_NETWORK_Handle *sock;
-
-  /**
-   * Client task to read from @e sock. NULL if we are working.
-   */
-  struct GNUNET_SCHEDULER_Task *task;
-
-  /**
-   * Flag set to true if this client has disconnected. Used
-   * by the workers to detect that they must free the client
-   * instead of returning the result.
-   */
-  bool gone;
+  socklen_t addr_size;
 
 };
 
@@ -217,11 +205,6 @@ struct WorkItem
    * Kept in a DLL.
    */
   struct WorkItem *prev;
-
-  /**
-   * The client that created the request.
-   */
-  struct Client *client;
 
   /**
    * Key to be used for this operation.
@@ -243,6 +226,16 @@ struct WorkItem
    * Number of bytes in #blinded_msg.
    */
   size_t blinded_msg_size;
+
+  /**
+   * Client address.
+   */
+  struct sockaddr_un addr;
+
+  /**
+   * Number of bytes used in @e addr.
+   */
+  socklen_t addr_size;
 
 };
 
@@ -305,7 +298,7 @@ static struct GNUNET_CONTAINER_MultiHashMap *keys;
 /**
  * Our listen socket.
  */
-static struct GNUNET_NETWORK_Handle *lsock;
+static struct GNUNET_NETWORK_Handle *unix_sock;
 
 /**
  * Path where we are listening.
@@ -315,7 +308,7 @@ static char *unixpath;
 /**
  * Task run to accept new inbound connections.
  */
-static struct GNUNET_SCHEDULER_Task *accept_task;
+static struct GNUNET_SCHEDULER_Task *read_task;
 
 /**
  * Task run to generate new keys.
@@ -464,20 +457,10 @@ sign_worker (void *cls)
 static void
 free_client (struct Client *client)
 {
-  if (NULL != client->task)
-  {
-    GNUNET_SCHEDULER_cancel (client->task);
-    client->task = NULL;
-  }
-  GNUNET_NETWORK_socket_close (client->sock);
-  client->sock = NULL;
   GNUNET_CONTAINER_DLL_remove (clients_head,
                                clients_tail,
                                client);
-  if (NULL != client->work)
-    client->gone = true;
-  else
-    GNUNET_free (client);
+  GNUNET_free (client);
 }
 
 
@@ -488,21 +471,6 @@ free_client (struct Client *client)
  */
 static void
 read_job (void *cls);
-
-
-/**
- * Start reading requests from the @a client.
- *
- * @param client client to read requests from.
- */
-static void
-client_next (struct Client *client)
-{
-  client->task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
-                                                client->sock,
-                                                &read_job,
-                                                client);
-}
 
 
 /**
@@ -524,25 +492,27 @@ free_dk (struct DenominationKey *dk)
 /**
  * Send a message starting with @a hdr to @a client.
  *
- * @param client where to send @a hdr
+ * @param addr address where to send the message
+ * @param addr_size number of bytes in @a addr
  * @param hdr beginning of the message, length indicated in size field
  * @return #GNUNET_OK on success
  */
 static int
-transmit_to_client (struct Client *client,
-                    const struct GNUNET_MessageHeader *hdr)
+transmit (const struct sockaddr_un *addr,
+          socklen_t addr_size,
+          const struct GNUNET_MessageHeader *hdr)
 {
   ssize_t ret;
 
-  ret = send (GNUNET_NETWORK_get_fd (client->sock),
-              hdr,
-              ntohs (hdr->size),
-              0);
+  ret = GNUNET_NETWORK_socket_sendto (unix_sock,
+                                      hdr,
+                                      ntohs (hdr->size),
+                                      (const struct sockaddr *) addr,
+                                      addr_size);
   if (ret != ntohs (hdr->size))
   {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "send");
-    free_client (client);
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_INFO,
+                         "sendto");
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -598,8 +568,9 @@ handle_done (void *cls)
               buf,
               buf_size);
       GNUNET_free (buf);
-      (void) transmit_to_client (wi->client,
-                                 &sr->header);
+      (void) transmit (&wi->addr,
+                       wi->addr_size,
+                       &sr->header);
       GNUNET_free (sr);
     }
     GNUNET_free (wi);
@@ -615,11 +586,13 @@ handle_done (void *cls)
  * signature using the respective key and return the result to
  * the client.
  *
- * @param client the client making the request
+ * @param addr address of the client making the request
+ * @param addr_size number of bytes in @a addr
  * @param sr the request details
  */
 static void
-handle_sign_request (struct Client *client,
+handle_sign_request (const struct sockaddr_un *addr,
+                     socklen_t addr_size,
                      const struct TALER_CRYPTO_SignRequest *sr)
 {
   struct DenominationKey *dk;
@@ -638,15 +611,17 @@ handle_sign_request (struct Client *client,
     };
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Signing request failed, denomination key unknown\n");
-    transmit_to_client (client,
-                        &sf.header);
-    client_next (client);
+                "Signing request failed, denomination key %s unknown\n",
+                GNUNET_h2s (&sr->h_denom_pub));
+    (void) transmit (addr,
+                     addr_size,
+                     &sf.header);
     return;
   }
 
   wi = GNUNET_new (struct WorkItem);
-  wi->client = client;
+  wi->addr = *addr;
+  wi->addr_size = addr_size;
   wi->dk = dk;
   dk->rc++;
   wi->blinded_msg = GNUNET_memdup (blinded_msg,
@@ -680,7 +655,6 @@ notify_client_dk_add (struct Client *client,
   void *buf;
   void *p;
   size_t tlen;
-  int ret;
 
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub.rsa_public_key,
                                                  &buf);
@@ -703,10 +677,23 @@ notify_client_dk_add (struct Client *client,
   memcpy (p + buf_len,
           denom->section,
           nlen);
-  ret = transmit_to_client (client,
-                            &an->header);
-  GNUNET_free (an);
-  return ret;
+  {
+    int ret = GNUNET_OK;
+
+    if (GNUNET_OK !=
+        transmit (&client->addr,
+                  client->addr_size,
+                  &an->header))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Client %s must have disconnected\n",
+                  client->addr.sun_path);
+      free_client (client);
+      ret = GNUNET_SYSERR;
+    }
+    GNUNET_free (an);
+    return ret;
+  }
 }
 
 
@@ -724,11 +711,21 @@ notify_client_dk_del (struct Client *client,
   struct TALER_CRYPTO_RsaKeyPurgeNotification pn = {
     .header.type = htons (TALER_HELPER_RSA_MT_PURGE),
     .header.size = htons (sizeof (pn)),
-    .h_denom_pub = dk->h_pub
+    .h_denom_pub = dk->h_denom_pub
   };
 
-  return transmit_to_client (client,
-                             &pn.header);
+  if (GNUNET_OK !=
+      transmit (&client->addr,
+                client->addr_size,
+                &pn.header))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Client %s must have disconnected\n",
+                client->addr.sun_path);
+    free_client (client);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
 }
 
 
@@ -767,7 +764,7 @@ setup_key (struct DenominationKey *dk,
   buf_size = GNUNET_CRYPTO_rsa_private_key_encode (priv,
                                                    &buf);
   GNUNET_CRYPTO_rsa_public_key_hash (pub,
-                                     &dk->h_pub);
+                                     &dk->h_denom_pub);
   GNUNET_asprintf (&dk->filename,
                    "%s/%s/%llu",
                    keydir,
@@ -789,13 +786,17 @@ setup_key (struct DenominationKey *dk,
     return GNUNET_SYSERR;
   }
   GNUNET_free (buf);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Setup fresh private key %s in `%s'\n",
+              GNUNET_h2s (&dk->h_denom_pub),
+              dk->filename);
   dk->denom_priv.rsa_private_key = priv;
   dk->denom_pub.rsa_public_key = pub;
 
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (
         keys,
-        &dk->h_pub,
+        &dk->h_denom_pub,
         dk,
         GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
   {
@@ -839,11 +840,13 @@ setup_key (struct DenominationKey *dk,
  * Check if the key is still in use, and if so replace (!)
  * it with a fresh key.
  *
- * @param client the client sending the request
+ * @param addr address of the client making the request
+ * @param addr_size number of bytes in @a addr
  * @param rr the revocation request
  */
 static void
-handle_revoke_request (struct Client *client,
+handle_revoke_request (const struct sockaddr_un *addr,
+                       socklen_t addr_size,
                        const struct TALER_CRYPTO_RevokeRequest *rr)
 {
   struct DenominationKey *dk;
@@ -854,9 +857,9 @@ handle_revoke_request (struct Client *client,
                                           &rr->h_denom_pub);
   if (NULL == dk)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Revocation request ignored, denomination key unknown\n");
-    client_next (client);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Revocation request ignored, denomination key %s unknown\n",
+                GNUNET_h2s (&rr->h_denom_pub));
     return;
   }
 
@@ -886,11 +889,13 @@ handle_revoke_request (struct Client *client,
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CONTAINER_multihashmap_remove (
                    keys,
-                   &dk->h_pub,
+                   &dk->h_denom_pub,
                    dk));
   GNUNET_CONTAINER_DLL_remove (denom->keys_head,
                                denom->keys_tail,
                                dk);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Revocation complete\n");
 
   /* Tell clients this key is gone */
   {
@@ -910,8 +915,6 @@ handle_revoke_request (struct Client *client,
   }
   if (0 == dk->rc)
     free_dk (dk);
-
-  client_next (client);
 }
 
 
@@ -921,126 +924,104 @@ read_job (void *cls)
   struct Client *client = cls;
   char buf[65536];
   ssize_t buf_size;
-  struct GNUNET_MessageHeader hdr;
+  const struct GNUNET_MessageHeader *hdr;
+  struct sockaddr_un addr;
+  socklen_t addr_size = sizeof (addr);
 
-  client->task = NULL;
-  buf_size = GNUNET_NETWORK_socket_recv (client->sock,
-                                         buf,
-                                         sizeof (buf));
+  read_task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
+                                             unix_sock,
+                                             &read_job,
+                                             NULL);
+  buf_size = GNUNET_NETWORK_socket_recvfrom (unix_sock,
+                                             buf,
+                                             sizeof (buf),
+                                             (struct sockaddr *) &addr,
+                                             &addr_size);
   if (-1 == buf_size)
   {
-    if (EAGAIN == errno)
-    {
-      client_next (client);
-      return;
-    }
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                          "recv");
-    free_client (client);
     return;
   }
   if (0 == buf_size)
   {
-    free_client (client);
     return;
   }
-  if (buf_size < sizeof (hdr))
+  if (buf_size < sizeof (struct GNUNET_MessageHeader))
+  {
+    GNUNET_break_op (0);
+    return;
+  }
+  hdr = (const struct GNUNET_MessageHeader *) buf;
+  if (ntohs (hdr->size) != buf_size)
   {
     GNUNET_break_op (0);
     free_client (client);
     return;
   }
-  memcpy (&hdr,
-          buf,
-          sizeof (hdr));
-  if (ntohs (hdr.size) != buf_size)
+  switch (ntohs (hdr->type))
   {
-    GNUNET_break_op (0);
-    free_client (client);
-    return;
-  }
-  switch (ntohs (hdr.type))
-  {
-  case TALER_HELPER_RSA_MT_REQ_SIGN:
-    if (ntohs (hdr.size) <= sizeof (struct TALER_CRYPTO_SignRequest))
+  case TALER_HELPER_RSA_MT_REQ_INIT:
+    if (ntohs (hdr->size) != sizeof (struct GNUNET_MessageHeader))
     {
       GNUNET_break_op (0);
-      free_client (client);
       return;
     }
-    handle_sign_request (client,
-                         (const struct TALER_CRYPTO_SignRequest *) &hdr);
+    {
+      struct Client *client;
+
+      client = GNUNET_new (struct Client);
+      client->addr = addr;
+      client->addr_size = addr_size;
+      GNUNET_CONTAINER_DLL_insert (clients_head,
+                                   clients_tail,
+                                   client);
+      for (struct Denomination *denom = denom_head;
+           NULL != denom;
+           denom = denom->next)
+      {
+        for (struct DenominationKey *dk = denom->keys_head;
+             NULL != dk;
+             dk = dk->next)
+        {
+          if (GNUNET_OK !=
+              notify_client_dk_add (client,
+                                    dk))
+          {
+            /* client died, skip the rest */
+            client = NULL;
+            break;
+          }
+        }
+        if (NULL == client)
+          break;
+      }
+    }
+    break;
+  case TALER_HELPER_RSA_MT_REQ_SIGN:
+    if (ntohs (hdr->size) <= sizeof (struct TALER_CRYPTO_SignRequest))
+    {
+      GNUNET_break_op (0);
+      return;
+    }
+    handle_sign_request (&addr,
+                         addr_size,
+                         (const struct TALER_CRYPTO_SignRequest *) buf);
     break;
   case TALER_HELPER_RSA_MT_REQ_REVOKE:
-    if (ntohs (hdr.size) != sizeof (struct TALER_CRYPTO_RevokeRequest))
+    if (ntohs (hdr->size) != sizeof (struct TALER_CRYPTO_RevokeRequest))
     {
       GNUNET_break_op (0);
-      free_client (client);
       return;
     }
-    handle_revoke_request (client,
-                           (const struct TALER_CRYPTO_RevokeRequest *) &hdr);
+    handle_revoke_request (&addr,
+                           addr_size,
+                           (const struct TALER_CRYPTO_RevokeRequest *) buf);
     break;
   default:
     GNUNET_break_op (0);
-    free_client (client);
     return;
   }
-}
-
-
-/**
- * Function run to accept incoming connections on #sock.
- *
- * @param cls NULL
- */
-static void
-accept_job (void *cls)
-{
-  struct GNUNET_NETWORK_Handle *sock;
-  struct sockaddr_storage addr;
-  socklen_t alen;
-
-  accept_task = NULL;
-  alen = sizeof (addr);
-  sock = GNUNET_NETWORK_socket_accept (lsock,
-                                       (struct sockaddr *) &addr,
-                                       &alen);
-  if (NULL != sock)
-  {
-    struct Client *client;
-
-    client = GNUNET_new (struct Client);
-    client->sock = sock;
-    GNUNET_CONTAINER_DLL_insert (clients_head,
-                                 clients_tail,
-                                 client);
-    client_next (client);
-    for (struct Denomination *denom = denom_head;
-         NULL != denom;
-         denom = denom->next)
-    {
-      for (struct DenominationKey *dk = denom->keys_head;
-           NULL != dk;
-           dk = dk->next)
-      {
-        if (GNUNET_OK !=
-            notify_client_dk_add (client,
-                                  dk))
-        {
-          /* client died, skip the rest */
-          client = NULL;
-          break;
-        }
-      }
-      if (NULL == client)
-        break;
-    }
-  }
-  accept_task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
-                                               lsock,
-                                               &accept_job,
-                                               NULL);
 }
 
 
@@ -1137,7 +1118,7 @@ purge_key (struct DenominationKey *dk)
                                dk);
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_CONTAINER_multihashmap_remove (keys,
-                                                       &dk->h_pub,
+                                                       &dk->h_denom_pub,
                                                        dk));
   if (0 != unlink (dk->filename))
   {
@@ -1325,17 +1306,18 @@ parse_key (struct Denomination *denom,
     dk->anchor = anchor;
     dk->filename = GNUNET_strdup (filename);
     GNUNET_CRYPTO_rsa_public_key_hash (pub,
-                                       &dk->h_pub);
+                                       &dk->h_denom_pub);
     dk->denom_pub.rsa_public_key = pub;
     if (GNUNET_OK !=
         GNUNET_CONTAINER_multihashmap_put (
           keys,
-          &dk->h_pub,
+          &dk->h_denom_pub,
           dk,
           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Duplicate private key detected in file `%s'. Skipping.\n",
+                  "Duplicate private key %s detected in file `%s'. Skipping.\n",
+                  GNUNET_h2s (&dk->h_denom_pub),
                   filename);
       GNUNET_CRYPTO_rsa_private_key_free (priv);
       GNUNET_CRYPTO_rsa_public_key_free (pub);
@@ -1355,8 +1337,9 @@ parse_key (struct Denomination *denom,
                                        denom->keys_tail,
                                        before,
                                        dk);
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Imported key from `%s'\n",
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Imported key %s from `%s'\n",
+                GNUNET_h2s (&dk->h_denom_pub),
                 filename);
   }
 }
@@ -1566,7 +1549,7 @@ load_denominations (void *cls,
     GNUNET_free (denom);
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Loading keys for denomination %s\n",
               denom->section);
   {
@@ -1576,6 +1559,8 @@ load_denominations (void *cls,
                      "%s/%s",
                      keydir,
                      denom->section);
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_DISK_directory_create (dname));
     GNUNET_DISK_directory_scan (dname,
                                 &import_key,
                                 denom);
@@ -1611,17 +1596,16 @@ load_durations (void)
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (kcfg,
-                                           "exchange",
+                                           "taler-helper-crypto-rsa",
                                            "LOOKAHEAD_SIGN",
                                            &lookahead_sign))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
+                               "taler-helper-crypto-rsa",
                                "LOOKAHEAD_SIGN");
     return GNUNET_SYSERR;
   }
   GNUNET_TIME_round_rel (&lookahead_sign);
-
   return GNUNET_OK;
 }
 
@@ -1635,16 +1619,16 @@ static void
 do_shutdown (void *cls)
 {
   (void) cls;
-  if (NULL != accept_task)
+  if (NULL != read_task)
   {
-    GNUNET_SCHEDULER_cancel (accept_task);
-    accept_task = NULL;
+    GNUNET_SCHEDULER_cancel (read_task);
+    read_task = NULL;
   }
-  if (NULL != lsock)
+  if (NULL != unix_sock)
   {
     GNUNET_break (GNUNET_OK ==
-                  GNUNET_NETWORK_socket_close (lsock));
-    lsock = NULL;
+                  GNUNET_NETWORK_socket_close (unix_sock));
+    unix_sock = NULL;
   }
   if (0 != unlink (unixpath))
   {
@@ -1790,7 +1774,7 @@ run (void *cls,
         return;
       }
     }
-    lsock = GNUNET_NETWORK_socket_box_native (sock);
+    unix_sock = GNUNET_NETWORK_socket_box_native (sock);
   }
 
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
@@ -1823,10 +1807,10 @@ run (void *cls,
   }
 
   /* start job to accept incoming requests on 'sock' */
-  accept_task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
-                                               lsock,
-                                               &accept_job,
-                                               NULL);
+  read_task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
+                                             unix_sock,
+                                             &read_job,
+                                             NULL);
 
   /* start job to keep keys up-to-date */
   keygen_task = GNUNET_SCHEDULER_add_now (&update_denominations,
@@ -1893,7 +1877,7 @@ main (int argc,
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
-  (void) TALER_project_data_default ();
+  GNUNET_OS_init (TALER_project_data_default ());
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-helper-crypto-rsa",
                                    "WARNING",

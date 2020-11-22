@@ -7,7 +7,7 @@ if USE_COVERAGE
 endif
 
 
-libexecdir = $(pkglibdir)/libexec/
+libexecdir = $(libdir)/taler/libexec
 
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
@@ -17,7 +17,8 @@ pkgcfg_DATA = \
 
 EXTRA_DIST = \
   paths.conf \
-  taler-config.in
+  taler-config.in \
+  test_helper_rsa.conf
 
 libexec_PROGRAMS = \
   taler-helper-crypto-rsa
@@ -72,9 +73,12 @@ libtalerutil_la_LDFLAGS = \
   -export-dynamic -no-undefined
 
 
+AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
+
 check_PROGRAMS = \
  test_amount \
  test_crypto \
+ test_helper_rsa \
  test_payto \
  test_url
 
@@ -97,6 +101,12 @@ test_crypto_LDADD = \
 test_payto_SOURCES = \
   test_payto.c
 test_payto_LDADD = \
+  -lgnunetutil \
+  libtalerutil.la
+
+test_helper_rsa_SOURCES = \
+  test_helper_rsa.c
+test_helper_rsa_LDADD = \
   -lgnunetutil \
   libtalerutil.la
 

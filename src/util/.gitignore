@@ -1,3 +1,4 @@
 taler-config
 test_payto
 taler-helper-crypto-rsa
+test_helper_rsa

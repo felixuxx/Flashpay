@@ -42,6 +42,16 @@ struct TALER_CRYPTO_DenominationHelper
   struct sockaddr_un sa;
 
   /**
+   * Socket address of this process.
+   */
+  struct sockaddr_un my_sa;
+
+  /**
+   * Template for @e my_sa.
+   */
+  char *template;
+
+  /**
    * The UNIX domain socket, -1 if we are currently not connected.
    */
   int sock;
@@ -58,6 +68,10 @@ static void
 do_disconnect (struct TALER_CRYPTO_DenominationHelper *dh)
 {
   GNUNET_break (0 == close (dh->sock));
+  if (0 != unlink (dh->my_sa.sun_path))
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "unlink",
+                              dh->my_sa.sun_path);
   dh->sock = -1;
 }
 
@@ -82,18 +96,73 @@ try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
                          "socket");
     return;
   }
-  if (0 != connect (dh->sock,
-                    (const struct sockaddr *) &dh->sa,
-                    sizeof (dh->sa)))
   {
-    if (EINPROGRESS != dh->sock)
+    char *tmpdir;
+
+    tmpdir = GNUNET_DISK_mktemp (dh->template);
+    if (NULL == tmpdir)
     {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                           "connect");
       do_disconnect (dh);
       return;
     }
+    /* we use >= here because we want the sun_path to always
+       be 0-terminated */
+    if (strlen (tmpdir) >= sizeof (dh->sa.sun_path))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "PATHS",
+                                 "TALER_RUNTIME_DIR",
+                                 "path too long");
+      GNUNET_free (tmpdir);
+      do_disconnect (dh);
+      return;
+    }
+    dh->my_sa.sun_family = AF_UNIX;
+    strncpy (dh->my_sa.sun_path,
+             tmpdir,
+             sizeof (dh->sa.sun_path));
+    if (0 != unlink (tmpdir))
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "unlink",
+                                tmpdir);
+    GNUNET_free (tmpdir);
   }
+  if (0 != bind (dh->sock,
+                 (const struct sockaddr *) &dh->my_sa,
+                 sizeof (dh->my_sa)))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                         "bind");
+    do_disconnect (dh);
+    return;
+  }
+  {
+    struct GNUNET_MessageHeader hdr = {
+      .size = htons (sizeof (hdr)),
+      .type = htons (TALER_HELPER_RSA_MT_REQ_INIT)
+    };
+    ssize_t ret;
+
+    ret = sendto (dh->sock,
+                  &hdr,
+                  sizeof (hdr),
+                  0,
+                  (const struct sockaddr *) &dh->sa,
+                  sizeof (dh->sa));
+    if (ret < 0)
+    {
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "sendto",
+                                dh->sa.sun_path);
+      do_disconnect (dh);
+      return;
+    }
+    /* We are using SOCK_DGRAM, partial writes should not be possible */
+    GNUNET_break (((size_t) ret) == sizeof (hdr));
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                "Successfully sent REQ_INIT\n");
+  }
+
 }
 
 
@@ -117,7 +186,9 @@ TALER_CRYPTO_helper_denom_connect (
                                "UNIXPATH");
     return NULL;
   }
-  if (strlen (unixpath) > sizeof (dh->sa.sun_path))
+  /* we use >= here because we want the sun_path to always
+     be 0-terminated */
+  if (strlen (unixpath) >= sizeof (dh->sa.sun_path))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "taler-helper-crypto-rsa",
@@ -129,10 +200,39 @@ TALER_CRYPTO_helper_denom_connect (
   dh = GNUNET_new (struct TALER_CRYPTO_DenominationHelper);
   dh->dkc = dkc;
   dh->dkc_cls = dkc_cls;
+  dh->sa.sun_family = AF_UNIX;
   strncpy (dh->sa.sun_path,
            unixpath,
            sizeof (dh->sa.sun_path));
   dh->sock = -1;
+  {
+    char *tmpdir;
+    char *template;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                                 "PATHS",
+                                                 "TALER_RUNTIME_DIR",
+                                                 &tmpdir))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
+                                 "PATHS",
+                                 "TALER_RUNTIME_DIR");
+      tmpdir = GNUNET_strdup ("/tmp");
+    }
+    GNUNET_asprintf (&template,
+                     "%s/crypto-rsa-client/XXXXXX",
+                     tmpdir);
+    GNUNET_free (tmpdir);
+    if (GNUNET_OK !=
+        GNUNET_DISK_directory_create_for_file (template))
+    {
+      GNUNET_free (dh);
+      GNUNET_free (template);
+      return NULL;
+    }
+    dh->template = template;
+  }
   TALER_CRYPTO_helper_poll (dh);
   return dh;
 }
@@ -157,6 +257,8 @@ TALER_CRYPTO_helper_poll (struct TALER_CRYPTO_DenominationHelper *dh)
                 MSG_DONTWAIT);
     if (ret < 0)
     {
+      if (EAGAIN == errno)
+        break;
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                            "recv");
       do_disconnect (dh);
@@ -180,10 +282,22 @@ TALER_CRYPTO_helper_poll (struct TALER_CRYPTO_DenominationHelper *dh)
         struct TALER_DenominationPublicKey denom_pub;
         struct GNUNET_HashCode h_denom_pub;
 
-        if ( (sizeof (*kan) < ret) ||
-             (sizeof (*kan) + ntohs (kan->pub_size) + ntohs (
-                kan->section_name_len)) ||
-             ('\0' != buf[ret - 1]) )
+        if (sizeof (*kan) > ret)
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          return;
+        }
+        if (ret !=
+            sizeof (*kan)
+            + ntohs (kan->pub_size)
+            + ntohs (kan->section_name_len))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          return;
+        }
+        if ('\0' != buf[ret - 1])
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
@@ -267,14 +381,16 @@ TALER_CRYPTO_helper_denom_sign (
     memcpy (&sr[1],
             msg,
             msg_size);
-    ret = send (dh->sock,
-                buf,
-                sizeof (buf),
-                0);
+    ret = sendto (dh->sock,
+                  buf,
+                  sizeof (buf),
+                  0,
+                  &dh->sa,
+                  sizeof (dh->sa));
     if (ret < 0)
     {
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                           "send");
+                           "sendto");
       do_disconnect (dh);
       *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
       return ds;
@@ -378,14 +494,16 @@ TALER_CRYPTO_helper_denom_revoke (
   try_connect (dh);
   if (-1 == dh->sock)
     return; /* give up */
-  ret = send (dh->sock,
-              &rr,
-              sizeof (rr),
-              0);
+  ret = sendto (dh->sock,
+                &rr,
+                sizeof (rr),
+                0,
+                (const struct sockaddr *) &dh->sa,
+                sizeof (dh->sa));
   if (ret < 0)
   {
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "send");
+                         "sendto");
     do_disconnect (dh);
     return;
   }
@@ -399,6 +517,7 @@ TALER_CRYPTO_helper_denom_disconnect (
   struct TALER_CRYPTO_DenominationHelper *dh)
 {
   do_disconnect (dh);
+  GNUNET_free (dh->template);
   GNUNET_free (dh);
 }
 
