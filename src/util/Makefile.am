@@ -21,6 +21,7 @@ EXTRA_DIST = \
   test_helper_rsa.conf
 
 libexec_PROGRAMS = \
+  taler-helper-crypto-eddsa \
   taler-helper-crypto-rsa
 
 bin_SCRIPTS = \
@@ -38,6 +39,15 @@ taler-config: taler-config.in
 taler_helper_crypto_rsa_SOURCES = \
   taler-helper-crypto-rsa.c taler-helper-crypto-rsa.h
 taler_helper_crypto_rsa_LDADD = \
+  libtalerutil.la \
+  -lgnunetutil \
+  -lpthread \
+  $(LIBGCRYPT_LIBS) \
+  $(XLIB)
+
+taler_helper_crypto_eddsa_SOURCES = \
+  taler-helper-crypto-eddsa.c taler-helper-crypto-eddsa.h
+taler_helper_crypto_eddsa_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
   -lpthread \
