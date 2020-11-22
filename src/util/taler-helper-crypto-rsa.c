@@ -246,6 +246,13 @@ struct WorkItem
 static int global_ret;
 
 /**
+ * Number of worker threads to use. Default (0) is to use one per CPU core
+ * available.
+ * Length of the #workers array.
+ */
+static unsigned int num_workers;
+
+/**
  * Time when the key update is executed.
  * Either the actual current time, or a pretended time.
  */
@@ -385,11 +392,6 @@ static volatile bool in_shutdown;
  * Array of #num_worker sign_worker() threads.
  */
 static pthread_t *workers;
-
-/**
- * Length of the #workers array.
- */
-static unsigned int num_workers;
 
 
 /**
@@ -1879,7 +1881,8 @@ run (void *cls,
                                              NULL);
 
   /* start crypto workers */
-  num_workers = 1; // for now...
+  if (0 == num_workers)
+    num_workers = sysconf (_SC_NPROCESSORS_CONF);
   workers = GNUNET_new_array (num_workers,
                               pthread_t);
   for (unsigned int i = 0; i<num_workers; i++)
@@ -1905,6 +1908,11 @@ main (int argc,
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
+    GNUNET_GETOPT_option_uint ('p',
+                               "parallelism",
+                               "NUM_WORKERS",
+                               "number of worker threads to use",
+                               &num_workers),
     GNUNET_GETOPT_option_absolute_time ('t',
                                         "time",
                                         "TIMESTAMP",
