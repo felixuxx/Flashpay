@@ -430,11 +430,11 @@ sign_worker (void *cls)
 
         /* raise #done_signal */
         if (sizeof(val) !=
-            GNUNET_NETWORK_socket_send (done_signal,
-                                        &val,
-                                        sizeof (val)))
+            write (GNUNET_NETWORK_get_fd (done_signal),
+                   &val,
+                   sizeof (val)))
           GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                               "send(eventfd)");
+                               "write(eventfd)");
       }
       GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
     }
@@ -533,11 +533,11 @@ handle_done (void *cls)
 
   /* consume #done_signal */
   if (sizeof (data) !=
-      GNUNET_NETWORK_socket_recv (done_signal,
-                                  &data,
-                                  sizeof (data)))
+      read (GNUNET_NETWORK_get_fd (done_signal),
+            &data,
+            sizeof (data)))
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "recv(eventfd)");
+                         "read(eventfd)");
   done_task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
                                              done_signal,
                                              &handle_done,
@@ -618,6 +618,8 @@ handle_sign_request (const struct sockaddr_un *addr,
                      &sf.header);
     return;
   }
+  // FIXME: check denomination key is valid for signing
+  // at this time!
 
   wi = GNUNET_new (struct WorkItem);
   wi->addr = *addr;

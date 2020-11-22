@@ -408,7 +408,7 @@ TALER_CRYPTO_helper_denom_sign (
     ret = recv (dh->sock,
                 buf,
                 sizeof (buf),
-                MSG_DONTWAIT);
+                0);
     if (ret < 0)
     {
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
@@ -468,6 +468,8 @@ TALER_CRYPTO_helper_denom_sign (
         *ec = (enum TALER_ErrorCode) ntohl (sf->ec);
         break;
       }
+    // FIXME: *could* also receive change in key status!
+    // Handle that here, and then try again!
     default:
       GNUNET_break_op (0);
       do_disconnect (dh);

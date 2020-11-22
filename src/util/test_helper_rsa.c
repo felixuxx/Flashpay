@@ -75,9 +75,28 @@ struct KeyData
   bool revoked;
 };
 
+/**
+ * Array of all the keys we got from the helper.
+ */
 static struct KeyData keys[MAX_KEYS];
 
 
+/**
+ * Function called with information about available keys for signing.  Usually
+ * only called once per key upon connect. Also called again in case a key is
+ * being revoked, in that case with an @a end_time of zero.  Stores the keys
+ * status in #keys.
+ *
+ * @param cls closure, NULL
+ * @param section_name name of the denomination type in the configuration;
+ *                 NULL if the key has been revoked or purged
+ * @param start_time when does the key become available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param validity_duration how long does the key remain available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param h_denom_pub hash of the @a denom_pub that is available (or was purged)
+ * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ */
 static void
 key_cb (void *cls,
         const char *section_name,
@@ -136,54 +155,18 @@ key_cb (void *cls,
 
 
 /**
- * Main entry point into the test logic with the helper already running.
+ * Test key revocation logic.
+ *
+ * @param dh handle to the helper
+ * @return 0 on success
  */
 static int
-run_test (void)
+test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
 {
-  struct GNUNET_CONFIGURATION_Handle *cfg;
-  struct TALER_CRYPTO_DenominationHelper *dh;
   struct timespec req = {
     .tv_nsec = 250000000
   };
 
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_load (cfg,
-                                 "test_helper_rsa.conf"))
-  {
-    GNUNET_break (0);
-    return 77;
-  }
-  dh = TALER_CRYPTO_helper_denom_connect (cfg,
-                                          &key_cb,
-                                          NULL);
-  GNUNET_CONFIGURATION_destroy (cfg);
-  if (NULL == dh)
-  {
-    GNUNET_break (0);
-    return 1;
-  }
-  /* wait for helper to start and give us keys */
-  fprintf (stderr, "Waiting for helper to start ");
-  for (unsigned int i = 0; i<80; i++)
-  {
-    TALER_CRYPTO_helper_poll (dh);
-    if (0 != num_keys)
-      break;
-    nanosleep (&req, NULL);
-    fprintf (stderr, ".");
-  }
-  if (0 == num_keys)
-  {
-    fprintf (stderr,
-             "\nFAILED: timeout trying to connect to helper\n");
-    TALER_CRYPTO_helper_denom_disconnect (dh);
-    return 1;
-  }
-  fprintf (stderr,
-           "\nOK: Helper ready (%u keys)\n",
-           num_keys);
   for (unsigned int i = 0; i<NUM_REVOKES; i++)
   {
     uint32_t off;
@@ -225,7 +208,176 @@ run_test (void)
       break;
     }
   }
+  return 0;
+}
 
+
+/**
+ * Test signing logic.
+ *
+ * @param dh handle to the helper
+ * @return 0 on success
+ */
+static int
+test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
+{
+  struct TALER_DenominationSignature ds;
+  enum TALER_ErrorCode ec;
+  bool success = false;
+  struct GNUNET_HashCode m_hash;
+
+  GNUNET_CRYPTO_hash ("Hello",
+                      strlen ("Hello"),
+                      &m_hash);
+  for (unsigned int i = 0; i<MAX_KEYS; i++)
+  {
+    if (! keys[i].valid)
+      continue;
+    ds = TALER_CRYPTO_helper_denom_sign (dh,
+                                         &keys[i].h_denom_pub,
+                                         &m_hash,
+                                         sizeof (m_hash),
+                                         &ec);
+    switch (ec)
+    {
+    case TALER_EC_NONE:
+      if (GNUNET_TIME_absolute_get_remaining (keys[i].start_time).rel_value_us >
+          GNUNET_TIME_UNIT_SECONDS.rel_value_us)
+      {
+        /* key worked too early */
+        GNUNET_break (0);
+        return 4;
+      }
+      if (GNUNET_TIME_absolute_get_duration (keys[i].start_time).rel_value_us >
+          keys[i].validity_duration.rel_value_us)
+      {
+        /* key worked too later */
+        GNUNET_break (0);
+        return 5;
+      }
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_rsa_verify (&m_hash,
+                                    ds.rsa_signature,
+                                    keys[i].denom_pub.rsa_public_key))
+      {
+        /* signature invalid */
+        GNUNET_break (0);
+        GNUNET_CRYPTO_rsa_signature_free (ds.rsa_signature);
+        return 6;
+      }
+      GNUNET_CRYPTO_rsa_signature_free (ds.rsa_signature);
+      success = true;
+      break;
+#if FIXME
+    case TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_INVALID:
+      if ( (0 ==
+            GNUNET_TIME_absolute_get_remaining (
+              keys[i].start_time).rel_value_us) &&
+           (GNUNET_TIME_absolute_get_duration (
+              keys[i].start_time).rel_value_us <
+            keys[i].validity_duration.rel_value_us) )
+      {
+        /* key should have worked! */
+        GNUNET_break (0);
+        return 6;
+      }
+      break;
+#endif
+    default:
+      /* unexpected error */
+      GNUNET_break (0);
+      return 7;
+    }
+  }
+  if (! success)
+  {
+    /* no valid key for signing found, also bad */
+    GNUNET_break (0);
+    return 16;
+  }
+
+  /* check signing does not work if the key is unknown */
+  {
+    struct GNUNET_HashCode rnd;
+
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &rnd,
+                                sizeof (rnd));
+    (void) TALER_CRYPTO_helper_denom_sign (dh,
+                                           &rnd,
+                                           "Hello",
+                                           strlen ("Hello"),
+                                           &ec);
+    if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
+    {
+      GNUNET_break (0);
+      return 17;
+    }
+  }
+  return 0;
+}
+
+
+/**
+ * Main entry point into the test logic with the helper already running.
+ */
+static int
+run_test (void)
+{
+  struct GNUNET_CONFIGURATION_Handle *cfg;
+  struct TALER_CRYPTO_DenominationHelper *dh;
+  struct timespec req = {
+    .tv_nsec = 250000000
+  };
+  int ret;
+
+  cfg = GNUNET_CONFIGURATION_create ();
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_load (cfg,
+                                 "test_helper_rsa.conf"))
+  {
+    GNUNET_break (0);
+    return 77;
+  }
+  dh = TALER_CRYPTO_helper_denom_connect (cfg,
+                                          &key_cb,
+                                          NULL);
+  GNUNET_CONFIGURATION_destroy (cfg);
+  if (NULL == dh)
+  {
+    GNUNET_break (0);
+    return 1;
+  }
+  /* wait for helper to start and give us keys */
+  fprintf (stderr, "Waiting for helper to start ");
+  for (unsigned int i = 0; i<80; i++)
+  {
+    TALER_CRYPTO_helper_poll (dh);
+    if (0 != num_keys)
+      break;
+    nanosleep (&req, NULL);
+    fprintf (stderr, ".");
+  }
+  if (0 == num_keys)
+  {
+    fprintf (stderr,
+             "\nFAILED: timeout trying to connect to helper\n");
+    TALER_CRYPTO_helper_denom_disconnect (dh);
+    return 1;
+  }
+  fprintf (stderr,
+           "\nOK: Helper ready (%u keys)\n",
+           num_keys);
+
+  ret = 0;
+#if 1
+  if (0 == ret)
+    ret = test_revocation (dh);
+#endif
+#if 0
+  if (0 == ret)
+    ret = test_signing (dh);
+#endif
 
   TALER_CRYPTO_helper_denom_disconnect (dh);
   /* clean up our state */
@@ -237,7 +389,7 @@ run_test (void)
       GNUNET_assert (num_keys > 0);
       num_keys--;
     }
-  return 0;
+  return ret;
 }
 
 
