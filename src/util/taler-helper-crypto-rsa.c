@@ -78,9 +78,7 @@ struct DenominationKey
   char *filename;
 
   /**
-   * The private key of the denomination.  Will be NULL if the private
-   * key is not available (this is the case after the key has expired
-   * for signing coins, but is still valid for depositing coins).
+   * The private key of the denomination.
    */
   struct TALER_DenominationPrivateKey denom_priv;
 
@@ -589,6 +587,14 @@ handle_done (void *cls)
                        wi->addr_size,
                        &sr->header);
       GNUNET_free (sr);
+    }
+    {
+      struct DenominationKey *dk = wi->dk;
+
+      dk->rc--;
+      if ( (0 == dk->rc) &&
+           (dk->purge) )
+        free_dk (dk);
     }
     GNUNET_free (wi);
     GNUNET_assert (0 == pthread_mutex_lock (&done_lock));
