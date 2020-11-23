@@ -31,12 +31,12 @@
 /**
  * How many random key revocations should we test?
  */
-#define NUM_REVOKES 10
+#define NUM_REVOKES 3
 
 /**
  * How many iterations of the successful signing test should we run?
  */
-#define NUM_SIGN_TESTS 100
+#define NUM_SIGN_TESTS 5
 
 
 /**
@@ -101,6 +101,9 @@ static struct KeyData keys[MAX_KEYS];
  *                 zero if the key has been revoked or purged
  * @param h_denom_pub hash of the @a denom_pub that is available (or was purged)
  * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param sm_pub public key of the security module, NULL if the key was revoked or purged
+ * @param sm_sig signature from the security module, NULL if the key was revoked or purged
+ *               The signature was already verified against @a sm_pub.
  */
 static void
 key_cb (void *cls,
@@ -108,8 +111,12 @@ key_cb (void *cls,
         struct GNUNET_TIME_Absolute start_time,
         struct GNUNET_TIME_Relative validity_duration,
         const struct GNUNET_HashCode *h_denom_pub,
-        const struct TALER_DenominationPublicKey *denom_pub)
+        const struct TALER_DenominationPublicKey *denom_pub,
+        const struct TALER_SecurityModulePublicKeyP *sm_pub,
+        const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
+  (void) sm_pub;
+  (void) sm_sig;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Key notification about key %s in `%s'\n",
               GNUNET_h2s (h_denom_pub),
@@ -373,7 +380,6 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 {
   struct TALER_DenominationSignature ds;
   enum TALER_ErrorCode ec;
-  bool success = false;
   struct GNUNET_HashCode m_hash;
   struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
   struct GNUNET_TIME_Relative duration;

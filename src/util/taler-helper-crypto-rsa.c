@@ -252,6 +252,11 @@ static int global_ret;
 static struct TALER_SecurityModulePrivateKeyP smpriv;
 
 /**
+ * Public key of this security module.
+ */
+static struct TALER_SecurityModulePublicKeyP smpub;
+
+/**
  * Number of worker threads to use. Default (0) is to use one per CPU core
  * available.
  * Length of the #workers array.
@@ -735,6 +740,7 @@ notify_client_dk_add (struct Client *client,
   GNUNET_CRYPTO_eddsa_sign (&smpriv.eddsa_priv,
                             &dka,
                             &an->secm_sig.eddsa_signature);
+  an->secm_pub = smpub;
   p = (void *) &an[1];
   memcpy (p,
           buf,
@@ -1793,6 +1799,8 @@ run (void *cls,
       return;
     }
     GNUNET_free (pfn);
+    GNUNET_CRYPTO_eddsa_key_get_public (&smpriv.eddsa_priv,
+                                        &smpub.eddsa_pub);
   }
 
   if (GNUNET_OK !=

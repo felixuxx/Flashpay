@@ -180,6 +180,11 @@ struct WorkItem
 static struct TALER_SecurityModulePrivateKeyP smpriv;
 
 /**
+ * Public key of this security module.
+ */
+static struct TALER_SecurityModulePublicKeyP smpub;
+
+/**
  * Head of DLL of actual keys, sorted by anchor.
  */
 static struct Key *keys_head;
@@ -613,7 +618,8 @@ notify_client_key_add (struct Client *client,
     .header.type = htons (TALER_HELPER_EDDSA_MT_AVAIL),
     .anchor_time = GNUNET_TIME_absolute_hton (key->anchor),
     .duration = GNUNET_TIME_relative_hton (duration),
-    .exchange_pub = key->exchange_pub
+    .exchange_pub = key->exchange_pub,
+    .secm_pub = smpub
   };
 
   GNUNET_CRYPTO_eddsa_sign (&smpriv.eddsa_priv,
@@ -944,6 +950,7 @@ create_key (void)
       setup_key (key,
                  keys_tail))
   {
+    GNUNET_break (0);
     GNUNET_free (key);
     GNUNET_SCHEDULER_shutdown ();
     global_ret = 42;
@@ -1043,8 +1050,13 @@ update_keys (void *cls)
                                            duration),
                  lookahead_sign),
                overlap_duration)).rel_value_us) )
-    GNUNET_assert (GNUNET_OK ==
-                   create_key ());
+    if (GNUNET_OK !=
+        create_key ())
+    {
+      GNUNET_break (0);
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
   /* remove expired keys */
   while ( (NULL != keys_head) &&
           (0 ==
@@ -1281,6 +1293,17 @@ load_durations (void)
                                "OVERLAP_DURATION");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           "taler-helper-crypto-eddsa",
+                                           "DURATION",
+                                           &duration))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler-helper-crypto-eddsa",
+                               "DURATION");
+    return GNUNET_SYSERR;
+  }
   GNUNET_TIME_round_rel (&overlap_duration);
 
   if (GNUNET_OK !=
@@ -1412,6 +1435,8 @@ run (void *cls,
       return;
     }
     GNUNET_free (pfn);
+    GNUNET_CRYPTO_eddsa_key_get_public (&smpriv.eddsa_priv,
+                                        &smpub.eddsa_pub);
   }
 
   if (GNUNET_OK !=
@@ -1507,7 +1532,6 @@ run (void *cls,
   GNUNET_DISK_directory_scan (keydir,
                               &import_key,
                               NULL);
-  update_keys (NULL);
   if (NULL == keys_head)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

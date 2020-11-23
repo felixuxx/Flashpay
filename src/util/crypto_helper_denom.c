@@ -294,6 +294,9 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
     }
     GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
                                        &dka.h_denom_pub);
+    GNUNET_CRYPTO_hash (section_name,
+                        strlen (section_name) + 1,
+                        &dka.h_section_name);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_DENOMINATION_KEY,
                                     &dka,
