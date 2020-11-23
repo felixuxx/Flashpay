@@ -59,6 +59,17 @@ struct TALER_CRYPTO_EddsaKeyAvailableNotification
   struct GNUNET_TIME_RelativeNBO duration;
 
   /**
+   * Public key used to generate the @e sicm_sig.
+   */
+  struct TALER_SecurityModulePublicKeyP secm_pub;
+
+  /**
+   * Signature affirming the announcement, of
+   * purpose #TALER_SIGNATURE_SM_SIGNING_KEY.
+   */
+  struct TALER_SecurityModuleSignatureP secm_sig;
+
+  /**
    * The public key.
    */
   struct TALER_ExchangePublicKeyP exchange_pub;

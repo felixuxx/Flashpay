@@ -63,6 +63,17 @@ struct TALER_CRYPTO_RsaKeyAvailableNotification
    */
   struct GNUNET_TIME_RelativeNBO duration_withdraw;
 
+  /**
+   * Public key used to generate the @e sicm_sig.
+   */
+  struct TALER_SecurityModulePublicKeyP secm_pub;
+
+  /**
+   * Signature affirming the announcement, of
+   * purpose #TALER_SIGNATURE_SM_DENOMINATION_KEY.
+   */
+  struct TALER_SecurityModuleSignatureP secm_sig;
+
   /* followed by @e pub_size bytes of the public key */
 
   /* followed by @e section_name bytes of the configuration section name

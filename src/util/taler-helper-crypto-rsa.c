@@ -44,6 +44,8 @@
 #include <pthread.h>
 #include <sys/eventfd.h>
 #include "taler_error_codes.h"
+#include "taler_signatures.h"
+
 
 /**
  * Information we keep per denomination.
@@ -242,6 +244,12 @@ struct WorkItem
  * Return value from main().
  */
 static int global_ret;
+
+/**
+ * Private key of this security module. Used to sign denomination key
+ * announcements.
+ */
+static struct TALER_SecurityModulePrivateKeyP smpriv;
 
 /**
  * Number of worker threads to use. Default (0) is to use one per CPU core
@@ -693,14 +701,24 @@ static int
 notify_client_dk_add (struct Client *client,
                       const struct DenominationKey *dk)
 {
-  struct TALER_CRYPTO_RsaKeyAvailableNotification *an;
   struct Denomination *denom = dk->denom;
   size_t nlen = strlen (denom->section) + 1;
+  struct TALER_DenominationKeyAnnouncementPS dka = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
+    .purpose.size = htonl (sizeof (dka)),
+    .h_denom_pub = dk->h_denom_pub,
+    .anchor_time = GNUNET_TIME_absolute_hton (dk->anchor),
+    .duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw)
+  };
+  struct TALER_CRYPTO_RsaKeyAvailableNotification *an;
   size_t buf_len;
   void *buf;
   void *p;
   size_t tlen;
 
+  GNUNET_CRYPTO_hash (denom->section,
+                      nlen,
+                      &dka.h_section_name);
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub.rsa_public_key,
                                                  &buf);
   GNUNET_assert (buf_len < UINT16_MAX);
@@ -714,6 +732,9 @@ notify_client_dk_add (struct Client *client,
   an->section_name_len = htons ((uint16_t) nlen);
   an->anchor_time = GNUNET_TIME_absolute_hton (dk->anchor);
   an->duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw);
+  GNUNET_CRYPTO_eddsa_sign (&smpriv.eddsa_priv,
+                            &dka,
+                            &an->secm_sig.eddsa_signature);
   p = (void *) &an[1];
   memcpy (p,
           buf,
@@ -1742,6 +1763,38 @@ run (void *cls,
     now = GNUNET_TIME_absolute_get ();
   }
   GNUNET_TIME_round_abs (&now);
+
+  {
+    char *pfn;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                                 "taler-helper-crypto-rsa",
+                                                 "SM_PRIV_KEY",
+                                                 &pfn))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "taler-helper-crypto-rsa",
+                                 "SM_PRIV_KEY");
+      global_ret = 1;
+      return;
+    }
+    if (GNUNET_SYSERR ==
+        GNUNET_CRYPTO_eddsa_key_from_file (pfn,
+                                           GNUNET_YES,
+                                           &smpriv.eddsa_priv))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "taler-helper-crypto-rsa",
+                                 "SM_PRIV_KEY",
+                                 "Could not use file to persist private key");
+      GNUNET_free (pfn);
+      global_ret = 1;
+      return;
+    }
+    GNUNET_free (pfn);
+  }
+
   if (GNUNET_OK !=
       load_durations ())
   {

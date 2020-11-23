@@ -210,6 +210,20 @@
 #define TALER_SIGNATURE_WALLET_COIN_LINK 1204
 
 
+/******************************/
+/* Security module signatures */
+/******************************/
+
+/**
+ * Signature on a denomination key announcement.
+ */
+#define TALER_SIGNATURE_SM_DENOMINATION_KEY 1250
+
+/**
+ * Signature on an exchange message signing key announcement.
+ */
+#define TALER_SIGNATURE_SM_SIGNING_KEY 1251
+
 /*******************/
 /* Test signatures */
 /*******************/
@@ -252,6 +266,72 @@
 
 
 GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * @brief format used by the denomination crypto helper when affirming
+ *        that it created a denomination key.
+ */
+struct TALER_DenominationKeyAnnouncementPS
+{
+
+  /**
+   * Purpose must be #TALER_SIGNATURE_SM_DENOMINATION_KEY.
+   * Used with an EdDSA signature of a `struct TALER_SecurityModulePublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash of the denomination public key.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
+   * Hash of the section name in the configuration of this denomination.
+   */
+  struct GNUNET_HashCode h_section_name;
+
+  /**
+   * When does the key become available?
+   */
+  struct GNUNET_TIME_AbsoluteNBO anchor_time;
+
+  /**
+   * How long is the key available after @e anchor_time?
+   */
+  struct GNUNET_TIME_RelativeNBO duration_withdraw;
+
+};
+
+
+/**
+ * @brief format used by the signing crypto helper when affirming
+ *        that it created an exchange signing key.
+ */
+struct TALER_SigningKeyAnnouncementPS
+{
+
+  /**
+   * Purpose must be #TALER_SIGNATURE_SM_SIGNING_KEY.
+   * Used with an EdDSA signature of a `struct TALER_SecurityModulePublicKeyP`.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Public signing key of the exchange this is about.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * When does the key become available?
+   */
+  struct GNUNET_TIME_AbsoluteNBO anchor_time;
+
+  /**
+   * How long is the key available after @e anchor_time?
+   */
+  struct GNUNET_TIME_RelativeNBO duration_withdraw;
+
+};
 
 /**
  * @brief Format used for to allow the wallet to authenticate

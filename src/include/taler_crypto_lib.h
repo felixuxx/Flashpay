@@ -33,6 +33,44 @@
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
+ * @brief Type of public keys for Taler security modules (software or hardware).
+ * Note that there are usually at least two security modules (RSA and EdDSA),
+ * each with its own private key.
+ */
+struct TALER_SecurityModulePublicKeyP
+{
+  /**
+   * Taler uses EdDSA for security modules.
+   */
+  struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
+};
+
+
+/**
+ * @brief Type of private keys for Taler security modules (software or hardware).
+ */
+struct TALER_SecurityModulePrivateKeyP
+{
+  /**
+   * Taler uses EdDSA for security modules.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
+ * @brief Type of signatures used for Taler security modules (software or hardware).
+ */
+struct TALER_SecurityModuleSignatureP
+{
+  /**
+   * Taler uses EdDSA for security modules.
+   */
+  struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
+};
+
+
+/**
  * @brief Type of public keys for Taler reserves.
  */
 struct TALER_ReservePublicKeyP
@@ -758,6 +796,9 @@ struct TALER_CRYPTO_DenominationHelper;
  *                 zero if the key has been revoked or purged
  * @param h_denom_pub hash of the @a denom_pub that is available (or was purged)
  * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param sm_pub public key of the security module, NULL if the key was revoked or purged
+ * @param sm_sig signature from the security module, NULL if the key was revoked or purged
+ *               The signature was already verified against @a sm_pub.
  */
 typedef void
 (*TALER_CRYPTO_DenominationKeyStatusCallback)(
@@ -766,7 +807,9 @@ typedef void
   struct GNUNET_TIME_Absolute start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct GNUNET_HashCode *h_denom_pub,
-  const struct TALER_DenominationPublicKey *denom_pub);
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_SecurityModulePublicKeyP *sm_pub,
+  const struct TALER_SecurityModuleSignatureP *sm_sig);
 
 
 /**

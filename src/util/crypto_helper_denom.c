@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
+#include "taler_signatures.h"
 #include "taler-helper-crypto-rsa.h"
 
 
@@ -276,7 +277,12 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
 
   {
     struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_DenominationKeyAnnouncementPS dka = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
+      .purpose.size = htonl (sizeof (dka)),
+      .anchor_time = kan->anchor_time,
+      .duration_withdraw = kan->duration_withdraw
+    };
 
     denom_pub.rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_decode (buf,
@@ -287,13 +293,25 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
       return GNUNET_SYSERR;
     }
     GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &h_denom_pub);
+                                       &dka.h_denom_pub);
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_DENOMINATION_KEY,
+                                    &dka,
+                                    &kan->secm_sig.eddsa_signature,
+                                    &kan->secm_pub.eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
+      return GNUNET_SYSERR;
+    }
     dh->dkc (dh->dkc_cls,
              section_name,
              GNUNET_TIME_absolute_ntoh (kan->anchor_time),
              GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
-             &h_denom_pub,
-             &denom_pub);
+             &dka.h_denom_pub,
+             &denom_pub,
+             &kan->secm_pub,
+             &kan->secm_sig);
     GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
   }
   return GNUNET_OK;
@@ -324,6 +342,8 @@ handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
            GNUNET_TIME_UNIT_ZERO_ABS,
            GNUNET_TIME_UNIT_ZERO,
            &pn->h_denom_pub,
+           NULL,
+           NULL,
            NULL);
   return GNUNET_OK;
 }
