@@ -495,7 +495,7 @@ handle_done (void *cls)
     GNUNET_assert (0 == pthread_mutex_unlock (&done_lock));
     if (TALER_EC_NONE != wi->ec)
     {
-      struct TALER_CRYPTO_SignFailure sf = {
+      struct TALER_CRYPTO_EddsaSignFailure sf = {
         .header.size = htons (sizeof (sf)),
         .header.type = htons (TALER_HELPER_EDDSA_MT_RES_SIGN_FAILURE),
         .ec = htonl (wi->ec)
@@ -509,7 +509,7 @@ handle_done (void *cls)
     }
     else
     {
-      struct TALER_CRYPTO_SignResponse sr = {
+      struct TALER_CRYPTO_EddsaSignResponse sr = {
         .header.size = htons (sizeof (sr)),
         .header.type = htons (TALER_HELPER_EDDSA_MT_RES_SIGNATURE),
         .exchange_pub = wi->key->exchange_pub,
@@ -548,7 +548,7 @@ handle_done (void *cls)
 static void
 handle_sign_request (const struct sockaddr_un *addr,
                      socklen_t addr_size,
-                     const struct TALER_CRYPTO_SignRequest *sr)
+                     const struct TALER_CRYPTO_EddsaSignRequest *sr)
 {
   const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose = &sr->purpose;
   struct WorkItem *wi;
@@ -557,7 +557,7 @@ handle_sign_request (const struct sockaddr_un *addr,
 
   if (purpose_size != htonl (purpose->size))
   {
-    struct TALER_CRYPTO_SignFailure sf = {
+    struct TALER_CRYPTO_EddsaSignFailure sf = {
       .header.size = htons (sizeof (sr)),
       .header.type = htons (TALER_HELPER_EDDSA_MT_RES_SIGN_FAILURE),
       .ec = htonl (TALER_EC_GENERIC_PARAMETER_MALFORMED)
@@ -606,7 +606,7 @@ notify_client_key_add (struct Client *client,
     .purpose.size = htonl (sizeof (ska)),
     .exchange_pub = key->exchange_pub,
     .anchor_time = GNUNET_TIME_absolute_hton (key->anchor),
-    .duration_withdraw = GNUNET_TIME_relative_hton (duration)
+    .duration = GNUNET_TIME_relative_hton (duration)
   };
   struct TALER_CRYPTO_EddsaKeyAvailableNotification an = {
     .header.size = htons (sizeof (an)),
@@ -743,7 +743,7 @@ setup_key (struct Key *key,
 static void
 handle_revoke_request (const struct sockaddr_un *addr,
                        socklen_t addr_size,
-                       const struct TALER_CRYPTO_RevokeRequest *rr)
+                       const struct TALER_CRYPTO_EddsaRevokeRequest *rr)
 {
   struct Key *key;
   struct Key *nkey;
@@ -884,24 +884,25 @@ read_job (void *cls)
     }
     break;
   case TALER_HELPER_EDDSA_MT_REQ_SIGN:
-    if (ntohs (hdr->size) <= sizeof (struct TALER_CRYPTO_SignRequest))
+    if (ntohs (hdr->size) < sizeof (struct TALER_CRYPTO_EddsaSignRequest))
     {
       GNUNET_break_op (0);
       return;
     }
     handle_sign_request (&addr,
                          addr_size,
-                         (const struct TALER_CRYPTO_SignRequest *) buf);
+                         (const struct TALER_CRYPTO_EddsaSignRequest *) buf);
     break;
   case TALER_HELPER_EDDSA_MT_REQ_REVOKE:
-    if (ntohs (hdr->size) != sizeof (struct TALER_CRYPTO_RevokeRequest))
+    if (ntohs (hdr->size) != sizeof (struct TALER_CRYPTO_EddsaRevokeRequest))
     {
       GNUNET_break_op (0);
       return;
     }
     handle_revoke_request (&addr,
                            addr_size,
-                           (const struct TALER_CRYPTO_RevokeRequest *) buf);
+                           (const struct
+                            TALER_CRYPTO_EddsaRevokeRequest *) buf);
     break;
   default:
     GNUNET_break_op (0);

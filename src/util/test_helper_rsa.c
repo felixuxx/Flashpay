@@ -196,7 +196,7 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
                                         &keys[j].h_denom_pub);
       for (unsigned int k = 0; k<1000; k++)
       {
-        TALER_CRYPTO_helper_poll (dh);
+        TALER_CRYPTO_helper_denom_poll (dh);
         if (! keys[j].revoked)
           break;
         nanosleep (&req, NULL);
@@ -387,7 +387,7 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
   duration = GNUNET_TIME_UNIT_ZERO;
   for (unsigned int j = 0; j<NUM_SIGN_TESTS;)
   {
-    TALER_CRYPTO_helper_poll (dh);
+    TALER_CRYPTO_helper_denom_poll (dh);
     for (unsigned int i = 0; i<MAX_KEYS; i++)
     {
       if (! keys[i].valid)
@@ -476,7 +476,7 @@ run_test (void)
   fprintf (stderr, "Waiting for helper to start ");
   for (unsigned int i = 0; i<1000; i++)
   {
-    TALER_CRYPTO_helper_poll (dh);
+    TALER_CRYPTO_helper_denom_poll (dh);
     if (0 != num_keys)
       break;
     nanosleep (&req, NULL);

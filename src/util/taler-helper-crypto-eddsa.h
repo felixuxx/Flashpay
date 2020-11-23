@@ -103,7 +103,7 @@ struct TALER_CRYPTO_EddsaKeyPurgeNotification
 /**
  * Message sent if a signature is requested.
  */
-struct TALER_CRYPTO_SignRequest
+struct TALER_CRYPTO_EddsaSignRequest
 {
   /**
    * Type is #TALER_HELPER_EDDSA_MT_REQ_SIGN.
@@ -127,7 +127,7 @@ struct TALER_CRYPTO_SignRequest
 /**
  * Message sent if a key was revoked.
  */
-struct TALER_CRYPTO_RevokeRequest
+struct TALER_CRYPTO_EddsaRevokeRequest
 {
   /**
    * Type is #TALER_HELPER_EDDSA_MT_REQ_REVOKE.
@@ -150,7 +150,7 @@ struct TALER_CRYPTO_RevokeRequest
 /**
  * Message sent if a signature was successfully computed.
  */
-struct TALER_CRYPTO_SignResponse
+struct TALER_CRYPTO_EddsaSignResponse
 {
   /**
    * Type is #TALER_HELPER_EDDSA_MT_RES_SIGNATURE.
@@ -178,7 +178,7 @@ struct TALER_CRYPTO_SignResponse
 /**
  * Message sent if signing failed.
  */
-struct TALER_CRYPTO_SignFailure
+struct TALER_CRYPTO_EddsaSignFailure
 {
   /**
    * Type is #TALER_HELPER_EDDSA_MT_RES_SIGN_FAILURE.

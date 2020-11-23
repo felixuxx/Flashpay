@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -837,7 +837,7 @@ TALER_CRYPTO_helper_denom_connect (
  * @param dh helper process connection
  */
 void
-TALER_CRYPTO_helper_poll (struct TALER_CRYPTO_DenominationHelper *dh);
+TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh);
 
 
 /**
@@ -896,6 +896,146 @@ TALER_CRYPTO_helper_denom_revoke (
 void
 TALER_CRYPTO_helper_denom_disconnect (
   struct TALER_CRYPTO_DenominationHelper *dh);
+
+
+/**
+ * Handle for talking to an online key signing helper.
+ */
+struct TALER_CRYPTO_ExchangeSignHelper;
+
+/**
+ * Function called with information about available keys for signing.  Usually
+ * only called once per key upon connect. Also called again in case a key is
+ * being revoked, in that case with an @a end_time of zero.
+ *
+ * @param cls closure
+ * @param start_time when does the key become available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param validity_duration how long does the key remain available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param exchange_pub the public key itself, NULL if the key was revoked or purged
+ * @param sm_pub public key of the security module, NULL if the key was revoked or purged
+ * @param sm_sig signature from the security module, NULL if the key was revoked or purged
+ *               The signature was already verified against @a sm_pub.
+ */
+typedef void
+(*TALER_CRYPTO_ExchangeKeyStatusCallback)(
+  void *cls,
+  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Relative validity_duration,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_SecurityModulePublicKeyP *sm_pub,
+  const struct TALER_SecurityModuleSignatureP *sm_sig);
+
+
+/**
+ * Initiate connection to an online signing key helper.
+ *
+ * @param cfg configuration to use
+ * @param ekc function to call with key information
+ * @param ekc_cls closure for @a ekc
+ * @return NULL on error (such as bad @a cfg).
+ */
+struct TALER_CRYPTO_ExchangeSignHelper *
+TALER_CRYPTO_helper_esign_connect (
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  TALER_CRYPTO_ExchangeKeyStatusCallback ekc,
+  void *ekc_cls);
+
+
+/**
+ * Function to call to 'poll' for updates to the available key material.
+ * Should be called whenever it is important that the key material status is
+ * current, like when handling a "/keys" request.  This function basically
+ * briefly checks if there are messages from the helper announcing changes to
+ * exchange online signing keys.
+ *
+ * @param esh helper process connection
+ */
+void
+TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh);
+
+
+/**
+ * Request helper @a esh to sign @a msg using the current online
+ * signing key.
+ *
+ * This operation will block until the signature has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param esh helper process connection
+ * @param purpose message to sign (must extend beyond the purpose)
+ * @param[out] exchange_pub set to the public key used for the signature upon success
+ * @param[out] exchange_sig set to the signature upon success
+ * @return the error code (or #TALER_EC_NONE on success)
+ */
+enum TALER_ErrorCode
+TALER_CRYPTO_helper_esign_sign_ (
+  struct TALER_CRYPTO_ExchangeSignHelper *esh,
+  const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+  struct TALER_ExchangePublicKeyP *exchange_pub,
+  struct TALER_ExchangeSignatureP *exchange_sig);
+
+
+/**
+ * Request helper @a esh to sign @a msg using the current online
+ * signing key.
+ *
+ * This operation will block until the signature has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param esh helper process connection
+ * @param ps message to sign (MUST begin with a purpose)
+ * @param[out] exchange_pub set to the public key used for the signature upon success
+ * @param[out] exchange_sig set to the signature upon success
+ * @return the error code (or #TALER_EC_NONE on success)
+ */
+#define TALER_CRYPTO_helper_esign_sign(esh,ps,epub,esig) (         \
+    /* check size is set correctly */                              \
+    GNUNET_assert (ntohl ((ps)->purpose.size) == sizeof (*ps)),    \
+    /* check 'ps' begins with the purpose */                       \
+    GNUNET_static_assert (((void*) (ps)) ==                        \
+                          ((void*) &(ps)->purpose)),               \
+    TALER_CRYPTO_helper_esign_sign_ (esh,                          \
+                                     &(ps)->purpose,               \
+                                     epub,                         \
+                                     esig) )
+
+
+/**
+ * Ask the helper to revoke the public key @param exchange_pub.
+ * Will cause the helper to tell all clients that the key is now unavailable,
+ * and to create a replacement key.
+ *
+ * This operation will block until the revocation request has been
+ * transmitted.  Should this process receive a signal (that is not ignored)
+ * while the operation is pending, the operation may fail. If the key is
+ * unknown, this function will also appear to have succeeded. To be sure that
+ * the revocation worked, clients must watch the signing key status callback.
+ *
+ * @param esh helper to process connection
+ * @param exchange_pub the public key to revoke
+ */
+void
+TALER_CRYPTO_helper_esign_revoke (
+  struct TALER_CRYPTO_ExchangeSignHelper *esh,
+  const struct TALER_ExchangePublicKeyP *exchange_pub);
+
+
+/**
+ * Close connection to @a esh.
+ *
+ * @param[in] esh connection to close
+ */
+void
+TALER_CRYPTO_helper_esign_disconnect (
+  struct TALER_CRYPTO_ExchangeSignHelper *esh);
 
 
 /* **************** /wire account offline signing **************** */

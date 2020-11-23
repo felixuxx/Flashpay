@@ -329,7 +329,7 @@ struct TALER_SigningKeyAnnouncementPS
   /**
    * How long is the key available after @e anchor_time?
    */
-  struct GNUNET_TIME_RelativeNBO duration_withdraw;
+  struct GNUNET_TIME_RelativeNBO duration;
 
 };
 

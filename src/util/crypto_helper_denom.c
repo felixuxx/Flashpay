@@ -234,7 +234,7 @@ TALER_CRYPTO_helper_denom_connect (
     }
     dh->template = template;
   }
-  TALER_CRYPTO_helper_poll (dh);
+  TALER_CRYPTO_helper_denom_poll (dh);
   return dh;
 }
 
@@ -350,7 +350,7 @@ handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
 
 
 void
-TALER_CRYPTO_helper_poll (struct TALER_CRYPTO_DenominationHelper *dh)
+TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
 {
   char buf[UINT16_MAX];
   ssize_t ret;
