@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS denominations
   ,fee_refund_frac INT4 NOT NULL
   );
 COMMENT ON TABLE denominations
-  IS 'Main denominations table. All the coins the exchange knows about.';
+  IS 'Main denominations table. All the valid denominations the exchange knows about.';
 
 CREATE INDEX IF NOT EXISTS denominations_expire_legal_index
   ON denominations
