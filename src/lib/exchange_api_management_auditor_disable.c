@@ -66,7 +66,7 @@ struct TALER_EXCHANGE_ManagementAuditorDisableHandle
 
 /**
  * Function called when we're done processing the
- * HTTP /management/signkeys/%s/revoke request.
+ * HTTP /management/auditors/%s/disable request.
  *
  * @param cls the `struct TALER_EXCHANGE_ManagementAuditorDisableHandle *`
  * @param response_code HTTP response code, 0 on error
