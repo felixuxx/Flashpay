@@ -2134,12 +2134,12 @@ struct TALER_EXCHANGE_ManagementPostKeysData
   /**
    * Array of the master signatures for the exchange's online signing keys.
    */
-  struct TALER_EXCHANGE_SigningKeySignatures *sign_sigs;
+  struct TALER_EXCHANGE_SigningKeySignature *sign_sigs;
 
   /**
    * Array of the master signatures for the exchange's denomination keys.
    */
-  struct TALER_EXCHANGE_DenominationKeySignatures *denom_sigs;
+  struct TALER_EXCHANGE_DenominationKeySignature *denom_sigs;
 
   /**
    * Length of the @e sign_keys array (number of valid entries).
@@ -2185,7 +2185,7 @@ TALER_EXCHANGE_post_management_keys (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_EXCHANGE_ManagementPostKeysData *pkd,
-  TALER_EXCHANGE_ManagementGetKeysCallback cb,
+  TALER_EXCHANGE_ManagementPostKeysCallback cb,
   void *cb_cls);
 
 

@@ -29,10 +29,11 @@ libtalerexchange_la_SOURCES = \
   exchange_api_link.c \
   exchange_api_management_auditor_disable.c \
   exchange_api_management_auditor_enable.c \
-  exchange_api_management_wire_disable.c \
-  exchange_api_management_wire_enable.c \
+  exchange_api_management_post_keys.c \
   exchange_api_management_revoke_denomination_key.c \
   exchange_api_management_revoke_signing_key.c \
+  exchange_api_management_wire_disable.c \
+  exchange_api_management_wire_enable.c \
   exchange_api_melt.c \
   exchange_api_recoup.c \
   exchange_api_refresh_common.c exchange_api_refresh_common.h \
