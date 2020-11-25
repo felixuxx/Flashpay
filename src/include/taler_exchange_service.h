@@ -2362,7 +2362,7 @@ typedef void
 
 
 /**
- * @brief Handle for a POST /management/auditors/disable request.
+ * @brief Handle for a POST /management/auditors/$AUDITOR_PUB/disable request.
  */
 struct TALER_EXCHANGE_ManagementAuditorDisableHandle;
 
@@ -2374,7 +2374,7 @@ struct TALER_EXCHANGE_ManagementAuditorDisableHandle;
  * @param url HTTP base URL for the exchange
  * @param auditor_pub the public signing key of the auditor
  * @param auditor_url base URL of the auditor
- * @param validity_start when was this decided?
+ * @param validity_end when was this decided?
  * @param master_sig signature affirming the auditor addition
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
@@ -2386,7 +2386,7 @@ TALER_EXCHANGE_management_disable_auditor (
   const char *url,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
-  struct GNUNET_TIME_Absolute validity_start,
+  struct GNUNET_TIME_Absolute validity_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementAuditorDisableCallback cb,
   void *cb_cls);
