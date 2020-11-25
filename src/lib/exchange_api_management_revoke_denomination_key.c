@@ -29,7 +29,34 @@
 /**
  * @brief Handle for a POST /management/denominations/$H_DENOM_PUB/revoke request.
  */
-struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle;
+struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle
+{
+
+  /**
+   * The url for this request.
+   */
+  char *url;
+
+  /**
+   * Handle for the request.
+   */
+  struct GNUNET_CURL_Job *job;
+
+  /**
+   * Function to call with the result.
+   */
+  TALER_EXCHANGE_ManagementRevokeDenominationKeyCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Reference to the execution context.
+   */
+  struct GNUNET_CURL_Context *ctx;
+};
 
 
 /**
@@ -60,4 +87,13 @@ TALER_EXCHANGE_management_revoke_denomination_key (
  */
 void
 TALER_EXCHANGE_management_revoke_denomination_key_cancel (
-  struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle *rh);
+  struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle *rh)
+{
+  if (NULL != rh->job)
+  {
+    GNUNET_CURL_job_cancel (rh->job);
+    rh->job = NULL;
+  }
+  GNUNET_free (rh->url);
+  GNUNET_free (rh);
+}

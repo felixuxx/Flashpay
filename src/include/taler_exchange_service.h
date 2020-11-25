@@ -2040,46 +2040,6 @@ struct TALER_EXCHANGE_FutureKeys
 
 
 /**
- * General information about the HTTP response we obtained
- * from the exchange for a request.
- */
-struct TALER_EXCHANGE_HttpResponse
-{
-
-  /**
-   * The complete JSON reply. NULL if we failed to parse the
-   * reply (too big, invalid JSON).
-   */
-  const json_t *reply;
-
-  /**
-   * Set to the human-readable 'hint' that is optionally
-   * provided by the exchange together with errors. NULL
-   * if no hint was provided or if there was no error.
-   */
-  const char *hint;
-
-  /**
-   * HTTP status code for the response.  0 if the
-   * HTTP request failed and we did not get any answer, or
-   * if the answer was invalid and we set @a ec to a
-   * client-side error code.
-   */
-  unsigned int http_status;
-
-  /**
-   * Taler error code.  #TALER_EC_NONE if everything was
-   * OK.  Usually set to the "code" field of an error
-   * response, but may be set to values created at the
-   * client side, for example when the response was
-   * not in JSON format or was otherwise ill-formed.
-   */
-  enum TALER_ErrorCode ec;
-
-};
-
-
-/**
  * Function called with information about future keys.
  *
  * @param cls closure

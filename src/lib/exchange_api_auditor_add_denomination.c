@@ -29,7 +29,34 @@
 /**
  * @brief Handle for a POST /auditor/$AUDITOR_PUB/$H_DENOM_PUB request.
  */
-struct TALER_EXCHANGE_AuditorAddDenominationHandle;
+struct TALER_EXCHANGE_AuditorAddDenominationHandle
+{
+
+  /**
+   * The url for this request.
+   */
+  char *url;
+
+  /**
+   * Handle for the request.
+   */
+  struct GNUNET_CURL_Job *job;
+
+  /**
+   * Function to call with the result.
+   */
+  TALER_EXCHANGE_AuditorAddDenominationCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Reference to the execution context.
+   */
+  struct GNUNET_CURL_Context *ctx;
+};
 
 
 /**
@@ -58,8 +85,17 @@ TALER_EXCHANGE_add_auditor_denomination (
 /**
  * Cancel #TALER_EXCHANGE_add_auditor_denomination() operation.
  *
- * @param gh handle of the operation to cancel
+ * @param ah handle of the operation to cancel
  */
 void
 TALER_EXCHANGE_add_auditor_denomination_cancel (
-  struct TALER_EXCHANGE_AuditorAddDenominationHandle *ah);
+  struct TALER_EXCHANGE_AuditorAddDenominationHandle *ah)
+{
+  if (NULL != ah->job)
+  {
+    GNUNET_CURL_job_cancel (ah->job);
+    ah->job = NULL;
+  }
+  GNUNET_free (ah->url);
+  GNUNET_free (ah);
+}

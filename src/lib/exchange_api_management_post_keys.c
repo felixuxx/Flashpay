@@ -29,7 +29,34 @@
 /**
  * @brief Handle for a POST /management/keys request.
  */
-struct TALER_EXCHANGE_ManagementPostKeysHandle;
+struct TALER_EXCHANGE_ManagementPostKeysHandle
+{
+
+  /**
+   * The url for this request.
+   */
+  char *url;
+
+  /**
+   * Handle for the request.
+   */
+  struct GNUNET_CURL_Job *job;
+
+  /**
+   * Function to call with the result.
+   */
+  TALER_EXCHANGE_ManagementGetKeysCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Reference to the execution context.
+   */
+  struct GNUNET_CURL_Context *ctx;
+};
 
 
 /**
@@ -57,4 +84,13 @@ TALER_EXCHANGE_post_management_keys (
  */
 void
 TALER_EXCHANGE_post_management_keys_cancel (
-  struct TALER_EXCHANGE_ManagementPostKeysHandle *ph);
+  struct TALER_EXCHANGE_ManagementPostKeysHandle *ph)
+{
+  if (NULL != ph->job)
+  {
+    GNUNET_CURL_job_cancel (ph->job);
+    ph->job = NULL;
+  }
+  GNUNET_free (ph->url);
+  GNUNET_free (ph);
+}

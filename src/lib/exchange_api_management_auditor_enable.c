@@ -29,7 +29,34 @@
 /**
  * @brief Handle for a POST /management/auditors request.
  */
-struct TALER_EXCHANGE_ManagementAuditorEnableHandle;
+struct TALER_EXCHANGE_ManagementAuditorEnableHandle
+{
+
+  /**
+   * The url for this request.
+   */
+  char *url;
+
+  /**
+   * Handle for the request.
+   */
+  struct GNUNET_CURL_Job *job;
+
+  /**
+   * Function to call with the result.
+   */
+  TALER_EXCHANGE_ManagementAuditorEnableCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Reference to the execution context.
+   */
+  struct GNUNET_CURL_Context *ctx;
+};
 
 
 /**
@@ -64,4 +91,13 @@ TALER_EXCHANGE_management_enable_auditor (
  */
 void
 TALER_EXCHANGE_management_enable_auditor_cancel (
-  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *ah);
+  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *ah)
+{
+  if (NULL != ah->job)
+  {
+    GNUNET_CURL_job_cancel (ah->job);
+    ah->job = NULL;
+  }
+  GNUNET_free (ah->url);
+  GNUNET_free (ah);
+}

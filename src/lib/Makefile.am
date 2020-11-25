@@ -27,6 +27,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_deposit.c \
   exchange_api_deposits_get.c \
   exchange_api_link.c \
+  exchange_api_management_revoke_signing_key.c \
   exchange_api_melt.c \
   exchange_api_recoup.c \
   exchange_api_refresh_common.c exchange_api_refresh_common.h \

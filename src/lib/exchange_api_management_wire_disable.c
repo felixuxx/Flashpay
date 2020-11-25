@@ -29,7 +29,34 @@
 /**
  * @brief Handle for a POST /management/wire/disable request.
  */
-struct TALER_EXCHANGE_ManagementWireDisableHandle;
+struct TALER_EXCHANGE_ManagementWireDisableHandle
+{
+
+  /**
+   * The url for this request.
+   */
+  char *url;
+
+  /**
+   * Handle for the request.
+   */
+  struct GNUNET_CURL_Job *job;
+
+  /**
+   * Function to call with the result.
+   */
+  TALER_EXCHANGE_ManagementWireDisableCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Reference to the execution context.
+   */
+  struct GNUNET_CURL_Context *ctx;
+};
 
 
 /**
@@ -62,4 +89,13 @@ TALER_EXCHANGE_management_disable_wire (
  */
 void
 TALER_EXCHANGE_management_disable_wire_cancel (
-  struct TALER_EXCHANGE_ManagementWireDisableHandle *wh);
+  struct TALER_EXCHANGE_ManagementWireDisableHandle *wh)
+{
+  if (NULL != wh->job)
+  {
+    GNUNET_CURL_job_cancel (wh->job);
+    wh->job = NULL;
+  }
+  GNUNET_free (wh->url);
+  GNUNET_free (wh);
+}
