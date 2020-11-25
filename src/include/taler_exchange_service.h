@@ -1917,4 +1917,685 @@ void
 TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph);
 
 
+/* *********************  /management *********************** */
+
+
+/**
+ * @brief Future Exchange's signature key
+ */
+struct TALER_EXCHANGE_FutureSigningPublicKey
+{
+  /**
+   * The signing public key
+   */
+  struct TALER_ExchangePublicKeyP key;
+
+  /**
+   * Validity start time
+   */
+  struct GNUNET_TIME_Absolute valid_from;
+
+  /**
+   * Validity expiration time (how long the exchange may use it).
+   */
+  struct GNUNET_TIME_Absolute valid_until;
+
+  /**
+   * Validity expiration time for legal disputes.
+   */
+  struct GNUNET_TIME_Absolute valid_legal;
+};
+
+
+/**
+ * @brief Public information about a future exchange's denomination key
+ */
+struct TALER_EXCHANGE_FutureDenomPublicKey
+{
+  /**
+   * The public key
+   */
+  struct TALER_DenominationPublicKey key;
+
+  /**
+   * Timestamp indicating when the denomination key becomes valid
+   */
+  struct GNUNET_TIME_Absolute valid_from;
+
+  /**
+   * Timestamp indicating when the denomination key can’t be used anymore to
+   * withdraw new coins.
+   */
+  struct GNUNET_TIME_Absolute withdraw_valid_until;
+
+  /**
+   * Timestamp indicating when coins of this denomination become invalid.
+   */
+  struct GNUNET_TIME_Absolute expire_deposit;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Exchange is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_deposit (by a year or more).
+   */
+  struct GNUNET_TIME_Absolute expire_legal;
+
+  /**
+   * The value of this denomination
+   */
+  struct TALER_Amount value;
+
+  /**
+   * The applicable fee for withdrawing a coin of this denomination
+   */
+  struct TALER_Amount fee_withdraw;
+
+  /**
+   * The applicable fee to spend a coin of this denomination
+   */
+  struct TALER_Amount fee_deposit;
+
+  /**
+   * The applicable fee to melt/refresh a coin of this denomination
+   */
+  struct TALER_Amount fee_refresh;
+
+  /**
+   * The applicable fee to refund a coin of this denomination
+   */
+  struct TALER_Amount fee_refund;
+
+};
+
+
+/**
+ * @brief Information about future keys from the exchange.
+ */
+struct TALER_EXCHANGE_FutureKeys
+{
+
+  /**
+   * Array of the exchange's online signing keys.
+   */
+  struct TALER_EXCHANGE_FutureSigningPublicKey *sign_keys;
+
+  /**
+   * Array of the exchange's denomination keys.
+   */
+  struct TALER_EXCHANGE_FutureDenomPublicKey *denom_keys;
+
+  /**
+   * Length of the @e sign_keys array (number of valid entries).
+   */
+  unsigned int num_sign_keys;
+
+  /**
+   * Length of the @e denom_keys array.
+   */
+  unsigned int num_denom_keys;
+
+};
+
+
+/**
+ * General information about the HTTP response we obtained
+ * from the exchange for a request.
+ */
+struct TALER_EXCHANGE_HttpResponse
+{
+
+  /**
+   * The complete JSON reply. NULL if we failed to parse the
+   * reply (too big, invalid JSON).
+   */
+  const json_t *reply;
+
+  /**
+   * Set to the human-readable 'hint' that is optionally
+   * provided by the exchange together with errors. NULL
+   * if no hint was provided or if there was no error.
+   */
+  const char *hint;
+
+  /**
+   * HTTP status code for the response.  0 if the
+   * HTTP request failed and we did not get any answer, or
+   * if the answer was invalid and we set @a ec to a
+   * client-side error code.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code.  #TALER_EC_NONE if everything was
+   * OK.  Usually set to the "code" field of an error
+   * response, but may be set to values created at the
+   * client side, for example when the response was
+   * not in JSON format or was otherwise ill-formed.
+   */
+  enum TALER_ErrorCode ec;
+
+};
+
+
+/**
+ * Function called with information about future keys.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ * @param keys information about the various keys used
+ *        by the exchange, NULL if /management/keys failed
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementGetKeysCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr,
+  const struct TALER_EXCHANGE_FutureKeys *keys);
+
+
+/**
+ * @brief Handle for a GET /management/keys request.
+ */
+struct TALER_EXCHANGE_ManagementGetKeysHandle;
+
+
+/**
+ * Request future keys from the exchange.  The obtained information will be
+ * passed to the @a cb.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param cb function to call with the exchange's future keys result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementGetKeysHandle *
+TALER_EXCHANGE_get_management_keys (struct GNUNET_CURL_Context *ctx,
+                                    const char *url,
+                                    TALER_EXCHANGE_ManagementGetKeysCallback cb,
+                                    void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_get_management_keys() operation.
+ *
+ * @param gh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_get_management_keys_cancel (
+  struct TALER_EXCHANGE_ManagementGetKeysHandle *gh);
+
+
+/**
+ * @brief Public information about a signature on an exchange's online signing key
+ */
+struct TALER_EXCHANGE_SigningKeySignature
+{
+  /**
+   * The signing public key
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * Signature over this signing key by the exchange's master signature.
+   * Of purpose #TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+};
+
+
+/**
+ * @brief Public information about a signature on an exchange's denomination key
+ */
+struct TALER_EXCHANGE_DenominationKeySignature
+{
+  /**
+   * The hash of the denomination's public key
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
+   * Signature over this denomination key by the exchange's master signature.
+   * Of purpose #TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY.
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+};
+
+
+/**
+ * Information needed for a POST /management/keys operation.
+ */
+struct TALER_EXCHANGE_ManagementPostKeysData
+{
+
+  /**
+   * Array of the master signatures for the exchange's online signing keys.
+   */
+  struct TALER_EXCHANGE_SigningKeySignatures *sign_sigs;
+
+  /**
+   * Array of the master signatures for the exchange's denomination keys.
+   */
+  struct TALER_EXCHANGE_DenominationKeySignatures *denom_sigs;
+
+  /**
+   * Length of the @e sign_keys array (number of valid entries).
+   */
+  unsigned int num_sign_sigs;
+
+  /**
+   * Length of the @e denom_keys array.
+   */
+  unsigned int num_denom_sigs;
+};
+
+
+/**
+ * Function called with information about the post keys operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementPostKeysCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/keys request.
+ */
+struct TALER_EXCHANGE_ManagementPostKeysHandle;
+
+
+/**
+ * Provide master-key signatures to the exchange.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementPostKeysHandle *
+TALER_EXCHANGE_post_management_keys (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_EXCHANGE_ManagementPostKeysData *pkd,
+  TALER_EXCHANGE_ManagementGetKeysCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_post_management_keys() operation.
+ *
+ * @param gh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_post_management_keys_cancel (
+  struct TALER_EXCHANGE_ManagementPostKeysHandle *ph);
+
+/**
+ * Function called with information about the post revocation operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementRevokeDenominationKeyCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/denominations/$H_DENOM_PUB/revoke request.
+ */
+struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle;
+
+
+/**
+ * Inform the exchange that a denomination key was revoked.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param h_denom_pub hash of the denomination public key that was revoked
+ * @param master_sig signature affirming the revocation
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle *
+TALER_EXCHANGE_management_revoke_denomination_key (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementRevokeDenominationKeyCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_revoke_denomination_key() operation.
+ *
+ * @param rh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_revoke_denomination_key_cancel (
+  struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle *rh);
+
+
+/**
+ * Function called with information about the post revocation operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementRevokeSigningKeyCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/signkeys/$H_DENOM_PUB/revoke request.
+ */
+struct TALER_EXCHANGE_ManagementRevokeSigningKeyHandle;
+
+
+/**
+ * Inform the exchange that a signing key was revoked.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param exchange_pub the public signing key that was revoked
+ * @param master_sig signature affirming the revocation
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementRevokeSigningKeyHandle *
+TALER_EXCHANGE_management_revoke_signing_key (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementRevokeSigningKeyCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_revoke_signing_key() operation.
+ *
+ * @param rh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_revoke_signing_key_cancel (
+  struct TALER_EXCHANGE_ManagementRevokeSigningKeyHandle *rh);
+
+
+/**
+ * Function called with information about the auditor setup operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementAuditorEnableCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/auditors request.
+ */
+struct TALER_EXCHANGE_ManagementAuditorEnableHandle;
+
+
+/**
+ * Inform the exchange that an auditor should be enable or enabled.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param auditor_pub the public signing key of the auditor
+ * @param auditor_url base URL of the auditor
+ * @param validity_start when was this decided?
+ * @param master_sig signature affirming the auditor addition
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementAuditorEnableHandle *
+TALER_EXCHANGE_management_enable_auditor (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const char *auditor_url,
+  struct GNUNET_TIME_Absolute validity_start,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementAuditorEnableCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_enable_auditor() operation.
+ *
+ * @param ah handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_enable_auditor_cancel (
+  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *ah);
+
+
+/**
+ * Function called with information about the auditor disable operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementAuditorDisableCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/auditors/disable request.
+ */
+struct TALER_EXCHANGE_ManagementAuditorDisableHandle;
+
+
+/**
+ * Inform the exchange that an auditor should be disabled.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param auditor_pub the public signing key of the auditor
+ * @param auditor_url base URL of the auditor
+ * @param validity_start when was this decided?
+ * @param master_sig signature affirming the auditor addition
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementAuditorDisableHandle *
+TALER_EXCHANGE_management_disable_auditor (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const char *auditor_url,
+  struct GNUNET_TIME_Absolute validity_start,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementAuditorDisableCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_disable_auditor() operation.
+ *
+ * @param ah handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_disable_auditor_cancel (
+  struct TALER_EXCHANGE_ManagementAuditorDisableHandle *ah);
+
+
+/**
+ * Function called with information about the wire enable operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementWireEnableCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/wire request.
+ */
+struct TALER_EXCHANGE_ManagementWireEnableHandle;
+
+
+/**
+ * Inform the exchange that a wire account should be enabled.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param salt salt to use when hashing the account for the signature
+ * @param payto_uri RFC 8905 URI of the exchange's bank account
+ * @param validity_start when was this decided?
+ * @param master_sig signature affirming the wire addition
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementWireEnableHandle *
+TALER_EXCHANGE_management_enable_wire (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const char *salt,
+  const char *payto_uri,
+  struct GNUNET_TIME_Absolute validity_start,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementWireEnableCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_enable_wire() operation.
+ *
+ * @param wh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_enable_wire_cancel (
+  struct TALER_EXCHANGE_ManagementWireEnableHandle *wh);
+
+
+/**
+ * Function called with information about the wire disable operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementWireDisableCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/wire/disable request.
+ */
+struct TALER_EXCHANGE_ManagementWireDisableHandle;
+
+
+/**
+ * Inform the exchange that a wire account should be disabled.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param payto_uri RFC 8905 URI of the exchange's bank account
+ * @param validity_end when was this decided?
+ * @param master_sig signature affirming the wire addition
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementWireDisableHandle *
+TALER_EXCHANGE_management_disable_wire (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const char *payto_uri,
+  struct GNUNET_TIME_Absolute validity_end,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementWireDisableCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_disable_wire() operation.
+ *
+ * @param wh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_disable_wire_cancel (
+  struct TALER_EXCHANGE_ManagementWireDisableHandle *wh);
+
+
+/**
+ * Function called with information about the POST
+ * /auditor/$AUDITOR_PUB/$H_DENOM_PUB operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_AuditorAddDenominationCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /auditor/$AUDITOR_PUB/$H_DENOM_PUB request.
+ */
+struct TALER_EXCHANGE_AuditorAddDenominationHandle;
+
+
+/**
+ * Provide auditor signatures for a denomination to the exchange.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param h_denom_pub hash of the public key of the denomination
+ * @param auditor_pub public key of the auditor
+ * @param auditor_sig signature of the auditor
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_AuditorAddDenominationHandle *
+TALER_EXCHANGE_add_auditor_denomination (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const struct TALER_AuditorSignatureP *auditor_sig,
+  TALER_EXCHANGE_AuditorAddDenominationCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_add_auditor_denomination() operation.
+ *
+ * @param gh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_add_auditor_denomination_cancel (
+  struct TALER_EXCHANGE_AuditorAddDenominationHandle *ah);
+
+
 #endif  /* _TALER_EXCHANGE_SERVICE_H */
