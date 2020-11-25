@@ -24,7 +24,8 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
-
+#include "taler_curl_lib.h"
+#include "taler_json_lib.h"
 
 /**
  * @brief Handle for a GET /management/keys request.
@@ -60,6 +61,177 @@ struct TALER_EXCHANGE_ManagementGetKeysHandle
 
 
 /**
+ * Function called when we're done processing the
+ * HTTP GET /management/keys request.
+ *
+ * @param cls the `struct TALER_EXCHANGE_ManagementGetKeysHandle *`
+ * @param response_code HTTP response code, 0 on error
+ * @param response response body, NULL if not in JSON
+ */
+static void
+handle_get_keys_finished (void *cls,
+                          long response_code,
+                          const void *response)
+{
+  struct TALER_EXCHANGE_ManagementGetKeysHandle *gh = cls;
+  const json_t *json = response;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .http_status = (unsigned int) response_code,
+    .reply = json
+  };
+
+  gh->job = NULL;
+  switch (response_code)
+  {
+  case MHD_HTTP_OK:
+    {
+      struct TALER_EXCHANGE_FutureKeys fk;
+      json_t *sk;
+      json_t *dk;
+      bool ok;
+
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_json ("future_denoms",
+                               &dk),
+        GNUNET_JSON_spec_json ("future_signkeys",
+                               &sk),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (json,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        response_code = 0;
+        break;
+      }
+      fk.num_sign_keys = json_array_size (sk);
+      fk.num_denom_keys = json_array_size (dk);
+      fk.sign_keys = GNUNET_new_array (
+        fk.num_sign_keys,
+        struct TALER_EXCHANGE_FutureSigningPublicKey);
+      fk.denom_keys = GNUNET_new_array (
+        fk.num_denom_keys,
+        struct TALER_EXCHANGE_FutureDenomPublicKey);
+      ok = true;
+      for (unsigned int i = 0; i<fk.num_sign_keys; i++)
+      {
+        json_t *j = json_array_get (sk,
+                                    i);
+        struct TALER_EXCHANGE_FutureSigningPublicKey *sign_key
+          = &fk.sign_keys[i];
+        struct GNUNET_JSON_Specification spec[] = {
+          GNUNET_JSON_spec_fixed_auto ("key",
+                                       &sign_key->key),
+          TALER_JSON_spec_absolute_time ("stamp_start",
+                                         &sign_key->valid_from),
+          TALER_JSON_spec_absolute_time ("stamp_expire",
+                                         &sign_key->valid_until),
+          TALER_JSON_spec_absolute_time ("stamp_end",
+                                         &sign_key->valid_legal),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (j,
+                               spec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          ok = false;
+          break;
+        }
+      }
+      for (unsigned int i = 0; i<fk.num_denom_keys; i++)
+      {
+        json_t *j = json_array_get (dk,
+                                    i);
+        struct TALER_EXCHANGE_FutureDenomPublicKey *denom_key
+          = &fk.denom_keys[i];
+        struct GNUNET_JSON_Specification spec[] = {
+          TALER_JSON_spec_absolute_time ("stamp_expire_deposit",
+                                         &denom_key->expire_deposit),
+          TALER_JSON_spec_absolute_time ("stamp_expire_withdraw",
+                                         &denom_key->withdraw_valid_until),
+          TALER_JSON_spec_absolute_time ("stamp_start",
+                                         &denom_key->valid_from),
+          TALER_JSON_spec_absolute_time ("stamp_expire_legal",
+                                         &denom_key->expire_legal),
+          TALER_JSON_spec_amount ("value",
+                                  &denom_key->value),
+          TALER_JSON_spec_amount ("fee_withdraw",
+                                  &denom_key->fee_withdraw),
+          TALER_JSON_spec_amount ("fee_deposit",
+                                  &denom_key->fee_deposit),
+          TALER_JSON_spec_amount ("fee_refresh",
+                                  &denom_key->fee_refresh),
+          TALER_JSON_spec_amount ("fee_refund",
+                                  &denom_key->fee_refund),
+          GNUNET_JSON_spec_rsa_public_key ("denom_pub",
+                                           &denom_key->key.rsa_public_key),
+          GNUNET_JSON_spec_end ()
+        };
+
+        if (GNUNET_OK !=
+            GNUNET_JSON_parse (j,
+                               spec,
+                               NULL, NULL))
+        {
+          GNUNET_break_op (0);
+          ok = false;
+          break;
+        }
+      }
+      if (ok)
+      {
+        gh->cb (gh->cb_cls,
+                &hr,
+                &fk);
+        gh->cb = NULL;
+      }
+      for (unsigned int i = 0; i<fk.num_denom_keys; i++)
+      {
+        if (NULL != fk.denom_keys[i].key.rsa_public_key)
+        {
+          GNUNET_CRYPTO_rsa_public_key_free (
+            fk.denom_keys[i].key.rsa_public_key);
+          fk.denom_keys[i].key.rsa_public_key = NULL;
+        }
+      }
+      GNUNET_free (fk.sign_keys);
+      GNUNET_free (fk.denom_keys);
+      if (! ok)
+      {
+        response_code = 0;
+        break;
+      }
+    }
+    break;
+  default:
+    /* unexpected response code */
+    GNUNET_break_op (0);
+    hr.ec = TALER_JSON_get_error_code (json);
+    hr.hint = TALER_JSON_get_error_hint (json);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
+    break;
+  }
+  if (NULL != gh->cb)
+  {
+    gh->cb (gh->cb_cls,
+            &hr,
+            NULL);
+    gh->cb = NULL;
+  }
+  TALER_EXCHANGE_get_management_keys_cancel (gh);
+};
+
+
+/**
  * Request future keys from the exchange.  The obtained information will be
  * passed to the @a cb.
  *
@@ -73,7 +245,44 @@ struct TALER_EXCHANGE_ManagementGetKeysHandle *
 TALER_EXCHANGE_get_management_keys (struct GNUNET_CURL_Context *ctx,
                                     const char *url,
                                     TALER_EXCHANGE_ManagementGetKeysCallback cb,
-                                    void *cb_cls);
+                                    void *cb_cls)
+{
+  struct TALER_EXCHANGE_ManagementGetKeysHandle *gh;
+  CURL *eh;
+
+  gh = GNUNET_new (struct TALER_EXCHANGE_ManagementGetKeysHandle);
+  gh->cb = cb;
+  gh->cb_cls = cb_cls;
+  gh->ctx = ctx;
+  gh->url = TALER_url_join (url,
+                            "management/keys",
+                            NULL);
+  if (NULL == gh->url)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not construct request URL.\n");
+    GNUNET_free (gh);
+    return NULL;
+  }
+  eh = curl_easy_init ();
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Requesting URL '%s'\n",
+              gh->url);
+  GNUNET_assert (CURLE_OK ==
+                 curl_easy_setopt (eh,
+                                   CURLOPT_URL,
+                                   gh->url));
+  gh->job = GNUNET_CURL_job_add (ctx,
+                                 eh,
+                                 &handle_get_keys_finished,
+                                 gh);
+  if (NULL == gh->job)
+  {
+    TALER_EXCHANGE_get_management_keys_cancel (gh);
+    return NULL;
+  }
+  return gh;
+}
 
 
 /**

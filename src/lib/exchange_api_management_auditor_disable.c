@@ -64,6 +64,7 @@ struct TALER_EXCHANGE_ManagementAuditorDisableHandle
   struct GNUNET_CURL_Context *ctx;
 };
 
+
 /**
  * Function called when we're done processing the
  * HTTP /management/auditors/%s/disable request.
