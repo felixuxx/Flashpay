@@ -24,9 +24,10 @@
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
-/**
- * @brief Handle for a POST /management/wire request.
- */
+#include "taler_curl_lib.h"
+#include "taler_json_lib.h"
+
+
 struct TALER_EXCHANGE_ManagementWireEnableHandle
 {
 
@@ -34,6 +35,11 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle
    * The url for this request.
    */
   char *url;
+
+  /**
+   * Minor context that holds body and headers.
+   */
+  struct TALER_CURL_PostContext post_ctx;
 
   /**
    * Handle for the request.
@@ -58,6 +64,60 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle
 
 
 /**
+ * Function called when we're done processing the
+ * HTTP /management/wire request.
+ *
+ * @param cls the `struct TALER_EXCHANGE_ManagementAuditorEnableHandle *`
+ * @param response_code HTTP response code, 0 on error
+ * @param response response body, NULL if not in JSON
+ */
+static void
+handle_auditor_enable_finished (void *cls,
+                                long response_code,
+                                const void *response)
+{
+  struct TALER_EXCHANGE_ManagementWireEnableHandle *wh = cls;
+  const json_t *json = response;
+  struct TALER_EXCHANGE_HttpResponse hr = {
+    .http_status = (unsigned int) response_code,
+    .reply = json
+  };
+
+  wh->job = NULL;
+  switch (response_code)
+  {
+  case MHD_HTTP_NO_CONTENT:
+    break;
+  case MHD_HTTP_FORBIDDEN:
+    hr.ec = TALER_JSON_get_error_code (json);
+    hr.hint = TALER_JSON_get_error_hint (json);
+    break;
+  case MHD_HTTP_CONFLICT:
+    hr.ec = TALER_JSON_get_error_code (json);
+    hr.hint = TALER_JSON_get_error_hint (json);
+    break;
+  default:
+    /* unexpected response code */
+    GNUNET_break_op (0);
+    hr.ec = TALER_JSON_get_error_code (json);
+    hr.hint = TALER_JSON_get_error_hint (json);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unexpected response code %u/%d\n",
+                (unsigned int) response_code,
+                (int) hr.ec);
+    break;
+  }
+  if (NULL != wh->cb)
+  {
+    wh->cb (wh->cb_cls,
+            &hr);
+    wh->cb = NULL;
+  }
+  TALER_EXCHANGE_management_enable_wire_cancel (wh);
+}
+
+
+/**
  * Inform the exchange that a wire account should be enabled.
  *
  * @param ctx the context
@@ -79,7 +139,73 @@ TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_TIME_Absolute validity_start,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
-  void *cb_cls);
+  void *cb_cls)
+{
+  struct TALER_EXCHANGE_ManagementWireEnableHandle *wh;
+  CURL *eh;
+  json_t *body;
+
+  wh = GNUNET_new (struct TALER_EXCHANGE_ManagementWireEnableHandle);
+  wh->cb = cb;
+  wh->cb_cls = cb_cls;
+  wh->ctx = ctx;
+  wh->url = TALER_url_join (url,
+                            "management/wire/enable",
+                            NULL);
+  if (NULL == wh->url)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not construct request URL.\n");
+    GNUNET_free (wh);
+    return NULL;
+  }
+  body = json_pack ("{s:s, s:s, s:o, s:o}",
+                    "payto_uri",
+                    payto_uri,
+                    "salt",
+                    salt,
+                    "master_sig",
+                    GNUNET_JSON_from_data_auto (master_sig),
+                    "validity_start",
+                    GNUNET_JSON_from_time_abs (validity_start));
+  if (NULL == body)
+  {
+    GNUNET_break (0);
+    GNUNET_free (wh->url);
+    GNUNET_free (wh);
+    return NULL;
+  }
+  eh = curl_easy_init ();
+  if (GNUNET_OK !=
+      TALER_curl_easy_post (&wh->post_ctx,
+                            eh,
+                            body))
+  {
+    GNUNET_break (0);
+    json_decref (body);
+    GNUNET_free (wh->url);
+    GNUNET_free (eh);
+    return NULL;
+  }
+  json_decref (body);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Requesting URL '%s'\n",
+              wh->url);
+  GNUNET_assert (CURLE_OK == curl_easy_setopt (eh,
+                                               CURLOPT_URL,
+                                               wh->url));
+  wh->job = GNUNET_CURL_job_add2 (ctx,
+                                  eh,
+                                  wh->post_ctx.headers,
+                                  &handle_auditor_enable_finished,
+                                  wh);
+  if (NULL == wh->job)
+  {
+    TALER_EXCHANGE_management_enable_wire_cancel (wh);
+    return NULL;
+  }
+  return wh;
+}
 
 
 /**
@@ -96,6 +222,7 @@ TALER_EXCHANGE_management_enable_wire_cancel (
     GNUNET_CURL_job_cancel (wh->job);
     wh->job = NULL;
   }
+  TALER_curl_easy_post_finished (&wh->post_ctx);
   GNUNET_free (wh->url);
   GNUNET_free (wh);
 }
