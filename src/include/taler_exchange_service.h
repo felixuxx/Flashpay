@@ -1931,6 +1931,11 @@ struct TALER_EXCHANGE_FutureSigningPublicKey
   struct TALER_ExchangePublicKeyP key;
 
   /**
+   * Signature by the security module affirming it owns this key.
+   */
+  struct TALER_SecurityModuleSignatureP signkey_secmod_sig;
+
+  /**
    * Validity start time
    */
   struct GNUNET_TIME_Absolute valid_from;
@@ -1956,6 +1961,11 @@ struct TALER_EXCHANGE_FutureDenomPublicKey
    * The public key
    */
   struct TALER_DenominationPublicKey key;
+
+  /**
+   * Signature by the security module affirming it owns this key.
+   */
+  struct TALER_SecurityModuleSignatureP denom_secmod_sig;
 
   /**
    * Timestamp indicating when the denomination key becomes valid
@@ -2025,6 +2035,21 @@ struct TALER_EXCHANGE_FutureKeys
    * Array of the exchange's denomination keys.
    */
   struct TALER_EXCHANGE_FutureDenomPublicKey *denom_keys;
+
+  /**
+   * Public key of the signkey security module.
+   */
+  struct TALER_SecurityModulePublicKeyP signkey_secmod_public_key;
+
+  /**
+   * Public key of the denomination security module.
+   */
+  struct TALER_SecurityModulePublicKeyP denom_secmod_public_key;
+
+  /**
+   * Offline master public key used by this exchange.
+   */
+  struct TALER_MasterPublicKeyP master_pub;
 
   /**
    * Length of the @e sign_keys array (number of valid entries).
