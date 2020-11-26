@@ -122,10 +122,12 @@ handle_auditor_enable_finished (void *cls,
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
- * @param salt salt to use when hashing the account for the signature
  * @param payto_uri RFC 8905 URI of the exchange's bank account
  * @param validity_start when was this decided?
- * @param master_sig signature affirming the wire addition
+ * @param master_sig1 signature affirming the wire addition
+ *        of purpose #TALER_SIGNATURE_MASTER_ADD_WIRE
+ * @param master_sig2 signature affirming the validity of the account for clients;
+ *        of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS.
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -134,10 +136,10 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle *
 TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const char *salt,
   const char *payto_uri,
   struct GNUNET_TIME_Absolute validity_start,
-  const struct TALER_MasterSignatureP *master_sig,
+  const struct TALER_MasterSignatureP *master_sig1,
+  const struct TALER_MasterSignatureP *master_sig2,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
   void *cb_cls)
 {
@@ -159,13 +161,13 @@ TALER_EXCHANGE_management_enable_wire (
     GNUNET_free (wh);
     return NULL;
   }
-  body = json_pack ("{s:s, s:s, s:o, s:o}",
+  body = json_pack ("{s:s, s:s, s:o, s:o, s:o}",
                     "payto_uri",
                     payto_uri,
-                    "salt",
-                    salt,
-                    "master_sig",
-                    GNUNET_JSON_from_data_auto (master_sig),
+                    "master_sig_add",
+                    GNUNET_JSON_from_data_auto (master_sig1),
+                    "master_sig_wire",
+                    GNUNET_JSON_from_data_auto (master_sig2),
                     "validity_start",
                     GNUNET_JSON_from_time_abs (validity_start));
   if (NULL == body)

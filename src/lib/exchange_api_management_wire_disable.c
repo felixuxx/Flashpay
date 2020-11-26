@@ -152,7 +152,7 @@ TALER_EXCHANGE_management_disable_wire (
   body = json_pack ("{s:s, s:o, s:o}",
                     "payto_uri",
                     payto_uri,
-                    "master_sig",
+                    "master_sig_del",
                     GNUNET_JSON_from_data_auto (master_sig),
                     "validity_end",
                     GNUNET_JSON_from_time_abs (validity_end));

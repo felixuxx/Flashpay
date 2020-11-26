@@ -47,6 +47,21 @@
 /*********************************************/
 
 /**
+ * The given revocation key was revoked and must no longer be used.
+ */
+#define TALER_SIGNATURE_MASTER_SIGNING_KEY_REVOKED 1020
+
+/**
+ * Add payto URI to the list of our wire methods.
+ */
+#define TALER_SIGNATURE_MASTER_ADD_WIRE 1021
+
+/**
+ * Remove payto URI from the list of our wire methods.
+ */
+#define TALER_SIGNATURE_MASTER_DEL_WIRE 1023
+
+/**
  * Purpose for signing public keys signed by the exchange master key.
  */
 #define TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY 1024
@@ -806,7 +821,7 @@ struct TALER_ExchangeKeySetPS
  * @brief Signature made by the exchange offline key over the information of
  * an auditor to be added to the exchange's set of auditors.
  */
-struct TALER_ExchangeAddAuditorPS
+struct TALER_MasterAddAuditorPS
 {
 
   /**
@@ -834,9 +849,9 @@ struct TALER_ExchangeAddAuditorPS
 
 /**
  * @brief Signature made by the exchange offline key over the information of
- * an auditor to be removed to the exchange's set of auditors.
+ * an auditor to be removed from the exchange's set of auditors.
  */
-struct TALER_ExchangeDelAuditorPS
+struct TALER_MasterDelAuditorPS
 {
 
   /**
@@ -854,6 +869,57 @@ struct TALER_ExchangeDelAuditorPS
    * Public key of the auditor.
    */
   struct TALER_AuditorPublicKeyP auditor_pub;
+
+};
+
+
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * a payto:// URI to be added to the exchange's set of active wire accounts.
+ */
+struct TALER_MasterAddWirePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_ADD_WIRE.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_AbsoluteNBO start_date;
+
+  /**
+   * Hash over the exchange's payto URI.
+   */
+  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+};
+
+
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * a  wire method to be removed to the exchange's set of active accounts.
+ */
+struct TALER_MasterDelWirePS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DEL_WIRE.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_AbsoluteNBO end_date;
+
+  /**
+   * Hash over the exchange's payto URI.
+   */
+  struct GNUNET_HashCode h_wire GNUNET_PACKED;
 
 };
 

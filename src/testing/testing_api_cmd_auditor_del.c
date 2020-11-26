@@ -200,7 +200,7 @@ auditor_del_run (void *cls,
 
     /* now sign */
     {
-      struct TALER_ExchangeDelAuditorPS kv = {
+      struct TALER_MasterDelAuditorPS kv = {
         .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_AUDITOR),
         .purpose.size = htonl (sizeof (kv)),
         .end_date = GNUNET_TIME_absolute_hton (now),
