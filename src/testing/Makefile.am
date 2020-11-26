@@ -64,6 +64,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_refund.c \
   testing_api_cmd_refresh.c \
   testing_api_cmd_revoke.c \
+  testing_api_cmd_revoke_denom_key.c \
   testing_api_cmd_rewind.c \
   testing_api_cmd_serialize_keys.c \
   testing_api_cmd_signal.c \

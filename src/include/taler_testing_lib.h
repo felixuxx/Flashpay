@@ -2104,14 +2104,19 @@ TALER_TESTING_cmd_offline_sign_keys (const char *label,
  * Revoke an exchange denomination key.
  *
  * @param label command label.
+ * @param expected_http_status expected HTTP status from exchange
+ * @param bad_sig should we use a bogus signature?
  * @param denom_ref reference to a command that identifies
  *        a denomination key (i.e. because it was used to
  *        withdraw a coin).
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_revoke_denom_key (const char *label,
-                                    const char *denom_ref);
+TALER_TESTING_cmd_revoke_denomination (
+  const char *label,
+  unsigned int expected_response_code,
+  bool bad_sig,
+  const char *denom_ref);
 
 
 /**
