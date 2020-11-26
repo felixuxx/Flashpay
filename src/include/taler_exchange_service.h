@@ -2398,7 +2398,6 @@ struct TALER_EXCHANGE_ManagementAuditorDisableHandle;
  * @param ctx the context
  * @param url HTTP base URL for the exchange
  * @param auditor_pub the public signing key of the auditor
- * @param auditor_url base URL of the auditor
  * @param validity_end when was this decided?
  * @param master_sig signature affirming the auditor addition
  * @param cb function to call with the exchange's result
@@ -2410,7 +2409,6 @@ TALER_EXCHANGE_management_disable_auditor (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  const char *auditor_url,
   struct GNUNET_TIME_Absolute validity_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementAuditorDisableCallback cb,

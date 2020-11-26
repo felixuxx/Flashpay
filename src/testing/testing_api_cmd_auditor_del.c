@@ -17,8 +17,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file testing/testing_api_cmd_auditor_add.c
- * @brief command for testing /auditor_add.
+ * @file testing/testing_api_cmd_auditor_del.c
+ * @brief command for testing /management/auditor/disable.
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -30,15 +30,15 @@
 
 
 /**
- * State for a "auditor_add" CMD.
+ * State for a "auditor_del" CMD.
  */
-struct AuditorAddState
+struct AuditorDelState
 {
 
   /**
    * Auditor enable handle while operation is running.
    */
-  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *dh;
+  struct TALER_EXCHANGE_ManagementAuditorDisableHandle *dh;
 
   /**
    * Our interpreter.
@@ -65,10 +65,10 @@ struct AuditorAddState
  * @param hr HTTP response details
  */
 static void
-auditor_add_cb (void *cls,
+auditor_del_cb (void *cls,
                 const struct TALER_EXCHANGE_HttpResponse *hr)
 {
-  struct AuditorAddState *ds = cls;
+  struct AuditorDelState *ds = cls;
 
   ds->dh = NULL;
   if (ds->expected_response_code != hr->http_status)
@@ -97,13 +97,12 @@ auditor_add_cb (void *cls,
  * @param is the interpreter state.
  */
 static void
-auditor_add_run (void *cls,
+auditor_del_run (void *cls,
                  const struct TALER_TESTING_Command *cmd,
                  struct TALER_TESTING_Interpreter *is)
 {
-  struct AuditorAddState *ds = cls;
+  struct AuditorDelState *ds = cls;
   struct TALER_AuditorPublicKeyP auditor_pub;
-  char *auditor_url;
   char *exchange_url;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Absolute now;
@@ -112,18 +111,6 @@ auditor_add_run (void *cls,
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   ds->is = is;
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                               "auditor",
-                                               "BASE_URL",
-                                               &auditor_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "auditor",
-                               "BASE_URL");
-    TALER_TESTING_interpreter_next (ds->is);
-    return;
-  }
   if (ds->bad_sig)
   {
     memset (&master_sig,
@@ -146,7 +133,6 @@ auditor_add_run (void *cls,
                                  "exchange-offline",
                                  "MASTER_PRIV_FILE");
       TALER_TESTING_interpreter_next (ds->is);
-      GNUNET_free (auditor_url);
       return;
     }
     if (GNUNET_SYSERR ==
@@ -157,7 +143,6 @@ auditor_add_run (void *cls,
                   fn);
       GNUNET_free (fn);
       TALER_TESTING_interpreter_next (ds->is);
-      GNUNET_free (auditor_url);
       return;
     }
     if (GNUNET_OK !=
@@ -170,10 +155,10 @@ auditor_add_run (void *cls,
                   fn);
       GNUNET_free (fn);
       TALER_TESTING_interpreter_next (ds->is);
-      GNUNET_free (auditor_url);
       return;
     }
     GNUNET_free (fn);
+
 
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_filename (is->cfg,
@@ -185,7 +170,6 @@ auditor_add_run (void *cls,
                                  "auditor",
                                  "AUDITOR_PRIV_FILE");
       TALER_TESTING_interpreter_next (ds->is);
-      GNUNET_free (auditor_url);
       return;
     }
     if (GNUNET_SYSERR ==
@@ -196,7 +180,6 @@ auditor_add_run (void *cls,
                   fn);
       GNUNET_free (fn);
       TALER_TESTING_interpreter_next (ds->is);
-      GNUNET_free (auditor_url);
       return;
     }
     if (GNUNET_OK !=
@@ -209,7 +192,6 @@ auditor_add_run (void *cls,
                   fn);
       GNUNET_free (fn);
       TALER_TESTING_interpreter_next (ds->is);
-      GNUNET_free (auditor_url);
       return;
     }
     GNUNET_free (fn);
@@ -218,16 +200,13 @@ auditor_add_run (void *cls,
 
     /* now sign */
     {
-      struct TALER_ExchangeAddAuditorPS kv = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_ADD_AUDITOR),
+      struct TALER_ExchangeDelAuditorPS kv = {
+        .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_AUDITOR),
         .purpose.size = htonl (sizeof (kv)),
-        .start_date = GNUNET_TIME_absolute_hton (now),
+        .end_date = GNUNET_TIME_absolute_hton (now),
         .auditor_pub = auditor_pub,
       };
 
-      GNUNET_CRYPTO_hash (auditor_url,
-                          strlen (auditor_url) + 1,
-                          &kv.h_auditor_url);
       /* Finally sign ... */
       GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
                                 &kv,
@@ -243,21 +222,18 @@ auditor_add_run (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    GNUNET_free (auditor_url);
     TALER_TESTING_interpreter_next (ds->is);
     return;
   }
-  ds->dh = TALER_EXCHANGE_management_enable_auditor (
+  ds->dh = TALER_EXCHANGE_management_disable_auditor (
     is->ctx,
     exchange_url,
     &auditor_pub,
-    auditor_url,
     now,
     &master_sig,
-    &auditor_add_cb,
+    &auditor_del_cb,
     ds);
   GNUNET_free (exchange_url);
-  GNUNET_free (auditor_url);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);
@@ -268,17 +244,17 @@ auditor_add_run (void *cls,
 
 
 /**
- * Free the state of a "auditor_add" CMD, and possibly cancel a
+ * Free the state of a "auditor_del" CMD, and possibly cancel a
  * pending operation thereof.
  *
- * @param cls closure, must be a `struct AuditorAddState`.
+ * @param cls closure, must be a `struct AuditorDelState`.
  * @param cmd the command which is being cleaned up.
  */
 static void
-auditor_add_cleanup (void *cls,
+auditor_del_cleanup (void *cls,
                      const struct TALER_TESTING_Command *cmd)
 {
-  struct AuditorAddState *ds = cls;
+  struct AuditorDelState *ds = cls;
 
   if (NULL != ds->dh)
   {
@@ -286,7 +262,7 @@ auditor_add_cleanup (void *cls,
                 "Command %u (%s) did not complete\n",
                 ds->is->ip,
                 cmd->label);
-    TALER_EXCHANGE_management_enable_auditor_cancel (ds->dh);
+    TALER_EXCHANGE_management_disable_auditor_cancel (ds->dh);
     ds->dh = NULL;
   }
   GNUNET_free (ds);
@@ -294,7 +270,7 @@ auditor_add_cleanup (void *cls,
 
 
 /**
- * Offer internal data from a "auditor_add" CMD, to other commands.
+ * Offer internal data from a "auditor_del" CMD, to other commands.
  *
  * @param cls closure.
  * @param[out] ret result.
@@ -304,7 +280,7 @@ auditor_add_cleanup (void *cls,
  * @return #GNUNET_OK on success.
  */
 static int
-auditor_add_traits (void *cls,
+auditor_del_traits (void *cls,
                     const void **ret,
                     const char *trait,
                     unsigned int index)
@@ -314,22 +290,22 @@ auditor_add_traits (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_auditor_add (const char *label,
+TALER_TESTING_cmd_auditor_del (const char *label,
                                unsigned int expected_http_status,
                                bool bad_sig)
 {
-  struct AuditorAddState *ds;
+  struct AuditorDelState *ds;
 
-  ds = GNUNET_new (struct AuditorAddState);
+  ds = GNUNET_new (struct AuditorDelState);
   ds->expected_response_code = expected_http_status;
   ds->bad_sig = bad_sig;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ds,
       .label = label,
-      .run = &auditor_add_run,
-      .cleanup = &auditor_add_cleanup,
-      .traits = &auditor_add_traits
+      .run = &auditor_del_run,
+      .cleanup = &auditor_del_cleanup,
+      .traits = &auditor_del_traits
     };
 
     return cmd;
@@ -337,4 +313,4 @@ TALER_TESTING_cmd_auditor_add (const char *label,
 }
 
 
-/* end of testing_api_cmd_auditor_add.c */
+/* end of testing_api_cmd_auditor_del.c */

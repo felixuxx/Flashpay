@@ -2041,10 +2041,14 @@ TALER_TESTING_cmd_auditor_add (const char *label,
  * "[auditor]" section in the configuration file.
  *
  * @param label command label.
+ * @param expected_http_status expected HTTP status from exchange
+ * @param bad_sig should we use a bogus signature?
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_auditor_del (const char *label);
+TALER_TESTING_cmd_auditor_del (const char *label,
+                               unsigned int expected_http_status,
+                               bool bad_sig);
 
 
 /**

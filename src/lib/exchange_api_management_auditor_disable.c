@@ -128,7 +128,6 @@ TALER_EXCHANGE_management_disable_auditor (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  const char *auditor_url,
   struct GNUNET_TIME_Absolute validity_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementAuditorDisableCallback cb,
