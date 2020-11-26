@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file testing/testing_api_cmd_revoke_denom_key.c
+ * @file testing/testing_api_cmd_revoke_sign_key.c
  * @brief Implement the revoke test command.
  * @author Christian Grothoff
  */
@@ -39,7 +39,7 @@ struct RevokeState
   unsigned int expected_response_code;
 
   /**
-   * Command that offers a denomination to revoke.
+   * Command that offers a signination to revoke.
    */
   const char *coin_reference;
 
@@ -51,7 +51,7 @@ struct RevokeState
   /**
    * Handle for the operation.
    */
-  struct TALER_EXCHANGE_ManagementRevokeDenominationKeyHandle *kh;
+  struct TALER_EXCHANGE_ManagementRevokeSigningKeyHandle *kh;
 
   /**
    * Should we use a bogus signature?
@@ -107,7 +107,7 @@ revoke_cleanup (void *cls,
 
   if (NULL != rs->kh)
   {
-    TALER_EXCHANGE_management_revoke_denomination_key_cancel (rs->kh);
+    TALER_EXCHANGE_management_revoke_signing_key_cancel (rs->kh);
     rs->kh = NULL;
   }
   GNUNET_free (rs);
@@ -145,7 +145,7 @@ revoke_traits (void *cls,
 /**
  * Run the "revoke" command.  The core of the function
  * is to call the "keyup" utility passing it the base32
- * encoding of the denomination to revoke.
+ * encoding of the signination to revoke.
  *
  * @param cls closure.
  * @param cmd the command to execute.
@@ -158,12 +158,12 @@ revoke_run (void *cls,
 {
   struct RevokeState *rs = cls;
   const struct TALER_TESTING_Command *coin_cmd;
-  const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
+  const struct TALER_ExchangePublicKeyP *exchange_pub;
   char *exchange_url;
   struct TALER_MasterSignatureP master_sig;
 
   rs->is = is;
-  /* Get denom pub from trait */
+  /* Get sign pub from trait */
   coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                        rs->coin_reference);
 
@@ -174,12 +174,12 @@ revoke_run (void *cls,
     return;
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_denom_pub (coin_cmd,
-                                                    0,
-                                                    &denom_pub));
+                 TALER_TESTING_get_trait_exchange_pub (coin_cmd,
+                                                       0,
+                                                       &exchange_pub));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Trying to revoke denom '%s..'\n",
-              TALER_B2S (&denom_pub->h_key));
+              "Trying to revoke sign '%s..'\n",
+              TALER_B2S (exchange_pub));
   if (rs->bad_sig)
   {
     memset (&master_sig,
@@ -229,11 +229,11 @@ revoke_run (void *cls,
 
     /* now sign */
     {
-      struct TALER_MasterDenominationKeyRevocationPS kv = {
+      struct TALER_MasterSigningKeyRevocationPS kv = {
         .purpose.purpose = htonl (
-          TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
+          TALER_SIGNATURE_MASTER_SIGNING_KEY_REVOKED),
         .purpose.size = htonl (sizeof (kv)),
-        .h_denom_pub = denom_pub->h_key
+        .exchange_pub = *exchange_pub
       };
 
       GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
@@ -253,10 +253,10 @@ revoke_run (void *cls,
     TALER_TESTING_interpreter_next (rs->is);
     return;
   }
-  rs->kh = TALER_EXCHANGE_management_revoke_denomination_key (
+  rs->kh = TALER_EXCHANGE_management_revoke_signing_key (
     is->ctx,
     exchange_url,
-    &denom_pub->h_key,
+    exchange_pub,
     &master_sig,
     &success_cb,
     rs);
@@ -271,17 +271,17 @@ revoke_run (void *cls,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_revoke_denom_key (
+TALER_TESTING_cmd_revoke_sign_key (
   const char *label,
   unsigned int expected_response_code,
   bool bad_sig,
-  const char *denom_ref)
+  const char *sign_ref)
 {
   struct RevokeState *rs;
 
   rs = GNUNET_new (struct RevokeState);
   rs->expected_response_code = expected_response_code;
-  rs->coin_reference = denom_ref;
+  rs->coin_reference = sign_ref;
   rs->bad_sig = bad_sig;
   {
     struct TALER_TESTING_Command cmd = {

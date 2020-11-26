@@ -1205,6 +1205,24 @@ struct TALER_MasterDenominationKeyRevocationPS
 
 
 /**
+ * @brief Message confirming that an exchange online signing key was revoked.
+ */
+struct TALER_MasterSigningKeyRevocationPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_SIGNING_KEY_REVOKED.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * The exchange's public key.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+};
+
+
+/**
  * @brief Format used to generate the signature on a request to obtain
  * the wire transfer identifier associated with a deposit.
  */

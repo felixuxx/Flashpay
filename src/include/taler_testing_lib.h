@@ -2112,11 +2112,30 @@ TALER_TESTING_cmd_offline_sign_keys (const char *label,
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_revoke_denomination (
+TALER_TESTING_cmd_revoke_denom_key (
   const char *label,
   unsigned int expected_response_code,
   bool bad_sig,
   const char *denom_ref);
+
+
+/**
+ * Revoke an exchange online signing key.
+ *
+ * @param label command label.
+ * @param expected_http_status expected HTTP status from exchange
+ * @param bad_sig should we use a bogus signature?
+ * @param signkey_ref reference to a command that identifies
+ *        a signing key (i.e. because it was used to
+ *        sign a deposit confirmation).
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_revoke_sign_key (
+  const char *label,
+  unsigned int expected_response_code,
+  bool bad_sig,
+  const char *signkey_ref);
 
 
 /**
@@ -2132,20 +2151,6 @@ TALER_TESTING_cmd_revoke_denomination (
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_auditor_add_denom_key (const char *denom_ref);
-
-
-/**
- * Revoke an exchange signing key.
- *
- * @param label command label.
- * @param denom_ref reference to a command that identifies
- *        a signing key (i.e. because it was used to
- *        sign a deposit confirmation).
- * @return the command
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_revoke_denom_key (const char *label,
-                                    const char *signkey_ref);
 
 
 /* *** Generic trait logic for implementing traits ********* */
