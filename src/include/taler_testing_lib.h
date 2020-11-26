@@ -417,7 +417,7 @@ struct TALER_TESTING_Interpreter
   struct GNUNET_OS_Process *exchanged;
 
   /**
-   * GNUNET_OK if key state should be reloaded.  NOTE: this
+   * #GNUNET_OK if key state should be reloaded.  NOTE: this
    * field can be removed because a new "send signal" command
    * has been introduced.
    */
@@ -1082,8 +1082,6 @@ TALER_TESTING_cmd_exchanges_with_url (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exchanges_with_retry (struct TALER_TESTING_Command cmd);
 
-
-/* ***** Commands ONLY for testing (/admin-API) **** */
 
 /**
  * Create /admin/add-incoming command.
@@ -2019,6 +2017,118 @@ struct TALER_TESTING_Timer
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_stat (struct TALER_TESTING_Timer *timers);
+
+
+/**
+ * Add the auditor to the exchange's list of auditors.
+ * The information about the auditor is taken from the
+ * "[auditor]" section in the configuration file.
+ *
+ * @param label command label.
+ * @param expected_http_status expected HTTP status from exchange
+ * @param bad_sig should we use a bogus signature?
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_auditor_add (const char *label,
+                               unsigned int expected_http_status,
+                               bool bad_sig);
+
+
+/**
+ * Remove the auditor from the exchange's list of auditors.
+ * The information about the auditor is taken from the
+ * "[auditor]" section in the configuration file.
+ *
+ * @param label command label.
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_auditor_del (const char *label);
+
+
+/**
+ * Add the given payto-URI bank account to the list of bank
+ * accounts used by the exchange.
+ *
+ * @param label command label.
+ * @param payto_uri URI identifying the bank account
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_wire_add (const char *label,
+                            const char *payto_uri);
+
+
+/**
+ * Remove the given payto-URI bank account from the list of bank
+ * accounts used by the exchange.
+ *
+ * @param label command label.
+ * @param payto_uri URI identifying the bank account
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_wire_del (const char *label,
+                            const char *payto_uri);
+
+
+/**
+ * Sign all exchange denomination and online signing keys
+ * with the "offline" key and provide those signatures to
+ * the exchange. (Downloads the keys, makes the signature
+ * and uploads the result, all in one.)
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_offline_sign_keys (const char *label,
+                                     const char *config_filename);
+
+
+/**
+ * Revoke an exchange denomination key.
+ *
+ * @param label command label.
+ * @param denom_ref reference to a command that identifies
+ *        a denomination key (i.e. because it was used to
+ *        withdraw a coin).
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_revoke_denom_key (const char *label,
+                                    const char *denom_ref);
+
+
+/**
+ * Have the auditor affirm that it is auditing the given
+ * denomination key and upload the auditor's signature to
+ * the exchange.
+ *
+ * @param label command label.
+ * @param denom_ref reference to a command that identifies
+ *        a denomination key (i.e. because it was used to
+ *        withdraw a coin).
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_auditor_add_denom_key (const char *denom_ref);
+
+
+/**
+ * Revoke an exchange signing key.
+ *
+ * @param label command label.
+ * @param denom_ref reference to a command that identifies
+ *        a signing key (i.e. because it was used to
+ *        sign a deposit confirmation).
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_revoke_denom_key (const char *label,
+                                    const char *signkey_ref);
 
 
 /* *** Generic trait logic for implementing traits ********* */

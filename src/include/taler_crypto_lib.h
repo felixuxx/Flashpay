@@ -223,6 +223,18 @@ struct TALER_MasterPublicKeyP
 
 
 /**
+ * @brief Type of the private key used by the auditor.
+ */
+struct TALER_AuditorPrivateKeyP
+{
+  /**
+   * Taler uses EdDSA for the auditor's signing key.
+   */
+  struct GNUNET_CRYPTO_EddsaPrivateKey eddsa_priv;
+};
+
+
+/**
  * @brief Type of the public key used by the auditor.
  */
 struct TALER_AuditorPublicKeyP

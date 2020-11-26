@@ -35,6 +35,7 @@ libtalertesting_la_LDFLAGS = \
   -version-info 0:0:0 \
   -no-undefined
 libtalertesting_la_SOURCES = \
+  testing_api_cmd_auditor_add.c \
   testing_api_cmd_auditor_deposit_confirmation.c \
   testing_api_cmd_auditor_exchanges.c \
   testing_api_cmd_auditor_exec_auditor.c \

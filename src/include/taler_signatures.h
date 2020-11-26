@@ -57,6 +57,16 @@
 #define TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY 1025
 
 /**
+ * Add an auditor to the list of our auditors.
+ */
+#define TALER_SIGNATURE_MASTER_ADD_AUDITOR 1026
+
+/**
+ * Remove an auditor from the list of our auditors.
+ */
+#define TALER_SIGNATURE_MASTER_DEL_AUDITOR 1027
+
+/**
  * Fees charged per (aggregate) wire transfer to the merchant.
  */
 #define TALER_SIGNATURE_MASTER_WIRE_FEES 1028
@@ -71,6 +81,7 @@
  * the /wire response.
  */
 #define TALER_SIGNATURE_MASTER_WIRE_DETAILS 1030
+
 
 /*********************************************/
 /* Exchange online signatures (with signing key) */
@@ -788,6 +799,62 @@ struct TALER_ExchangeKeySetPS
    * Hash over the various denomination signing keys returned.
    */
   struct GNUNET_HashCode hc GNUNET_PACKED;
+};
+
+
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * an auditor to be added to the exchange's set of auditors.
+ */
+struct TALER_ExchangeAddAuditorPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_ADD_AUDITOR.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_AbsoluteNBO start_date;
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
+  /**
+   * Hash over the auditor's URL.
+   */
+  struct GNUNET_HashCode h_auditor_url GNUNET_PACKED;
+};
+
+
+/**
+ * @brief Signature made by the exchange offline key over the information of
+ * an auditor to be removed to the exchange's set of auditors.
+ */
+struct TALER_ExchangeDelAuditorPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_DEL_AUDITOR.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Time of the change.
+   */
+  struct GNUNET_TIME_AbsoluteNBO end_date;
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
 };
 
 
