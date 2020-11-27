@@ -42,7 +42,6 @@ COMMENT ON INDEX prepare_get_index
   IS 'for wire_prepare_data_get';
 
 
-
 CREATE TABLE IF NOT EXISTS future_denominations
   (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,denom_pub BYTEA NOT NULL
@@ -129,6 +128,32 @@ COMMENT ON COLUMN exchange_sign_keys.master_sig
   IS 'Signature affirming the validity of the signing key of purpose TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.';
 COMMENT ON COLUMN exchange_sign_keys.legal_end
   IS 'Time when this online signing key legally expires.';
+
+
+CREATE TABLE IF NOT EXISTS wire_accounts
+  (payto_uri VARCHAR PRIMARY KEY
+  ,master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)
+  ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
+  ,is_active BOOLEAN NOT NULL
+  ,last_change INT8 NOT NULL
+  );
+COMMENT ON TABLE wire_accounts
+  IS 'Table with current and historic bank accounts of the exchange. Entries never expire as we need to remember the last_change column indefinitely.';
+COMMENT ON COLUMN wire_accounts.payto_uri
+  IS 'payto URI (RFC 8905) with the bank account of the exchange.';
+COMMENT ON COLUMN wire_accounts.is_active
+  IS 'true if we are currently supporting the use of this account.';
+COMMENT ON COLUMN wire_accounts.last_change
+  IS 'Latest time when active status changed. Used to detect replays of old messages.';
+
+
+CREATE TABLE IF NOT EXISTS signkey_revocations
+  (signkey_revocations_serial_id BIGSERIAL UNIQUE
+  ,exchange_pub BYTEA PRIMARY KEY REFERENCES exchange_sign_keys (exchange_pub) ON DELETE CASCADE
+  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
+  );
+COMMENT ON TABLE signkey_revocations
+  IS 'remembering which online signing keys have been revoked';
 
 
 -- Complete transaction
