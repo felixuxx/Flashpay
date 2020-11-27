@@ -7109,13 +7109,18 @@ postgres_insert_denomination_revocation (
   const struct GNUNET_HashCode *denom_pub_hash,
   const struct TALER_MasterSignatureP *master_sig)
 {
+  struct PostgresClosure *pc = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
+  if (NULL == session)
+    session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "denomination_revocation_insert",
                                              params);
