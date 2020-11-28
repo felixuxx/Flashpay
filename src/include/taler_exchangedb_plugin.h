@@ -3172,12 +3172,41 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_auditor_denom_sig)(void *cls,
-                              struct TALER_EXCHANGEDB_Session *session,
-                              const struct GNUNET_HashCode *h_denom_pub,
-                              const struct TALER_AuditorPublicKeyP *auditor_pub,
-                              const struct
-                              TALER_AuditorSignatureP *auditor_sig);
+  (*insert_auditor_denom_sig)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *h_denom_pub,
+    const struct TALER_AuditorPublicKeyP *auditor_pub,
+    const struct TALER_AuditorSignatureP *auditor_sig);
+
+
+  /**
+   * Lookup information about known wire fees.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param wire_method the wire method to lookup fees for
+   * @param start_time starting time of fee
+   * @param end_time end time of fee
+   * @param[out] wire_fee wire fee for that time period; if
+   *             different wire fee exists within this time
+   *             period, an 'invalid' amount is returned.
+   * @param[out] closing_fee wire fee for that time period; if
+   *             different wire fee exists within this time
+   *             period, an 'invalid' amount is returned.
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_wire_fee_by_time)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const char *wire_method,
+    struct GNUNET_TIME_Absolute start_time,
+    struct GNUNET_TIME_Absolute end_time,
+    struct TALER_Amount *wire_fee,
+    struct TALER_Amount *closing_fee);
+
+
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */
