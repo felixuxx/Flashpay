@@ -84,10 +84,10 @@ add_wire (void *cls,
   struct AddWireContext *awc = cls;
   struct GNUNET_TIME_Absolute last_date;
 
-  qs = TEH_plugin->lookup_wire (TEH_plugin->cls,
-                                session,
-                                awc->payto_uri,
-                                &last_date);
+  qs = TEH_plugin->lookup_wire_timestamp (TEH_plugin->cls,
+                                          session,
+                                          awc->payto_uri,
+                                          &last_date);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)

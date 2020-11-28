@@ -216,6 +216,84 @@ struct TALER_EXCHANGEDB_Reserve
 
 
 /**
+ * Meta data about a denomination public key.
+ */
+struct TALER_EXCHANGEDB_DenominationKeyMetaData
+{
+  /**
+ * Start time of the validity period for this key.
+ */
+  struct GNUNET_TIME_Absolute start;
+
+  /**
+   * The exchange will sign fresh coins between @e start and this time.
+   * @e expire_withdraw will be somewhat larger than @e start to
+   * ensure a sufficiently large anonymity set, while also allowing
+   * the Exchange to limit the financial damage in case of a key being
+   * compromised.  Thus, exchanges with low volume are expected to have a
+   * longer withdraw period (@e expire_withdraw - @e start) than exchanges
+   * with high transaction volume.  The period may also differ between
+   * types of coins.  A exchange may also have a few denomination keys
+   * with the same value with overlapping validity periods, to address
+   * issues such as clock skew.
+   */
+  struct GNUNET_TIME_Absolute expire_withdraw;
+
+  /**
+   * Coins signed with the denomination key must be spent or refreshed
+   * between @e start and this expiration time.  After this time, the
+   * exchange will refuse transactions involving this key as it will
+   * "drop" the table with double-spending information (shortly after)
+   * this time.  Note that wallets should refresh coins significantly
+   * before this time to be on the safe side.  @e expire_deposit must be
+   * significantly larger than @e expire_withdraw (by months or even
+   * years).
+   */
+  struct GNUNET_TIME_Absolute expire_deposit;
+
+  /**
+   * When do signatures with this denomination key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Exchange is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_deposit (by a year or more).
+   */
+  struct GNUNET_TIME_Absolute expire_legal;
+
+  /**
+   * The value of the coins signed with this denomination key.
+   */
+  struct TALER_Amount value;
+
+  /**
+   * The fee the exchange charges when a coin of this type is withdrawn.
+   * (can be zero).
+   */
+  struct TALER_Amount fee_withdraw;
+
+  /**
+   * The fee the exchange charges when a coin of this type is deposited.
+   * (can be zero).
+   */
+  struct TALER_Amount fee_deposit;
+
+  /**
+   * The fee the exchange charges when a coin of this type is refreshed.
+   * (can be zero).
+   */
+  struct TALER_Amount fee_refresh;
+
+  /**
+   * The fee the exchange charges when a coin of this type is refunded.
+   * (can be zero).  Note that refund fees are charged to the customer;
+   * if a refund is given, the deposit fee is also refunded.
+   */
+  struct TALER_Amount fee_refund;
+
+};
+
+
+/**
  * @brief Information we keep for a withdrawn coin to reproduce
  * the /withdraw operation if needed, and to have proof
  * that a reserve was drained by this amount.
@@ -2876,6 +2954,230 @@ struct TALER_EXCHANGEDB_Plugin
                                   TALER_EXCHANGEDB_WireMissingCallback cb,
                                   void *cb_cls);
 
+
+  /**
+   * Check the last date an auditor was modified.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param auditor_pub key to look up information for
+   * @param[out] last_date last modification date to auditor status
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_auditor_timestamp)(void *cls,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              const struct TALER_AuditorPublicKeyP *auditor_pub,
+                              struct GNUNET_TIME_Absolute *last_date);
+
+
+  /**
+   * Lookup current state of an auditor.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param auditor_pub key to look up information for
+   * @param[out] set to the base URL of the auditor's REST API
+   * @param[out] enabled set if the auditor is currently in use
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_auditor_status)(void *cls,
+                           struct TALER_EXCHANGEDB_Session *session,
+                           const struct TALER_AuditorPublicKeyP *auditor_pub,
+                           char *auditor_url,
+                           bool *enabled);
+
+
+  /**
+   * Insert information about an auditor that will audit this exchange.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param auditor_pub key of the auditor
+   * @param auditor_url base URL of the auditor's REST service
+   * @param start_date date when the auditor was added by the offline system
+   *                      (only to be used for replay detection)
+   * @param master_sig signature affirming the addition of the auditor
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_auditor)(void *cls,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    const struct TALER_AuditorPublicKeyP *auditor_pub,
+                    const char *auditor_url,
+                    struct GNUNET_TIME_Absolute start_date,
+                    const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Update information about an auditor that will audit this exchange.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param auditor_pub key of the auditor (primary key for the existing record)
+   * @param auditor_url base URL of the auditor's REST service, to be updated
+   * @param change_date date when the auditor status was last changed
+   *                      (only to be used for replay detection)
+   * @param master_sig signature affirming the change in status (enable or disable)
+   * @param enabled true to enable, false to disable
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_auditor)(void *cls,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    const struct TALER_AuditorPublicKeyP *auditor_pub,
+                    const char *auditor_url,
+                    struct GNUNET_TIME_Absolute change_date,
+                    const struct TALER_MasterSignatureP *master_sig,
+                    bool enabled);
+
+
+  /**
+   * Check the last date an exchange wire account was modified.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param payto_uri key to look up information for
+   * @param[out] last_date last modification date to auditor status
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_wire_timestamp)(void *cls,
+                           struct TALER_EXCHANGEDB_Session *session,
+                           const char *payto_uri,
+                           struct GNUNET_TIME_Absolute *last_date);
+
+
+  /**
+   * Insert information about an wire account used by this exchange.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param payto_uri wire account of the exchange
+   * @param start_date date when the account was added by the offline system
+   *                      (only to be used for replay detection)
+   * @param master_sig signature affirming the addition of the account
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_wire)(void *cls,
+                 struct TALER_EXCHANGEDB_Session *session,
+                 const char *payto_uri,
+                 struct GNUNET_TIME_Absolute start_date,
+                 const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Update information about a wire account of the exchange.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param payto_uri account the update is about
+   * @param change_date date when the account status was last changed
+   *                      (only to be used for replay detection)
+   * @param master_sig signature affirming the change in status (enable or disable)
+   * @param enabled true to enable, false to disable (the actual change)
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*update_wire)(void *cls,
+                 struct TALER_EXCHANGEDB_Session *session,
+                 const char *payto_uri,
+                 struct GNUNET_TIME_Absolute change_date,
+                 const struct TALER_MasterSignatureP *master_sig,
+                 bool enabled);
+
+
+  /**
+   * Store information about a revoked online signing key.
+   *
+   * @param cls closure
+   * @param session a session (can be NULL)
+   * @param exchange_pub exchange online signing key that was revoked
+   * @param master_sig signature affirming the revocation
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_signkey_revocation)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_ExchangePublicKeyP *exchange_pub,
+    const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Lookup information about a future denomination key.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param h_denom_pub hash of the denomination public key
+   * @param[out] meta set to various meta data about the key
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_future_denomination_key)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *h_denom_pub,
+    const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
+
+
+  /**
+   * Lookup information about current denomination key.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param h_denom_pub hash of the denomination public key
+   * @param[out] meta set to various meta data about the key
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_denomination_key)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *h_denom_pub,
+    const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
+
+
+  /**
+   * Activate future denomination key, turning it into a "current" or "valid"
+   * denomination key by adding the master signature.  Deletes the
+   * denomination key from the 'future' table an inserts the data into the
+   * main denominations table. Because this function will trigger multiple SQL
+   * statements, it must be run within a transaction.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param h_denom_pub hash of the denomination public key
+   * @param master_sig master signature to add
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*activate_denomination_key)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *h_denom_pub,
+    const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Insert information about an auditor auditing a denomination key.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param h_denom_pub the audited denomination
+   * @param auditor_pub the auditor's key
+   * @param auditor_sig signature affirming the auditor's audit activity
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_auditor_denom_sig)(void *cls,
+                              struct TALER_EXCHANGEDB_Session *session,
+                              const struct GNUNET_HashCode *h_denom_pub,
+                              const struct TALER_AuditorPublicKeyP *auditor_pub,
+                              const struct
+                              TALER_AuditorSignatureP *auditor_sig);
 };
 
 #endif /* _TALER_EXCHANGE_DB_H */

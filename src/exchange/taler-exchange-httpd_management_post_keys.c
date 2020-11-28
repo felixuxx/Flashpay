@@ -124,12 +124,13 @@ add_keys (void *cls,
   {
     enum GNUNET_DB_QueryStatus qs;
     bool is_active = false;
+    struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
 
     qs = TEH_plugin->lookup_future_deomination_key (
       TEH_plugin->cls,
       session,
       &akc->d_sigs[i].h_denom_pub,
-      &META);
+      &meta);
     if (0 == qs)
     {
       /* For idempotency, check if the key is already active */
@@ -137,7 +138,7 @@ add_keys (void *cls,
         TEH_plugin->cls,
         session,
         &akc->d_sigs[i].h_denom_pub,
-        &META);
+        &meta);
       is_active = true; /* if we pass, it's active! */
     }
     if (qs < 0)
@@ -168,18 +169,23 @@ add_keys (void *cls,
           TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
         .purpose.size = htonl (sizeof (dkv)),
         .master = TEH_master_public_key,
-        .start = META.start,
-        .expire_withdraw = META.expire_withdraw,
-        .expire_deposit = META.expire_deposit,
-        .expire_legal = META.expire_legal,
-        .value = META.value,
-        .fee_withdraw = META.fee_withdraw,
-        .fee_deposit = META.fee_deposit,
-        .fee_refresh = META.fee_refresh,
-        .fee_refund = META.fee_refund,
+        .start = GNUNET_TIME_absolute_hton (meta.start),
+        .expire_withdraw = GNUNET_TIME_absolute_hton (meta.expire_withdraw),
+        .expire_deposit = GNUNET_TIME_absolute_hton (meta.expire_deposit),
+        .expire_legal = GNUNET_TIME_absolute_hton (meta.expire_legal),
         .denom_hash = akc->d_sigs[i].h_denom_pub
       };
 
+      TALER_amount_hton (&dkv.value,
+                         &meta.value);
+      TALER_amount_hton (&dkv.fee_withdraw,
+                         &meta.fee_withdraw);
+      TALER_amount_hton (&dkv.fee_deposit,
+                         &meta.fee_deposit);
+      TALER_amount_hton (&dkv.fee_refresh,
+                         &meta.fee_refresh);
+      TALER_amount_hton (&dkv.fee_refund,
+                         &meta.fee_refund);
       if (GNUNET_OK !=
           GNUNET_CRYPTO_eddsa_verify (
             TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,

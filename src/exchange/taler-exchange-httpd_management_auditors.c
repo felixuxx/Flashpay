@@ -82,10 +82,10 @@ add_auditor (void *cls,
   struct AddAuditorContext *aac = cls;
   struct GNUNET_TIME_Absolute last_date;
 
-  qs = TEH_plugin->lookup_auditor (TEH_plugin->cls,
-                                   session,
-                                   &aac->auditor_pub,
-                                   &last_date);
+  qs = TEH_plugin->lookup_auditor_timestamp (TEH_plugin->cls,
+                                             session,
+                                             &aac->auditor_pub,
+                                             &last_date);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
