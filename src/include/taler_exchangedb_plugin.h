@@ -3120,7 +3120,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
-    const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
+    struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 
 
   /**
@@ -3137,7 +3137,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
-    const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
+    struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 
 
   /**

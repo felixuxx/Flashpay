@@ -1412,7 +1412,6 @@ postgres_get_session (void *cls)
                               " FROM auditors"
                               " WHERE auditor_pub=$1;",
                               1),
-
       /* Used in #postgres_lookup_wire_timestamp() */
       GNUNET_PQ_make_prepare ("lookup_wire_timestamp",
                               "SELECT"
@@ -1458,6 +1457,63 @@ postgres_get_session (void *cls)
                               "  is_active=$2"
                               " ,last_change=$3"
                               " WHERE payto_uri=$1",
+                              3),
+      /* used in #postgres_insert_signkey_revocation() */
+      GNUNET_PQ_make_prepare ("insert_signkey_revocation",
+                              "INSERT INTO signkey_revocations "
+                              "(exchange_pub"
+                              ",master_sig"
+                              ") VALUES "
+                              "($1, $2);",
+                              2),
+      /* used in #postgres_lookup_future_denomination_key() */
+      GNUNET_PQ_make_prepare ("lookup_future_denomination_key",
+                              "SELECT"
+                              " valid_from"
+                              ",expire_withdraw"
+                              ",expire_deposit"
+                              ",expire_legal"
+                              ",coin_val"
+                              ",coin_frac"
+                              ",fee_withdraw_val"
+                              ",fee_withdraw_frac"
+                              ",fee_deposit_val"
+                              ",fee_deposit_frac"
+                              ",fee_refresh_val"
+                              ",fee_refresh_frac"
+                              ",fee_refund_val"
+                              ",fee_refund_frac"
+                              " FROM future_denominations"
+                              " WHERE denom_pub_hash=$1;",
+                              1),
+      /* used in #postgres_lookup_denomination_key() */
+      GNUNET_PQ_make_prepare ("lookup_denomination_key",
+                              "SELECT"
+                              " valid_from"
+                              ",expire_withdraw"
+                              ",expire_deposit"
+                              ",expire_legal"
+                              ",coin_val"
+                              ",coin_frac"
+                              ",fee_withdraw_val"
+                              ",fee_withdraw_frac"
+                              ",fee_deposit_val"
+                              ",fee_deposit_frac"
+                              ",fee_refresh_val"
+                              ",fee_refresh_frac"
+                              ",fee_refund_val"
+                              ",fee_refund_frac"
+                              " FROM denominations"
+                              " WHERE denom_pub_hash=$1;",
+                              1),
+      /* used in #postgres_insert_auditor_denom_sig() */
+      GNUNET_PQ_make_prepare ("insert_auditor_denom_sig",
+                              "INSERT INTO auditor_denom_sigs "
+                              "(auditor_pub"
+                              ",denom_pub_hash"
+                              ",auditor_sig"
+                              ") VALUES "
+                              "($1, $2, $3);",
                               3),
       /* used in #postgres_commit */
       GNUNET_PQ_make_prepare ("do_commit",
@@ -7629,8 +7685,16 @@ postgres_insert_signkey_revocation (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (exchange_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_signkey_revocation",
+                                             params);
 }
 
 
@@ -7648,10 +7712,39 @@ postgres_lookup_future_denomination_key (
   void *cls,
   struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+  struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_absolute_time ("valid_from",
+                                        &meta->start),
+    TALER_PQ_result_spec_absolute_time ("expire_withdraw",
+                                        &meta->expire_withdraw),
+    TALER_PQ_result_spec_absolute_time ("expire_deposit",
+                                        &meta->expire_deposit),
+    TALER_PQ_result_spec_absolute_time ("expire_legal",
+                                        &meta->expire_legal),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
+                                 &meta->value),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
+                                 &meta->fee_withdraw),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                 &meta->fee_deposit),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
+                                 &meta->fee_refresh),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
+                                 &meta->fee_refund),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "lookup_future_denomination_key",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -7669,10 +7762,39 @@ postgres_lookup_denomination_key (
   void *cls,
   struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+  struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_absolute_time ("valid_from",
+                                        &meta->start),
+    TALER_PQ_result_spec_absolute_time ("expire_withdraw",
+                                        &meta->expire_withdraw),
+    TALER_PQ_result_spec_absolute_time ("expire_deposit",
+                                        &meta->expire_deposit),
+    TALER_PQ_result_spec_absolute_time ("expire_legal",
+                                        &meta->expire_legal),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
+                                 &meta->value),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
+                                 &meta->fee_withdraw),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                 &meta->fee_deposit),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
+                                 &meta->fee_refresh),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
+                                 &meta->fee_refund),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "lookup_denomination_key",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -7719,8 +7841,17 @@ postgres_insert_auditor_denom_sig (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
-  GNUNET_break (0); // FIXME: not implemented
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
+    GNUNET_PQ_query_param_auto_from_type (auditor_pub),
+    GNUNET_PQ_query_param_auto_from_type (auditor_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_auditor_denom_sig",
+                                             params);
 }
 
 
@@ -7926,6 +8057,14 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_wire;
   plugin->update_wire
     = &postgres_update_wire;
+  plugin->insert_signkey_revocation
+    = &postgres_insert_signkey_revocation;
+  plugin->lookup_future_denomination_key
+    = &postgres_lookup_future_denomination_key;
+  plugin->lookup_denomination_key
+    = &postgres_lookup_denomination_key;
+  plugin->insert_auditor_denom_sig
+    = &postgres_insert_auditor_denom_sig;
   return plugin;
 }
 

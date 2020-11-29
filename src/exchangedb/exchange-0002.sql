@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS auditor_denom_sigs
   (auditor_pub BYTEA NOT NULL REFERENCES auditors (auditor_pub) ON DELETE CASCADE
   ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
   ,auditor_sig BYTEA PRIMARY KEY CHECK (LENGTH(auditor_sig)=64)
+  ,PRIMARY KEY (denom_pub_hash, auditor_pub)
   );
 COMMENT ON TABLE auditor_denom_sigs
   IS 'Table with auditor signatures on exchange denomination keys.';
@@ -107,9 +108,6 @@ COMMENT ON COLUMN auditor_denom_sigs.denom_pub_hash
   IS 'Denomination the signature is for.';
 COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
   IS 'Signature of the auditor, of purpose TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS.';
-CREATE INDEX IF NOT EXISTS auditor_denom_sigs_denom_hash_index
-  ON auditor_denom_sigs
-  (denom_pub_hash);
 
 
 CREATE TABLE IF NOT EXISTS exchange_sign_keys
