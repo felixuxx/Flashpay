@@ -3150,6 +3150,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param session a session
    * @param h_denom_pub hash of the denomination public key
+   * @param master_pub master public key used for @a master_sig
    * @param master_sig master signature to add
    * @return transaction status code
    */
@@ -3158,6 +3159,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
+    const struct TALER_MasterPublicKeyP *master_pub,
     const struct TALER_MasterSignatureP *master_sig);
 
 

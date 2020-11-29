@@ -206,6 +206,7 @@ add_keys (void *cls,
       TEH_plugin->cls,
       session,
       &akc->d_sigs[i].h_denom_pub,
+      &TEH_master_public_key,
       &akc->d_sigs[i].master_sig);
     if (qs < 0)
     {
