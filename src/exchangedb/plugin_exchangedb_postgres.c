@@ -1397,6 +1397,68 @@ postgres_get_session (void *cls)
                               " WHERE h_coin_ev=$1"
                               " LIMIT 1;",
                               1),
+      /* Used in #postgres_lookup_auditor_timestamp() */
+      GNUNET_PQ_make_prepare ("lookup_auditor_timestamp",
+                              "SELECT"
+                              " last_change"
+                              " FROM auditors"
+                              " WHERE auditor_pub=$1;",
+                              1),
+      /* Used in #postgres_lookup_auditor_status() */
+      GNUNET_PQ_make_prepare ("lookup_auditor_status",
+                              "SELECT"
+                              " auditor_url"
+                              ",is_active"
+                              " FROM auditors"
+                              " WHERE auditor_pub=$1;",
+                              1),
+
+      /* Used in #postgres_lookup_wire_timestamp() */
+      GNUNET_PQ_make_prepare ("lookup_wire_timestamp",
+                              "SELECT"
+                              " last_change"
+                              " FROM wire_accounts"
+                              " WHERE payto_uri=$1;",
+                              1),
+      /* used in #postgres_insert_auditor() */
+      GNUNET_PQ_make_prepare ("insert_auditor",
+                              "INSERT INTO auditors "
+                              "(auditor_pub"
+                              ",auditor_name"
+                              ",auditor_url"
+                              ",is_active"
+                              ",last_change"
+                              ") VALUES "
+                              "($1, $2, $3, true, $4);",
+                              4),
+      /* used in #postgres_update_auditor() */
+      GNUNET_PQ_make_prepare ("update_auditor",
+                              "UPDATE auditors"
+                              " SET"
+                              "  auditor_url=$2"
+                              " ,auditor_name=$3"
+                              " ,is_active=$4"
+                              " ,last_change=$5"
+                              " WHERE auditor_pub=$1",
+                              5),
+      /* used in #postgres_insert_wire() */
+      GNUNET_PQ_make_prepare ("insert_wire",
+                              "INSERT INTO wire_accounts "
+                              "(payto_uri"
+                              ",master_sig"
+                              ",is_active"
+                              ",last_change"
+                              ") VALUES "
+                              "($1, $2, true, $3);",
+                              3),
+      /* used in #postgres_update_wire() */
+      GNUNET_PQ_make_prepare ("update_wire",
+                              "UPDATE wire_accounts"
+                              " SET"
+                              "  is_active=$2"
+                              " ,last_change=$3"
+                              " WHERE payto_uri=$1",
+                              3),
       /* used in #postgres_commit */
       GNUNET_PQ_make_prepare ("do_commit",
                               "COMMIT",
@@ -7302,6 +7364,398 @@ postgres_select_deposits_missing_wire (void *cls,
 
 
 /**
+ * Check the last date an auditor was modified.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param auditor_pub key to look up information for
+ * @param[out] last_date last modification date to auditor status
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_auditor_timestamp (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  struct GNUNET_TIME_Absolute *last_date)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (auditor_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_absolute_time ("last_change",
+                                        last_date),
+    GNUNET_PQ_result_spec_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "lookup_auditor_timestamp",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Lookup current state of an auditor.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param auditor_pub key to look up information for
+ * @param[out] set to the base URL of the auditor's REST API; memory to be
+ *            released by the caller!
+ * @param[out] enabled set if the auditor is currently in use
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_auditor_status (void *cls,
+                                struct TALER_EXCHANGEDB_Session *session,
+                                const struct
+                                TALER_AuditorPublicKeyP *auditor_pub,
+                                char **auditor_url,
+                                bool *enabled)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (auditor_pub),
+    GNUNET_PQ_query_param_end
+  };
+  uint8_t enabled8 = 0;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_string ("auditor_url",
+                                  auditor_url),
+    GNUNET_PQ_result_spec_auto_from_type ("is_active",
+                                          &enabled8),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  (void) cls;
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                 "lookup_auditor_status",
+                                                 params,
+                                                 rs);
+  *enabled = (0 != enabled8);
+  return qs;
+}
+
+
+/**
+ * Insert information about an auditor that will audit this exchange.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param auditor_pub key of the auditor
+ * @param auditor_url base URL of the auditor's REST service
+ * @param auditor_name name of the auditor (for humans)
+ * @param start_date date when the auditor was added by the offline system
+ *                      (only to be used for replay detection)
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_auditor (void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const struct TALER_AuditorPublicKeyP *auditor_pub,
+                         const char *auditor_url,
+                         const char *auditor_name,
+                         struct GNUNET_TIME_Absolute start_date)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (auditor_pub),
+    GNUNET_PQ_query_param_string (auditor_url),
+    GNUNET_PQ_query_param_string (auditor_name),
+    GNUNET_PQ_query_param_absolute_time (&start_date),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_auditor",
+                                             params);
+}
+
+
+/**
+ * Update information about an auditor that will audit this exchange.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param auditor_pub key of the auditor (primary key for the existing record)
+ * @param auditor_url base URL of the auditor's REST service, to be updated
+ * @param auditor_name name of the auditor (for humans)
+ * @param change_date date when the auditor status was last changed
+ *                      (only to be used for replay detection)
+ * @param enabled true to enable, false to disable
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_auditor (void *cls,
+                         struct TALER_EXCHANGEDB_Session *session,
+                         const struct TALER_AuditorPublicKeyP *auditor_pub,
+                         const char *auditor_url,
+                         const char *auditor_name,
+                         struct GNUNET_TIME_Absolute change_date,
+                         bool enabled)
+{
+  uint8_t enabled8 = enabled ? 1 : 0;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (auditor_pub),
+    GNUNET_PQ_query_param_string (auditor_url),
+    GNUNET_PQ_query_param_string (auditor_name),
+    GNUNET_PQ_query_param_auto_from_type (&enabled8),
+    GNUNET_PQ_query_param_absolute_time (&change_date),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "update_auditor",
+                                             params);
+}
+
+
+/**
+ * Check the last date an exchange wire account was modified.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param payto_uri key to look up information for
+ * @param[out] last_date last modification date to auditor status
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_wire_timestamp (void *cls,
+                                struct TALER_EXCHANGEDB_Session *session,
+                                const char *payto_uri,
+                                struct GNUNET_TIME_Absolute *last_date)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_absolute_time ("last_change",
+                                        last_date),
+    GNUNET_PQ_result_spec_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "lookup_wire_timestamp",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Insert information about an wire account used by this exchange.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param payto_uri wire account of the exchange
+ * @param start_date date when the account was added by the offline system
+ *                      (only to be used for replay detection)
+ * @param master_sig public signature affirming the existence of the account,
+ *         must be of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_wire (void *cls,
+                      struct TALER_EXCHANGEDB_Session *session,
+                      const char *payto_uri,
+                      struct GNUNET_TIME_Absolute start_date,
+                      const struct TALER_MasterSignatureP *master_sig)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_absolute_time (&start_date),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_wire",
+                                             params);
+}
+
+
+/**
+ * Update information about a wire account of the exchange.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param payto_uri account the update is about
+ * @param change_date date when the account status was last changed
+ *                      (only to be used for replay detection)
+ * @param enabled true to enable, false to disable (the actual change)
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_update_wire (void *cls,
+                      struct TALER_EXCHANGEDB_Session *session,
+                      const char *payto_uri,
+                      struct GNUNET_TIME_Absolute change_date,
+                      bool enabled)
+{
+  uint8_t enabled8 = enabled ? 1 : 0;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (payto_uri),
+    GNUNET_PQ_query_param_auto_from_type (&enabled8),
+    GNUNET_PQ_query_param_absolute_time (&change_date),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "update_wire",
+                                             params);
+}
+
+
+/**
+ * Store information about a revoked online signing key.
+ *
+ * @param cls closure
+ * @param session a session (can be NULL)
+ * @param exchange_pub exchange online signing key that was revoked
+ * @param master_sig signature affirming the revocation
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_signkey_revocation (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Lookup information about a future denomination key.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param h_denom_pub hash of the denomination public key
+ * @param[out] meta set to various meta data about the key
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_future_denomination_key (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Lookup information about current denomination key.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param h_denom_pub hash of the denomination public key
+ * @param[out] meta set to various meta data about the key
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_denomination_key (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Activate future denomination key, turning it into a "current" or "valid"
+ * denomination key by adding the master signature.  Deletes the
+ * denomination key from the 'future' table an inserts the data into the
+ * main denominations table. Because this function will trigger multiple SQL
+ * statements, it must be run within a transaction.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param h_denom_pub hash of the denomination public key
+ * @param master_sig master signature to add
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_activate_denomination_key (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Insert information about an auditor auditing a denomination key.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param h_denom_pub the audited denomination
+ * @param auditor_pub the auditor's key
+ * @param auditor_sig signature affirming the auditor's audit activity
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_auditor_denom_sig (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const struct TALER_AuditorSignatureP *auditor_sig)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
+ * Lookup information about known wire fees.
+   *
+ * @param cls closure
+ * @param session a session
+ * @param wire_method the wire method to lookup fees for
+ * @param start_time starting time of fee
+ * @param end_time end time of fee
+ * @param[out] wire_fee wire fee for that time period; if
+ *             different wire fee exists within this time
+ *             period, an 'invalid' amount is returned.
+ * @param[out] closing_fee wire fee for that time period; if
+ *             different wire fee exists within this time
+ *             period, an 'invalid' amount is returned.
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_wire_fee_by_time (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const char *wire_method,
+  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Absolute end_time,
+  struct TALER_Amount *wire_fee,
+  struct TALER_Amount *closing_fee)
+{
+  GNUNET_break (0); // FIXME: not implemented
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -7458,7 +7912,20 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_get_denomination_revocation;
   plugin->select_deposits_missing_wire
     = &postgres_select_deposits_missing_wire;
-
+  plugin->lookup_auditor_timestamp
+    = &postgres_lookup_auditor_timestamp;
+  plugin->lookup_auditor_status
+    = &postgres_lookup_auditor_status;
+  plugin->insert_auditor
+    = &postgres_insert_auditor;
+  plugin->update_auditor
+    = &postgres_update_auditor;
+  plugin->lookup_wire_timestamp
+    = &postgres_lookup_wire_timestamp;
+  plugin->insert_wire
+    = &postgres_insert_wire;
+  plugin->update_wire
+    = &postgres_update_wire;
   return plugin;
 }
 

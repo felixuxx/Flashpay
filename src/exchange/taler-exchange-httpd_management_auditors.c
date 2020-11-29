@@ -51,6 +51,11 @@ struct AddAuditorContext
   const char *auditor_url;
 
   /**
+   * Human readable name of the auditor.
+   */
+  const char *auditor_name;
+
+  /**
    * Timestamp for checking against replay attacks.
    */
   struct GNUNET_TIME_Absolute validity_start;
@@ -112,15 +117,15 @@ add_auditor (void *cls,
                                      session,
                                      &aac->auditor_pub,
                                      aac->auditor_url,
-                                     aac->validity_start,
-                                     &aac->master_sig);
+                                     aac->auditor_name,
+                                     aac->validity_start);
   else
     qs = TEH_plugin->update_auditor (TEH_plugin->cls,
                                      session,
                                      &aac->auditor_pub,
                                      aac->auditor_url,
+                                     aac->auditor_name,
                                      aac->validity_start,
-                                     &aac->master_sig,
                                      true);
   if (qs < 0)
   {
@@ -159,6 +164,8 @@ TEH_handler_management_auditors (
                                  &aac.auditor_pub),
     GNUNET_JSON_spec_string ("auditor_url",
                              &aac.auditor_url),
+    GNUNET_JSON_spec_string ("auditor_name",
+                             &aac.auditor_name),
     TALER_JSON_spec_absolute_time ("validity_start",
                                    &aac.validity_start),
     GNUNET_JSON_spec_end ()

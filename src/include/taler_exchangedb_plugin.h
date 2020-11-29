@@ -2997,9 +2997,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session a session
    * @param auditor_pub key of the auditor
    * @param auditor_url base URL of the auditor's REST service
+   * @param auditor_name name of the auditor (for humans)
    * @param start_date date when the auditor was added by the offline system
    *                      (only to be used for replay detection)
-   * @param master_sig signature affirming the addition of the auditor
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -3007,8 +3007,8 @@ struct TALER_EXCHANGEDB_Plugin
                     struct TALER_EXCHANGEDB_Session *session,
                     const struct TALER_AuditorPublicKeyP *auditor_pub,
                     const char *auditor_url,
-                    struct GNUNET_TIME_Absolute start_date,
-                    const struct TALER_MasterSignatureP *master_sig);
+                    const char *auditor_name,
+                    struct GNUNET_TIME_Absolute start_date);
 
 
   /**
@@ -3018,9 +3018,9 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session a session
    * @param auditor_pub key of the auditor (primary key for the existing record)
    * @param auditor_url base URL of the auditor's REST service, to be updated
+   * @param auditor_name name of the auditor (for humans)
    * @param change_date date when the auditor status was last changed
    *                      (only to be used for replay detection)
-   * @param master_sig signature affirming the change in status (enable or disable)
    * @param enabled true to enable, false to disable
    * @return transaction status code
    */
@@ -3029,8 +3029,8 @@ struct TALER_EXCHANGEDB_Plugin
                     struct TALER_EXCHANGEDB_Session *session,
                     const struct TALER_AuditorPublicKeyP *auditor_pub,
                     const char *auditor_url,
+                    const char *auditor_name,
                     struct GNUNET_TIME_Absolute change_date,
-                    const struct TALER_MasterSignatureP *master_sig,
                     bool enabled);
 
 

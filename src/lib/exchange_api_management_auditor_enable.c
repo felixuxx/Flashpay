@@ -126,6 +126,7 @@ TALER_EXCHANGE_management_enable_auditor (
   const char *url,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
+  const char *auditor_name,
   struct GNUNET_TIME_Absolute validity_start,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementAuditorEnableCallback cb,
@@ -149,9 +150,11 @@ TALER_EXCHANGE_management_enable_auditor (
     GNUNET_free (ah);
     return NULL;
   }
-  body = json_pack ("{s:s, s:o, s:o, s:o}",
-                    "master_sig",
+  body = json_pack ("{s:s, s:s, s:o, s:o, s:o}",
+                    "auditor_url",
                     auditor_url,
+                    "auditor_name",
+                    auditor_name,
                     "auditor_pub",
                     GNUNET_JSON_from_data_auto (auditor_pub),
                     "master_sig",

@@ -35,10 +35,6 @@
  */
 struct DelAuditorContext
 {
-  /**
-   * Master signature to store.
-   */
-  struct TALER_MasterSignatureP master_sig;
 
   /**
    * Auditor public key this is about.
@@ -119,9 +115,9 @@ del_auditor (void *cls,
   qs = TEH_plugin->update_auditor (TEH_plugin->cls,
                                    session,
                                    &dac->auditor_pub,
-                                   "",
+                                   "", /* auditor URL */
+                                   "", /* auditor name */
                                    dac->validity_end,
-                                   &dac->master_sig,
                                    false);
   if (qs < 0)
   {
@@ -152,10 +148,11 @@ TEH_handler_management_auditors_AP_disable (
   const struct GNUNET_HashCode *h_denom_pub,
   const json_t *root)
 {
+  struct TALER_MasterSignatureP master_sig;
   struct DelAuditorContext dac;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
-                                 &dac.master_sig),
+                                 &master_sig),
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
                                  &dac.auditor_pub),
     TALER_JSON_spec_absolute_time ("validity_end",
@@ -189,7 +186,7 @@ TEH_handler_management_auditors_AP_disable (
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DEL_AUDITOR,
           &da,
-          &dac.master_sig.eddsa_signature,
+          &master_sig.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
       GNUNET_break_op (0);

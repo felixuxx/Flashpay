@@ -2346,6 +2346,7 @@ struct TALER_EXCHANGE_ManagementAuditorEnableHandle;
  * @param url HTTP base URL for the exchange
  * @param auditor_pub the public signing key of the auditor
  * @param auditor_url base URL of the auditor
+ * @param auditor_name human readable name for the auditor
  * @param validity_start when was this decided?
  * @param master_sig signature affirming the auditor addition
  * @param cb function to call with the exchange's result
@@ -2358,6 +2359,7 @@ TALER_EXCHANGE_management_enable_auditor (
   const char *url,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
+  const char *auditor_name,
   struct GNUNET_TIME_Absolute validity_start,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementAuditorEnableCallback cb,

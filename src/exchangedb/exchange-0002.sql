@@ -132,7 +132,6 @@ COMMENT ON COLUMN exchange_sign_keys.legal_end
 
 CREATE TABLE IF NOT EXISTS wire_accounts
   (payto_uri VARCHAR PRIMARY KEY
-  ,master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)
   ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
   ,is_active BOOLEAN NOT NULL
   ,last_change INT8 NOT NULL

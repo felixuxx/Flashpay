@@ -252,6 +252,7 @@ auditor_add_run (void *cls,
     exchange_url,
     &auditor_pub,
     auditor_url,
+    "test-case auditor", /* human-readable auditor name */
     now,
     &master_sig,
     &auditor_add_cb,
