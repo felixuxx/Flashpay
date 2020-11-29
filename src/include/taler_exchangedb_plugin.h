@@ -2977,7 +2977,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param session a session
    * @param auditor_pub key to look up information for
-   * @param[out] set to the base URL of the auditor's REST API
+   * @param[out] set to the base URL of the auditor's REST API; memory to be
+   *            released by the caller!
    * @param[out] enabled set if the auditor is currently in use
    * @return transaction status code
    */
@@ -2985,7 +2986,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*lookup_auditor_status)(void *cls,
                            struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_AuditorPublicKeyP *auditor_pub,
-                           char *auditor_url,
+                           char **auditor_url,
                            bool *enabled);
 
 
@@ -3057,7 +3058,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param payto_uri wire account of the exchange
    * @param start_date date when the account was added by the offline system
    *                      (only to be used for replay detection)
-   * @param master_sig signature affirming the addition of the account
+   * @param master_sig public signature affirming the existence of the account,
+   *         must be of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -3076,7 +3078,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param payto_uri account the update is about
    * @param change_date date when the account status was last changed
    *                      (only to be used for replay detection)
-   * @param master_sig signature affirming the change in status (enable or disable)
    * @param enabled true to enable, false to disable (the actual change)
    * @return transaction status code
    */
@@ -3085,7 +3086,6 @@ struct TALER_EXCHANGEDB_Plugin
                  struct TALER_EXCHANGEDB_Session *session,
                  const char *payto_uri,
                  struct GNUNET_TIME_Absolute change_date,
-                 const struct TALER_MasterSignatureP *master_sig,
                  bool enabled);
 
 

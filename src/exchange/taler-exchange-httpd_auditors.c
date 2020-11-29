@@ -26,9 +26,9 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_refund.h"
+#include "taler_signatures.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
+
 
 /**
  * Closure for the #add_auditor_denom_sig transaction.
@@ -78,12 +78,13 @@ add_auditor_denom_sig (void *cls,
   struct AddAuditorDenomContext *awc = cls;
   struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
   enum GNUNET_DB_QueryStatus qs;
+  char *auditor_url;
   bool enabled;
 
-  qs = TEH_plugin->lookup_deomination_key (
+  qs = TEH_plugin->lookup_denomination_key (
     TEH_plugin->cls,
     session,
-    aws->h_denom_pub,
+    awc->h_denom_pub,
     &meta);
   if (qs < 0)
   {
@@ -92,23 +93,25 @@ add_auditor_denom_sig (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_LOOKUP_FAILED,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
                                            "lookup denomination key");
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_XXX,
-                                           "denomination unkown");
+    *mhd_ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_NOT_FOUND,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+      GNUNET_h2s (awc->h_denom_pub));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
   qs = TEH_plugin->lookup_auditor_status (
     TEH_plugin->cls,
     session,
-    aws->auditor_pub,
+    awc->auditor_pub,
+    &auditor_url,
     &enabled);
   if (qs < 0)
   {
@@ -117,36 +120,39 @@ add_auditor_denom_sig (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_LOOKUP_FAILED,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
                                            "lookup auditor");
     return qs;
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
   {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_PRECONDITION_FAILED,
-                                           TALER_EC_EXCHANGE_XXX,
-                                           "auditor unkown");
+    *mhd_ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_PRECONDITION_FAILED,
+      TALER_EC_EXCHANGE_AUDITORS_AUDITOR_UNKNOWN,
+      TALER_B2S (awc->auditor_pub));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (! enabled)
   {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_GONE,
-                                           TALER_EC_EXCHANGE_XXX,
-                                           "auditor no longer in use");
+    GNUNET_free (auditor_url);
+    *mhd_ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_GONE,
+      TALER_EC_EXCHANGE_AUDITORS_AUDITOR_INACTIVE,
+      TALER_B2S (awc->auditor_pub));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   {
     struct TALER_ExchangeKeyValidityPS kv = {
       .purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS),
-      .purpose.size = htonl (kv),
-      .master = TEH_master_public_key.eddsa_pub,
-      .start = meta->start,
+      .purpose.size = htonl (sizeof (kv)),
+      .master = TEH_master_public_key,
+      .start = GNUNET_TIME_absolute_hton (meta.start),
       .expire_withdraw = GNUNET_TIME_absolute_hton (meta.expire_withdraw),
       .expire_deposit = GNUNET_TIME_absolute_hton (meta.expire_deposit),
       .expire_legal = GNUNET_TIME_absolute_hton (meta.expire_legal),
-      .denom_hash = meta->denom_hash
+      .denom_hash = *awc->h_denom_pub
     };
 
     TALER_amount_hton (&kv.value,
@@ -162,19 +168,21 @@ add_auditor_denom_sig (void *cls,
     GNUNET_CRYPTO_hash (auditor_url,
                         strlen (auditor_url) + 1,
                         &kv.auditor_url_hash);
+    GNUNET_free (auditor_url);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,
           &kv,
-          &master_sig.eddsa_sig,
+          &awc->auditor_sig.eddsa_sig,
           &TEH_master_public_key.eddsa_pub))
     {
       /* signature invalid */
       GNUNET_break_op (0);
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_FORBIDDEN,
-                                             TALER_EC_EXCHANGE_XXX,
-                                             NULL);
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_AUDITORS_AUDITOR_SIGNATURE_INVALID,
+        NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -183,7 +191,7 @@ add_auditor_denom_sig (void *cls,
                                              session,
                                              awc->h_denom_pub,
                                              awc->auditor_pub,
-                                             &aws->auditor_sig);
+                                             &awc->auditor_sig);
   if (qs < 0)
   {
     GNUNET_break (0);
@@ -223,6 +231,7 @@ TEH_handler_management_denominations_auditors (
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_DB_QueryStatus qs;
+  MHD_RESULT res;
 
   {
     enum GNUNET_GenericReturnValue res;

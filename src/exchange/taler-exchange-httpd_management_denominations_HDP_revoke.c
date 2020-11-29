@@ -76,14 +76,14 @@ TEH_handler_management_denominations_HDP_revoke (
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
           &rm,
-          &master_sig.eddsa_sig,
+          &master_sig.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_DENOMINATION_REVOKE_SIGNATURE_INVALID,
+        TALER_EC_EXCHANGE_MANAGEMENT_DENOMINATION_REVOKE_SIGNATURE_INVALID,
         NULL);
     }
   }

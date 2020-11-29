@@ -141,6 +141,8 @@ COMMENT ON TABLE wire_accounts
   IS 'Table with current and historic bank accounts of the exchange. Entries never expire as we need to remember the last_change column indefinitely.';
 COMMENT ON COLUMN wire_accounts.payto_uri
   IS 'payto URI (RFC 8905) with the bank account of the exchange.';
+COMMENT ON COLUMN wire_accounts.master_sig
+  IS 'Signature of purpose TALER_SIGNATURE_MASTER_WIRE_DETAILS';
 COMMENT ON COLUMN wire_accounts.is_active
   IS 'true if we are currently supporting the use of this account.';
 COMMENT ON COLUMN wire_accounts.last_change

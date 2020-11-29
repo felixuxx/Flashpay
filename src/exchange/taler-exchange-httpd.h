@@ -68,6 +68,11 @@ extern struct TALER_MasterPublicKeyP TEH_master_public_key;
  */
 extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
+/**
+ * Our currency.
+ */
+extern char *TEH_currency;
+
 
 /**
  * @brief Struct describing an URL and the handler for it.

@@ -81,6 +81,7 @@ add_auditor (void *cls,
 {
   struct AddAuditorContext *aac = cls;
   struct GNUNET_TIME_Absolute last_date;
+  enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_auditor_timestamp (TEH_plugin->cls,
                                              session,
@@ -93,16 +94,16 @@ add_auditor (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_LOOKUP_FAILED,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
                                            "lookup auditor");
     return qs;
   }
-  if (last_date.abs_value_us > aac->start_date.abs_value_us)
+  if (last_date.abs_value_us > aac->validity_start.abs_value_us)
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_CONFLICT,
-      TALER_EC_EXCHANGE_AUDITOR_MORE_RECENT_PRESENT,
+      TALER_EC_EXCHANGE_MANAGEMENT_AUDITOR_MORE_RECENT_PRESENT,
       NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -111,14 +112,14 @@ add_auditor (void *cls,
                                      session,
                                      &aac->auditor_pub,
                                      aac->auditor_url,
-                                     aac->start_date,
+                                     aac->validity_start,
                                      &aac->master_sig);
   else
     qs = TEH_plugin->update_auditor (TEH_plugin->cls,
                                      session,
                                      &aac->auditor_pub,
                                      aac->auditor_url,
-                                     aac->start_date,
+                                     aac->validity_start,
                                      &aac->master_sig,
                                      true);
   if (qs < 0)
@@ -163,6 +164,7 @@ TEH_handler_management_auditors (
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_DB_QueryStatus qs;
+  MHD_RESULT res;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -180,25 +182,25 @@ TEH_handler_management_auditors (
       .purpose.purpose = htonl (
         TALER_SIGNATURE_MASTER_ADD_AUDITOR),
       .purpose.size = htonl (sizeof (aa)),
-      .start_date = GNUNET_TIME_absolute_hton (validity_start),
-      .auditor_pub = *auditor_pub
+      .start_date = GNUNET_TIME_absolute_hton (aac.validity_start),
+      .auditor_pub = aac.auditor_pub
     };
 
-    GNUNET_CRYPTO_hash (auditor_url,
-                        strlen (auditor_url) + 1,
+    GNUNET_CRYPTO_hash (aac.auditor_url,
+                        strlen (aac.auditor_url) + 1,
                         &aa.h_auditor_url);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_ADD_AUDITOR,
           &aa,
-          &master_sig.eddsa_sig,
+          &aac.master_sig.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_AUDITOR_ADD_SIGNATURE_INVALID,
+        TALER_EC_EXCHANGE_MANAGEMENT_AUDITOR_ADD_SIGNATURE_INVALID,
         NULL);
     }
   }

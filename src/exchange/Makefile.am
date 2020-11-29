@@ -78,14 +78,22 @@ taler_exchange_transfer_LDADD = \
 
 taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd.c taler-exchange-httpd.h \
+  taler-exchange-httpd_auditors.c \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \
   taler-exchange-httpd_deposit.c taler-exchange-httpd_deposit.h \
   taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_keystate.c taler-exchange-httpd_keystate.h \
   taler-exchange-httpd_link.c taler-exchange-httpd_link.h \
+  taler-exchange-httpd_management_auditors.c \
+  taler-exchange-httpd_management_auditors_AP_disable.c \
+  taler-exchange-httpd_management_denominations_HDP_revoke.c \
+  taler-exchange-httpd_management_signkey_EP_revoke.c \
+  taler-exchange-httpd_management_wire.c \
+  taler-exchange-httpd_management_wire_disable.c \
+  taler-exchange-httpd_management_wire_fees.c \
+  taler-exchange-httpd_melt.c taler-exchange-httpd_melt.h \
   taler-exchange-httpd_mhd.c taler-exchange-httpd_mhd.h \
   taler-exchange-httpd_recoup.c taler-exchange-httpd_recoup.h \
-  taler-exchange-httpd_melt.c taler-exchange-httpd_melt.h \
   taler-exchange-httpd_refreshes_reveal.c taler-exchange-httpd_refreshes_reveal.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
   taler-exchange-httpd_reserves_get.c taler-exchange-httpd_reserves_get.h \
@@ -94,6 +102,10 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
   taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
+
+#  taler-exchange-httpd_management_post_keys.c
+
+
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/bank-lib/libtalerbank.la \

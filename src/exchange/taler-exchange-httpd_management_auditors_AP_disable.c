@@ -81,6 +81,7 @@ del_auditor (void *cls,
 {
   struct DelAuditorContext *dac = cls;
   struct GNUNET_TIME_Absolute last_date;
+  enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_auditor_timestamp (TEH_plugin->cls,
                                              session,
@@ -93,16 +94,16 @@ del_auditor (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_LOOKUP_FAILED,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
                                            "lookup auditor");
     return qs;
   }
-  if (last_date.abs_value_us > dac->end_date.abs_value_us)
+  if (last_date.abs_value_us > dac->validity_end.abs_value_us)
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_CONFLICT,
-      TALER_EC_EXCHANGE_AUDITOR_MORE_RECENT_PRESENT,
+      TALER_EC_EXCHANGE_MANAGEMENT_AUDITOR_MORE_RECENT_PRESENT,
       NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -111,7 +112,7 @@ del_auditor (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_NOT_FOUND,
-      TALER_EC_EXCHANGE_AUDITOR_NOT_FOUND,
+      TALER_EC_EXCHANGE_MANAGEMENT_AUDITOR_NOT_FOUND,
       NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -119,7 +120,7 @@ del_auditor (void *cls,
                                    session,
                                    &dac->auditor_pub,
                                    "",
-                                   dac->end_date,
+                                   dac->validity_end,
                                    &dac->master_sig,
                                    false);
   if (qs < 0)
@@ -162,6 +163,7 @@ TEH_handler_management_auditors_AP_disable (
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_DB_QueryStatus qs;
+  MHD_RESULT res;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -179,22 +181,22 @@ TEH_handler_management_auditors_AP_disable (
       .purpose.purpose = htonl (
         TALER_SIGNATURE_MASTER_DEL_AUDITOR),
       .purpose.size = htonl (sizeof (da)),
-      .end_date = GNUNET_TIME_absolute_hton (validity_end),
-      .auditor_pub = *auditor_pub
+      .end_date = GNUNET_TIME_absolute_hton (dac.validity_end),
+      .auditor_pub = dac.auditor_pub
     };
 
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DEL_AUDITOR,
           &da,
-          &master_sig.eddsa_sig,
+          &dac.master_sig.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_AUDITOR_DEL_SIGNATURE_INVALID,
+        TALER_EC_EXCHANGE_MANAGEMENT_AUDITOR_DEL_SIGNATURE_INVALID,
         NULL);
     }
   }

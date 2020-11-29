@@ -113,6 +113,11 @@ struct TALER_MasterPublicKeyP TEH_master_public_key;
 struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 
 /**
+ * Our currency.
+ */
+char *TEH_currency;
+
+/**
  * Default timeout in seconds for HTTP requests.
  */
 static unsigned int connection_timeout = 30;
@@ -812,6 +817,15 @@ exchange_serve_process_config (void)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "REVOCATION_DIR");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_currency (TEH_cfg,
+                                 &TEH_currency))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler",
+                               "CURRENCY");
     return GNUNET_SYSERR;
   }
   {

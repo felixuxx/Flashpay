@@ -26,9 +26,9 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_refund.h"
+#include "taler_signatures.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
+
 
 /**
  * Closure for the #add_fee transaction.
@@ -94,12 +94,12 @@ add_fee (void *cls,
   struct TALER_Amount wire_fee;
   struct TALER_Amount closing_fee;
 
-  qs = TEH_plugin->lookup_wire_fee (
+  qs = TEH_plugin->lookup_wire_fee_by_time (
     TEH_plugin->cls,
     session,
-    aws->wire_method,
-    aws->start_time,
-    aws->end_time,
+    afc->wire_method,
+    afc->start_time,
+    afc->end_time,
     &wire_fee,
     &closing_fee);
   if (qs < 0)
@@ -109,7 +109,7 @@ add_fee (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_LOOKUP_FAILED,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
                                            "lookup wire fee");
     return qs;
   }
@@ -129,10 +129,11 @@ add_fee (void *cls,
     }
     else
     {
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_CONFLICT,
-                                             TALER_EC_XXX,
-                                             NULL);
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_CONFLICT,
+        TALER_EC_EXCHANGE_MANAGEMENT_WIRE_FEE_MISMATCH,
+        NULL);
     }
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -140,12 +141,12 @@ add_fee (void *cls,
   qs = TEH_plugin->insert_wire_fee (
     TEH_plugin->cls,
     session,
-    aws->wire_method,
-    aws->start_time,
-    aws->end_time,
-    &aws->wire_fee,
-    &aws->closing_fee,
-    &aws->master_sig);
+    afc->wire_method,
+    afc->start_time,
+    afc->end_time,
+    &afc->wire_fee,
+    &afc->closing_fee,
+    &afc->master_sig);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -179,10 +180,10 @@ TEH_handler_management_post_wire_fees (
                                  &afc.master_sig),
     GNUNET_JSON_spec_string ("wire_method",
                              &afc.wire_method),
-    TALER_JSON_spec_time_abs ("fee_start",
-                              &afc.start_time),
-    TALER_JSON_spec_time_abs ("fee_end",
-                              &afc.end_time),
+    TALER_JSON_spec_absolute_time ("fee_start",
+                                   &afc.start_time),
+    TALER_JSON_spec_absolute_time ("fee_end",
+                                   &afc.end_time),
     TALER_JSON_spec_amount ("closing_fee",
                             &afc.closing_fee),
     TALER_JSON_spec_amount ("wire_fee",
@@ -190,6 +191,7 @@ TEH_handler_management_post_wire_fees (
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_DB_QueryStatus qs;
+  MHD_RESULT ret;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -211,7 +213,7 @@ TEH_handler_management_post_wire_fees (
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_GENERIC_BAD_CURRENCY,
+                                       TALER_EC_GENERIC_CURRENCY_MISMATCH,
                                        NULL);
   }
   if (0 !=
@@ -221,21 +223,21 @@ TEH_handler_management_post_wire_fees (
     /* currency does not match exchange's currency */
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_PRECONDITION_FAILED,
-                                       TALER_EC_GENERIC_BAD_CURRENCY,
+                                       TALER_EC_GENERIC_CURRENCY_MISMATCH,
                                        TEH_currency);
   }
 
   {
     struct TALER_MasterWireFeePS wf = {
       .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES),
-      .purpose.size = htonl (wf),
-      .start_date = GNUNET_TIME_absolute_hton (afc.start_date),
-      .end_date = GNUNET_TIME_absolute_hton (afc.end_date),
+      .purpose.size = htonl (sizeof (wf)),
+      .start_date = GNUNET_TIME_absolute_hton (afc.start_time),
+      .end_date = GNUNET_TIME_absolute_hton (afc.end_time),
     };
 
-    TALER_amount_hton (&kv.wire_fee,
+    TALER_amount_hton (&wf.wire_fee,
                        &afc.wire_fee);
-    TALER_amount_hton (&kv.closing_fee,
+    TALER_amount_hton (&wf.closing_fee,
                        &afc.closing_fee);
     GNUNET_CRYPTO_hash (afc.wire_method,
                         strlen (afc.wire_method) + 1,
@@ -244,26 +246,26 @@ TEH_handler_management_post_wire_fees (
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_WIRE_FEES,
           &wf,
-          &afc.master_sig.eddsa_sig,
+          &afc.master_sig.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
       /* signature invalid */
       GNUNET_break_op (0);
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_FORBIDDEN,
-                                             TALER_EC_EXCHANGE_XXX,
-                                             NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_MANAGEMENT_WIRE_FEE_SIGNATURE_INVALID,
+        NULL);
     }
   }
 
   qs = TEH_DB_run_transaction (connection,
                                "add wire fee",
-                               &res,
+                               &ret,
                                &add_fee,
                                &afc);
   if (qs < 0)
-    return res;
+    return ret;
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

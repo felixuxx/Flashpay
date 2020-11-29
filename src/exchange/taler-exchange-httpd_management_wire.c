@@ -26,9 +26,9 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_refund.h"
+#include "taler_signatures.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
+
 
 /**
  * Closure for the #add_wire transaction.
@@ -50,7 +50,7 @@ struct AddWireContext
   /**
    * Payto:// URI this is about.
    */
-  const char *payto_url;
+  const char *payto_uri;
 
   /**
    * Timestamp for checking against replay attacks.
@@ -83,6 +83,7 @@ add_wire (void *cls,
 {
   struct AddWireContext *awc = cls;
   struct GNUNET_TIME_Absolute last_date;
+  enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_wire_timestamp (TEH_plugin->cls,
                                           session,
@@ -95,31 +96,30 @@ add_wire (void *cls,
     GNUNET_break (0);
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_LOOKUP_FAILED,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
                                            "lookup wire");
     return qs;
   }
-  if (last_date.abs_value_us > awc->start_date.abs_value_us)
+  if (last_date.abs_value_us > awc->validity_start.abs_value_us)
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_CONFLICT,
-      TALER_EC_EXCHANGE_WIRE_MORE_RECENT_PRESENT,
+      TALER_EC_EXCHANGE_MANAGEMENT_WIRE_MORE_RECENT_PRESENT,
       NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (0 == qs)
     qs = TEH_plugin->insert_wire (TEH_plugin->cls,
                                   session,
-                                  &awc->payto_uri,
-                                  awc->start_date,
-                                  &awc->master_sig_add);
+                                  awc->payto_uri,
+                                  awc->validity_start,
+                                  &awc->master_sig_wire);
   else
     qs = TEH_plugin->update_wire (TEH_plugin->cls,
                                   session,
-                                  &awc->payto_uri,
-                                  awc->start_date,
-                                  &awc->master_sig_add,
+                                  awc->payto_uri,
+                                  awc->validity_start,
                                   true);
   if (qs < 0)
   {
@@ -130,21 +130,6 @@ add_wire (void *cls,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_GENERIC_DB_STORE_FAILED,
                                            "add wire");
-    return qs;
-  }
-  qs = TEH_plugin->insert_wire_details (TEH_plugin->cls,
-                                        session,
-                                        &awc->payto_uri,
-                                        &awc->master_sig_wire);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-      return qs;
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_STORE_FAILED,
-                                           "add wire details");
     return qs;
   }
   return qs;
@@ -176,6 +161,7 @@ TEH_handler_management_denominations_wire (
     GNUNET_JSON_spec_end ()
   };
   enum GNUNET_DB_QueryStatus qs;
+  MHD_RESULT ret;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -190,10 +176,9 @@ TEH_handler_management_denominations_wire (
   }
   {
     struct TALER_MasterAddWirePS aw = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_ADD_WIRE),
+      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_ADD_WIRE),
       .purpose.size = htonl (sizeof (aw)),
-      .start_date = GNUNET_TIME_absolute_hton (validity_start),
+      .start_date = GNUNET_TIME_absolute_hton (awc.validity_start),
     };
 
     GNUNET_CRYPTO_hash (awc.payto_uri,
@@ -203,14 +188,14 @@ TEH_handler_management_denominations_wire (
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_ADD_WIRE,
           &aw,
-          &master_sig.eddsa_sig,
+          &awc.master_sig_add.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_WIRE_ADD_SIGNATURE_INVALID,
+        TALER_EC_EXCHANGE_MANAGEMENT_WIRE_ADD_SIGNATURE_INVALID,
         NULL);
     }
   }
@@ -223,30 +208,30 @@ TEH_handler_management_denominations_wire (
 
     GNUNET_CRYPTO_hash (awc.payto_uri,
                         strlen (awc.payto_uri) + 1,
-                        &wd.h_wire);
+                        &wd.h_wire_details);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_WIRE_DETAILS,
           &wd,
-          &master_sig.eddsa_sig,
+          &awc.master_sig_wire.eddsa_signature,
           &TEH_master_public_key.eddsa_pub))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_WIRE_DETALS_SIGNATURE_INVALID,
+        TALER_EC_EXCHANGE_MANAGEMENT_WIRE_DETAILS_SIGNATURE_INVALID,
         NULL);
     }
   }
 
   qs = TEH_DB_run_transaction (connection,
                                "add wire",
-                               &res,
+                               &ret,
                                &add_wire,
                                &awc);
   if (qs < 0)
-    return res;
+    return ret;
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,
