@@ -26,7 +26,7 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_refund.h"
+#include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
@@ -132,13 +132,6 @@ del_wire (void *cls,
 }
 
 
-/**
- * Handle a "/management/wire" request.
- *
- * @param connection the MHD connection to handle
- * @param root uploaded JSON data
- * @return MHD result code
- */
 MHD_RESULT
 TEH_handler_management_denominations_wire_disable (
   struct MHD_Connection *connection,

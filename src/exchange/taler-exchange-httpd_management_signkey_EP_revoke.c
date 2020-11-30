@@ -26,18 +26,11 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
 
-/**
- * Handle a "/management/signkeys/$EP/revoke" request.
- *
- * @param connection the MHD connection to handle
- * @param exchange_pub exchange online signing public key to revoke
- * @param root uploaded JSON data
- * @return MHD result code
-  */
 MHD_RESULT
 TEH_handler_management_signkeys_EP_revoke (
   struct MHD_Connection *connection,

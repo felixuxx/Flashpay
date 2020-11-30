@@ -26,19 +26,11 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_refund.h"
+#include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
 
 
-/**
- * Handle a "/management/denominations/$HDP/revoke" request.
- *
- * @param connection the MHD connection to handle
- * @param h_denom_pub hash of the public key of the denomination to revoke
- * @param root uploaded JSON data
- * @return MHD result code
-  */
 MHD_RESULT
 TEH_handler_management_denominations_HDP_revoke (
   struct MHD_Connection *connection,

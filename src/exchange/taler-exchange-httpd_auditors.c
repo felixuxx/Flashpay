@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
+#include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_responses.h"
 
 
@@ -207,15 +208,6 @@ add_auditor_denom_sig (void *cls,
 }
 
 
-/**
- * Handle a "/auditors/$AUDITOR_PUB/$H_DENOM_PUB" request.
- *
- * @param connection the MHD connection to handle
- * @param root uploaded JSON data
- * @param auditor_pub public key of the auditor
- * @param h_denom_pub hash of the denomination public key
- * @return MHD result code
- */
 MHD_RESULT
 TEH_handler_management_denominations_auditors (
   struct MHD_Connection *connection,
