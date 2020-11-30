@@ -2536,6 +2536,64 @@ TALER_EXCHANGE_management_disable_wire_cancel (
 
 
 /**
+ * Function called with information about the wire enable operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementSetWireFeeCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+
+/**
+ * @brief Handle for a POST /management/wire-fees request.
+ */
+struct TALER_EXCHANGE_ManagementSetWireFeeHandle;
+
+
+/**
+ * Inform the exchange about future wire fees.
+ *
+ * @param ctx the context
+ * @param exchange_base_url HTTP base URL for the exchange
+ * @param wire_method for which wire method are fees provided
+ * @param validity_start start date for the provided wire fees
+ * @param validity_end end date for the provided wire fees
+ * @param wire_fee the wire fee for this time period
+ * @param closing_fee the closing fee for this time period
+ * @param master_sig signature affirming the wire fees;
+ *        of purpose #TALER_SIGNATURE_MASTER_WIRE_FEES
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementSetWireFeeHandle *
+TALER_EXCHANGE_management_set_wire_fees (
+  struct GNUNET_CURL_Context *ctx,
+  const char *exchange_base_url,
+  const char *wire_method,
+  struct GNUNET_TIME_Absolute validity_start,
+  struct GNUNET_TIME_Absolute validity_end,
+  const struct TALER_Amount *wire_fee,
+  const struct TALER_Amount *closing_fee,
+  const struct TALER_MasterSignatureP *master_sig,
+  TALER_EXCHANGE_ManagementWireEnableCallback cb,
+  void *cb_cls);
+
+
+/**
+ * Cancel #TALER_EXCHANGE_management_enable_wire() operation.
+ *
+ * @param wh handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_management_set_wire_fees_cancel (
+  struct TALER_EXCHANGE_ManagementSetWireFeeHandle *swfh);
+
+
+/**
  * Function called with information about the POST
  * /auditor/$AUDITOR_PUB/$H_DENOM_PUB operation result.
  *
