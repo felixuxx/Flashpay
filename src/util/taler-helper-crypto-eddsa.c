@@ -332,7 +332,7 @@ static struct GNUNET_NETWORK_Handle *done_signal;
 static volatile bool in_shutdown;
 
 /**
- * Array of #num_worker sign_worker() threads.
+ * Array of #num_workers sign_worker() threads.
  */
 static pthread_t *workers;
 

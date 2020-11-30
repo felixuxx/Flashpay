@@ -65,7 +65,7 @@ struct TALER_EXCHANGE_ManagementGetKeysHandle
  *
  * @param[in,out] gh request handle
  * @param response the response
- * @return #MHD_OK if the response was well-formed
+ * @return #GNUNET_OK if the response was well-formed
  */
 static int
 handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,

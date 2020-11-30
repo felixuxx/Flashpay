@@ -2201,6 +2201,7 @@ struct TALER_EXCHANGE_ManagementPostKeysHandle;
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
+ * @param pkd signature data to POST
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -2217,7 +2218,7 @@ TALER_EXCHANGE_post_management_keys (
 /**
  * Cancel #TALER_EXCHANGE_post_management_keys() operation.
  *
- * @param gh handle of the operation to cancel
+ * @param ph handle of the operation to cancel
  */
 void
 TALER_EXCHANGE_post_management_keys_cancel (
@@ -2450,7 +2451,6 @@ struct TALER_EXCHANGE_ManagementWireEnableHandle;
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
- * @param salt salt to use when hashing the account for the signature
  * @param payto_uri RFC 8905 URI of the exchange's bank account
  * @param validity_start when was this decided?
  * @param master_sig1 signature affirming the wire addition
@@ -2586,7 +2586,7 @@ TALER_EXCHANGE_management_set_wire_fees (
 /**
  * Cancel #TALER_EXCHANGE_management_enable_wire() operation.
  *
- * @param wh handle of the operation to cancel
+ * @param swfh handle of the operation to cancel
  */
 void
 TALER_EXCHANGE_management_set_wire_fees_cancel (
@@ -2639,7 +2639,7 @@ TALER_EXCHANGE_add_auditor_denomination (
 /**
  * Cancel #TALER_EXCHANGE_add_auditor_denomination() operation.
  *
- * @param gh handle of the operation to cancel
+ * @param ah handle of the operation to cancel
  */
 void
 TALER_EXCHANGE_add_auditor_denomination_cancel (

@@ -880,7 +880,7 @@ TALER_CRYPTO_helper_denom_sign (
 
 
 /**
- * Ask the helper to revoke the public key associated with @param h_denom_pub.
+ * Ask the helper to revoke the public key associated with @param h_denom_pub .
  * Will cause the helper to tell all clients that the key is now unavailable,
  * and to create a replacement key.
  *
@@ -1004,8 +1004,8 @@ TALER_CRYPTO_helper_esign_sign_ (
  *
  * @param esh helper process connection
  * @param ps message to sign (MUST begin with a purpose)
- * @param[out] exchange_pub set to the public key used for the signature upon success
- * @param[out] exchange_sig set to the signature upon success
+ * @param[out] epub set to the public key used for the signature upon success
+ * @param[out] esig set to the signature upon success
  * @return the error code (or #TALER_EC_NONE on success)
  */
 #define TALER_CRYPTO_helper_esign_sign(esh,ps,epub,esig) (         \
@@ -1021,7 +1021,7 @@ TALER_CRYPTO_helper_esign_sign_ (
 
 
 /**
- * Ask the helper to revoke the public key @param exchange_pub.
+ * Ask the helper to revoke the public key @param exchange_pub .
  * Will cause the helper to tell all clients that the key is now unavailable,
  * and to create a replacement key.
  *

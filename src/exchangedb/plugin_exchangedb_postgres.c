@@ -7499,7 +7499,7 @@ postgres_lookup_auditor_timestamp (
  * @param cls closure
  * @param session a session
  * @param auditor_pub key to look up information for
- * @param[out] set to the base URL of the auditor's REST API; memory to be
+ * @param[out] auditor_url set to the base URL of the auditor's REST API; memory to be
  *            released by the caller!
  * @param[out] enabled set if the auditor is currently in use
  * @return transaction status code

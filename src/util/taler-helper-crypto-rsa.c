@@ -400,7 +400,7 @@ static struct GNUNET_NETWORK_Handle *done_signal;
 static volatile bool in_shutdown;
 
 /**
- * Array of #num_worker sign_worker() threads.
+ * Array of #num_workers sign_worker() threads.
  */
 static pthread_t *workers;
 
@@ -804,7 +804,7 @@ notify_client_dk_del (struct Client *client,
 /**
  * Initialize key material for denomination key @a dk (also on disk).
  *
- * @param[in,out] denomination key to compute key material for
+ * @param[in,out] dk denomination key to compute key material for
  * @param position where in the DLL will the @a dk go
  * @return #GNUNET_OK on success
  */
@@ -1148,7 +1148,7 @@ create_key (struct Denomination *denom)
  * oldest denomination key, and the withdraw expiration time of
  * the newest denomination key minus the #lookahead_sign time.
  *
- * @param denon denomination to compute action time for
+ * @param denom denomination to compute action time for
  */
 static struct GNUNET_TIME_Absolute
 denomination_action_time (const struct Denomination *denom)

@@ -2143,7 +2143,7 @@ TALER_TESTING_cmd_offline_sign_keys (const char *label,
  * Revoke an exchange denomination key.
  *
  * @param label command label.
- * @param expected_http_status expected HTTP status from exchange
+ * @param expected_response_code expected HTTP status from exchange
  * @param bad_sig should we use a bogus signature?
  * @param denom_ref reference to a command that identifies
  *        a denomination key (i.e. because it was used to
@@ -2162,7 +2162,7 @@ TALER_TESTING_cmd_revoke_denom_key (
  * Revoke an exchange online signing key.
  *
  * @param label command label.
- * @param expected_http_status expected HTTP status from exchange
+ * @param expected_response_code expected HTTP status from exchange
  * @param bad_sig should we use a bogus signature?
  * @param signkey_ref reference to a command that identifies
  *        a signing key (i.e. because it was used to
@@ -2183,13 +2183,18 @@ TALER_TESTING_cmd_revoke_sign_key (
  * the exchange.
  *
  * @param label command label.
+ * @param expected_http_status expected HTTP status from exchange
  * @param denom_ref reference to a command that identifies
  *        a denomination key (i.e. because it was used to
  *        withdraw a coin).
+ * @param bad_sig should we use a bogus signature?
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_auditor_add_denom_key (const char *denom_ref);
+TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
+                                         unsigned int expected_http_status,
+                                         const char *denom_ref,
+                                         bool bad_sig);
 
 
 /* *** Generic trait logic for implementing traits ********* */

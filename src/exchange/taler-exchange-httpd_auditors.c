@@ -212,6 +212,8 @@ add_auditor_denom_sig (void *cls,
  *
  * @param connection the MHD connection to handle
  * @param root uploaded JSON data
+ * @param auditor_pub public key of the auditor
+ * @param h_denom_pub hash of the denomination public key
  * @return MHD result code
  */
 MHD_RESULT
