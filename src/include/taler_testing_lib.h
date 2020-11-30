@@ -2052,6 +2052,45 @@ TALER_TESTING_cmd_auditor_del (const char *label,
 
 
 /**
+ * Add affirmation that the auditor is auditing the given
+ * denomination.
+ * The information about the auditor is taken from the
+ * "[auditor]" section in the configuration file.
+ *
+ * @param label command label.
+ * @param expected_http_status expected HTTP status from exchange
+ * @param denom_ref reference to a command identifying a denomination key
+ * @param bad_sig should we use a bogus signature?
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
+                                         unsigned int expected_http_status,
+                                         const char *denom_ref,
+                                         bool bad_sig);
+
+/**
+ * Add statement about wire fees of the exchange. This is always
+ * done for a few hours around the current time (for the test).
+ *
+ * @param label command label.
+ * @param wire_method wire method to set wire fees for
+ * @param wire_fee the wire fee to affirm
+ * @param closing_fee the closing fee to affirm
+ * @param expected_http_status expected HTTP status from exchange
+ * @param bad_sig should we use a bogus signature?
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_set_wire_fee (const char *label,
+                                const char *wire_method,
+                                const char *wire_fee,
+                                const char *closing_fee,
+                                unsigned int expected_http_status,
+                                bool bad_sig);
+
+
+/**
  * Add the given payto-URI bank account to the list of bank
  * accounts used by the exchange.
  *

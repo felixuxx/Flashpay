@@ -2561,7 +2561,8 @@ struct TALER_EXCHANGE_AuditorAddDenominationHandle;
  * @param url HTTP base URL for the exchange
  * @param h_denom_pub hash of the public key of the denomination
  * @param auditor_pub public key of the auditor
- * @param auditor_sig signature of the auditor
+ * @param auditor_sig signature of the auditor, of
+ *         purpose #TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
