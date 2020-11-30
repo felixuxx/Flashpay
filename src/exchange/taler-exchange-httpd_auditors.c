@@ -209,7 +209,7 @@ add_auditor_denom_sig (void *cls,
 
 
 MHD_RESULT
-TEH_handler_management_denominations_auditors (
+TEH_handler_auditors (
   struct MHD_Connection *connection,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const struct GNUNET_HashCode *h_denom_pub,
@@ -255,4 +255,4 @@ TEH_handler_management_denominations_auditors (
 }
 
 
-/* end of taler-exchange-httpd_management_auditors.c */
+/* end of taler-exchange-httpd_auditors.c */

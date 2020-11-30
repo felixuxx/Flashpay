@@ -323,7 +323,6 @@ add_keys (void *cls,
 MHD_RESULT
 TEH_handler_management_post_keys (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *h_denom_pub,
   const json_t *root)
 {
   struct AddKeysContext akc;

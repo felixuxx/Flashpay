@@ -137,16 +137,16 @@ del_auditor (void *cls,
 MHD_RESULT
 TEH_handler_management_auditors_AP_disable (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
   const json_t *root)
 {
   struct TALER_MasterSignatureP master_sig;
-  struct DelAuditorContext dac;
+  struct DelAuditorContext dac = {
+    .auditor_pub = *auditor_pub
+  };
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
-    GNUNET_JSON_spec_fixed_auto ("auditor_pub",
-                                 &dac.auditor_pub),
     TALER_JSON_spec_absolute_time ("validity_end",
                                    &dac.validity_end),
     GNUNET_JSON_spec_end ()
@@ -171,7 +171,7 @@ TEH_handler_management_auditors_AP_disable (
         TALER_SIGNATURE_MASTER_DEL_AUDITOR),
       .purpose.size = htonl (sizeof (da)),
       .end_date = GNUNET_TIME_absolute_hton (dac.validity_end),
-      .auditor_pub = dac.auditor_pub
+      .auditor_pub = *auditor_pub
     };
 
     if (GNUNET_OK !=

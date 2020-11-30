@@ -145,7 +145,6 @@ add_auditor (void *cls,
 MHD_RESULT
 TEH_handler_management_auditors (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *h_denom_pub,
   const json_t *root)
 {
   struct AddAuditorContext aac;

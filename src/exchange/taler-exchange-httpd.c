@@ -28,20 +28,22 @@
 #include <pthread.h>
 #include <sys/resource.h>
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_mhd.h"
+#include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_deposit.h"
-#include "taler-exchange-httpd_refund.h"
-#include "taler-exchange-httpd_reserves_get.h"
-#include "taler-exchange-httpd_withdraw.h"
-#include "taler-exchange-httpd_recoup.h"
-#include "taler-exchange-httpd_link.h"
-#include "taler-exchange-httpd_melt.h"
-#include "taler-exchange-httpd_refreshes_reveal.h"
-#include "taler-exchange-httpd_terms.h"
-#include "taler-exchange-httpd_transfers_get.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_link.h"
+#include "taler-exchange-httpd_management.h"
+#include "taler-exchange-httpd_melt.h"
+#include "taler-exchange-httpd_mhd.h"
+#include "taler-exchange-httpd_recoup.h"
+#include "taler-exchange-httpd_refreshes_reveal.h"
+#include "taler-exchange-httpd_refund.h"
+#include "taler-exchange-httpd_reserves_get.h"
+#include "taler-exchange-httpd_terms.h"
+#include "taler-exchange-httpd_transfers_get.h"
 #include "taler-exchange-httpd_wire.h"
+#include "taler-exchange-httpd_withdraw.h"
 #include "taler_exchangedb_plugin.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
@@ -178,6 +180,24 @@ typedef MHD_RESULT
 
 
 /**
+ * Generate a 404 "not found" reply on @a connection with
+ * the hint @a details.
+ *
+ * @param connection where to send the reply on
+ * @param details details for the error message, can be NULL
+ */
+static MHD_RESULT
+r404 (struct MHD_Connection *connection,
+      const char *details)
+{
+  return TALER_MHD_reply_with_error (connection,
+                                     MHD_HTTP_NOT_FOUND,
+                                     TALER_EC_EXCHANGE_GENERIC_OPERATION_UNKNOWN,
+                                     details);
+}
+
+
+/**
  * Handle a "/coins/$COIN_PUB/$OP" POST request.  Parses the "coin_pub"
  * EdDSA key of the coin and demultiplexes based on $OP.
  *
@@ -249,10 +269,7 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
       return h[i].handler (connection,
                            &coin_pub,
                            root);
-  return TALER_MHD_reply_with_error (connection,
-                                     MHD_HTTP_NOT_FOUND,
-                                     TALER_EC_EXCHANGE_GENERIC_OPERATION_UNKNOWN,
-                                     args[1]);
+  return r404 (connection, args[1]);
 }
 
 
@@ -367,6 +384,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
     char d[ulen];
 
     /* Parse command-line arguments, if applicable */
+    args[0] = NULL;
     if (rh->nargs > 0)
     {
       unsigned int i;
@@ -384,9 +402,10 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
         args[i++] = strtok_r (NULL, "/", &sp);
       /* make sure above loop ran nicely until completion, and also
          that there is no excess data in 'd' afterwards */
-      if ( (i != rh->nargs) ||
-           (NULL == args[i - 1]) ||
-           (NULL != (fin = strtok_r (NULL, "/", &sp))) )
+      if ( (! rh->nargs_is_upper_bound) &&
+           ( (i != rh->nargs) ||
+             (NULL == args[i - 1]) ||
+             (NULL != (fin = strtok_r (NULL, "/", &sp))) ) )
       {
         char emsg[128 + 512];
 
@@ -407,12 +426,12 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
                                            TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
                                            emsg);
       }
+
+      /* just to be safe(r), we always terminate the array with a NULL
+         (even if handlers requested precise number of arguments) */
+      args[i] = NULL;
     }
 
-    /* just to be safe(r), we always terminate the array with a NULL
-       (which handlers should not read, but at least if they do, they'll
-       crash pretty reliably...) */
-    args[rh->nargs] = NULL;
 
     /* Above logic ensures that 'root' is exactly non-NULL for POST operations,
        so we test for 'root' to decide which handler to invoke. */
@@ -469,6 +488,244 @@ handler_seed (const struct TEH_RequestHandler *rh,
   MHD_destroy_response (resp);
   return ret;
 #undef SEED_SIZE
+}
+
+
+/**
+ * Handle POST "/management/..." requests.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_post_management (const struct TEH_RequestHandler *rh,
+                        struct MHD_Connection *connection,
+                        const json_t *root,
+                        const char *const args[])
+{
+  if (NULL == args[0])
+  {
+    GNUNET_break_op (0);
+    return r404 (connection, "/management");
+  }
+  if (0 == strcmp (args[0],
+                   "auditors"))
+  {
+    struct TALER_AuditorPublicKeyP auditor_pub;
+
+    if (NULL == args[1])
+      return TEH_handler_management_auditors (connection,
+                                              root);
+    if ( (NULL == args[1]) ||
+         (NULL == args[2]) ||
+         (0 != strcmp (args[2],
+                       "disable")) ||
+         (NULL != args[3]) )
+      return r404 (connection,
+                   "/management/auditors/$AUDITOR_PUB/disable");
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[1],
+                                       strlen (args[1]),
+                                       &auditor_pub,
+                                       sizeof (auditor_pub)))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         args[1]);
+    }
+    return TEH_handler_management_auditors_AP_disable (connection,
+                                                       &auditor_pub,
+                                                       root);
+  }
+  if (0 == strcmp (args[0],
+                   "denominations"))
+  {
+    struct GNUNET_HashCode h_denom_pub;
+
+    if ( (NULL == args[0]) ||
+         (NULL == args[1]) ||
+         (NULL == args[2]) ||
+         (0 != strcmp (args[2],
+                       "revoke")) ||
+         (NULL != args[3]) )
+      return r404 (connection,
+                   "/management/denominations/$HDP/revoke");
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[2],
+                                       strlen (args[2]),
+                                       &h_denom_pub,
+                                       sizeof (h_denom_pub)))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         args[2]);
+    }
+    return TEH_handler_management_denominations_HDP_revoke (connection,
+                                                            &h_denom_pub,
+                                                            root);
+  }
+  if (0 == strcmp (args[0],
+                   "signkeys"))
+  {
+    struct TALER_ExchangePublicKeyP exchange_pub;
+
+    if ( (NULL == args[0]) ||
+         (NULL == args[1]) ||
+         (NULL == args[2]) ||
+         (0 != strcmp (args[2],
+                       "revoke")) ||
+         (NULL != args[3]) )
+      return r404 (connection,
+                   "/management/signkeys/$HDP/revoke");
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[2],
+                                       strlen (args[2]),
+                                       &exchange_pub,
+                                       sizeof (exchange_pub)))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         args[2]);
+    }
+    return TEH_handler_management_signkeys_EP_revoke (connection,
+                                                      &exchange_pub,
+                                                      root);
+  }
+#if FIXME
+  /* not yet implemented! */
+  if (0 == strcmp (args[0],
+                   "keys"))
+  {
+    if (NULL != args[1])
+    {
+      GNUNET_break_op (0);
+      return r404 (connection, "/management/keys/*");
+    }
+    return TEH_handler_management_post_keys (connection,
+                                             root);
+  }
+#endif
+  if (0 == strcmp (args[0],
+                   "wire"))
+  {
+    if (NULL == args[1])
+      return TEH_handler_management_denominations_wire (connection,
+                                                        root);
+    if ( (0 != strcmp (args[1],
+                       "disable")) ||
+         (NULL != args[2]) )
+    {
+      GNUNET_break_op (0);
+      return r404 (connection, "/management/wire/disable");
+    }
+    return TEH_handler_management_denominations_wire_disable (connection,
+                                                              root);
+  }
+  if (0 == strcmp (args[0],
+                   "wire-fees"))
+  {
+    if (NULL != args[1])
+    {
+      GNUNET_break_op (0);
+      return r404 (connection, "/management/wire-fees/*");
+    }
+    return TEH_handler_management_post_wire_fees (connection,
+                                                  root);
+  }
+  GNUNET_break_op (0);
+  return r404 (connection, "/management/*");
+}
+
+
+/**
+ * Handle a get "/management" request.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param args array of additional options (must be empty for this function)
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_get_management (const struct TEH_RequestHandler *rh,
+                       struct MHD_Connection *connection,
+                       const char *const args[1])
+{
+  if ( (NULL == args[0]) ||
+       (0 != strcmp (args[0],
+                     "keys")) ||
+       (NULL != args[1]) )
+  {
+    GNUNET_break_op (0);
+    return r404 (connection, "/management/*");
+  }
+  GNUNET_break (0); // not implemented
+  return MHD_NO;
+}
+
+
+/**
+ * Handle POST "/auditors/..." requests.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param root uploaded JSON data
+ * @param args array of additional options
+ * @return MHD result code
+ */
+static MHD_RESULT
+handle_post_auditors (const struct TEH_RequestHandler *rh,
+                      struct MHD_Connection *connection,
+                      const json_t *root,
+                      const char *const args[])
+{
+  struct TALER_AuditorPublicKeyP auditor_pub;
+  struct GNUNET_HashCode h_denom_pub;
+
+  if ( (NULL == args[0]) ||
+       (NULL == args[1]) ||
+       (NULL != args[0]) )
+  {
+    GNUNET_break_op (0);
+    return r404 (connection, "/auditors/$AUDITOR_PUB/$H_DENOM_PUB");
+  }
+
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[0],
+                                     strlen (args[0]),
+                                     &auditor_pub,
+                                     sizeof (auditor_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       args[0]);
+  }
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_string_to_data (args[1],
+                                     strlen (args[1]),
+                                     &h_denom_pub,
+                                     sizeof (h_denom_pub)))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       args[1]);
+  }
+  return TEH_handler_auditors (connection,
+                               &auditor_pub,
+                               &h_denom_pub,
+                               root);
 }
 
 
@@ -599,6 +856,29 @@ handle_mhd_request (void *cls,
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_deposits_get,
       .nargs = 4
+    },
+    /* POST management endpoints */
+    {
+      .url = "management",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &handle_post_management,
+      .nargs = 4,
+      .nargs_is_upper_bound = true
+    },
+    /* GET management endpoints (we only really have "/management/keys") */
+    {
+      .url = "management",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &handle_get_management,
+      .nargs = 1
+    },
+    /* auditor endpoints */
+    {
+      .url = "auditors",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &handle_post_auditors,
+      .nargs = 4,
+      .nargs_is_upper_bound = true
     },
     /* mark end of list */
     {

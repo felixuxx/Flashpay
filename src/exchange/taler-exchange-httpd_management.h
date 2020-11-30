@@ -29,14 +29,12 @@
  * Handle a "/management/auditors" request.
  *
  * @param connection the MHD connection to handle
- * @param h_denom_pub hash of the public key of the denomination to revoke
  * @param root uploaded JSON data
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_management_auditors (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *h_denom_pub,
   const json_t *root);
 
 
@@ -44,14 +42,14 @@ TEH_handler_management_auditors (
  * Handle a "/management/auditors/$AUDITOR_PUB/disable" request.
  *
  * @param connection the MHD connection to handle
- * @param h_denom_pub hash of the public key of the denomination to revoke
+ * @param auditor_pub public key of the auditor to disable
  * @param root uploaded JSON data
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_management_auditors_AP_disable (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
   const json_t *root);
 
 
@@ -89,15 +87,14 @@ TEH_handler_management_signkeys_EP_revoke (
  * Handle a POST "/management/keys" request.
  *
  * @param connection the MHD connection to handle
- * @param h_denom_pub hash of the public key of the denomination to revoke
  * @param root uploaded JSON data
  * @return MHD result code
  */
 MHD_RESULT
 TEH_handler_management_post_keys (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *h_denom_pub,
   const json_t *root);
+
 
 /**
  * Handle a "/management/wire" request.
@@ -113,7 +110,7 @@ TEH_handler_management_denominations_wire (
 
 
 /**
- * Handle a "/management/wire" request.
+ * Handle a "/management/wire/disable" request.
  *
  * @param connection the MHD connection to handle
  * @param root uploaded JSON data

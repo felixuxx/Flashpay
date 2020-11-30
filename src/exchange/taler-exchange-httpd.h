@@ -134,6 +134,12 @@ struct TEH_RequestHandler
   unsigned int nargs;
 
   /**
+   * Is the number of arguments given in @e nargs only an upper bound,
+   * and calling with fewer arguments could be OK?
+   */
+  bool nargs_is_upper_bound;
+
+  /**
    * Mime type to use in reply (hint, can be NULL).
    */
   const char *mime_type;
