@@ -152,7 +152,7 @@ TALER_EXCHANGE_management_set_wire_fees (
     GNUNET_free (swfh);
     return NULL;
   }
-  body = json_pack ("{s:s, s:o, s:o, s:o, s:o}",
+  body = json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                     "wire_method",
                     wire_method,
                     "master_sig",

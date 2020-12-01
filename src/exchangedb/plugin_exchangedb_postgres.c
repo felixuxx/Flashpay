@@ -7664,8 +7664,8 @@ postgres_insert_wire (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_uri),
-    GNUNET_PQ_query_param_absolute_time (&start_date),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_absolute_time (&start_date),
     GNUNET_PQ_query_param_end
   };
 

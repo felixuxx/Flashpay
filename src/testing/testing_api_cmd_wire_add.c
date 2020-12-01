@@ -131,20 +131,15 @@ wire_add_run (void *cls,
       .purpose.size = htonl (sizeof (kv)),
       .start_date = GNUNET_TIME_absolute_hton (now),
     };
-    struct TALER_MasterWireDetailsPS wd = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_DETAILS),
-      .purpose.size = htonl (sizeof (wd)),
-    };
 
     TALER_exchange_wire_signature_hash (ds->payto_uri,
                                         &kv.h_wire);
-    wd.h_wire_details = kv.h_wire;
     GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
                               &kv,
                               &master_sig1.eddsa_signature);
-    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
-                              &wd,
-                              &master_sig2.eddsa_signature);
+    TALER_exchange_wire_signature_make (ds->payto_uri,
+                                        &is->master_priv,
+                                        &master_sig2);
   }
   ds->dh = TALER_EXCHANGE_management_enable_wire (
     is->ctx,

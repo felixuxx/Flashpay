@@ -199,7 +199,7 @@ TEH_handler_management_post_wire_fees (
       return MHD_YES; /* failure */
   }
 
-  if (0 !=
+  if (GNUNET_OK !=
       TALER_amount_cmp_currency (&afc.closing_fee,
                                  &afc.wire_fee))
   {

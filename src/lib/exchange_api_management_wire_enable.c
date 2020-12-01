@@ -137,7 +137,7 @@ TALER_EXCHANGE_management_enable_wire (
   wh->cb_cls = cb_cls;
   wh->ctx = ctx;
   wh->url = TALER_url_join (url,
-                            "management/wire/enable",
+                            "management/wire",
                             NULL);
   if (NULL == wh->url)
   {
@@ -146,7 +146,7 @@ TALER_EXCHANGE_management_enable_wire (
     GNUNET_free (wh);
     return NULL;
   }
-  body = json_pack ("{s:s, s:s, s:o, s:o, s:o}",
+  body = json_pack ("{s:s, s:o, s:o, s:o}",
                     "payto_uri",
                     payto_uri,
                     "master_sig_add",

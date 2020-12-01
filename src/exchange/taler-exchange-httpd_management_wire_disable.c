@@ -139,7 +139,7 @@ TEH_handler_management_denominations_wire_disable (
 {
   struct DelWireContext awc;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("master_sig",
+    GNUNET_JSON_spec_fixed_auto ("master_sig_del",
                                  &awc.master_sig),
     GNUNET_JSON_spec_string ("payto_uri",
                              &awc.payto_uri),
@@ -169,9 +169,8 @@ TEH_handler_management_denominations_wire_disable (
       .end_date = GNUNET_TIME_absolute_hton (awc.validity_end),
     };
 
-    GNUNET_CRYPTO_hash (awc.payto_uri,
-                        strlen (awc.payto_uri) + 1,
-                        &aw.h_wire);
+    TALER_exchange_wire_signature_hash (awc.payto_uri,
+                                        &aw.h_wire);
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (
           TALER_SIGNATURE_MASTER_DEL_WIRE,

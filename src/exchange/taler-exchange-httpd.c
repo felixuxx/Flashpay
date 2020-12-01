@@ -631,12 +631,12 @@ handle_post_management (const struct TEH_RequestHandler *rh,
                                                               root);
   }
   if (0 == strcmp (args[0],
-                   "wire-fees"))
+                   "wire-fee"))
   {
     if (NULL != args[1])
     {
       GNUNET_break_op (0);
-      return r404 (connection, "/management/wire-fees/*");
+      return r404 (connection, "/management/wire-fee/*");
     }
     return TEH_handler_management_post_wire_fees (connection,
                                                   root);
