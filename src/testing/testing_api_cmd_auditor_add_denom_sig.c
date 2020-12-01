@@ -107,12 +107,8 @@ auditor_add_run (void *cls,
                  struct TALER_TESTING_Interpreter *is)
 {
   struct AuditorAddDenomSigState *ds = cls;
-  char *exchange_url;
-  struct TALER_AuditorPrivateKeyP auditor_priv;
-  struct TALER_AuditorPublicKeyP auditor_pub;
   struct TALER_AuditorSignatureP auditor_sig;
   struct GNUNET_HashCode h_denom_pub;
-  char *fn;
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
 
   (void) cmd;
@@ -134,33 +130,6 @@ auditor_add_run (void *cls,
                                                       0,
                                                       &dk));
   }
-  if (GNUNET_SYSERR ==
-      GNUNET_DISK_directory_create_for_file (fn))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not setup directory for auditor private key file `%s'\n",
-                fn);
-    GNUNET_free (fn);
-    TALER_TESTING_interpreter_next (ds->is);
-    return;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                         GNUNET_YES,
-                                         &auditor_priv.eddsa_priv))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not load auditor private key from `%s'\n",
-                fn);
-    GNUNET_free (fn);
-    TALER_TESTING_interpreter_next (ds->is);
-    return;
-  }
-  GNUNET_free (fn);
-  GNUNET_CRYPTO_eddsa_key_get_public (&auditor_priv.eddsa_priv,
-                                      &auditor_pub.eddsa_pub);
-
-
   ds->is = is;
   if (ds->bad_sig)
   {
@@ -170,117 +139,45 @@ auditor_add_run (void *cls,
   }
   else
   {
-    struct TALER_MasterPrivateKeyP master_priv;
-    char *auditor_url;
+    struct TALER_ExchangeKeyValidityPS kv = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS),
+      .purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS)),
+      .start = GNUNET_TIME_absolute_hton (dk->valid_from),
+      .expire_withdraw = GNUNET_TIME_absolute_hton (
+        dk->withdraw_valid_until),
+      .expire_deposit = GNUNET_TIME_absolute_hton (dk->expire_deposit),
+      .expire_legal = GNUNET_TIME_absolute_hton (dk->expire_legal),
+      .denom_hash = dk->h_key
+    };
 
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                                 "exchange-offline",
-                                                 "MASTER_PRIV_FILE",
-                                                 &fn))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-offline",
-                                 "MASTER_PRIV_FILE");
-      TALER_TESTING_interpreter_next (ds->is);
-      GNUNET_free (auditor_url);
-      return;
-    }
-    if (GNUNET_SYSERR ==
-        GNUNET_DISK_directory_create_for_file (fn))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not setup directory for master private key file `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           GNUNET_YES,
-                                           &master_priv.eddsa_priv))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not load master private key from `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    GNUNET_free (fn);
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                                 "auditor",
-                                                 "BASE_URL",
-                                                 &auditor_url))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "auditor",
-                                 "BASE_URL");
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-
-    /* now sign */
-    {
-      struct TALER_ExchangeKeyValidityPS kv = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS),
-        .purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS)),
-        .start = GNUNET_TIME_absolute_hton (dk->valid_from),
-        .expire_withdraw = GNUNET_TIME_absolute_hton (
-          dk->withdraw_valid_until),
-        .expire_deposit = GNUNET_TIME_absolute_hton (dk->expire_deposit),
-        .expire_legal = GNUNET_TIME_absolute_hton (dk->expire_legal),
-        .denom_hash = dk->h_key
-      };
-
-      TALER_amount_hton (&kv.value,
-                         &dk->value);
-      TALER_amount_hton (&kv.fee_withdraw,
-                         &dk->fee_withdraw);
-      TALER_amount_hton (&kv.fee_deposit,
-                         &dk->fee_deposit);
-      TALER_amount_hton (&kv.fee_refresh,
-                         &dk->fee_refresh);
-      TALER_amount_hton (&kv.fee_refund,
-                         &dk->fee_refund);
-      GNUNET_CRYPTO_eddsa_key_get_public (&master_priv.eddsa_priv,
-                                          &kv.master.eddsa_pub);
-      GNUNET_CRYPTO_hash (auditor_url,
-                          strlen (auditor_url) + 1,
-                          &kv.auditor_url_hash);
-      /* Finally sign ... */
-      GNUNET_CRYPTO_eddsa_sign (&auditor_priv.eddsa_priv,
-                                &kv,
-                                &auditor_sig.eddsa_sig);
-    }
-    GNUNET_free (auditor_url);
-  }
-
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (is->cfg,
-                                             "exchange",
-                                             "BASE_URL",
-                                             &exchange_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "BASE_URL");
-    TALER_TESTING_interpreter_next (ds->is);
-    return;
+    TALER_amount_hton (&kv.value,
+                       &dk->value);
+    TALER_amount_hton (&kv.fee_withdraw,
+                       &dk->fee_withdraw);
+    TALER_amount_hton (&kv.fee_deposit,
+                       &dk->fee_deposit);
+    TALER_amount_hton (&kv.fee_refresh,
+                       &dk->fee_refresh);
+    TALER_amount_hton (&kv.fee_refund,
+                       &dk->fee_refund);
+    GNUNET_CRYPTO_eddsa_key_get_public (&is->master_priv.eddsa_priv,
+                                        &kv.master.eddsa_pub);
+    GNUNET_CRYPTO_hash (is->auditor_url,
+                        strlen (is->auditor_url) + 1,
+                        &kv.auditor_url_hash);
+    /* Finally sign ... */
+    GNUNET_CRYPTO_eddsa_sign (&is->auditor_priv.eddsa_priv,
+                              &kv,
+                              &auditor_sig.eddsa_sig);
   }
   ds->dh = TALER_EXCHANGE_add_auditor_denomination (
     is->ctx,
-    exchange_url,
+    is->exchange_url,
     &h_denom_pub,
-    &auditor_pub,
+    &is->auditor_pub,
     &auditor_sig,
     &denom_sig_add_cb,
     ds);
-  GNUNET_free (exchange_url);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);

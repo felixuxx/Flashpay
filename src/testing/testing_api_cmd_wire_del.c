@@ -107,7 +107,6 @@ wire_del_run (void *cls,
               struct TALER_TESTING_Interpreter *is)
 {
   struct WireDelState *ds = cls;
-  char *exchange_url;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Absolute now;
 
@@ -123,81 +122,26 @@ wire_del_run (void *cls,
   }
   else
   {
-    char *fn;
-    struct TALER_MasterPrivateKeyP master_priv;
+    struct TALER_MasterDelWirePS kv = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_WIRE),
+      .purpose.size = htonl (sizeof (kv)),
+      .end_date = GNUNET_TIME_absolute_hton (now),
+    };
 
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                                 "exchange-offline",
-                                                 "MASTER_PRIV_FILE",
-                                                 &fn))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-offline",
-                                 "MASTER_PRIV_FILE");
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    if (GNUNET_SYSERR ==
-        GNUNET_DISK_directory_create_for_file (fn))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not setup directory for master private key file `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           GNUNET_YES,
-                                           &master_priv.eddsa_priv))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not load master private key from `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    GNUNET_free (fn);
-
-    /* now sign */
-    {
-      struct TALER_MasterDelWirePS kv = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_WIRE),
-        .purpose.size = htonl (sizeof (kv)),
-        .end_date = GNUNET_TIME_absolute_hton (now),
-      };
-
-      TALER_exchange_wire_signature_hash (ds->payto_uri,
-                                          &kv.h_wire);
-      GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
-                                &kv,
-                                &master_sig.eddsa_signature);
-    }
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (is->cfg,
-                                             "exchange",
-                                             "BASE_URL",
-                                             &exchange_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "BASE_URL");
-    TALER_TESTING_interpreter_next (ds->is);
-    return;
+    TALER_exchange_wire_signature_hash (ds->payto_uri,
+                                        &kv.h_wire);
+    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
+                              &kv,
+                              &master_sig.eddsa_signature);
   }
   ds->dh = TALER_EXCHANGE_management_disable_wire (
     is->ctx,
-    exchange_url,
+    is->exchange_url,
     ds->payto_uri,
     now,
     &master_sig,
     &wire_del_cb,
     ds);
-  GNUNET_free (exchange_url);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);

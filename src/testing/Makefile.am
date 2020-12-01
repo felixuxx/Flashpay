@@ -134,6 +134,7 @@ check_PROGRAMS = \
   test_exchange_api_keys_cherry_picking \
   test_exchange_api_revocation \
   test_exchange_api_overlapping_keys_bug \
+  test_exchange_management_api \
   test_taler_exchange_aggregator-postgres \
   test_taler_exchange_wirewatch-postgres
 if HAVE_TWISTER
@@ -214,6 +215,15 @@ test_exchange_api_LDADD = \
   -lgnunetcurl \
   -lgnunetutil \
   -ljansson \
+  $(XLIB)
+
+test_exchange_management_api_SOURCES = \
+  test_exchange_management_api.c
+test_exchange_management_api_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
   $(XLIB)
 
 test_exchange_api_revocation_SOURCES = \

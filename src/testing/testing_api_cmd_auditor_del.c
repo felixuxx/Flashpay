@@ -102,8 +102,6 @@ auditor_del_run (void *cls,
                  struct TALER_TESTING_Interpreter *is)
 {
   struct AuditorDelState *ds = cls;
-  struct TALER_AuditorPublicKeyP auditor_pub;
-  char *exchange_url;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Absolute now;
 
@@ -119,121 +117,26 @@ auditor_del_run (void *cls,
   }
   else
   {
-    char *fn;
-    struct TALER_MasterPrivateKeyP master_priv;
-    struct TALER_AuditorPrivateKeyP auditor_priv;
+    struct TALER_MasterDelAuditorPS kv = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_AUDITOR),
+      .purpose.size = htonl (sizeof (kv)),
+      .end_date = GNUNET_TIME_absolute_hton (now),
+      .auditor_pub = is->auditor_pub,
+    };
 
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                                 "exchange-offline",
-                                                 "MASTER_PRIV_FILE",
-                                                 &fn))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-offline",
-                                 "MASTER_PRIV_FILE");
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    if (GNUNET_SYSERR ==
-        GNUNET_DISK_directory_create_for_file (fn))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not setup directory for master private key file `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           GNUNET_YES,
-                                           &master_priv.eddsa_priv))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not load master private key from `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    GNUNET_free (fn);
-
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                                 "auditor",
-                                                 "AUDITOR_PRIV_FILE",
-                                                 &fn))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "auditor",
-                                 "AUDITOR_PRIV_FILE");
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    if (GNUNET_SYSERR ==
-        GNUNET_DISK_directory_create_for_file (fn))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not setup directory for auditor private key file `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           GNUNET_YES,
-                                           &auditor_priv.eddsa_priv))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not load auditor private key from `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (ds->is);
-      return;
-    }
-    GNUNET_free (fn);
-    GNUNET_CRYPTO_eddsa_key_get_public (&auditor_priv.eddsa_priv,
-                                        &auditor_pub.eddsa_pub);
-
-    /* now sign */
-    {
-      struct TALER_MasterDelAuditorPS kv = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_AUDITOR),
-        .purpose.size = htonl (sizeof (kv)),
-        .end_date = GNUNET_TIME_absolute_hton (now),
-        .auditor_pub = auditor_pub,
-      };
-
-      /* Finally sign ... */
-      GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
-                                &kv,
-                                &master_sig.eddsa_signature);
-    }
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (is->cfg,
-                                             "exchange",
-                                             "BASE_URL",
-                                             &exchange_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "BASE_URL");
-    TALER_TESTING_interpreter_next (ds->is);
-    return;
+    /* Finally sign ... */
+    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
+                              &kv,
+                              &master_sig.eddsa_signature);
   }
   ds->dh = TALER_EXCHANGE_management_disable_auditor (
     is->ctx,
-    exchange_url,
-    &auditor_pub,
+    is->exchange_url,
+    &is->auditor_pub,
     now,
     &master_sig,
     &auditor_del_cb,
     ds);
-  GNUNET_free (exchange_url);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);

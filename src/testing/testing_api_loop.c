@@ -751,6 +751,124 @@ main_wrapper_exchange_connect (void *cls)
 
 
 /**
+ * Load the exchange and auditor key material into @a is.
+ *
+ * @param[in,out] is state to initialize
+ */
+static int
+load_keys (struct TALER_TESTING_Interpreter *is)
+{
+  char *fn;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (is->cfg,
+                                               "exchange-offline",
+                                               "MASTER_PRIV_FILE",
+                                               &fn))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-offline",
+                               "MASTER_PRIV_FILE");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_SYSERR ==
+      GNUNET_DISK_directory_create_for_file (fn))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not setup directory for master private key file `%s'\n",
+                fn);
+    GNUNET_free (fn);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_SYSERR ==
+      GNUNET_CRYPTO_eddsa_key_from_file (fn,
+                                         GNUNET_YES,
+                                         &is->master_priv.eddsa_priv))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not load master private key from `%s'\n",
+                fn);
+    GNUNET_free (fn);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (fn);
+  GNUNET_CRYPTO_eddsa_key_get_public (&is->master_priv.eddsa_priv,
+                                      &is->master_pub.eddsa_pub);
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (is->cfg,
+                                               "auditor",
+                                               "AUDITOR_PRIV_FILE",
+                                               &fn))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "auditor",
+                               "AUDITOR_PRIV_FILE");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_SYSERR ==
+      GNUNET_DISK_directory_create_for_file (fn))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not setup directory for auditor private key file `%s'\n",
+                fn);
+    GNUNET_free (fn);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_SYSERR ==
+      GNUNET_CRYPTO_eddsa_key_from_file (fn,
+                                         GNUNET_YES,
+                                         &is->auditor_priv.eddsa_priv))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not load auditor private key from `%s'\n",
+                fn);
+    GNUNET_free (fn);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (fn);
+  GNUNET_CRYPTO_eddsa_key_get_public (&is->auditor_priv.eddsa_priv,
+                                      &is->auditor_pub.eddsa_pub);
+  return GNUNET_OK;
+}
+
+
+/**
+ * Load the exchange and auditor URLs from the configuration into @a is.
+ *
+ * @param[in,out] is state to initialize
+ */
+static int
+load_urls (struct TALER_TESTING_Interpreter *is)
+{
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (is->cfg,
+                                               "auditor",
+                                               "BASE_URL",
+                                               &is->auditor_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "auditor",
+                               "BASE_URL");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (is->cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &is->exchange_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    GNUNET_free (is->auditor_url);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Install signal handlers plus schedules the main wrapper
  * around the "run" method.
  *
@@ -790,6 +908,12 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
           sizeof (is));
   is.exchanged = exchanged;
   is.cfg = cfg;
+  if (GNUNET_OK !=
+      load_keys (&is))
+    return GNUNET_SYSERR;
+  if (GNUNET_OK !=
+      load_urls (&is))
+    return GNUNET_SYSERR;
   sigpipe = GNUNET_DISK_pipe (GNUNET_DISK_PF_NONE);
   GNUNET_assert (NULL != sigpipe);
   shc_chld = GNUNET_SIGNAL_handler_install
@@ -802,8 +926,8 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   GNUNET_assert (NULL != is.ctx);
   is.rc = GNUNET_CURL_gnunet_rc_create (is.ctx);
 
-  /* Blocking */
 
+  /* Blocking */
   if (GNUNET_YES == exchange_connect)
     GNUNET_SCHEDULER_run (&main_wrapper_exchange_connect,
                           &main_ctx);
@@ -816,6 +940,8 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   GNUNET_SIGNAL_handler_uninstall (shc_chld);
   GNUNET_DISK_pipe_close (sigpipe);
   sigpipe = NULL;
+  GNUNET_free (is.auditor_url);
+  GNUNET_free (is.exchange_url);
   return is.result;
 }
 

@@ -7,3 +7,4 @@ test_taler_exchange_aggregator-postgres
 test_taler_exchange_wirewatch-postgres
 test_exchange_api_revocation
 report*
+test_exchange_management_api

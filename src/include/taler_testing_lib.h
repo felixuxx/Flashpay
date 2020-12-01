@@ -417,6 +417,36 @@ struct TALER_TESTING_Interpreter
   struct GNUNET_OS_Process *exchanged;
 
   /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP auditor_pub;
+
+  /**
+   * Private key of the auditor.
+   */
+  struct TALER_AuditorPrivateKeyP auditor_priv;
+
+  /**
+   * Private offline signing key.
+   */
+  struct TALER_MasterPrivateKeyP master_priv;
+
+  /**
+   * Public offline signing key.
+   */
+  struct TALER_MasterPublicKeyP master_pub;
+
+  /**
+   * URL of the auditor (as per configuration).
+   */
+  char *auditor_url;
+
+  /**
+   * URL of the exchange (as per configuration).
+   */
+  char *exchange_url;
+
+  /**
    * #GNUNET_OK if key state should be reloaded.  NOTE: this
    * field can be removed because a new "send signal" command
    * has been introduced.

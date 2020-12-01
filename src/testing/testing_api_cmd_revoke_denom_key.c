@@ -159,7 +159,6 @@ revoke_run (void *cls,
   struct RevokeState *rs = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
-  char *exchange_url;
   struct TALER_MasterSignatureP master_sig;
 
   rs->is = is;
@@ -188,79 +187,24 @@ revoke_run (void *cls,
   }
   else
   {
-    char *fn;
-    struct TALER_MasterPrivateKeyP master_priv;
+    struct TALER_MasterDenominationKeyRevocationPS kv = {
+      .purpose.purpose = htonl (
+        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
+      .purpose.size = htonl (sizeof (kv)),
+      .h_denom_pub = denom_pub->h_key
+    };
 
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                                 "exchange-offline",
-                                                 "MASTER_PRIV_FILE",
-                                                 &fn))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "exchange-offline",
-                                 "MASTER_PRIV_FILE");
-      TALER_TESTING_interpreter_next (rs->is);
-      return;
-    }
-    if (GNUNET_SYSERR ==
-        GNUNET_DISK_directory_create_for_file (fn))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not setup directory for master private key file `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (rs->is);
-      return;
-    }
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           GNUNET_YES,
-                                           &master_priv.eddsa_priv))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not load master private key from `%s'\n",
-                  fn);
-      GNUNET_free (fn);
-      TALER_TESTING_interpreter_next (rs->is);
-      return;
-    }
-    GNUNET_free (fn);
-
-    /* now sign */
-    {
-      struct TALER_MasterDenominationKeyRevocationPS kv = {
-        .purpose.purpose = htonl (
-          TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
-        .purpose.size = htonl (sizeof (kv)),
-        .h_denom_pub = denom_pub->h_key
-      };
-
-      GNUNET_CRYPTO_eddsa_sign (&master_priv.eddsa_priv,
-                                &kv,
-                                &master_sig.eddsa_signature);
-    }
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (is->cfg,
-                                             "exchange",
-                                             "BASE_URL",
-                                             &exchange_url))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "BASE_URL");
-    TALER_TESTING_interpreter_next (rs->is);
-    return;
+    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
+                              &kv,
+                              &master_sig.eddsa_signature);
   }
   rs->kh = TALER_EXCHANGE_management_revoke_denomination_key (
     is->ctx,
-    exchange_url,
+    is->exchange_url,
     &denom_pub->h_key,
     &master_sig,
     &success_cb,
     rs);
-  GNUNET_free (exchange_url);
   if (NULL == rs->kh)
   {
     GNUNET_break (0);

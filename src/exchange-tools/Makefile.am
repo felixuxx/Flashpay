@@ -4,7 +4,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
-  coins.conf
+  coins.conf \
+  exchange-offline.conf
 
 if USE_COVERAGE
   AM_CFLAGS = --coverage -O0
