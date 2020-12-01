@@ -718,6 +718,87 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
 
 
 /**
+ * Stop taler-exchange-crypto helpers.
+ *
+ * @param[in] helpers the process handles.
+ */
+static void
+stop_helpers (struct GNUNET_OS_Process *helpers[2])
+{
+  for (unsigned int i = 0; i<2; i++)
+  {
+    if (NULL == helpers[i])
+      continue;
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (helpers[i],
+                                          SIGTERM));
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (helpers[i]));
+    GNUNET_OS_process_destroy (helpers[i]);
+  }
+}
+
+
+/**
+ * Start taler-exchange-crypto helpers.
+ *
+ * @param config_filename configuration file to use
+ * @param[out] helpers where to store the process handles.
+ */
+static int
+start_helpers (const char *config_filename,
+               struct GNUNET_OS_Process *helpers[2])
+{
+  char *dir;
+
+  dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_LIBEXECDIR);
+  if (NULL == dir)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  {
+    char *fn;
+
+    GNUNET_asprintf (&fn,
+                     "%s/%s",
+                     dir,
+                     "taler-helper-crypto-eddsa");
+    helpers[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                          NULL, NULL, NULL,
+                                          fn,
+                                          "taler-helper-crypto-eddsa",
+                                          "-c", config_filename,
+                                          NULL);
+    GNUNET_free (fn);
+  }
+  {
+    char *fn;
+
+    GNUNET_asprintf (&fn,
+                     "%s/%s",
+                     dir,
+                     "taler-helper-crypto-rsa");
+    helpers[1] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                          NULL, NULL, NULL,
+                                          fn,
+                                          "taler-helper-crypto-rsa",
+                                          "-c", config_filename,
+                                          NULL);
+    GNUNET_free (fn);
+  }
+  GNUNET_free (dir);
+  if ( (NULL == helpers[0]) ||
+       (NULL == helpers[1]) )
+  {
+    stop_helpers (helpers);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Initialize scheduler loop and curl context for the test case
  * including starting and stopping the exchange using the given
  * configuration file.
@@ -727,12 +808,13 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
  * @return #GNUNET_OK if no errors occurred.
  */
 int
-TALER_TESTING_setup_with_exchange_cfg (void *cls,
-                                       const struct
-                                       GNUNET_CONFIGURATION_Handle *cfg)
+TALER_TESTING_setup_with_exchange_cfg (
+  void *cls,
+  const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   const struct TALER_TESTING_SetupContext *setup_ctx = cls;
   struct GNUNET_OS_Process *exchanged;
+  struct GNUNET_OS_Process *helpers[2];
   unsigned long long port;
   char *serve;
   char *base_url;
@@ -777,6 +859,14 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
     }
   }
   GNUNET_free (serve);
+  if (GNUNET_OK !=
+      start_helpers (setup_ctx->config_filename,
+                     helpers))
+  {
+    GNUNET_break (0);
+    GNUNET_free (base_url);
+    return 77;
+  }
   exchanged = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
                                        "taler-exchange-httpd",
@@ -784,7 +874,13 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
                                        "-a", /* some tests may need timetravel */
                                        "-c", setup_ctx->config_filename,
                                        NULL);
-
+  if (NULL == exchanged)
+  {
+    GNUNET_break (0);
+    GNUNET_free (base_url);
+    stop_helpers (helpers);
+    return 77;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
                                              "exchange",
@@ -794,12 +890,14 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
+    stop_helpers (helpers);
     return GNUNET_NO;
   }
 
   if (0 != TALER_TESTING_wait_exchange_ready (base_url))
   {
     GNUNET_free (base_url);
+    stop_helpers (helpers);
     return 77;
   }
   GNUNET_free (base_url);
@@ -816,6 +914,7 @@ TALER_TESTING_setup_with_exchange_cfg (void *cls,
   GNUNET_break (GNUNET_OK ==
                 GNUNET_OS_process_wait (exchanged));
   GNUNET_OS_process_destroy (exchanged);
+  stop_helpers (helpers);
   return result;
 }
 

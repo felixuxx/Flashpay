@@ -47,8 +47,7 @@ static struct TALER_TESTING_BankConfiguration bc;
 
 
 /**
- * Main function that will tell the interpreter what commands to
- * run.
+ * Main function that will tell the interpreter what commands to run.
  *
  * @param cls closure
  * @param is interpreter we use to run commands
@@ -58,7 +57,29 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command commands[] = {
+#if FIXME_MIGRATION_DONE
+    /* this currently fails, because the
+       auditor is already added by the test setup logic */
+    TALER_TESTING_cmd_auditor_del ("del-auditor-NOT-FOUND",
+                                   MHD_HTTP_NOT_FOUND,
+                                   false),
+#endif
+    TALER_TESTING_cmd_auditor_add ("add-auditor-BAD-SIG",
+                                   MHD_HTTP_FORBIDDEN,
+                                   true),
     TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
+                                   MHD_HTTP_NO_CONTENT,
+                                   false),
+    TALER_TESTING_cmd_auditor_add ("add-auditor-OK-idempotent",
+                                   MHD_HTTP_NO_CONTENT,
+                                   false),
+    TALER_TESTING_cmd_auditor_del ("del-auditor-BAD-SIG",
+                                   MHD_HTTP_FORBIDDEN,
+                                   true),
+    TALER_TESTING_cmd_auditor_del ("del-auditor-OK",
+                                   MHD_HTTP_NO_CONTENT,
+                                   false),
+    TALER_TESTING_cmd_auditor_del ("del-auditor-IDEMPOTENT",
                                    MHD_HTTP_NO_CONTENT,
                                    false),
     TALER_TESTING_cmd_end ()
@@ -91,7 +112,7 @@ main (int argc,
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
-                                          GNUNET_YES,
+                                          GNUNET_YES, /* reset DB? */
                                           &ec))
   {
   case GNUNET_SYSERR:
