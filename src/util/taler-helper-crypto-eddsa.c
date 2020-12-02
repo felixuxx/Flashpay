@@ -1532,15 +1532,6 @@ run (void *cls,
   GNUNET_DISK_directory_scan (keydir,
                               &import_key,
                               NULL);
-  if (NULL == keys_head)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "No keys could be created. Strange.\n");
-    global_ret = 5;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
   /* start job to accept incoming requests on 'sock' */
   read_task = GNUNET_SCHEDULER_add_read_net (GNUNET_TIME_UNIT_FOREVER_REL,
                                              unix_sock,
