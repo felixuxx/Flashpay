@@ -1474,9 +1474,7 @@ TALER_FAKEBANK_start (uint16_t port,
                    (unsigned int) port);
   h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
 #if EPOLL_SUPPORT
-                                  | MHD_USE_EPOLL_INTERNAL_THREAD
-#else
-                                  | MHD_USE_INTERNAL_POLLING_THREAD
+                                  | MHD_USE_EPOLL
 #endif
                                   | MHD_USE_DUAL_STACK,
                                   port,
