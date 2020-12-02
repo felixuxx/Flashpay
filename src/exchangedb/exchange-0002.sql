@@ -97,7 +97,7 @@ COMMENT ON COLUMN auditors.last_change
 CREATE TABLE IF NOT EXISTS auditor_denom_sigs
   (auditor_pub BYTEA NOT NULL REFERENCES auditors (auditor_pub) ON DELETE CASCADE
   ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
-  ,auditor_sig BYTEA PRIMARY KEY CHECK (LENGTH(auditor_sig)=64)
+  ,auditor_sig BYTEA CHECK (LENGTH(auditor_sig)=64)
   ,PRIMARY KEY (denom_pub_hash, auditor_pub)
   );
 COMMENT ON TABLE auditor_denom_sigs
