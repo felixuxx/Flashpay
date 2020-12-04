@@ -40,7 +40,9 @@ taler_exchange_offline_LDADD = \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
   -lgnunetcurl \
+  -ljansson \
   -lgnunetutil \
   $(XLIB)
 
