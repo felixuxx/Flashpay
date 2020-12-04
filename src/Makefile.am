@@ -25,9 +25,9 @@ SUBDIRS = \
   bank-lib \
   exchangedb \
   exchange \
-  exchange-tools \
   auditordb \
   auditor \
   lib \
+  exchange-tools \
   testing \
   benchmark
