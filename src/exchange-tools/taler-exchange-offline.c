@@ -145,6 +145,62 @@ struct SignkeyRevocationRequest
 
 
 /**
+ * Data structure for wire add requests.
+ */
+struct WireAddRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireAddRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireAddRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementWireEnableHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
+ * Data structure for wire del requests.
+ */
+struct WireDelRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireDelRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireDelRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementWireDisableHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
  * Next work item to perform.
  */
 static struct GNUNET_SCHEDULER_Task *nxt;
@@ -174,6 +230,27 @@ static struct SignkeyRevocationRequest *srr_head;
  * Active signkey revocation requests.
  */
 static struct SignkeyRevocationRequest *srr_tail;
+
+
+/**
+ * Active wire add requests.
+ */
+static struct WireAddRequest *war_head;
+
+/**
+ * Active wire add requests.
+ */
+static struct WireAddRequest *war_tail;
+
+/**
+ * Active wire del requests.
+ */
+static struct WireDelRequest *wdr_head;
+
+/**
+ * Active wire del requests.
+ */
+static struct WireDelRequest *wdr_tail;
 
 
 /**
@@ -216,6 +293,37 @@ do_shutdown (void *cls)
       GNUNET_free (srr);
     }
   }
+
+  {
+    struct WireAddRequest *war;
+
+    while (NULL != (war = war_head))
+    {
+      fprintf (stderr,
+               "Aborting incomplete wire add #%u\n",
+               (unsigned int) war->idx);
+      TALER_EXCHANGE_management_enable_wire_cancel (war->h);
+      GNUNET_CONTAINER_DLL_remove (war_head,
+                                   war_tail,
+                                   war);
+      GNUNET_free (war);
+    }
+  }
+  {
+    struct WireDelRequest *wdr;
+
+    while (NULL != (wdr = wdr_head))
+    {
+      fprintf (stderr,
+               "Aborting incomplete wire del #%u\n",
+               (unsigned int) wdr->idx);
+      TALER_EXCHANGE_management_disable_wire_cancel (wdr->h);
+      GNUNET_CONTAINER_DLL_remove (wdr_head,
+                                   wdr_tail,
+                                   wdr);
+      GNUNET_free (wdr);
+    }
+  }
   if (NULL != out)
   {
     json_dumpf (out,
@@ -255,6 +363,22 @@ do_shutdown (void *cls)
 
 
 /**
+ * Test if we should shut down because all tasks are done.
+ */
+static void
+test_shutdown (void)
+{
+  if ( (NULL == drr_head) &&
+       (NULL == srr_head) &&
+       (NULL == war_head) &&
+       (NULL == wdr_head) &&
+       (NULL == mgkh) &&
+       (NULL == nxt) )
+    GNUNET_SCHEDULER_shutdown ();
+}
+
+
+/**
  * Function to continue processing the next command.
  *
  * @param cls must be a `char *const*` with the array of
@@ -275,7 +399,7 @@ next (char *const *args)
   GNUNET_assert (NULL == nxt);
   if (NULL == args[0])
   {
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     return;
   }
   nxt = GNUNET_SCHEDULER_add_now (&work,
@@ -409,6 +533,7 @@ denom_revocation_cb (
                                drr_tail,
                                drr);
   GNUNET_free (drr);
+  test_shutdown ();
 }
 
 
@@ -490,6 +615,7 @@ signkey_revocation_cb (
                                srr_tail,
                                srr);
   GNUNET_free (srr);
+  test_shutdown ();
 }
 
 
@@ -547,6 +673,182 @@ upload_signkey_revocation (const char *exchange_url,
 
 
 /**
+ * Function called with information about the post wire add operation result.
+ *
+ * @param cls closure with a `struct WireAddRequest`
+ * @param hr HTTP response data
+ */
+static void
+wire_add_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct WireAddRequest *war = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    fprintf (stderr,
+             "Upload failed for command %u with status %u (%s)\n",
+             (unsigned int) war->idx,
+             hr->http_status,
+             hr->hint);
+  }
+  GNUNET_CONTAINER_DLL_remove (war_head,
+                               war_tail,
+                               war);
+  GNUNET_free (war);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload wire add data.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value argumets for denomination revocation
+ */
+static void
+upload_wire_add (const char *exchange_url,
+                 size_t idx,
+                 const json_t *value)
+{
+  struct TALER_MasterSignatureP master_sig_add;
+  struct TALER_MasterSignatureP master_sig_wire;
+  const char *payto_uri;
+  struct GNUNET_TIME_Absolute start_time;
+  struct WireAddRequest *war;
+  const char *err_name;
+  unsigned int err_line;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("payto_uri",
+                             &payto_uri),
+    GNUNET_JSON_spec_absolute_time ("validity_start",
+                                    &start_time),
+    GNUNET_JSON_spec_fixed_auto ("master_sig_add",
+                                 &master_sig_add),
+    GNUNET_JSON_spec_fixed_auto ("master_sig_wire",
+                                 &master_sig_wire),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    fprintf (stderr,
+             "Invalid input for adding wire account: %s#%u at %u (skipping)\n",
+             err_name,
+             err_line,
+             (unsigned int) idx);
+    return;
+  }
+  war = GNUNET_new (struct WireAddRequest);
+  war->idx = idx;
+  war->h =
+    TALER_EXCHANGE_management_enable_wire (ctx,
+                                           exchange_url,
+                                           payto_uri,
+                                           start_time,
+                                           &master_sig_add,
+                                           &master_sig_wire,
+                                           &wire_add_cb,
+                                           war);
+  GNUNET_CONTAINER_DLL_insert (war_head,
+                               war_tail,
+                               war);
+}
+
+
+/**
+ * Function called with information about the post wire del operation result.
+ *
+ * @param cls closure with a `struct WireDelRequest`
+ * @param hr HTTP response data
+ */
+static void
+wire_del_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct WireDelRequest *wdr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    fprintf (stderr,
+             "Upload failed for command %u with status %u (%s)\n",
+             (unsigned int) wdr->idx,
+             hr->http_status,
+             hr->hint);
+  }
+  GNUNET_CONTAINER_DLL_remove (wdr_head,
+                               wdr_tail,
+                               wdr);
+  GNUNET_free (wdr);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload wire del data.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value argumets for denomination revocation
+ */
+static void
+upload_wire_del (const char *exchange_url,
+                 size_t idx,
+                 const json_t *value)
+{
+  struct TALER_MasterSignatureP master_sig;
+  const char *payto_uri;
+  struct GNUNET_TIME_Absolute end_time;
+  struct WireDelRequest *wdr;
+  const char *err_name;
+  unsigned int err_line;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("payto_uri",
+                             &payto_uri),
+    GNUNET_JSON_spec_absolute_time ("validity_end",
+                                    &end_time),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    fprintf (stderr,
+             "Invalid input for deling wire account: %s#%u at %u (skipping)\n",
+             err_name,
+             err_line,
+             (unsigned int) idx);
+    return;
+  }
+  wdr = GNUNET_new (struct WireDelRequest);
+  wdr->idx = idx;
+  wdr->h =
+    TALER_EXCHANGE_management_disable_wire (ctx,
+                                            exchange_url,
+                                            payto_uri,
+                                            end_time,
+                                            &master_sig,
+                                            &wire_del_cb,
+                                            wdr);
+  GNUNET_CONTAINER_DLL_insert (wdr_head,
+                               wdr_tail,
+                               wdr);
+}
+
+
+/**
  * Perform uploads based on the JSON in #io.
  *
  * @param exchange_url base URL of the exchange to use
@@ -562,6 +864,14 @@ trigger_upload (const char *exchange_url)
     {
       .key = "revoke-signkey",
       .cb = &upload_signkey_revocation
+    },
+    {
+      .key = "enable-wire",
+      .cb = &upload_wire_add
+    },
+    {
+      .key = "disable-wire",
+      .cb = &upload_wire_del
     },
     // FIXME: many more handlers here!
     /* array termination */
@@ -722,6 +1032,7 @@ do_revoke_denomination_key (char *const *args)
                                GNUNET_JSON_from_data_auto (&h_denom_pub),
                                "master_sig",
                                GNUNET_JSON_from_data_auto (&master_sig)));
+  next (args + 1);
 }
 
 
@@ -770,6 +1081,113 @@ do_revoke_signkey (char *const *args)
                                GNUNET_JSON_from_data_auto (&exchange_pub),
                                "master_sig",
                                GNUNET_JSON_from_data_auto (&master_sig)));
+  next (args + 1);
+}
+
+
+/**
+ * Add wire account.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the hash of the denomination key to revoke
+ */
+static void
+do_add_wire (char *const *args)
+{
+  struct TALER_MasterSignatureP master_sig_add;
+  struct TALER_MasterSignatureP master_sig_wire;
+  struct GNUNET_TIME_Absolute now;
+
+  if (NULL != in)
+  {
+    fprintf (stderr,
+             "Downloaded data was not consumed, not adding wire account\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 4;
+    return;
+  }
+  if (NULL == args[0])
+  {
+    fprintf (stderr,
+             "You must specify a payto://-URI with this subcommand\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 5;
+    return;
+  }
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
+
+  TALER_exchange_offline_wire_add_sign (args[0],
+                                        now,
+                                        &master_priv,
+                                        &master_sig_add);
+  TALER_exchange_wire_signature_make (args[0],
+                                      &master_priv,
+                                      &master_sig_wire);
+  output_operation ("enable-wire",
+                    json_pack ("{s:s, s:o, s:o, s:o}",
+                               "payto_uri",
+                               args[0],
+                               "validity_start",
+                               GNUNET_JSON_from_time_abs (now),
+                               "master_sig_add",
+                               GNUNET_JSON_from_data_auto (&master_sig_add),
+                               "master_sig_wire",
+                               GNUNET_JSON_from_data_auto (&master_sig_wire)));
+  next (args + 1);
+}
+
+
+/**
+ * Disable wire account.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the hash of the denomination key to revoke
+ */
+static void
+do_del_wire (char *const *args)
+{
+  struct TALER_MasterSignatureP master_sig;
+  struct GNUNET_TIME_Absolute now;
+
+  if (NULL != in)
+  {
+    fprintf (stderr,
+             "Downloaded data was not consumed, not deleting wire account\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 4;
+    return;
+  }
+  if (NULL == args[0])
+  {
+    fprintf (stderr,
+             "You must specify a payto://-URI with this subcommand\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 5;
+    return;
+  }
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
+
+  TALER_exchange_offline_wire_del_sign (args[0],
+                                        now,
+                                        &master_priv,
+                                        &master_sig);
+  output_operation ("disable-wire",
+                    json_pack ("{s:s, s:o, s:o}",
+                               "payto_uri",
+                               args[0],
+                               "validity_end",
+                               GNUNET_JSON_from_time_abs (now),
+                               "master_sig_add",
+                               GNUNET_JSON_from_data_auto (&master_sig)));
+  next (args + 1);
 }
 
 
@@ -872,6 +1290,18 @@ work (void *cls)
       .help =
         "revoke exchange online signing key (public key must be given as argument)",
       .cb = &do_revoke_signkey
+    },
+    {
+      .name = "enable-account",
+      .help =
+        "enable wire account of the exchange (payto-URI must be given as argument)",
+      .cb = &do_add_wire
+    },
+    {
+      .name = "disable-account",
+      .help =
+        "disable wire account of the exchange (payto-URI must be given as argument)",
+      .cb = &do_del_wire
     },
     {
       .name = "upload",
