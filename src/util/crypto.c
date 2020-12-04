@@ -36,7 +36,7 @@
  * FIXME: Can we define some macro for this in configure.ac
  * to detect the version?
  */
-#define USE_GNUNET_RSA_BLINDING 1
+#define USE_GNUNET_RSA_BLINDING 0
 
 
 /**
@@ -394,6 +394,281 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 }
 
 
+#if ! USE_GNUNET_RSA_BLINDING
+
+
+/**
+ * The private information of an RSA key pair.
+ *
+ * FIXME: This declaration is evil, as it defines
+ * an opaque struct that is "owned" by GNUnet.
+ */
+struct GNUNET_CRYPTO_RsaPrivateKey
+{
+  /**
+   * Libgcrypt S-expression for the RSA private key.
+   */
+  gcry_sexp_t sexp;
+};
+
+
+/**
+ * The public information of an RSA key pair.
+ *
+ * FIXME: This declaration is evil, as it defines
+ * an opaque struct that is "owned" by GNUnet.
+ */
+struct GNUNET_CRYPTO_RsaPublicKey
+{
+  /**
+   * Libgcrypt S-expression for the RSA public key.
+   */
+  gcry_sexp_t sexp;
+};
+
+/**
+ * @brief an RSA signature
+ *
+ * FIXME: This declaration is evil, as it defines
+ * an opaque struct that is "owned" by GNUnet.
+ */
+struct GNUNET_CRYPTO_RsaSignature
+{
+  /**
+   * Libgcrypt S-expression for the RSA signature.
+   */
+  gcry_sexp_t sexp;
+};
+
+/**
+ * @brief RSA blinding key
+ */
+struct RsaBlindingKey
+{
+  /**
+   * Random value used for blinding.
+   */
+  gcry_mpi_t r;
+};
+
+
+/**
+ * Destroy a blinding key
+ *
+ * @param bkey the blinding key to destroy
+ */
+static void
+rsa_blinding_key_free (struct RsaBlindingKey *bkey)
+{
+  gcry_mpi_release (bkey->r);
+  GNUNET_free (bkey);
+}
+
+
+/**
+ * Extract values from an S-expression.
+ *
+ * @param array where to store the result(s)
+ * @param sexp S-expression to parse
+ * @param topname top-level name in the S-expression that is of interest
+ * @param elems names of the elements to extract
+ * @return 0 on success
+ */
+static int
+key_from_sexp (gcry_mpi_t *array,
+               gcry_sexp_t sexp,
+               const char *topname,
+               const char *elems)
+{
+  gcry_sexp_t list;
+  gcry_sexp_t l2;
+  const char *s;
+  unsigned int idx;
+
+  if (! (list = gcry_sexp_find_token (sexp, topname, 0)))
+    return 1;
+  l2 = gcry_sexp_cadr (list);
+  gcry_sexp_release (list);
+  list = l2;
+  if (! list)
+    return 2;
+  idx = 0;
+  for (s = elems; *s; s++, idx++)
+  {
+    if (! (l2 = gcry_sexp_find_token (list, s, 1)))
+    {
+      for (unsigned int i = 0; i < idx; i++)
+      {
+        gcry_free (array[i]);
+        array[i] = NULL;
+      }
+      gcry_sexp_release (list);
+      return 3;                 /* required parameter not found */
+    }
+    array[idx] = gcry_sexp_nth_mpi (l2, 1, GCRYMPI_FMT_USG);
+    gcry_sexp_release (l2);
+    if (! array[idx])
+    {
+      for (unsigned int i = 0; i < idx; i++)
+      {
+        gcry_free (array[i]);
+        array[i] = NULL;
+      }
+      gcry_sexp_release (list);
+      return 4;                 /* required parameter is invalid */
+    }
+  }
+  gcry_sexp_release (list);
+  return 0;
+}
+
+
+/**
+ * Test for malicious RSA key.
+ *
+ * Assuming n is an RSA modulous and r is generated using a call to
+ * GNUNET_CRYPTO_kdf_mod_mpi, if gcd(r,n) != 1 then n must be a
+ * malicious RSA key designed to deanomize the user.
+ *
+ * @param r KDF result
+ * @param n RSA modulus
+ * @return True if gcd(r,n) = 1, False means RSA key is malicious
+ */
+static int
+rsa_gcd_validate (gcry_mpi_t r, gcry_mpi_t n)
+{
+  gcry_mpi_t g;
+  int t;
+
+  g = gcry_mpi_new (0);
+  t = gcry_mpi_gcd (g, r, n);
+  gcry_mpi_release (g);
+  return t;
+}
+
+
+/**
+ * Computes a full domain hash seeded by the given public key.
+ * This gives a measure of provable security to the Taler exchange
+ * against one-more forgery attacks.  See:
+ *   https://eprint.iacr.org/2001/002.pdf
+ *   http://www.di.ens.fr/~pointche/Documents/Papers/2001_fcA.pdf
+ *
+ * @param hash initial hash of the message to sign
+ * @param pkey the public key of the signer
+ * @param rsize If not NULL, the number of bytes actually stored in buffer
+ * @return MPI value set to the FDH, NULL if RSA key is malicious
+ */
+static gcry_mpi_t
+rsa_full_domain_hash (const struct GNUNET_CRYPTO_RsaPublicKey *pkey,
+                      const struct GNUNET_HashCode *hash)
+{
+  gcry_mpi_t r, n;
+  void *xts;
+  size_t xts_len;
+  int ok;
+
+  /* Extract the composite n from the RSA public key */
+  GNUNET_assert (0 == key_from_sexp (&n, pkey->sexp, "rsa", "n"));
+  /* Assert that it at least looks like an RSA key */
+  GNUNET_assert (0 == gcry_mpi_get_flag (n, GCRYMPI_FLAG_OPAQUE));
+
+  /* We key with the public denomination key as a homage to RSA-PSS by  *
+  * Mihir Bellare and Phillip Rogaway.  Doing this lowers the degree   *
+  * of the hypothetical polyomial-time attack on RSA-KTI created by a  *
+  * polynomial-time one-more forgary attack.  Yey seeding!             */
+  xts_len = GNUNET_CRYPTO_rsa_public_key_encode (pkey, &xts);
+
+  GNUNET_CRYPTO_kdf_mod_mpi (&r,
+                             n,
+                             xts, xts_len,
+                             hash, sizeof(*hash),
+                             "RSA-FDA FTpsW!");
+  GNUNET_free (xts);
+
+  ok = rsa_gcd_validate (r, n);
+  gcry_mpi_release (n);
+  if (ok)
+    return r;
+  gcry_mpi_release (r);
+  return NULL;
+}
+
+
+/**
+ * Create a blinding key
+ *
+ * @param len length of the key in bits (i.e. 2048)
+ * @param bks pre-secret to use to derive the blinding key
+ * @return the newly created blinding key, NULL if RSA key is malicious
+ */
+static struct RsaBlindingKey *
+rsa_blinding_key_derive (const struct GNUNET_CRYPTO_RsaPublicKey *pkey,
+                         const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks)
+{
+  char *xts = "Blinding KDF extractor HMAC key";  /* Trusts bks' randomness more */
+  struct RsaBlindingKey *blind;
+  gcry_mpi_t n;
+
+  blind = GNUNET_new (struct RsaBlindingKey);
+  GNUNET_assert (NULL != blind);
+
+  /* Extract the composite n from the RSA public key */
+  GNUNET_assert (0 == key_from_sexp (&n, pkey->sexp, "rsa", "n"));
+  /* Assert that it at least looks like an RSA key */
+  GNUNET_assert (0 == gcry_mpi_get_flag (n, GCRYMPI_FLAG_OPAQUE));
+
+  GNUNET_CRYPTO_kdf_mod_mpi (&blind->r,
+                             n,
+                             xts, strlen (xts),
+                             bks, sizeof(*bks),
+                             "Blinding KDF");
+  if (0 == rsa_gcd_validate (blind->r, n))
+  {
+    GNUNET_free (blind);
+    blind = NULL;
+  }
+
+  gcry_mpi_release (n);
+  return blind;
+}
+
+
+/**
+ * Print an MPI to a newly created buffer
+ *
+ * @param v MPI to print.
+ * @param[out] newly allocated buffer containing the result
+ * @return number of bytes stored in @a buffer
+ */
+static size_t
+numeric_mpi_alloc_n_print (gcry_mpi_t v,
+                           char **buffer)
+{
+  size_t n;
+  char *b;
+  size_t rsize;
+
+  gcry_mpi_print (GCRYMPI_FMT_USG,
+                  NULL,
+                  0,
+                  &n,
+                  v);
+  b = GNUNET_malloc (n);
+  GNUNET_assert (0 ==
+                 gcry_mpi_print (GCRYMPI_FMT_USG,
+                                 (unsigned char *) b,
+                                 n,
+                                 &rsize,
+                                 v));
+  *buffer = b;
+  return n;
+}
+
+
+#endif /* ! USE_GNUNET_RSA_BLINDING */
+
+
 /**
  * Blinds the given message with the given blinding key
  *
@@ -418,7 +693,67 @@ TALER_rsa_blind (const struct GNUNET_HashCode *hash,
                                   buf,
                                   buf_size);
 #else
-# error "FIXME: implement"
+  struct RsaBlindingKey *bkey;
+  gcry_mpi_t data;
+  gcry_mpi_t ne[2];
+  gcry_mpi_t r_e;
+  gcry_mpi_t data_r_e;
+  int ret;
+
+  GNUNET_assert (buf != NULL);
+  GNUNET_assert (buf_size != NULL);
+  ret = key_from_sexp (ne, pkey->sexp, "public-key", "ne");
+  if (0 != ret)
+    ret = key_from_sexp (ne, pkey->sexp, "rsa", "ne");
+  if (0 != ret)
+  {
+    GNUNET_break (0);
+    *buf = NULL;
+    *buf_size = 0;
+    return 0;
+  }
+
+  data = rsa_full_domain_hash (pkey, hash);
+  if (NULL == data)
+    goto rsa_gcd_validate_failure;
+
+  bkey = rsa_blinding_key_derive (pkey, bks);
+  if (NULL == bkey)
+  {
+    gcry_mpi_release (data);
+    goto rsa_gcd_validate_failure;
+  }
+
+  r_e = gcry_mpi_new (0);
+  gcry_mpi_powm (r_e,
+                 bkey->r,
+                 ne[1],
+                 ne[0]);
+  data_r_e = gcry_mpi_new (0);
+  gcry_mpi_mulm (data_r_e,
+                 data,
+                 r_e,
+                 ne[0]);
+  gcry_mpi_release (data);
+  gcry_mpi_release (ne[0]);
+  gcry_mpi_release (ne[1]);
+  gcry_mpi_release (r_e);
+  rsa_blinding_key_free (bkey);
+
+  *buf_size = numeric_mpi_alloc_n_print (data_r_e,
+                                         (char **) buf);
+  gcry_mpi_release (data_r_e);
+
+  return GNUNET_YES;
+
+rsa_gcd_validate_failure:
+  /* We know the RSA key is malicious here, so warn the wallet. */
+  /* GNUNET_break_op (0); */
+  gcry_mpi_release (ne[0]);
+  gcry_mpi_release (ne[1]);
+  *buf = NULL;
+  *buf_size = 0;
+  return GNUNET_NO;
 #endif
 }
 
@@ -443,7 +778,76 @@ TALER_rsa_unblind (const struct GNUNET_CRYPTO_RsaSignature *sig,
                                     bks,
                                     pkey);
 #else
-# error "FIXME: implement"
+  struct RsaBlindingKey *bkey;
+  gcry_mpi_t n;
+  gcry_mpi_t s;
+  gcry_mpi_t r_inv;
+  gcry_mpi_t ubsig;
+  int ret;
+  struct GNUNET_CRYPTO_RsaSignature *sret;
+
+  ret = key_from_sexp (&n, pkey->sexp, "public-key", "n");
+  if (0 != ret)
+    ret = key_from_sexp (&n, pkey->sexp, "rsa", "n");
+  if (0 != ret)
+  {
+    GNUNET_break_op (0);
+    return NULL;
+  }
+  ret = key_from_sexp (&s, sig->sexp, "sig-val", "s");
+  if (0 != ret)
+    ret = key_from_sexp (&s, sig->sexp, "rsa", "s");
+  if (0 != ret)
+  {
+    gcry_mpi_release (n);
+    GNUNET_break_op (0);
+    return NULL;
+  }
+
+  bkey = rsa_blinding_key_derive (pkey, bks);
+  if (NULL == bkey)
+  {
+    /* RSA key is malicious since rsa_gcd_validate failed here.
+     * It should have failed during GNUNET_CRYPTO_rsa_blind too though,
+     * so the exchange is being malicious in an unfamilair way, maybe
+     * just trying to crash us.  */
+    GNUNET_break_op (0);
+    gcry_mpi_release (n);
+    gcry_mpi_release (s);
+    return NULL;
+  }
+
+  r_inv = gcry_mpi_new (0);
+  if (1 !=
+      gcry_mpi_invm (r_inv,
+                     bkey->r,
+                     n))
+  {
+    /* We cannot find r mod n, so gcd(r,n) != 1, which should get *
+    * caught above, but we handle it the same here.              */
+    GNUNET_break_op (0);
+    gcry_mpi_release (r_inv);
+    rsa_blinding_key_free (bkey);
+    gcry_mpi_release (n);
+    gcry_mpi_release (s);
+    return NULL;
+  }
+
+  ubsig = gcry_mpi_new (0);
+  gcry_mpi_mulm (ubsig, s, r_inv, n);
+  gcry_mpi_release (n);
+  gcry_mpi_release (r_inv);
+  gcry_mpi_release (s);
+  rsa_blinding_key_free (bkey);
+
+  sret = GNUNET_new (struct GNUNET_CRYPTO_RsaSignature);
+  GNUNET_assert (0 ==
+                 gcry_sexp_build (&sret->sexp,
+                                  NULL,
+                                  "(sig-val (rsa (s %M)))",
+                                  ubsig));
+  gcry_mpi_release (ubsig);
+  return sret;
 #endif
 }
 
