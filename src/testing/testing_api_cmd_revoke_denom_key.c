@@ -187,16 +187,9 @@ revoke_run (void *cls,
   }
   else
   {
-    struct TALER_MasterDenominationKeyRevocationPS kv = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
-      .purpose.size = htonl (sizeof (kv)),
-      .h_denom_pub = denom_pub->h_key
-    };
-
-    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
-                              &kv,
-                              &master_sig.eddsa_signature);
+    TALER_exchange_offline_denomination_revoke_sign (&denom_pub->h_key,
+                                                     &is->master_priv,
+                                                     &master_sig);
   }
   rs->kh = TALER_EXCHANGE_management_revoke_denomination_key (
     is->ctx,

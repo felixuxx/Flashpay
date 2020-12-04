@@ -152,23 +152,13 @@ wire_add_run (void *cls,
   }
   else
   {
-    struct TALER_MasterWireFeePS kv = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES),
-      .purpose.size = htonl (sizeof (kv)),
-      .start_date = GNUNET_TIME_absolute_hton (start_time),
-      .end_date = GNUNET_TIME_absolute_hton (end_time),
-    };
-
-    GNUNET_CRYPTO_hash (ds->wire_method,
-                        strlen (ds->wire_method) + 1,
-                        &kv.h_wire_method);
-    TALER_amount_hton (&kv.wire_fee,
-                       &wire_fee);
-    TALER_amount_hton (&kv.closing_fee,
-                       &closing_fee);
-    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
-                              &kv,
-                              &master_sig.eddsa_signature);
+    TALER_exchange_offline_wire_fee_sign (ds->wire_method,
+                                          start_time,
+                                          end_time,
+                                          &wire_fee,
+                                          &closing_fee,
+                                          &is->master_priv,
+                                          &master_sig);
   }
   ds->dh = TALER_EXCHANGE_management_set_wire_fees (
     is->ctx,

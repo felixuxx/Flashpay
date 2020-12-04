@@ -269,23 +269,15 @@ add_keys (void *cls,
 
     /* check signature is valid */
     {
-      struct TALER_ExchangeSigningKeyValidityPS skv = {
-        .purpose.purpose = htonl (
-          TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
-        .purpose.size = htonl (sizeof (skv)),
-        .master_public_key = TEH_master_public_key,
-        .start = x,
-        .expire = y,
-        .end = z,
-        .signkey_pub = akc->s_sigs[i].exchange_pub
-      };
-
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-            &skv,
-            &akc->s_sigs[i].master_sig.eddsa_signature,
-            &TEH_master_public_key.eddsa_pub))
+          TALER_exchange_offline_signkey_validity_verify (
+            &akc->s_sigs[i].exchange_pub,
+            x,
+            y,
+            z,
+            &TEH_master_public_key,
+            &
+            & akc->s_sigs[i].master_sig))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (

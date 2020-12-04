@@ -161,30 +161,19 @@ TEH_handler_management_denominations_wire_disable (
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
+  if (GNUNET_OK !=
+      TALER_exchange_offline_wire_del_verify (
+        awc.payto_uri,
+        awc.validity_end,
+        &TEH_master_public_key,
+        &awc.master_sig))
   {
-    struct TALER_MasterDelWirePS aw = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_DEL_WIRE),
-      .purpose.size = htonl (sizeof (aw)),
-      .end_date = GNUNET_TIME_absolute_hton (awc.validity_end),
-    };
-
-    TALER_exchange_wire_signature_hash (awc.payto_uri,
-                                        &aw.h_wire);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_MASTER_DEL_WIRE,
-          &aw,
-          &awc.master_sig.eddsa_signature,
-          &TEH_master_public_key.eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_MANAGEMENT_WIRE_DEL_SIGNATURE_INVALID,
-        NULL);
-    }
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_EXCHANGE_MANAGEMENT_WIRE_DEL_SIGNATURE_INVALID,
+      NULL);
   }
   qs = TEH_DB_run_transaction (connection,
                                "del wire",

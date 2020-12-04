@@ -122,17 +122,10 @@ wire_del_run (void *cls,
   }
   else
   {
-    struct TALER_MasterDelWirePS kv = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_WIRE),
-      .purpose.size = htonl (sizeof (kv)),
-      .end_date = GNUNET_TIME_absolute_hton (now),
-    };
-
-    TALER_exchange_wire_signature_hash (ds->payto_uri,
-                                        &kv.h_wire);
-    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
-                              &kv,
-                              &master_sig.eddsa_signature);
+    TALER_exchange_offline_wire_del_sign (ds->payto_uri,
+                                          now,
+                                          &is->master_priv,
+                                          &master_sig);
   }
   ds->dh = TALER_EXCHANGE_management_disable_wire (
     is->ctx,

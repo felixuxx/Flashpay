@@ -168,29 +168,18 @@ TEH_handler_management_denominations_wire (
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
+  if (GNUNET_OK !=
+      TALER_exchange_offline_wire_add_verify (awc.payto_uri,
+                                              awc.validity_start,
+                                              &TEH_master_public_key,
+                                              &awc.master_sig_add))
   {
-    struct TALER_MasterAddWirePS aw = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_ADD_WIRE),
-      .purpose.size = htonl (sizeof (aw)),
-      .start_date = GNUNET_TIME_absolute_hton (awc.validity_start),
-    };
-
-    TALER_exchange_wire_signature_hash (awc.payto_uri,
-                                        &aw.h_wire);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_MASTER_ADD_WIRE,
-          &aw,
-          &awc.master_sig_add.eddsa_signature,
-          &TEH_master_public_key.eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_MANAGEMENT_WIRE_ADD_SIGNATURE_INVALID,
-        NULL);
-    }
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_EXCHANGE_MANAGEMENT_WIRE_ADD_SIGNATURE_INVALID,
+      NULL);
   }
   if (GNUNET_OK !=
       TALER_exchange_wire_signature_check (awc.payto_uri,

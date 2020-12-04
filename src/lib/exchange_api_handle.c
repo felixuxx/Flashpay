@@ -394,26 +394,17 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
 
   if (! check_sigs)
     return GNUNET_OK;
+  if (GNUNET_OK !=
+      TALER_exchange_offline_signkey_validity_verify
+        (&sign_key->key,
+        sign_key->valid_from,
+        sign_key->valid_until,
+        sign_key->valid_legal,
+        master_key,
+        &sign_key_issue_sig))
   {
-    struct TALER_ExchangeSigningKeyValidityPS sign_key_issue = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
-      .purpose.size = htonl (sizeof (sign_key_issue)),
-      .signkey_pub = sign_key->key,
-      .master_public_key = *master_key,
-      .start = GNUNET_TIME_absolute_hton (sign_key->valid_from),
-      .expire = GNUNET_TIME_absolute_hton (sign_key->valid_until),
-      .end = GNUNET_TIME_absolute_hton (sign_key->valid_legal)
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                    &sign_key_issue,
-                                    &sign_key_issue_sig.eddsa_signature,
-                                    &master_key->eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
   }
   sign_key->master_sig = sign_key_issue_sig;
   return GNUNET_OK;

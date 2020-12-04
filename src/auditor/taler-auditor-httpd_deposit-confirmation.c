@@ -111,10 +111,13 @@ verify_and_execute_deposit_confirmation (
   {
     /* Not in cache, need to verify the signature, persist it, and possibly cache it */
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                    &skv,
-                                    &es->master_sig.eddsa_signature,
-                                    &es->master_public_key.eddsa_pub))
+        TALER_exchange_offline_signkey_validity_verify (
+          &es->exchange_pub,
+          es->ep_start,
+          es->ep_expire,
+          es->ep_end,
+          &es->master_public_key,
+          &es->master_sig))
     {
       TALER_LOG_WARNING ("Invalid signature on exchange signing key\n");
       return TALER_MHD_reply_with_error (connection,

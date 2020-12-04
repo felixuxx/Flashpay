@@ -208,27 +208,18 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
       return GNUNET_SYSERR;
     }
   }
+  if (GNUNET_OK !=
+      TALER_exchange_offline_signkey_validity_verify (
+        exchange_pub,
+        ep_start,
+        ep_expire,
+        ep_end,
+        master_pub,
+        master_sig))
   {
-    struct TALER_ExchangeSigningKeyValidityPS sv = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
-      .purpose.size = htonl (sizeof (sv)),
-      .master_public_key = *master_pub,
-      .start = GNUNET_TIME_absolute_hton (ep_start),
-      .expire = GNUNET_TIME_absolute_hton (ep_expire),
-      .end = GNUNET_TIME_absolute_hton (ep_end),
-      .signkey_pub = *exchange_pub
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY,
-                                    &sv,
-                                    &master_sig->eddsa_signature,
-                                    &master_pub->eddsa_pub))
-    {
-      GNUNET_break (0);
-      TALER_LOG_WARNING ("Invalid signature on exchange signing key!\n");
-      return GNUNET_SYSERR;
-    }
+    GNUNET_break (0);
+    TALER_LOG_WARNING ("Invalid signature on exchange signing key!\n");
+    return GNUNET_SYSERR;
   }
   if (0 == GNUNET_TIME_absolute_get_remaining (ep_end).rel_value_us)
   {

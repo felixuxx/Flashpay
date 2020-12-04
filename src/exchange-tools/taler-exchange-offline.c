@@ -574,7 +574,9 @@ do_revoke_denomination_key (char *const *args)
   if (GNUNET_OK !=
       load_offline_key ())
     return;
-  // FIXME: do sign, create master_sig!
+  TALER_exchange_offline_denomination_revoke_sign (&h_denom_pub,
+                                                   &master_priv,
+                                                   &master_sig);
   output_operation ("revoke-denomination",
                     json_pack ("{s:o, s:o}",
                                "h_denom_pub",

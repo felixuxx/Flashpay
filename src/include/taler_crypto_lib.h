@@ -1050,7 +1050,219 @@ TALER_CRYPTO_helper_esign_disconnect (
   struct TALER_CRYPTO_ExchangeSignHelper *esh);
 
 
+/* ********************* offline signing ************************** */
+
+/**
+ * Create denomination revocation signature.
+ *
+ * @param h_denom_pub hash of public denomination key to revoke
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_denomination_revoke_sign (
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify denomination revocation signature.
+ *
+ * @param h_denom_pub hash of public denomination key to revoke
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_denomination_revoke_verify (
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Create signkey revocation signature.
+ *
+ * @param exchange_pub public signing key to revoke
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_signkey_revoke_sign (
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify signkey revocation signature.
+ *
+ * @param exchange_pub public signkey key to revoke
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_signkey_revoke_verify (
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Create signkey validity signature.
+ *
+ * @param exchange_pub public signing key to validate
+ * @param start_sign starting point of validity for signing
+ * @param end_sign end point (exclusive) for validity for signing
+ * @param end_legal legal end point of signature validity
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_signkey_validity_sign (
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Absolute end_sign,
+  struct GNUNET_TIME_Absolute end_legal,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify signkey validitity signature.
+ *
+ * @param exchange_pub public signkey key to validate
+ * @param start_sign starting point of validity for signing
+ * @param end_sign end point (exclusive) for validity for signing
+ * @param end_legal legal end point of signature validity
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_signkey_validity_verify (
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Absolute end_sign,
+  struct GNUNET_TIME_Absolute end_legal,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
 /* **************** /wire account offline signing **************** */
+
+
+/**
+ * Create wire fee signature.
+ *
+ * @param payment_method the payment method
+ * @param start_time when do the fees start to apply
+ * @param end_time when do the fees start to apply
+ * @param wire_fee the wire fee
+ * @param closing_fee the closing fee
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_wire_fee_sign (
+  const char *payment_method,
+  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Absolute end_time,
+  const struct TALER_Amount *wire_fee,
+  const struct TALER_Amount *closing_fee,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify wire fee signature.
+ *
+ * @param payment_method the payment method
+ * @param start_time when do the fees start to apply
+ * @param end_time when do the fees start to apply
+ * @param wire_fee the wire fee
+ * @param closing_fee the closing fee
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_wire_fee_verify (
+  const char *payment_method,
+  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Absolute end_time,
+  const struct TALER_Amount *wire_fee,
+  const struct TALER_Amount *closing_fee,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Create wire account addition signature.
+ *
+ * @param payto_uri bank account
+ * @param now timestamp to use for the signature (rounded)
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_wire_add_sign (
+  const char *payto_uri,
+  struct GNUNET_TIME_Absolute now,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify wire account addition signature.
+ *
+ * @param payto_uri bank account
+ * @param sign_time timestamp when signature was created
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_wire_add_verify (
+  const char *payto_uri,
+  struct GNUNET_TIME_Absolute sign_time,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Create wire account removal signature.
+ *
+ * @param payto_uri bank account
+ * @param now timestamp to use for the signature (rounded)
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_wire_del_sign (
+  const char *payto_uri,
+  struct GNUNET_TIME_Absolute now,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify wire account deletion signature.
+ *
+ * @param payto_uri bank account
+ * @param sign_time timestamp when signature was created
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_wire_del_verify (
+  const char *payto_uri,
+  struct GNUNET_TIME_Absolute sign_time,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
 
 
 /**
@@ -1068,7 +1280,7 @@ TALER_exchange_wire_signature_hash (const char *payto_uri,
 /**
  * Check the signature in @a master_sig.
  *
- * @param payto_uri URL that is signed
+ * @param payto_uri URI that is signed
  * @param master_pub master public key of the exchange
  * @param master_sig signature of the exchange
  * @return #GNUNET_OK if signature is valid

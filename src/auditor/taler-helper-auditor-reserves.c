@@ -747,20 +747,11 @@ handle_recoup_by_reserve (
     }
     else
     {
-      /* verify msig */
-      struct TALER_MasterDenominationKeyRevocationPS kr = {
-        .purpose.purpose = htonl (
-          TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
-        .purpose.size = htonl (sizeof (kr)),
-        .h_denom_pub = coin->denom_pub_hash
-      };
-
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-            &kr,
-            &msig.eddsa_signature,
-            &TALER_ARL_master_pub.eddsa_pub))
+          TALER_exchange_offline_denomination_revoke_verify (
+            &coin->denom_pub_hash,
+            &TALER_ARL_master_pub,
+            &msig))
       {
         rev = "master signature invalid";
       }

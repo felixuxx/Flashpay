@@ -221,36 +221,23 @@ TEH_handler_management_post_wire_fees (
                                        TEH_currency);
   }
 
+  if (GNUNET_OK !=
+      TALER_exchange_offline_wire_fee_verify (
+        afc.wire_method,
+        afc.start_time,
+        afc.end_time,
+        &afc.wire_fee,
+        &afc.closing_fee,
+        &TEH_master_public_key,
+        &afc.master_sig))
   {
-    struct TALER_MasterWireFeePS wf = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES),
-      .purpose.size = htonl (sizeof (wf)),
-      .start_date = GNUNET_TIME_absolute_hton (afc.start_time),
-      .end_date = GNUNET_TIME_absolute_hton (afc.end_time),
-    };
-
-    TALER_amount_hton (&wf.wire_fee,
-                       &afc.wire_fee);
-    TALER_amount_hton (&wf.closing_fee,
-                       &afc.closing_fee);
-    GNUNET_CRYPTO_hash (afc.wire_method,
-                        strlen (afc.wire_method) + 1,
-                        &wf.h_wire_method);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_MASTER_WIRE_FEES,
-          &wf,
-          &afc.master_sig.eddsa_signature,
-          &TEH_master_public_key.eddsa_pub))
-    {
-      /* signature invalid */
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_MANAGEMENT_WIRE_FEE_SIGNATURE_INVALID,
-        NULL);
-    }
+    /* signature invalid */
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_EXCHANGE_MANAGEMENT_WIRE_FEE_SIGNATURE_INVALID,
+      NULL);
   }
 
   qs = TEH_DB_run_transaction (connection,

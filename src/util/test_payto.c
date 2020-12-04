@@ -58,7 +58,7 @@ main (int argc,
   r = TALER_payto_get_subject (
     "payto://x-taler-bank/localhost:1080/alice?subject=hello&amount=EUR:1");
   CHECK ("hello",
-	 r);
+         r);
 
   r = TALER_payto_get_subject (
     "payto://x-taler-bank/localhost:1080/alice");

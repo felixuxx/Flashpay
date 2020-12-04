@@ -22,6 +22,7 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
+#include "taler_crypto_lib.h"
 #include "taler_exchangedb_lib.h"
 
 
@@ -67,18 +68,9 @@ TALER_EXCHANGEDB_denomination_key_revoke (
   int ret;
   struct RevocationFileP rd;
 
-  {
-    struct TALER_MasterDenominationKeyRevocationPS rm = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
-      .purpose.size = htonl (sizeof (rm)),
-      .h_denom_pub = *denom_hash
-    };
-
-    GNUNET_CRYPTO_eddsa_sign (&mpriv->eddsa_priv,
-                              &rm,
-                              &rd.msig.eddsa_signature);
-  }
+  TALER_exchange_offline_denomination_revoke_sign (denom_hash,
+                                                   mpriv,
+                                                   &rd.msig);
   GNUNET_asprintf (&fn,
                    "%s" DIR_SEPARATOR_STR
                    "%s.rev",
@@ -464,34 +456,24 @@ revocations_iterate_cb (void *cls,
     return GNUNET_OK;
   }
 
+  if (GNUNET_OK !=
+      TALER_exchange_offline_denomination_revoke_verify (
+        &rf.denom_hash,
+        ric->master_pub,
+        &rf.msig))
   {
-    struct TALER_MasterDenominationKeyRevocationPS rm = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
-      .purpose.size = htonl (sizeof (rm)),
-      .h_denom_pub = rf.denom_hash
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-          &rm,
-          &rf.msig.eddsa_signature,
-          &ric->master_pub->eddsa_pub))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid revocation file `%s' found and ignored (bad signature)\n",
-                  filename);
-      return GNUNET_OK;
-    }
-
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Denomination key `%s' was revoked!\n",
-                GNUNET_h2s (&rm.h_denom_pub));
-    return ric->it (ric->it_cls,
-                    &rm.h_denom_pub,
-                    &rf.msig);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid revocation file `%s' found and ignored (bad signature)\n",
+                filename);
+    return GNUNET_OK;
   }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Denomination key `%s' was revoked!\n",
+              GNUNET_h2s (&rf.denom_hash));
+  return ric->it (ric->it_cls,
+                  &rf.denom_hash,
+                  &rf.msig);
 }
 
 

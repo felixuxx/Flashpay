@@ -944,25 +944,15 @@ get_wire_fee (struct AggregationContext *ac,
      easily make this one up, but it means that we have proof that the master
      key was used for inconsistent wire fees if a merchant complains.) */
   {
-    struct TALER_MasterWireFeePS wf = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES),
-      .purpose.size = htonl (sizeof (wf)),
-      .start_date = GNUNET_TIME_absolute_hton (wfi->start_date),
-      .end_date = GNUNET_TIME_absolute_hton (wfi->end_date)
-    };
-
-    GNUNET_CRYPTO_hash (method,
-                        strlen (method) + 1,
-                        &wf.h_wire_method);
-    TALER_amount_hton (&wf.wire_fee,
-                       &wfi->wire_fee);
-    TALER_amount_hton (&wf.closing_fee,
-                       &wfi->closing_fee);
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_FEES,
-                                    &wf,
-                                    &master_sig.eddsa_signature,
-                                    &TALER_ARL_master_pub.eddsa_pub))
+        TALER_exchange_offline_wire_fee_verify (
+          method,
+          wfi->start_date,
+          wfi->end_date,
+          &wfi->wire_fee,
+          &wfi->closing_fee,
+          &TALER_ARL_master_pub,
+          &master_sig))
     {
       report_row_inconsistency ("wire-fee",
                                 timestamp.abs_value_us,

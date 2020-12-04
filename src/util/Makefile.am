@@ -68,6 +68,7 @@ libtalerutil_la_SOURCES = \
   getopt.c \
   lang.c \
   mhd.c \
+  offline_signatures.c \
   payto.c \
   taler_error_codes.c \
   url.c \

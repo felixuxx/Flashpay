@@ -715,19 +715,11 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   if (0 < qs)
   {
     /* check revocation signature */
-    struct TALER_MasterDenominationKeyRevocationPS rm = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED),
-      .purpose.size = htonl (sizeof (rm)),
-      .h_denom_pub = *denom_hash
-    };
-
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_MASTER_DENOMINATION_KEY_REVOKED,
-          &rm,
-          &msig.eddsa_signature,
-          &TALER_ARL_master_pub.eddsa_pub))
+        TALER_exchange_offline_denomination_revoke_verify (
+          denom_hash,
+          &TALER_ARL_master_pub,
+          &msig))
     {
       report_row_inconsistency ("denomination revocations",
                                 rowid,

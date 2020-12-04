@@ -49,23 +49,24 @@ TALER_payto_get_subject (const char *payto_uri)
 
   do {
     if (0 == strncasecmp (++key,
-			  "subject",
-			  strlen ("subject")))
+                          "subject",
+                          strlen ("subject")))
     {
       value_start = strchr (key,
-	                    (unsigned char) '=');
+                            (unsigned char) '=');
       if (NULL == value_start)
         return NULL;
       value_end = strchrnul (value_start,
-	                     (unsigned char) '&');
+                             (unsigned char) '&');
 
       return GNUNET_strndup (value_start + 1,
-	                     value_end - value_start - 1);
+                             value_end - value_start - 1);
     }
   } while ( (key = strchr (key,
-			 (unsigned char) '&')) );
+                           (unsigned char) '&')) );
   return NULL;
 }
+
 
 /**
  * Obtain the payment method from a @a payto_uri. The
