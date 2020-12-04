@@ -15,6 +15,7 @@ endif
 bin_PROGRAMS = \
   taler-exchange-keyup \
   taler-exchange-keycheck \
+  taler-exchange-offline \
   taler-exchange-wire \
   taler-exchange-dbinit
 
@@ -30,6 +31,18 @@ taler_exchange_keyup_LDADD = \
   -lgnunetutil \
   $(XLIB)
 taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
+
+
+taler_exchange_offline_SOURCES = \
+  taler-exchange-offline.c
+taler_exchange_offline_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  $(XLIB)
 
 
 taler_exchange_wire_SOURCES = \
