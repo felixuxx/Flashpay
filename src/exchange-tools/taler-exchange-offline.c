@@ -117,6 +117,34 @@ struct DenomRevocationRequest
 
 
 /**
+ * Data structure for signkey revocation requests.
+ */
+struct SignkeyRevocationRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct SignkeyRevocationRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct SignkeyRevocationRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementRevokeSigningKeyHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
  * Next work item to perform.
  */
 static struct GNUNET_SCHEDULER_Task *nxt;
@@ -135,6 +163,17 @@ static struct DenomRevocationRequest *drr_head;
  * Active denomiantion revocation requests.
  */
 static struct DenomRevocationRequest *drr_tail;
+
+
+/**
+ * Active signkey revocation requests.
+ */
+static struct SignkeyRevocationRequest *srr_head;
+
+/**
+ * Active signkey revocation requests.
+ */
+static struct SignkeyRevocationRequest *srr_tail;
 
 
 /**
@@ -160,6 +199,21 @@ do_shutdown (void *cls)
                                    drr_tail,
                                    drr);
       GNUNET_free (drr);
+    }
+  }
+  {
+    struct SignkeyRevocationRequest *srr;
+
+    while (NULL != (srr = srr_head))
+    {
+      fprintf (stderr,
+               "Aborting incomplete signkey revocation #%u\n",
+               (unsigned int) srr->idx);
+      TALER_EXCHANGE_management_revoke_signing_key_cancel (srr->h);
+      GNUNET_CONTAINER_DLL_remove (srr_head,
+                                   srr_tail,
+                                   srr);
+      GNUNET_free (srr);
     }
   }
   if (NULL != out)
@@ -412,6 +466,87 @@ upload_denom_revocation (const char *exchange_url,
 
 
 /**
+ * Function called with information about the post revocation operation result.
+ *
+ * @param cls closure with a `struct SignkeyRevocationRequest`
+ * @param hr HTTP response data
+ */
+static void
+signkey_revocation_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct SignkeyRevocationRequest *srr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    fprintf (stderr,
+             "Upload failed for command %u with status %u (%s)\n",
+             (unsigned int) srr->idx,
+             hr->http_status,
+             hr->hint);
+  }
+  GNUNET_CONTAINER_DLL_remove (srr_head,
+                               srr_tail,
+                               srr);
+  GNUNET_free (srr);
+}
+
+
+/**
+ * Upload signkey revocation request data.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value argumets for denomination revocation
+ */
+static void
+upload_signkey_revocation (const char *exchange_url,
+                           size_t idx,
+                           const json_t *value)
+{
+  struct TALER_MasterSignatureP master_sig;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct SignkeyRevocationRequest *srr;
+  const char *err_name;
+  unsigned int err_line;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 &exchange_pub),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    fprintf (stderr,
+             "Invalid input for signkey revocation: %s#%u at %u (skipping)\n",
+             err_name,
+             err_line,
+             (unsigned int) idx);
+    return;
+  }
+  srr = GNUNET_new (struct SignkeyRevocationRequest);
+  srr->idx = idx;
+  srr->h =
+    TALER_EXCHANGE_management_revoke_signing_key (ctx,
+                                                  exchange_url,
+                                                  &exchange_pub,
+                                                  &master_sig,
+                                                  &signkey_revocation_cb,
+                                                  srr);
+  GNUNET_CONTAINER_DLL_insert (srr_head,
+                               srr_tail,
+                               srr);
+}
+
+
+/**
  * Perform uploads based on the JSON in #io.
  *
  * @param exchange_url base URL of the exchange to use
@@ -423,6 +558,10 @@ trigger_upload (const char *exchange_url)
     {
       .key = "revoke-denomination",
       .cb = &upload_denom_revocation
+    },
+    {
+      .key = "revoke-signkey",
+      .cb = &upload_signkey_revocation
     },
     // FIXME: many more handlers here!
     /* array termination */
@@ -587,6 +726,54 @@ do_revoke_denomination_key (char *const *args)
 
 
 /**
+ * Revoke signkey.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the hash of the denomination key to revoke
+ */
+static void
+do_revoke_signkey (char *const *args)
+{
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_MasterSignatureP master_sig;
+
+  if (NULL != in)
+  {
+    fprintf (stderr,
+             "Downloaded data was not consumed, refusing revocation\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 4;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &exchange_pub,
+                                       sizeof (exchange_pub))) )
+  {
+    fprintf (stderr,
+             "You must specify an exchange signing key with this subcommand\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 5;
+    return;
+  }
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
+  TALER_exchange_offline_signkey_revoke_sign (&exchange_pub,
+                                              &master_priv,
+                                              &master_sig);
+  output_operation ("revoke-signkey",
+                    json_pack ("{s:o, s:o}",
+                               "exchange_pub",
+                               GNUNET_JSON_from_data_auto (&exchange_pub),
+                               "master_sig",
+                               GNUNET_JSON_from_data_auto (&master_sig)));
+}
+
+
+/**
  * Function called with information about future keys.  Dumps the JSON output
  * (on success), either into an internal buffer or to stdout (depending on
  * whether there are subsequent commands).
@@ -679,6 +866,12 @@ work (void *cls)
       .help =
         "revoke denomination key (hash of public key must be given as argument)",
       .cb = &do_revoke_denomination_key
+    },
+    {
+      .name = "revoke-signkey",
+      .help =
+        "revoke exchange online signing key (public key must be given as argument)",
+      .cb = &do_revoke_signkey
     },
     {
       .name = "upload",
