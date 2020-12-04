@@ -1142,4 +1142,37 @@ TALER_merchant_wire_signature_make (
   struct TALER_MerchantSignatureP *merch_sig);
 
 
+/**
+ * Blinds the given message with the given blinding key
+ *
+ * @param hash hash of the message to sign
+ * @param bkey the blinding key
+ * @param pkey the public key of the signer
+ * @param[out] buf set to a buffer with the blinded message to be signed
+ * @param[out] buf_size number of bytes stored in @a buf
+ * @return #GNUNET_YES if successful, #GNUNET_NO if RSA key is malicious
+ */
+int
+TALER_rsa_blind (const struct GNUNET_HashCode *hash,
+                 const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
+                 struct GNUNET_CRYPTO_RsaPublicKey *pkey,
+                 void **buf,
+                 size_t *buf_size);
+
+
+/**
+ * Unblind a blind-signed signature.  The signature should have been generated
+ * with #GNUNET_CRYPTO_rsa_sign() using a hash that was blinded with
+ * #GNUNET_CRYPTO_rsa_blind().
+ *
+ * @param sig the signature made on the blinded signature purpose
+ * @param bks the blinding key secret used to blind the signature purpose
+ * @param pkey the public key of the signer
+ * @return unblinded signature on success, NULL if RSA key is bad or malicious.
+ */
+struct GNUNET_CRYPTO_RsaSignature *
+TALER_rsa_unblind (const struct GNUNET_CRYPTO_RsaSignature *sig,
+                   const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
+                   struct GNUNET_CRYPTO_RsaPublicKey *pkey);
+
 #endif

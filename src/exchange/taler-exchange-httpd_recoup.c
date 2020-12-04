@@ -438,11 +438,11 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                         sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                         &c_hash);
     if (GNUNET_YES !=
-        GNUNET_CRYPTO_rsa_blind (&c_hash,
-                                 &coin_bks->bks,
-                                 dki->denom_pub.rsa_public_key,
-                                 &coin_ev,
-                                 &coin_ev_size))
+        TALER_rsa_blind (&c_hash,
+                         &coin_bks->bks,
+                         dki->denom_pub.rsa_public_key,
+                         &coin_ev,
+                         &coin_ev_size))
     {
       GNUNET_break (0);
       TEH_KS_release (key_state);

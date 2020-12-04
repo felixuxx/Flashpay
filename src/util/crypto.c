@@ -25,6 +25,19 @@
 #include "taler_util.h"
 #include <gcrypt.h>
 
+/**
+ * Should we use the RSA blind signing implementation
+ * from libgnunetutil?  The blinding only works
+ * correctly with a current version of libgnunetutil.
+ *
+ * Only applies to blinding and unblinding, but
+ * not to blind signing.
+ *
+ * FIXME: Can we define some macro for this in configure.ac
+ * to detect the version?
+ */
+#define USE_GNUNET_RSA_BLINDING 1
+
 
 /**
  * Function called by libgcrypt on serious errors.
@@ -245,11 +258,11 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                       c_hash);
   if (GNUNET_YES !=
-      GNUNET_CRYPTO_rsa_blind (c_hash,
-                               &ps->blinding_key.bks,
-                               dk->rsa_public_key,
-                               &pd->coin_ev,
-                               &pd->coin_ev_size))
+      TALER_rsa_blind (c_hash,
+                       &ps->blinding_key.bks,
+                       dk->rsa_public_key,
+                       &pd->coin_ev,
+                       &pd->coin_ev_size))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -280,9 +293,9 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
 {
   struct GNUNET_CRYPTO_RsaSignature *sig;
 
-  sig = GNUNET_CRYPTO_rsa_unblind (blind_sig,
-                                   &ps->blinding_key.bks,
-                                   dk->rsa_public_key);
+  sig = TALER_rsa_unblind (blind_sig,
+                           &ps->blinding_key.bks,
+                           dk->rsa_public_key);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_rsa_verify (c_hash,
                                 sig,
@@ -378,6 +391,60 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
   /* Conclude */
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &rc->session_hash);
+}
+
+
+/**
+ * Blinds the given message with the given blinding key
+ *
+ * @param hash hash of the message to sign
+ * @param bkey the blinding key
+ * @param pkey the public key of the signer
+ * @param[out] buf set to a buffer with the blinded message to be signed
+ * @param[out] buf_size number of bytes stored in @a buf
+ * @return #GNUNET_YES if successful, #GNUNET_NO if RSA key is malicious
+ */
+int
+TALER_rsa_blind (const struct GNUNET_HashCode *hash,
+                 const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
+                 struct GNUNET_CRYPTO_RsaPublicKey *pkey,
+                 void **buf,
+                 size_t *buf_size)
+{
+#if USE_GNUNET_RSA_BLINDING
+  return GNUNET_CRYPTO_rsa_blind (hash,
+                                  bks,
+                                  pkey,
+                                  buf,
+                                  buf_size);
+#else
+# error "FIXME: implement"
+#endif
+}
+
+
+/**
+ * Unblind a blind-signed signature.  The signature should have been generated
+ * with #GNUNET_CRYPTO_rsa_sign() using a hash that was blinded with
+ * #GNUNET_CRYPTO_rsa_blind().
+ *
+ * @param sig the signature made on the blinded signature purpose
+ * @param bks the blinding key secret used to blind the signature purpose
+ * @param pkey the public key of the signer
+ * @return unblinded signature on success, NULL if RSA key is bad or malicious.
+ */
+struct GNUNET_CRYPTO_RsaSignature *
+TALER_rsa_unblind (const struct GNUNET_CRYPTO_RsaSignature *sig,
+                   const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
+                   struct GNUNET_CRYPTO_RsaPublicKey *pkey)
+{
+#if USE_GNUNET_RSA_BLINDING
+  return GNUNET_CRYPTO_rsa_unblind (sig,
+                                    bks,
+                                    pkey);
+#else
+# error "FIXME: implement"
+#endif
 }
 
 

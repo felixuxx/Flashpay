@@ -254,11 +254,11 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
       void *buf;
       size_t buf_size;
       GNUNET_assert (GNUNET_YES ==
-                     GNUNET_CRYPTO_rsa_blind (&m_hash,
-                                              &bks,
-                                              keys[i].denom_pub.rsa_public_key,
-                                              &buf,
-                                              &buf_size));
+                     TALER_rsa_blind (&m_hash,
+                                      &bks,
+                                      keys[i].denom_pub.rsa_public_key,
+                                      &buf,
+                                      &buf_size));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Requesting signature over %u bytes with key %s\n",
                   (unsigned int) buf_size,
@@ -290,9 +290,9 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
       {
         struct GNUNET_CRYPTO_RsaSignature *rs;
 
-        rs = GNUNET_CRYPTO_rsa_unblind (ds.rsa_signature,
-                                        &bks,
-                                        keys[i].denom_pub.rsa_public_key);
+        rs = TALER_rsa_unblind (ds.rsa_signature,
+                                &bks,
+                                keys[i].denom_pub.rsa_public_key);
         if (NULL == rs)
         {
           GNUNET_break (0);
@@ -409,11 +409,11 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         size_t buf_size;
 
         GNUNET_assert (GNUNET_YES ==
-                       GNUNET_CRYPTO_rsa_blind (&m_hash,
-                                                &bks,
-                                                keys[i].denom_pub.rsa_public_key,
-                                                &buf,
-                                                &buf_size));
+                       TALER_rsa_blind (&m_hash,
+                                        &bks,
+                                        keys[i].denom_pub.rsa_public_key,
+                                        &buf,
+                                        &buf_size));
         /* use this key as long as it works */
         while (1)
         {

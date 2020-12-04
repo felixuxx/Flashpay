@@ -123,9 +123,9 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   /* extract coin and signature */
   *coin_priv = fc.coin_priv;
   sig->rsa_signature
-    = GNUNET_CRYPTO_rsa_unblind (bsig,
-                                 &fc.blinding_key.bks,
-                                 rpub);
+    = TALER_rsa_unblind (bsig,
+                         &fc.blinding_key.bks,
+                         rpub);
   /* verify link_sig */
   {
     struct TALER_PlanchetDetail pd;
