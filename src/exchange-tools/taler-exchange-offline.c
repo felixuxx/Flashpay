@@ -524,9 +524,10 @@ denom_revocation_cb (
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
     fprintf (stderr,
-             "Upload failed for command %u with status %u (%s)\n",
+             "Upload failed for command %u with status %u: %s (%s)\n",
              (unsigned int) drr->idx,
              hr->http_status,
+             TALER_ErrorCode_get_hint (hr->ec),
              hr->hint);
   }
   GNUNET_CONTAINER_DLL_remove (drr_head,
@@ -606,9 +607,10 @@ signkey_revocation_cb (
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
     fprintf (stderr,
-             "Upload failed for command %u with status %u (%s)\n",
+             "Upload failed for command %u with status %u: %s (%s)\n",
              (unsigned int) srr->idx,
              hr->http_status,
+             TALER_ErrorCode_get_hint (hr->ec),
              hr->hint);
   }
   GNUNET_CONTAINER_DLL_remove (srr_head,
@@ -688,9 +690,10 @@ wire_add_cb (
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
     fprintf (stderr,
-             "Upload failed for command %u with status %u (%s)\n",
+             "Upload failed for command %u with status %u: %s (%s)\n",
              (unsigned int) war->idx,
              hr->http_status,
+             TALER_ErrorCode_get_hint (hr->ec),
              hr->hint);
   }
   GNUNET_CONTAINER_DLL_remove (war_head,
@@ -778,9 +781,10 @@ wire_del_cb (
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
     fprintf (stderr,
-             "Upload failed for command %u with status %u (%s)\n",
+             "Upload failed for command %u with status %u: %s (%s)\n",
              (unsigned int) wdr->idx,
              hr->http_status,
+             TALER_ErrorCode_get_hint (hr->ec),
              hr->hint);
   }
   GNUNET_CONTAINER_DLL_remove (wdr_head,
@@ -826,7 +830,7 @@ upload_wire_del (const char *exchange_url,
                          &err_line))
   {
     fprintf (stderr,
-             "Invalid input for deling wire account: %s#%u at %u (skipping)\n",
+             "Invalid input to disable wire account: %s#%u at %u (skipping)\n",
              err_name,
              err_line,
              (unsigned int) idx);
@@ -983,6 +987,8 @@ do_upload (char *const *args)
     return;
   }
   trigger_upload (exchange_url);
+  json_decref (out);
+  out = NULL;
   GNUNET_free (exchange_url);
 }
 
@@ -1185,7 +1191,7 @@ do_del_wire (char *const *args)
                                args[0],
                                "validity_end",
                                GNUNET_JSON_from_time_abs (now),
-                               "master_sig_add",
+                               "master_sig",
                                GNUNET_JSON_from_data_auto (&master_sig)));
   next (args + 1);
 }
@@ -1337,11 +1343,11 @@ work (void *cls)
     global_ret = 3;
   }
   fprintf (stderr,
-           "Supported subcommands:");
+           "Supported subcommands:\n");
   for (unsigned int i = 0; NULL != cmds[i].name; i++)
   {
     fprintf (stderr,
-             "%s - %s\n",
+             "\t%s - %s\n",
              cmds[i].name,
              cmds[i].help);
   }

@@ -86,6 +86,11 @@ handle_auditor_disable_finished (void *cls,
   wh->job = NULL;
   switch (response_code)
   {
+  case 0:
+    /* no reply */
+    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    hr.hint = "server offline?";
+    break;
   case MHD_HTTP_NO_CONTENT:
     break;
   case MHD_HTTP_FORBIDDEN:
