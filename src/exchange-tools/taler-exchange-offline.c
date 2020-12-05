@@ -534,7 +534,7 @@ load_offline_key (void)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "MASTER_PRIV_FILE");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     return GNUNET_SYSERR;
   }
   if (GNUNET_YES !=
@@ -552,7 +552,7 @@ load_offline_key (void)
                 fn,
                 "could not create file");
     GNUNET_free (fn);
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     return GNUNET_SYSERR;
   }
   GNUNET_free (fn);
@@ -629,6 +629,8 @@ upload_denom_revocation (const char *exchange_url,
              err_name,
              err_line,
              (unsigned int) idx);
+    global_ret = 7;
+    test_shutdown ();
     return;
   }
   drr = GNUNET_new (struct DenomRevocationRequest);
@@ -712,6 +714,8 @@ upload_signkey_revocation (const char *exchange_url,
              err_name,
              err_line,
              (unsigned int) idx);
+    global_ret = 7;
+    test_shutdown ();
     return;
   }
   srr = GNUNET_new (struct SignkeyRevocationRequest);
@@ -801,6 +805,8 @@ upload_wire_add (const char *exchange_url,
              err_name,
              err_line,
              (unsigned int) idx);
+    global_ret = 7;
+    test_shutdown ();
     return;
   }
   war = GNUNET_new (struct WireAddRequest);
@@ -889,6 +895,8 @@ upload_wire_del (const char *exchange_url,
              err_name,
              err_line,
              (unsigned int) idx);
+    global_ret = 7;
+    test_shutdown ();
     return;
   }
   wdr = GNUNET_new (struct WireDelRequest);
@@ -985,6 +993,8 @@ upload_wire_fee (const char *exchange_url,
              err_name,
              err_line,
              (unsigned int) idx);
+    global_ret = 7;
+    test_shutdown ();
     return;
   }
   wfr = GNUNET_new (struct WireFeeRequest);
@@ -1035,7 +1045,7 @@ trigger_upload (const char *exchange_url)
       .key = "set-wire-fee",
       .cb = &upload_wire_fee
     },
-    // FIXME: many more handlers here!
+    // FIXME: Add POST /management/keys handlers here!
     /* array termination */
     {
       .key = NULL
@@ -1056,7 +1066,7 @@ trigger_upload (const char *exchange_url)
       fprintf (stderr,
                "Malformed JSON input\n");
       global_ret = 3;
-      GNUNET_SCHEDULER_shutdown ();
+      test_shutdown ();
       return;
     }
     /* block of code that uses key and value */
@@ -1078,7 +1088,7 @@ trigger_upload (const char *exchange_url)
                "Upload does not know how to handle `%s'\n",
                key);
       global_ret = 3;
-      GNUNET_SCHEDULER_shutdown ();
+      test_shutdown ();
       return;
     }
   }
@@ -1099,7 +1109,7 @@ do_upload (char *const *args)
   {
     fprintf (stderr,
              "Downloaded data was not consumed, refusing upload\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 4;
     return;
   }
@@ -1118,7 +1128,7 @@ do_upload (char *const *args)
                err.line,
                err.source,
                err.position);
-      GNUNET_SCHEDULER_shutdown ();
+      test_shutdown ();
       global_ret = 2;
       return;
     }
@@ -1127,7 +1137,7 @@ do_upload (char *const *args)
   {
     fprintf (stderr,
              "Error: expected JSON array for `upload` command\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 2;
     return;
   }
@@ -1141,7 +1151,7 @@ do_upload (char *const *args)
                                "exchange",
                                "BASE_URL");
     global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     return;
   }
   trigger_upload (exchange_url);
@@ -1167,7 +1177,7 @@ do_revoke_denomination_key (char *const *args)
   {
     fprintf (stderr,
              "Downloaded data was not consumed, refusing revocation\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 4;
     return;
   }
@@ -1180,7 +1190,7 @@ do_revoke_denomination_key (char *const *args)
   {
     fprintf (stderr,
              "You must specify a denomination key with this subcommand\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 5;
     return;
   }
@@ -1216,7 +1226,7 @@ do_revoke_signkey (char *const *args)
   {
     fprintf (stderr,
              "Downloaded data was not consumed, refusing revocation\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 4;
     return;
   }
@@ -1229,7 +1239,7 @@ do_revoke_signkey (char *const *args)
   {
     fprintf (stderr,
              "You must specify an exchange signing key with this subcommand\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 5;
     return;
   }
@@ -1266,7 +1276,7 @@ do_add_wire (char *const *args)
   {
     fprintf (stderr,
              "Downloaded data was not consumed, not adding wire account\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 4;
     return;
   }
@@ -1274,7 +1284,7 @@ do_add_wire (char *const *args)
   {
     fprintf (stderr,
              "You must specify a payto://-URI with this subcommand\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 5;
     return;
   }
@@ -1321,7 +1331,7 @@ do_del_wire (char *const *args)
   {
     fprintf (stderr,
              "Downloaded data was not consumed, not deleting wire account\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 4;
     return;
   }
@@ -1329,7 +1339,7 @@ do_del_wire (char *const *args)
   {
     fprintf (stderr,
              "You must specify a payto://-URI with this subcommand\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 5;
     return;
   }
@@ -1377,7 +1387,7 @@ do_set_wire_fee (char *const *args)
   {
     fprintf (stderr,
              "Downloaded data was not consumed, not setting wire fee\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 4;
     return;
   }
@@ -1400,7 +1410,7 @@ do_set_wire_fee (char *const *args)
   {
     fprintf (stderr,
              "You must use YEAR, METHOD, WIRE-FEE and CLOSING-FEE as arguments for this subcommand\n");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 5;
     return;
   }
@@ -1466,7 +1476,7 @@ download_cb (void *cls,
              hr->hint,
              hr->http_status,
              (unsigned int) hr->ec);
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 4;
     return;
   }
@@ -1503,7 +1513,7 @@ do_download (char *const *args)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    GNUNET_SCHEDULER_shutdown ();
+    test_shutdown ();
     global_ret = 1;
     return;
   }
@@ -1512,6 +1522,304 @@ do_download (char *const *args)
                                              &download_cb,
                                              (void *) args);
   GNUNET_free (exchange_url);
+}
+
+
+/**
+ * Check that the security module keys are the same as before.  If we had no
+ * keys in store before, remember them (Trust On First Use).
+ *
+ * @param secm security module keys, must be an array of length 2
+ * @return #GNUNET_OK if keys match with what we have in store
+ *         #GNUNET_NO if we had nothing in store but now do
+ *         #GNUNET_SYSERR if keys changed from what we remember or other error
+ */
+static int
+tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
+{
+  char *fn;
+  struct TALER_SecurityModulePublicKeyP old[2];
+  ssize_t ret;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                               "exchange-offline",
+                                               "SECM_TOFU_FILE",
+                                               &fn))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-offline",
+                               "SECM_TOFU_FILE");
+    return GNUNET_SYSERR;
+  }
+  ret = GNUNET_DISK_fn_read (fn,
+                             &old,
+                             sizeof (old));
+  if (GNUNET_SYSERR != ret)
+  {
+    if (ret != sizeof (old))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "File `%s' corrupt\n",
+                  fn);
+      GNUNET_free (fn);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (fn);
+    /* TOFU check */
+    if (0 != memcmp (old,
+                     secm,
+                     sizeof (old)))
+      return GNUNET_SYSERR;
+    return GNUNET_OK;
+  }
+  /* persist keys for future runs */
+  ret = GNUNET_DISK_fn_write (fn,
+                              secm,
+                              sizeof (old),
+                              GNUNET_DISK_PERM_USER_READ);
+  if (ret != sizeof (old))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to store key material in file `%s'\n",
+                fn);
+    GNUNET_free (fn);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_NO;
+}
+
+
+/**
+ * Output @a signkeys for human consumption.
+ *
+ * @param signkeys keys to output
+ * @return #GNUNET_OK on success
+ */
+static int
+show_signkeys (const json_t *signkeys)
+{
+  size_t index;
+  json_t *value;
+
+
+  json_array_foreach (signkeys, index, value) {
+    const char *err_name;
+    unsigned int err_line;
+    struct GNUNET_JSON_Specification spec[] = {
+      // FIXME!
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (value,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
+               err_name,
+               err_line,
+               (unsigned int) index);
+      global_ret = 7;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+    // FIXME: print
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Output @a denomkeys for human consumption.
+ *
+ * @param denomkeys keys to output
+ * @return #GNUNET_OK on success
+ */
+static int
+show_denomkeys (const json_t *denomkeys)
+{
+  size_t index;
+  json_t *value;
+
+  json_array_foreach (denomkeys, index, value) {
+    const char *err_name;
+    unsigned int err_line;
+    struct GNUNET_JSON_Specification spec[] = {
+      // FIXME!
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (value,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
+               err_name,
+               err_line,
+               (unsigned int) index);
+      global_ret = 7;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+    // FIXME: print
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Show future keys.
+ *
+ * @param args the array of command-line arguments to process next
+ */
+static void
+do_show (char *const *args)
+{
+  if (NULL == in)
+  {
+    json_error_t err;
+
+    out = json_loadf (stdin,
+                      JSON_REJECT_DUPLICATES,
+                      &err);
+    if (NULL == in)
+    {
+      fprintf (stderr,
+               "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
+               err.text,
+               err.line,
+               err.source,
+               err.position);
+      global_ret = 2;
+      test_shutdown ();
+      return;
+    }
+  }
+
+  {
+    const char *err_name;
+    unsigned int err_line;
+    json_t *denomkeys;
+    json_t *signkeys;
+    struct TALER_MasterPublicKeyP mpub;
+    struct TALER_SecurityModulePublicKeyP secm[2];
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_json ("future_denoms",
+                             &denomkeys),
+      GNUNET_JSON_spec_json ("future_signkeys",
+                             &signkeys),
+      GNUNET_JSON_spec_fixed_auto ("master_pub",
+                                   &mpub),
+      GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
+                                   &secm[0]),
+      GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+                                   &secm[1]),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (in,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input to 'show': %s#%u (skipping)\n",
+               err_name,
+               err_line);
+      global_ret = 7;
+      test_shutdown ();
+      return;
+    }
+    if (0 !=
+        GNUNET_memcmp (&master_pub,
+                       &mpub))
+    {
+      fprintf (stderr,
+               "Fatal: exchange uses different master key!\n");
+      global_ret = 6;
+      test_shutdown ();
+      GNUNET_JSON_parse_free (spec);
+      return;
+    }
+    if (GNUNET_SYSERR ==
+        tofu_check (secm))
+    {
+      fprintf (stderr,
+               "Fatal: security module keys changed!\n");
+      global_ret = 8;
+      test_shutdown ();
+      GNUNET_JSON_parse_free (spec);
+      return;
+    }
+    if ( (GNUNET_OK !=
+          show_signkeys (signkeys)) ||
+         (GNUNET_OK !=
+          show_denomkeys (denomkeys)) )
+    {
+      global_ret = 8;
+      test_shutdown ();
+      GNUNET_JSON_parse_free (spec);
+      return;
+    }
+    GNUNET_JSON_parse_free (spec);
+  }
+  /* do NOT consume input if next argument is '-' */
+  if ( (NULL != args[0]) &&
+       (0 == strcmp ("-",
+                     args[0])) )
+  {
+    next (args + 1);
+    return;
+  }
+  json_decref (in);
+  in = NULL;
+  next (args);
+}
+
+
+/**
+ * Sign future keys.
+ *
+ * @param args the array of command-line arguments to process next
+ */
+static void
+do_sign (char *const *args)
+{
+  if (NULL == in)
+  {
+    json_error_t err;
+
+    out = json_loadf (stdin,
+                      JSON_REJECT_DUPLICATES,
+                      &err);
+    if (NULL == in)
+    {
+      fprintf (stderr,
+               "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
+               err.text,
+               err.line,
+               err.source,
+               err.position);
+      global_ret = 2;
+      test_shutdown ();
+      return;
+    }
+  }
+
+
+  // FIXME: do work here!
+
+  /* consume input */
+  json_decref (in);
+  in = NULL;
+  next (args);
 }
 
 
@@ -1525,6 +1833,18 @@ work (void *cls)
       .help =
         "obtain future public keys from exchange (to be performed online!)",
       .cb = &do_download
+    },
+    {
+      .name = "show",
+      .help =
+        "display future public keys from exchange for human review (pass '-' as argument to disable consuming input)",
+      .cb = &do_show
+    },
+    {
+      .name = "sign",
+      .help =
+        "sing all future public keys from the input",
+      .cb = &do_sign
     },
     {
       .name = "revoke-denomination",
@@ -1562,7 +1882,6 @@ work (void *cls)
         "upload operation result to exchange (to be performed online!)",
       .cb = &do_upload
     },
-    // FIXME: many more handlers here!
     /* list terminator */
     {
       .name = NULL,
