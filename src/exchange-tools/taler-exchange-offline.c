@@ -1593,15 +1593,16 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
 /**
  * Output @a signkeys for human consumption.
  *
+ * @param secm_pub security module public key used to sign the denominations
  * @param signkeys keys to output
  * @return #GNUNET_OK on success
  */
 static int
-show_signkeys (const json_t *signkeys)
+show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
+               const json_t *signkeys)
 {
   size_t index;
   json_t *value;
-
 
   json_array_foreach (signkeys, index, value) {
     const char *err_name;
@@ -1611,6 +1612,7 @@ show_signkeys (const json_t *signkeys)
     struct GNUNET_TIME_Absolute start_time;
     struct GNUNET_TIME_Absolute sign_end;
     struct GNUNET_TIME_Absolute legal_end;
+    struct GNUNET_TIME_Relative duration;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_absolute_time ("stamp_start",
                                       &start_time),
@@ -1640,8 +1642,35 @@ show_signkeys (const json_t *signkeys)
       test_shutdown ();
       return GNUNET_SYSERR;
     }
+    duration = GNUNET_TIME_absolute_get_difference (start_time,
+                                                    sign_end);
+    if (GNUNET_OK !=
+        TALER_exchange_secmod_eddsa_verify (&exchange_pub,
+                                            start_time,
+                                            duration,
+                                            secm_pub,
+                                            &secm_sig))
+    {
+      fprintf (stderr,
+               "Invalid security module signature for key %s (aborting)\n",
+               TALER_B2S (&exchange_pub));
+      global_ret = 9;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+    {
+      char *legal_end_s;
 
-    // FIXME: print
+      legal_end_s = GNUNET_strdup (
+        GNUNET_STRINGS_absolute_time_to_string (legal_end));
+      printf ("EXCHANGE-KEY %s starting at %s (used for: %s, legal end: %s)\n",
+              TALER_B2S (&exchange_pub),
+              GNUNET_STRINGS_absolute_time_to_string (start_time),
+              GNUNET_STRINGS_relative_time_to_string (duration,
+                                                      GNUNET_NO),
+              legal_end_s);
+      GNUNET_free (legal_end_s);
+    }
   }
   return GNUNET_OK;
 }
@@ -1650,11 +1679,13 @@ show_signkeys (const json_t *signkeys)
 /**
  * Output @a denomkeys for human consumption.
  *
+ * @param secm_pub security module public key used to sign the denominations
  * @param denomkeys keys to output
  * @return #GNUNET_OK on success
  */
 static int
-show_denomkeys (const json_t *denomkeys)
+show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
+                const json_t *denomkeys)
 {
   size_t index;
   json_t *value;
@@ -1662,10 +1693,44 @@ show_denomkeys (const json_t *denomkeys)
   json_array_foreach (denomkeys, index, value) {
     const char *err_name;
     unsigned int err_line;
+    const char *section_name;
+    struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_TIME_Absolute stamp_start;
+    struct GNUNET_TIME_Absolute stamp_expire_withdraw;
+    struct GNUNET_TIME_Absolute stamp_expire_legal;
+    struct TALER_Amount coin_value;
+    struct TALER_Amount fee_withdraw;
+    struct TALER_Amount fee_deposit;
+    struct TALER_Amount fee_refresh;
+    struct TALER_Amount fee_refund;
+    struct TALER_SecurityModuleSignatureP secm_sig;
     struct GNUNET_JSON_Specification spec[] = {
-      // FIXME!
+      GNUNET_JSON_spec_string ("section_name",
+                               &section_name),
+      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
+                                       &denom_pub.rsa_public_key),
+      TALER_JSON_spec_amount ("value",
+                              &coin_value),
+      TALER_JSON_spec_amount ("fee_withdraw",
+                              &fee_withdraw),
+      TALER_JSON_spec_amount ("fee_deposit",
+                              &fee_deposit),
+      TALER_JSON_spec_amount ("fee_refresh",
+                              &fee_refresh),
+      TALER_JSON_spec_amount ("fee_refund",
+                              &fee_refund),
+      GNUNET_JSON_spec_absolute_time ("stamp_start",
+                                      &stamp_start),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
+                                      &stamp_expire_withdraw),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
+                                      &stamp_expire_legal),
+      GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
+                                   &secm_sig),
       GNUNET_JSON_spec_end ()
     };
+    struct GNUNET_TIME_Relative duration;
+    struct GNUNET_HashCode h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -1678,11 +1743,34 @@ show_denomkeys (const json_t *denomkeys)
                err_name,
                err_line,
                (unsigned int) index);
+      GNUNET_JSON_parse_free (spec);
       global_ret = 7;
       test_shutdown ();
       return GNUNET_SYSERR;
     }
+    duration = GNUNET_TIME_absolute_get_difference (stamp_start,
+                                                    stamp_expire_withdraw);
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
+                                       &h_denom_pub);
+    if (GNUNET_OK !=
+        TALER_exchange_secmod_rsa_verify (&h_denom_pub,
+                                          section_name,
+                                          stamp_start,
+                                          duration,
+                                          secm_pub,
+                                          &secm_sig))
+    {
+      fprintf (stderr,
+               "Invalid security module signature for key %s (aborting)\n",
+               TALER_B2S (&h_denom_pub));
+      global_ret = 9;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+
     // FIXME: print
+
+    GNUNET_JSON_parse_free (spec);
   }
   return GNUNET_OK;
 }
@@ -1774,9 +1862,11 @@ do_show (char *const *args)
       return;
     }
     if ( (GNUNET_OK !=
-          show_signkeys (signkeys)) ||
+          show_signkeys (&secm[0],
+                         signkeys)) ||
          (GNUNET_OK !=
-          show_denomkeys (denomkeys)) )
+          show_denomkeys (&secm[1],
+                          denomkeys)) )
     {
       global_ret = 8;
       test_shutdown ();
