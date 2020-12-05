@@ -20,6 +20,7 @@
  */
 #include <platform.h>
 #include <gnunet/gnunet_json_lib.h>
+#include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 
 
@@ -201,6 +202,34 @@ struct WireDelRequest
 
 
 /**
+ * Data structure for announcing wire fees.
+ */
+struct WireFeeRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireFeeRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct WireFeeRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementSetWireFeeHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
  * Next work item to perform.
  */
 static struct GNUNET_SCHEDULER_Task *nxt;
@@ -251,6 +280,16 @@ static struct WireDelRequest *wdr_head;
  * Active wire del requests.
  */
 static struct WireDelRequest *wdr_tail;
+
+/**
+ * Active wire fee requests.
+ */
+static struct WireFeeRequest *wfr_head;
+
+/**
+ * Active wire fee requests.
+ */
+static struct WireFeeRequest *wfr_tail;
 
 
 /**
@@ -324,6 +363,21 @@ do_shutdown (void *cls)
       GNUNET_free (wdr);
     }
   }
+  {
+    struct WireFeeRequest *wfr;
+
+    while (NULL != (wfr = wfr_head))
+    {
+      fprintf (stderr,
+               "Aborting incomplete wire fee #%u\n",
+               (unsigned int) wfr->idx);
+      TALER_EXCHANGE_management_set_wire_fees_cancel (wfr->h);
+      GNUNET_CONTAINER_DLL_remove (wfr_head,
+                                   wfr_tail,
+                                   wfr);
+      GNUNET_free (wfr);
+    }
+  }
   if (NULL != out)
   {
     json_dumpf (out,
@@ -372,6 +426,7 @@ test_shutdown (void)
        (NULL == srr_head) &&
        (NULL == war_head) &&
        (NULL == wdr_head) &&
+       (NULL == wfr_head) &&
        (NULL == mgkh) &&
        (NULL == nxt) )
     GNUNET_SCHEDULER_shutdown ();
@@ -853,6 +908,105 @@ upload_wire_del (const char *exchange_url,
 
 
 /**
+ * Function called with information about the post wire fee operation result.
+ *
+ * @param cls closure with a `struct WireFeeRequest`
+ * @param hr HTTP response data
+ */
+static void
+wire_fee_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct WireFeeRequest *wfr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    fprintf (stderr,
+             "Upload failed for command %u with status %u: %s (%s)\n",
+             (unsigned int) wfr->idx,
+             hr->http_status,
+             TALER_ErrorCode_get_hint (hr->ec),
+             hr->hint);
+  }
+  GNUNET_CONTAINER_DLL_remove (wfr_head,
+                               wfr_tail,
+                               wfr);
+  GNUNET_free (wfr);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload wire fee.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value argumets for denomination revocation
+ */
+static void
+upload_wire_fee (const char *exchange_url,
+                 size_t idx,
+                 const json_t *value)
+{
+  struct TALER_MasterSignatureP master_sig;
+  const char *wire_method;
+  struct WireFeeRequest *wfr;
+  const char *err_name;
+  unsigned int err_line;
+  struct TALER_Amount wire_fee;
+  struct TALER_Amount closing_fee;
+  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Absolute end_time;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("wire_method",
+                             &wire_method),
+    TALER_JSON_spec_amount ("wire_fee",
+                            &wire_fee),
+    TALER_JSON_spec_amount ("closing_fee",
+                            &closing_fee),
+    GNUNET_JSON_spec_absolute_time ("start_time",
+                                    &start_time),
+    GNUNET_JSON_spec_absolute_time ("end_time",
+                                    &end_time),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    fprintf (stderr,
+             "Invalid input to set wire fee: %s#%u at %u (skipping)\n",
+             err_name,
+             err_line,
+             (unsigned int) idx);
+    return;
+  }
+  wfr = GNUNET_new (struct WireFeeRequest);
+  wfr->idx = idx;
+  wfr->h =
+    TALER_EXCHANGE_management_set_wire_fees (ctx,
+                                             exchange_url,
+                                             wire_method,
+                                             start_time,
+                                             end_time,
+                                             &wire_fee,
+                                             &closing_fee,
+                                             &master_sig,
+                                             &wire_fee_cb,
+                                             wfr);
+  GNUNET_CONTAINER_DLL_insert (wfr_head,
+                               wfr_tail,
+                               wfr);
+}
+
+
+/**
  * Perform uploads based on the JSON in #io.
  *
  * @param exchange_url base URL of the exchange to use
@@ -876,6 +1030,10 @@ trigger_upload (const char *exchange_url)
     {
       .key = "disable-wire",
       .cb = &upload_wire_del
+    },
+    {
+      .key = "set-wire-fee",
+      .cb = &upload_wire_fee
     },
     // FIXME: many more handlers here!
     /* array termination */
@@ -1198,6 +1356,89 @@ do_del_wire (char *const *args)
 
 
 /**
+ * Set wire fees for the given year.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the year, args[1] the wire fee and args[2]
+ *        the closing fee.
+ */
+static void
+do_set_wire_fee (char *const *args)
+{
+  struct TALER_MasterSignatureP master_sig;
+  char dummy;
+  unsigned int year;
+  struct TALER_Amount wire_fee;
+  struct TALER_Amount closing_fee;
+  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Absolute end_time;
+
+  if (NULL != in)
+  {
+    fprintf (stderr,
+             "Downloaded data was not consumed, not setting wire fee\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 4;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (NULL == args[1]) ||
+       (NULL == args[2]) ||
+       (NULL == args[3]) ||
+       ( (1 != sscanf (args[0],
+                       "%u%c",
+                       &year,
+                       &dummy)) &&
+         (0 != strcasecmp ("now",
+                           args[0])) ) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[2],
+                                &wire_fee)) ||
+       (GNUNET_OK !=
+        TALER_string_to_amount (args[3],
+                                &closing_fee)) )
+  {
+    fprintf (stderr,
+             "You must use YEAR, METHOD, WIRE-FEE and CLOSING-FEE as arguments for this subcommand\n");
+    GNUNET_SCHEDULER_shutdown ();
+    global_ret = 5;
+    return;
+  }
+  if (0 == strcasecmp ("now",
+                       args[0]))
+    year = GNUNET_TIME_get_current_year ();
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
+  start_time = GNUNET_TIME_year_to_time (year);
+  end_time = GNUNET_TIME_year_to_time (year + 1);
+
+  TALER_exchange_offline_wire_fee_sign (args[1],
+                                        start_time,
+                                        end_time,
+                                        &wire_fee,
+                                        &closing_fee,
+                                        &master_priv,
+                                        &master_sig);
+  output_operation ("set-wire-fee",
+                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
+                               "wire_method",
+                               args[1],
+                               "start_time",
+                               GNUNET_JSON_from_time_abs (start_time),
+                               "end_time",
+                               GNUNET_JSON_from_time_abs (end_time),
+                               "wire_fee",
+                               TALER_JSON_from_amount (&wire_fee),
+                               "closing_fee",
+                               TALER_JSON_from_amount (&closing_fee),
+                               "master_sig",
+                               GNUNET_JSON_from_data_auto (&master_sig)));
+  next (args + 4);
+}
+
+
+/**
  * Function called with information about future keys.  Dumps the JSON output
  * (on success), either into an internal buffer or to stdout (depending on
  * whether there are subsequent commands).
@@ -1308,6 +1549,12 @@ work (void *cls)
       .help =
         "disable wire account of the exchange (payto-URI must be given as argument)",
       .cb = &do_del_wire
+    },
+    {
+      .name = "wire-fee",
+      .help =
+        "sign wire fees for the given year (year, wire fee and closing fee must be given as arguments)",
+      .cb = &do_set_wire_fee
     },
     {
       .name = "upload",
