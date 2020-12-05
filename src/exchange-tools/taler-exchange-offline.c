@@ -1111,20 +1111,117 @@ upload_keys (const char *exchange_url,
 {
   struct TALER_EXCHANGE_ManagementPostKeysData pkd;
   struct UploadKeysRequest *ukr;
+  const char *err_name;
+  unsigned int err_line;
+  json_t *denom_sigs;
+  json_t *signkey_sigs;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("denom_sigs",
+                           &denom_sigs),
+    GNUNET_JSON_spec_json ("signkey_sigs",
+                           &signkey_sigs),
+    GNUNET_JSON_spec_end ()
+  };
+  bool ok = true;
 
-  // FIXME: initialize 'pkd' from 'value'!
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (in,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    fprintf (stderr,
+             "Invalid input to 'upload': %s#%u (skipping)\n",
+             err_name,
+             err_line);
+    global_ret = 7;
+    test_shutdown ();
+    return;
+  }
+  pkd.num_sign_sigs = json_array_size (signkey_sigs);
+  pkd.num_denom_sigs = json_array_size (denom_sigs);
+  pkd.sign_sigs = GNUNET_new_array (
+    pkd.num_sign_sigs,
+    struct TALER_EXCHANGE_SigningKeySignature);
+  pkd.denom_sigs = GNUNET_new_array (
+    pkd.num_denom_sigs,
+    struct TALER_EXCHANGE_DenominationKeySignature);
+  for (unsigned int i = 0; i<pkd.num_sign_sigs; i++)
+  {
+    struct TALER_EXCHANGE_SigningKeySignature *ss = &pkd.sign_sigs[i];
+    json_t *val = json_array_get (signkey_sigs,
+                                  i);
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                   &ss->exchange_pub),
+      GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                   &ss->master_sig),
+      GNUNET_JSON_spec_end ()
+    };
 
-  ukr = GNUNET_new (struct UploadKeysRequest);
-  ukr->idx = idx;
-  ukr->h =
-    TALER_EXCHANGE_post_management_keys (ctx,
-                                         exchange_url,
-                                         &pkd,
-                                         &keys_cb,
-                                         ukr);
-  GNUNET_CONTAINER_DLL_insert (ukr_head,
-                               ukr_tail,
-                               ukr);
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (val,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input for signkey validity: %s#%u at %u (aborting)\n",
+               err_name,
+               err_line,
+               i);
+      ok = false;
+    }
+  }
+  for (unsigned int i = 0; i<pkd.num_denom_sigs; i++)
+  {
+    struct TALER_EXCHANGE_DenominationKeySignature *ds = &pkd.denom_sigs[i];
+    json_t *val = json_array_get (denom_sigs,
+                                  i);
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
+                                   &ds->h_denom_pub),
+      GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                   &ds->master_sig),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (val,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input for denomination validity: %s#%u at %u (aborting)\n",
+               err_name,
+               err_line,
+               i);
+      ok = false;
+    }
+  }
+
+  if (ok)
+  {
+    ukr = GNUNET_new (struct UploadKeysRequest);
+    ukr->idx = idx;
+    ukr->h =
+      TALER_EXCHANGE_post_management_keys (ctx,
+                                           exchange_url,
+                                           &pkd,
+                                           &keys_cb,
+                                           ukr);
+    GNUNET_CONTAINER_DLL_insert (ukr_head,
+                                 ukr_tail,
+                                 ukr);
+  }
+  else
+  {
+    global_ret = 7;
+    test_shutdown ();
+  }
+  GNUNET_free (pkd.sign_sigs);
+  GNUNET_free (pkd.denom_sigs);
 }
 
 
