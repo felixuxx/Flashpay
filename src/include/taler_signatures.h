@@ -1041,7 +1041,7 @@ struct TALER_ExchangeKeyValidityPS
 
   /**
    * The long-term offline master key of the exchange, affirmed by the
-   * auditor.  Hashed string, including 0-terminator.
+   * auditor.
    */
   struct TALER_MasterPublicKeyP master;
 

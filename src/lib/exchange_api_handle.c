@@ -519,7 +519,6 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   unsigned int off;
   unsigned int i;
   const char *auditor_url;
-  struct TALER_ExchangeKeyValidityPS kv;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
                                  &auditor->auditor_pub),
@@ -539,12 +538,6 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     return GNUNET_SYSERR;
   }
   auditor->auditor_url = GNUNET_strdup (auditor_url);
-  kv.purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS);
-  kv.purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS));
-  GNUNET_CRYPTO_hash (auditor_url,
-                      strlen (auditor_url) + 1,
-                      &kv.auditor_url_hash);
-  kv.master = key_data->master_pub;
   len = json_array_size (keys);
   auditor->denom_keys = GNUNET_new_array (len,
                                           struct
@@ -590,27 +583,22 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     }
     if (check_sigs)
     {
-      kv.start = GNUNET_TIME_absolute_hton (dk->valid_from);
-      kv.expire_withdraw = GNUNET_TIME_absolute_hton (dk->withdraw_valid_until);
-      kv.expire_deposit = GNUNET_TIME_absolute_hton (dk->expire_deposit);
-      kv.expire_legal = GNUNET_TIME_absolute_hton (dk->expire_legal);
-      TALER_amount_hton (&kv.value,
-                         &dk->value);
-      TALER_amount_hton (&kv.fee_withdraw,
-                         &dk->fee_withdraw);
-      TALER_amount_hton (&kv.fee_deposit,
-                         &dk->fee_deposit);
-      TALER_amount_hton (&kv.fee_refresh,
-                         &dk->fee_refresh);
-      TALER_amount_hton (&kv.fee_refund,
-                         &dk->fee_refund);
-      kv.denom_hash = dk->h_key;
-
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,
-                                      &kv,
-                                      &auditor_sig.eddsa_sig,
-                                      &auditor->auditor_pub.eddsa_pub))
+          TALER_auditor_denom_validity_verify (
+            auditor_url,
+            &dk->h_key,
+            &key_data->master_pub,
+            dk->valid_from,
+            dk->withdraw_valid_until,
+            dk->expire_deposit,
+            dk->expire_legal,
+            &dk->value,
+            &dk->fee_withdraw,
+            &dk->fee_deposit,
+            &dk->fee_refresh,
+            &dk->fee_refund,
+            &auditor->auditor_pub,
+            &auditor_sig))
       {
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (spec);

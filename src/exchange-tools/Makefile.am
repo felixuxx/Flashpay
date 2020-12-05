@@ -13,6 +13,7 @@ if USE_COVERAGE
 endif
 
 bin_PROGRAMS = \
+  taler-auditor-offline \
   taler-exchange-keyup \
   taler-exchange-keycheck \
   taler-exchange-offline \
@@ -36,6 +37,20 @@ taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 taler_exchange_offline_SOURCES = \
   taler-exchange-offline.c
 taler_exchange_offline_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -ljansson \
+  -lgnunetutil \
+  $(XLIB)
+
+
+taler_auditor_offline_SOURCES = \
+  taler-auditor-offline.c
+taler_auditor_offline_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \

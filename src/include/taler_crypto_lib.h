@@ -1294,6 +1294,79 @@ TALER_exchange_secmod_rsa_verify (
   const struct TALER_SecurityModuleSignatureP *secm_sig);
 
 
+/**
+ * Create denomination key validity signature by the auditor.
+ *
+ * @param auditor_url BASE URL of the auditor's API
+ * @param h_denom_pub hash of the denomination's public key
+ * @param master_pub master public key of the exchange
+ * @param stamp_start when does the exchange begin signing with this key
+ * @param stamp_expire_withdraw when does the exchange end signing with this key
+ * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
+ * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
+ * @param coin_value what is the value of coins signed with this key
+ * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
+ * @param fee_deposit what deposit fee does the exchange charge for this denomination
+ * @param fee_refresh what refresh fee does the exchange charge for this denomination
+ * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param auditor_priv private key to sign with
+ * @param[out] auditor_sig where to write the signature
+ */
+void
+TALER_auditor_denom_validity_sign (
+  const char *auditor_url,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct GNUNET_TIME_Absolute stamp_start,
+  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
+  struct GNUNET_TIME_Absolute stamp_expire_deposit,
+  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  const struct TALER_Amount *coin_value,
+  const struct TALER_Amount *fee_withdraw,
+  const struct TALER_Amount *fee_deposit,
+  const struct TALER_Amount *fee_refresh,
+  const struct TALER_Amount *fee_refund,
+  const struct TALER_AuditorPrivateKeyP *auditor_priv,
+  struct TALER_AuditorSignatureP *auditor_sig);
+
+
+/**
+ * Verify denomination key validity signature from auditor.
+ *
+ * @param auditor_url BASE URL of the auditor's API
+ * @param h_denom_pub hash of the denomination's public key
+ * @param master_pub master public key of the exchange
+ * @param stamp_start when does the exchange begin signing with this key
+ * @param stamp_expire_withdraw when does the exchange end signing with this key
+ * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
+ * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
+ * @param coin_value what is the value of coins signed with this key
+ * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
+ * @param fee_deposit what deposit fee does the exchange charge for this denomination
+ * @param fee_refresh what refresh fee does the exchange charge for this denomination
+ * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param auditor_pub public key to verify against
+ * @param auditor_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_auditor_denom_validity_verify (
+  const char *auditor_url,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  struct GNUNET_TIME_Absolute stamp_start,
+  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
+  struct GNUNET_TIME_Absolute stamp_expire_deposit,
+  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  const struct TALER_Amount *coin_value,
+  const struct TALER_Amount *fee_withdraw,
+  const struct TALER_Amount *fee_deposit,
+  const struct TALER_Amount *fee_refresh,
+  const struct TALER_Amount *fee_refund,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const struct TALER_AuditorSignatureP *auditor_sig);
+
+
 /* **************** /wire account offline signing **************** */
 
 

@@ -144,49 +144,34 @@ add_auditor_denom_sig (void *cls,
       TALER_B2S (awc->auditor_pub));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  if (GNUNET_OK !=
+      TALER_auditor_denom_validity_verify (
+        auditor_url,
+        awc->h_denom_pub,
+        &TEH_master_public_key,
+        meta.start,
+        meta.expire_withdraw,
+        meta.expire_deposit,
+        meta.expire_legal,
+        &meta.value,
+        &meta.fee_withdraw,
+        &meta.fee_deposit,
+        &meta.fee_refresh,
+        &meta.fee_refund,
+        awc->auditor_pub,
+        &awc->auditor_sig))
   {
-    struct TALER_ExchangeKeyValidityPS kv = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS),
-      .purpose.size = htonl (sizeof (kv)),
-      .master = TEH_master_public_key,
-      .start = GNUNET_TIME_absolute_hton (meta.start),
-      .expire_withdraw = GNUNET_TIME_absolute_hton (meta.expire_withdraw),
-      .expire_deposit = GNUNET_TIME_absolute_hton (meta.expire_deposit),
-      .expire_legal = GNUNET_TIME_absolute_hton (meta.expire_legal),
-      .denom_hash = *awc->h_denom_pub
-    };
-
-    TALER_amount_hton (&kv.value,
-                       &meta.value);
-    TALER_amount_hton (&kv.fee_withdraw,
-                       &meta.fee_withdraw);
-    TALER_amount_hton (&kv.fee_deposit,
-                       &meta.fee_deposit);
-    TALER_amount_hton (&kv.fee_refresh,
-                       &meta.fee_refresh);
-    TALER_amount_hton (&kv.fee_refund,
-                       &meta.fee_refund);
-    GNUNET_CRYPTO_hash (auditor_url,
-                        strlen (auditor_url) + 1,
-                        &kv.auditor_url_hash);
     GNUNET_free (auditor_url);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS,
-          &kv,
-          &awc->auditor_sig.eddsa_sig,
-          &TEH_master_public_key.eddsa_pub))
-    {
-      /* signature invalid */
-      GNUNET_break_op (0);
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_AUDITORS_AUDITOR_SIGNATURE_INVALID,
-        NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
+    /* signature invalid */
+    GNUNET_break_op (0);
+    *mhd_ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_EXCHANGE_AUDITORS_AUDITOR_SIGNATURE_INVALID,
+      NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
+  GNUNET_free (auditor_url);
 
   qs = TEH_plugin->insert_auditor_denom_sig (TEH_plugin->cls,
                                              session,

@@ -60,6 +60,7 @@ lib_LTLIBRARIES = \
 
 libtalerutil_la_SOURCES = \
   amount.c \
+  auditor_signatures.c \
   config.c \
   crypto.c \
   crypto_helper_denom.c \

@@ -2391,6 +2391,9 @@ do_sign (char *const *args)
       return;
     }
   }
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
 
   {
     const char *err_name;

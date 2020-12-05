@@ -393,7 +393,7 @@ struct TALER_EXCHANGE_HttpResponse
 
 /**
  * Function called with information about who is auditing
- * a particular exchange and what key the exchange is using.
+ * a particular exchange and what keys the exchange is using.
  *
  * @param cls closure
  * @param hr HTTP response data

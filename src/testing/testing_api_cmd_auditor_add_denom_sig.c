@@ -139,36 +139,25 @@ auditor_add_run (void *cls,
   }
   else
   {
-    struct TALER_ExchangeKeyValidityPS kv = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS),
-      .purpose.size = htonl (sizeof (struct TALER_ExchangeKeyValidityPS)),
-      .start = GNUNET_TIME_absolute_hton (dk->valid_from),
-      .expire_withdraw = GNUNET_TIME_absolute_hton (
-        dk->withdraw_valid_until),
-      .expire_deposit = GNUNET_TIME_absolute_hton (dk->expire_deposit),
-      .expire_legal = GNUNET_TIME_absolute_hton (dk->expire_legal),
-      .denom_hash = dk->h_key
-    };
+    struct TALER_MasterPublicKeyP master_pub;
 
-    TALER_amount_hton (&kv.value,
-                       &dk->value);
-    TALER_amount_hton (&kv.fee_withdraw,
-                       &dk->fee_withdraw);
-    TALER_amount_hton (&kv.fee_deposit,
-                       &dk->fee_deposit);
-    TALER_amount_hton (&kv.fee_refresh,
-                       &dk->fee_refresh);
-    TALER_amount_hton (&kv.fee_refund,
-                       &dk->fee_refund);
     GNUNET_CRYPTO_eddsa_key_get_public (&is->master_priv.eddsa_priv,
-                                        &kv.master.eddsa_pub);
-    GNUNET_CRYPTO_hash (is->auditor_url,
-                        strlen (is->auditor_url) + 1,
-                        &kv.auditor_url_hash);
-    /* Finally sign ... */
-    GNUNET_CRYPTO_eddsa_sign (&is->auditor_priv.eddsa_priv,
-                              &kv,
-                              &auditor_sig.eddsa_sig);
+                                        &master_pub.eddsa_pub);
+    TALER_auditor_denom_validity_sign (
+      is->auditor_url,
+      &dk->h_key,
+      &master_pub,
+      dk->valid_from,
+      dk->withdraw_valid_until,
+      dk->expire_deposit,
+      dk->expire_legal,
+      &dk->value,
+      &dk->fee_withdraw,
+      &dk->fee_deposit,
+      &dk->fee_refresh,
+      &dk->fee_refund,
+      &is->auditor_priv,
+      &auditor_sig);
   }
   ds->dh = TALER_EXCHANGE_add_auditor_denomination (
     is->ctx,
