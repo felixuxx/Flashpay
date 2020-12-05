@@ -25,6 +25,7 @@
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
+#include "taler_crypto_lib.h"
 #include "taler_json_lib.h"
 
 /**
@@ -139,20 +140,14 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
       struct GNUNET_TIME_Relative duration
         = GNUNET_TIME_absolute_get_difference (sign_key->valid_from,
                                                sign_key->valid_until);
-      struct TALER_SigningKeyAnnouncementPS ska = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_SM_SIGNING_KEY),
-        .purpose.size = htonl (sizeof (ska)),
-        .exchange_pub = sign_key->key,
-        .anchor_time = GNUNET_TIME_absolute_hton (sign_key->valid_from),
-        .duration = GNUNET_TIME_relative_hton (duration)
-      };
 
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_SM_SIGNING_KEY,
-            &ska,
-            &sign_key->signkey_secmod_sig.eddsa_signature,
-            &fk.signkey_secmod_public_key.eddsa_pub))
+          TALER_exchange_secmod_eddsa_verify (
+            &sign_key->key,
+            sign_key->valid_from,
+            duration,
+            &fk.signkey_secmod_public_key,
+            &sign_key->signkey_secmod_sig))
       {
         GNUNET_break_op (0);
         ok = false;
@@ -166,7 +161,10 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                 i);
     struct TALER_EXCHANGE_FutureDenomPublicKey *denom_key
       = &fk.denom_keys[i];
+    const char *section_name;
     struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_string ("section_name",
+                               &section_name),
       GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
                                    &denom_key->denom_secmod_sig),
       TALER_JSON_spec_absolute_time ("stamp_expire_deposit",
@@ -206,21 +204,17 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
       struct GNUNET_TIME_Relative duration
         = GNUNET_TIME_absolute_get_difference (denom_key->valid_from,
                                                denom_key->withdraw_valid_until);
-      struct TALER_DenominationKeyAnnouncementPS dka = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
-        .purpose.size = htonl (sizeof (dka)),
-        .anchor_time = GNUNET_TIME_absolute_hton (denom_key->valid_from),
-        .duration_withdraw = GNUNET_TIME_relative_hton (duration)
-      };
+      struct GNUNET_HashCode h_denom_pub;
 
       GNUNET_CRYPTO_rsa_public_key_hash (denom_key->key.rsa_public_key,
-                                         &dka.h_denom_pub);
+                                         &h_denom_pub);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_SM_DENOMINATION_KEY,
-            &dka,
-            &denom_key->denom_secmod_sig.eddsa_signature,
-            &fk.denom_secmod_public_key.eddsa_pub))
+          TALER_exchange_secmod_rsa_verify (&h_denom_pub,
+                                            section_name,
+                                            denom_key->valid_from,
+                                            duration,
+                                            &fk.denom_secmod_public_key,
+                                            &denom_key->denom_secmod_sig))
       {
         GNUNET_break_op (0);
         ok = false;

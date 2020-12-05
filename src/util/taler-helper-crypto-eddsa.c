@@ -606,13 +606,6 @@ static int
 notify_client_key_add (struct Client *client,
                        const struct Key *key)
 {
-  struct TALER_SigningKeyAnnouncementPS ska = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_SM_SIGNING_KEY),
-    .purpose.size = htonl (sizeof (ska)),
-    .exchange_pub = key->exchange_pub,
-    .anchor_time = GNUNET_TIME_absolute_hton (key->anchor),
-    .duration = GNUNET_TIME_relative_hton (duration)
-  };
   struct TALER_CRYPTO_EddsaKeyAvailableNotification an = {
     .header.size = htons (sizeof (an)),
     .header.type = htons (TALER_HELPER_EDDSA_MT_AVAIL),
@@ -622,9 +615,11 @@ notify_client_key_add (struct Client *client,
     .secm_pub = smpub
   };
 
-  GNUNET_CRYPTO_eddsa_sign (&smpriv.eddsa_priv,
-                            &ska,
-                            &an.secm_sig.eddsa_signature);
+  TALER_exchange_secmod_eddsa_sign (&key->exchange_pub,
+                                    key->anchor,
+                                    duration,
+                                    &smpriv,
+                                    &an.secm_sig);
   if (GNUNET_OK !=
       transmit (&client->addr,
                 client->addr_size,

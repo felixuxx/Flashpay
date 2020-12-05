@@ -708,22 +708,12 @@ notify_client_dk_add (struct Client *client,
 {
   struct Denomination *denom = dk->denom;
   size_t nlen = strlen (denom->section) + 1;
-  struct TALER_DenominationKeyAnnouncementPS dka = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
-    .purpose.size = htonl (sizeof (dka)),
-    .h_denom_pub = dk->h_denom_pub,
-    .anchor_time = GNUNET_TIME_absolute_hton (dk->anchor),
-    .duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw)
-  };
   struct TALER_CRYPTO_RsaKeyAvailableNotification *an;
   size_t buf_len;
   void *buf;
   void *p;
   size_t tlen;
 
-  GNUNET_CRYPTO_hash (denom->section,
-                      nlen,
-                      &dka.h_section_name);
   buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub.rsa_public_key,
                                                  &buf);
   GNUNET_assert (buf_len < UINT16_MAX);
@@ -737,9 +727,12 @@ notify_client_dk_add (struct Client *client,
   an->section_name_len = htons ((uint16_t) nlen);
   an->anchor_time = GNUNET_TIME_absolute_hton (dk->anchor);
   an->duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw);
-  GNUNET_CRYPTO_eddsa_sign (&smpriv.eddsa_priv,
-                            &dka,
-                            &an->secm_sig.eddsa_signature);
+  TALER_exchange_secmod_rsa_sign (&dk->h_denom_pub,
+                                  denom->section,
+                                  dk->anchor,
+                                  denom->duration_withdraw,
+                                  &smpriv,
+                                  &an->secm_sig);
   an->secm_pub = smpub;
   p = (void *) &an[1];
   memcpy (p,

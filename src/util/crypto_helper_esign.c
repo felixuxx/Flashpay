@@ -258,31 +258,23 @@ handle_mt_avail (struct TALER_CRYPTO_ExchangeSignHelper *esh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      TALER_exchange_secmod_eddsa_verify (
+        &kan->exchange_pub,
+        GNUNET_TIME_absolute_ntoh (kan->anchor_time),
+        GNUNET_TIME_relative_ntoh (kan->duration),
+        &kan->secm_pub,
+        &kan->secm_sig))
   {
-    struct TALER_SigningKeyAnnouncementPS ska = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_SM_SIGNING_KEY),
-      .purpose.size = htonl (sizeof (ska)),
-      .exchange_pub = kan->exchange_pub,
-      .anchor_time = kan->anchor_time,
-      .duration = kan->duration
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_SIGNING_KEY,
-                                    &ska,
-                                    &kan->secm_sig.eddsa_signature,
-                                    &kan->secm_pub.eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-    esh->ekc (esh->ekc_cls,
-              GNUNET_TIME_absolute_ntoh (kan->anchor_time),
-              GNUNET_TIME_relative_ntoh (kan->duration),
-              &kan->exchange_pub,
-              &kan->secm_pub,
-              &kan->secm_sig);
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
   }
+  esh->ekc (esh->ekc_cls,
+            GNUNET_TIME_absolute_ntoh (kan->anchor_time),
+            GNUNET_TIME_relative_ntoh (kan->duration),
+            &kan->exchange_pub,
+            &kan->secm_pub,
+            &kan->secm_sig);
   return GNUNET_OK;
 }
 

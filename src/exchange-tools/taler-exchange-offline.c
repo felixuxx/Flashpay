@@ -1606,8 +1606,22 @@ show_signkeys (const json_t *signkeys)
   json_array_foreach (signkeys, index, value) {
     const char *err_name;
     unsigned int err_line;
+    struct TALER_ExchangePublicKeyP exchange_pub;
+    struct TALER_SecurityModuleSignatureP secm_sig;
+    struct GNUNET_TIME_Absolute start_time;
+    struct GNUNET_TIME_Absolute sign_end;
+    struct GNUNET_TIME_Absolute legal_end;
     struct GNUNET_JSON_Specification spec[] = {
-      // FIXME!
+      GNUNET_JSON_spec_absolute_time ("stamp_start",
+                                      &start_time),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire",
+                                      &sign_end),
+      GNUNET_JSON_spec_absolute_time ("stamp_end",
+                                      &legal_end),
+      GNUNET_JSON_spec_fixed_auto ("key",
+                                   &exchange_pub),
+      GNUNET_JSON_spec_fixed_auto ("signkey_secmod_sig",
+                                   &secm_sig),
       GNUNET_JSON_spec_end ()
     };
 
@@ -1626,6 +1640,7 @@ show_signkeys (const json_t *signkeys)
       test_shutdown ();
       return GNUNET_SYSERR;
     }
+
     // FIXME: print
   }
   return GNUNET_OK;

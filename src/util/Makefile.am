@@ -70,6 +70,7 @@ libtalerutil_la_SOURCES = \
   mhd.c \
   offline_signatures.c \
   payto.c \
+  secmod_signatures.c \
   taler_error_codes.c \
   url.c \
   util.c \

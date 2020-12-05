@@ -277,12 +277,7 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
 
   {
     struct TALER_DenominationPublicKey denom_pub;
-    struct TALER_DenominationKeyAnnouncementPS dka = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
-      .purpose.size = htonl (sizeof (dka)),
-      .anchor_time = kan->anchor_time,
-      .duration_withdraw = kan->duration_withdraw
-    };
+    struct GNUNET_HashCode h_denom_pub;
 
     denom_pub.rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_decode (buf,
@@ -293,15 +288,15 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
       return GNUNET_SYSERR;
     }
     GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &dka.h_denom_pub);
-    GNUNET_CRYPTO_hash (section_name,
-                        strlen (section_name) + 1,
-                        &dka.h_section_name);
+                                       &h_denom_pub);
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_DENOMINATION_KEY,
-                                    &dka,
-                                    &kan->secm_sig.eddsa_signature,
-                                    &kan->secm_pub.eddsa_pub))
+        TALER_exchange_secmod_rsa_verify (
+          &h_denom_pub,
+          section_name,
+          GNUNET_TIME_absolute_ntoh (kan->anchor_time),
+          GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
+          &kan->secm_pub,
+          &kan->secm_sig))
     {
       GNUNET_break_op (0);
       GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
@@ -311,7 +306,7 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
              section_name,
              GNUNET_TIME_absolute_ntoh (kan->anchor_time),
              GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
-             &dka.h_denom_pub,
+             &h_denom_pub,
              &denom_pub,
              &kan->secm_pub,
              &kan->secm_sig);

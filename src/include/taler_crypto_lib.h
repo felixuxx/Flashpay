@@ -1151,6 +1151,84 @@ TALER_exchange_offline_signkey_validity_verify (
   const struct TALER_MasterSignatureP *master_sig);
 
 
+/**
+ * Create security module EdDSA signature.
+ *
+ * @param exchange_pub public signing key to validate
+ * @param start_sign starting point of validity for signing
+ * @param duration how long will the key be in use
+ * @param secm_priv security module key to sign with
+ * @param[out] secm_sig where to write the signature
+ */
+void
+TALER_exchange_secmod_eddsa_sign (
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePrivateKeyP *secm_priv,
+  struct TALER_SecurityModuleSignatureP *secm_sig);
+
+
+/**
+ * Verify security module EdDSA signature.
+ *
+ * @param exchange_pub public signing key to validate
+ * @param start_sign starting point of validity for signing
+ * @param duration how long will the key be in use
+ * @param secm_pub public key to verify against
+ * @param secm_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_secmod_eddsa_verify (
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePublicKeyP *secm_pub,
+  const struct TALER_SecurityModuleSignatureP *secm_sig);
+
+
+/**
+ * Create security module RSA signature.
+ *
+ * @param h_denom_pub hash of the public key to validate
+ * @param section_name name of the section in the configuration
+ * @param start_sign starting point of validity for signing
+ * @param duration how long will the key be in use
+ * @param secm_priv security module key to sign with
+ * @param[out] secm_sig where to write the signature
+ */
+void
+TALER_exchange_secmod_rsa_sign (
+  const struct GNUNET_HashCode *h_denom_pub,
+  const char *section_name,
+  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePrivateKeyP *secm_priv,
+  struct TALER_SecurityModuleSignatureP *secm_sig);
+
+
+/**
+ * Verify security module RSA signature.
+ *
+ * @param h_ednom_pub hash of the public key to validate
+ * @param section_name name of the section in the configuration
+ * @param start_sign starting point of validity for signing
+ * @param duration how long will the key be in use
+ * @param secm_pub public key to verify against
+ * @param secm_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_secmod_rsa_verify (
+  const struct GNUNET_HashCode *h_denom_pub,
+  const char *section_name,
+  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePublicKeyP *secm_pub,
+  const struct TALER_SecurityModuleSignatureP *secm_sig);
+
+
 /* **************** /wire account offline signing **************** */
 
 
