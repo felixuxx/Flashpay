@@ -1152,6 +1152,71 @@ TALER_exchange_offline_signkey_validity_verify (
 
 
 /**
+ * Create denomination key validity signature.
+ *
+ * @param h_denom_pub hash of the denomination's public key
+ * @param stamp_start when does the exchange begin signing with this key
+ * @param stamp_expire_withdraw when does the exchange end signing with this key
+ * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
+ * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
+ * @param coin_value what is the value of coins signed with this key
+ * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
+ * @param fee_deposit what deposit fee does the exchange charge for this denomination
+ * @param fee_refresh what refresh fee does the exchange charge for this denomination
+ * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_denom_validity_sign (
+  const struct GNUNET_HashCode *h_denom_pub,
+  struct GNUNET_TIME_Absolute stamp_start,
+  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
+  struct GNUNET_TIME_Absolute stamp_expire_deposit,
+  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  const struct TALER_Amount *coin_value,
+  const struct TALER_Amount *fee_withdraw,
+  const struct TALER_Amount *fee_deposit,
+  const struct TALER_Amount *fee_refresh,
+  const struct TALER_Amount *fee_refund,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify denomination key validity signature.
+ *
+ * @param h_denom_pub hash of the denomination's public key
+ * @param stamp_start when does the exchange begin signing with this key
+ * @param stamp_expire_withdraw when does the exchange end signing with this key
+ * @param stamp_expire_deposit how long does the exchange accept the deposit of coins with this key
+ * @param stamp_expire_legal how long does the exchange preserve information for legal disputes with this key
+ * @param coin_value what is the value of coins signed with this key
+ * @param fee_withdraw what withdraw fee does the exchange charge for this denomination
+ * @param fee_deposit what deposit fee does the exchange charge for this denomination
+ * @param fee_refresh what refresh fee does the exchange charge for this denomination
+ * @param fee_refund what refund fee does the exchange charge for this denomination
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_denom_validity_verify (
+  const struct GNUNET_HashCode *h_denom_pub,
+  struct GNUNET_TIME_Absolute stamp_start,
+  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
+  struct GNUNET_TIME_Absolute stamp_expire_deposit,
+  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  const struct TALER_Amount *coin_value,
+  const struct TALER_Amount *fee_withdraw,
+  const struct TALER_Amount *fee_deposit,
+  const struct TALER_Amount *fee_refresh,
+  const struct TALER_Amount *fee_refund,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
  * Create security module EdDSA signature.
  *
  * @param exchange_pub public signing key to validate

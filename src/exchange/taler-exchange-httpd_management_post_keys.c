@@ -164,34 +164,20 @@ add_keys (void *cls,
 
     /* check signature is valid */
     {
-      struct TALER_DenominationKeyValidityPS dkv = {
-        .purpose.purpose = htonl (
-          TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
-        .purpose.size = htonl (sizeof (dkv)),
-        .master = TEH_master_public_key,
-        .start = GNUNET_TIME_absolute_hton (meta.start),
-        .expire_withdraw = GNUNET_TIME_absolute_hton (meta.expire_withdraw),
-        .expire_deposit = GNUNET_TIME_absolute_hton (meta.expire_deposit),
-        .expire_legal = GNUNET_TIME_absolute_hton (meta.expire_legal),
-        .denom_hash = akc->d_sigs[i].h_denom_pub
-      };
-
-      TALER_amount_hton (&dkv.value,
-                         &meta.value);
-      TALER_amount_hton (&dkv.fee_withdraw,
-                         &meta.fee_withdraw);
-      TALER_amount_hton (&dkv.fee_deposit,
-                         &meta.fee_deposit);
-      TALER_amount_hton (&dkv.fee_refresh,
-                         &meta.fee_refresh);
-      TALER_amount_hton (&dkv.fee_refund,
-                         &meta.fee_refund);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-            &dkv,
-            &akc->d_sigs[i].master_sig.eddsa_signature,
-            &TEH_master_public_key.eddsa_pub))
+          TALER_exchange_offline_denomkey_validity_verify (
+            &akc->d_sigs[i].h_denom_pub,
+            meta.start,
+            meta.expire_withdraw,
+            meta.expire_deposit,
+            meta.expire_legal,
+            &meta.value,
+            &meta.fee_withdraw,
+            &meta.fee_deposit,
+            &meta.fee_refresh,
+            &meta.fee_refund,
+            &TEH_master_public_key,
+            &akc->d_sigs[i].master_sig))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (

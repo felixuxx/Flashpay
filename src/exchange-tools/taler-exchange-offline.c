@@ -230,6 +230,33 @@ struct WireFeeRequest
 
 
 /**
+ * Ongoing /keys request.
+ */
+struct UploadKeysRequest
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct UploadKeysRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct UploadKeysRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementPostKeysHandle *h;
+
+  /**
+   * Operation index.
+   */
+  size_t idx;
+};
+
+
+/**
  * Next work item to perform.
  */
 static struct GNUNET_SCHEDULER_Task *nxt;
@@ -249,7 +276,6 @@ static struct DenomRevocationRequest *drr_head;
  */
 static struct DenomRevocationRequest *drr_tail;
 
-
 /**
  * Active signkey revocation requests.
  */
@@ -259,7 +285,6 @@ static struct SignkeyRevocationRequest *srr_head;
  * Active signkey revocation requests.
  */
 static struct SignkeyRevocationRequest *srr_tail;
-
 
 /**
  * Active wire add requests.
@@ -290,6 +315,16 @@ static struct WireFeeRequest *wfr_head;
  * Active wire fee requests.
  */
 static struct WireFeeRequest *wfr_tail;
+
+/**
+ * Active keys upload requests.
+ */
+static struct UploadKeysRequest *ukr_head;
+
+/**
+ * Active keys upload requests.
+ */
+static struct UploadKeysRequest *ukr_tail;
 
 
 /**
@@ -378,6 +413,21 @@ do_shutdown (void *cls)
       GNUNET_free (wfr);
     }
   }
+  {
+    struct UploadKeysRequest *ukr;
+
+    while (NULL != (ukr = ukr_head))
+    {
+      fprintf (stderr,
+               "Aborting incomplete key signature upload #%u\n",
+               (unsigned int) ukr->idx);
+      TALER_EXCHANGE_post_management_keys_cancel (ukr->h);
+      GNUNET_CONTAINER_DLL_remove (ukr_head,
+                                   ukr_tail,
+                                   ukr);
+      GNUNET_free (ukr);
+    }
+  }
   if (NULL != out)
   {
     json_dumpf (out,
@@ -427,6 +477,7 @@ test_shutdown (void)
        (NULL == war_head) &&
        (NULL == wdr_head) &&
        (NULL == wfr_head) &&
+       (NULL == ukr_head) &&
        (NULL == mgkh) &&
        (NULL == nxt) )
     GNUNET_SCHEDULER_shutdown ();
@@ -1017,6 +1068,67 @@ upload_wire_fee (const char *exchange_url,
 
 
 /**
+ * Function called with information about the post upload keys operation result.
+ *
+ * @param cls closure with a `struct UploadKeysRequest`
+ * @param hr HTTP response data
+ */
+static void
+keys_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct UploadKeysRequest *ukr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    fprintf (stderr,
+             "Upload failed for command %u with status %u: %s (%s)\n",
+             (unsigned int) ukr->idx,
+             hr->http_status,
+             TALER_ErrorCode_get_hint (hr->ec),
+             hr->hint);
+  }
+  GNUNET_CONTAINER_DLL_remove (ukr_head,
+                               ukr_tail,
+                               ukr);
+  GNUNET_free (ukr);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload (denomination and signing) key master signatures.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value argumets for POSTing keys
+ */
+static void
+upload_keys (const char *exchange_url,
+             size_t idx,
+             const json_t *value)
+{
+  struct TALER_EXCHANGE_ManagementPostKeysData pkd;
+  struct UploadKeysRequest *ukr;
+
+  // FIXME: initialize 'pkd' from 'value'!
+
+  ukr = GNUNET_new (struct UploadKeysRequest);
+  ukr->idx = idx;
+  ukr->h =
+    TALER_EXCHANGE_post_management_keys (ctx,
+                                         exchange_url,
+                                         &pkd,
+                                         &keys_cb,
+                                         ukr);
+  GNUNET_CONTAINER_DLL_insert (ukr_head,
+                               ukr_tail,
+                               ukr);
+}
+
+
+/**
  * Perform uploads based on the JSON in #io.
  *
  * @param exchange_url base URL of the exchange to use
@@ -1045,7 +1157,10 @@ trigger_upload (const char *exchange_url)
       .key = "set-wire-fee",
       .cb = &upload_wire_fee
     },
-    // FIXME: Add POST /management/keys handlers here!
+    {
+      .key = "upload-keys",
+      .cb = &upload_keys
+    },
     /* array termination */
     {
       .key = NULL
@@ -1697,6 +1812,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     struct TALER_DenominationPublicKey denom_pub;
     struct GNUNET_TIME_Absolute stamp_start;
     struct GNUNET_TIME_Absolute stamp_expire_withdraw;
+    struct GNUNET_TIME_Absolute stamp_expire_deposit;
     struct GNUNET_TIME_Absolute stamp_expire_legal;
     struct TALER_Amount coin_value;
     struct TALER_Amount fee_withdraw;
@@ -1723,6 +1839,8 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                       &stamp_start),
       GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
                                       &stamp_expire_withdraw),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
+                                      &stamp_expire_deposit),
       GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
                                       &stamp_expire_legal),
       GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
@@ -1739,7 +1857,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                            &err_line))
     {
       fprintf (stderr,
-               "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
+               "Invalid input for denomination key to 'show': %s#%u at %u (skipping)\n",
                err_name,
                err_line,
                (unsigned int) index);
@@ -1768,7 +1886,45 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       return GNUNET_SYSERR;
     }
 
-    // FIXME: print
+    {
+      char *withdraw_fee_s;
+      char *deposit_fee_s;
+      char *refresh_fee_s;
+      char *refund_fee_s;
+      char *deposit_s;
+      char *legal_s;
+
+      withdraw_fee_s = TALER_amount_to_string (&fee_withdraw);
+      deposit_fee_s = TALER_amount_to_string (&fee_deposit);
+      refresh_fee_s = TALER_amount_to_string (&fee_refresh);
+      refund_fee_s = TALER_amount_to_string (&fee_refund);
+      deposit_s = GNUNET_strdup (
+        GNUNET_STRINGS_absolute_time_to_string (stamp_expire_deposit));
+      legal_s = GNUNET_strdup (
+        GNUNET_STRINGS_absolute_time_to_string (stamp_expire_legal));
+
+      printf (
+        "DENOMINATION-KEY(%s) %s of value %s starting at %s "
+        "(used for: %s, deposit until: %s legal end: %s) with fees %s/%s/%s/%s\n",
+        section_name,
+        TALER_B2S (&h_denom_pub),
+        TALER_amount2s (&coin_value),
+        GNUNET_STRINGS_absolute_time_to_string (stamp_start),
+        GNUNET_STRINGS_relative_time_to_string (duration,
+                                                GNUNET_NO),
+        deposit_s,
+        legal_s,
+        withdraw_fee_s,
+        deposit_fee_s,
+        refresh_fee_s,
+        refund_fee_s);
+      GNUNET_free (withdraw_fee_s);
+      GNUNET_free (deposit_fee_s);
+      GNUNET_free (refresh_fee_s);
+      GNUNET_free (refund_fee_s);
+      GNUNET_free (deposit_s);
+      GNUNET_free (legal_s);
+    }
 
     GNUNET_JSON_parse_free (spec);
   }
@@ -1890,6 +2046,227 @@ do_show (char *const *args)
 
 
 /**
+ * Sign @a signkeys with offline key.
+ *
+ * @param secm_pub security module public key used to sign the denominations
+ * @param signkeys keys to output
+ * @param[in,out] result array where to output the signatures
+ * @return #GNUNET_OK on success
+ */
+static int
+sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
+               const json_t *signkeys,
+               json_t *result)
+{
+  size_t index;
+  json_t *value;
+
+  json_array_foreach (signkeys, index, value) {
+    const char *err_name;
+    unsigned int err_line;
+    struct TALER_ExchangePublicKeyP exchange_pub;
+    struct TALER_SecurityModuleSignatureP secm_sig;
+    struct GNUNET_TIME_Absolute start_time;
+    struct GNUNET_TIME_Absolute sign_end;
+    struct GNUNET_TIME_Absolute legal_end;
+    struct GNUNET_TIME_Relative duration;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_absolute_time ("stamp_start",
+                                      &start_time),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire",
+                                      &sign_end),
+      GNUNET_JSON_spec_absolute_time ("stamp_end",
+                                      &legal_end),
+      GNUNET_JSON_spec_fixed_auto ("key",
+                                   &exchange_pub),
+      GNUNET_JSON_spec_fixed_auto ("signkey_secmod_sig",
+                                   &secm_sig),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (value,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
+               err_name,
+               err_line,
+               (unsigned int) index);
+      global_ret = 7;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+
+    duration = GNUNET_TIME_absolute_get_difference (start_time,
+                                                    sign_end);
+    if (GNUNET_OK !=
+        TALER_exchange_secmod_eddsa_verify (&exchange_pub,
+                                            start_time,
+                                            duration,
+                                            secm_pub,
+                                            &secm_sig))
+    {
+      fprintf (stderr,
+               "Invalid security module signature for key %s (aborting)\n",
+               TALER_B2S (&exchange_pub));
+      global_ret = 9;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+    {
+      struct TALER_MasterSignatureP master_sig;
+
+      TALER_exchange_offline_signkey_validity_sign (&exchange_pub,
+                                                    start_time,
+                                                    sign_end,
+                                                    legal_end,
+                                                    &master_priv,
+                                                    &master_sig);
+      GNUNET_assert (0 ==
+                     json_array_append_new (
+                       result,
+                       json_pack ("{s:o,s:o}",
+                                  "exchange_pub",
+                                  GNUNET_JSON_from_data_auto (&exchange_pub),
+                                  "master_sig",
+                                  GNUNET_JSON_from_data_auto (&master_sig))));
+    }
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Sign @a denomkeys with offline key.
+ *
+ * @param secm_pub security module public key used to sign the denominations
+ * @param denomkeys keys to output
+ * @param[in,out] result array where to output the signatures
+ * @return #GNUNET_OK on success
+ */
+static int
+sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
+                const json_t *denomkeys,
+                json_t *result)
+{
+  size_t index;
+  json_t *value;
+
+  json_array_foreach (denomkeys, index, value) {
+    const char *err_name;
+    unsigned int err_line;
+    const char *section_name;
+    struct TALER_DenominationPublicKey denom_pub;
+    struct GNUNET_TIME_Absolute stamp_start;
+    struct GNUNET_TIME_Absolute stamp_expire_withdraw;
+    struct GNUNET_TIME_Absolute stamp_expire_deposit;
+    struct GNUNET_TIME_Absolute stamp_expire_legal;
+    struct TALER_Amount coin_value;
+    struct TALER_Amount fee_withdraw;
+    struct TALER_Amount fee_deposit;
+    struct TALER_Amount fee_refresh;
+    struct TALER_Amount fee_refund;
+    struct TALER_SecurityModuleSignatureP secm_sig;
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_string ("section_name",
+                               &section_name),
+      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
+                                       &denom_pub.rsa_public_key),
+      TALER_JSON_spec_amount ("value",
+                              &coin_value),
+      TALER_JSON_spec_amount ("fee_withdraw",
+                              &fee_withdraw),
+      TALER_JSON_spec_amount ("fee_deposit",
+                              &fee_deposit),
+      TALER_JSON_spec_amount ("fee_refresh",
+                              &fee_refresh),
+      TALER_JSON_spec_amount ("fee_refund",
+                              &fee_refund),
+      GNUNET_JSON_spec_absolute_time ("stamp_start",
+                                      &stamp_start),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
+                                      &stamp_expire_withdraw),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
+                                      &stamp_expire_deposit),
+      GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
+                                      &stamp_expire_legal),
+      GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
+                                   &secm_sig),
+      GNUNET_JSON_spec_end ()
+    };
+    struct GNUNET_TIME_Relative duration;
+    struct GNUNET_HashCode h_denom_pub;
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (value,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input for denomination key to 'sign': %s#%u at %u (skipping)\n",
+               err_name,
+               err_line,
+               (unsigned int) index);
+      GNUNET_JSON_parse_free (spec);
+      global_ret = 7;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+    duration = GNUNET_TIME_absolute_get_difference (stamp_start,
+                                                    stamp_expire_withdraw);
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
+                                       &h_denom_pub);
+    if (GNUNET_OK !=
+        TALER_exchange_secmod_rsa_verify (&h_denom_pub,
+                                          section_name,
+                                          stamp_start,
+                                          duration,
+                                          secm_pub,
+                                          &secm_sig))
+    {
+      fprintf (stderr,
+               "Invalid security module signature for key %s (aborting)\n",
+               TALER_B2S (&h_denom_pub));
+      global_ret = 9;
+      test_shutdown ();
+      return GNUNET_SYSERR;
+    }
+
+    {
+      struct TALER_MasterSignatureP master_sig;
+
+      TALER_exchange_offline_denom_validity_sign (&h_denom_pub,
+                                                  stamp_start,
+                                                  stamp_expire_withdraw,
+                                                  stamp_expire_deposit,
+                                                  stamp_expire_legal,
+                                                  &coin_value,
+                                                  &fee_withdraw,
+                                                  &fee_deposit,
+                                                  &fee_refresh,
+                                                  &fee_refund,
+                                                  &master_priv,
+                                                  &master_sig);
+      GNUNET_assert (0 ==
+                     json_array_append_new (
+                       result,
+                       json_pack ("{s:o,s:o}",
+                                  "h_denomn_pub",
+                                  GNUNET_JSON_from_data_auto (&h_denom_pub),
+                                  "master_sig",
+                                  GNUNET_JSON_from_data_auto (&master_sig))));
+    }
+    GNUNET_JSON_parse_free (spec);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Sign future keys.
  *
  * @param args the array of command-line arguments to process next
@@ -1918,10 +2295,94 @@ do_sign (char *const *args)
     }
   }
 
+  {
+    const char *err_name;
+    unsigned int err_line;
+    json_t *denomkeys;
+    json_t *signkeys;
+    struct TALER_MasterPublicKeyP mpub;
+    struct TALER_SecurityModulePublicKeyP secm[2];
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_json ("future_denoms",
+                             &denomkeys),
+      GNUNET_JSON_spec_json ("future_signkeys",
+                             &signkeys),
+      GNUNET_JSON_spec_fixed_auto ("master_pub",
+                                   &mpub),
+      GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
+                                   &secm[0]),
+      GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+                                   &secm[1]),
+      GNUNET_JSON_spec_end ()
+    };
 
-  // FIXME: do work here!
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (in,
+                           spec,
+                           &err_name,
+                           &err_line))
+    {
+      fprintf (stderr,
+               "Invalid input to 'sign': %s#%u (skipping)\n",
+               err_name,
+               err_line);
+      global_ret = 7;
+      test_shutdown ();
+      return;
+    }
+    if (0 !=
+        GNUNET_memcmp (&master_pub,
+                       &mpub))
+    {
+      fprintf (stderr,
+               "Fatal: exchange uses different master key!\n");
+      global_ret = 6;
+      test_shutdown ();
+      GNUNET_JSON_parse_free (spec);
+      return;
+    }
+    if (GNUNET_SYSERR ==
+        tofu_check (secm))
+    {
+      fprintf (stderr,
+               "Fatal: security module keys changed!\n");
+      global_ret = 8;
+      test_shutdown ();
+      GNUNET_JSON_parse_free (spec);
+      return;
+    }
+    {
+      json_t *signkey_sig_array = json_array ();
+      json_t *denomkey_sig_array = json_array ();
 
-  /* consume input */
+      GNUNET_assert (NULL != signkey_sig_array);
+      GNUNET_assert (NULL != denomkey_sig_array);
+      if ( (GNUNET_OK !=
+            sign_signkeys (&secm[0],
+                           signkeys,
+                           signkey_sig_array)) ||
+           (GNUNET_OK !=
+            sign_denomkeys (&secm[1],
+                            denomkeys,
+                            denomkey_sig_array)) )
+      {
+        global_ret = 8;
+        test_shutdown ();
+        json_decref (signkey_sig_array);
+        json_decref (denomkey_sig_array);
+        GNUNET_JSON_parse_free (spec);
+        return;
+      }
+
+      output_operation ("upload-keys",
+                        json_pack ("{s:o, s:o}",
+                                   "denom_sigs",
+                                   denomkey_sig_array,
+                                   "signkey_sigs",
+                                   signkey_sig_array));
+    }
+    GNUNET_JSON_parse_free (spec);
+  }
   json_decref (in);
   in = NULL;
   next (args);

@@ -472,39 +472,21 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                                      sizeof (struct GNUNET_HashCode));
   if (! check_sigs)
     return GNUNET_OK;
-  {
-    struct TALER_DenominationKeyValidityPS denom_key_issue =  {
-      .purpose.purpose
-        = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
-      .purpose.size = htonl (sizeof (denom_key_issue)),
-      .master = *master_key,
-      .denom_hash = denom_key->h_key,
-      .start = GNUNET_TIME_absolute_hton (denom_key->valid_from),
-      .expire_withdraw
-        = GNUNET_TIME_absolute_hton (denom_key->withdraw_valid_until),
-      .expire_deposit = GNUNET_TIME_absolute_hton (denom_key->expire_deposit),
-      .expire_legal = GNUNET_TIME_absolute_hton (denom_key->expire_legal)
-    };
-
-    TALER_amount_hton (&denom_key_issue.value,
-                       &denom_key->value);
-    TALER_amount_hton (&denom_key_issue.fee_withdraw,
-                       &denom_key->fee_withdraw);
-    TALER_amount_hton (&denom_key_issue.fee_deposit,
-                       &denom_key->fee_deposit);
-    TALER_amount_hton (&denom_key_issue.fee_refresh,
-                       &denom_key->fee_refresh);
-    TALER_amount_hton (&denom_key_issue.fee_refund,
-                       &denom_key->fee_refund);
-    EXITIF (GNUNET_SYSERR ==
-            GNUNET_CRYPTO_eddsa_verify (
-              TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
-              &denom_key_issue,
-              &denom_key->master_sig.eddsa_signature,
-              &master_key->eddsa_pub));
-  }
+  EXITIF (GNUNET_SYSERR ==
+          TALER_exchange_offline_denom_validity_verify (
+            &denom_key->h_key,
+            denom_key->valid_from,
+            denom_key->withdraw_valid_until,
+            denom_key->expire_deposit,
+            denom_key->expire_legal,
+            &denom_key->value,
+            &denom_key->fee_withdraw,
+            &denom_key->fee_deposit,
+            &denom_key->fee_refresh,
+            &denom_key->fee_refund,
+            master_key,
+            &denom_key->master_sig));
   return GNUNET_OK;
-
 EXITIF_exit:
   /* invalidate denom_key, just to be sure */
   memset (denom_key,

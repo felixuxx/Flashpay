@@ -156,6 +156,97 @@ TALER_exchange_offline_signkey_validity_verify (
 
 
 void
+TALER_exchange_offline_denom_validity_sign (
+  const struct GNUNET_HashCode *h_denom_pub,
+  struct GNUNET_TIME_Absolute stamp_start,
+  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
+  struct GNUNET_TIME_Absolute stamp_expire_deposit,
+  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  const struct TALER_Amount *coin_value,
+  const struct TALER_Amount *fee_withdraw,
+  const struct TALER_Amount *fee_deposit,
+  const struct TALER_Amount *fee_refresh,
+  const struct TALER_Amount *fee_refund,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_DenominationKeyValidityPS issue = {
+    .purpose.purpose
+      = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
+    .purpose.size
+      = htonl (sizeof (issue)),
+    .start = GNUNET_TIME_absolute_hton (stamp_start),
+    .expire_withdraw = GNUNET_TIME_absolute_hton (stamp_expire_withdraw),
+    .expire_deposit = GNUNET_TIME_absolute_hton (stamp_expire_deposit),
+    .expire_legal = GNUNET_TIME_absolute_hton (stamp_expire_legal),
+    .denom_hash = *h_denom_pub
+  };
+
+  GNUNET_CRYPTO_eddsa_key_get_public (&master_priv->eddsa_priv,
+                                      &issue.master.eddsa_pub);
+  TALER_amount_hton (&issue.value,
+                     coin_value);
+  TALER_amount_hton (&issue.fee_withdraw,
+                     fee_withdraw);
+  TALER_amount_hton (&issue.fee_deposit,
+                     fee_deposit);
+  TALER_amount_hton (&issue.fee_refresh,
+                     fee_refresh);
+  TALER_amount_hton (&issue.fee_refund,
+                     fee_refund);
+  GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
+                            &issue,
+                            &master_sig->eddsa_signature);
+}
+
+
+int
+TALER_exchange_offline_denom_validity_verify (
+  const struct GNUNET_HashCode *h_denom_pub,
+  struct GNUNET_TIME_Absolute stamp_start,
+  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
+  struct GNUNET_TIME_Absolute stamp_expire_deposit,
+  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  const struct TALER_Amount *coin_value,
+  const struct TALER_Amount *fee_withdraw,
+  const struct TALER_Amount *fee_deposit,
+  const struct TALER_Amount *fee_refresh,
+  const struct TALER_Amount *fee_refund,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TALER_DenominationKeyValidityPS dkv = {
+    .purpose.purpose = htonl (
+      TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
+    .purpose.size = htonl (sizeof (dkv)),
+    .master = *master_pub,
+    .start = GNUNET_TIME_absolute_hton (stamp_start),
+    .expire_withdraw = GNUNET_TIME_absolute_hton (stamp_expire_withdraw),
+    .expire_deposit = GNUNET_TIME_absolute_hton (stamp_expire_deposit),
+    .expire_legal = GNUNET_TIME_absolute_hton (stamp_expire_legal),
+    .denom_hash = *h_denom_pub
+  };
+
+  TALER_amount_hton (&dkv.value,
+                     coin_value);
+  TALER_amount_hton (&dkv.fee_withdraw,
+                     fee_withdraw);
+  TALER_amount_hton (&dkv.fee_deposit,
+                     fee_deposit);
+  TALER_amount_hton (&dkv.fee_refresh,
+                     fee_refresh);
+  TALER_amount_hton (&dkv.fee_refund,
+                     fee_refund);
+  return
+    GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY,
+    &dkv,
+    &master_sig->eddsa_signature,
+    &master_pub->eddsa_pub);
+}
+
+
+void
 TALER_exchange_offline_wire_add_sign (
   const char *payto_uri,
   struct GNUNET_TIME_Absolute now,
