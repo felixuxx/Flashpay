@@ -73,7 +73,6 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
  */
 extern char *TEH_currency;
 
-
 /**
  * @brief Struct describing an URL and the handler for it.
  */

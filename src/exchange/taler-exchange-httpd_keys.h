@@ -242,4 +242,18 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
                                  const char *const args[]);
 
 
+/**
+ * Load fees and expiration times (!) for the denomination type configured
+ * in section @a section_name.  Before calling this function, the
+ * `start` time must already be initialized in @a meta.
+ *
+ * @param section_name section in the configuration to use
+ * @param[in,out] meta denomination type data to complete
+ * @return #GNUNET_OK on success
+ */
+int
+TEH_keys_load_fees (const char *section_name,
+                    struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
+
+
 #endif

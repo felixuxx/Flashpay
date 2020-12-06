@@ -264,6 +264,12 @@ struct TEH_KeyStateHandle
   json_t *auditors;
 
   /**
+   * Cached reply for a GET /management/keys request.  Used so we do not
+   * re-create the reply every time.
+   */
+  json_t *management_keys_reply;
+
+  /**
    * Sorted array of responses to /keys (MUST be sorted by cherry-picking date) of
    * length @e krd_array_length;
    */
@@ -723,6 +729,11 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
   GNUNET_CONTAINER_multihashmap_destroy (ksh->denomkey_map);
   json_decref (ksh->auditors);
   ksh->auditors = NULL;
+  if (NULL != ksh->management_keys_reply)
+  {
+    json_decref (ksh->management_keys_reply);
+    ksh->management_keys_reply = NULL;
+  }
   if (free_helper)
     destroy_key_helpers (&ksh->helpers);
   GNUNET_free (ksh);
@@ -1353,6 +1364,269 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
 
 
 /**
+ * Load fees and expiration times (!) for the denomination type configured
+ * in section @a section_name.  Before calling this function, the
+ * `start` time must already be initialized in @a meta.
+ *
+ * @param section_name section in the configuration to use
+ * @param[in,out] meta denomination type data to complete
+ * @return #GNUNET_OK on success
+ */
+int
+TEH_keys_load_fees (const char *section_name,
+                    struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+{
+  struct GNUNET_TIME_Relative deposit_duration;
+  struct GNUNET_TIME_Relative legal_duration;
+
+  GNUNET_assert (0 != meta.start.abs_value_us); /* caller bug */
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           section_name,
+                                           "DURATION_SPEND",
+                                           &deposit_duration))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section_name,
+                               "DURATION_SPEND");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (kcfg,
+                                           section_name,
+                                           "DURATION_LEGAL",
+                                           &legal_duration))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section_name,
+                               "DURATION_LEGAL");
+    return GNUNET_SYSERR;
+  }
+  meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
+                                                    hd->validity_duration);
+  /* NOTE: this is a change from the 0.8 semantics of the configuration:
+     before duration_spend was relative to 'start', not to 'expire_withdraw'.
+     But doing it this way avoids the error case where previously
+     duration_spend < duration_withdraw was not allowed. */
+  meta->expire_deposit = GNUNET_TIME_absolute_add (meta->expire_withdraw,
+                                                   deposit_duration);
+  meta->expire_legal = GNUNET_TIME_absolute_add (meta->expire_deposit,
+                                                 legal_duration);
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               section_name,
+                               "VALUE",
+                               &meta->value))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "VALUE",
+                               section_name);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               section_name,
+                               "FEE_WITHDRAW",
+                               &meta->fee_withdraw))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_WITHDRAW",
+                               section_name);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               section_name,
+                               "FEE_DEPOSIT",
+                               &meta->fee_deposit))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_DEPOSIT",
+                               section_name);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               section_name,
+                               "FEE_REFRESH",
+                               &meta->fee_refresh))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_REFRESH",
+                               section_name);
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               section_name,
+                               "FEE_REFUND",
+                               &meta->fee_refund))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amount for option `%s' in section `%s'\n",
+                               "FEE_REFUND",
+                               section_name);
+    return GNUNET_SYSERR;
+  }
+  if ( (0 != strcasecmp (TEH_currency,
+                         meta->value.currency)) ||
+       (0 != strcasecmp (TEH_currency,
+                         meta->fee_withdraw.currency)) ||
+       (0 != strcasecmp (TEH_currency,
+                         meta->fee_deposit.currency)) ||
+       (0 != strcasecmp (TEH_currency,
+                         meta->fee_refresh.currency)) ||
+       (0 != strcasecmp (TEH_currency,
+                         meta->fee_refund.currency)) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "Need amounts in section `%s' to use currency `%s'\n",
+                               section_name,
+                               TEH_currency);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Closure for #add_future_denomkey_cb and #add_future_signkey_cb.
+ */
+struct FutureBuilderContext
+{
+  /**
+   * Our key state.
+   */
+  struct TEH_KeyStateHandle *ksh;
+
+  /**
+   * Array of denomination keys.
+   */
+  json_t *denoms;
+
+  /**
+   * Array of signing keys.
+   */
+  json_t *signkeys;
+
+};
+
+
+/**
+ * Function called on all of our current and future denomination keys
+ * known to the helper process. Filters out those that are current
+ * and adds the remaining denomination keys (with their configuration
+ * data) to the JSON array.
+ *
+ * @param cls the `struct FutureBuilderContext *`
+ * @param h_denom_pub hash of the denomination public key
+ * @param value a `struct HelperDenomination`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static int
+add_future_denomkey_cb (void *cls,
+                        const struct GNUNET_HashCode *h_denom_pub,
+                        void *value)
+{
+  struct FutureBuilderContext *fbc = cls;
+  struct HelperDenomination *hd = value;
+  struct TEH_DenominationKey *dk;
+  struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
+
+  dk = GNUNET_CONTAINER_multihashmap_get (ksh->denom_map,
+                                          h_denom_pub);
+  if (NULL != dk)
+    return GNUNET_OK; /* skip: this key is already active! */
+  meta.start = hd->start_time;
+  if (GNUNET_OK !=
+      TEH_keys_load_fees (hd->section_name,
+                          &meta))
+  {
+    /* Woops, couldn't determine fee structure!? */
+    return GNUNET_OK;
+  }
+  GNUNET_assert (
+    0 ==
+    json_array_append_new (
+      json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
+                 "value",
+                 TALER_JSON_from_amount (&meta.value),
+                 "stamp_start",
+                 GNUNET_JSON_from_time_abs (meta.start),
+                 "stamp_expire_withdraw",
+                 GNUNET_JSON_from_time_abs (meta.expire_withdraw),
+                 "stamp_expire_deposit",
+                 GNUNET_JSON_from_time_abs (meta.expire_deposit),
+                 "stamp_expire_legal",
+                 GNUNET_JSON_from_time_abs (meta.expire_legal),
+                 "denom_pub",
+                 GNUNET_JSON_from_rsa_public_key (pk->rsa_public_key),
+                 "fee_withdraw",
+                 TALER_JSON_from_amount (&meta.fee_withdraw),
+                 "fee_deposit",
+                 TALER_JSON_from_amount (&meta.fee_deposit),
+                 "fee_refresh",
+                 TALER_JSON_from_amount (&meta.fee_refresh),
+                 "fee_refund",
+                 TALER_JSON_from_amount (&meta.fee_refund),
+                 "denom_secmod_sig",
+                 GNUNET_JSON_from_data_auto (&hd->sm_sig))));
+  return GNUNET_OK;
+}
+
+
+/**
+ * Function called on all of our current and future exchange signing keys
+ * known to the helper process. Filters out those that are current
+ * and adds the remaining signing keys (with their configuration
+ * data) to the JSON array.
+ *
+ * @param cls the `struct FutureBuilderContext *`
+ * @param pid actually the exchange public key (type disguised)
+ * @param value a `struct HelperDenomination`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static int
+add_future_signkey_cb (void *cls,
+                       const struct GNUNET_PeerIdentity *pid,
+                       void *value)
+{
+  struct FutureBuilderContext *fbc = cls;
+  struct HelperSignkey *hsk = value;
+  struct SigningKey *sk;
+  struct GNUNET_TIME_Absolute stamp_expire;
+  struct GNUNET_TIME_Absolute legal_end;
+
+  sk = GNUNET_CONTAINER_multipeermap_get (ksh->signkey_map,
+                                          pid);
+  if (NULL != sk)
+    return GNUNET_OK; /* skip: this key is already active */
+  stamp_expire = GNUNET_TIME_absolute_add (hsk->start_time,
+                                           hsk->validity_duration);
+  legal_end = GNUNET_TIME_absolute_add (stamp_expire,
+                                        TEH_signkey_legal_duration);
+  GNUNET_assert (0 ==
+                 json_array_append_new (
+                   json_pack ("{s:o, s:o, s:o, s:o, s:o}",
+                              "key",
+                              GNUNET_JSON_from_data_auto (&hsk->exchange_pub),
+                              "stamp_start",
+                              GNUNET_JSON_from_time_abs (hsk->start_time),
+                              "stamp_expire",
+                              GNUNET_JSON_from_time_abs (stamp_expire),
+                              "stamp_end",
+                              GNUNET_JSON_from_time_abs (legal_end),
+                              "signkey_secmod_sig",
+                              GNUNET_JSON_from_data_auto (&hsk->sm_sig))));
+  return GNUNET_OK;
+}
+
+
+/**
  * Function to call to handle requests to "/management/keys" by sending
  * back our future key material.
  *
@@ -1367,6 +1641,7 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
                                  const char *const args[])
 {
   struct TEH_KeyStateHandle *ksh;
+  json_t *reply;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
@@ -1377,11 +1652,46 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                        "no key state");
   }
-  // FIXME: iterate over both denomination and signing keys from the helpers;
-  // filter by those that are already master-signed (and thus in the 'main'
-  // key state).  COMBINE *here* with 'cfg' information about the
-  // value/fees/etc. of the future denomination!  => return the rest!
-  return MHD_NO;
+  if (NULL == ksh->management_keys_reply)
+  {
+    struct FutureBuilderContext fbc = {
+      .ksh = ksh
+             .denoms = json_array ();
+      .signkeys = json_array ();
+    };
+
+    GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers.denom_keys,
+                                           &add_future_denomkey_cb,
+                                           denoms);
+    GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers.esign_keys,
+                                           &add_future_signkey_cb,
+                                           signkeys);
+    reply = json_pack (
+      "{s:o, s:o, s:o, s:o, s:o}",
+      "future_denoms",
+      denoms,
+      "future_signkeys",
+      signkeys,
+      "master_pub",
+      GNUNET_JSON_from_data_auto (&TEH_master_public_key),
+      "denom_secmod_public_key",
+      GNUNET_JSON_from_data_auto (&denom_sm_pub),
+      "signkey_secmod_public_key",
+      GNUNET_JSON_from_data_auto (&esign_sm_pub));
+    if (NULL == reply)
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
+                                         NULL);
+    ksh->management_keys_reply = json_incref (reply);
+  }
+  else
+  {
+    reply = json_incref (ksh->management_keys_reply);
+  }
+  return TALER_MHD_reply_json (connection,
+                               reply,
+                               MHD_HTTP_OK);
 }
 
 
