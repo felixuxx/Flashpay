@@ -1,0 +1,216 @@
+/*
+  This file is part of TALER
+  Copyright (C) 2020 Taler Systems SA
+
+  TALER is free software; you can redistribute it and/or modify it under the
+  terms of the GNU Affero General Public License as published by the Free Software
+  Foundation; either version 3, or (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License along with
+  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file taler-exchange-httpd_keys.h
+ * @brief management of our various keys
+ * @author Christian Grothoff
+ */
+#include "platform.h"
+#include <pthread.h>
+#include "taler_json_lib.h"
+#include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_responses.h"
+
+
+#ifndef TALER_EXCHANGE_HTTPD_KEYS_H
+#define TALER_EXCHANGE_HTTPD_KEYS_H
+
+/**
+ * @brief All information about a denomination key (which is used to
+ * sign coins into existence).
+ */
+struct TEH_DenominationKey
+{
+  /**
+   * The helper to sign with this denomination key. Will be NULL if the
+   * private key is not available (this is the case after the key has expired
+   * for signing coins, if it is too early, or if the key has been revoked).
+   */
+  struct TALER_CRYPTO_DenominationHelper *dh;
+
+  /**
+   * Decoded denomination public key (the hash of it is in
+   * @e issue, but we sometimes need the full public key as well).
+   */
+  struct TALER_DenominationPublicKey denom_pub;
+
+  /**
+   * Signed public information about a denomination key.
+   */
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+};
+
+
+/**
+ * Something changed in the database. Rebuild all key states.  This function
+ * should be called if the exchange learns about a new signature from an
+ * auditor or our master key.
+ *
+ * (We do not do so immediately, but merely signal to all threads that they
+ * need to rebuild their key state upon the next call to
+ * #TEH_get_key_state()).
+ */
+void
+TEH_keys_update_states (void);
+
+
+/**
+ * Look up the issue for a denom public key.  Note that the result
+ * must only be used in this thread and only until another key or
+ * key state is resolved.
+ *
+ * @param key_state state to look in
+ * @param h_denom_pub hash of denomination public key
+ * @param[out] ec set to the error code, in case the operation failed
+ * @param[out] hc set to the HTTP status code to use
+ * @return the denomination key issue,
+ *         or NULL if @a h_denom_pub could not be found
+ */
+struct TEH_DenominationKey *
+TEH_keys_denomination_by_hash (
+  const struct GNUNET_HashCode *h_denom_pub,
+  enum TALER_ErrorCode *ec,
+  unsigned int *hc);
+
+
+/**
+ * Request to sign @a msg using the public key corresponding to
+ * @a h_denom_pub.
+ *
+ * @param h_denom_pub hash of the public key to use to sign
+ * @param msg message to sign
+ * @param msg_size number of bytes in @a msg
+ * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
+ * @return signature, the value inside the structure will be NULL on failure,
+ *         see @a ec for details about the failure
+ */
+struct TALER_DenominationSignature
+TEH_keys_denomination_sign (
+  const struct GNUNET_HashCode *h_denom_pub,
+  const void *msg,
+  size_t msg_size,
+  enum TALER_ErrorCode *ec);
+
+
+/**
+ * Revoke the public key associated with @param h_denom_pub .
+ * This function should be called AFTER the database was
+ * updated, as it also triggers #TEH_keys_update_states().
+ *
+ * Note that the actual revocation happens asynchronously and
+ * may thus fail silently. To verify that the revocation succeeded,
+ * clients must watch for the associated change to the key state.
+ *
+ * @param h_denom_pub hash of the public key to revoke
+ */
+void
+TEH_keys_denomination_revoke (
+  const struct GNUNET_HashCode *h_denom_pub);
+
+
+/**
+ * Sign the message in @a purpose with the exchange's signing key.
+ *
+ * The @a purpose data is the beginning of the data of which the signature is
+ * to be created. The `size` field in @a purpose must correctly indicate the
+ * number of bytes of the data structure, including its header.  Use
+ * #TEH_keys_exchange_sign() instead of calling this function directly!
+ *
+ * @param purpose the message to sign
+ * @param[out] pub set to the current public signing key of the exchange
+ * @param[out] sig signature over purpose using current signing key
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TEH_keys_exchange_sign_ (const struct
+                         GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+                         struct TALER_ExchangePublicKeyP *pub,
+                         struct TALER_ExchangeSignatureP *sig)
+
+
+/**
+ * @ingroup crypto
+ * @brief EdDSA sign a given block.
+ *
+ * The @a ps data must be a fixed-size struct for which the signature is to be
+ * created. The `size` field in @a ps->purpose must correctly indicate the
+ * number of bytes of the data structure, including its header.
+ *
+ * @param ps packed struct with what to sign, MUST begin with a purpose
+ * @param[out] pub where to store the public key to use for the signing
+ * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
+ */
+#define TEH_keys_exchange_sign(ps,pub,sig) \
+  ({                                                  \
+    /* check size is set correctly */                 \
+    GNUNET_assert (htonl ((ps)->purpose.size) ==      \
+                   sizeof (*ps));                     \
+    /* check 'ps' begins with the purpose */          \
+    GNUNET_static_assert (((void*) (ps)) ==           \
+                          ((void*) &(ps)->purpose));  \
+    TEH_exchange_sign_ (&(ps)->purpose,               \
+                        pub,                          \
+                        sig);                         \
+  })
+
+
+/**
+ * Revoke the given exchange's signing key.
+ * This function should be called AFTER the database was
+ * updated, as it also triggers #TEH_keys_update_states().
+ *
+ * Note that the actual revocation happens asynchronously and
+ * may thus fail silently. To verify that the revocation succeeded,
+ * clients must watch for the associated change to the key state.
+ *
+ * @param exchange_pub key to revoke
+ */
+void
+TEH_keys_exchange_revoke (const struct TALER_ExchangePublicKeyP *exchange_pub);
+
+
+/**
+ * Function to call to handle requests to "/keys" by sending
+ * back our current key material.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param args array of additional options (must be empty for this function)
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
+                      struct MHD_Connection *connection,
+                      const char *const args[]);
+
+
+/**
+ * Function to call to handle requests to "/management/keys" by sending
+ * back our future key material.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @param args array of additional options (must be empty for this function)
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
+                                 struct MHD_Connection *connection,
+                                 const char *const args[]);
+
+
+#endif

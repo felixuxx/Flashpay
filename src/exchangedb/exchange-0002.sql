@@ -42,6 +42,9 @@ COMMENT ON INDEX prepare_get_index
   IS 'for wire_prepare_data_get';
 
 
+-- NOTE: current thinking is that we will NOT need this table!
+-- => Instead, 'future' keys are only with the secmod until
+--    the offline key is provided!
 CREATE TABLE IF NOT EXISTS future_denominations
   (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,denom_pub BYTEA NOT NULL

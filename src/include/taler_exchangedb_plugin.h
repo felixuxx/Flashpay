@@ -1624,8 +1624,7 @@ typedef void
 typedef void
 (*TALER_EXCHANGEDB_DenominationCallback)(
   void *cls,
-  const struct
-  TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
 
