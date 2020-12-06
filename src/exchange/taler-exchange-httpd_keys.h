@@ -29,6 +29,12 @@
 #define TALER_EXCHANGE_HTTPD_KEYS_H
 
 /**
+ * Signatures of an auditor over a denomination key of this exchange.
+ */
+struct TEH_AuditorSignature;
+
+
+/**
  * @brief All information about a denomination key (which is used to
  * sign coins into existence).
  */
@@ -56,13 +62,23 @@ struct TEH_DenominationKey
    * The long-term offline master key's signature for this denomination.
    * Signs over @e h_denom_pub and @e meta.
    */
-  struct TALER_MasterSignatureP master_sig_validity;
+  struct TALER_MasterSignatureP master_sig;
 
   /**
-   * The master key's signature to revoke this denomination, or all zero
-   * if the denomination has NOT yet been revoked.
+   * We store the auditor signatures for this denomination in a DLL.
    */
-  struct TALER_MasterSignatureP master_sig_revocation;
+  struct TEH_AuditorSignature *as_head;
+
+  /**
+   * We store the auditor signatures for this denomination in a DLL.
+   */
+  struct TEH_AuditorSignature *as_tail;
+
+  /**
+   * Set to 'true' if this denomination has been revoked and recoup is
+   * thus supported right now.
+   */
+  bool recoup_possible;
 
 };
 

@@ -86,6 +86,34 @@ struct HelperDenomination
 
 
 /**
+ * Signatures of an auditor over a denomination key of this exchange.
+ */
+struct TEH_AuditorSignature
+{
+  /**
+   * We store the signatures in a DLL.
+   */
+  struct AuditorSignature *prev;
+
+  /**
+   * We store the signatures in a DLL.
+   */
+  struct AuditorSignature *next;
+
+  /**
+   * A signature from the auditor.
+   */
+  struct TALER_AuditorSignatureP asig;
+
+  /**
+   * Public key of the auditor.
+   */
+  struct TALER_AuditorPublicKeyP apub;
+
+};
+
+
+/**
  * Information about a signing key on offer by the esign helper.
  */
 struct HelperSignkey
@@ -229,8 +257,11 @@ struct TEH_KeyStateHandle
    */
   struct GNUNET_CONTAINER_MultiPeerMap *signkey_map;
 
-  // FIXME: need list of auditors here!
-  // FIXME: need list of auditor-denominations here!
+  /**
+   * json array with the auditors of this exchange. Contains exactly
+   * the information needed for the "auditors" field of the /keys response.
+   */
+  json_t *auditors;
 
   /**
    * Sorted array of responses to /keys (MUST be sorted by cherry-picking date) of
@@ -631,10 +662,18 @@ clear_denomination_cb (void *cls,
                        void *value)
 {
   struct TEH_DenominationKey *dk = value;
+  struct TEH_AuditorSignature *as;
 
   (void) cls;
   (void) h_denom_pub;
   GNUNET_CRYPTO_rsa_public_key_free (dk->denom_pub.rsa_public_key);
+  while (NULL != (as = dk->as_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (dk->as_head,
+                                 dk->as_tail,
+                                 as);
+    GNUNET_free (as);
+  }
   GNUNET_free (dk);
   return GNUNET_OK;
 }
@@ -682,6 +721,8 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
                                          &clear_signkey_cb,
                                          ksh);
   GNUNET_CONTAINER_multihashmap_destroy (ksh->denomkey_map);
+  json_decref (ksh->auditors);
+  ksh->auditors = NULL;
   if (free_helper)
     destroy_key_helpers (&ksh->helpers);
   GNUNET_free (ksh);
@@ -793,7 +834,16 @@ auditor_info_cb (
 {
   struct TEH_KeyStateHandle *ksh = cls;
 
-  // FIXME: remember...
+  GNUNET_break (0 ==
+                json_array_append_new (
+                  ksh->auditors,
+                  json_pack ("{s:s, s:o, s:s}",
+                             "name",
+                             auditor_name,
+                             "auditor_pub",
+                             GNUNET_JSON_from_data_auto (auditor_pub),
+                             "url",
+                             auditor_url)));
 }
 
 
@@ -814,8 +864,25 @@ auditor_denom_cb (
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
   struct TEH_KeyStateHandle *ksh = cls;
+  struct TEH_DenominationKey *dk;
+  struct TEH_AuditorSignature *as;
 
-  // FIXME: remember...
+  dk = GNUNET_CONTAINER_multihashmap_get (ksh->denom_map,
+                                          h_denom_pub);
+  if (NULL == dk)
+  {
+    /* Odd, this should be impossible as per foreign key
+       constraint on 'auditor_denom_sigs'! Well, we can
+       safely continue anyway, so let's just log it. */
+    GNUNET_break (0);
+    return;
+  }
+  as = GNUNET_new (struct TEH_AuditorSignature);
+  as->asig = *auditor_sig;
+  as->apub = *auditor_pub;
+  GNUNET_CONTAINER_DLL_insert (dk->as_head,
+                               dk->as_tail,
+                               as);
 }
 
 
@@ -851,6 +918,7 @@ build_key_state (struct HelperState *hs)
                                                             GNUNET_YES);
   ksh->signkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                            GNUNET_NO /* MUST be NO! */);
+  ksh->auditors = json_array ();
   /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
   qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
                                           &denomination_info_cb,
