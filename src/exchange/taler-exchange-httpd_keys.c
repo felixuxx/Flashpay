@@ -229,6 +229,9 @@ struct TEH_KeyStateHandle
    */
   struct GNUNET_CONTAINER_MultiPeerMap *signkey_map;
 
+  // FIXME: need list of auditors here!
+  // FIXME: need list of auditor-denominations here!
+
   /**
    * Sorted array of responses to /keys (MUST be sorted by cherry-picking date) of
    * length @e krd_array_length;
@@ -780,15 +783,35 @@ signkey_info_cb (
  * @param auditor_pub the public key of the auditor
  * @param auditor_url URL of the REST API of the auditor
  * @param auditor_name human readable official name of the auditor
- * @param ... MORE
  */
 static void
 auditor_info_cb (
   void *cls,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
-  const char *auditor_name,
-  ...)
+  const char *auditor_name)
+{
+  struct TEH_KeyStateHandle *ksh = cls;
+
+  // FIXME: remember...
+}
+
+
+/**
+ * Function called with information about the denominations
+ * audited by the exchange's auditors.
+ *
+ * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param auditor_pub the public key of an auditor
+ * @param h_denom_pub hash of a denomination key audited by this auditor
+ * @param auditor_sig signature from the auditor affirming this
+ */
+static void
+auditor_denom_cb (
+  void *cls,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_AuditorSignatureP *auditor_sig)
 {
   struct TEH_KeyStateHandle *ksh = cls;
 
@@ -828,8 +851,7 @@ build_key_state (struct HelperState *hs)
                                                             GNUNET_YES);
   ksh->signkey_map = GNUNET_CONTAINER_multihashmap_create (32,
                                                            GNUNET_NO /* MUST be NO! */);
-#if TBD
-  // NOTE: should ONLY fetch master-signed signkeys, but ALSO those that were revoked!
+  /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
   qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
                                           &denomination_info_cb,
                                           ksh);
@@ -840,12 +862,10 @@ build_key_state (struct HelperState *hs)
                        true);
     return NULL;
   }
-#endif
-#if TBD
-  // NOTE: should ONLY fetch non-revoked AND master-signed signkeys!
-  qs = TEH_plugin->iterate_signkeys (TEH_plugin->cls,
-                                     &signkey_info_cb,
-                                     ksh);
+  /* NOTE: ONLY fetches non-revoked AND master-signed signkeys! */
+  qs = TEH_plugin->iterate_active_signkeys (TEH_plugin->cls,
+                                            &signkey_info_cb,
+                                            ksh);
   if (qs < 0)
   {
     GNUNET_break (0);
@@ -853,11 +873,9 @@ build_key_state (struct HelperState *hs)
                        true);
     return NULL;
   }
-#endif
-#if TBD
-  qs = TEH_plugin->iterate_auditor_info (TEH_plugin->cls,
-                                         &auditor_info_cb,
-                                         ksh);
+  qs = TEH_plugin->iterate_active_auditors (TEH_plugin->cls,
+                                            &auditor_info_cb,
+                                            ksh);
   if (qs < 0)
   {
     GNUNET_break (0);
@@ -865,7 +883,16 @@ build_key_state (struct HelperState *hs)
                        true);
     return NULL;
   }
-#endif
+  qs = TEH_plugin->iterate_auditor_denominations (TEH_plugin->cls,
+                                                  &auditor_denom_cb,
+                                                  ksh);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
   return ksh;
 }
 

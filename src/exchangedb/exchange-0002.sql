@@ -114,20 +114,23 @@ COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
 
 
 CREATE TABLE IF NOT EXISTS exchange_sign_keys
-  (exchange_pub BYTEA PRIMARY KEY
-  ,master_pub BYTEA NOT NULL CHECK (LENGTH(master_pub)=32)
+  (exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  ,legal_end INT8 NOT NULL
+  ,valid_from INT8 NOT NULL
+  ,expire_sign INT8 NOT NULL
+  ,expire_legal INT8 NOT NULL
   );
 COMMENT ON TABLE exchange_sign_keys
   IS 'Table with master public key signatures on exchange online signing keys.';
 COMMENT ON COLUMN exchange_sign_keys.exchange_pub
   IS 'Public online signing key of the exchange.';
-COMMENT ON COLUMN exchange_sign_keys.master_pub
-  IS 'Master public key of the exchange that was used for master_sig.';
 COMMENT ON COLUMN exchange_sign_keys.master_sig
   IS 'Signature affirming the validity of the signing key of purpose TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.';
-COMMENT ON COLUMN exchange_sign_keys.legal_end
+COMMENT ON COLUMN exchange_sign_keys.valid_from
+  IS 'Time when this online signing key will first be used to sign messages.';
+COMMENT ON COLUMN exchange_sign_keys.expire_sign
+  IS 'Time when this online signing key will no longer be used to sign.';
+COMMENT ON COLUMN exchange_sign_keys.expire_legal
   IS 'Time when this online signing key legally expires.';
 
 

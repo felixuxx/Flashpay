@@ -294,6 +294,105 @@ struct TALER_EXCHANGEDB_DenominationKeyMetaData
 
 
 /**
+ * Signature of a function called with information about the exchange's
+ * denomination keys.
+ *
+ * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param denom_pub public key of the denomination
+ * @param h_denom_pub hash of @a denom_pub
+ * @param meta meta data information about the denomination type (value, expirations, fees)
+ * @param master_sig master signature affirming the validity of this denomination
+ * @param recoup_possible true if the key was revoked and clients can currently recoup
+ *        coins of this denomination
+ */
+typedef void
+(*TALER_EXCHANGEDB_DenominationsCallback)(
+  void *cls,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
+  const struct TALER_MasterSignatureP *master_sig,
+  bool recoup_possible);
+
+
+/**
+ * Meta data about an exchange online signing key.
+ */
+struct TALER_EXCHANGEDB_SignkeyMetaData
+{
+  /**
+   * Start time of the validity period for this key.
+   */
+  struct GNUNET_TIME_Absolute start;
+
+  /**
+   * The exchange will sign messages with this key between @e start and this time.
+   */
+  struct GNUNET_TIME_Absolute expire_sign;
+
+  /**
+   * When do signatures with this sign key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Exchange is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_sign (by a year or more).
+   */
+  struct GNUNET_TIME_Absolute expire_legal;
+
+};
+
+
+/**
+ * Signature of a function called with information about the exchange's
+ * online signing keys.
+ *
+ * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param exchange_pub public key of the exchange
+ * @param meta meta data information about the signing type (expirations)
+ * @param master_sig master signature affirming the validity of this denomination
+ */
+typedef void
+(*TALER_EXCHANGEDB_ActiveSignkeysCallback)(
+  void *cls,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Function called with information about the exchange's auditors.
+ *
+ * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param auditor_pub the public key of the auditor
+ * @param auditor_url URL of the REST API of the auditor
+ * @param auditor_name human readable official name of the auditor
+ */
+typedef void
+(*TALER_EXCHANGEDB_AuditorsCallback)(
+  void *cls,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const char *auditor_url,
+  const char *auditor_name);
+
+
+/**
+ * Function called with information about the denominations
+ * audited by the exchange's auditors.
+ *
+ * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param auditor_pub the public key of an auditor
+ * @param h_denom_pub hash of a denomination key audited by this auditor
+ * @param auditor_sig signature from the auditor affirming this
+ */
+typedef void
+(*TALER_EXCHANGEDB_AuditorDenominationsCallback)(
+  void *cls,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_AuditorSignatureP *auditor_sig);
+
+
+/**
  * @brief Information we keep for a withdrawn coin to reproduce
  * the /withdraw operation if needed, and to have proof
  * that a reserve was drained by this amount.
@@ -1777,6 +1876,73 @@ struct TALER_EXCHANGEDB_Plugin
   (*iterate_denomination_info)(void *cls,
                                TALER_EXCHANGEDB_DenominationCallback cb,
                                void *cb_cls);
+
+
+  /**
+   * Function called to invoke @a cb on every known denomination key (revoked
+   * and non-revoked) that has been signed by the master key. Runs in its own
+   * read-only transaction (hence no session provided).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param cb function to call on each denomination key
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*iterate_denominations)(void *cls,
+                           TALER_EXCHANGEDB_DenominationsCallback cb,
+                           void *cb_cls);
+
+  /**
+   * Function called to invoke @a cb on every non-revoked exchange signing key
+   * that has been signed by the master key.  Revoked and (for signing!)
+   * expired keys are skipped. Runs in its own read-only transaction (hence no
+   * session provided).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param cb function to call on each signing key
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*iterate_active_signkeys)(void *cls,
+                             TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
+                             void *cb_cls);
+
+
+  /**
+   * Function called to invoke @a cb on every active auditor. Disabled
+   * auditors are skipped. Runs in its own read-only transaction (hence no
+   * session provided).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param cb function to call on each active auditor
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*iterate_active_auditors)(void *cls,
+                             TALER_EXCHANGEDB_AuditorsCallback cb,
+                             void *cb_cls);
+
+
+  /**
+   * Function called to invoke @a cb on every denomination with an active
+   * auditor. Disabled auditors and denominations without auditor are
+   * skipped. Runs in its own read-only transaction (hence no session
+   * provided).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param cb function to call on each active auditor-denomination pair
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*iterate_auditor_denominations)(
+    void *cls,
+    TALER_EXCHANGEDB_AuditorDenominationsCallback cb,
+    void *cb_cls);
+
 
   /**
    * Get the summary of a reserve.

@@ -314,6 +314,66 @@ postgres_get_session (void *cls)
                               ",denom_pub"
                               " FROM denominations;",
                               0),
+      /* Used in #postgres_iterate_denominations() */
+      GNUNET_PQ_make_prepare ("select_denominations",
+                              "SELECT"
+                              " denominations.master_sig"
+                              ",denom_revocations_serial_id IS NOT NULL AS revoked"
+                              ",valid_from"
+                              ",expire_withdraw"
+                              ",expire_deposit"
+                              ",expire_legal"
+                              ",coin_val"                                          /* value of this denom */
+                              ",coin_frac"                                          /* fractional value of this denom */
+                              ",fee_withdraw_val"
+                              ",fee_withdraw_frac"
+                              ",fee_deposit_val"
+                              ",fee_deposit_frac"
+                              ",fee_refresh_val"
+                              ",fee_refresh_frac"
+                              ",fee_refund_val"
+                              ",fee_refund_frac"
+                              ",denom_pub"
+                              " FROM denominations"
+                              " LEFT JOIN "
+                              "   denomination_revocations USING (denom_pub_hash);",
+                              0),
+      /* Used in #postgres_iterate_active_signkeys() */
+      GNUNET_PQ_make_prepare ("select_signkeys",
+                              "SELECT"
+                              " master_sig"
+                              ",exchange_pub"
+                              ",valid_from"
+                              ",expire_sign"
+                              ",expire_legal"
+                              " FROM exchange_sign_keys esk"
+                              " WHERE"
+                              "   expire_sign > $1"
+                              " AND NOT EXISTS "
+                              "  (SELECT exchange_pub "
+                              "     FROM signkey_revocations skr"
+                              "    WHERE esk.exchange_pub = skr.exchange_pub);",
+                              1),
+      /* Used in #postgres_iterate_auditor_denominations() */
+      GNUNET_PQ_make_prepare ("select_auditor_denoms",
+                              "SELECT"
+                              " auditor_denom_sigs.auditor_pub"
+                              ",auditor_denom_sigs.denom_pub_hash"
+                              ",auditor_denom_sigs.auditor_sig"
+                              " FROM auditor_denom_sigs"
+                              " JOIN auditors USING (auditor_pub)"
+                              " WHERE auditors.is_active;",
+                              0),
+      /* Used in #postgres_iterate_active_auditors() */
+      GNUNET_PQ_make_prepare ("select_auditors",
+                              "SELECT"
+                              " auditor_pub"
+                              ",auditor_url"
+                              ",auditor_name"
+                              " FROM auditors"
+                              " WHERE"
+                              "   is_active;",
+                              0),
       /* Used in #postgres_get_denomination_info() */
       GNUNET_PQ_make_prepare ("denomination_get",
                               "SELECT"
@@ -1977,6 +2037,448 @@ postgres_iterate_denomination_info (void *cls,
                                                "denomination_iterate",
                                                params,
                                                &domination_cb_helper,
+                                               &dic);
+}
+
+
+/**
+ * Closure for #dominations_cb_helper()
+ */
+struct DenomsIteratorContext
+{
+  /**
+   * Function to call with the results.
+   */
+  TALER_EXCHANGEDB_DenominationsCallback cb;
+
+  /**
+   * Closure to pass to @e cb
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+};
+
+
+/**
+ * Helper function for #postgres_iterate_denominations().
+ * Calls the callback with each denomination key.
+ *
+ * @param cls a `struct DenomsIteratorContext`
+ * @param result db results
+ * @param num_results number of results in @a result
+ */
+static void
+dominations_cb_helper (void *cls,
+                       PGresult *result,
+                       unsigned int num_results)
+{
+  struct DenomsIteratorContext *dic = cls;
+  struct PostgresClosure *pg = dic->pg;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
+    struct TALER_DenominationPublicKey denom_pub;
+    struct TALER_MasterSignatureP master_sig;
+    struct GNUNET_HashCode h_denom_pub;
+    uint8_t revoked;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &master_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("revoked",
+                                            &revoked),
+      TALER_PQ_result_spec_absolute_time ("valid_from",
+                                          &meta.start),
+      TALER_PQ_result_spec_absolute_time ("expire_withdraw",
+                                          &meta.expire_withdraw),
+      TALER_PQ_result_spec_absolute_time ("expire_deposit",
+                                          &meta.expire_deposit),
+      TALER_PQ_result_spec_absolute_time ("expire_legal",
+                                          &meta.expire_legal),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
+                                   &meta.value),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
+                                   &meta.fee_withdraw),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                   &meta.fee_deposit),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
+                                   &meta.fee_refresh),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
+                                   &meta.fee_refund),
+      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
+                                            &denom_pub.rsa_public_key),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      return;
+    }
+    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
+                                       &h_denom_pub);
+    dic->cb (dic->cb_cls,
+             &denom_pub,
+             &h_denom_pub,
+             &meta,
+             &master_sig,
+             (0 != revoked));
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+* Function called to invoke @a cb on every known denomination key (revoked
+* and non-revoked) that has been signed by the master key. Runs in its own
+* read-only transaction (hence no session provided).
+*
+*
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cb function to call on each denomination key
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_iterate_denominations (void *cls,
+                                TALER_EXCHANGEDB_DenominationsCallback cb,
+                                void *cb_cls)
+{
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  struct DenomsIteratorContext dic = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pc
+  };
+  struct TALER_EXCHANGEDB_Session *session;
+
+  session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                               "select_denominations",
+                                               params,
+                                               &dominations_cb_helper,
+                                               &dic);
+}
+
+
+/**
+ * Closure for #signkeys_cb_helper()
+ */
+struct SignkeysIteratorContext
+{
+  /**
+   * Function to call with the results.
+   */
+  TALER_EXCHANGEDB_ActiveSignkeysCallback cb;
+
+  /**
+   * Closure to pass to @e cb
+   */
+  void *cb_cls;
+
+};
+
+
+/**
+ * Helper function for #postgres_active_signkeys().
+ * Calls the callback with each signkey.
+ *
+ * @param cls a `struct SignkeysIteratorContext`
+ * @param result db results
+ * @param num_results number of results in @a result
+ */
+static void
+signkeys_cb_helper (void *cls,
+                    PGresult *result,
+                    unsigned int num_results)
+{
+  struct SignkeysIteratorContext *dic = cls;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_EXCHANGEDB_SignkeyMetaData meta;
+    struct TALER_ExchangePublicKeyP exchange_pub;
+    struct TALER_MasterSignatureP master_sig;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &master_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("exchange_pub",
+                                            &exchange_pub),
+      TALER_PQ_result_spec_absolute_time ("valid_from",
+                                          &meta.start),
+      TALER_PQ_result_spec_absolute_time ("expire_sign",
+                                          &meta.expire_sign),
+      TALER_PQ_result_spec_absolute_time ("expire_legal",
+                                          &meta.expire_legal),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      return;
+    }
+    dic->cb (dic->cb_cls,
+             &exchange_pub,
+             &meta,
+             &master_sig);
+  }
+}
+
+
+/**
+ * Function called to invoke @a cb on every non-revoked exchange signing key
+ * that has been signed by the master key.  Revoked and (for signing!)
+ * expired keys are skipped. Runs in its own read-only transaction (hence no
+ * session provided).
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cb function to call on each signing key
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_iterate_active_signkeys (void *cls,
+                                  TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
+                                  void *cb_cls)
+{
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_end
+  };
+  struct SignkeysIteratorContext dic = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+  };
+  struct TALER_EXCHANGEDB_Session *session;
+
+  now = GNUNET_TIME_absolute_get ();
+  session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                               "select_signkeys",
+                                               params,
+                                               &signkeys_cb_helper,
+                                               &dic);
+}
+
+
+/**
+ * Closure for #auditors_cb_helper()
+ */
+struct AuditorsIteratorContext
+{
+  /**
+   * Function to call with the results.
+   */
+  TALER_EXCHANGEDB_AuditorsCallback cb;
+
+  /**
+   * Closure to pass to @e cb
+   */
+  void *cb_cls;
+
+};
+
+
+/**
+ * Helper function for #postgres_active_auditors().
+ * Calls the callback with each auditor.
+ *
+ * @param cls a `struct SignkeysIteratorContext`
+ * @param result db results
+ * @param num_results number of results in @a result
+ */
+static void
+auditors_cb_helper (void *cls,
+                    PGresult *result,
+                    unsigned int num_results)
+{
+  struct AuditorsIteratorContext *dic = cls;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_AuditorPublicKeyP auditor_pub;
+    char *auditor_url;
+    char *auditor_name;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("auditor_pub",
+                                            &auditor_pub),
+      GNUNET_PQ_result_spec_string ("auditor_url",
+                                    &auditor_url),
+      GNUNET_PQ_result_spec_string ("auditor_name",
+                                    &auditor_name),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      return;
+    }
+    dic->cb (dic->cb_cls,
+             &auditor_pub,
+             auditor_url,
+             auditor_name);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called to invoke @a cb on every active auditor. Disabled
+ * auditors are skipped. Runs in its own read-only transaction (hence no
+ * session provided).
+  *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cb function to call on each active auditor
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_iterate_active_auditors (void *cls,
+                                  TALER_EXCHANGEDB_AuditorsCallback cb,
+                                  void *cb_cls)
+{
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  struct AuditorsIteratorContext dic = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+  };
+  struct TALER_EXCHANGEDB_Session *session;
+
+  session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                               "select_auditors",
+                                               params,
+                                               &auditors_cb_helper,
+                                               &dic);
+}
+
+
+/**
+ * Closure for #auditor_denoms_cb_helper()
+ */
+struct AuditorDenomsIteratorContext
+{
+  /**
+   * Function to call with the results.
+   */
+  TALER_EXCHANGEDB_AuditorDenominationsCallback cb;
+
+  /**
+   * Closure to pass to @e cb
+   */
+  void *cb_cls;
+};
+
+
+/**
+ * Helper function for #postgres_iterate_auditor_denominations().
+ * Calls the callback with each auditor and denomination pair.
+ *
+ * @param cls a `struct AuditorDenomsIteratorContext`
+ * @param result db results
+ * @param num_results number of results in @a result
+ */
+static void
+auditor_denoms_cb_helper (void *cls,
+                          PGresult *result,
+                          unsigned int num_results)
+{
+  struct AuditorDenomsIteratorContext *dic = cls;
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct TALER_AuditorPublicKeyP auditor_pub;
+    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_AuditorSignatureP auditor_sig;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("auditor_pub",
+                                            &auditor_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                            &h_denom_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("auditor_sig",
+                                            &auditor_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      return;
+    }
+    dic->cb (dic->cb_cls,
+             &auditor_pub,
+             &h_denom_pub,
+             &auditor_sig);
+  }
+}
+
+
+/**
+ * Function called to invoke @a cb on every denomination with an active
+ * auditor. Disabled auditors and denominations without auditor are
+ * skipped. Runs in its own read-only transaction (hence no session
+ * provided).
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param cb function to call on each active auditor
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_iterate_auditor_denominations (
+  void *cls,
+  TALER_EXCHANGEDB_AuditorDenominationsCallback cb,
+  void *cb_cls)
+{
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  struct AuditorDenomsIteratorContext dic = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+  };
+  struct TALER_EXCHANGEDB_Session *session;
+
+  session = postgres_get_session (pc);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                               "select_auditor_denoms",
+                                               params,
+                                               &auditor_denoms_cb_helper,
                                                &dic);
 }
 
@@ -8208,6 +8710,11 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->insert_denomination_info = &postgres_insert_denomination_info;
   plugin->get_denomination_info = &postgres_get_denomination_info;
   plugin->iterate_denomination_info = &postgres_iterate_denomination_info;
+  plugin->iterate_denominations = &postgres_iterate_denominations;
+  plugin->iterate_active_signkeys = &postgres_iterate_active_signkeys;
+  plugin->iterate_active_auditors = &postgres_iterate_active_auditors;
+  plugin->iterate_auditor_denominations =
+    &postgres_iterate_auditor_denominations;
   plugin->reserves_get = &postgres_reserves_get;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_latest_reserve_in_reference =
