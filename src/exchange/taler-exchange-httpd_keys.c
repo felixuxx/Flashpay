@@ -178,6 +178,32 @@ struct KeysResponseData
 
 
 /**
+ * @brief All information about an exchange online signing key (which is used to
+ * sign messages from the exchange).
+ */
+struct SigningKey
+{
+
+  /**
+   * The exchange's (online signing) public key.
+   */
+  struct TALER_ExchangePublicKeyP exchange_pub;
+
+  /**
+   * Meta data about the signing key, such as validity periods.
+   */
+  struct TALER_EXCHANGEDB_SignkeyMetaData meta;
+
+  /**
+   * The long-term offline master key's signature for this signing key.
+   * Signs over @e exchange_pub and @e meta.
+   */
+  struct TALER_MasterSignatureP master_sig;
+
+};
+
+
+/**
  * Snapshot of the (coin and signing) keys (including private keys) of
  * the exchange.  There can be multiple instances of this struct, as it is
  * reference counted and only destroyed once the last user is done
@@ -197,11 +223,10 @@ struct TEH_KeyStateHandle
   struct GNUNET_CONTAINER_MultiHashMap *denomkey_map;
 
   /**
-   * Map from `struct TALER_ExchangePublicKey` to `TBD`
+   * Map from `struct TALER_ExchangePublicKey` to `struct SigningKey`
    * entries.  Based on the fact that a `struct GNUNET_PeerIdentity` is also
    * an EdDSA public key.
    */
-  // FIXME: never initialized, never cleaned up!
   struct GNUNET_CONTAINER_MultiPeerMap *signkey_map;
 
   /**
@@ -373,11 +398,11 @@ free_esign_cb (void *cls,
                const struct GNUNET_PeerIdentity *pid,
                void *value)
 {
-  struct HelperSignkey *sk = value;
+  struct HelperSignkey *hsk = value;
 
   (void) cls;
   (void) pid;
-  GNUNET_free (sk);
+  GNUNET_free (hsk);
   return GNUNET_OK;
 }
 
@@ -507,36 +532,36 @@ helper_esign_cb (
   const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
   struct HelperState *hs = cls;
-  struct HelperSignkey *sk;
+  struct HelperSignkey *hsk;
   struct GNUNET_PeerIdentity pid;
 
   check_esign_sm_pub (sm_pub);
   pid.public_key = exchange_pub->eddsa_pub;
-  sk = GNUNET_CONTAINER_multipeermap_get (hs->denom_keys,
-                                          &pid);
-  if (NULL != sk)
+  hsk = GNUNET_CONTAINER_multipeermap_get (hs->denom_keys,
+                                           &pid);
+  if (NULL != hsk)
   {
     /* should be just an update (revocation!), so update existing entry */
     sk->validity_duration = validity_duration;
     GNUNET_break (0 ==
                   GNUNET_memcmp (sm_sig,
-                                 &sk->sm_sig));
+                                 &hsk->sm_sig));
     GNUNET_break (start_time.abs_value_us ==
-                  sk->start_time.abs_value_us);
+                  hsk->start_time.abs_value_us);
     return;
   }
 
-  sk = GNUNET_new (struct HelperSignkey);
-  sk->start_time = start_time;
-  sk->validity_duration = validity_duration;
-  sk->exchange_pub = *exchange_pub;
-  sk->sm_sig = *sm_sig;
+  hsk = GNUNET_new (struct HelperSignkey);
+  hsk->start_time = start_time;
+  hsk->validity_duration = validity_duration;
+  hsk->exchange_pub = *exchange_pub;
+  hsk->sm_sig = *sm_sig;
   GNUNET_assert (
     GNUNET_OK ==
     GNUNET_CONTAINER_multihashmap_put (
       hs->esign_keys,
       &pid,
-      sk,
+      hsk,
       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 }
 
@@ -613,6 +638,28 @@ clear_denomination_cb (void *cls,
 
 
 /**
+ * Free denomination key data.
+ *
+ * @param cls a `struct TEH_KeyStateHandle`, unused
+ * @param h_denom_pub hash of the denomination public key, unused
+ * @param value a `struct SigningKey` to free
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static int
+clear_signkey_cb (void *cls,
+                  const struct GNUNET_PeerIdentity *pid,
+                  void *value)
+{
+  struct SigningKey *sk = value;
+
+  (void) cls;
+  (void) pid;
+  GNUNET_free (sk);
+  return GNUNET_OK;
+}
+
+
+/**
  * Free resources associated with @a cls, possibly excluding
  * the helper data.
  *
@@ -626,6 +673,10 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
   clear_response_cache (ksh);
   GNUNET_CONTAINER_multihashmap_iterate (ksh->denomkey_map,
                                          &clear_denomination_cb,
+                                         ksh);
+  GNUNET_CONTAINER_multihashmap_destroy (ksh->denomkey_map);
+  GNUNET_CONTAINER_multihashmap_iterate (ksh->signkey_map,
+                                         &clear_signkey_cb,
                                          ksh);
   GNUNET_CONTAINER_multihashmap_destroy (ksh->denomkey_map);
   if (free_helper)
@@ -655,21 +706,93 @@ destroy_key_state_cb (void *cls)
  *
  * @param cls closure with a `struct TEH_KeyStateHandle *`
  * @param denom_pub public key of the denomination
- * @param issue detailed information about the denomination (value, expiration times, fees)
+ * @param h_denom_pub hash of @a denom_pub
+ * @param meta meta data information about the denomination type (value, expirations, fees)
+ * @param master_sig master signature affirming the validity of this denomination
+ * @param recoup_possible true if the key was revoked and clients can currently recoup
+ *        coins of this denomination
  */
-// FIXME: want a different function with
-// + revocation data
-// - private key data
 static void
 denomination_info_cb (
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
+  const struct TALER_MasterSignatureP *master_sig,
+  bool recoup_possible)
+{
+  struct TEH_KeyStateHandle *ksh = cls;
+  struct TEH_DenominationKey *dk;
+
+  dk = GNUNET_new (struct TEH_DenominationKey);
+  dk->denom_pub.rsa_public_key
+    = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->rsa_public_key);
+  dk->h_denom_pub = *h_denom_pub;
+  dk->meta = meta;
+  dk->master_sig = *master_sig;
+  dk->recoup_possible = recoup_possible;
+  GNUNET_assert (
+    GNUNET_OK ==
+    GNUNET_CONTAINER_multihashmap_insert (ksh->denom_map,
+                                          &dk->h_denom_pub,
+                                          dk,
+                                          GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+}
+
+
+/**
+ * Function called with information about the exchange's online signing keys.
+ *
+ * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param exchange_pub the public key
+ * @param meta meta data information about the denomination type (expirations)
+ * @param master_sig master signature affirming the validity of this denomination
+ */
+static void
+signkey_info_cb (
+  void *cls,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct TEH_KeyStateHandle *ksh = cls;
+  struct SigningKey *sk;
+  struct GNUNET_PeerIdentity pid;
+
+  sk = GNUNET_new (struct SigningKey);
+  sk->exchnage_pub = *exchange_pub;
+  sk->meta = *meta;
+  sk->master_sig = *master_sig;
+  pid.public_key = exchange_pub->eddsa_pub;
+  GNUNET_assert (
+    GNUNET_OK ==
+    GNUNET_CONTAINER_multihashmap_insert (ksh->signkey_map,
+                                          &pid,
+                                          sk,
+                                          GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+}
+
+
+/**
+ * Function called with information about the exchange's auditors.
+ *
+ * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param auditor_pub the public key of the auditor
+ * @param auditor_url URL of the REST API of the auditor
+ * @param auditor_name human readable official name of the auditor
+ * @param ... MORE
+ */
+static void
+auditor_info_cb (
+  void *cls,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const char *auditor_url,
+  const char *auditor_name,
+  ...)
 {
   struct TEH_KeyStateHandle *ksh = cls;
 
-  // FIXME: check with helper to see if denomination is OK
-  //        for use with signing!
+  // FIXME: remember...
 }
 
 
@@ -703,39 +826,56 @@ build_key_state (struct HelperState *hs)
   }
   ksh->denomkey_map = GNUNET_CONTAINER_multihashmap_create (1024,
                                                             GNUNET_YES);
-  // FIXME: should _also_ fetch revocation status here!
-  qs = TEH_plugin->iterate_denomination_info (TEH_plugin->cls,
-                                              &denomination_info_cb,
-                                              ksh);
+  ksh->signkey_map = GNUNET_CONTAINER_multihashmap_create (32,
+                                                           GNUNET_NO /* MUST be NO! */);
+#if TBD
+  // NOTE: should ONLY fetch master-signed signkeys, but ALSO those that were revoked!
+  qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
+                                          &denomination_info_cb,
+                                          ksh);
   if (qs < 0)
   {
-    // now what!?
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
   }
-
+#endif
+#if TBD
+  // NOTE: should ONLY fetch non-revoked AND master-signed signkeys!
+  qs = TEH_plugin->iterate_signkeys (TEH_plugin->cls,
+                                     &signkey_info_cb,
+                                     ksh);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
+#endif
 #if TBD
   qs = TEH_plugin->iterate_auditor_info (TEH_plugin->cls,
                                          &auditor_info_cb,
                                          ksh);
   if (qs < 0)
   {
-    // now what!?
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
   }
 #endif
-  // FIXME: initialize more: fetch everything we care about from DB/CFG!
-  // STILL NEEDED:
-  // - revocation signatures (if any)
-  // - auditor signatures
-  // - master signatures???
-
-  // FIXME: should _also_ fetch master signatures and revocation status on signing keys!
-
-
   return ksh;
 }
 
 
 /**
  * Update the "/keys" responses in @a ksh up to @a now into the future.
+ *
+ * This function is to recompute all (including cherry-picked) responses we
+ * might want to return, based on the state already in @a ksh.
+ *
  *
  * @param[in,out] ksh state handle to update
  * @param now timestamp for when to compute the replies.
@@ -745,6 +885,8 @@ update_keys_response (struct TEH_KeyStateHandle *ksh,
                       struct GNUNET_TIME_Absolute now)
 {
   // FIXME: update 'krd_array' here!
+  // FIXME: this relates to a good design for cherry-picking,
+  //   which we currently don't have for new /keys!
 }
 
 
@@ -910,11 +1052,28 @@ TEH_keys_exchange_sign_ (const struct
                                         sig);
   if (TALER_EC_NONE != ec)
     return ec;
-  /* FIXME: check here that 'pub' is set to an exchange public
-     key that is actually signed by the master key! Otherwise, we
-     happily continue to use key material even if the offline
-     signatures have not been made yet! */
+  {
+    /* Here we check here that 'pub' is set to an exchange public key that is
+       actually signed by the master key! Otherwise, we happily continue to
+       use key material even if the offline signatures have not been made
+       yet! */
+    struct GNUNET_PeerIdentity pid;
+    struct SigningKey *sk;
 
+    pid.public_key = pub->eddsa_pub;
+    sk = GNUNET_CONTAINER_multipeermap_get (ksh->signkey_map,
+                                            &pid);
+    if (NULL == sk)
+    {
+      GNUNET_break (0);
+      /* just to be safe, zero out the (valid) signature, as the key
+         should no longer be used */
+      memset (sig,
+              0,
+              sizeof (*sig));
+      return TALER_EC_EXCHANGE_KEYS_SIGNKEY_HELPER_BUG;
+    }
+  }
   return ec;
 }
 

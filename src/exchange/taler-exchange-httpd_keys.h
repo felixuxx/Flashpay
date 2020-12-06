@@ -34,12 +34,6 @@
  */
 struct TEH_DenominationKey
 {
-  /**
-   * The helper to sign with this denomination key. Will be NULL if the
-   * private key is not available (this is the case after the key has expired
-   * for signing coins, if it is too early, or if the key has been revoked).
-   */
-  struct TALER_CRYPTO_DenominationHelper *dh;
 
   /**
    * Decoded denomination public key (the hash of it is in
@@ -48,9 +42,28 @@ struct TEH_DenominationKey
   struct TALER_DenominationPublicKey denom_pub;
 
   /**
-   * Signed public information about a denomination key.
+   * Hash code of the denomination public key.
    */
-  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+  struct GNUNET_HashCode h_denom_pub;
+
+  /**
+   * Meta data about the type of the denomination, such as fees and validity
+   * periods.
+   */
+  struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
+
+  /**
+   * The long-term offline master key's signature for this denomination.
+   * Signs over @e h_denom_pub and @e meta.
+   */
+  struct TALER_MasterSignatureP master_sig_validity;
+
+  /**
+   * The master key's signature to revoke this denomination, or all zero
+   * if the denomination has NOT yet been revoked.
+   */
+  struct TALER_MasterSignatureP master_sig_revocation;
+
 };
 
 
