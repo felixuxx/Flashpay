@@ -93,12 +93,12 @@ struct TEH_AuditorSignature
   /**
    * We store the signatures in a DLL.
    */
-  struct AuditorSignature *prev;
+  struct TEH_AuditorSignature *prev;
 
   /**
    * We store the signatures in a DLL.
    */
-  struct AuditorSignature *next;
+  struct TEH_AuditorSignature *next;
 
   /**
    * A signature from the auditor.
@@ -311,6 +311,12 @@ static pthread_key_t key_state;
 static volatile uint64_t key_generation;
 
 /**
+ * For how long should a signing key be legally retained?
+ * Configuration value.
+ */
+static struct GNUNET_TIME_Relative signkey_legal_duration;
+
+/**
  * RSA security module public key, all zero if not known.
  */
 static struct TALER_SecurityModulePublicKeyP denom_sm_pub;
@@ -339,11 +345,12 @@ clear_response_cache (struct TEH_KeyStateHandle *ksh)
   {
     struct KeysResponseData *krd = &ksh->krd_array[i];
 
-    MHD_destroy_response (kdr->response_compressed);
-    MHD_destroy_response (kdr->response_uncompressed);
+    MHD_destroy_response (krd->response_compressed);
+    MHD_destroy_response (krd->response_uncompressed);
   }
   GNUNET_array_grow (ksh->krd_array,
-                     ksh->krd_array_length);
+                     ksh->krd_array_length,
+                     0);
 }
 
 
@@ -456,12 +463,12 @@ free_esign_cb (void *cls,
 static void
 destroy_key_helpers (struct HelperState *hs)
 {
-  GNUNET_CONTIANER_multihashmap_iterate (hs->denom_keys,
+  GNUNET_CONTAINER_multihashmap_iterate (hs->denom_keys,
                                          &free_denom_cb,
                                          hs);
   GNUNET_CONTAINER_multihashmap_destroy (hs->denom_keys);
   hs->denom_keys = NULL;
-  GNUNET_CONTIANER_multipeermap_iterate (hs->denom_keys,
+  GNUNET_CONTAINER_multipeermap_iterate (hs->esign_keys,
                                          &free_esign_cb,
                                          hs);
   GNUNET_CONTAINER_multipeermap_destroy (hs->esign_keys);
@@ -577,12 +584,12 @@ helper_esign_cb (
 
   check_esign_sm_pub (sm_pub);
   pid.public_key = exchange_pub->eddsa_pub;
-  hsk = GNUNET_CONTAINER_multipeermap_get (hs->denom_keys,
+  hsk = GNUNET_CONTAINER_multipeermap_get (hs->esign_keys,
                                            &pid);
   if (NULL != hsk)
   {
     /* should be just an update (revocation!), so update existing entry */
-    sk->validity_duration = validity_duration;
+    hsk->validity_duration = validity_duration;
     GNUNET_break (0 ==
                   GNUNET_memcmp (sm_sig,
                                  &hsk->sm_sig));
@@ -598,7 +605,7 @@ helper_esign_cb (
   hsk->sm_sig = *sm_sig;
   GNUNET_assert (
     GNUNET_OK ==
-    GNUNET_CONTAINER_multihashmap_put (
+    GNUNET_CONTAINER_multipeermap_put (
       hs->esign_keys,
       &pid,
       hsk,
@@ -621,7 +628,7 @@ setup_key_helpers (struct HelperState *hs)
   hs->esign_keys
     = GNUNET_CONTAINER_multipeermap_create (32,
                                             GNUNET_NO /* MUST BE NO! */);
-  hs->dh = TALER_CRYPTO_helper_denom_connect (cfg,
+  hs->dh = TALER_CRYPTO_helper_denom_connect (TEH_cfg,
                                               &helper_denom_cb,
                                               hs);
   if (NULL == hs->dh)
@@ -629,7 +636,7 @@ setup_key_helpers (struct HelperState *hs)
     destroy_key_helpers (hs);
     return GNUNET_SYSERR;
   }
-  hs->esh = TALER_CRYPTO_helper_esign_connect (cfg,
+  hs->esh = TALER_CRYPTO_helper_esign_connect (TEH_cfg,
                                                &helper_esign_cb,
                                                hs);
   if (NULL == hs->esh)
@@ -723,10 +730,10 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
                                          &clear_denomination_cb,
                                          ksh);
   GNUNET_CONTAINER_multihashmap_destroy (ksh->denomkey_map);
-  GNUNET_CONTAINER_multihashmap_iterate (ksh->signkey_map,
+  GNUNET_CONTAINER_multipeermap_iterate (ksh->signkey_map,
                                          &clear_signkey_cb,
                                          ksh);
-  GNUNET_CONTAINER_multihashmap_destroy (ksh->denomkey_map);
+  GNUNET_CONTAINER_multipeermap_destroy (ksh->signkey_map);
   json_decref (ksh->auditors);
   ksh->auditors = NULL;
   if (NULL != ksh->management_keys_reply)
@@ -757,6 +764,44 @@ destroy_key_state_cb (void *cls)
 
 
 /**
+ * Initialize keys submodule.
+ *
+ * @return #GNUNET_OK on success
+ */
+int
+TEH_keys_init ()
+{
+  if (0 !=
+      pthread_key_create (&key_state,
+                          &destroy_key_state_cb))
+    return GNUNET_SYSERR;
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
+                                           "exchange",
+                                           "SIGNKEY_LEGAL_DURATION",
+                                           &signkey_legal_duration))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "SIGNKEY_LEGAL_DURATION");
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Close down keys submodule.
+ */
+void
+TEH_keys_done ()
+{
+  GNUNET_assert (0 ==
+                 pthread_key_delete (key_state));
+}
+
+
+/**
  * Function called with information about the exchange's denomination keys.
  *
  * @param cls closure with a `struct TEH_KeyStateHandle *`
@@ -783,15 +828,15 @@ denomination_info_cb (
   dk->denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->rsa_public_key);
   dk->h_denom_pub = *h_denom_pub;
-  dk->meta = meta;
+  dk->meta = *meta;
   dk->master_sig = *master_sig;
   dk->recoup_possible = recoup_possible;
   GNUNET_assert (
     GNUNET_OK ==
-    GNUNET_CONTAINER_multihashmap_insert (ksh->denom_map,
-                                          &dk->h_denom_pub,
-                                          dk,
-                                          GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+    GNUNET_CONTAINER_multihashmap_put (ksh->denomkey_map,
+                                       &dk->h_denom_pub,
+                                       dk,
+                                       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 }
 
 
@@ -815,16 +860,16 @@ signkey_info_cb (
   struct GNUNET_PeerIdentity pid;
 
   sk = GNUNET_new (struct SigningKey);
-  sk->exchnage_pub = *exchange_pub;
+  sk->exchange_pub = *exchange_pub;
   sk->meta = *meta;
   sk->master_sig = *master_sig;
   pid.public_key = exchange_pub->eddsa_pub;
   GNUNET_assert (
     GNUNET_OK ==
-    GNUNET_CONTAINER_multihashmap_insert (ksh->signkey_map,
-                                          &pid,
-                                          sk,
-                                          GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+    GNUNET_CONTAINER_multipeermap_put (ksh->signkey_map,
+                                       &pid,
+                                       sk,
+                                       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 }
 
 
@@ -878,7 +923,7 @@ auditor_denom_cb (
   struct TEH_DenominationKey *dk;
   struct TEH_AuditorSignature *as;
 
-  dk = GNUNET_CONTAINER_multihashmap_get (ksh->denom_map,
+  dk = GNUNET_CONTAINER_multihashmap_get (ksh->denomkey_map,
                                           h_denom_pub);
   if (NULL == dk)
   {
@@ -927,7 +972,7 @@ build_key_state (struct HelperState *hs)
   }
   ksh->denomkey_map = GNUNET_CONTAINER_multihashmap_create (1024,
                                                             GNUNET_YES);
-  ksh->signkey_map = GNUNET_CONTAINER_multihashmap_create (32,
+  ksh->signkey_map = GNUNET_CONTAINER_multipeermap_create (32,
                                                            GNUNET_NO /* MUST be NO! */);
   ksh->auditors = json_array ();
   /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
@@ -1036,16 +1081,15 @@ TEH_keys_get_state (void)
                                   ksh))
     {
       GNUNET_break (0);
-      destroy_key_state_cb (ksh,
-                            true);
+      destroy_key_state (ksh,
+                         true);
       return NULL;
     }
     return ksh;
   }
   if (old_ksh->key_generation < key_generation)
   {
-    ksh = build_key_state (key_generation,
-                           &old_ksh->helpers);
+    ksh = build_key_state (&old_ksh->helpers);
     if (0 != pthread_setspecific (key_state,
                                   ksh))
     {
@@ -1101,14 +1145,15 @@ TEH_keys_denomination_sign (
   enum TALER_ErrorCode *ec)
 {
   struct TEH_KeyStateHandle *ksh;
+  struct TALER_DenominationSignature none = { NULL };
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     *ec = TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
-    return;
+    return none;
   }
-  return TALER_CRYPTO_helper_denom_sign (ksh->dh,
+  return TALER_CRYPTO_helper_denom_sign (ksh->helpers.dh,
                                          h_denom_pub,
                                          msg,
                                          msg_size,
@@ -1128,7 +1173,7 @@ TEH_keys_denomination_revoke (
     GNUNET_break (0);
     return;
   }
-  TALER_CRYPTO_helper_denom_revoke (ksh->dh,
+  TALER_CRYPTO_helper_denom_revoke (ksh->helpers.dh,
                                     h_denom_pub);
   TEH_keys_update_states ();
 }
@@ -1152,7 +1197,7 @@ TEH_keys_exchange_sign_ (const struct
                 "Cannot sign request, no valid signing keys available.\n");
     return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
   }
-  ec = TALER_CRYPTO_helper_esign_sign_ (ksh->esh,
+  ec = TALER_CRYPTO_helper_esign_sign_ (ksh->helpers.esh,
                                         purpose,
                                         pub,
                                         sig);
@@ -1177,7 +1222,7 @@ TEH_keys_exchange_sign_ (const struct
       memset (sig,
               0,
               sizeof (*sig));
-      return TALER_EC_EXCHANGE_KEYS_SIGNKEY_HELPER_BUG;
+      return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
     }
   }
   return ec;
@@ -1195,7 +1240,7 @@ TEH_keys_exchange_revoke (const struct TALER_ExchangePublicKeyP *exchange_pub)
     GNUNET_break (0);
     return;
   }
-  TALER_CRYPTO_helper_esign_revoke (ksh->esh,
+  TALER_CRYPTO_helper_esign_revoke (ksh->helpers.esh,
                                     exchange_pub);
   TEH_keys_update_states ();
 }
@@ -1225,9 +1270,9 @@ krd_search_comparator (const void *key,
 
 
 MHD_RESULT
-TEH_handler_keys (const struct TEH_RequestHandler *rh,
-                  struct MHD_Connection *connection,
-                  const char *const args[])
+TEH_handler_keys_NEW (const struct TEH_RequestHandler *rh,
+                      struct MHD_Connection *connection,
+                      const char *const args[])
 {
   struct GNUNET_TIME_Absolute last_issue_date;
   struct GNUNET_TIME_Absolute now;
@@ -1324,22 +1369,22 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
     update_keys_response (ksh,
                           now);
     krd = bsearch (&last_issue_date,
-                   key_state->krd_array,
-                   key_state->krd_array_length,
+                   ksh->krd_array,
+                   ksh->krd_array_length,
                    sizeof (struct KeysResponseData),
                    &krd_search_comparator);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Filtering /keys by cherry pick date %s found entry %u/%u\n",
                 GNUNET_STRINGS_absolute_time_to_string (last_issue_date),
-                (unsigned int) (krd - key_state->krd_array),
-                key_state->krd_array_length);
+                (unsigned int) (krd - ksh->krd_array),
+                ksh->krd_array_length);
     if ( (NULL == krd) &&
-         (key_state->krd_array_length > 0) )
+         (ksh->krd_array_length > 0) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Client provided invalid cherry picking timestamp %s, returning full response\n",
                   GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
-      krd = &key_state->krd_array[0];
+      krd = &ksh->krd_array[0];
     }
     if (NULL == krd)
     {
@@ -1348,7 +1393,6 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
          NOT_FOUND situation. But, OTOH, for 'sane' clients it is more likely
          to be our fault, so let's speculatively assume we are to blame ;-) *///
       GNUNET_break (0);
-      TEH_KS_release (key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
@@ -1364,9 +1408,9 @@ TEH_handler_keys (const struct TEH_RequestHandler *rh,
 
 
 /**
- * Load fees and expiration times (!) for the denomination type configured
- * in section @a section_name.  Before calling this function, the
- * `start` time must already be initialized in @a meta.
+ * Load fees and expiration times (!) for the denomination type configured in
+ * section @a section_name.  Before calling this function, the `start` and
+ * `validity_duration` times must already be initialized in @a meta.
  *
  * @param section_name section in the configuration to use
  * @param[in,out] meta denomination type data to complete
@@ -1379,9 +1423,9 @@ TEH_keys_load_fees (const char *section_name,
   struct GNUNET_TIME_Relative deposit_duration;
   struct GNUNET_TIME_Relative legal_duration;
 
-  GNUNET_assert (0 != meta.start.abs_value_us); /* caller bug */
+  GNUNET_assert (0 != meta->start.abs_value_us); /* caller bug */
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (kcfg,
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            section_name,
                                            "DURATION_SPEND",
                                            &deposit_duration))
@@ -1392,7 +1436,7 @@ TEH_keys_load_fees (const char *section_name,
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_time (kcfg,
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            section_name,
                                            "DURATION_LEGAL",
                                            &legal_duration))
@@ -1402,8 +1446,6 @@ TEH_keys_load_fees (const char *section_name,
                                "DURATION_LEGAL");
     return GNUNET_SYSERR;
   }
-  meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
-                                                    hd->validity_duration);
   /* NOTE: this is a change from the 0.8 semantics of the configuration:
      before duration_spend was relative to 'start', not to 'expire_withdraw'.
      But doing it this way avoids the error case where previously
@@ -1537,11 +1579,13 @@ add_future_denomkey_cb (void *cls,
   struct TEH_DenominationKey *dk;
   struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
 
-  dk = GNUNET_CONTAINER_multihashmap_get (ksh->denom_map,
+  dk = GNUNET_CONTAINER_multihashmap_get (fbc->ksh->denomkey_map,
                                           h_denom_pub);
   if (NULL != dk)
     return GNUNET_OK; /* skip: this key is already active! */
   meta.start = hd->start_time;
+  meta.expire_withdraw = GNUNET_TIME_absolute_add (meta.start,
+                                                   hd->validity_duration);
   if (GNUNET_OK !=
       TEH_keys_load_fees (hd->section_name,
                           &meta))
@@ -1552,6 +1596,7 @@ add_future_denomkey_cb (void *cls,
   GNUNET_assert (
     0 ==
     json_array_append_new (
+      fbc->denoms,
       json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
                  "value",
                  TALER_JSON_from_amount (&meta.value),
@@ -1564,7 +1609,7 @@ add_future_denomkey_cb (void *cls,
                  "stamp_expire_legal",
                  GNUNET_JSON_from_time_abs (meta.expire_legal),
                  "denom_pub",
-                 GNUNET_JSON_from_rsa_public_key (pk->rsa_public_key),
+                 GNUNET_JSON_from_rsa_public_key (dk->denom_pub.rsa_public_key),
                  "fee_withdraw",
                  TALER_JSON_from_amount (&meta.fee_withdraw),
                  "fee_deposit",
@@ -1601,16 +1646,17 @@ add_future_signkey_cb (void *cls,
   struct GNUNET_TIME_Absolute stamp_expire;
   struct GNUNET_TIME_Absolute legal_end;
 
-  sk = GNUNET_CONTAINER_multipeermap_get (ksh->signkey_map,
+  sk = GNUNET_CONTAINER_multipeermap_get (fbc->ksh->signkey_map,
                                           pid);
   if (NULL != sk)
     return GNUNET_OK; /* skip: this key is already active */
   stamp_expire = GNUNET_TIME_absolute_add (hsk->start_time,
                                            hsk->validity_duration);
   legal_end = GNUNET_TIME_absolute_add (stamp_expire,
-                                        TEH_signkey_legal_duration);
+                                        signkey_legal_duration);
   GNUNET_assert (0 ==
                  json_array_append_new (
+                   fbc->signkeys,
                    json_pack ("{s:o, s:o, s:o, s:o, s:o}",
                               "key",
                               GNUNET_JSON_from_data_auto (&hsk->exchange_pub),
@@ -1655,23 +1701,23 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
   if (NULL == ksh->management_keys_reply)
   {
     struct FutureBuilderContext fbc = {
-      .ksh = ksh
-             .denoms = json_array ();
-      .signkeys = json_array ();
+      .ksh = ksh,
+      .denoms = json_array (),
+      .signkeys = json_array ()
     };
 
     GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers.denom_keys,
                                            &add_future_denomkey_cb,
-                                           denoms);
-    GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers.esign_keys,
+                                           &fbc);
+    GNUNET_CONTAINER_multipeermap_iterate (ksh->helpers.esign_keys,
                                            &add_future_signkey_cb,
-                                           signkeys);
+                                           &fbc);
     reply = json_pack (
       "{s:o, s:o, s:o, s:o, s:o}",
       "future_denoms",
-      denoms,
+      fbc.denoms,
       "future_signkeys",
-      signkeys,
+      fbc.signkeys,
       "master_pub",
       GNUNET_JSON_from_data_auto (&TEH_master_public_key),
       "denom_secmod_public_key",

@@ -167,7 +167,7 @@ enum TALER_ErrorCode
 TEH_keys_exchange_sign_ (const struct
                          GNUNET_CRYPTO_EccSignaturePurpose *purpose,
                          struct TALER_ExchangePublicKeyP *pub,
-                         struct TALER_ExchangeSignatureP *sig)
+                         struct TALER_ExchangeSignatureP *sig);
 
 
 /**
@@ -245,7 +245,7 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
 /**
  * Load fees and expiration times (!) for the denomination type configured
  * in section @a section_name.  Before calling this function, the
- * `start` time must already be initialized in @a meta.
+ * `start` and `validity_duration` times must already be initialized in @a meta.
  *
  * @param section_name section in the configuration to use
  * @param[in,out] meta denomination type data to complete
@@ -254,6 +254,21 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
 int
 TEH_keys_load_fees (const char *section_name,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
+
+
+/**
+ * Initialize keys submodule.
+ *
+ * @return #GNUNET_OK on success
+ */
+int
+TEH_keys_init (void);
+
+/**
+ * Close down keys submodule.
+ */
+void
+TEH_keys_done (void);
 
 
 #endif
