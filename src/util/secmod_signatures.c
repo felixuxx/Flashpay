@@ -108,6 +108,7 @@ TALER_exchange_secmod_rsa_verify (
   struct TALER_DenominationKeyAnnouncementPS dka = {
     .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
     .purpose.size = htonl (sizeof (dka)),
+    .h_denom_pub = *h_denom_pub,
     .anchor_time = GNUNET_TIME_absolute_hton (start_sign),
     .duration_withdraw = GNUNET_TIME_relative_hton (duration)
   };
