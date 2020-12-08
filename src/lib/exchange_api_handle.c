@@ -395,8 +395,8 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
   if (! check_sigs)
     return GNUNET_OK;
   if (GNUNET_OK !=
-      TALER_exchange_offline_signkey_validity_verify
-        (&sign_key->key,
+      TALER_exchange_offline_signkey_validity_verify (
+        &sign_key->key,
         sign_key->valid_from,
         sign_key->valid_until,
         sign_key->valid_legal,

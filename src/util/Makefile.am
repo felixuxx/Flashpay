@@ -13,10 +13,11 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
   paths.conf \
+  taler-helper-crypto-eddsa.conf \
   taler-helper-crypto-rsa.conf
 
 EXTRA_DIST = \
-  paths.conf \
+  $(pkgcfg_DATA) \
   taler-config.in \
   test_helper_eddsa.conf \
   test_helper_rsa.conf
