@@ -22,9 +22,9 @@
  * @author Jonathan Buchanan
  */
 #include "platform.h"
-#include <taler/taler_signatures.h>
-#include <taler/taler_exchange_service.h>
-#include <taler/taler_testing_lib.h>
+#include "taler_signatures.h"
+#include "taler_exchange_service.h"
+#include "taler_testing_lib.h"
 
 
 #define TALER_TESTING_TRAIT_UUID "uuid"

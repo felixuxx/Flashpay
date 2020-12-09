@@ -32,7 +32,7 @@
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
-#include <taler/taler_twister_testing_lib.h>
+#include "taler_twister_testing_lib.h"
 #include <taler/taler_twister_service.h>
 
 /**

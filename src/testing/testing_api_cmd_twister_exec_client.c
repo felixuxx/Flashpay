@@ -26,7 +26,7 @@
  */
 
 #include "platform.h"
-#include <taler/taler_testing_lib.h>
+#include "taler_testing_lib.h"
 #include "taler_twister_testing_lib.h"
 
 

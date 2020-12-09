@@ -24,7 +24,6 @@
  */
 #include "platform.h"
 #include "taler_exchange_service.h"
-#include "taler/taler_testing_lib.h"
 #include "taler_testing_lib.h"
 
 
