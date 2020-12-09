@@ -242,7 +242,7 @@ build_wire_state (void)
 void
 TEH_wire_update_state ()
 {
-  __sync_fetch_and_add (&key_generation,
+  __sync_fetch_and_add (&wire_generation,
                         1);
 }
 
@@ -262,7 +262,7 @@ get_wire_state (void)
 
   old_wsh = pthread_getspecific (wire_state);
   if ( (NULL == old_wsh) ||
-       (old_wsh->key_generation < key_generation) )
+       (old_wsh->wire_generation < wire_generation) )
   {
     wsh = build_wire_state ();
     if (NULL == wsh)
@@ -275,8 +275,7 @@ get_wire_state (void)
       return NULL;
     }
     if (NULL != old_wsh)
-      destroy_key_state (old_wsh,
-                         false);
+      destroy_wire_state (old_wsh);
     return wsh;
   }
   return old_wsh;
@@ -302,10 +301,10 @@ TEH_handler_wire (const struct TEH_RequestHandler *rh,
   (void) args;
   wsh = get_wire_state ();
   if (NULL == wsh)
-    TALER_MHD_reply_error (connection,
-                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                           TALER_EC_WTF,
-                           NULL);
+    TALER_MHD_reply_with_error (connection,
+                                MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+                                NULL);
   return TALER_MHD_reply_json (connection,
                                json_incref (wsh->wire_reply),
                                MHD_HTTP_OK);
