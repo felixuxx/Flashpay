@@ -1519,6 +1519,27 @@ postgres_get_session (void *cls)
                               " ,last_change=$3"
                               " WHERE payto_uri=$1",
                               3),
+      /* used in #postgres_update_wire() */
+      GNUNET_PQ_make_prepare ("get_wire_accounts",
+                              "SELECT"
+                              " payto_uri"
+                              ",master_sig"
+                              " FROM wire_accounts"
+                              " WHERE is_active",
+                              0),
+      /* used in #postgres_update_wire() */
+      GNUNET_PQ_make_prepare ("get_wire_fees",
+                              "SELECT"
+                              " wire_fee_val"
+                              ",wire_fee_frac"
+                              ",closing_fee_val"
+                              ",closing_fee_frac"
+                              ",start_date"
+                              ",end_date"
+                              ",master_sig"
+                              " FROM wire_fee"
+                              " WHERE wire_method=$1",
+                              1),
       /* used in #postgres_insert_signkey_revocation() */
       GNUNET_PQ_make_prepare ("insert_signkey_revocation",
                               "INSERT INTO signkey_revocations "
@@ -8212,6 +8233,240 @@ postgres_update_wire (void *cls,
 
 
 /**
+ * Closure for #get_wire_accounts_cb().
+ */
+struct GetWireAccountsContext
+{
+  /**
+   * Function to call per result.
+   */
+  TALER_EXCHANGEDB_WireAccountCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Flag set to #GNUNET_OK as long as everything is fine.
+   */
+  int status;
+
+};
+
+
+/**
+ * Invoke the callback for each result.
+ *
+ * @param cls a `struct MissingWireContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+get_wire_accounts_cb (void *cls,
+                      PGresult *result,
+                      unsigned int num_results)
+{
+  struct GetWireAccountsContext *ctx = cls;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    char *payto_uri;
+    struct TALER_MasterSignatureP master_sig;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &payto_uri),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &master_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->status = GNUNET_SYSERR;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             payto_uri,
+             &master_sig);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Obtain information about the enabled wire accounts of the exchange.
+ *
+ * @param cls closure
+ * @param cb function to call on each account
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_wire_accounts (void *cls,
+                            TALER_EXCHANGEDB_WireAccountCallback cb,
+                            void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GetWireAccountsContext ctx = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .status = GNUNET_OK
+  };
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_EXCHANGEDB_Session *session;
+
+  session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                             "get_wire_accounts",
+                                             params,
+                                             &get_wire_accounts_cb,
+                                             &ctx);
+  if (GNUNET_OK != ctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+
+}
+
+
+/**
+ * Closure for #get_wire_fees_cb().
+ */
+struct GetWireFeesContext
+{
+  /**
+   * Function to call per result.
+   */
+  TALER_EXCHANGEDB_WireFeeCallback cb;
+
+  /**
+   * Closure for @e cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Flag set to #GNUNET_OK as long as everything is fine.
+   */
+  int status;
+
+};
+
+
+/**
+ * Invoke the callback for each result.
+ *
+ * @param cls a `struct MissingWireContext *`
+ * @param result SQL result
+ * @param num_results number of rows in @a result
+ */
+static void
+get_wire_fees_cb (void *cls,
+                  PGresult *result,
+                  unsigned int num_results)
+{
+  struct GetWireFeesContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+
+  for (unsigned int i = 0; i < num_results; i++)
+  {
+    struct TALER_MasterSignatureP master_sig;
+    struct TALER_Amount wire_fee;
+    struct TALER_Amount closing_fee;
+    struct GNUNET_TIME_Absolute start_date;
+    struct GNUNET_TIME_Absolute end_date;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
+                                   &wire_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
+                                   &closing_fee),
+      TALER_PQ_result_spec_absolute_time ("start_date",
+                                          &start_date),
+      TALER_PQ_result_spec_absolute_time ("end_date",
+                                          &end_date),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &master_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->status = GNUNET_SYSERR;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &wire_fee,
+             &closing_fee,
+             start_date,
+             end_date,
+             &master_sig);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Obtain information about the fee structure of the exchange for
+ * a given @a wire_method
+ *
+ * @param cls closure
+ * @param wire_method which wire method to obtain fees for
+ * @param cb function to call on each account
+ * @param cb_cls closure for @a cb
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_get_wire_fees (void *cls,
+                        const char *wire_method,
+                        TALER_EXCHANGEDB_WireFeeCallback cb,
+                        void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (wire_method),
+    GNUNET_PQ_query_param_end
+  };
+  struct GetWireFeesContext ctx = {
+    .cb = cb,
+    .cb_cls = cb_cls,
+    .pg = pg,
+    .status = GNUNET_OK
+  };
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_EXCHANGEDB_Session *session;
+
+  session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                             "get_wire_fees",
+                                             params,
+                                             &get_wire_fees_cb,
+                                             &ctx);
+  if (GNUNET_OK != ctx.status)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
  * Store information about a revoked online signing key.
  *
  * @param cls closure
@@ -8810,6 +9065,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_insert_wire;
   plugin->update_wire
     = &postgres_update_wire;
+  plugin->get_wire_accounts
+    = &postgres_get_wire_accounts;
+  plugin->get_wire_fees
+    = &postgres_get_wire_fees;
   plugin->insert_signkey_revocation
     = &postgres_insert_signkey_revocation;
   plugin->lookup_future_denomination_key

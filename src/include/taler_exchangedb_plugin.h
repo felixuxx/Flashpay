@@ -1428,6 +1428,42 @@ typedef int
 
 
 /**
+ * Provide information about a wire account.
+ *
+ * @param cls closure
+ * @param payto_uri the exchange bank account URI
+ * @param master_sig master key signature affirming that this is a bank
+ *                   account of the exchange (of purpose #TALER_SIGNATURE_MASTER_WIRE_DETAILS)
+ */
+typedef void
+(*TALER_EXCHANGEDB_WireAccountCallback)(
+  void *cls,
+  const char *payto_uri,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Provide information about wire fees.
+ *
+ * @param cls closure
+ * @param wire_fee the wire fee we charge
+ * @param closing_fee the closing fee we charge
+ * @param start_date from when are these fees valid (start date)
+ * @param end_date until when are these fees valid (end date, exclusive)
+ * @param master_sig master key signature affirming that this is the corrrect
+ *                   fee (of purpose #TALER_SIGNATURE_MASTER_WIRE_FEES)
+ */
+typedef void
+(*TALER_EXCHANGEDB_WireFeeCallback)(
+  void *cls,
+  const struct TALER_Amount *wire_fee,
+  const struct TALER_Amount *closing_fee,
+  struct GNUNET_TIME_Absolute start_date,
+  struct GNUNET_TIME_Absolute end_date,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
  * Function called with details about withdraw operations.
  *
  * @param cls closure
@@ -3252,6 +3288,37 @@ struct TALER_EXCHANGEDB_Plugin
                  const char *payto_uri,
                  struct GNUNET_TIME_Absolute change_date,
                  bool enabled);
+
+
+  /**
+   * Obtain information about the enabled wire accounts of the exchange.
+   *
+   * @param cls closure
+   * @param cb function to call on each account
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_wire_accounts)(void *cls,
+                       TALER_EXCHANGEDB_WireAccountCallback cb,
+                       void *cb_cls);
+
+
+  /**
+   * Obtain information about the fee structure of the exchange for
+   * a given @a wire_method
+   *
+   * @param cls closure
+   * @param wire_method which wire method to obtain fees for
+   * @param cb function to call on each account
+   * @param cb_cls closure for @a cb
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_wire_fees)(void *cls,
+                   const char *wire_method,
+                   TALER_EXCHANGEDB_WireFeeCallback cb,
+                   void *cb_cls);
 
 
   /**
