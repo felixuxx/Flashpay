@@ -191,9 +191,9 @@ TEH_keys_exchange_sign_ (const struct
     /* check 'ps' begins with the purpose */          \
     GNUNET_static_assert (((void*) (ps)) ==           \
                           ((void*) &(ps)->purpose));  \
-    TEH_exchange_sign_ (&(ps)->purpose,               \
-                        pub,                          \
-                        sig);                         \
+    TEH_keys_exchange_sign_ (&(ps)->purpose,          \
+                             pub,                     \
+                             sig);                    \
   })
 
 
@@ -243,17 +243,33 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
 
 
 /**
- * Load fees and expiration times (!) for the denomination type configured
- * in section @a section_name.  Before calling this function, the
- * `start` and `validity_duration` times must already be initialized in @a meta.
+ * Load fees and expiration times (!) for the denomination type configured for
+ * the denomination matching @a h_denom_pub.
  *
- * @param section_name section in the configuration to use
- * @param[in,out] meta denomination type data to complete
+ * @param h_denom_pub hash of the denomination public key
+ *        to use to derive the section name of the configuration to use
+ * @param[out] meta denomination type data to complete
  * @return #GNUNET_OK on success
  */
 int
-TEH_keys_load_fees (const char *section_name,
+TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
+
+
+/**
+ * Load expiration times for the given onling signing key.
+ *
+ * @param exchange_pub the online signing key
+ * @param[out] start_sign starting signing time
+ * @param[out] end_sign send signing time
+ * @param[out] end_legal legal expiration time
+ * @return #GNUNET_OK on success
+ */
+int
+TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
+                     struct GNUNET_TIME_Absolute *start_sign,
+                     struct GNUNET_TIME_Absolute *end_sign,
+                     struct GNUNET_TIME_Absolute *end_legal);
 
 
 /**

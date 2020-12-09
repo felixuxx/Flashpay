@@ -126,21 +126,12 @@ add_keys (void *cls,
     bool is_active = false;
     struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
 
-    qs = TEH_plugin->lookup_future_denomination_key (
+    /* For idempotency, check if the key is already active */
+    qs = TEH_plugin->lookup_denomination_key (
       TEH_plugin->cls,
       session,
       &akc->d_sigs[i].h_denom_pub,
       &meta);
-    if (0 == qs)
-    {
-      /* For idempotency, check if the key is already active */
-      qs = TEH_plugin->lookup_denomination_key (
-        TEH_plugin->cls,
-        session,
-        &akc->d_sigs[i].h_denom_pub,
-        &meta);
-      is_active = true; /* if we pass, it's active! */
-    }
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -154,12 +145,21 @@ add_keys (void *cls,
     }
     if (0 == qs)
     {
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_NOT_FOUND,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-        GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
-      return qs;
+      if (GNUNET_OK !=
+          TEH_keys_load_fees (&akc->d_sigs[i].h_denom_pub,
+                              &meta))
+      {
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_NOT_FOUND,
+          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+        return qs;
+      }
+    }
+    else
+    {
+      active = true;
     }
 
     /* check signature is valid */
@@ -214,24 +214,17 @@ add_keys (void *cls,
   {
     enum GNUNET_DB_QueryStatus qs;
     bool is_active = false;
+    struct GNUNET_TIME_Absolute start_sign;
+    struct GNUNET_TIME_Absolute end_sign;
+    struct GNUNET_TIME_Absolute end_legal;
 
-    // FIXME: future signing keys are currently not in DB,
-    // may want to get them from in-memory instead.
-    qs = TEH_plugin->lookup_future_signing_key (
+    qs = TEH_plugin->lookup_signing_key (
       TEH_plugin->cls,
       session,
       &akc->s_sigs[i].exchange_pub,
-      &META);
-    if (0 == qs)
-    {
-      /* For idempotency, check if the key is already active */
-      qs = TEH_plugin->lookup_signing_key (
-        TEH_plugin->cls,
-        session,
-        &akc->s_sigs[i].exchange_pub,
-        &META);
-      is_active = true; /* if we pass, it's active! */
-    }
+      &start_sign,
+      &end_sign,
+      &end_legal);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -245,12 +238,24 @@ add_keys (void *cls,
     }
     if (0 == qs)
     {
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_NOT_FOUND,
-        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_UNKNOWN,
-        TALER_B2S (&akc->s_sigs[i].exchange_pub));
-      return qs;
+      if (GNUNET_OK !=
+          TEH_keys_get_timing (&akc->s_sigs[i].exchange_pub,
+                               &start_sign,
+                               &end_sign,
+                               &end_legal))
+      {
+        /* For idempotency, check if the key is already active */
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_NOT_FOUND,
+          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_UNKNOWN,
+          TALER_B2S (&akc->s_sigs[i].exchange_pub));
+        return qs;
+      }
+    }
+    else
+    {
+      is_active = true; /* if we pass, it's active! */
     }
 
     /* check signature is valid */
@@ -258,12 +263,11 @@ add_keys (void *cls,
       if (GNUNET_OK !=
           TALER_exchange_offline_signkey_validity_verify (
             &akc->s_sigs[i].exchange_pub,
-            x,
-            y,
-            z,
+            start_sign,
+            end_sign,
+            end_legal,
             &TEH_master_public_key,
-            &
-            & akc->s_sigs[i].master_sig))
+            &akc->s_sigs[i].master_sig))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (
@@ -278,7 +282,7 @@ add_keys (void *cls,
     qs = TEH_plugin->activate_signing_key (
       TEH_plugin->cls,
       session,
-      &akc->s_sigs[i].exchange_pub,
+      &akc->s_sigs[i].exchange_pub, // FIXME: provision meta data!?
       &akc->s_sigs[i].master_sig);
     if (qs < 0)
     {

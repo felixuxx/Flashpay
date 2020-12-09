@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler_exchangedb_plugin.h"
@@ -241,7 +242,7 @@ struct SigningKey
  * reference counter) should be considered READ-ONLY until it is
  * ultimately destroyed (as there can be many concurrent users).
  */
-struct TEH_KeyStateHandle
+struct KeyStateHandle
 {
 
   /**
@@ -292,11 +293,21 @@ struct TEH_KeyStateHandle
    */
   uint64_t key_generation;
 
+  /**
+   * When did we initiate the key reloading?
+   */
+  struct GNUNET_TIME_Absolute reload_time;
+
+  /**
+   * When is the next key invalid and we expect to have a different reply?
+   */
+  struct GNUNET_TIME_Absolute next_reload;
+
 };
 
 
 /**
- * Thread-local.  Contains a pointer to `struct TEH_KeyStateHandle` or NULL.
+ * Thread-local.  Contains a pointer to `struct KeyStateHandle` or NULL.
  * Stores the per-thread latest generation of our key state.
  */
 static pthread_key_t key_state;
@@ -339,7 +350,7 @@ static pthread_mutex_t sm_pub_mutex = PTHREAD_MUTEX_INITIALIZER;
  * @param[in,out] ksh key state to update
  */
 static void
-clear_response_cache (struct TEH_KeyStateHandle *ksh)
+clear_response_cache (struct KeyStateHandle *ksh)
 {
   for (unsigned int i = 0; i<ksh->krd_array_length; i++)
   {
@@ -664,7 +675,7 @@ sync_key_helpers (struct HelperState *hs)
 /**
  * Free denomination key data.
  *
- * @param cls a `struct TEH_KeyStateHandle`, unused
+ * @param cls a `struct KeyStateHandle`, unused
  * @param h_denom_pub hash of the denomination public key, unused
  * @param value a `struct TEH_DenominationKey` to free
  * @return #GNUNET_OK (continue to iterate)
@@ -695,7 +706,7 @@ clear_denomination_cb (void *cls,
 /**
  * Free denomination key data.
  *
- * @param cls a `struct TEH_KeyStateHandle`, unused
+ * @param cls a `struct KeyStateHandle`, unused
  * @param h_denom_pub hash of the denomination public key, unused
  * @param value a `struct SigningKey` to free
  * @return #GNUNET_OK (continue to iterate)
@@ -722,7 +733,7 @@ clear_signkey_cb (void *cls,
  * @param free_helper true to also release the helper state
  */
 static void
-destroy_key_state (struct TEH_KeyStateHandle *ksh,
+destroy_key_state (struct KeyStateHandle *ksh,
                    bool free_helper)
 {
   clear_response_cache (ksh);
@@ -751,12 +762,12 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
  * Free all resources associated with @a cls.  Called when
  * the respective pthread is destroyed.
  *
- * @param[in] cls a `struct TEH_KeyStateHandle`.
+ * @param[in] cls a `struct KeyStateHandle`.
  */
 static void
 destroy_key_state_cb (void *cls)
 {
-  struct TEH_KeyStateHandle *ksh = cls;
+  struct KeyStateHandle *ksh = cls;
 
   destroy_key_state (ksh,
                      true);
@@ -804,7 +815,7 @@ TEH_keys_done ()
 /**
  * Function called with information about the exchange's denomination keys.
  *
- * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param cls closure with a `struct KeyStateHandle *`
  * @param denom_pub public key of the denomination
  * @param h_denom_pub hash of @a denom_pub
  * @param meta meta data information about the denomination type (value, expirations, fees)
@@ -821,7 +832,7 @@ denomination_info_cb (
   const struct TALER_MasterSignatureP *master_sig,
   bool recoup_possible)
 {
-  struct TEH_KeyStateHandle *ksh = cls;
+  struct KeyStateHandle *ksh = cls;
   struct TEH_DenominationKey *dk;
 
   dk = GNUNET_new (struct TEH_DenominationKey);
@@ -843,7 +854,7 @@ denomination_info_cb (
 /**
  * Function called with information about the exchange's online signing keys.
  *
- * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param cls closure with a `struct KeyStateHandle *`
  * @param exchange_pub the public key
  * @param meta meta data information about the denomination type (expirations)
  * @param master_sig master signature affirming the validity of this denomination
@@ -855,7 +866,7 @@ signkey_info_cb (
   const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
   const struct TALER_MasterSignatureP *master_sig)
 {
-  struct TEH_KeyStateHandle *ksh = cls;
+  struct KeyStateHandle *ksh = cls;
   struct SigningKey *sk;
   struct GNUNET_PeerIdentity pid;
 
@@ -876,7 +887,7 @@ signkey_info_cb (
 /**
  * Function called with information about the exchange's auditors.
  *
- * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param cls closure with a `struct KeyStateHandle *`
  * @param auditor_pub the public key of the auditor
  * @param auditor_url URL of the REST API of the auditor
  * @param auditor_name human readable official name of the auditor
@@ -888,7 +899,7 @@ auditor_info_cb (
   const char *auditor_url,
   const char *auditor_name)
 {
-  struct TEH_KeyStateHandle *ksh = cls;
+  struct KeyStateHandle *ksh = cls;
 
   GNUNET_break (0 ==
                 json_array_append_new (
@@ -907,7 +918,7 @@ auditor_info_cb (
  * Function called with information about the denominations
  * audited by the exchange's auditors.
  *
- * @param cls closure with a `struct TEH_KeyStateHandle *`
+ * @param cls closure with a `struct KeyStateHandle *`
  * @param auditor_pub the public key of an auditor
  * @param h_denom_pub hash of a denomination key audited by this auditor
  * @param auditor_sig signature from the auditor affirming this
@@ -919,7 +930,7 @@ auditor_denom_cb (
   const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
-  struct TEH_KeyStateHandle *ksh = cls;
+  struct KeyStateHandle *ksh = cls;
   struct TEH_DenominationKey *dk;
   struct TEH_AuditorSignature *as;
 
@@ -948,13 +959,15 @@ auditor_denom_cb (
  * @param[in] hs helper state to (re)use, NULL if not available
  * @return NULL on error (i.e. failed to access database)
  */
-static struct TEH_KeyStateHandle *
+static struct KeyStateHandle *
 build_key_state (struct HelperState *hs)
 {
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
   enum GNUNET_DB_QueryStatus qs;
 
-  ksh = GNUNET_new (struct TEH_KeyStateHandle);
+  ksh = GNUNET_new (struct KeyStateHandle);
+  ksh->reload_time = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&ksh->reload_time);
   /* We must use the key_generation from when we STARTED the process! */
   ksh->key_generation = key_generation;
   if (NULL == hs)
@@ -1022,6 +1035,330 @@ build_key_state (struct HelperState *hs)
 
 
 /**
+ * Closure for #add_sign_key_cb.
+ */
+struct SignKeyCtx
+{
+  /**
+   * When does the next signing key expire. Updated.
+   */
+  struct GNUNET_TIME_Absolute next_sk_expire;
+
+  /**
+   * JSON array of signing keys (being created).
+   */
+  json_t *signkeys;
+};
+
+
+/**
+ * Function called for all signing keys, used to build up the
+ * respective JSON response.
+ *
+ * @param cls a `struct SignKeyCtx *` with the array to append keys to
+ * @param pid the exchange public key (in type disguise)
+ * @param value a `struct SigningKey`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static int
+add_sign_key_cb (void *cls,
+                 const struct GNUNET_PeerIdentity *pid,
+                 void *value)
+{
+  struct SignKeyCtx *ctx = cls;
+  struct SigningKey *sk = value;
+
+  ctx->next_sk_expire =
+    GNUNET_TIME_absolute_min (ctx->next_sk_expire,
+                              sk->meta.expire_sign);
+
+  GNUNET_assert (
+    0 ==
+    json_array_append_new (
+      ctx->signkeys,
+      json_pack ("{s:o, s:o, s:o, s:o, s:o}",
+                 "stamp_start",
+                 GNUNET_JSON_from_time_abs (sk->meta.start),
+                 "stamp_expire",
+                 GNUNET_JSON_from_time_abs (sk->meta.expire_sign),
+                 "stamp_end",
+                 GNUNET_JSON_from_time_abs (sk->meta.expire_legal),
+                 "master_sig",
+                 GNUNET_JSON_from_data_auto (&sk->master_sig),
+                 "key",
+                 GNUNET_JSON_from_data_auto (&sk->exchange_pub))));
+  return GNUNET_OK;
+}
+
+
+/**
+ * Closure for #add_denom_key_cb.
+ */
+struct DenomKeyCtx
+{
+  /**
+   * Heap for sorting active denomination keys by start time.
+   */
+  struct GNUNET_CONTAINER_Heap *heap;
+
+  /**
+   * JSON array of revoked denomination keys.
+   */
+  json_t *recoup;
+
+  /**
+   * When does the next denomination key expire. Updated.
+   */
+  struct GNUNET_TIME_Absolute next_dk_expire;
+
+};
+
+
+/**
+ * Function called for all denomination keys, used to build up the
+ * JSON list of *revoked* denomination keys and the
+ * heap of non-revoked denomination keys by timeout.
+ *
+ * @param cls a `struct DenomKeyCtx`
+ * @param h_denom_pub hash of the denomination key
+ * @param value a `struct TEH_DenominationKey`
+ * @return #GNUNET_OK (continue to iterate)
+ */
+static int
+add_denom_key_cb (void *cls,
+                  const struct GNUNET_HashCode *h_denom_pub,
+                  void *value)
+{
+  struct DenomKeyCtx *dkc = cls;
+  struct TEH_DenominationKey *dk = value;
+
+  if (dk->recoup_possible)
+  {
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        dkc->recoup,
+        json_pack ("{s:o}",
+                   "h_denom_pub",
+                   GNUNET_JSON_from_data_auto (h_denom_pub))));
+  }
+  else
+  {
+    dkc->next_dk_expire =
+      GNUNET_TIME_absolute_min (dkc->next_dk_expire,
+                                dk->meta.expire_withdraw);
+    (void) GNUNET_CONTAINER_heap_insert (dkc->heap,
+                                         dk,
+                                         dk->meta.start.abs_value_us);
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Produce HTTP "Date:" header.
+ *
+ * @param at time to write to @a date
+ * @param[out] date where to write the header, with
+ *        at least 128 bytes available space.
+ */
+static void
+get_date_string (struct GNUNET_TIME_Absolute at,
+                 char date[128])
+{
+  static const char *const days[] =
+  { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  static const char *const mons[] =
+  { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+    "Nov", "Dec"};
+  struct tm now;
+  time_t t;
+#if ! defined(HAVE_C11_GMTIME_S) && ! defined(HAVE_W32_GMTIME_S) && \
+  ! defined(HAVE_GMTIME_R)
+  struct tm*pNow;
+#endif
+
+  date[0] = 0;
+  t = (time_t) (at.abs_value_us / 1000LL / 1000LL);
+#if defined(HAVE_C11_GMTIME_S)
+  if (NULL == gmtime_s (&t, &now))
+    return;
+#elif defined(HAVE_W32_GMTIME_S)
+  if (0 != gmtime_s (&now, &t))
+    return;
+#elif defined(HAVE_GMTIME_R)
+  if (NULL == gmtime_r (&t, &now))
+    return;
+#else
+  pNow = gmtime (&t);
+  if (NULL == pNow)
+    return;
+  now = *pNow;
+#endif
+  sprintf (date,
+           "%3s, %02u %3s %04u %02u:%02u:%02u GMT",
+           days[now.tm_wday % 7],
+           (unsigned int) now.tm_mday,
+           mons[now.tm_mon % 12],
+           (unsigned int) (1900 + now.tm_year),
+           (unsigned int) now.tm_hour,
+           (unsigned int) now.tm_min,
+           (unsigned int) now.tm_sec);
+}
+
+
+/**
+ * Add the headers we want to set for every /keys response.
+ *
+ * @param ksh the key state to use
+ * @param[in,out] response the response to modify
+ * @return #GNUNET_OK on success
+ */
+static int
+setup_general_response_headers (const struct KeyStateHandle *ksh,
+                                struct MHD_Response *response)
+{
+  char dat[128];
+
+  TALER_MHD_add_global_headers (response);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_CONTENT_TYPE,
+                                         "application/json"));
+  get_date_string (ksh->reload_time,
+                   dat);
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         MHD_HTTP_HEADER_LAST_MODIFIED,
+                                         dat));
+  if (0 != ksh->next_reload.abs_value_us)
+  {
+    struct GNUNET_TIME_Absolute m;
+
+    m = GNUNET_TIME_relative_to_absolute (TEH_max_keys_caching);
+    m = GNUNET_TIME_absolute_min (m,
+                                  ksh->next_reload);
+    get_date_string (m,
+                     dat);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Setting /keys 'Expires' header to '%s'\n",
+                dat);
+    GNUNET_break (MHD_YES ==
+                  MHD_add_response_header (response,
+                                           MHD_HTTP_HEADER_EXPIRES,
+                                           dat));
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Initialize @a krd using the given values for @a signkeys,
+ * @a recoup and @a denoms.
+ *
+ * @param[in,out] ksh key state handle we build @a krd for
+ * @param[in] denom_keys_hash hash over all the denominatoin keys in @a denoms
+ * @param last_cpd timestamp to use
+ * @param signkeys list of sign keys to return
+ * @param recoup list of revoked keys to return
+ * @param denoms list of denominations to return
+ */
+static void
+create_krd (struct KeyStateHandle *ksh,
+            const struct GNUNET_HashCode *denom_keys_hash,
+            struct GNUNET_TIME_Absolute last_cpd,
+            json_t *signkeys,
+            json_t *recoup,
+            json_t *denoms)
+{
+  struct KeysResponseData krd;
+  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_ExchangeSignatureP exchange_sig;
+  json_t *keys;
+
+  /* Sign hash over denomination keys */
+  {
+    struct TALER_ExchangeKeySetPS ks = {
+      .purpose.size = htonl (sizeof (ks)),
+      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET),
+      .list_issue_date = GNUNET_TIME_absolute_hton (last_cpd),
+      .hc = *denom_keys_hash
+    };
+
+    TEH_keys_exchange_sign (&ks,
+                            &exchange_pub,
+                            &exchange_sig);
+  }
+
+  keys = json_pack (
+    "{s:s, s:o, s:o, s:O, s:O,"
+    " s:O, s:o, s:o, s:o, s:o}",
+    /* 1-5 */
+    "version", EXCHANGE_PROTOCOL_VERSION,
+    "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
+    "reserve_closing_delay", GNUNET_JSON_from_time_rel (
+      TEH_reserve_closing_delay),
+    "signkeys", signkeys,
+    "recoup", recoup,
+    /* 6-10 */
+    "denoms", denoms,
+    "auditors", ksh->auditors,
+    "list_issue_date", GNUNET_JSON_from_time_abs (last_cpd),
+    "eddsa_pub", GNUNET_JSON_from_data_auto (&exchange_pub),
+    "eddsa_sig", GNUNET_JSON_from_data_auto (&exchange_sig));
+  GNUNET_assert (NULL != keys);
+
+  {
+    char *keys_json;
+    void *keys_jsonz;
+    size_t keys_jsonz_size;
+    int comp;
+
+    /* Convert /keys response to UTF8-String */
+    keys_json = json_dumps (keys,
+                            JSON_INDENT (2));
+    json_decref (keys);
+    GNUNET_assert (NULL != keys_json);
+
+    /* Keep copy for later compression... */
+    keys_jsonz = GNUNET_strdup (keys_json);
+    keys_jsonz_size = strlen (keys_json);
+
+    /* Create uncompressed response */
+    krd.response_uncompressed
+      = MHD_create_response_from_buffer (keys_jsonz_size,
+                                         keys_json,
+                                         MHD_RESPMEM_MUST_FREE);
+    GNUNET_assert (NULL != krd.response_uncompressed);
+    GNUNET_assert (GNUNET_OK ==
+                   setup_general_response_headers (ksh,
+                                                   krd.response_uncompressed));
+    /* Also compute compressed version of /keys response */
+    comp = TALER_MHD_body_compress (&keys_jsonz,
+                                    &keys_jsonz_size);
+    krd.response_compressed
+      = MHD_create_response_from_buffer (keys_jsonz_size,
+                                         keys_jsonz,
+                                         MHD_RESPMEM_MUST_FREE);
+    GNUNET_assert (NULL != krd.response_compressed);
+    /* If the response is actually compressed, set the
+       respective header. */
+    GNUNET_assert ( (MHD_YES != comp) ||
+                    (MHD_YES ==
+                     MHD_add_response_header (krd.response_compressed,
+                                              MHD_HTTP_HEADER_CONTENT_ENCODING,
+                                              "deflate")) );
+    GNUNET_assert (GNUNET_OK ==
+                   setup_general_response_headers (ksh,
+                                                   krd.response_compressed));
+  }
+  GNUNET_array_append (ksh->krd_array,
+                       ksh->krd_array_length,
+                       krd);
+}
+
+
+/**
  * Update the "/keys" responses in @a ksh up to @a now into the future.
  *
  * This function is to recompute all (including cherry-picked) responses we
@@ -1029,27 +1366,121 @@ build_key_state (struct HelperState *hs)
  *
  *
  * @param[in,out] ksh state handle to update
- * @param now timestamp for when to compute the replies.
  */
 static void
-update_keys_response (struct TEH_KeyStateHandle *ksh,
-                      struct GNUNET_TIME_Absolute now)
+update_keys_response (struct KeyStateHandle *ksh)
 {
-  // FIXME: update 'krd_array' here!
-  // FIXME: this relates to a good design for cherry-picking,
-  //   which we currently don't have for new /keys!
+  json_t *recoup;
+  struct SignKeyCtx sctx;
+  json_t *denoms;
+  struct GNUNET_TIME_Absolute last_cpd;
+  struct GNUNET_CONTAINER_Heap *heap;
+  struct GNUNET_HashContext *hash_context;
+
+  sctx.signkeys = json_array ();
+  sctx.next_sk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
+  GNUNET_assert (NULL != sctx.signkeys);
+  GNUNET_CONTAINER_multipeermap_iterate (ksh->signkey_map,
+                                         &add_sign_key_cb,
+                                         &sctx);
+  recoup = json_array ();
+  GNUNET_assert (NULL != recoup);
+  heap = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MIN);
+  {
+    struct DenomKeyCtx dkc = {
+      .recoup = recoup,
+      .heap = heap,
+      .next_dk_expire = GNUNET_TIME_UNIT_FOREVER_ABS,
+    };
+
+    GNUNET_CONTAINER_multihashmap_iterate (ksh->denomkey_map,
+                                           &add_denom_key_cb,
+                                           &dkc);
+    ksh->next_reload
+      = GNUNET_TIME_absolute_min (dkc.next_dk_expire,
+                                  sctx.next_sk_expire);
+  }
+  denoms = json_array ();
+  GNUNET_assert (NULL != denoms);
+  last_cpd = GNUNET_TIME_UNIT_ZERO_ABS;
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  {
+    struct TEH_DenominationKey *dk;
+
+    while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
+    {
+      if ( (last_cpd.abs_value_us != dk->meta.start.abs_value_us) &&
+           (0 != last_cpd.abs_value_us) )
+      {
+        struct GNUNET_HashCode hc;
+
+        GNUNET_CRYPTO_hash_context_finish (
+          GNUNET_CRYPTO_hash_context_copy (hash_context),
+          &hc);
+        create_krd (ksh,
+                    &hc,
+                    last_cpd,
+                    sctx.signkeys,
+                    recoup,
+                    denoms);
+        last_cpd = dk->meta.start;
+      }
+      GNUNET_CRYPTO_hash_context_read (hash_context,
+                                       &dk->h_denom_pub,
+                                       sizeof (struct GNUNET_HashCode));
+      GNUNET_assert (
+        0 ==
+        json_array_append_new (
+          denoms,
+          json_pack ("{s:o, s:o, s:o, s:o, s:o,"
+                     " s:o, s:o, s:o, s:o, s:o,"
+                     " s:o}",
+                     "master_sig",
+                     GNUNET_JSON_from_data_auto (&dk->master_sig),
+                     "stamp_start",
+                     GNUNET_JSON_from_time_abs (dk->meta.start),
+                     "stamp_expire_withdraw",
+                     GNUNET_JSON_from_time_abs (dk->meta.expire_withdraw),
+                     "stamp_expire_deposit",
+                     GNUNET_JSON_from_time_abs (dk->meta.expire_deposit),
+                     "stamp_expire_legal",
+                     GNUNET_JSON_from_time_abs (dk->meta.expire_legal),
+                     /* 5 entries until here */
+                     "denom_pub",
+                     GNUNET_JSON_from_rsa_public_key (
+                       dk->denom_pub.rsa_public_key),
+                     "value",
+                     TALER_JSON_from_amount (&dk->meta.value),
+                     "fee_withdraw",
+                     TALER_JSON_from_amount (&dk->meta.fee_withdraw),
+                     "fee_deposit",
+                     TALER_JSON_from_amount (&dk->meta.fee_deposit),
+                     "fee_refresh",
+                     TALER_JSON_from_amount (&dk->meta.fee_refresh),
+                     /* 10 entries until here */
+                     "fee_refund",
+                     TALER_JSON_from_amount (&dk->meta.fee_refund))));
+    }
+  }
+  GNUNET_CONTAINER_heap_destroy (heap);
+  {
+    struct GNUNET_HashCode hc;
+
+    GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                       &hc);
+    create_krd (ksh,
+                &hc,
+                last_cpd,
+                sctx.signkeys,
+                recoup,
+                denoms);
+  }
+  json_decref (sctx.signkeys);
+  json_decref (recoup);
+  json_decref (denoms);
 }
 
 
-/**
- * Something changed in the database. Rebuild all key states.  This function
- * should be called if the exchange learns about a new signature from an
- * auditor or our master key.
- *
- * (We do not do so immediately, but merely signal to all threads that they
- * need to rebuild their key state upon the next call to
- * #TEH_get_key_state()).
- */
 void
 TEH_keys_update_states ()
 {
@@ -1059,17 +1490,16 @@ TEH_keys_update_states ()
 
 
 /**
- * Return the current key state for this thread.  Possibly
- * re-builds the key state if we have reason to believe
- * that something changed.
+ * Return the current key state for this thread.  Possibly re-builds the key
+ * state if we have reason to believe that something changed.
  *
  * @return NULL on error
  */
-struct TEH_KeyStateHandle *
-TEH_keys_get_state (void)
+static struct KeyStateHandle *
+get_key_state (void)
 {
-  struct TEH_KeyStateHandle *old_ksh;
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *old_ksh;
+  struct KeyStateHandle *ksh;
 
   old_ksh = pthread_getspecific (key_state);
   if (NULL == old_ksh)
@@ -1115,10 +1545,10 @@ TEH_keys_denomination_by_hash (
   enum TALER_ErrorCode *ec,
   unsigned int *hc)
 {
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
   struct TEH_DenominationKey *dk;
 
-  ksh = TEH_keys_get_state ();
+  ksh = get_key_state ();
   if (NULL == ksh)
   {
     *hc = MHD_HTTP_INTERNAL_SERVER_ERROR;
@@ -1144,10 +1574,10 @@ TEH_keys_denomination_sign (
   size_t msg_size,
   enum TALER_ErrorCode *ec)
 {
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
   struct TALER_DenominationSignature none = { NULL };
 
-  ksh = TEH_keys_get_state ();
+  ksh = get_key_state ();
   if (NULL == ksh)
   {
     *ec = TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
@@ -1165,9 +1595,9 @@ void
 TEH_keys_denomination_revoke (
   const struct GNUNET_HashCode *h_denom_pub)
 {
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
 
-  ksh = TEH_keys_get_state ();
+  ksh = get_key_state ();
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -1185,10 +1615,10 @@ TEH_keys_exchange_sign_ (const struct
                          struct TALER_ExchangePublicKeyP *pub,
                          struct TALER_ExchangeSignatureP *sig)
 {
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
   enum TALER_ErrorCode ec;
 
-  ksh = TEH_keys_get_state ();
+  ksh = get_key_state ();
   if (NULL == ksh)
   {
     /* This *can* happen if the exchange's crypto helper is not running
@@ -1232,9 +1662,9 @@ TEH_keys_exchange_sign_ (const struct
 void
 TEH_keys_exchange_revoke (const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
 
-  ksh = TEH_keys_get_state ();
+  ksh = get_key_state ();
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -1275,7 +1705,6 @@ TEH_handler_keys_NEW (const struct TEH_RequestHandler *rh,
                       const char *const args[])
 {
   struct GNUNET_TIME_Absolute last_issue_date;
-  struct GNUNET_TIME_Absolute now;
 
   (void) rh;
   (void) args;
@@ -1312,52 +1741,11 @@ TEH_handler_keys_NEW (const struct TEH_RequestHandler *rh,
     }
   }
 
-  now = GNUNET_TIME_absolute_get ();
   {
-    const char *have_fakenow;
-
-    have_fakenow = MHD_lookup_connection_value (connection,
-                                                MHD_GET_ARGUMENT_KIND,
-                                                "now");
-    if (NULL != have_fakenow)
-    {
-      unsigned long long fakenown;
-
-      if (1 !=
-          sscanf (have_fakenow,
-                  "%llu",
-                  &fakenown))
-      {
-        GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_FORBIDDEN,
-                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           have_fakenow);
-      }
-      if (TEH_allow_keys_timetravel)
-      {
-        /* The following multiplication may overflow; but this should not really
-           be a problem, as giving back 'older' data than what the client asks for
-           (given that the client asks for data in the distant future) is not
-           problematic */
-        now.abs_value_us = (uint64_t) fakenown * 1000000LLU;
-      }
-      else
-      {
-        /* Option not allowed by configuration */
-        return TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_FORBIDDEN,
-                                           TALER_EC_EXCHANGE_KEYS_TIMETRAVEL_FORBIDDEN,
-                                           NULL);
-      }
-    }
-  }
-
-  {
-    struct TEH_KeyStateHandle *ksh;
+    struct KeyStateHandle *ksh;
     const struct KeysResponseData *krd;
 
-    ksh = TEH_keys_get_state ();
+    ksh = get_key_state ();
     if (NULL == ksh)
     {
       GNUNET_break (0);
@@ -1366,8 +1754,7 @@ TEH_handler_keys_NEW (const struct TEH_RequestHandler *rh,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                          "no key state");
     }
-    update_keys_response (ksh,
-                          now);
+    update_keys_response (ksh);
     krd = bsearch (&last_issue_date,
                    ksh->krd_array,
                    ksh->krd_array_length,
@@ -1416,9 +1803,9 @@ TEH_handler_keys_NEW (const struct TEH_RequestHandler *rh,
  * @param[in,out] meta denomination type data to complete
  * @return #GNUNET_OK on success
  */
-int
-TEH_keys_load_fees (const char *section_name,
-                    struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+static int
+load_fees (const char *section_name,
+           struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
   struct GNUNET_TIME_Relative deposit_duration;
   struct GNUNET_TIME_Relative legal_duration;
@@ -1535,6 +1922,59 @@ TEH_keys_load_fees (const char *section_name,
 }
 
 
+int
+TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
+                    struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+{
+  struct KeyStateHandle *ksh;
+  struct HelperDenomination *hd;
+
+  ksh = get_key_state ();
+  if (NULL == ksh)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers.denom_keys,
+                                          h_denom_pub);
+  meta->start = hd->start_time;
+  meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
+                                                    hd->validity_duration);
+  return load_fees (hd->section_name,
+                    meta);
+}
+
+
+int
+TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
+                     struct GNUNET_TIME_Absolute *start_sign,
+                     struct GNUNET_TIME_Absolute *end_sign,
+                     struct GNUNET_TIME_Absolute *end_legal)
+{
+  struct KeyStateHandle *ksh;
+  struct HelperSignkey *hsk;
+  struct GNUNET_PeerIdentity pid;
+
+  ksh = get_key_state ();
+  if (NULL == ksh)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  pid.public_key = exchange_pub->eddsa_pub;
+  hsk = GNUNET_CONTAINER_multipeermap_get (ksh->helpers.esign_keys,
+                                           &pid);
+  *start_sign = hsk->start_time;
+  *end_sign = GNUNET_TIME_absolute_add (*start_sign,
+                                        hsk->validity_duration);
+  *end_legal = GNUNET_TIME_absolute_add (*end_sign,
+                                         signkey_legal_duration);
+  return GNUNET_OK;
+}
+
+
 /**
  * Closure for #add_future_denomkey_cb and #add_future_signkey_cb.
  */
@@ -1543,7 +1983,7 @@ struct FutureBuilderContext
   /**
    * Our key state.
    */
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
 
   /**
    * Array of denomination keys.
@@ -1587,8 +2027,8 @@ add_future_denomkey_cb (void *cls,
   meta.expire_withdraw = GNUNET_TIME_absolute_add (meta.start,
                                                    hd->validity_duration);
   if (GNUNET_OK !=
-      TEH_keys_load_fees (hd->section_name,
-                          &meta))
+      load_fees (hd->section_name,
+                 &meta))
   {
     /* Woops, couldn't determine fee structure!? */
     return GNUNET_OK;
@@ -1672,24 +2112,15 @@ add_future_signkey_cb (void *cls,
 }
 
 
-/**
- * Function to call to handle requests to "/management/keys" by sending
- * back our future key material.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
 MHD_RESULT
 TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
                                  struct MHD_Connection *connection,
                                  const char *const args[])
 {
-  struct TEH_KeyStateHandle *ksh;
+  struct KeyStateHandle *ksh;
   json_t *reply;
 
-  ksh = TEH_keys_get_state ();
+  ksh = get_key_state ();
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -1741,4 +2172,4 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
 }
 
 
-/* end of taler-exchange-httpd_keystate.c */
+/* end of taler-exchange-httpd_keys.c */

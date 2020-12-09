@@ -104,6 +104,11 @@ struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 struct GNUNET_TIME_Relative TEH_max_keys_caching;
 
 /**
+ * How long is the delay before we close reserves?
+ */
+struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
+
+/**
  * Master public key (according to the
  * configuration in the exchange directory).  (global)
  */
@@ -1065,6 +1070,21 @@ exchange_serve_process_config (void)
   {
     req_max = ULONG_LONG_MAX;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
+                                           "exchangedb",
+                                           "IDLE_RESERVE_EXPIRATION_TIME",
+                                           &TEH_reserve_closing_delay))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchangedb",
+                               "IDLE_RESERVE_EXPIRATION_TIME");
+    /* use default */
+    TEH_reserve_closing_delay
+      = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_WEEKS,
+                                       4);
+  }
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            "exchange",

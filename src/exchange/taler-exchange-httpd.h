@@ -35,6 +35,11 @@
 extern struct GNUNET_TIME_Relative TEH_max_keys_caching;
 
 /**
+ * How long is the delay before we close reserves?
+ */
+extern struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
+
+/**
  * The exchange's configuration.
  */
 extern struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
