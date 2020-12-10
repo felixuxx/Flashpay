@@ -1924,10 +1924,12 @@ load_fees (const char *section_name,
 
 int
 TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
+                    struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
   struct KeyStateHandle *ksh;
   struct HelperDenomination *hd;
+  int ok;
 
   ksh = get_key_state ();
   if (NULL == ksh)
@@ -1941,16 +1943,21 @@ TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
   meta->start = hd->start_time;
   meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
                                                     hd->validity_duration);
-  return load_fees (hd->section_name,
-                    meta);
+  ok = load_fees (hd->section_name,
+                  meta);
+  if (GNUNET_OK == ok)
+    denom_pub->rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_dup (hd->denom_pub.rsa_public_key);
+  else
+    denom_pub->rsa_public_key
+      = NULL;
+  return ok;
 }
 
 
 int
 TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
-                     struct GNUNET_TIME_Absolute *start_sign,
-                     struct GNUNET_TIME_Absolute *end_sign,
-                     struct GNUNET_TIME_Absolute *end_legal)
+                     struct TALER_EXCHANGEDB_SignkeyMetaData *meta)
 {
   struct KeyStateHandle *ksh;
   struct HelperSignkey *hsk;
@@ -1966,11 +1973,11 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   pid.public_key = exchange_pub->eddsa_pub;
   hsk = GNUNET_CONTAINER_multipeermap_get (ksh->helpers.esign_keys,
                                            &pid);
-  *start_sign = hsk->start_time;
-  *end_sign = GNUNET_TIME_absolute_add (*start_sign,
-                                        hsk->validity_duration);
-  *end_legal = GNUNET_TIME_absolute_add (*end_sign,
-                                         signkey_legal_duration);
+  meta->start = hsk->start_time;
+  meta->expire_sign = GNUNET_TIME_absolute_add (meta->start,
+                                                hsk->validity_duration);
+  meta->expire_legal = GNUNET_TIME_absolute_add (meta->expire_sign,
+                                                 signkey_legal_duration);
   return GNUNET_OK;
 }
 

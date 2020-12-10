@@ -42,42 +42,6 @@ COMMENT ON INDEX prepare_get_index
   IS 'for wire_prepare_data_get';
 
 
--- NOTE: current thinking is that we will NOT need this table!
--- => Instead, 'future' keys are only with the secmod until
---    the offline key is provided!
-CREATE TABLE IF NOT EXISTS future_denominations
-  (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
-  ,denom_pub BYTEA NOT NULL
-  ,valid_from INT8 NOT NULL
-  ,expire_withdraw INT8 NOT NULL
-  ,expire_deposit INT8 NOT NULL
-  ,expire_legal INT8 NOT NULL
-  ,coin_val INT8 NOT NULL
-  ,coin_frac INT4 NOT NULL
-  ,fee_withdraw_val INT8 NOT NULL
-  ,fee_withdraw_frac INT4 NOT NULL
-  ,fee_deposit_val INT8 NOT NULL
-  ,fee_deposit_frac INT4 NOT NULL
-  ,fee_refresh_val INT8 NOT NULL
-  ,fee_refresh_frac INT4 NOT NULL
-  ,fee_refund_val INT8 NOT NULL
-  ,fee_refund_frac INT4 NOT NULL
-  );
-COMMENT ON TABLE future_denominations
-  IS 'Future denominations. Moved to denomiations once the master signature is provided. Kept separate (instead of using NULL-able master_sig column) to ensure denomination keys without master signature cannot satisfy foreign key constraints of other tables.';
-COMMENT ON COLUMN future_denominations.valid_from
-  IS 'Earliest time when the private key can be used to withdraw.';
-COMMENT ON COLUMN future_denominations.expire_withdraw
-  IS 'Latest time when the private key can be used to withdraw.';
-
-CREATE INDEX IF NOT EXISTS future_denominations_expire_withdraw_index
-  ON future_denominations
-  (expire_withdraw);
-COMMENT ON INDEX future_denominations_expire_withdraw_index
-  IS 'Future denominations that cannot be withdrawn anymore can be deleted.';
-
-
-
 CREATE TABLE IF NOT EXISTS auditors
   (auditor_pub BYTEA PRIMARY KEY CHECK (LENGTH(auditor_pub)=32)
   ,auditor_name VARCHAR NOT NULL

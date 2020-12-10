@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -125,6 +126,7 @@ add_keys (void *cls,
     enum GNUNET_DB_QueryStatus qs;
     bool is_active = false;
     struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
+    struct TALER_DenominationPublicKey denom_pub;
 
     /* For idempotency, check if the key is already active */
     qs = TEH_plugin->lookup_denomination_key (
@@ -147,6 +149,7 @@ add_keys (void *cls,
     {
       if (GNUNET_OK !=
           TEH_keys_load_fees (&akc->d_sigs[i].h_denom_pub,
+                              &denom_pub,
                               &meta))
       {
         *mhd_ret = TALER_MHD_reply_with_error (
@@ -159,13 +162,13 @@ add_keys (void *cls,
     }
     else
     {
-      active = true;
+      is_active = true;
     }
 
     /* check signature is valid */
     {
       if (GNUNET_OK !=
-          TALER_exchange_offline_denomkey_validity_verify (
+          TALER_exchange_offline_denom_validity_verify (
             &akc->d_sigs[i].h_denom_pub,
             meta.start,
             meta.expire_withdraw,
@@ -189,12 +192,15 @@ add_keys (void *cls,
     }
     if (is_active)
       continue; /* skip, already known */
-    qs = TEH_plugin->activate_denomination_key (
+    qs = TEH_plugin->add_denomination_key (
       TEH_plugin->cls,
       session,
       &akc->d_sigs[i].h_denom_pub,
+      &denom_pub,
+      &meta,
       &TEH_master_public_key,
       &akc->d_sigs[i].master_sig);
+    GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -214,17 +220,13 @@ add_keys (void *cls,
   {
     enum GNUNET_DB_QueryStatus qs;
     bool is_active = false;
-    struct GNUNET_TIME_Absolute start_sign;
-    struct GNUNET_TIME_Absolute end_sign;
-    struct GNUNET_TIME_Absolute end_legal;
+    struct TALER_EXCHANGEDB_SignkeyMetaData meta;
 
     qs = TEH_plugin->lookup_signing_key (
       TEH_plugin->cls,
       session,
       &akc->s_sigs[i].exchange_pub,
-      &start_sign,
-      &end_sign,
-      &end_legal);
+      &meta);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -240,9 +242,7 @@ add_keys (void *cls,
     {
       if (GNUNET_OK !=
           TEH_keys_get_timing (&akc->s_sigs[i].exchange_pub,
-                               &start_sign,
-                               &end_sign,
-                               &end_legal))
+                               &meta))
       {
         /* For idempotency, check if the key is already active */
         *mhd_ret = TALER_MHD_reply_with_error (
@@ -263,9 +263,9 @@ add_keys (void *cls,
       if (GNUNET_OK !=
           TALER_exchange_offline_signkey_validity_verify (
             &akc->s_sigs[i].exchange_pub,
-            start_sign,
-            end_sign,
-            end_legal,
+            meta.start,
+            meta.expire_sign,
+            meta.expire_legal,
             &TEH_master_public_key,
             &akc->s_sigs[i].master_sig))
       {
@@ -282,7 +282,8 @@ add_keys (void *cls,
     qs = TEH_plugin->activate_signing_key (
       TEH_plugin->cls,
       session,
-      &akc->s_sigs[i].exchange_pub, // FIXME: provision meta data!?
+      &akc->s_sigs[i].exchange_pub,
+      &meta,
       &akc->s_sigs[i].master_sig);
     if (qs < 0)
     {

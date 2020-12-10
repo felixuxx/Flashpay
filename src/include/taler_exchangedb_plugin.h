@@ -3339,23 +3339,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Lookup information about a future denomination key.
-   *
-   * @param cls closure
-   * @param session a session
-   * @param h_denom_pub hash of the denomination public key
-   * @param[out] meta set to various meta data about the key
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*lookup_future_denomination_key)(
-    void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
-    const struct GNUNET_HashCode *h_denom_pub,
-    struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
-
-
-  /**
    * Lookup information about current denomination key.
    *
    * @param cls closure
@@ -3373,26 +3356,63 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Activate future denomination key, turning it into a "current" or "valid"
-   * denomination key by adding the master signature.  Deletes the
-   * denomination key from the 'future' table an inserts the data into the
-   * main denominations table. Because this function will trigger multiple SQL
-   * statements, it must be run within a transaction.
+   * Add denomination key.
    *
    * @param cls closure
    * @param session a session
    * @param h_denom_pub hash of the denomination public key
-   * @param master_pub master public key used for @a master_sig
+   * @param denom_pub the denomination public key
+   * @param meta meta data about the denomination
+   * @param master_pub master public key (consider removing this in the future!)
    * @param master_sig master signature to add
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*activate_denomination_key)(
+  (*add_denomination_key)(
     void *cls,
     struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
+    const struct TALER_DenominationPublicKey *denom_pub,
+    const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
     const struct TALER_MasterPublicKeyP *master_pub,
     const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Activate future signing key, turning it into a "current" or "valid"
+   * denomination key by adding the master signature.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param exchange_pub the exchange online signing public key
+   * @param meta meta data about @a exchange_pub
+   * @param master_sig master signature to add
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*activate_signing_key)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_ExchangePublicKeyP *exchange_pub,
+    const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
+    const struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
+   * Lookup signing key meta data.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param exchange_pub the exchange online signing public key
+   * @param[out] meta meta data about @a exchange_pub
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_signing_key)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_ExchangePublicKeyP *exchange_pub,
+    struct TALER_EXCHANGEDB_SignkeyMetaData *meta);
 
 
   /**

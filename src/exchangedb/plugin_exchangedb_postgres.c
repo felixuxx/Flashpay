@@ -267,7 +267,7 @@ postgres_get_session (void *cls)
 #endif
     struct GNUNET_PQ_PreparedStatement ps[] = {
       /* Used in #postgres_insert_denomination_info() [FIXME: soon obsolete!] and
-         #postgres_activate_denomination_key() */
+         #postgres_add_denomination_key() */
       GNUNET_PQ_make_prepare ("denomination_insert",
                               "INSERT INTO denominations "
                               "(denom_pub_hash"
@@ -1548,25 +1548,25 @@ postgres_get_session (void *cls)
                               ") VALUES "
                               "($1, $2);",
                               2),
-      /* used in #postgres_lookup_future_denomination_key() */
-      GNUNET_PQ_make_prepare ("lookup_future_denomination_key",
+      /* used in #postgres_insert_signkey() */
+      GNUNET_PQ_make_prepare ("insert_signkey",
+                              "INSERT INTO exchange_sign_keys "
+                              "(exchange_pub"
+                              ",valid_from"
+                              ",expire_sign"
+                              ",expire_legal"
+                              ",master_sig"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5);",
+                              5),
+      /* used in #postgres_lookup_signing_key() */
+      GNUNET_PQ_make_prepare ("lookup_signing_key",
                               "SELECT"
                               " valid_from"
-                              ",expire_withdraw"
-                              ",expire_deposit"
+                              ",expire_sign"
                               ",expire_legal"
-                              ",coin_val"
-                              ",coin_frac"
-                              ",fee_withdraw_val"
-                              ",fee_withdraw_frac"
-                              ",fee_deposit_val"
-                              ",fee_deposit_frac"
-                              ",fee_refresh_val"
-                              ",fee_refresh_frac"
-                              ",fee_refund_val"
-                              ",fee_refund_frac"
-                              " FROM future_denominations"
-                              " WHERE denom_pub_hash=$1;",
+                              " FROM exchange_sign_keys"
+                              " WHERE exchange_pub=$1",
                               1),
       /* used in #postgres_lookup_denomination_key() */
       GNUNET_PQ_make_prepare ("lookup_denomination_key",
@@ -1608,33 +1608,6 @@ postgres_get_session (void *cls)
                               " WHERE wire_method=$1"
                               " AND end_date > $2"
                               " AND start_date < $3;",
-                              1),
-      /* used in #postgres_activate_denomination_key() */
-      GNUNET_PQ_make_prepare ("lookup_future_denomination_key_full",
-                              "SELECT"
-                              " denom_pub"
-                              ",valid_from"
-                              ",expire_withdraw"
-                              ",expire_deposit"
-                              ",expire_legal"
-                              ",coin_val"
-                              ",coin_frac"
-                              ",fee_withdraw_val"
-                              ",fee_withdraw_frac"
-                              ",fee_deposit_val"
-                              ",fee_deposit_frac"
-                              ",fee_refresh_val"
-                              ",fee_refresh_frac"
-                              ",fee_refund_val"
-                              ",fee_refund_frac"
-                              " FROM future_denominations"
-                              " WHERE denom_pub_hash=$1;",
-                              1),
-      /* used in #postgres_activate_denomination_key() */
-      GNUNET_PQ_make_prepare ("delete_future_denomination",
-                              "DELETE"
-                              " FROM future_denominations"
-                              " WHERE denom_pub_hash=$1;",
                               1),
       /* used in #postgres_commit */
       GNUNET_PQ_make_prepare ("do_commit",
@@ -8496,56 +8469,6 @@ postgres_insert_signkey_revocation (
 
 
 /**
- * Lookup information about a future denomination key.
- *
- * @param cls closure
- * @param session a session
- * @param h_denom_pub hash of the denomination public key
- * @param[out] meta set to various meta data about the key
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-postgres_lookup_future_denomination_key (
-  void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
-  const struct GNUNET_HashCode *h_denom_pub,
-  struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
-    GNUNET_PQ_query_param_end
-  };
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_absolute_time ("valid_from",
-                                        &meta->start),
-    TALER_PQ_result_spec_absolute_time ("expire_withdraw",
-                                        &meta->expire_withdraw),
-    TALER_PQ_result_spec_absolute_time ("expire_deposit",
-                                        &meta->expire_deposit),
-    TALER_PQ_result_spec_absolute_time ("expire_legal",
-                                        &meta->expire_legal),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
-                                 &meta->value),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
-                                 &meta->fee_withdraw),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                 &meta->fee_deposit),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
-                                 &meta->fee_refresh),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
-                                 &meta->fee_refund),
-    GNUNET_PQ_result_spec_end
-  };
-
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-                                                   "lookup_future_denomination_key",
-                                                   params,
-                                                   rs);
-}
-
-
-/**
  * Lookup information about current denomination key.
  *
  * @param cls closure
@@ -8605,100 +8528,139 @@ postgres_lookup_denomination_key (
  * @param cls closure
  * @param session a session
  * @param h_denom_pub hash of the denomination public key
+ * @param meta meta data about the denomination
  * @param master_pub master public key
  * @param master_sig master signature to add
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_activate_denomination_key (
+postgres_add_denomination_key (
   void *cls,
   struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
-  struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
-  enum GNUNET_DB_QueryStatus qs;
-  struct TALER_DenominationPublicKey denom_pub;
-  struct GNUNET_PQ_QueryParam params[] = {
+  struct GNUNET_PQ_QueryParam iparams[] = {
     GNUNET_PQ_query_param_auto_from_type (&h_denom_pub),
+    GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    GNUNET_PQ_query_param_auto_from_type (master_pub),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    TALER_PQ_query_param_absolute_time (&meta->start),
+    TALER_PQ_query_param_absolute_time (&meta->expire_withdraw),
+    TALER_PQ_query_param_absolute_time (&meta->expire_deposit),
+    TALER_PQ_query_param_absolute_time (&meta->expire_legal),
+    TALER_PQ_query_param_amount (&meta->value),
+    TALER_PQ_query_param_amount (&meta->fee_withdraw),
+    TALER_PQ_query_param_amount (&meta->fee_deposit),
+    TALER_PQ_query_param_amount (&meta->fee_refresh),
+    TALER_PQ_query_param_amount (&meta->fee_refund),
+    GNUNET_PQ_query_param_end
+  };
+
+  if (NULL == session)
+    session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  /* Sanity check: ensure fees match coin currency */
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (&meta->value,
+                                            &meta->fee_withdraw));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (&meta->value,
+                                            &meta->fee_deposit));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (&meta->value,
+                                            &meta->fee_refresh));
+  GNUNET_assert (GNUNET_YES ==
+                 TALER_amount_cmp_currency (&meta->value,
+                                            &meta->fee_refund));
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "denomination_insert",
+                                             iparams);
+}
+
+
+/**
+ * Add signing key.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param exchange_pub the exchange online signing public key
+ * @param meta meta data about @a exchange_pub
+ * @param master_sig master signature to add
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_activate_signing_key (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
+  const struct TALER_MasterSignatureP *master_sig)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam iparams[] = {
+    GNUNET_PQ_query_param_auto_from_type (&exchange_pub),
+    TALER_PQ_query_param_absolute_time (&meta->start),
+    TALER_PQ_query_param_absolute_time (&meta->expire_sign),
+    TALER_PQ_query_param_absolute_time (&meta->expire_legal),
+    GNUNET_PQ_query_param_auto_from_type (master_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  if (NULL == session)
+    session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_signkey",
+                                             iparams);
+}
+
+
+/**
+ * Lookup signing key meta data.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param exchange_pub the exchange online signing public key
+ * @param[out] meta meta data about @a exchange_pub
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_signing_key (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  struct TALER_EXCHANGEDB_SignkeyMetaData *meta)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (exchange_pub),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                          &denom_pub.rsa_public_key),
     TALER_PQ_result_spec_absolute_time ("valid_from",
-                                        &meta.start),
-    TALER_PQ_result_spec_absolute_time ("expire_withdraw",
-                                        &meta.expire_withdraw),
-    TALER_PQ_result_spec_absolute_time ("expire_deposit",
-                                        &meta.expire_deposit),
+                                        &meta->start),
+    TALER_PQ_result_spec_absolute_time ("expire_sign",
+                                        &meta->expire_sign),
     TALER_PQ_result_spec_absolute_time ("expire_legal",
-                                        &meta.expire_legal),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
-                                 &meta.value),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
-                                 &meta.fee_withdraw),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                 &meta.fee_deposit),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
-                                 &meta.fee_refresh),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
-                                 &meta.fee_refund),
+                                        &meta->expire_legal),
     GNUNET_PQ_result_spec_end
   };
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
-                                                 "lookup_future_denomination_key_full",
-                                                 params,
-                                                 rs);
-  if (0 >= qs)
-    return qs;
-  /* Sanity check: ensure fees match coin currency */
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta.value,
-                                            &meta.fee_withdraw));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta.value,
-                                            &meta.fee_deposit));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta.value,
-                                            &meta.fee_refresh));
-  GNUNET_assert (GNUNET_YES ==
-                 TALER_amount_cmp_currency (&meta.value,
-                                            &meta.fee_refund));
-  /* insert logic */
-  {
-    struct GNUNET_PQ_QueryParam iparams[] = {
-      GNUNET_PQ_query_param_auto_from_type (&h_denom_pub),
-      GNUNET_PQ_query_param_rsa_public_key (denom_pub.rsa_public_key),
-      GNUNET_PQ_query_param_auto_from_type (master_pub),
-      GNUNET_PQ_query_param_auto_from_type (master_sig),
-      TALER_PQ_query_param_absolute_time (&meta.start),
-      TALER_PQ_query_param_absolute_time (&meta.expire_withdraw),
-      TALER_PQ_query_param_absolute_time (&meta.expire_deposit),
-      TALER_PQ_query_param_absolute_time (&meta.expire_legal),
-      TALER_PQ_query_param_amount (&meta.value),
-      TALER_PQ_query_param_amount (&meta.fee_withdraw),
-      TALER_PQ_query_param_amount (&meta.fee_deposit),
-      TALER_PQ_query_param_amount (&meta.fee_refresh),
-      TALER_PQ_query_param_amount (&meta.fee_refund),
-      GNUNET_PQ_query_param_end
-    };
-
-    qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "denomination_insert",
-                                             iparams);
-  }
-  GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
-  if (qs < 0)
-    return qs;
-
-  /* Finally, run delete logic */
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "delete_future_denomination",
-                                             params);
+  if (NULL == session)
+    session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "lookup_signing_key",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -9071,16 +9033,18 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_get_wire_fees;
   plugin->insert_signkey_revocation
     = &postgres_insert_signkey_revocation;
-  plugin->lookup_future_denomination_key
-    = &postgres_lookup_future_denomination_key;
   plugin->lookup_denomination_key
     = &postgres_lookup_denomination_key;
   plugin->insert_auditor_denom_sig
     = &postgres_insert_auditor_denom_sig;
   plugin->lookup_wire_fee_by_time
     = &postgres_lookup_wire_fee_by_time;
-  plugin->activate_denomination_key
-    = &postgres_activate_denomination_key;
+  plugin->add_denomination_key
+    = &postgres_add_denomination_key;
+  plugin->activate_signing_key
+    = &postgres_activate_signing_key;
+  plugin->lookup_signing_key
+    = &postgres_lookup_signing_key;
   return plugin;
 }
 

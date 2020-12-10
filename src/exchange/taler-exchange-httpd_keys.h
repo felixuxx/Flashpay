@@ -248,11 +248,13 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
  *
  * @param h_denom_pub hash of the denomination public key
  *        to use to derive the section name of the configuration to use
+ * @param[out] denom_pub set to the denomination public key (to be freed by caller!)
  * @param[out] meta denomination type data to complete
  * @return #GNUNET_OK on success
  */
 int
 TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
+                    struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 
 
@@ -260,16 +262,12 @@ TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
  * Load expiration times for the given onling signing key.
  *
  * @param exchange_pub the online signing key
- * @param[out] start_sign starting signing time
- * @param[out] end_sign send signing time
- * @param[out] end_legal legal expiration time
+ * @param[out] meta set to meta data about the key
  * @return #GNUNET_OK on success
  */
 int
 TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
-                     struct GNUNET_TIME_Absolute *start_sign,
-                     struct GNUNET_TIME_Absolute *end_sign,
-                     struct GNUNET_TIME_Absolute *end_legal);
+                     struct TALER_EXCHANGEDB_SignkeyMetaData *meta);
 
 
 /**
