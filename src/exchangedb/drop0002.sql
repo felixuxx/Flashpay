@@ -22,5 +22,11 @@ BEGIN;
 -- Unregister patch (0002.sql)
 SELECT _v.unregister_patch('exchange-0002');
 
+DROP TABLE auditors;
+DROP TABLE auditor_denom_sigs;
+DROP TABLE exchange_sign_keys;
+DROP TABLE wire_accounts;
+DROP TABLE signkey_revocations;
+
 -- And we're out of here...
 COMMIT;
