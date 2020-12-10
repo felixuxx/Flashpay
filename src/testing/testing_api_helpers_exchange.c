@@ -864,7 +864,6 @@ TALER_TESTING_setup_with_exchange_cfg (
                      helpers))
   {
     GNUNET_break (0);
-    GNUNET_free (base_url);
     return 77;
   }
   exchanged = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
@@ -877,7 +876,6 @@ TALER_TESTING_setup_with_exchange_cfg (
   if (NULL == exchanged)
   {
     GNUNET_break (0);
-    GNUNET_free (base_url);
     stop_helpers (helpers);
     return 77;
   }
