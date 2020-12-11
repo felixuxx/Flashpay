@@ -145,8 +145,6 @@ run (void *cls,
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1,
                                                 5),
-    TALER_TESTING_cmd_sleep ("sleepy",
-                             3000),
     TALER_TESTING_cmd_end ()
   };
 
