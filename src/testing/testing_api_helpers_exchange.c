@@ -750,8 +750,12 @@ start_helpers (const char *config_filename,
                struct GNUNET_OS_Process *helpers[2])
 {
   char *dir;
+  const struct GNUNET_OS_ProjectData *pd;
 
+  pd = GNUNET_OS_project_data_get ();
+  GNUNET_OS_init (TALER_project_data_default ());
   dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_LIBEXECDIR);
+  GNUNET_OS_init (pd);
   if (NULL == dir)
   {
     GNUNET_break (0);

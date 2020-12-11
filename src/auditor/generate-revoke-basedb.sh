@@ -44,7 +44,7 @@ cp generate-auditor-basedb-template.conf $CONF
 
 
 echo -n "Testing for taler-bank-manage"
-taler-bank-manage -h >/dev/null </dev/null || exit_skip " MISSING"
+taler-bank-manage --help >/dev/null </dev/null || exit_skip " MISSING"
 echo " FOUND"
 echo -n "Testing for taler-wallet-cli"
 taler-wallet-cli -v >/dev/null </dev/null || exit_skip " MISSING"
