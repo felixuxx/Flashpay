@@ -96,7 +96,6 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command all[] = {
-
     // check no aggregation happens on a empty database
     CMD_EXEC_AGGREGATOR ("run-aggregator-on-empty-db",
                          config_filename),
@@ -550,22 +549,23 @@ main (int argc,
 
   TALER_TESTING_cleanup_files (config_filename);
 
-  if (GNUNET_OK != TALER_TESTING_prepare_exchange (config_filename,
-                                                   GNUNET_YES,
-                                                   &ec))
+  if (GNUNET_OK !=
+      TALER_TESTING_prepare_exchange (config_filename,
+                                      GNUNET_YES,
+                                      &ec))
   {
     TALER_LOG_WARNING ("Could not prepare the exchange.\n");
     return 77;
   }
 
-  if (GNUNET_OK != TALER_TESTING_prepare_fakebank (config_filename,
-                                                   "exchange-account-1",
-                                                   &bc))
+  if (GNUNET_OK !=
+      TALER_TESTING_prepare_fakebank (config_filename,
+                                      "exchange-account-1",
+                                      &bc))
   {
     TALER_LOG_WARNING ("Could not prepare the fakebank\n");
     return 77;
   }
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_parse_and_run (config_filename,
                                           &prepare_database,
