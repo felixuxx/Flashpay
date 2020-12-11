@@ -32,6 +32,7 @@
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
@@ -672,8 +673,8 @@ handle_get_management (const struct TEH_RequestHandler *rh,
     GNUNET_break_op (0);
     return r404 (connection, "/management/*");
   }
-  GNUNET_break (0); // not implemented
-  return MHD_NO;
+  return TEH_keys_management_get_handler (rh,
+                                          connection);
 }
 
 

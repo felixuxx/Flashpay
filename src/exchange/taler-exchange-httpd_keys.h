@@ -233,13 +233,11 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
  *
  * @param rh context of the handler
  * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 MHD_RESULT
 TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
-                                 struct MHD_Connection *connection,
-                                 const char *const args[]);
+                                 struct MHD_Connection *connection);
 
 
 /**

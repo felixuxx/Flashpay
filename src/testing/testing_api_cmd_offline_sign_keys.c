@@ -70,8 +70,9 @@ offlinesign_run (void *cls,
         "taler-exchange-offline",
         "taler-exchange-offline",
         "-c", ks->config_filename,
-        "--online",
-        "download sign upload",
+        "download",
+        "sign",
+        "upload",
         NULL);
   if (NULL == ks->offlinesign_proc)
   {

@@ -140,6 +140,13 @@ run (void *cls,
                                 "payto://x-taler-bank/localhost/43",
                                 MHD_HTTP_NO_CONTENT,
                                 false),
+    TALER_TESTING_cmd_exec_offline_sign_keys ("download-future-keys",
+                                              CONFIG_FILE),
+    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
+                                                1,
+                                                5),
+    TALER_TESTING_cmd_sleep ("sleepy",
+                             3000),
     TALER_TESTING_cmd_end ()
   };
 

@@ -2121,8 +2121,7 @@ add_future_signkey_cb (void *cls,
 
 MHD_RESULT
 TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
-                                 struct MHD_Connection *connection,
-                                 const char *const args[])
+                                 struct MHD_Connection *connection)
 {
   struct KeyStateHandle *ksh;
   json_t *reply;

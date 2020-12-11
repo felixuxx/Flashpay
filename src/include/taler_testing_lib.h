@@ -2165,8 +2165,8 @@ TALER_TESTING_cmd_wire_del (const char *label,
  * @return the command
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_offline_sign_keys (const char *label,
-                                     const char *config_filename);
+TALER_TESTING_cmd_exec_offline_sign_keys (const char *label,
+                                          const char *config_filename);
 
 
 /**
