@@ -163,20 +163,18 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
       = &fk.denom_keys[i];
     const char *section_name;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_string ("section_name",
-                               &section_name),
-      GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
-                                   &denom_key->denom_secmod_sig),
-      TALER_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                     &denom_key->expire_deposit),
-      TALER_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                     &denom_key->withdraw_valid_until),
-      TALER_JSON_spec_absolute_time ("stamp_start",
-                                     &denom_key->valid_from),
-      TALER_JSON_spec_absolute_time ("stamp_expire_legal",
-                                     &denom_key->expire_legal),
       TALER_JSON_spec_amount ("value",
                               &denom_key->value),
+      TALER_JSON_spec_absolute_time ("stamp_start",
+                                     &denom_key->valid_from),
+      TALER_JSON_spec_absolute_time ("stamp_expire_withdraw",
+                                     &denom_key->withdraw_valid_until),
+      TALER_JSON_spec_absolute_time ("stamp_expire_deposit",
+                                     &denom_key->expire_deposit),
+      TALER_JSON_spec_absolute_time ("stamp_expire_legal",
+                                     &denom_key->expire_legal),
+      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
+                                       &denom_key->key.rsa_public_key),
       TALER_JSON_spec_amount ("fee_withdraw",
                               &denom_key->fee_withdraw),
       TALER_JSON_spec_amount ("fee_deposit",
@@ -185,8 +183,10 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                               &denom_key->fee_refresh),
       TALER_JSON_spec_amount ("fee_refund",
                               &denom_key->fee_refund),
-      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                       &denom_key->key.rsa_public_key),
+      GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
+                                   &denom_key->denom_secmod_sig),
+      GNUNET_JSON_spec_string ("section_name",
+                               &section_name),
       GNUNET_JSON_spec_end ()
     };
 
@@ -196,6 +196,9 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
+      json_dumpf (j,
+                  stderr,
+                  JSON_INDENT (2));
       ok = false;
       break;
     }
@@ -221,6 +224,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
         break;
       }
     }
+    GNUNET_JSON_parse_free (spec);
   }
   if (ok)
   {
