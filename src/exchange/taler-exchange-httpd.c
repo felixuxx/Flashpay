@@ -606,8 +606,6 @@ handle_post_management (const struct TEH_RequestHandler *rh,
                                                       &exchange_pub,
                                                       root);
   }
-#if FIXME
-  /* not yet implemented! */
   if (0 == strcmp (args[0],
                    "keys"))
   {
@@ -619,7 +617,6 @@ handle_post_management (const struct TEH_RequestHandler *rh,
     return TEH_handler_management_post_keys (connection,
                                              root);
   }
-#endif
   if (0 == strcmp (args[0],
                    "wire"))
   {
@@ -808,7 +805,7 @@ handle_mhd_request (void *cls,
     {
       .url = "keys",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_handler_keys,
+      .handler.get = &TEH_handler_keys, // FIXME => TEH_keys_get_handler
     },
     /* Requests for wiring information */
     {

@@ -1700,7 +1700,7 @@ krd_search_comparator (const void *key,
 
 
 MHD_RESULT
-TEH_handler_keys_NEW (const struct TEH_RequestHandler *rh,
+TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
                       struct MHD_Connection *connection,
                       const char *const args[])
 {

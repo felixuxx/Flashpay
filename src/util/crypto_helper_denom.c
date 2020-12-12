@@ -22,6 +22,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler-helper-crypto-rsa.h"
+#include <poll.h>
 
 
 struct TALER_CRYPTO_DenominationHelper
@@ -465,6 +466,35 @@ TALER_CRYPTO_helper_denom_sign (
     const struct GNUNET_MessageHeader *hdr
       = (const struct GNUNET_MessageHeader *) buf;
 
+    {
+      /* wait for reply with 5s timeout */
+      struct pollfd pfd = {
+        .fd = dh->sock,
+        .events = POLLIN
+      };
+      sigset_t sigmask;
+      struct timespec ts = {
+        .tv_sec = 5
+      };
+
+      GNUNET_assert (0 == sigemptyset (&sigmask));
+      GNUNET_assert (0 == sigaddset (&sigmask, SIGTERM));
+      GNUNET_assert (0 == sigaddset (&sigmask, SIGHUP));
+      ret = ppoll (&pfd,
+                   1,
+                   &ts,
+                   &sigmask);
+      if ( (-1 == ret) &&
+           (EINTR != errno) )
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "ppoll");
+      if (0 >= ret)
+      {
+        do_disconnect (dh);
+        *ec = TALER_EC_GENERIC_TIMEOUT;
+        return ds;
+      }
+    }
     ret = recv (dh->sock,
                 buf,
                 sizeof (buf),
