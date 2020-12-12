@@ -535,6 +535,9 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                          NULL, NULL))
   {
     GNUNET_break_op (0);
+    json_dumpf (auditor_obj,
+                stderr,
+                JSON_INDENT (2));
     return GNUNET_SYSERR;
   }
   auditor->auditor_url = GNUNET_strdup (auditor_url);
@@ -862,17 +865,19 @@ decode_keys_json (const json_t *resp_obj,
                        json_object_get (resp_obj,
                                         "signkeys")));
     EXITIF (JSON_ARRAY != json_typeof (sign_keys_array));
-    EXITIF (0 == (key_data->num_sign_keys =
-                    json_array_size (sign_keys_array)));
-    key_data->sign_keys
-      = GNUNET_new_array (key_data->num_sign_keys,
-                          struct TALER_EXCHANGE_SigningPublicKey);
-    json_array_foreach (sign_keys_array, index, sign_key_obj) {
-      EXITIF (GNUNET_SYSERR ==
-              parse_json_signkey (&key_data->sign_keys[index],
-                                  check_sig,
-                                  sign_key_obj,
-                                  &key_data->master_pub));
+    if (0 != (key_data->num_sign_keys =
+                json_array_size (sign_keys_array)))
+    {
+      key_data->sign_keys
+        = GNUNET_new_array (key_data->num_sign_keys,
+                            struct TALER_EXCHANGE_SigningPublicKey);
+      json_array_foreach (sign_keys_array, index, sign_key_obj) {
+        EXITIF (GNUNET_SYSERR ==
+                parse_json_signkey (&key_data->sign_keys[index],
+                                    check_sig,
+                                    sign_key_obj,
+                                    &key_data->master_pub));
+      }
     }
   }
 
