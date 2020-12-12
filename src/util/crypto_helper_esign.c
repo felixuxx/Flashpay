@@ -57,6 +57,11 @@ struct TALER_CRYPTO_ExchangeSignHelper
    * The UNIX domain socket, -1 if we are currently not connected.
    */
   int sock;
+
+  /**
+   * Have we reached the sync'ed state?
+   */
+  bool synced;
 };
 
 
@@ -309,6 +314,41 @@ handle_mt_purge (struct TALER_CRYPTO_ExchangeSignHelper *esh,
 }
 
 
+/**
+ * Wait until the socket is ready to read.
+ *
+ * @param dh helper to wait for
+ * @return false on timeout (after 5s)
+ */
+static bool
+await_read_ready (struct TALER_CRYPTO_ExchangeSignHelper *esh)
+{
+  /* wait for reply with 5s timeout */
+  struct pollfd pfd = {
+    .fd = esh->sock,
+    .events = POLLIN
+  };
+  sigset_t sigmask;
+  struct timespec ts = {
+    .tv_sec = 5
+  };
+  int ret;
+
+  GNUNET_assert (0 == sigemptyset (&sigmask));
+  GNUNET_assert (0 == sigaddset (&sigmask, SIGTERM));
+  GNUNET_assert (0 == sigaddset (&sigmask, SIGHUP));
+  ret = ppoll (&pfd,
+               1,
+               &ts,
+               &sigmask);
+  if ( (-1 == ret) &&
+       (EINTR != errno) )
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "ppoll");
+  return (0 < ret);
+}
+
+
 void
 TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
 {
@@ -329,7 +369,13 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
     if (ret < 0)
     {
       if (EAGAIN == errno)
-        break;
+      {
+        if (esh->synced)
+          break;
+        if (! await_read_ready (esh))
+          break; /* timeout */
+        continue; /* try again */
+      }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                            "recv");
       do_disconnect (esh);
@@ -364,6 +410,11 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
         do_disconnect (esh);
         return;
       }
+      break;
+    case TALER_HELPER_EDDSA_SYNCED:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Now synchronized with EdDSA helper\n");
+      esh->synced = true;
       break;
     default:
       GNUNET_break_op (0);
@@ -422,33 +473,10 @@ TALER_CRYPTO_helper_esign_sign_ (
     const struct GNUNET_MessageHeader *hdr
       = (const struct GNUNET_MessageHeader *) buf;
 
+    if (! await_read_ready (esh))
     {
-      /* wait for reply with 5s timeout */
-      struct pollfd pfd = {
-        .fd = esh->sock,
-        .events = POLLIN
-      };
-      sigset_t sigmask;
-      struct timespec ts = {
-        .tv_sec = 5
-      };
-
-      GNUNET_assert (0 == sigemptyset (&sigmask));
-      GNUNET_assert (0 == sigaddset (&sigmask, SIGTERM));
-      GNUNET_assert (0 == sigaddset (&sigmask, SIGHUP));
-      ret = ppoll (&pfd,
-                   1,
-                   &ts,
-                   &sigmask);
-      if ( (-1 == ret) &&
-           (EINTR != errno) )
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "ppoll");
-      if (0 >= ret)
-      {
-        do_disconnect (esh);
-        return TALER_EC_GENERIC_TIMEOUT;
-      }
+      do_disconnect (esh);
+      return TALER_EC_GENERIC_TIMEOUT;
     }
     ret = recv (esh->sock,
                 buf,

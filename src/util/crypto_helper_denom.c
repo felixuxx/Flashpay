@@ -57,6 +57,11 @@ struct TALER_CRYPTO_DenominationHelper
    * The UNIX domain socket, -1 if we are currently not connected.
    */
   int sock;
+
+  /**
+   * Have we ever been sync'ed?
+   */
+  bool synced;
 };
 
 
@@ -348,6 +353,41 @@ handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
 }
 
 
+/**
+ * Wait until the socket is ready to read.
+ *
+ * @param dh helper to wait for
+ * @return false on timeout (after 5s)
+ */
+static bool
+await_read_ready (struct TALER_CRYPTO_DenominationHelper *dh)
+{
+  /* wait for reply with 5s timeout */
+  struct pollfd pfd = {
+    .fd = dh->sock,
+    .events = POLLIN
+  };
+  sigset_t sigmask;
+  struct timespec ts = {
+    .tv_sec = 5
+  };
+  int ret;
+
+  GNUNET_assert (0 == sigemptyset (&sigmask));
+  GNUNET_assert (0 == sigaddset (&sigmask, SIGTERM));
+  GNUNET_assert (0 == sigaddset (&sigmask, SIGHUP));
+  ret = ppoll (&pfd,
+               1,
+               &ts,
+               &sigmask);
+  if ( (-1 == ret) &&
+       (EINTR != errno) )
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "ppoll");
+  return (0 < ret);
+}
+
+
 void
 TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
 {
@@ -368,7 +408,13 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
     if (ret < 0)
     {
       if (EAGAIN == errno)
-        break;
+      {
+        if (dh->synced)
+          break;
+        if (! await_read_ready (dh))
+          break; /* timeout */
+        continue; /* try again */
+      }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                            "recv");
       do_disconnect (dh);
@@ -403,6 +449,11 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
         do_disconnect (dh);
         return;
       }
+      break;
+    case TALER_HELPER_RSA_SYNCED:
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Now synchronized with RSA helper\n");
+      dh->synced = true;
       break;
     default:
       GNUNET_break_op (0);
@@ -466,34 +517,11 @@ TALER_CRYPTO_helper_denom_sign (
     const struct GNUNET_MessageHeader *hdr
       = (const struct GNUNET_MessageHeader *) buf;
 
+    if (! await_read_ready (dh))
     {
-      /* wait for reply with 5s timeout */
-      struct pollfd pfd = {
-        .fd = dh->sock,
-        .events = POLLIN
-      };
-      sigset_t sigmask;
-      struct timespec ts = {
-        .tv_sec = 5
-      };
-
-      GNUNET_assert (0 == sigemptyset (&sigmask));
-      GNUNET_assert (0 == sigaddset (&sigmask, SIGTERM));
-      GNUNET_assert (0 == sigaddset (&sigmask, SIGHUP));
-      ret = ppoll (&pfd,
-                   1,
-                   &ts,
-                   &sigmask);
-      if ( (-1 == ret) &&
-           (EINTR != errno) )
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "ppoll");
-      if (0 >= ret)
-      {
-        do_disconnect (dh);
-        *ec = TALER_EC_GENERIC_TIMEOUT;
-        return ds;
-      }
+      do_disconnect (dh);
+      *ec = TALER_EC_GENERIC_TIMEOUT;
+      return ds;
     }
     ret = recv (dh->sock,
                 buf,

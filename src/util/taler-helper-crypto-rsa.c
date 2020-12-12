@@ -1061,6 +1061,24 @@ read_job (void *cls)
         if (NULL == client)
           break;
       }
+      if (NULL != client)
+      {
+        struct GNUNET_MessageHeader synced = {
+          .type = htons (TALER_HELPER_RSA_SYNCED),
+          .size = htons (sizeof (synced))
+        };
+
+        if (GNUNET_OK !=
+            transmit (&client->addr,
+                      client->addr_size,
+                      &synced))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                      "Client %s must have disconnected\n",
+                      client->addr.sun_path);
+          free_client (client);
+        }
+      }
     }
     break;
   case TALER_HELPER_RSA_MT_REQ_SIGN:
@@ -1914,10 +1932,12 @@ run (void *cls,
                                              unix_sock,
                                              &read_job,
                                              NULL);
-
-  /* start job to keep keys up-to-date */
-  keygen_task = GNUNET_SCHEDULER_add_now (&update_denominations,
-                                          NULL);
+  /* start job to keep keys up-to-date; MUST be run before the #read_task,
+     hence with priority. */
+  keygen_task = GNUNET_SCHEDULER_add_with_priority (
+    GNUNET_SCHEDULER_PRIORITY_URGENT,
+    &update_denominations,
+    NULL);
 
   /* start job to handle completed work */
   {
