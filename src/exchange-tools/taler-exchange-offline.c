@@ -342,9 +342,9 @@ do_shutdown (void *cls)
 
     while (NULL != (drr = drr_head))
     {
-      fprintf (stderr,
-               "Aborting incomplete denomination revocation #%u\n",
-               (unsigned int) drr->idx);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete denomination revocation #%u\n",
+                  (unsigned int) drr->idx);
       TALER_EXCHANGE_management_revoke_denomination_key_cancel (drr->h);
       GNUNET_CONTAINER_DLL_remove (drr_head,
                                    drr_tail,
@@ -357,9 +357,9 @@ do_shutdown (void *cls)
 
     while (NULL != (srr = srr_head))
     {
-      fprintf (stderr,
-               "Aborting incomplete signkey revocation #%u\n",
-               (unsigned int) srr->idx);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete signkey revocation #%u\n",
+                  (unsigned int) srr->idx);
       TALER_EXCHANGE_management_revoke_signing_key_cancel (srr->h);
       GNUNET_CONTAINER_DLL_remove (srr_head,
                                    srr_tail,
@@ -373,9 +373,9 @@ do_shutdown (void *cls)
 
     while (NULL != (war = war_head))
     {
-      fprintf (stderr,
-               "Aborting incomplete wire add #%u\n",
-               (unsigned int) war->idx);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete wire add #%u\n",
+                  (unsigned int) war->idx);
       TALER_EXCHANGE_management_enable_wire_cancel (war->h);
       GNUNET_CONTAINER_DLL_remove (war_head,
                                    war_tail,
@@ -388,9 +388,9 @@ do_shutdown (void *cls)
 
     while (NULL != (wdr = wdr_head))
     {
-      fprintf (stderr,
-               "Aborting incomplete wire del #%u\n",
-               (unsigned int) wdr->idx);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete wire del #%u\n",
+                  (unsigned int) wdr->idx);
       TALER_EXCHANGE_management_disable_wire_cancel (wdr->h);
       GNUNET_CONTAINER_DLL_remove (wdr_head,
                                    wdr_tail,
@@ -403,9 +403,9 @@ do_shutdown (void *cls)
 
     while (NULL != (wfr = wfr_head))
     {
-      fprintf (stderr,
-               "Aborting incomplete wire fee #%u\n",
-               (unsigned int) wfr->idx);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete wire fee #%u\n",
+                  (unsigned int) wfr->idx);
       TALER_EXCHANGE_management_set_wire_fees_cancel (wfr->h);
       GNUNET_CONTAINER_DLL_remove (wfr_head,
                                    wfr_tail,
@@ -418,9 +418,9 @@ do_shutdown (void *cls)
 
     while (NULL != (ukr = ukr_head))
     {
-      fprintf (stderr,
-               "Aborting incomplete key signature upload #%u\n",
-               (unsigned int) ukr->idx);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete key signature upload #%u\n",
+                  (unsigned int) ukr->idx);
       TALER_EXCHANGE_post_management_keys_cancel (ukr->h);
       GNUNET_CONTAINER_DLL_remove (ukr_head,
                                    ukr_tail,
@@ -438,8 +438,8 @@ do_shutdown (void *cls)
   }
   if (NULL != in)
   {
-    fprintf (stderr,
-             "Warning: input not consumed!\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Input not consumed!\n");
     json_decref (in);
     in = NULL;
   }
@@ -525,6 +525,7 @@ output_operation (const char *op_name,
 {
   json_t *action;
 
+  GNUNET_break (NULL != op_value);
   if (NULL == out)
     out = json_array ();
   action = json_pack ("{ s:s, s:o }",
@@ -532,6 +533,7 @@ output_operation (const char *op_name,
                       op_name,
                       "arguments",
                       op_value);
+  GNUNET_break (NULL != action);
   GNUNET_break (0 ==
                 json_array_append_new (out,
                                        action));
@@ -578,12 +580,12 @@ load_offline_key (void)
     return GNUNET_OK;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
-                                               "exchange",
+                                               "exchange-offline",
                                                "MASTER_PRIV_FILE",
                                                &fn))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
+                               "exchange-offline",
                                "MASTER_PRIV_FILE");
     test_shutdown ();
     return GNUNET_SYSERR;
@@ -629,12 +631,13 @@ denom_revocation_cb (
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
-    fprintf (stderr,
-             "Upload failed for command %u with status %u: %s (%s)\n",
-             (unsigned int) drr->idx,
-             hr->http_status,
-             TALER_ErrorCode_get_hint (hr->ec),
-             hr->hint);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) drr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (drr_head,
                                drr_tail,
@@ -675,11 +678,14 @@ upload_denom_revocation (const char *exchange_url,
                          &err_name,
                          &err_line))
   {
-    fprintf (stderr,
-             "Invalid input for denomination revocation: %s#%u at %u (skipping)\n",
-             err_name,
-             err_line,
-             (unsigned int) idx);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input for denomination revocation: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
     global_ret = 7;
     test_shutdown ();
     return;
@@ -714,12 +720,13 @@ signkey_revocation_cb (
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
-    fprintf (stderr,
-             "Upload failed for command %u with status %u: %s (%s)\n",
-             (unsigned int) srr->idx,
-             hr->http_status,
-             TALER_ErrorCode_get_hint (hr->ec),
-             hr->hint);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) srr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (srr_head,
                                srr_tail,
@@ -760,11 +767,14 @@ upload_signkey_revocation (const char *exchange_url,
                          &err_name,
                          &err_line))
   {
-    fprintf (stderr,
-             "Invalid input for signkey revocation: %s#%u at %u (skipping)\n",
-             err_name,
-             err_line,
-             (unsigned int) idx);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input for signkey revocation: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
     global_ret = 7;
     test_shutdown ();
     return;
@@ -799,12 +809,13 @@ wire_add_cb (
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
-    fprintf (stderr,
-             "Upload failed for command %u with status %u: %s (%s)\n",
-             (unsigned int) war->idx,
-             hr->http_status,
-             TALER_ErrorCode_get_hint (hr->ec),
-             hr->hint);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) war->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (war_head,
                                war_tail,
@@ -851,11 +862,14 @@ upload_wire_add (const char *exchange_url,
                          &err_name,
                          &err_line))
   {
-    fprintf (stderr,
-             "Invalid input for adding wire account: %s#%u at %u (skipping)\n",
-             err_name,
-             err_line,
-             (unsigned int) idx);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input for adding wire account: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
     global_ret = 7;
     test_shutdown ();
     return;
@@ -892,12 +906,13 @@ wire_del_cb (
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
-    fprintf (stderr,
-             "Upload failed for command %u with status %u: %s (%s)\n",
-             (unsigned int) wdr->idx,
-             hr->http_status,
-             TALER_ErrorCode_get_hint (hr->ec),
-             hr->hint);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) wdr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (wdr_head,
                                wdr_tail,
@@ -941,11 +956,14 @@ upload_wire_del (const char *exchange_url,
                          &err_name,
                          &err_line))
   {
-    fprintf (stderr,
-             "Invalid input to disable wire account: %s#%u at %u (skipping)\n",
-             err_name,
-             err_line,
-             (unsigned int) idx);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to disable wire account: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
     global_ret = 7;
     test_shutdown ();
     return;
@@ -981,12 +999,13 @@ wire_fee_cb (
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
-    fprintf (stderr,
-             "Upload failed for command %u with status %u: %s (%s)\n",
-             (unsigned int) wfr->idx,
-             hr->http_status,
-             TALER_ErrorCode_get_hint (hr->ec),
-             hr->hint);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) wfr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (wfr_head,
                                wfr_tail,
@@ -1039,11 +1058,14 @@ upload_wire_fee (const char *exchange_url,
                          &err_name,
                          &err_line))
   {
-    fprintf (stderr,
-             "Invalid input to set wire fee: %s#%u at %u (skipping)\n",
-             err_name,
-             err_line,
-             (unsigned int) idx);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to set wire fee: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
     global_ret = 7;
     test_shutdown ();
     return;
@@ -1082,12 +1104,13 @@ keys_cb (
 
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
-    fprintf (stderr,
-             "Upload failed for command %u with status %u: %s (%s)\n",
-             (unsigned int) ukr->idx,
-             hr->http_status,
-             TALER_ErrorCode_get_hint (hr->ec),
-             hr->hint);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) ukr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (ukr_head,
                                ukr_tail,
@@ -1102,7 +1125,7 @@ keys_cb (
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for POSTing keys
+ * @param value arguments for POSTing keys
  */
 static void
 upload_keys (const char *exchange_url,
@@ -1125,21 +1148,28 @@ upload_keys (const char *exchange_url,
   bool ok = true;
 
   if (GNUNET_OK !=
-      GNUNET_JSON_parse (in,
+      GNUNET_JSON_parse (value,
                          spec,
                          &err_name,
                          &err_line))
   {
-    fprintf (stderr,
-             "Invalid input to 'upload': %s#%u (skipping)\n",
-             err_name,
-             err_line);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to 'upload': %s#%u (skipping)\n",
+                err_name,
+                err_line);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
     global_ret = 7;
     test_shutdown ();
     return;
   }
   pkd.num_sign_sigs = json_array_size (signkey_sigs);
   pkd.num_denom_sigs = json_array_size (denom_sigs);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Uploading %u denomination and %u signing key signatures\n",
+              pkd.num_denom_sigs,
+              pkd.num_sign_sigs);
   pkd.sign_sigs = GNUNET_new_array (
     pkd.num_sign_sigs,
     struct TALER_EXCHANGE_SigningKeySignature);
@@ -1165,11 +1195,14 @@ upload_keys (const char *exchange_url,
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input for signkey validity: %s#%u at %u (aborting)\n",
-               err_name,
-               err_line,
-               i);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input for signkey validity: %s#%u at %u (aborting)\n",
+                  err_name,
+                  err_line,
+                  i);
+      json_dumpf (val,
+                  stderr,
+                  JSON_INDENT (2));
       ok = false;
     }
   }
@@ -1192,11 +1225,14 @@ upload_keys (const char *exchange_url,
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input for denomination validity: %s#%u at %u (aborting)\n",
-               err_name,
-               err_line,
-               i);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input for denomination validity: %s#%u at %u (aborting)\n",
+                  err_name,
+                  err_line,
+                  i);
+      json_dumpf (val,
+                  stderr,
+                  JSON_INDENT (2));
       ok = false;
     }
   }
@@ -1222,6 +1258,7 @@ upload_keys (const char *exchange_url,
   }
   GNUNET_free (pkd.sign_sigs);
   GNUNET_free (pkd.denom_sigs);
+  GNUNET_JSON_parse_free (spec);
 }
 
 
@@ -1275,8 +1312,8 @@ trigger_upload (const char *exchange_url)
     value = json_object_get (obj, "arguments");
     if (NULL == key)
     {
-      fprintf (stderr,
-               "Malformed JSON input\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Malformed JSON input\n");
       global_ret = 3;
       test_shutdown ();
       return;
@@ -1296,9 +1333,9 @@ trigger_upload (const char *exchange_url)
     }
     if (! found)
     {
-      fprintf (stderr,
-               "Upload does not know how to handle `%s'\n",
-               key);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Upload does not know how to handle `%s'\n",
+                  key);
       global_ret = 3;
       test_shutdown ();
       return;
@@ -1319,8 +1356,8 @@ do_upload (char *const *args)
 
   if (NULL != in)
   {
-    fprintf (stderr,
-             "Downloaded data was not consumed, refusing upload\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, refusing upload\n");
     test_shutdown ();
     global_ret = 4;
     return;
@@ -1334,12 +1371,12 @@ do_upload (char *const *args)
                       &err);
     if (NULL == out)
     {
-      fprintf (stderr,
-               "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
-               err.text,
-               err.line,
-               err.source,
-               err.position);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
+                  err.text,
+                  err.line,
+                  err.source,
+                  err.position);
       test_shutdown ();
       global_ret = 2;
       return;
@@ -1347,8 +1384,8 @@ do_upload (char *const *args)
   }
   if (! json_is_array (out))
   {
-    fprintf (stderr,
-             "Error: expected JSON array for `upload` command\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Error: expected JSON array for `upload` command\n");
     test_shutdown ();
     global_ret = 2;
     return;
@@ -1387,8 +1424,8 @@ do_revoke_denomination_key (char *const *args)
 
   if (NULL != in)
   {
-    fprintf (stderr,
-             "Downloaded data was not consumed, refusing revocation\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, refusing revocation\n");
     test_shutdown ();
     global_ret = 4;
     return;
@@ -1400,8 +1437,8 @@ do_revoke_denomination_key (char *const *args)
                                        &h_denom_pub,
                                        sizeof (h_denom_pub))) )
   {
-    fprintf (stderr,
-             "You must specify a denomination key with this subcommand\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify a denomination key with this subcommand\n");
     test_shutdown ();
     global_ret = 5;
     return;
@@ -1436,8 +1473,8 @@ do_revoke_signkey (char *const *args)
 
   if (NULL != in)
   {
-    fprintf (stderr,
-             "Downloaded data was not consumed, refusing revocation\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, refusing revocation\n");
     test_shutdown ();
     global_ret = 4;
     return;
@@ -1449,8 +1486,8 @@ do_revoke_signkey (char *const *args)
                                        &exchange_pub,
                                        sizeof (exchange_pub))) )
   {
-    fprintf (stderr,
-             "You must specify an exchange signing key with this subcommand\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify an exchange signing key with this subcommand\n");
     test_shutdown ();
     global_ret = 5;
     return;
@@ -1486,16 +1523,16 @@ do_add_wire (char *const *args)
 
   if (NULL != in)
   {
-    fprintf (stderr,
-             "Downloaded data was not consumed, not adding wire account\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not adding wire account\n");
     test_shutdown ();
     global_ret = 4;
     return;
   }
   if (NULL == args[0])
   {
-    fprintf (stderr,
-             "You must specify a payto://-URI with this subcommand\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify a payto://-URI with this subcommand\n");
     test_shutdown ();
     global_ret = 5;
     return;
@@ -1541,16 +1578,16 @@ do_del_wire (char *const *args)
 
   if (NULL != in)
   {
-    fprintf (stderr,
-             "Downloaded data was not consumed, not deleting wire account\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not deleting wire account\n");
     test_shutdown ();
     global_ret = 4;
     return;
   }
   if (NULL == args[0])
   {
-    fprintf (stderr,
-             "You must specify a payto://-URI with this subcommand\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify a payto://-URI with this subcommand\n");
     test_shutdown ();
     global_ret = 5;
     return;
@@ -1597,8 +1634,8 @@ do_set_wire_fee (char *const *args)
 
   if (NULL != in)
   {
-    fprintf (stderr,
-             "Downloaded data was not consumed, not setting wire fee\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not setting wire fee\n");
     test_shutdown ();
     global_ret = 4;
     return;
@@ -1620,8 +1657,8 @@ do_set_wire_fee (char *const *args)
         TALER_string_to_amount (args[3],
                                 &closing_fee)) )
   {
-    fprintf (stderr,
-             "You must use YEAR, METHOD, WIRE-FEE and CLOSING-FEE as arguments for this subcommand\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must use YEAR, METHOD, WIRE-FEE and CLOSING-FEE as arguments for this subcommand\n");
     test_shutdown ();
     global_ret = 5;
     return;
@@ -1683,11 +1720,11 @@ download_cb (void *cls,
   case MHD_HTTP_OK:
     break;
   default:
-    fprintf (stderr,
-             "Failed to download keys: %s (HTTP status: %u/%u)\n",
-             hr->hint,
-             hr->http_status,
-             (unsigned int) hr->ec);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to download keys: %s (HTTP status: %u/%u)\n",
+                hr->hint,
+                hr->http_status,
+                (unsigned int) hr->ec);
     test_shutdown ();
     global_ret = 4;
     return;
@@ -1777,12 +1814,18 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
       GNUNET_free (fn);
       return GNUNET_SYSERR;
     }
-    GNUNET_free (fn);
     /* TOFU check */
     if (0 != memcmp (old,
                      secm,
                      sizeof (old)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fatal: security module keys changed (file `%s')!\n",
+                  fn);
+      GNUNET_free (fn);
       return GNUNET_SYSERR;
+    }
+    GNUNET_free (fn);
     return GNUNET_OK;
   }
   /* persist keys for future runs */
@@ -1845,11 +1888,14 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
-               err_name,
-               err_line,
-               (unsigned int) index);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
+                  err_name,
+                  err_line,
+                  (unsigned int) index);
+      json_dumpf (value,
+                  stderr,
+                  JSON_INDENT (2));
       global_ret = 7;
       test_shutdown ();
       return GNUNET_SYSERR;
@@ -1863,9 +1909,9 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                             secm_pub,
                                             &secm_sig))
     {
-      fprintf (stderr,
-               "Invalid security module signature for key %s (aborting)\n",
-               TALER_B2S (&exchange_pub));
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid security module signature for signing key %s (aborting)\n",
+                  TALER_B2S (&exchange_pub));
       global_ret = 9;
       test_shutdown ();
       return GNUNET_SYSERR;
@@ -1953,11 +1999,14 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input for denomination key to 'show': %s#%u at %u (skipping)\n",
-               err_name,
-               err_line,
-               (unsigned int) index);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input for denomination key to 'show': %s#%u at %u (skipping)\n",
+                  err_name,
+                  err_line,
+                  (unsigned int) index);
+      json_dumpf (value,
+                  stderr,
+                  JSON_INDENT (2));
       GNUNET_JSON_parse_free (spec);
       global_ret = 7;
       test_shutdown ();
@@ -1975,9 +2024,9 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                           secm_pub,
                                           &secm_sig))
     {
-      fprintf (stderr,
-               "Invalid security module signature for key %s (aborting)\n",
-               TALER_B2S (&h_denom_pub));
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid security module signature for denomination key %s (aborting)\n",
+                  GNUNET_h2s (&h_denom_pub));
       global_ret = 9;
       test_shutdown ();
       return GNUNET_SYSERR;
@@ -2041,22 +2090,25 @@ do_show (char *const *args)
   {
     json_error_t err;
 
-    out = json_loadf (stdin,
-                      JSON_REJECT_DUPLICATES,
-                      &err);
+    in = json_loadf (stdin,
+                     JSON_REJECT_DUPLICATES,
+                     &err);
     if (NULL == in)
     {
-      fprintf (stderr,
-               "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
-               err.text,
-               err.line,
-               err.source,
-               err.position);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
+                  err.text,
+                  err.line,
+                  err.source,
+                  err.position);
       global_ret = 2;
       test_shutdown ();
       return;
     }
   }
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
 
   {
     const char *err_name;
@@ -2085,10 +2137,13 @@ do_show (char *const *args)
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input to 'show': %s#%u (skipping)\n",
-               err_name,
-               err_line);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input to 'show': %s#%u (skipping)\n",
+                  err_name,
+                  err_line);
+      json_dumpf (in,
+                  stderr,
+                  JSON_INDENT (2));
       global_ret = 7;
       test_shutdown ();
       return;
@@ -2097,8 +2152,8 @@ do_show (char *const *args)
         GNUNET_memcmp (&master_pub,
                        &mpub))
     {
-      fprintf (stderr,
-               "Fatal: exchange uses different master key!\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fatal: exchange uses different master key!\n");
       global_ret = 6;
       test_shutdown ();
       GNUNET_JSON_parse_free (spec);
@@ -2107,18 +2162,16 @@ do_show (char *const *args)
     if (GNUNET_SYSERR ==
         tofu_check (secm))
     {
-      fprintf (stderr,
-               "Fatal: security module keys changed!\n");
       global_ret = 8;
       test_shutdown ();
       GNUNET_JSON_parse_free (spec);
       return;
     }
     if ( (GNUNET_OK !=
-          show_signkeys (&secm[0],
+          show_signkeys (&secm[1],
                          signkeys)) ||
          (GNUNET_OK !=
-          show_denomkeys (&secm[1],
+          show_denomkeys (&secm[0],
                           denomkeys)) )
     {
       global_ret = 8;
@@ -2187,11 +2240,14 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
-               err_name,
-               err_line,
-               (unsigned int) index);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
+                  err_name,
+                  err_line,
+                  (unsigned int) index);
+      json_dumpf (value,
+                  stderr,
+                  JSON_INDENT (2));
       global_ret = 7;
       test_shutdown ();
       return GNUNET_SYSERR;
@@ -2206,11 +2262,12 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                             secm_pub,
                                             &secm_sig))
     {
-      fprintf (stderr,
-               "Invalid security module signature for key %s (aborting)\n",
-               TALER_B2S (&exchange_pub));
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid security module signature for signing key %s (aborting)\n",
+                  TALER_B2S (&exchange_pub));
       global_ret = 9;
       test_shutdown ();
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     {
@@ -2225,12 +2282,13 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_assert (0 ==
                      json_array_append_new (
                        result,
-                       json_pack ("{s:o,s:o}",
+                       json_pack ("{s:o, s:o}",
                                   "exchange_pub",
                                   GNUNET_JSON_from_data_auto (&exchange_pub),
                                   "master_sig",
                                   GNUNET_JSON_from_data_auto (&master_sig))));
     }
+    GNUNET_JSON_parse_free (spec);
   }
   return GNUNET_OK;
 }
@@ -2303,11 +2361,14 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input for denomination key to 'sign': %s#%u at %u (skipping)\n",
-               err_name,
-               err_line,
-               (unsigned int) index);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input for denomination key to 'sign': %s#%u at %u (skipping)\n",
+                  err_name,
+                  err_line,
+                  (unsigned int) index);
+      json_dumpf (value,
+                  stderr,
+                  JSON_INDENT (2));
       GNUNET_JSON_parse_free (spec);
       global_ret = 7;
       test_shutdown ();
@@ -2325,11 +2386,12 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                           secm_pub,
                                           &secm_sig))
     {
-      fprintf (stderr,
-               "Invalid security module signature for key %s (aborting)\n",
-               TALER_B2S (&h_denom_pub));
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid security module signature for denomination key %s (aborting)\n",
+                  GNUNET_h2s (&h_denom_pub));
       global_ret = 9;
       test_shutdown ();
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
 
@@ -2351,8 +2413,8 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_assert (0 ==
                      json_array_append_new (
                        result,
-                       json_pack ("{s:o,s:o}",
-                                  "h_denomn_pub",
+                       json_pack ("{s:o, s:o}",
+                                  "h_denom_pub",
                                   GNUNET_JSON_from_data_auto (&h_denom_pub),
                                   "master_sig",
                                   GNUNET_JSON_from_data_auto (&master_sig))));
@@ -2375,17 +2437,17 @@ do_sign (char *const *args)
   {
     json_error_t err;
 
-    out = json_loadf (stdin,
-                      JSON_REJECT_DUPLICATES,
-                      &err);
+    in = json_loadf (stdin,
+                     JSON_REJECT_DUPLICATES,
+                     &err);
     if (NULL == in)
     {
-      fprintf (stderr,
-               "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
-               err.text,
-               err.line,
-               err.source,
-               err.position);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
+                  err.text,
+                  err.line,
+                  err.source,
+                  err.position);
       global_ret = 2;
       test_shutdown ();
       return;
@@ -2422,10 +2484,13 @@ do_sign (char *const *args)
                            &err_name,
                            &err_line))
     {
-      fprintf (stderr,
-               "Invalid input to 'sign': %s#%u (skipping)\n",
-               err_name,
-               err_line);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid input to 'sign': %s#%u (skipping)\n",
+                  err_name,
+                  err_line);
+      json_dumpf (in,
+                  stderr,
+                  JSON_INDENT (2));
       global_ret = 7;
       test_shutdown ();
       return;
@@ -2434,8 +2499,8 @@ do_sign (char *const *args)
         GNUNET_memcmp (&master_pub,
                        &mpub))
     {
-      fprintf (stderr,
-               "Fatal: exchange uses different master key!\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fatal: exchange uses different master key!\n");
       global_ret = 6;
       test_shutdown ();
       GNUNET_JSON_parse_free (spec);
@@ -2444,8 +2509,8 @@ do_sign (char *const *args)
     if (GNUNET_SYSERR ==
         tofu_check (secm))
     {
-      fprintf (stderr,
-               "Fatal: security module keys changed!\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Fatal: security module keys changed!\n");
       global_ret = 8;
       test_shutdown ();
       GNUNET_JSON_parse_free (spec);
@@ -2458,11 +2523,11 @@ do_sign (char *const *args)
       GNUNET_assert (NULL != signkey_sig_array);
       GNUNET_assert (NULL != denomkey_sig_array);
       if ( (GNUNET_OK !=
-            sign_signkeys (&secm[0],
+            sign_signkeys (&secm[1],
                            signkeys,
                            signkey_sig_array)) ||
            (GNUNET_OK !=
-            sign_denomkeys (&secm[1],
+            sign_denomkeys (&secm[0],
                             denomkeys,
                             denomkey_sig_array)) )
       {
@@ -2569,19 +2634,20 @@ work (void *cls)
   if (0 != strcasecmp ("help",
                        args[0]))
   {
-    fprintf (stderr,
-             "Unexpected command `%s'\n",
-             args[0]);
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "Unexpected command `%s'\n",
+                args[0]);
     global_ret = 3;
   }
-  fprintf (stderr,
-           "Supported subcommands:\n");
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+
+              "Supported subcommands:\n");
   for (unsigned int i = 0; NULL != cmds[i].name; i++)
   {
-    fprintf (stderr,
-             "\t%s - %s\n",
-             cmds[i].name,
-             cmds[i].help);
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "\t%s - %s\n",
+                cmds[i].name,
+                cmds[i].help);
   }
 }
 
@@ -2634,10 +2700,6 @@ main (int argc,
      not do this, the linker may "optimize" libtalerutil
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-exchange-offline",
-                                   "WARNING",
-                                   NULL));
   if (GNUNET_OK !=
       GNUNET_PROGRAM_run (argc, argv,
                           "taler-exchange-offline",

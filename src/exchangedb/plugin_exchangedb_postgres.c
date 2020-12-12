@@ -8054,8 +8054,8 @@ postgres_insert_auditor (void *cls,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
-    GNUNET_PQ_query_param_string (auditor_url),
     GNUNET_PQ_query_param_string (auditor_name),
+    GNUNET_PQ_query_param_string (auditor_url),
     GNUNET_PQ_query_param_absolute_time (&start_date),
     GNUNET_PQ_query_param_end
   };
@@ -8545,7 +8545,7 @@ postgres_add_denomination_key (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam iparams[] = {
-    GNUNET_PQ_query_param_auto_from_type (&h_denom_pub),
+    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
@@ -8604,7 +8604,7 @@ postgres_activate_signing_key (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam iparams[] = {
-    GNUNET_PQ_query_param_auto_from_type (&exchange_pub),
+    GNUNET_PQ_query_param_auto_from_type (exchange_pub),
     TALER_PQ_query_param_absolute_time (&meta->start),
     TALER_PQ_query_param_absolute_time (&meta->expire_sign),
     TALER_PQ_query_param_absolute_time (&meta->expire_legal),
