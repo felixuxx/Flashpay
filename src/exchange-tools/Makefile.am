@@ -14,24 +14,8 @@ endif
 
 bin_PROGRAMS = \
   taler-auditor-offline \
-  taler-exchange-keyup \
   taler-exchange-offline \
-  taler-exchange-wire \
   taler-exchange-dbinit
-
-taler_exchange_keyup_SOURCES = \
-  taler-exchange-keyup.c
-taler_exchange_keyup_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil \
-  $(XLIB)
-taler_exchange_keyup_LDFLAGS = $(POSTGRESQL_LDFLAGS)
-
 
 taler_exchange_offline_SOURCES = \
   taler-exchange-offline.c
@@ -46,7 +30,6 @@ taler_exchange_offline_LDADD = \
   -lgnunetutil \
   $(XLIB)
 
-
 taler_auditor_offline_SOURCES = \
   taler-auditor-offline.c
 taler_auditor_offline_LDADD = \
@@ -59,21 +42,6 @@ taler_auditor_offline_LDADD = \
   -ljansson \
   -lgnunetutil \
   $(XLIB)
-
-
-taler_exchange_wire_SOURCES = \
-  taler-exchange-wire.c
-taler_exchange_wire_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  $(top_builddir)/src/bank-lib/libtalerbank.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetjson \
-  -lgnunetutil \
-  -ljansson \
-  $(XLIB)
-taler_exchange_wire_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
 taler_exchange_dbinit_SOURCES = \
   taler-exchange-dbinit.c
@@ -99,8 +67,4 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 # Distribution
 
 EXTRA_DIST = \
-  test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
-  test_taler_exchange_httpd.conf \
-  key-helper.c \
-  $(check_SCRIPTS) \
   $(pkgcfg_DATA)

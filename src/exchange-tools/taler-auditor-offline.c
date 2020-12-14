@@ -417,7 +417,7 @@ upload_denomination_add (const char *exchange_url,
                          &err_line))
   {
     fprintf (stderr,
-             "Invalid input for adding wire account: %s#%u at %u (skipping)\n",
+             "Invalid input for adding denomination: %s#%u at %u (skipping)\n",
              err_name,
              err_line,
              (unsigned int) idx);
@@ -996,8 +996,8 @@ sign_denomkeys (const json_t *denomkeys)
                                          &auditor_priv,
                                          &auditor_sig);
       output_operation ("sign-denomination",
-                        json_pack ("{s:o,s:o}",
-                                   "h_denomn_pub",
+                        json_pack ("{s:o, s:o}",
+                                   "h_denom_pub",
                                    GNUNET_JSON_from_data_auto (&h_denom_pub),
                                    "auditor_sig",
                                    GNUNET_JSON_from_data_auto (&auditor_sig)));

@@ -98,33 +98,41 @@ taler-config -c $CONF -s bank -o database -V postgres:///$TARGET_DB
 # setup exchange
 echo "Setting up exchange"
 taler-exchange-dbinit -c $CONF
-taler-exchange-wire -c $CONF 2> taler-exchange-wire.log
-taler-exchange-keyup -L INFO -c $CONF -o e2a.dat 2> taler-exchange-keyup.log
 
 # setup auditor
 echo "Setting up auditor"
 taler-auditor-dbinit -c $CONF
 taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
-taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a.dat -o a2e.dat -m $MASTER_PUB
-rm -f e2a.dat
-
-# provide auditor's signature to exchange
-ABD=`taler-config -c $CONF -s EXCHANGEDB -o AUDITOR_BASE_DIR -f`
-mkdir -p $ABD
-mv a2e.dat $ABD
 
 # Launch services
 echo "Launching services"
-taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &
+taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &> taler-bank.log &
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
-TLIBEXEC=${BINPFX}/../lib/libexec/taler/
+TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
 $TLIBEXEC/taler-helper-crypto-eddsa -c $CONF 2> taler-helper-crypto-eddsa.log &
 $TLIBEXEC/taler-helper-crypto-rsa -c $CONF 2> taler-helper-crypto-rsa.log &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
 taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
+
+# Wait for all bank to be available (usually the slowest)
+for n in `seq 1 50`
+do
+    echo -n "."
+    sleep 0.2
+    OK=0
+    # bank
+    wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null || continue
+    OK=1
+    break
+done
+
+if [ 1 != $OK ]
+then
+    exit_skip "Failed to launch services"
+fi
 
 # Wait for all services to be available
 for n in `seq 1 50`
@@ -133,11 +141,9 @@ do
     sleep 0.1
     OK=0
     # exchange
-    wget http://localhost:8081/ -o /dev/null -O /dev/null >/dev/null || continue
+    wget http://localhost:8081/seed -o /dev/null -O /dev/null >/dev/null || continue
     # merchant
     wget http://localhost:9966/ -o /dev/null -O /dev/null >/dev/null || continue
-    # bank
-    wget http://localhost:8082/ -o /dev/null -O /dev/null >/dev/null || continue
     # Auditor
     wget http://localhost:8083/ -o /dev/null -O /dev/null >/dev/null || continue
     OK=1
@@ -148,8 +154,40 @@ if [ 1 != $OK ]
 then
     exit_skip "Failed to launch services"
 fi
+echo " DONE"
 
+
+echo -n "Setting up keys"
+taler-exchange-offline -c $CONF \
+  download sign \
+  enable-account payto://x-taler-bank/localhost/2 \
+  wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 \
+  upload &> taler-exchange-offline.log
+
+echo -n "."
+
+for n in `seq 1 2`
+do
+    echo -n "."
+    OK=0
+    # bank
+    wget --timeout=1 http://localhost:8081/keys -o /dev/null -O /dev/null >/dev/null || continue
+    OK=1
+    break
+done
+
+if [ 1 != $OK ]
+then
+    exit_skip "Failed to setup keys"
+fi
+
+taler-auditor-offline -c $CONF \
+  download sign upload &> taler-auditor-offline.log
+
+echo " DONE"
 # Setup merchant
+
+echo -n "Setting up merchant"
 
 curl -H "Content-Type: application/json" -X POST -d '{"payto_uris":["payto://x-taler-bank/localhost/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/private/instances
 

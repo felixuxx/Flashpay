@@ -86,27 +86,17 @@ taler-config -c $CONF -s exchange -o REVOCATION_DIR -V "${TMP_DIR}/revdir/"
 # setup exchange
 echo "Setting up exchange"
 taler-exchange-dbinit -c $CONF
-taler-exchange-wire -c $CONF 2> taler-exchange-wire.log
-taler-exchange-keyup -L INFO -c $CONF -o e2a.dat 2> taler-exchange-keyup.log
 
 # setup auditor
 echo "Setting up auditor"
 taler-auditor-dbinit -c $CONF
-taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
-taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a.dat -o a2e.dat -m $MASTER_PUB
-rm -f e2a.dat
-
-# provide auditor's signature to exchange
-ABD=`taler-config -c $CONF -s EXCHANGEDB -o AUDITOR_BASE_DIR -f`
-mkdir -p $ABD
-mv a2e.dat $ABD
 
 # Launch services
 echo "Launching services"
 taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &> revocation-bank.log &
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
-TLIBEXEC=${BINPFX}/../lib/libexec/taler/
+TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
 $TLIBEXEC/taler-helper-crypto-eddsa -c $CONF 2> taler-helper-crypto-eddsa.log &
 $TLIBEXEC/taler-helper-crypto-rsa -c $CONF 2> taler-helper-crypto-rsa.log &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
@@ -127,6 +117,12 @@ do
     OK=1
     break
 done
+
+if [ 1 != $OK ]
+then
+    exit_skip "Failed to launch services"
+fi
+
 # Wait for all other services to be available
 for n in `seq 1 50`
 do
@@ -134,7 +130,7 @@ do
     sleep 0.1
     OK=0
     # exchange
-    wget http://localhost:8081/ -o /dev/null -O /dev/null >/dev/null || continue
+    wget http://localhost:8081/seed -o /dev/null -O /dev/null >/dev/null || continue
     # merchant
     wget http://localhost:9966/ -o /dev/null -O /dev/null >/dev/null || continue
     # Auditor
@@ -143,7 +139,6 @@ do
     break
 done
 
-
 if [ 1 != $OK ]
 then
     cleanup
@@ -151,7 +146,39 @@ then
 fi
 echo " DONE"
 
+echo -n "Setting up keys"
+
+taler-exchange-offline -c $CONF \
+  download sign \
+  enable-account payto://x-taler-bank/localhost/2 \
+  wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 \
+  upload &> taler-exchange-offline.log
+
+echo -n "."
+
+for n in `seq 1 2`
+do
+    echo -n "."
+    OK=0
+    # bank
+    wget --timeout=1 http://localhost:8081/keys -o /dev/null -O /dev/null >/dev/null || continue
+    OK=1
+    break
+done
+
+if [ 1 != $OK ]
+then
+    exit_skip "Failed to setup keys"
+fi
+
+
+taler-auditor-offline -c $CONF \
+  download sign upload &> taler-auditor-offline.log
+
+echo " DONE"
+
 # Setup merchant
+echo -n "Setting up merchant"
 
 curl -H "Content-Type: application/json" -X POST -d '{"payto_uris":["payto://x-taler-bank/localhost/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/private/instances
 
@@ -186,15 +213,14 @@ echo "Revoking denomination ${rd} (to affect coin ${rc})"
 export susp=$(echo "$coins" | jq --arg rc "$rc" '[.coins[] | select(.coin_pub != $rc) | .coin_pub]')
 
 # Do the revocation
-taler-exchange-keyup -o e2a2.dat -c $CONF -r $rd
-taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a2.dat -o a2e2.dat -m $MASTER_PUB
-rm -f e2a2.dat
-mv a2e2.dat $ABD
+taler-exchange-offline -c $CONF \
+  revoke-denomination "${rd}" upload &> taler-exchange-offline-revoke.log
 
-# Restart the exchange...
-kill -SIGUSR1 $EXCHANGE_PID
-sleep 1 # Give exchange time to re-scan data
-echo "Restarted the exchange post revocation"
+sleep 1 # Give exchange time to create replacmenent key
+
+# Re-sign replacment keys
+taler-auditor-offline -c $CONF \
+  download sign upload &> taler-auditor-offline.log
 
 # Now we suspend the other coins, so later we will pay with the recouped coin
 taler-wallet-cli --wallet-db=$WALLET_DB advanced suspend-coins "$susp"
@@ -280,15 +306,14 @@ export susp=$(echo "$coins" | jq --arg freshc "$freshc" '[.coins[] | select(.coi
 
 # Do the revocation of freshc
 echo "Revoking ${fresh_denom} (to affect coin ${freshc})"
-taler-exchange-keyup -c $CONF -o e2a3.dat -r $fresh_denom
-taler-auditor-sign -c $CONF -u $AUDITOR_URL -r e2a3.dat -o a2e3.dat -m $MASTER_PUB
-rm -f e2a3.dat
-mv a2e3.dat $ABD
+taler-exchange-offline -c $CONF \
+  revoke-denomination "${fresh_denom}" upload &> taler-exchange-offline-revoke-2.log
 
-# Restart the exchange...
-kill -SIGUSR1 $EXCHANGE_PID
-sleep 1 # give exchange time to re-scan data
+sleep 1 # Give exchange time to create replacmenent key
 
+# Re-sign replacment keys
+taler-auditor-offline -c $CONF \
+  download sign upload &> taler-auditor-offline.log
 
 # Now we suspend the other coins, so later we will pay with the recouped coin
 taler-wallet-cli $TIMETRAVEL --wallet-db=$WALLET_DB advanced suspend-coins "$susp"

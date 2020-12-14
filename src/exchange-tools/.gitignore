@@ -1,5 +1,2 @@
-test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
-test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
-test_taler_exchange_httpd_home/.config/taler/account-1.json
 taler-exchange-offline
 taler-auditor-offline
