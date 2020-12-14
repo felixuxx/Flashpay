@@ -29,6 +29,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -256,10 +257,10 @@ TEH_RESPONSE_compile_transaction_history (
 
         TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
-        if (GNUNET_OK !=
-            TEH_KS_sign (&pc,
-                         &epub,
-                         &esig))
+        if (TALER_EC_NONE !=
+            TEH_keys_exchange_sign (&pc,
+                                    &epub,
+                                    &esig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -309,10 +310,10 @@ TEH_RESPONSE_compile_transaction_history (
 
         TALER_amount_hton (&pc.recoup_amount,
                            &recoup->value);
-        if (GNUNET_OK !=
-            TEH_KS_sign (&pc,
-                         &epub,
-                         &esig))
+        if (TALER_EC_NONE !=
+            TEH_keys_exchange_sign (&pc,
+                                    &epub,
+                                    &esig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -366,10 +367,10 @@ TEH_RESPONSE_compile_transaction_history (
 
         TALER_amount_hton (&pc.recoup_amount,
                            &pr->value);
-        if (GNUNET_OK !=
-            TEH_KS_sign (&pc,
-                         &epub,
-                         &esig))
+        if (TALER_EC_NONE !=
+            TEH_keys_exchange_sign (&pc,
+                                    &epub,
+                                    &esig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -610,10 +611,10 @@ TEH_RESPONSE_compile_reserve_history (
 
           TALER_amount_hton (&pc.recoup_amount,
                              &recoup->value);
-          if (GNUNET_OK !=
-              TEH_KS_sign (&pc,
-                           &pub,
-                           &sig))
+          if (TALER_EC_NONE !=
+              TEH_keys_exchange_sign (&pc,
+                                      &pub,
+                                      &sig))
           {
             GNUNET_break (0);
             json_decref (json_history);
@@ -686,10 +687,10 @@ TEH_RESPONSE_compile_reserve_history (
           GNUNET_CRYPTO_hash (closing->receiver_account_details,
                               strlen (closing->receiver_account_details) + 1,
                               &rcc.h_wire);
-          if (GNUNET_OK !=
-              TEH_KS_sign (&rcc,
-                           &pub,
-                           &sig))
+          if (TALER_EC_NONE !=
+              TEH_keys_exchange_sign (&rcc,
+                                      &pub,
+                                      &sig))
           {
             GNUNET_break (0);
             json_decref (json_history);

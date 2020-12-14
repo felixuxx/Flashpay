@@ -222,7 +222,7 @@ run (void *cls,
     TALER_TESTING_cmd_check_keys_pull_all_keys (
       "check-keys-expiration-0",
       2,
-      5),
+      270),
     /**
      * Run some normal commands after this to make sure everything is fine.
      */
@@ -237,6 +237,15 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command commands[] = {
+    TALER_TESTING_cmd_wire_add ("add-wire-account",
+                                "payto://x-taler-bank/localhost/2",
+                                MHD_HTTP_NO_CONTENT,
+                                false),
+    TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
+                                              CONFIG_FILE),
+    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
+                                                1,
+                                                270 /* FIXME: wrong number... */),
     TALER_TESTING_cmd_batch ("refresh-reveal-409-conflict",
                              refresh_409_conflict),
     TALER_TESTING_cmd_batch ("refund",

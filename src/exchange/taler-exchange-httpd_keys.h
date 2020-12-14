@@ -84,6 +84,33 @@ struct TEH_DenominationKey
 
 
 /**
+ * Snapshot of the (coin and signing) keys (including private keys) of
+ * the exchange.  There can be multiple instances of this struct, as it is
+ * reference counted and only destroyed once the last user is done
+ * with it.  The current instance is acquired using
+ * #TEH_KS_acquire().  Using this function increases the
+ * reference count.  The contents of this structure (except for the
+ * reference counter) should be considered READ-ONLY until it is
+ * ultimately destroyed (as there can be many concurrent users).
+ */
+struct TEH_KeyStateHandle;
+
+
+/**
+ * Return the current key state for this thread.  Possibly re-builds the key
+ * state if we have reason to believe that something changed.
+ *
+ * The result is ONLY valid until the next call to
+ * #TEH_keys_denomination_by_hash() or #TEH_get_key_state()
+ * or #TEH_keys_exchange_sign().
+ *
+ * @return NULL on error
+ */
+struct TEH_KeyStateHandle *
+TEH_get_key_state (void);
+
+
+/**
  * Something changed in the database. Rebuild all key states.  This function
  * should be called if the exchange learns about a new signature from an
  * auditor or our master key.
@@ -109,11 +136,29 @@ TEH_keys_update_states (void);
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash (
-  const struct GNUNET_HashCode *h_denom_pub,
-  enum TALER_ErrorCode *ec,
-  unsigned int *hc);
+TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
+                               enum TALER_ErrorCode *ec,
+                               unsigned int *hc);
 
+
+/**
+ * Look up the issue for a denom public key using a given @a ksh.  This allows
+ * requesting multiple denominations with the same @a ksh which thus will
+ * remain valid until the next call to #TEH_keys_denomination_by_hash() or
+ * #TEH_get_key_state() or #TEH_keys_exchange_sign().
+ *
+ * @param key_state state to look in
+ * @param h_denom_pub hash of denomination public key
+ * @param[out] ec set to the error code, in case the operation failed
+ * @param[out] hc set to the HTTP status code to use
+ * @return the denomination key issue,
+ *         or NULL if @a h_denom_pub could not be found
+ */
+struct TEH_DenominationKey *
+TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
+                                const struct GNUNET_HashCode *h_denom_pub,
+                                enum TALER_ErrorCode *ec,
+                                unsigned int *hc);
 
 /**
  * Request to sign @a msg using the public key corresponding to
@@ -127,11 +172,10 @@ TEH_keys_denomination_by_hash (
  *         see @a ec for details about the failure
  */
 struct TALER_DenominationSignature
-TEH_keys_denomination_sign (
-  const struct GNUNET_HashCode *h_denom_pub,
-  const void *msg,
-  size_t msg_size,
-  enum TALER_ErrorCode *ec);
+TEH_keys_denomination_sign (const struct GNUNET_HashCode *h_denom_pub,
+                            const void *msg,
+                            size_t msg_size,
+                            enum TALER_ErrorCode *ec);
 
 
 /**
@@ -146,8 +190,17 @@ TEH_keys_denomination_sign (
  * @param h_denom_pub hash of the public key to revoke
  */
 void
-TEH_keys_denomination_revoke (
-  const struct GNUNET_HashCode *h_denom_pub);
+TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub);
+
+
+/**
+ * Resumse all suspended /keys requests, we may now have key material
+ * (or are shuting down).
+ *
+ * @param[in] connection to suspend
+ */
+void
+TEH_resume_keys_requests (void);
 
 
 /**

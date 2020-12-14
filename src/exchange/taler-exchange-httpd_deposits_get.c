@@ -27,6 +27,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -65,18 +66,18 @@ reply_deposit_details (struct MHD_Connection *connection,
     .coin_pub = *coin_pub,
     .execution_time = GNUNET_TIME_absolute_hton (exec_time)
   };
+  enum TALER_ErrorCode ec;
 
   TALER_amount_hton (&cw.coin_contribution,
                      coin_contribution);
-  if (GNUNET_OK !=
-      TEH_KS_sign (&cw,
-                   &pub,
-                   &sig))
+  if (TALER_EC_NONE !=
+      (ec = TEH_keys_exchange_sign (&cw,
+                                    &pub,
+                                    &sig)))
   {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       "no keys");
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
   }
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,

@@ -24,6 +24,7 @@
 #include <microhttpd.h>
 #include <pthread.h>
 #include "taler_signatures.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_transfers_get.h"
 #include "taler-exchange-httpd_responses.h"
@@ -99,6 +100,7 @@ reply_transfer_details (struct MHD_Connection *connection,
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
 
+
   GNUNET_TIME_round_abs (&exec_time);
   deposits = json_array ();
   if (NULL == deposits)
@@ -158,16 +160,19 @@ reply_transfer_details (struct MHD_Connection *connection,
   wdp.h_wire = *h_wire;
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &wdp.h_details);
-  if (GNUNET_OK !=
-      TEH_KS_sign (&wdp,
-                   &pub,
-                   &sig))
   {
-    json_decref (deposits);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       "no keys");
+    enum TALER_ErrorCode ec;
+
+    if (TALER_EC_NONE !=
+        (ec = TEH_keys_exchange_sign (&wdp,
+                                      &pub,
+                                      &sig)))
+    {
+      json_decref (deposits);
+      return TALER_MHD_reply_with_ec (connection,
+                                      ec,
+                                      NULL);
+    }
   }
 
   return TALER_MHD_reply_json_pack (connection,

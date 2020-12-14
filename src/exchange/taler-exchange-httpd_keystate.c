@@ -2054,7 +2054,7 @@ TEH_KS_denomination_key_lookup_by_hash (
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Not returning DKI for %s, as time to create coins has passed\n",
                   GNUNET_h2s (denom_pub_hash));
-      *ec = TALER_EC_EXCHANGE_WITHDRAW_VALIDITY_IN_PAST;
+      *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED;
       *hc = MHD_HTTP_GONE;
       return NULL;
     }

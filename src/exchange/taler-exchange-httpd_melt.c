@@ -30,6 +30,7 @@
 #include "taler-exchange-httpd_melt.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -107,16 +108,16 @@ reply_melt_success (struct MHD_Connection *connection,
     .rc = *rc,
     .noreveal_index = htonl (noreveal_index)
   };
+  enum TALER_ErrorCode ec;
 
-  if (GNUNET_OK !=
-      TEH_KS_sign (&body,
-                   &pub,
-                   &sig))
+  if (TALER_EC_NONE !=
+      (ec = TEH_keys_exchange_sign (&body,
+                                    &pub,
+                                    &sig)))
   {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       "no keys");
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
   }
   return TALER_MHD_reply_json_pack (
     connection,
@@ -477,94 +478,94 @@ check_for_denomination_key (struct MHD_Connection *connection,
   {
     /* Baseline: check if deposits/refreshs are generally
        simply still allowed for this denomination */
-    struct TALER_EXCHANGEDB_DenominationKey *dki;
+    struct TEH_DenominationKey *dk;
     unsigned int hc;
     enum TALER_ErrorCode ec;
+    struct GNUNET_TIME_Absolute now;
 
-    dki = TEH_KS_denomination_key_lookup_by_hash (
-      key_state,
+    dk = TEH_keys_denomination_by_hash (
       &rmc->refresh_session.coin.denom_pub_hash,
-      TEH_KS_DKU_DEPOSIT,
       &ec,
       &hc);
-    /* Consider case that denomination was revoked but
-       this coin was already seen and thus refresh is OK. */
-    if (NULL == dki)
-    {
-      dki = TEH_KS_denomination_key_lookup_by_hash (
-        key_state,
-        &rmc->refresh_session.coin.denom_pub_hash,
-        TEH_KS_DKU_RECOUP,
-        &ec,
-        &hc);
-      if (NULL != dki)
-      {
-        struct GNUNET_HashCode denom_hash;
-        enum GNUNET_DB_QueryStatus qs;
-
-        /* Check that the coin is dirty (we have seen it before), as we will
-           not just allow melting of a *fresh* coin where the denomination was
-           revoked (those must be recouped) */
-        qs = TEH_plugin->get_coin_denomination (
-          TEH_plugin->cls,
-          NULL,
-          &rmc->refresh_session.coin.coin_pub,
-          &denom_hash);
-        if (0 > qs)
-        {
-          TEH_KS_release (key_state);
-          /* There is no good reason for a serialization failure here: */
-          GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
-          return TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "coin denomination");
-        }
-        /* sanity check */
-        GNUNET_break (0 ==
-                      GNUNET_memcmp (&denom_hash,
-                                     &rmc->refresh_session.coin.denom_pub_hash));
-        if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-        {
-          /* We never saw this coin before, so _this_ justification is not OK */
-          dki = NULL;
-        }
-        else
-        {
-          /* Minor optimization: no need to run the
-             "ensure_coin_known" part of the transaction */
-          rmc->coin_is_dirty = true;
-        }
-      }
-    }
-
-    /* Consider the case that the denomination expired for deposits, but
-       recoup of a refreshed coin refilled the balance of the 'zombie' coin
-       and we should thus allow the refresh during the legal period. */
-    if (NULL == dki)
-    {
-      dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                    &rmc->refresh_session.coin.
-                                                    denom_pub_hash,
-                                                    TEH_KS_DKU_ZOMBIE,
-                                                    &ec,
-                                                    &hc);
-      if (NULL != dki)
-        rmc->zombie_required = true; /* check later that zombie is satisfied */
-    }
-    if (NULL == dki)
+    if (NULL == dk)
     {
       TEH_KS_release (key_state);
-      return TALER_MHD_reply_with_error (connection,
-                                         hc,
-                                         ec,
-                                         NULL);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+        NULL);
+    }
+    now = GNUNET_TIME_absolute_get ();
+    if (now.abs_value_us >= dk->meta.expire_legal.abs_value_us)
+    {
+      /* Way too late now, even zombies have expired */
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+        NULL);
+    }
+    if (now.abs_value_us < dk->meta.start.abs_value_us)
+    {
+      /* This denomination is not yet valid */
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_PRECONDITION_FAILED,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+        NULL);
+    }
+    if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
+    {
+      /* We are past deposit expiration time, but maybe this is a zombie? */
+      struct GNUNET_HashCode denom_hash;
+      enum GNUNET_DB_QueryStatus qs;
+
+      /* Check that the coin is dirty (we have seen it before), as we will
+         not just allow melting of a *fresh* coin where the denomination was
+         revoked (those must be recouped) */
+      qs = TEH_plugin->get_coin_denomination (
+        TEH_plugin->cls,
+        NULL,
+        &rmc->refresh_session.coin.coin_pub,
+        &denom_hash);
+      if (0 > qs)
+      {
+        TEH_KS_release (key_state);
+        /* There is no good reason for a serialization failure here: */
+        GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                           "coin denomination");
+      }
+      /* sanity check */
+      GNUNET_break (0 ==
+                    GNUNET_memcmp (&denom_hash,
+                                   &rmc->refresh_session.coin.denom_pub_hash));
+      if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+      {
+        /* We never saw this coin before, so _this_ justification is not OK */
+        TEH_KS_release (key_state);
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_GONE,
+          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+          NULL);
+      }
+      else
+      {
+        /* Minor optimization: no need to run the
+           "ensure_coin_known" part of the transaction */
+        rmc->coin_is_dirty = true;
+      }
+      rmc->zombie_required = true; /* check later that zombie is satisfied */
     }
 
-    TALER_amount_ntoh (&rmc->coin_refresh_fee,
-                       &dki->issue.properties.fee_refresh);
-    TALER_amount_ntoh (&rmc->coin_value,
-                       &dki->issue.properties.value);
+    rmc->coin_refresh_fee = dk->meta.fee_refresh;
+    rmc->coin_value = dk->meta.value;
     /* check client used sane currency */
     if (GNUNET_YES !=
         TALER_amount_cmp_currency (&rmc->refresh_session.amount_with_fee,
@@ -581,7 +582,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
     /* check coin is actually properly signed */
     if (GNUNET_OK !=
         TALER_test_coin_valid (&rmc->refresh_session.coin,
-                               &dki->denom_pub))
+                               &dk->denom_pub))
     {
       GNUNET_break_op (0);
       TEH_KS_release (key_state);

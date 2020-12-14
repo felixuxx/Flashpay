@@ -104,6 +104,11 @@ mv a2e.dat $ABD
 # Launch services
 echo "Launching services"
 taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &> revocation-bank.log &
+TFN=`which taler-exchange-httpd`
+TBINPFX=`dirname $TFN`
+TLIBEXEC=${BINPFX}/../lib/libexec/taler/
+$TLIBEXEC/taler-helper-crypto-eddsa -c $CONF 2> taler-helper-crypto-eddsa.log &
+$TLIBEXEC/taler-helper-crypto-rsa -c $CONF 2> taler-helper-crypto-rsa.log &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 EXCHANGE_PID=$!
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &

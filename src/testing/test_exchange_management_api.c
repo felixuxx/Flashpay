@@ -144,7 +144,7 @@ run (void *cls,
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1,
-                                                5 /* FIXME: wrong number... */),
+                                                270 /* FIXME: wrong number... */),
     TALER_TESTING_cmd_end ()
   };
 

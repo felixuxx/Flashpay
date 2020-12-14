@@ -1112,17 +1112,16 @@ read_job (void *cls)
  * Create a new denomination key (we do not have enough).
  *
  * @param denom denomination key to create
+ * @param now current time to use (to get many keys to use the exact same time)
  * @return #GNUNET_OK on success
  */
 static int
-create_key (struct Denomination *denom)
+create_key (struct Denomination *denom,
+            struct GNUNET_TIME_Absolute now)
 {
   struct DenominationKey *dk;
   struct GNUNET_TIME_Absolute anchor;
-  struct GNUNET_TIME_Absolute now;
 
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
   if (NULL == denom->keys_tail)
   {
     anchor = now;
@@ -1237,9 +1236,11 @@ purge_key (struct DenominationKey *dk)
  * correct location sorted by next maintenance activity.
  *
  * @param[in,out] denom denomination to update material for
+ * @param now current time to use (to get many keys to use the exact same time)
  */
 static void
-update_keys (struct Denomination *denom)
+update_keys (struct Denomination *denom,
+             struct GNUNET_TIME_Absolute now)
 {
   /* create new denomination keys */
   while ( (NULL == denom->keys_tail) ||
@@ -1252,7 +1253,8 @@ update_keys (struct Denomination *denom)
                  lookahead_sign),
                overlap_duration)).rel_value_us) )
     if (GNUNET_OK !=
-        create_key (denom))
+        create_key (denom,
+                    now))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to create keys for `%s'\n",
@@ -1273,18 +1275,19 @@ update_keys (struct Denomination *denom)
     struct GNUNET_TIME_Absolute at;
 
     at = denomination_action_time (denom);
-    before = NULL;
     GNUNET_CONTAINER_DLL_remove (denom_head,
                                  denom_tail,
                                  denom);
+    before = NULL;
     for (struct Denomination *pos = denom_head;
          NULL != pos;
          pos = pos->next)
     {
-      if (denomination_action_time (pos).abs_value_us > at.abs_value_us)
+      if (denomination_action_time (pos).abs_value_us >= at.abs_value_us)
         break;
       before = pos;
     }
+
     GNUNET_CONTAINER_DLL_insert_after (denom_head,
                                        denom_tail,
                                        before,
@@ -1302,12 +1305,16 @@ static void
 update_denominations (void *cls)
 {
   struct Denomination *denom;
+  struct GNUNET_TIME_Absolute now;
 
   (void) cls;
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   keygen_task = NULL;
   do {
     denom = denom_head;
-    update_keys (denom);
+    update_keys (denom,
+                 now);
   } while (denom != denom_head);
   keygen_task = GNUNET_SCHEDULER_add_at (denomination_action_time (denom),
                                          &update_denominations,
@@ -1610,17 +1617,34 @@ parse_denomination_cfg (const char *ct,
 
 
 /**
+ * Closure for #load_denominations.
+ */
+struct LoadContext
+{
+  /**
+   * Current time to use.
+   */
+  struct GNUNET_TIME_Absolute now;
+
+  /**
+   * Status, to be set to #GNUNET_SYSERR on failure
+   */
+  int ret;
+};
+
+
+/**
  * Generate new denomination signing keys for the denomination type of the given @a
  * denomination_alias.
  *
- * @param cls a `int *`, to be set to #GNUNET_SYSERR on failure
+ * @param cls a `struct LoadContext`, with 'ret' to be set to #GNUNET_SYSERR on failure
  * @param denomination_alias name of the denomination's section in the configuration
  */
 static void
 load_denominations (void *cls,
                     const char *denomination_alias)
 {
-  int *ret = cls;
+  struct LoadContext *ctx = cls;
   struct Denomination *denom;
 
   if (0 != strncasecmp (denomination_alias,
@@ -1632,7 +1656,7 @@ load_denominations (void *cls,
       parse_denomination_cfg (denomination_alias,
                               denom))
   {
-    *ret = GNUNET_SYSERR;
+    ctx->ret = GNUNET_SYSERR;
     GNUNET_free (denom);
     return;
   }
@@ -1656,7 +1680,8 @@ load_denominations (void *cls,
   GNUNET_CONTAINER_DLL_insert (denom_head,
                                denom_tail,
                                denom);
-  update_keys (denom);
+  update_keys (denom,
+               ctx->now);
 }
 
 
@@ -1905,13 +1930,16 @@ run (void *cls,
   keys = GNUNET_CONTAINER_multihashmap_create (65536,
                                                GNUNET_YES);
   {
-    int ok;
+    struct LoadContext lc = {
+      .ret = GNUNET_OK,
+      .now = GNUNET_TIME_absolute_get ()
+    };
 
-    ok = GNUNET_OK;
+    (void) GNUNET_TIME_round_abs (&lc.now);
     GNUNET_CONFIGURATION_iterate_sections (kcfg,
                                            &load_denominations,
-                                           &ok);
-    if (GNUNET_OK != ok)
+                                           &lc);
+    if (GNUNET_OK != lc.ret)
     {
       global_ret = 4;
       GNUNET_SCHEDULER_shutdown ();

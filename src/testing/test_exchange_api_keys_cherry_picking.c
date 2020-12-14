@@ -129,8 +129,8 @@ run (void *cls,
      * Make sure we have the same keys situation as
      * it was before the serialization.
      */
-    TALER_TESTING_cmd_check_keys_with_now
-      ("check-keys-after-deserialization",
+    TALER_TESTING_cmd_check_keys_with_now (
+      "check-keys-after-deserialization",
       4,
       NDKS_RIGHT_BEFORE_SERIALIZATION,
       /**
@@ -198,8 +198,8 @@ run (void *cls,
      * ----
      *   40
      *///
-    TALER_TESTING_cmd_check_keys_with_now
-      ("check-keys-3",
+    TALER_TESTING_cmd_check_keys_with_now (
+      "check-keys-3",
       3 /* generation */,
       NDKS_RIGHT_BEFORE_SERIALIZATION,
       TTH_parse_time (JAN2030)),

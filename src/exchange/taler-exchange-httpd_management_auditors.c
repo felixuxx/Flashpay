@@ -103,7 +103,8 @@ add_auditor (void *cls,
                                            "lookup auditor");
     return qs;
   }
-  if (last_date.abs_value_us > aac->validity_start.abs_value_us)
+  if ( (0 < qs) &&
+       (last_date.abs_value_us > aac->validity_start.abs_value_us) )
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,

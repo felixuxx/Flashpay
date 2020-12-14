@@ -31,10 +31,6 @@ PREFIX=
 
 # Setup database
 taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null
-# Setup keys.
-taler-exchange-keyup -c test_taler_exchange_httpd.conf || exit 1
-# Setup wire accounts.
-taler-exchange-wire -c test_taler_exchange_httpd.conf > /dev/null || exit 1
 # Run Exchange HTTPD (in background)
 $PREFIX taler-exchange-httpd -c test_taler_exchange_httpd.conf 2> test-exchange.log &
 
@@ -45,7 +41,7 @@ do
     echo -n "."
     sleep 0.1
     OK=1
-    wget http://localhost:8081/ -o /dev/null -O /dev/null >/dev/null && break
+    wget http://localhost:8081/seed -o /dev/null -O /dev/null >/dev/null && break
     OK=0
 done
 if [ 1 != $OK ]

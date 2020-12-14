@@ -33,6 +33,7 @@
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -75,18 +76,18 @@ reply_deposit_success (struct MHD_Connection *connection,
     .coin_pub = *coin_pub,
     .merchant = *merchant
   };
+  enum TALER_ErrorCode ec;
 
   TALER_amount_hton (&dc.amount_without_fee,
                      amount_without_fee);
-  if (GNUNET_OK !=
-      TEH_KS_sign (&dc,
-                   &pub,
-                   &sig))
+  if (TALER_EC_NONE !=
+      (ec = TEH_keys_exchange_sign (&dc,
+                                    &pub,
+                                    &sig)))
   {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       "no keys");
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
   }
   return TALER_MHD_reply_json_pack (
     connection,
@@ -430,9 +431,10 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   /* check denomination exists and is valid */
   {
     struct TEH_KS_StateHandle *key_state;
-    struct TALER_EXCHANGEDB_DenominationKey *dki;
+    struct TEH_DenominationKey *dk;
     enum TALER_ErrorCode ec;
     unsigned int hc;
+    struct GNUNET_TIME_Absolute now;
 
     key_state = TEH_KS_acquire (dc.exchange_timestamp);
     if (NULL == key_state)
@@ -444,12 +446,10 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                          TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                          "no keys");
     }
-    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                  &deposit.coin.denom_pub_hash,
-                                                  TEH_KS_DKU_DEPOSIT,
-                                                  &ec,
-                                                  &hc);
-    if (NULL == dki)
+    dk = TEH_keys_denomination_by_hash (&deposit.coin.denom_pub_hash,
+                                        &ec,
+                                        &hc);
+    if (NULL == dk)
     {
       TALER_LOG_DEBUG ("Unknown denomination key in /deposit request\n");
       TEH_KS_release (key_state);
@@ -459,8 +459,42 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                          ec,
                                          NULL);
     }
-    TALER_amount_ntoh (&deposit.deposit_fee,
-                       &dki->issue.properties.fee_deposit);
+    now = GNUNET_TIME_absolute_get ();
+    if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
+    {
+      /* This denomination is past the expiration time for deposits */
+      TEH_KS_release (key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+        NULL);
+    }
+    if (now.abs_value_us < dk->meta.start.abs_value_us)
+    {
+      /* This denomination is not yet valid */
+      TEH_KS_release (key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_PRECONDITION_FAILED,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+        NULL);
+    }
+    if (dk->recoup_possible)
+    {
+      /* This denomination has been revoked */
+      TEH_KS_release (key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+        NULL);
+    }
+
+    deposit.deposit_fee = dk->meta.fee_deposit;
     if (GNUNET_YES !=
         TALER_amount_cmp_currency (&deposit.amount_with_fee,
                                    &deposit.deposit_fee) )
@@ -476,7 +510,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     /* check coin signature */
     if (GNUNET_YES !=
         TALER_test_coin_valid (&deposit.coin,
-                               &dki->denom_pub))
+                               &dk->denom_pub))
     {
       TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
       TEH_KS_release (key_state);
@@ -486,8 +520,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                          TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
                                          NULL);
     }
-    TALER_amount_ntoh (&dc.value,
-                       &dki->issue.properties.value);
+    dc.value = dk->meta.value;
     TEH_KS_release (key_state);
   }
   if (0 < TALER_amount_cmp (&deposit.deposit_fee,

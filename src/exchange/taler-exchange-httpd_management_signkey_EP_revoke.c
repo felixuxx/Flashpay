@@ -29,6 +29,7 @@
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 MHD_RESULT
@@ -80,7 +81,7 @@ TEH_handler_management_signkeys_EP_revoke (
                                        TALER_EC_GENERIC_DB_STORE_FAILED,
                                        "signkey revocation");
   }
-  // FIXME: also update our '/keys' replies! (signal all threads!?!?)
+  TEH_keys_update_states ();
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

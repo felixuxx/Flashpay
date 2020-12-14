@@ -144,6 +144,21 @@ TALER_MHD_reply_with_error (struct MHD_Connection *connection,
 
 
 /**
+ * Send a response indicating an error. The HTTP status code is
+ * to be derived from the @a ec.
+ *
+ * @param connection the MHD connection to use
+ * @param ec error code uniquely identifying the error
+ * @param detail additional optional detail about the error
+ * @return a MHD result code
+ */
+MHD_RESULT
+TALER_MHD_reply_with_ec (struct MHD_Connection *connection,
+                         enum TALER_ErrorCode ec,
+                         const char *detail);
+
+
+/**
  * Make JSON response object.
  *
  * @param json the json object

@@ -388,24 +388,25 @@ maint_child_death (void *cls)
   struct TALER_TESTING_Interpreter *is = cls;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   const struct GNUNET_DISK_FileHandle *pr;
-
   struct GNUNET_OS_Process **processp;
   char c[16];
+  enum GNUNET_OS_ProcessStatusType type;
+  unsigned long code;
 
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
     struct TALER_TESTING_Command *batch_cmd;
 
-    GNUNET_assert
-      (GNUNET_OK == TALER_TESTING_get_trait_cmd
-        (cmd, 0, &batch_cmd)); /* bad? */
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_TESTING_get_trait_cmd (cmd,
+                                                0,
+                                                &batch_cmd));
     cmd = batch_cmd;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Got SIGCHLD for `%s'.\n",
               cmd->label);
-
   is->child_death_task = NULL;
   pr = GNUNET_DISK_pipe_handle (sigpipe,
                                 GNUNET_DISK_PIPE_END_READ);
@@ -424,16 +425,45 @@ maint_child_death (void *cls)
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Got the dead child process handle"
-              ", waiting for termination ...\n");
-
-  GNUNET_OS_process_wait (*processp);
+              "Got the dead child process handle, waiting for termination ...\n");
+  GNUNET_OS_process_wait_status (*processp,
+                                 &type,
+                                 &code);
   GNUNET_OS_process_destroy (*processp);
   *processp = NULL;
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "... definitively terminated\n");
+  switch (type)
+  {
+  case GNUNET_OS_PROCESS_UNKNOWN:
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  case GNUNET_OS_PROCESS_RUNNING:
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  case GNUNET_OS_PROCESS_STOPPED:
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  case GNUNET_OS_PROCESS_EXITED:
+    if (0 != code)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Process exited with unexpected status %u\n",
+                  (unsigned int) code);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    break;
+  case GNUNET_OS_PROCESS_SIGNALED:
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
 
+  // FIXME: remove reload_keys, obsolete!
   if (GNUNET_OK == is->reload_keys)
   {
     if (NULL == is->exchanged)
@@ -444,8 +474,9 @@ maint_child_death (void *cls)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Triggering key state reload at exchange\n");
-      GNUNET_break (0 == GNUNET_OS_process_kill
-                      (is->exchanged, SIGUSR1));
+      GNUNET_break (0 ==
+                    GNUNET_OS_process_kill (is->exchanged,
+                                            SIGUSR1));
       sleep (5); /* make sure signal was received and processed */
     }
   }
@@ -643,19 +674,8 @@ TALER_TESTING_cert_cb (void *cls,
    * the interpreter is already running. */
   if (GNUNET_YES == is->working)
     return;
-
   is->working = GNUNET_YES;
-
-  /* Very first start of tests, call "run()" */
-  if (1 == is->key_generation)
-  {
-    main_ctx->main_cb (main_ctx->main_cb_cls,
-                       is);
-    return;
-  }
-
-  /* Tests already started, just trigger the
-   * next command. */
+  /* Trigger the next command. */
   TALER_LOG_DEBUG ("Cert_cb, scheduling CMD (ip: %d)\n",
                    is->ip);
   GNUNET_SCHEDULER_add_now (&interpreter_run,
@@ -740,6 +760,7 @@ main_wrapper_exchange_connect (void *cls)
   main_ctx->exchange_url = exchange_url;
   is->timeout_task = GNUNET_SCHEDULER_add_shutdown (&do_abort,
                                                     main_ctx);
+  is->working = GNUNET_YES;
   GNUNET_break
     (NULL != (is->exchange =
                 TALER_EXCHANGE_connect (is->ctx,
@@ -747,6 +768,10 @@ main_wrapper_exchange_connect (void *cls)
                                         &TALER_TESTING_cert_cb,
                                         main_ctx,
                                         TALER_EXCHANGE_OPTION_END)));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting main test loop\n");
+  main_ctx->main_cb (main_ctx->main_cb_cls,
+                     is);
 }
 
 
@@ -842,10 +867,10 @@ static int
 load_urls (struct TALER_TESTING_Interpreter *is)
 {
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (is->cfg,
-                                               "auditor",
-                                               "BASE_URL",
-                                               &is->auditor_url))
+      GNUNET_CONFIGURATION_get_value_string (is->cfg,
+                                             "auditor",
+                                             "BASE_URL",
+                                             &is->auditor_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "auditor",

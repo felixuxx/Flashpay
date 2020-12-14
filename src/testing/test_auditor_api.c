@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -630,8 +630,8 @@ run (void *cls,
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1,
-                                                5 /* FIXME: wrong number... */),
+                                                2,
+                                                270 /* FIXME: wrong number... */),
     CMD_RUN_AUDITOR ("virgin-auditor"),
     TALER_TESTING_cmd_exchanges_with_url ("check-exchange",
                                           MHD_HTTP_OK,

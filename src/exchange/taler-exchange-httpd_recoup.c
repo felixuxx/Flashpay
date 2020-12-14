@@ -31,6 +31,7 @@
 #include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -359,7 +360,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                            int refreshed)
 {
   struct RecoupContext pc;
-  const struct TALER_EXCHANGEDB_DenominationKey *dki;
+  const struct TEH_DenominationKey *dk;
   struct GNUNET_HashCode c_hash;
   void *coin_ev;
   size_t coin_ev_size;
@@ -369,6 +370,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   /* check denomination exists and is in recoup mode */
   {
     struct TEH_KS_StateHandle *key_state;
+    struct GNUNET_TIME_Absolute now;
 
     key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
     if (NULL == key_state)
@@ -379,12 +381,10 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                                          TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                          "no keys");
     }
-    dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                  &coin->denom_pub_hash,
-                                                  TEH_KS_DKU_RECOUP,
-                                                  &ec,
-                                                  &hc);
-    if (NULL == dki)
+    dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
+                                        &ec,
+                                        &hc);
+    if (NULL == dk)
     {
       TEH_KS_release (key_state);
       TALER_LOG_WARNING (
@@ -394,13 +394,45 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                                          ec,
                                          NULL);
     }
-    TALER_amount_ntoh (&pc.value,
-                       &dki->issue.properties.value);
+
+    now = GNUNET_TIME_absolute_get ();
+    if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
+    {
+      /* This denomination is past the expiration time for recoup */
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+        NULL);
+    }
+    if (now.abs_value_us < dk->meta.start.abs_value_us)
+    {
+      /* This denomination is not yet valid */
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_PRECONDITION_FAILED,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+        NULL);
+    }
+    if (! dk->recoup_possible)
+    {
+      /* This denomination is not eligible for recoup */
+      TEH_KS_release (key_state);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_RECOUP_NOT_ELIGIBLE,
+        NULL);
+    }
+
+    pc.value = dk->meta.value;
 
     /* check denomination signature */
     if (GNUNET_YES !=
         TALER_test_coin_valid (coin,
-                               &dki->denom_pub))
+                               &dk->denom_pub))
     {
       TALER_LOG_WARNING ("Invalid coin passed for recoup\n");
       TEH_KS_release (key_state);
@@ -416,7 +448,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
         .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
         .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
         .coin_pub = coin->coin_pub,
-        .h_denom_pub = dki->issue.properties.denom_hash,
+        .h_denom_pub = coin->denom_pub_hash,
         .coin_blind = *coin_bks
       };
 
@@ -440,7 +472,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
     if (GNUNET_YES !=
         TALER_rsa_blind (&c_hash,
                          &coin_bks->bks,
-                         dki->denom_pub.rsa_public_key,
+                         dk->denom_pub.rsa_public_key,
                          &coin_ev,
                          &coin_ev_size))
     {

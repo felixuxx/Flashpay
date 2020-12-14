@@ -79,8 +79,9 @@ revoke_cleanup (void *cls,
 
   if (NULL != rs->revoke_proc)
   {
-    GNUNET_break (0 == GNUNET_OS_process_kill
-                    (rs->revoke_proc, SIGKILL));
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (rs->revoke_proc,
+                                          SIGKILL));
     GNUNET_OS_process_wait (rs->revoke_proc);
     GNUNET_OS_process_destroy (rs->revoke_proc);
     rs->revoke_proc = NULL;
@@ -163,13 +164,13 @@ revoke_run (void *cls,
   rs->dhks = GNUNET_STRINGS_data_to_string_alloc (
     &denom_pub->h_key,
     sizeof (struct GNUNET_HashCode));
-
   rs->revoke_proc = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                              NULL, NULL, NULL,
-                                             "taler-exchange-keyup",
-                                             "taler-exchange-keyup",
+                                             "taler-exchange-offline",
+                                             "taler-exchange-offline",
                                              "-c", rs->config_filename,
-                                             "-r", rs->dhks,
+                                             "revoke-denomination", rs->dhks,
+                                             "upload",
                                              NULL);
 
   if (NULL == rs->revoke_proc)

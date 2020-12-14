@@ -29,6 +29,7 @@
 #include "taler-exchange-httpd_refreshes_reveal.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -132,7 +133,7 @@ struct RevealContext
   /**
    * Denominations being requested.
    */
-  const struct TALER_EXCHANGEDB_DenominationKey **dkis;
+  const struct TEH_DenominationKey **dks;
 
   /**
    * Envelopes to be signed.
@@ -151,7 +152,7 @@ struct RevealContext
   struct TALER_DenominationSignature *ev_sigs;
 
   /**
-   * Size of the @e dkis, @e rcds and @e ev_sigs arrays (if non-NULL).
+   * Size of the @e dks, @e rcds and @e ev_sigs arrays (if non-NULL).
    */
   unsigned int num_fresh_coins;
 
@@ -367,7 +368,7 @@ refreshes_reveal_transaction (void *cls,
           struct TALER_PlanchetDetail pd;
           struct GNUNET_HashCode c_hash;
 
-          rcd->dk = &rctx->dkis[j]->denom_pub;
+          rcd->dk = &rctx->dks[j]->denom_pub;
           TALER_planchet_setup_refresh (&ts,
                                         j,
                                         &ps);
@@ -432,18 +433,12 @@ refreshes_reveal_transaction (void *cls,
     refresh_cost = melt.melt_fee;
     for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
     {
-      struct TALER_Amount fee_withdraw;
-      struct TALER_Amount value;
       struct TALER_Amount total;
 
-      TALER_amount_ntoh (&fee_withdraw,
-                         &rctx->dkis[i]->issue.properties.fee_withdraw);
-      TALER_amount_ntoh (&value,
-                         &rctx->dkis[i]->issue.properties.value);
       if ( (0 >
             TALER_amount_add (&total,
-                              &fee_withdraw,
-                              &value)) ||
+                              &rctx->dks[i]->meta.fee_withdraw,
+                              &rctx->dks[i]->meta.value)) ||
            (0 >
             TALER_amount_add (&refresh_cost,
                               &refresh_cost,
@@ -499,7 +494,7 @@ refreshes_reveal_persist (void *cls,
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
 
-      rrc->denom_pub = rctx->dkis[i]->denom_pub;
+      rrc->denom_pub = rctx->dks[i]->denom_pub;
       rrc->orig_coin_link_sig = rctx->link_sigs[i];
       rrc->coin_ev = rctx->rcds[i].coin_ev;
       rrc->coin_ev_size = rctx->rcds[i].coin_ev_size;
@@ -546,20 +541,31 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   /* We know num_fresh_coins is bounded by #MAX_FRESH_COINS, so this is safe */
-  const struct TALER_EXCHANGEDB_DenominationKey *dkis[num_fresh_coins];
-  struct GNUNET_HashCode dki_h[num_fresh_coins];
+  const struct TEH_DenominationKey *dks[num_fresh_coins];
+  struct GNUNET_HashCode dk_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
   struct TALER_EXCHANGEDB_Melt melt;
   enum GNUNET_GenericReturnValue res;
   MHD_RESULT ret;
+  struct TEH_KeyStateHandle *ksh;
+  struct GNUNET_TIME_Absolute now;
 
+  ksh = TEH_get_key_state ();
+  if (NULL == ksh)
+  {
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                       NULL);
+  }
   /* Parse denomination key hashes */
+  now = GNUNET_TIME_absolute_get ();
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto (NULL,
-                                   &dki_h[i]),
+                                   &dk_h[i]),
       GNUNET_JSON_spec_end ()
     };
     unsigned int hc;
@@ -574,21 +580,45 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
     {
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
-    dkis[i] = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                      &dki_h[i],
-                                                      TEH_KS_DKU_WITHDRAW,
-                                                      &ec,
-                                                      &hc);
-    if (NULL == dkis[i])
+    dks[i] = TEH_keys_denomination_by_hash2 (ksh,
+                                             &dk_h[i],
+                                             &ec,
+                                             &hc);
+    if (NULL == dks[i])
     {
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
                                          NULL);
     }
-    /* #TEH_KS_DKU_WITHDRAW should warrant that we only get denomination
-       keys where we did not yet forget the private key */
-    GNUNET_assert (NULL != dkis[i]->denom_priv.rsa_private_key);
+
+    if (now.abs_value_us >= dks[i]->meta.expire_withdraw.abs_value_us)
+    {
+      /* This denomination is past the expiration time for withdraws */
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+        NULL);
+    }
+    if (now.abs_value_us < dks[i]->meta.start.abs_value_us)
+    {
+      /* This denomination is not yet valid */
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_PRECONDITION_FAILED,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+        NULL);
+    }
+    if (dks[i]->recoup_possible)
+    {
+      /* This denomination has been revoked */
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+        NULL);
+    }
   }
 
   /* Parse coin envelopes */
@@ -613,7 +643,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
         GNUNET_free (rcds[j].coin_ev);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
-    rcd->dk = &dkis[i]->denom_pub;
+    rcd->dk = &dks[i]->denom_pub;
   }
 
   /* lookup old_coin_pub in database */
@@ -672,7 +702,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
       struct TALER_LinkDataPS ldp = {
         .purpose.size = htonl (sizeof (ldp)),
         .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
-        .h_denom_pub = dki_h[i],
+        .h_denom_pub = dk_h[i],
         .old_coin_pub = melt.session.coin.coin_pub,
         .transfer_pub = rctx->gamma_tp
       };
@@ -699,7 +729,7 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
 
   rctx->num_fresh_coins = num_fresh_coins;
   rctx->rcds = rcds;
-  rctx->dkis = dkis;
+  rctx->dks = dks;
   rctx->link_sigs = link_sigs;
 
   /* sign _early_ (optimistic!) to keep out of transaction scope! */
@@ -707,18 +737,20 @@ resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
                                     struct TALER_DenominationSignature);
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
-    rctx->ev_sigs[i].rsa_signature
-      = GNUNET_CRYPTO_rsa_sign_blinded (
-          rctx->dkis[i]->denom_priv.rsa_private_key,
+    enum TALER_ErrorCode ec;
+
+    rctx->ev_sigs[i]
+      = TEH_keys_denomination_sign (
+          &dk_h[i],
           rctx->rcds[i].coin_ev,
-          rctx->rcds[i].coin_ev_size);
+          rctx->rcds[i].coin_ev_size,
+          &ec);
     if (NULL == rctx->ev_sigs[i].rsa_signature)
     {
       GNUNET_break (0);
-      ret = TALER_MHD_reply_with_error (connection,
-                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                        TALER_EC_EXCHANGE_REFRESHES_REVEAL_SIGNING_ERROR,
-                                        NULL);
+      ret = TALER_MHD_reply_with_ec (connection,
+                                     ec,
+                                     NULL);
       goto cleanup;
     }
   }

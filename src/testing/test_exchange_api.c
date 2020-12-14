@@ -880,11 +880,11 @@ run (void *cls,
                                "{\"items\":[{\"name\":\"more ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:1",
-                               MHD_HTTP_NOT_FOUND),
+                               MHD_HTTP_GONE),
     /* Test deposit fails after recoup, with proof in recoup */
 
     /* Note that, the exchange will never return the coin's transaction
-     * history with recoup data, as we get a 404 on the DK! */
+     * history with recoup data, as we get a 410 on the DK! */
     TALER_TESTING_cmd_deposit ("recoup-deposit-partial-after-recoup",
                                "recoup-withdraw-coin-2a",
                                0,
@@ -892,7 +892,7 @@ run (void *cls,
                                "{\"items\":[{\"name\":\"extra ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:0.5",
-                               MHD_HTTP_NOT_FOUND),
+                               MHD_HTTP_GONE),
     /* Test that revoked coins cannot be withdrawn */
     CMD_TRANSFER_TO_EXCHANGE ("recoup-create-reserve-3",
                               "EUR:1.01"),
@@ -906,7 +906,7 @@ run (void *cls,
     TALER_TESTING_cmd_withdraw_amount ("recoup-withdraw-coin-3-revoked",
                                        "recoup-create-reserve-3",
                                        "EUR:1",
-                                       MHD_HTTP_NOT_FOUND),
+                                       MHD_HTTP_GONE),
     /* check that we are empty before the rejection test */
     TALER_TESTING_cmd_check_bank_empty ("check-empty-again"),
 
@@ -958,7 +958,7 @@ run (void *cls,
                                                 CONFIG_FILE),
       TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                   1,
-                                                  5 /* FIXME: wrong number... */),
+                                                  270 /* FIXME: wrong number... */),
       TALER_TESTING_cmd_batch ("wire",
                                wire),
       TALER_TESTING_cmd_batch ("withdraw",

@@ -79,6 +79,11 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 extern char *TEH_currency;
 
 /**
+ * Are we shutting down?
+ */
+extern volatile bool MHD_terminating;
+
+/**
  * @brief Struct describing an URL and the handler for it.
  */
 struct TEH_RequestHandler

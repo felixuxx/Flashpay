@@ -53,10 +53,6 @@ PREFIX=
 
 # Setup database
 taler-exchange-dbinit -c test_taler_exchange_unix.conf &> /dev/null
-# Setup keys.
-taler-exchange-keyup -c test_taler_exchange_unix.conf || exit 1
-# Setup wire accounts.
-taler-exchange-wire -c test_taler_exchange_unix.conf > /dev/null || exit 1
 # Run Exchange HTTPD (in background)
 $PREFIX taler-exchange-httpd -c test_taler_exchange_unix.conf 2> test-exchange.log &
 
@@ -77,13 +73,6 @@ if [ 1 != $OK ]
 then
     exit_fail "Failed to launch exchange"
 fi
-echo " DONE"
-
-# Finally run test...
-echo -n "Reloading keys ..."
-kill -SIGUSR1 $!
-sleep 1
-curl --unix-socket "${UNIXPATH}" "http://ignored/" >/dev/null 2> /dev/null || exit_fail "SIGUSR1 killed HTTP service"
 echo " DONE"
 
 # Finally run test...

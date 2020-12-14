@@ -562,8 +562,8 @@ handle_post_management (const struct TEH_RequestHandler *rh,
       return r404 (connection,
                    "/management/denominations/$HDP/revoke");
     if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (args[2],
-                                       strlen (args[2]),
+        GNUNET_STRINGS_string_to_data (args[1],
+                                       strlen (args[1]),
                                        &h_denom_pub,
                                        sizeof (h_denom_pub)))
     {
@@ -571,7 +571,7 @@ handle_post_management (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         args[2]);
+                                         args[1]);
     }
     return TEH_handler_management_denominations_HDP_revoke (connection,
                                                             &h_denom_pub,
@@ -591,8 +591,8 @@ handle_post_management (const struct TEH_RequestHandler *rh,
       return r404 (connection,
                    "/management/signkeys/$HDP/revoke");
     if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (args[2],
-                                       strlen (args[2]),
+        GNUNET_STRINGS_string_to_data (args[1],
+                                       strlen (args[1]),
                                        &exchange_pub,
                                        sizeof (exchange_pub)))
     {
@@ -600,7 +600,7 @@ handle_post_management (const struct TEH_RequestHandler *rh,
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         args[2]);
+                                         args[1]);
     }
     return TEH_handler_management_signkeys_EP_revoke (connection,
                                                       &exchange_pub,
@@ -805,7 +805,7 @@ handle_mhd_request (void *cls,
     {
       .url = "keys",
       .method = MHD_HTTP_METHOD_GET,
-      .handler.get = &TEH_handler_keys, // FIXME => TEH_keys_get_handler
+      .handler.get = &TEH_keys_get_handler,
     },
     /* Requests for wiring information */
     {
@@ -1427,6 +1427,7 @@ run_single_request (void)
     }
     MHD_run (mhd);
   }
+  TEH_resume_keys_requests ();
   MHD_stop_daemon (mhd);
   mhd = NULL;
   if (cld != waitpid (cld,
@@ -1463,6 +1464,7 @@ run_main_loop (int fh,
     = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
                         | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
                         | MHD_USE_INTERNAL_POLLING_THREAD
+                        | MHD_ALLOW_SUSPEND_RESUME
                         | MHD_USE_TCP_FASTOPEN,
                         (-1 == fh) ? serve_port : 0,
                         NULL, NULL,
@@ -1484,11 +1486,17 @@ run_main_loop (int fh,
   }
 
   atexit (&write_stats);
-  ret = TEH_KS_loop ();
+  ret = TEH_keys_init ();
+  if (GNUNET_OK == ret)
+  {
+    ret = TEH_KS_loop ();
+    TEH_keys_done ();
+  }
   switch (ret)
   {
   case GNUNET_OK:
   case GNUNET_SYSERR:
+    TEH_resume_keys_requests ();
     MHD_stop_daemon (mhd);
     break;
   case GNUNET_NO:
@@ -1544,11 +1552,13 @@ run_main_loop (int fh,
              num_connections)
         sleep (1);
       /* Now we're really done, practice clean shutdown */
+      TEH_resume_keys_requests ();
       MHD_stop_daemon (mhd);
     }
     break;
   default:
     GNUNET_break (0);
+    TEH_resume_keys_requests ();
     MHD_stop_daemon (mhd);
     break;
   }

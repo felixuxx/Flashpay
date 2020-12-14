@@ -212,6 +212,9 @@ add_keys (void *cls,
                                              "activate denomination key");
       return qs;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Added offline signature for denomination `%s'\n",
+                GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
     GNUNET_assert (0 != qs);
   }
 
@@ -296,9 +299,11 @@ add_keys (void *cls,
                                              "activate signing key");
       return qs;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Added offline signature for signing key `%s'\n",
+                TALER_B2S (&akc->s_sigs[i].exchange_pub));
     GNUNET_assert (0 != qs);
   }
-
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* only 'success', so >=0, matters here */
 }
 
@@ -382,9 +387,9 @@ TEH_handler_management_post_keys (
     return ret;
   }
   akc.ns_sigs = json_array_size (signkey_sigs);
-  akc.s_sigs = GNUNET_new_array (akc.nd_sigs,
+  akc.s_sigs = GNUNET_new_array (akc.ns_sigs,
                                  struct SigningSig);
-  for (unsigned int i = 0; i<akc.nd_sigs; i++)
+  for (unsigned int i = 0; i<akc.ns_sigs; i++)
   {
     struct SigningSig *s = &akc.s_sigs[i];
     struct GNUNET_JSON_Specification ispec[] = {
@@ -419,6 +424,10 @@ TEH_handler_management_post_keys (
     GNUNET_free (akc.s_sigs);
     return ret;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received %u denomination and %u signing key signatures\n",
+              akc.nd_sigs,
+              akc.ns_sigs);
   qs = TEH_DB_run_transaction (connection,
                                "add keys",
                                &ret,
@@ -426,6 +435,7 @@ TEH_handler_management_post_keys (
                                &akc);
   if (qs < 0)
     return ret;
+  TEH_keys_update_states ();
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

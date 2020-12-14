@@ -617,7 +617,7 @@ TALER_TESTING_wait_exchange_ready (const char *base_url)
   unsigned int iter;
 
   GNUNET_asprintf (&wget_cmd,
-                   "wget -q -t 1 -T 1 %skeys -o /dev/null -O /dev/null",
+                   "wget -q -t 1 -T 1 %sseed -o /dev/null -O /dev/null",
                    base_url); // make sure ends with '/'
   /* give child time to start and bind against the socket */
   fprintf (stderr,

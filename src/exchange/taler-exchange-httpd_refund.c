@@ -33,6 +33,7 @@
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -58,18 +59,18 @@ reply_refund_success (struct MHD_Connection *connection,
     .merchant = refund->merchant_pub,
     .rtransaction_id = GNUNET_htonll (refund->rtransaction_id)
   };
+  enum TALER_ErrorCode ec;
 
   TALER_amount_hton (&rc.refund_amount,
                      &refund->refund_amount);
-  if (GNUNET_OK !=
-      TEH_KS_sign (&rc,
-                   &pub,
-                   &sig))
+  if (TALER_EC_NONE !=
+      (ec = TEH_keys_exchange_sign (&rc,
+                                    &pub,
+                                    &sig)))
   {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       "no online signing key");
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
   }
   return TALER_MHD_reply_json_pack (
     connection,
@@ -460,16 +461,14 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     }
     /* Obtain information about the coin's denomination! */
     {
-      struct TALER_EXCHANGEDB_DenominationKey *dki;
+      struct TEH_DenominationKey *dk;
       unsigned int hc;
       enum TALER_ErrorCode ec;
 
-      dki = TEH_KS_denomination_key_lookup_by_hash (key_state,
-                                                    &denom_hash,
-                                                    TEH_KS_DKU_DEPOSIT,
-                                                    &ec,
-                                                    &hc);
-      if (NULL == dki)
+      dk = TEH_keys_denomination_by_hash (&denom_hash,
+                                          &ec,
+                                          &hc);
+      if (NULL == dk)
       {
         /* DKI not found, but we do have a coin with this DK in our database;
            not good... */
@@ -480,8 +479,19 @@ verify_and_execute_refund (struct MHD_Connection *connection,
                                            ec,
                                            NULL);
       }
-      TALER_amount_ntoh (&refund->details.refund_fee,
-                         &dki->issue.properties.fee_refund);
+
+      if (GNUNET_TIME_absolute_get ().abs_value_us >=
+          dk->meta.expire_deposit.abs_value_us)
+      {
+        /* This denomination is past the expiration time for deposits, and thus refunds */
+        TEH_KS_release (key_state);
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_GONE,
+          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+          NULL);
+      }
+      refund->details.refund_fee = dk->meta.fee_refund;
     }
     TEH_KS_release (key_state);
   }

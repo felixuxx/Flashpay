@@ -31,6 +31,7 @@
 #include "taler-exchange-httpd_withdraw.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -132,11 +133,6 @@ struct WithdrawContext
    * Number of bytes in @e blinded_msg.
    */
   size_t blinded_msg_len;
-
-  /**
-   * Details about denomination we are about to withdraw.
-   */
-  struct TALER_EXCHANGEDB_DenominationKey *dki;
 
   /**
    * Set to the resulting signed coin data to be returned to the client.
@@ -291,17 +287,19 @@ withdraw_transaction (void *cls,
 #if ! OPTIMISTIC_SIGN
   if (NULL == wc->collectable.sig.rsa_signature)
   {
-    wc->collectable.sig.rsa_signature
-      = GNUNET_CRYPTO_rsa_sign_blinded (wc->dki->denom_priv.rsa_private_key,
-                                        wc->blinded_msg,
-                                        wc->blinded_msg_len);
+    enum TALER_ErrorCode ec;
+
+    wc->collectable.sig
+      = TEH_keys_denomination_sign (&wc->denom_pub_hash,
+                                    wc->blinded_msg,
+                                    wc->blinded_msg_len,
+                                    &ec);
     if (NULL == wc->collectable.sig.rsa_signature)
     {
       GNUNET_break (0);
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_EXCHANGE_WITHDRAW_SIGNATURE_FAILED,
-                                             NULL);
+      *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                          ec,
+                                          NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -360,6 +358,8 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                                  &wc.denom_pub_hash),
     GNUNET_JSON_spec_end ()
   };
+  enum TALER_ErrorCode ec;
+  struct TEH_DenominationKey *dk;
 
   (void) rh;
   if (GNUNET_OK !=
@@ -397,13 +397,12 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   {
     unsigned int hc;
     enum TALER_ErrorCode ec;
+    struct GNUNET_TIME_Absolute now;
 
-    wc.dki = TEH_KS_denomination_key_lookup_by_hash (wc.key_state,
-                                                     &wc.denom_pub_hash,
-                                                     TEH_KS_DKU_WITHDRAW,
-                                                     &ec,
-                                                     &hc);
-    if (NULL == wc.dki)
+    dk = TEH_keys_denomination_by_hash (&wc.denom_pub_hash,
+                                        &ec,
+                                        &hc);
+    if (NULL == dk)
     {
       GNUNET_JSON_parse_free (spec);
       TEH_KS_release (wc.key_state);
@@ -412,20 +411,47 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                                          ec,
                                          NULL);
     }
+    now = GNUNET_TIME_absolute_get ();
+    if (now.abs_value_us >= dk->meta.expire_withdraw.abs_value_us)
+    {
+      /* This denomination is past the expiration time for withdraws */
+      TEH_KS_release (wc.key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+        NULL);
+    }
+    if (now.abs_value_us < dk->meta.start.abs_value_us)
+    {
+      /* This denomination is not yet valid */
+      TEH_KS_release (wc.key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_PRECONDITION_FAILED,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+        NULL);
+    }
+    if (dk->recoup_possible)
+    {
+      /* This denomination has been revoked */
+      TEH_KS_release (wc.key_state);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+        NULL);
+    }
   }
-  GNUNET_assert (NULL != wc.dki->denom_priv.rsa_private_key);
-  {
-    struct TALER_Amount amount;
-    struct TALER_Amount fee_withdraw;
 
-    TALER_amount_ntoh (&amount,
-                       &wc.dki->issue.properties.value);
-    TALER_amount_ntoh (&fee_withdraw,
-                       &wc.dki->issue.properties.fee_withdraw);
+  {
     if (0 >
         TALER_amount_add (&wc.amount_required,
-                          &amount,
-                          &fee_withdraw))
+                          &dk->meta.value,
+                          &dk->meta.fee_withdraw))
     {
       GNUNET_JSON_parse_free (spec);
       TEH_KS_release (wc.key_state);
@@ -466,19 +492,19 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
 
 #if OPTIMISTIC_SIGN
   /* Sign before transaction! */
-  wc.collectable.sig.rsa_signature
-    = GNUNET_CRYPTO_rsa_sign_blinded (wc.dki->denom_priv.rsa_private_key,
-                                      wc.blinded_msg,
-                                      wc.blinded_msg_len);
+  wc.collectable.sig
+    = TEH_keys_denomination_sign (&wc.denom_pub_hash,
+                                  wc.blinded_msg,
+                                  wc.blinded_msg_len,
+                                  &ec);
   if (NULL == wc.collectable.sig.rsa_signature)
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
     TEH_KS_release (wc.key_state);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_WITHDRAW_SIGNATURE_FAILED,
-                                       NULL);
+    return TALER_MHD_reply_with_ec (connection,
+                                    ec,
+                                    NULL);
   }
 #endif
 

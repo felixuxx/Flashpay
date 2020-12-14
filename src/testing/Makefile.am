@@ -131,7 +131,6 @@ check_PROGRAMS = \
   test_bank_api_with_pybank \
   test_bank_api_with_nexus \
   test_exchange_api \
-  test_exchange_api_keys_cherry_picking \
   test_exchange_api_revocation \
   test_exchange_api_overlapping_keys_bug \
   test_exchange_management_api \
@@ -143,6 +142,10 @@ if HAVE_TWISTER
     test_bank_api_with_fakebank_twisted \
     test_bank_api_with_pybank_twisted
 endif
+
+# test_exchange_api_keys_cherry_picking disabled for now:
+# needs to be rewritten as we no longer support /keys timetravel!
+
 
 TESTS = \
   $(check_PROGRAMS)

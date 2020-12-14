@@ -73,7 +73,7 @@ run (void *cls,
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1,
-                                                5 /* FIXME: wrong number... */),
+                                                270 /* FIXME: wrong number... */),
     /**
      * Fill reserve with EUR:10.02, as withdraw fee is 1 ct per
      * config.

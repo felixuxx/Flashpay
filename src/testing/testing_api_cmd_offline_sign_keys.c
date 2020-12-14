@@ -70,6 +70,7 @@ offlinesign_run (void *cls,
         "taler-exchange-offline",
         "taler-exchange-offline",
         "-c", ks->config_filename,
+        "-L", "INFO",
         "download",
         "sign",
         "upload",
@@ -80,8 +81,6 @@ offlinesign_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  /* This function does not tell whether the command
-   * succeeded or not!  */
   TALER_TESTING_wait_for_sigchld (is);
 }
 
