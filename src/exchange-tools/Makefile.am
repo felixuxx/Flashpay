@@ -15,7 +15,6 @@ endif
 bin_PROGRAMS = \
   taler-auditor-offline \
   taler-exchange-keyup \
-  taler-exchange-keycheck \
   taler-exchange-offline \
   taler-exchange-wire \
   taler-exchange-dbinit
@@ -76,16 +75,6 @@ taler_exchange_wire_LDADD = \
   $(XLIB)
 taler_exchange_wire_LDFLAGS = $(POSTGRESQL_LDFLAGS)
 
-taler_exchange_keycheck_SOURCES = \
-  taler-exchange-keycheck.c
-taler_exchange_keycheck_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil \
-  $(XLIB)
-taler_exchange_keycheck_LDFLAGS = $(POSTGRESQL_LDFLAGS)
-
 taler_exchange_dbinit_SOURCES = \
   taler-exchange-dbinit.c
 taler_exchange_dbinit_LDADD = \
@@ -106,12 +95,6 @@ taler_exchange_dbinit_CPPFLAGS = \
 # Testcases
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
-
-check_SCRIPTS = \
-  test_taler_exchange_keyup.sh
-
-TESTS = \
-  $(check_SCRIPTS)
 
 # Distribution
 
