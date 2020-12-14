@@ -143,8 +143,7 @@ run (void *cls,
     TALER_TESTING_cmd_exec_offline_sign_keys ("download-future-keys",
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1,
-                                                270 /* FIXME: wrong number... */),
+                                                1),
     TALER_TESTING_cmd_end ()
   };
 

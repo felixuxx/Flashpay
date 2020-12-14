@@ -83,8 +83,8 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_deposit.c taler-exchange-httpd_deposit.h \
   taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_keys.c taler-exchange-httpd_keys.h \
-  taler-exchange-httpd_keystate.c taler-exchange-httpd_keystate.h \
   taler-exchange-httpd_link.c taler-exchange-httpd_link.h \
+  taler-exchange-httpd_loop.c taler-exchange-httpd_loop.h \
   taler-exchange-httpd_management.h \
   taler-exchange-httpd_management_auditors.c \
   taler-exchange-httpd_management_auditors_AP_disable.c \
@@ -103,7 +103,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
-  taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
+  taler-exchange-httpd_wire2.c taler-exchange-httpd_wire.h \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 
 #  taler-exchange-httpd_management_post_keys.c

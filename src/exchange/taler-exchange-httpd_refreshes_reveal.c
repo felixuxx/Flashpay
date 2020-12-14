@@ -28,7 +28,6 @@
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_refreshes_reveal.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_keys.h"
 
 
@@ -521,9 +520,8 @@ refreshes_reveal_persist (void *cls,
 
 
 /**
- * Resolve denomination hashes using the @a key_state
+ * Resolve denomination hashes.
  *
- * @param key_state the key state
  * @param connection the MHD connection to handle
  * @param rctx context for the operation, partially built at this time
  * @param link_sigs_json link signatures in JSON format
@@ -532,8 +530,7 @@ refreshes_reveal_persist (void *cls,
  * @return MHD result code
  */
 static MHD_RESULT
-resolve_refreshes_reveal_denominations (struct TEH_KS_StateHandle *key_state,
-                                        struct MHD_Connection *connection,
+resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                         struct RevealContext *rctx,
                                         const json_t *link_sigs_json,
                                         const json_t *new_denoms_h_json,
@@ -905,28 +902,11 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
 
-  {
-    struct TEH_KS_StateHandle *key_state;
-    int ret;
-
-    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-    if (NULL == key_state)
-    {
-      TALER_LOG_ERROR ("Lacking keys to operate\n");
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                                         NULL);
-    }
-    ret = resolve_refreshes_reveal_denominations (key_state,
-                                                  connection,
-                                                  rctx,
-                                                  link_sigs_json,
-                                                  new_denoms_h_json,
-                                                  coin_evs);
-    TEH_KS_release (key_state);
-    return ret;
-  }
+  return resolve_refreshes_reveal_denominations (connection,
+                                                 rctx,
+                                                 link_sigs_json,
+                                                 new_denoms_h_json,
+                                                 coin_evs);
 }
 
 

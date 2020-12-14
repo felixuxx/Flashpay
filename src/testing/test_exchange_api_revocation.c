@@ -72,8 +72,7 @@ run (void *cls,
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1,
-                                                270 /* FIXME: wrong number... */),
+                                                1),
     /**
      * Fill reserve with EUR:10.02, as withdraw fee is 1 ct per
      * config.

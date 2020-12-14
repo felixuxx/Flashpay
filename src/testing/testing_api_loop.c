@@ -463,24 +463,6 @@ maint_child_death (void *cls)
     return;
   }
 
-  // FIXME: remove reload_keys, obsolete!
-  if (GNUNET_OK == is->reload_keys)
-  {
-    if (NULL == is->exchanged)
-    {
-      GNUNET_break (0);
-    }
-    else
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Triggering key state reload at exchange\n");
-      GNUNET_break (0 ==
-                    GNUNET_OS_process_kill (is->exchanged,
-                                            SIGUSR1));
-      sleep (5); /* make sure signal was received and processed */
-    }
-  }
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Dead child, go on with next command.\n");
   TALER_TESTING_interpreter_next (is);

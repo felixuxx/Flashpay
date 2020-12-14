@@ -28,7 +28,6 @@
 #include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_keys.h"
 
 

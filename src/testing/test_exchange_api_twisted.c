@@ -221,8 +221,7 @@ run (void *cls,
                                         "Wed, 19 Jan 586524 08:01:49 GMT"),
     TALER_TESTING_cmd_check_keys_pull_all_keys (
       "check-keys-expiration-0",
-      2,
-      270),
+      2),
     /**
      * Run some normal commands after this to make sure everything is fine.
      */
@@ -244,8 +243,7 @@ run (void *cls,
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
                                               CONFIG_FILE),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1,
-                                                270 /* FIXME: wrong number... */),
+                                                1),
     TALER_TESTING_cmd_batch ("refresh-reveal-409-conflict",
                              refresh_409_conflict),
     TALER_TESTING_cmd_batch ("refund",

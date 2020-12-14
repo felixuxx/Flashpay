@@ -29,6 +29,7 @@
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_wire.h"
 
 
 /**
@@ -247,6 +248,7 @@ TEH_handler_management_post_wire_fees (
                                &afc);
   if (qs < 0)
     return ret;
+  TEH_wire_update_state ();
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

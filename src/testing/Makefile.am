@@ -56,10 +56,10 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_exec_aggregator.c \
   testing_api_cmd_exec_auditor-sign.c \
   testing_api_cmd_exec_closer.c \
-  testing_api_cmd_exec_keyup.c \
   testing_api_cmd_exec_transfer.c \
   testing_api_cmd_exec_wirewatch.c \
   testing_api_cmd_insert_deposit.c \
+  testing_api_cmd_offline_sign_fees.c \
   testing_api_cmd_offline_sign_keys.c \
   testing_api_cmd_set_wire_fee.c \
   testing_api_cmd_recoup.c \

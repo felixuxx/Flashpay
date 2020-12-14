@@ -31,9 +31,9 @@
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_deposits_get.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_link.h"
+#include "taler-exchange-httpd_loop.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
 #include "taler-exchange-httpd_mhd.h"
@@ -45,6 +45,7 @@
 #include "taler-exchange-httpd_transfers_get.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler-exchange-httpd_withdraw.h"
+#include "taler_exchangedb_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
@@ -1158,21 +1159,11 @@ exchange_serve_process_config (void)
               "Launching exchange with public key `%s'...\n",
               GNUNET_p2s (&TEH_master_public_key.eddsa_pub));
 
-  if (GNUNET_OK !=
-      TEH_WIRE_init (TEH_cfg))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to setup wire subsystem\n");
-    return GNUNET_SYSERR;
-  }
-
-
   if (NULL ==
       (TEH_plugin = TALER_EXCHANGEDB_plugin_load (TEH_cfg)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize DB subsystem\n");
-    TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }
 
@@ -1185,7 +1176,6 @@ exchange_serve_process_config (void)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to setup HTTPd subsystem\n");
-    TEH_WIRE_done ();
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -1489,8 +1479,8 @@ run_main_loop (int fh,
   ret = TEH_keys_init ();
   if (GNUNET_OK == ret)
   {
-    ret = TEH_KS_loop ();
-    TEH_keys_done ();
+    ret = TEH_loop_run ();
+    TEH_loop_done ();
   }
   switch (ret)
   {
@@ -1703,7 +1693,10 @@ main (int argc,
   }
 
   /* initialize #internal_key_state with an RC of 1 */
-  ret = TEH_KS_init ();
+  if (GNUNET_OK !=
+      TEH_WIRE_init ())
+    return 42;
+  ret = TEH_loop_init ();
   if (GNUNET_OK == ret)
   {
 #if HAVE_DEVELOPER
@@ -1726,8 +1719,8 @@ main (int argc,
       ret = run_main_loop (fh,
                            argv);
     }
-    /* release #internal_key_state */
-    TEH_KS_free ();
+    /* release signal handlers */
+    TEH_loop_done ();
   }
   TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
   TEH_WIRE_done ();

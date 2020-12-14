@@ -25,7 +25,6 @@
 #include <pthread.h>
 #include "taler_signatures.h"
 #include "taler-exchange-httpd_keys.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_transfers_get.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler_json_lib.h"

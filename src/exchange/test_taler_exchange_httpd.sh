@@ -27,7 +27,7 @@ unset XDG_CONFIG_HOME
 echo -n "Launching exchange ..."
 PREFIX=
 # Uncomment this line to run with valgrind...
-# PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
+#PREFIX="valgrind --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
 # Setup database
 taler-exchange-dbinit -c test_taler_exchange_httpd.conf &> /dev/null

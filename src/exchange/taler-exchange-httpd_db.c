@@ -25,7 +25,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
+
 
 /**
  * How often should we retry a transaction before giving up

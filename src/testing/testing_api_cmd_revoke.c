@@ -181,8 +181,6 @@ revoke_run (void *cls,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Revoke is ongoing..\n");
-
-  is->reload_keys = GNUNET_OK;
   TALER_TESTING_wait_for_sigchld (is);
 }
 

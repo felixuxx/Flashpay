@@ -32,7 +32,7 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
+#include "taler_exchangedb_lib.h"
 #include "taler-exchange-httpd_keys.h"
 
 
@@ -430,29 +430,17 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   (void) GNUNET_TIME_round_abs (&dc.exchange_timestamp);
   /* check denomination exists and is valid */
   {
-    struct TEH_KS_StateHandle *key_state;
     struct TEH_DenominationKey *dk;
     enum TALER_ErrorCode ec;
     unsigned int hc;
     struct GNUNET_TIME_Absolute now;
 
-    key_state = TEH_KS_acquire (dc.exchange_timestamp);
-    if (NULL == key_state)
-    {
-      TALER_LOG_ERROR ("Lacking keys to operate\n");
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                         "no keys");
-    }
     dk = TEH_keys_denomination_by_hash (&deposit.coin.denom_pub_hash,
                                         &ec,
                                         &hc);
     if (NULL == dk)
     {
       TALER_LOG_DEBUG ("Unknown denomination key in /deposit request\n");
-      TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          hc,
@@ -463,7 +451,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
     {
       /* This denomination is past the expiration time for deposits */
-      TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,
@@ -474,7 +461,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (now.abs_value_us < dk->meta.start.abs_value_us)
     {
       /* This denomination is not yet valid */
-      TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,
@@ -485,7 +471,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (dk->recoup_possible)
     {
       /* This denomination has been revoked */
-      TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,
@@ -500,7 +485,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                    &deposit.deposit_fee) )
     {
       GNUNET_break_op (0);
-      TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_REQUEST,
@@ -513,7 +497,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                &dk->denom_pub))
     {
       TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
-      TEH_KS_release (key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_UNAUTHORIZED,
@@ -521,7 +504,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                          NULL);
     }
     dc.value = dk->meta.value;
-    TEH_KS_release (key_state);
   }
   if (0 < TALER_amount_cmp (&deposit.deposit_fee,
                             &deposit.amount_with_fee))

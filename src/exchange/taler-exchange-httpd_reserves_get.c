@@ -27,7 +27,6 @@
 #include "taler_json_lib.h"
 #include "taler-exchange-httpd_reserves_get.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
 
 
 /**

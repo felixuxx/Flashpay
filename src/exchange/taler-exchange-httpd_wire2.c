@@ -20,7 +20,6 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_json_lib.h>
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler_json_lib.h"
@@ -77,6 +76,47 @@ destroy_wire_state (struct WireStateHandle *wsh)
 
 
 /**
+ * Free memory assciated with wire state. Signature
+ * suitable for pthread_key_create().
+ *
+ * @param[in] cls the `struct WireStateHandle` to destroy
+ */static void
+destroy_wire_state_cb (void *cls)
+{
+  struct WireStateHandle *wsh = cls;
+
+  destroy_wire_state (wsh);
+}
+
+
+/**
+ * Initialize WIRE submodule.
+ *
+ * @return #GNUNET_OK on success
+ */
+int
+TEH_WIRE_init ()
+{
+  if (0 !=
+      pthread_key_create (&wire_state,
+                          &destroy_wire_state_cb))
+    return GNUNET_SYSERR;
+  return GNUNET_OK;
+}
+
+
+/**
+ * Fully clean up our state.
+ */
+void
+TEH_WIRE_done ()
+{
+  GNUNET_assert (0 ==
+                 pthread_key_delete (wire_state));
+}
+
+
+/**
  * Add information about a wire account to @a cls.
  *
  * @param cls a `json_t *` object to expand with wire account details
@@ -95,9 +135,9 @@ add_wire_account (void *cls,
       json_array_append_new (
         a,
         json_pack ("{s:s, s:o}",
-                   "url", /* "payto_uri" would be better, but this is the name in the spec */
+                   "payto_uri",
                    payto_uri,
-                   "sig",
+                   "master_sig",
                    GNUNET_JSON_from_data_auto (master_sig))))
   {
     GNUNET_break (0);   /* out of memory!? */
@@ -182,7 +222,7 @@ build_wire_state (void)
     json_array_foreach (wire_accounts_array, index, account) {
       char *wire_method;
       const char *payto_uri = json_string_value (json_object_get (account,
-                                                                  "url"));
+                                                                  "payto_uri"));
       GNUNET_assert (NULL != payto_uri);
       wire_method = TALER_payto_get_method (payto_uri);
       if (NULL == json_object_get (wire_fee_object,
@@ -230,17 +270,8 @@ build_wire_state (void)
 }
 
 
-/**
- * Something changed in the database. Rebuild the wire replies.  This function
- * should be called if the exchange learns about a new signature from our
- * master key.
- *
- * (We do not do so immediately, but merely signal to all threads that they
- * need to rebuild their wire state upon the next call to
- * #wire_get_state()).
- */
 void
-TEH_wire_update_state ()
+TEH_wire_update_state (void)
 {
   __sync_fetch_and_add (&wire_generation,
                         1);

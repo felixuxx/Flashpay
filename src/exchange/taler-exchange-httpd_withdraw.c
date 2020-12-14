@@ -30,7 +30,6 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_withdraw.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_keys.h"
 
 
@@ -123,11 +122,6 @@ struct WithdrawContext
    * Blinded planchet.
    */
   char *blinded_msg;
-
-  /**
-   * Key state to use to inspect previous withdrawal values.
-   */
-  struct TEH_KS_StateHandle *key_state;
 
   /**
    * Number of bytes in @e blinded_msg.
@@ -384,16 +378,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     if (GNUNET_OK != res)
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
-  wc.key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-  if (NULL == wc.key_state)
-  {
-    TALER_LOG_ERROR ("Lacking keys to operate\n");
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                       "no keys");
-  }
   {
     unsigned int hc;
     enum TALER_ErrorCode ec;
@@ -405,7 +389,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     if (NULL == dk)
     {
       GNUNET_JSON_parse_free (spec);
-      TEH_KS_release (wc.key_state);
       return TALER_MHD_reply_with_error (connection,
                                          hc,
                                          ec,
@@ -415,7 +398,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     if (now.abs_value_us >= dk->meta.expire_withdraw.abs_value_us)
     {
       /* This denomination is past the expiration time for withdraws */
-      TEH_KS_release (wc.key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,
@@ -426,7 +408,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     if (now.abs_value_us < dk->meta.start.abs_value_us)
     {
       /* This denomination is not yet valid */
-      TEH_KS_release (wc.key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,
@@ -437,7 +418,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     if (dk->recoup_possible)
     {
       /* This denomination has been revoked */
-      TEH_KS_release (wc.key_state);
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (
         connection,
@@ -454,7 +434,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                           &dk->meta.fee_withdraw))
     {
       GNUNET_JSON_parse_free (spec);
-      TEH_KS_release (wc.key_state);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
@@ -483,7 +462,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING (
       "Client supplied invalid signature for withdraw request\n");
     GNUNET_JSON_parse_free (spec);
-    TEH_KS_release (wc.key_state);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
@@ -501,7 +479,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
-    TEH_KS_release (wc.key_state);
     return TALER_MHD_reply_with_ec (connection,
                                     ec,
                                     NULL);
@@ -519,7 +496,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                                 &withdraw_transaction,
                                 &wc))
     {
-      TEH_KS_release (wc.key_state);
       /* Even if #withdraw_transaction() failed, it may have created a signature
          (or we might have done it optimistically above). */
       if (NULL != wc.collectable.sig.rsa_signature)
@@ -530,7 +506,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   }
 
   /* Clean up and send back final (positive) response */
-  TEH_KS_release (wc.key_state);
   GNUNET_JSON_parse_free (spec);
 
   {

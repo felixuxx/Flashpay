@@ -26,7 +26,6 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_responses.h"

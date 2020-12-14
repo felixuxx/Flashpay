@@ -32,7 +32,6 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_keys.h"
 
 
@@ -448,52 +447,36 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   }
 
   {
-    struct TEH_KS_StateHandle *key_state;
-
-    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-    if (NULL == key_state)
-    {
-      TALER_LOG_ERROR ("Lacking keys to operate\n");
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                         "no keys");
-    }
     /* Obtain information about the coin's denomination! */
+    struct TEH_DenominationKey *dk;
+    unsigned int hc;
+    enum TALER_ErrorCode ec;
+
+    dk = TEH_keys_denomination_by_hash (&denom_hash,
+                                        &ec,
+                                        &hc);
+    if (NULL == dk)
     {
-      struct TEH_DenominationKey *dk;
-      unsigned int hc;
-      enum TALER_ErrorCode ec;
-
-      dk = TEH_keys_denomination_by_hash (&denom_hash,
-                                          &ec,
-                                          &hc);
-      if (NULL == dk)
-      {
-        /* DKI not found, but we do have a coin with this DK in our database;
-           not good... */
-        GNUNET_break (0);
-        TEH_KS_release (key_state);
-        return TALER_MHD_reply_with_error (connection,
-                                           hc,
-                                           ec,
-                                           NULL);
-      }
-
-      if (GNUNET_TIME_absolute_get ().abs_value_us >=
-          dk->meta.expire_deposit.abs_value_us)
-      {
-        /* This denomination is past the expiration time for deposits, and thus refunds */
-        TEH_KS_release (key_state);
-        return TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_GONE,
-          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-          NULL);
-      }
-      refund->details.refund_fee = dk->meta.fee_refund;
+      /* DKI not found, but we do have a coin with this DK in our database;
+         not good... */
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         hc,
+                                         ec,
+                                         NULL);
     }
-    TEH_KS_release (key_state);
+
+    if (GNUNET_TIME_absolute_get ().abs_value_us >=
+        dk->meta.expire_deposit.abs_value_us)
+    {
+      /* This denomination is past the expiration time for deposits, and thus refunds */
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_GONE,
+        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+        NULL);
+    }
+    refund->details.refund_fee = dk->meta.fee_refund;
   }
 
   /* Finally run the actual transaction logic */

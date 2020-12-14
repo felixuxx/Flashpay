@@ -47,12 +47,6 @@ struct CheckKeysState
   unsigned int generation;
 
   /**
-   * How many denomination keys the exchange is
-   * supposed to have.
-   */
-  unsigned int num_denom_keys;
-
-  /**
    * If this value is GNUNET_YES, then the "cherry
    * picking" facility is turned off; whole /keys is
    * downloaded.
@@ -156,19 +150,6 @@ check_keys_run (void *cls,
     return;
   }
 #endif
-  /* "/keys" was updated, let's check they were OK! */
-  if (cks->num_denom_keys != is->keys->num_denom_keys)
-  {
-    /* Did not get the expected number of denomination keys! */
-    GNUNET_break (0);
-    TALER_LOG_ERROR ("Got %u keys in step %s, expected %u\n",
-                     is->keys->num_denom_keys,
-                     cmd->label,
-                     cks->num_denom_keys);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
-
   /* Let's unset the fake now before moving on.  */
   TALER_EXCHANGE_unset_now (is->exchange);
   TALER_TESTING_interpreter_next (is);
@@ -192,36 +173,16 @@ check_keys_cleanup (void *cls,
 }
 
 
-/**
- * Make a "check keys" command.  This type of command
- * checks whether the number of denomination keys from
- * @a exchange matches @a num_denom_keys.  Additionally,
- * it lets the user set a last denom issue date to be
- * used in the request for /keys.
- *
- * @param label command label
- * @param generation when this command is run, exactly @a
- *        generation /keys downloads took place.  If the number
- *        of downloads is less than @a generation, the logic will
- *        first make sure that @a generation downloads are done,
- *        and _then_ execute the rest of the command.
- * @param num_denom_keys expected number of denomination keys.
- * @param last_denom_date date to be set in the "last_denom_issue"
- *        URL parameter of /keys.
- * @return the command.
- */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_last_denom (const char *label,
-                                              unsigned int generation,
-                                              unsigned int num_denom_keys,
-                                              struct GNUNET_TIME_Absolute
-                                              last_denom_date)
+TALER_TESTING_cmd_check_keys_with_last_denom (
+  const char *label,
+  unsigned int generation,
+  struct GNUNET_TIME_Absolute last_denom_date)
 {
   struct CheckKeysState *cks;
 
   cks = GNUNET_new (struct CheckKeysState);
   cks->generation = generation;
-  cks->num_denom_keys = num_denom_keys;
   cks->set_last_denom = GNUNET_YES;
   cks->last_denom_date = last_denom_date;
   {
@@ -237,30 +198,14 @@ TALER_TESTING_cmd_check_keys_with_last_denom (const char *label,
 }
 
 
-/**
- * Make a "check keys" command.  This type of command
- * checks whether the number of denomination keys from
- * @a exchange matches @a num_denom_keys.
- *
- * @param label command label
- * @param generation when this command is run, exactly @a
- *        generation /keys downloads took place.  If the number
- *        of downloads is less than @a generation, the logic will
- *        first make sure that @a generation downloads are done,
- *        and _then_ execute the rest of the command.
- * @param num_denom_keys expected number of denomination keys.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys (const char *label,
-                              unsigned int generation,
-                              unsigned int num_denom_keys)
+                              unsigned int generation)
 {
   struct CheckKeysState *cks;
 
   cks = GNUNET_new (struct CheckKeysState);
   cks->generation = generation;
-  cks->num_denom_keys = num_denom_keys;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = cks,
@@ -274,74 +219,14 @@ TALER_TESTING_cmd_check_keys (const char *label,
 }
 
 
-/**
- * Make a "check keys" command.  This type of command
- * checks whether the number of denomination keys from
- * @a exchange matches @a num_denom_keys.
- *
- * @param label command label
- * @param generation when this command is run, exactly @a
- *        generation /keys downloads took place.  If the number
- *        of downloads is less than @a generation, the logic will
- *        first make sure that @a generation downloads are done,
- *        and _then_ execute the rest of the command.
- * @param num_denom_keys expected number of denomination keys.
- * @param now timestamp to use when fetching keys
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_now (const char *label,
-                                       unsigned int generation,
-                                       unsigned int num_denom_keys,
-                                       struct GNUNET_TIME_Absolute now)
-{
-  struct CheckKeysState *cks;
-
-  cks = GNUNET_new (struct CheckKeysState);
-  cks->generation = generation;
-  cks->num_denom_keys = num_denom_keys;
-  cks->now = now;
-  cks->with_now = GNUNET_YES;
-
-  /* Force to NOT cherry pick, otherwise they conflict.  */
-  cks->pull_all_keys = GNUNET_YES;
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = cks,
-      .label = label,
-      .run = &check_keys_run,
-      .cleanup = &check_keys_cleanup
-    };
-
-    return cmd;
-  }
-}
-
-
-/**
- * Make a "check keys" command that forcedly does NOT cherry pick;
- * just redownload the whole /keys.  Then checks whether the number
- * of denomination keys from @a exchange matches @a num_denom_keys.
- *
- * @param label command label
- * @param generation when this command is run, exactly @a
- *        generation /keys downloads took place.  If the number
- *        of downloads is less than @a generation, the logic will
- *        first make sure that @a generation downloads are done,
- *        and _then_ execute the rest of the command.
- * @param num_denom_keys expected number of denomination keys.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
-                                            unsigned int generation,
-                                            unsigned int num_denom_keys)
+                                            unsigned int generation)
 {
   struct CheckKeysState *cks;
 
   cks = GNUNET_new (struct CheckKeysState);
   cks->generation = generation;
-  cks->num_denom_keys = num_denom_keys;
   cks->pull_all_keys = GNUNET_YES;
   {
     struct TALER_TESTING_Command cmd = {

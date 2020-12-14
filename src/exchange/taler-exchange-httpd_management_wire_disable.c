@@ -28,7 +28,8 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
+#include "taler-exchange-httpd_wire.h"
+
 
 /**
  * Closure for the #del_wire transaction.
@@ -182,6 +183,7 @@ TEH_handler_management_denominations_wire_disable (
                                &awc);
   if (qs < 0)
     return ret;
+  TEH_wire_update_state ();
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

@@ -29,12 +29,10 @@
 /**
  * Initialize wire subsystem.
  *
- * @param cfg configuration to use
- * @return #GNUNET_OK on success, #GNUNET_SYSERR if we found no valid
- *         wire methods
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR on error.
  */
 int
-TEH_WIRE_init (const struct GNUNET_CONFIGURATION_Handle *cfg);
+TEH_WIRE_init (void);
 
 
 /**
@@ -42,6 +40,19 @@ TEH_WIRE_init (const struct GNUNET_CONFIGURATION_Handle *cfg);
  */
 void
 TEH_WIRE_done (void);
+
+
+/**
+ * Something changed in the database. Rebuild the wire replies.  This function
+ * should be called if the exchange learns about a new signature from our
+ * master key.
+ *
+ * (We do not do so immediately, but merely signal to all threads that they
+ * need to rebuild their wire state upon the next call to
+ * #wire_get_state()).
+ */
+void
+TEH_wire_update_state (void);
 
 
 /**

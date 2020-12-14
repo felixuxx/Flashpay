@@ -28,7 +28,6 @@
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
 
 
 /**

@@ -447,13 +447,6 @@ struct TALER_TESTING_Interpreter
   char *exchange_url;
 
   /**
-   * #GNUNET_OK if key state should be reloaded.  NOTE: this
-   * field can be removed because a new "send signal" command
-   * has been introduced.
-   */
-  int reload_keys;
-
-  /**
    * Is the interpreter running (#GNUNET_YES) or waiting
    * for /keys (#GNUNET_NO)?
    */
@@ -1228,54 +1221,6 @@ TALER_TESTING_cmd_exec_transfer (const char *label,
 
 
 /**
- * Make the "keyup" CMD.
- *
- * @param label command label.
- * @param config_filename configuration filename.
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_exec_keyup (const char *label,
-                              const char *config_filename);
-
-
-/**
- * Make the "keyup" CMD, with "--timestamp" option.
- *
- * @param label command label.
- * @param config_filename configuration filename.
- * @param now Unix timestamp representing the fake "now".
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_exec_keyup_with_now (const char *label,
-                                       const char *config_filename,
-                                       struct GNUNET_TIME_Absolute now);
-
-
-/**
- * Make a "check keys" command.  This type of command
- * checks whether the number of denomination keys from
- * @a exchange matches @a num_denom_keys.
- *
- * @param label command label
- * @param generation when this command is run, exactly @a
- *        generation /keys downloads took place.  If the number
- *        of downloads is less than @a generation, the logic will
- *        first make sure that @a generation downloads are done,
- *        and _then_ execute the rest of the command.
- * @param num_denom_keys expected number of denomination keys.
- * @param now timestamp to use when fetching keys
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_now (const char *label,
-                                       unsigned int generation,
-                                       unsigned int num_denom_keys,
-                                       struct GNUNET_TIME_Absolute now);
-
-
-/**
  * Make a "auditor sign" CMD.
  *
  * @param label command label
@@ -1840,27 +1785,21 @@ TALER_TESTING_cmd_wait_service (const char *label,
 
 
 /**
- * Make a "check keys" command.  This type of command
- * checks whether the number of denomination keys from
- * @a exchange matches @a num_denom_keys.
+ * Make a "check keys" command.
  *
  * @param label command label
  * @param generation how many /keys responses are expected to
  *        have been returned when this CMD will be run.
- * @param num_denom_keys expected number of denomination keys.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys (const char *label,
-                              unsigned int generation,
-                              unsigned int num_denom_keys);
+                              unsigned int generation);
 
 
 /**
  * Make a "check keys" command that forcedly does NOT cherry pick;
- * just redownload the whole /keys.  Then checks whether the number
- * of denomination keys from @a exchange matches @a num_denom_keys.
+ * just redownload the whole /keys.
  *
  * @param label command label
  * @param generation when this command is run, exactly @a
@@ -1868,20 +1807,15 @@ TALER_TESTING_cmd_check_keys (const char *label,
  *        of downloads is less than @a generation, the logic will
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
- * @param num_denom_keys expected number of denomination keys.
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
-                                            unsigned int generation,
-                                            unsigned int num_denom_keys);
+                                            unsigned int generation);
 
 
 /**
- * Make a "check keys" command.  This type of command
- * checks whether the number of denomination keys from
- * @a exchange matches @a num_denom_keys.  Additionally,
- * it lets the user set a last denom issue date to be
+ * Make a "check keys" command.  It lets the user set a last denom issue date to be
  * used in the request for /keys.
  *
  * @param label command label
@@ -1890,17 +1824,15 @@ TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
  *        of downloads is less than @a generation, the logic will
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
- * @param num_denom_keys expected number of denomination keys.
  * @param last_denom_date date to be set in the "last_denom_issue"
  *        URL parameter of /keys.
  * @return the command.
  */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_last_denom (const char *label,
-                                              unsigned int generation,
-                                              unsigned int num_denom_keys,
-                                              struct GNUNET_TIME_Absolute
-                                              last_denom_date);
+TALER_TESTING_cmd_check_keys_with_last_denom (
+  const char *label,
+  unsigned int generation,
+  struct GNUNET_TIME_Absolute last_denom_date);
 
 
 /**
@@ -2167,6 +2099,22 @@ TALER_TESTING_cmd_wire_del (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_offline_sign_keys (const char *label,
                                           const char *config_filename);
+
+
+/**
+ * Sign a wire fee.
+ *
+ * @param label command label.
+ * @param config_filename configuration filename.
+ * @param wire_fee the wire fee to affirm (for the current year)
+ * @param closing_fee the closing fee to affirm (for the current year)
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_offline_sign_fees (const char *label,
+                                          const char *config_filename,
+                                          const char *wire_fee,
+                                          const char *closing_fee);
 
 
 /**

@@ -30,9 +30,8 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_responses.h"
-#include "taler-exchange-httpd_keystate.h"
 #include "taler-exchange-httpd_keys.h"
-
+#include "taler_exchangedb_lib.h"
 
 /**
  * Closure for #recoup_transaction.
@@ -366,124 +365,103 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   size_t coin_ev_size;
   enum TALER_ErrorCode ec;
   unsigned int hc;
+  struct GNUNET_TIME_Absolute now;
 
   /* check denomination exists and is in recoup mode */
+  dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
+                                      &ec,
+                                      &hc);
+  if (NULL == dk)
   {
-    struct TEH_KS_StateHandle *key_state;
-    struct GNUNET_TIME_Absolute now;
+    TALER_LOG_WARNING (
+      "Denomination key in recoup request not in recoup mode\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       hc,
+                                       ec,
+                                       NULL);
+  }
 
-    key_state = TEH_KS_acquire (GNUNET_TIME_absolute_get ());
-    if (NULL == key_state)
-    {
-      TALER_LOG_ERROR ("Lacking keys to operate\n");
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-                                         "no keys");
-    }
-    dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
-                                        &ec,
-                                        &hc);
-    if (NULL == dk)
-    {
-      TEH_KS_release (key_state);
-      TALER_LOG_WARNING (
-        "Denomination key in recoup request not in recoup mode\n");
-      return TALER_MHD_reply_with_error (connection,
-                                         hc,
-                                         ec,
-                                         NULL);
-    }
+  now = GNUNET_TIME_absolute_get ();
+  if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
+  {
+    /* This denomination is past the expiration time for recoup */
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_GONE,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+      NULL);
+  }
+  if (now.abs_value_us < dk->meta.start.abs_value_us)
+  {
+    /* This denomination is not yet valid */
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_PRECONDITION_FAILED,
+      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
+      NULL);
+  }
+  if (! dk->recoup_possible)
+  {
+    /* This denomination is not eligible for recoup */
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_NOT_FOUND,
+      TALER_EC_EXCHANGE_RECOUP_NOT_ELIGIBLE,
+      NULL);
+  }
 
-    now = GNUNET_TIME_absolute_get ();
-    if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
-    {
-      /* This denomination is past the expiration time for recoup */
-      TEH_KS_release (key_state);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_GONE,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-        NULL);
-    }
-    if (now.abs_value_us < dk->meta.start.abs_value_us)
-    {
-      /* This denomination is not yet valid */
-      TEH_KS_release (key_state);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_PRECONDITION_FAILED,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-        NULL);
-    }
-    if (! dk->recoup_possible)
-    {
-      /* This denomination is not eligible for recoup */
-      TEH_KS_release (key_state);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_NOT_FOUND,
-        TALER_EC_EXCHANGE_RECOUP_NOT_ELIGIBLE,
-        NULL);
-    }
+  pc.value = dk->meta.value;
 
-    pc.value = dk->meta.value;
+  /* check denomination signature */
+  if (GNUNET_YES !=
+      TALER_test_coin_valid (coin,
+                             &dk->denom_pub))
+  {
+    TALER_LOG_WARNING ("Invalid coin passed for recoup\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
+                                       NULL);
+  }
 
-    /* check denomination signature */
-    if (GNUNET_YES !=
-        TALER_test_coin_valid (coin,
-                               &dk->denom_pub))
+  /* check recoup request signature */
+  {
+    struct TALER_RecoupRequestPS pr = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+      .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
+      .coin_pub = coin->coin_pub,
+      .h_denom_pub = coin->denom_pub_hash,
+      .coin_blind = *coin_bks
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
+                                    &pr,
+                                    &coin_sig->eddsa_signature,
+                                    &coin->coin_pub.eddsa_pub))
     {
-      TALER_LOG_WARNING ("Invalid coin passed for recoup\n");
-      TEH_KS_release (key_state);
+      TALER_LOG_WARNING ("Invalid signature on recoup request\n");
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
+                                         TALER_EC_EXCHANGE_RECOUP_SIGNATURE_INVALID,
                                          NULL);
     }
-
-    /* check recoup request signature */
-    {
-      struct TALER_RecoupRequestPS pr = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
-        .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
-        .coin_pub = coin->coin_pub,
-        .h_denom_pub = coin->denom_pub_hash,
-        .coin_blind = *coin_bks
-      };
-
-      if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                      &pr,
-                                      &coin_sig->eddsa_signature,
-                                      &coin->coin_pub.eddsa_pub))
-      {
-        TALER_LOG_WARNING ("Invalid signature on recoup request\n");
-        TEH_KS_release (key_state);
-        return TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_FORBIDDEN,
-                                           TALER_EC_EXCHANGE_RECOUP_SIGNATURE_INVALID,
-                                           NULL);
-      }
-    }
-    GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
-                        sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                        &c_hash);
-    if (GNUNET_YES !=
-        TALER_rsa_blind (&c_hash,
-                         &coin_bks->bks,
-                         dk->denom_pub.rsa_public_key,
-                         &coin_ev,
-                         &coin_ev_size))
-    {
-      GNUNET_break (0);
-      TEH_KS_release (key_state);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
-                                         NULL);
-    }
-    TEH_KS_release (key_state);
+  }
+  GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &c_hash);
+  if (GNUNET_YES !=
+      TALER_rsa_blind (&c_hash,
+                       &coin_bks->bks,
+                       dk->denom_pub.rsa_public_key,
+                       &coin_ev,
+                       &coin_ev_size))
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
+                                       NULL);
   }
   GNUNET_CRYPTO_hash (coin_ev,
                       coin_ev_size,
