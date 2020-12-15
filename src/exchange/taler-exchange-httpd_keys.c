@@ -417,11 +417,13 @@ suspend_request (struct MHD_Connection *connection)
 
 
 void
-TEH_resume_keys_requests (void)
+TEH_resume_keys_requests (bool do_shutdown)
 {
   struct SuspendedKeysRequests *skr;
 
   GNUNET_assert (0 == pthread_mutex_lock (&skr_mutex));
+  if (do_shutdown)
+    terminating = true;
   while (NULL != (skr = skr_head))
   {
     GNUNET_CONTAINER_DLL_remove (skr_head,
@@ -900,15 +902,6 @@ TEH_keys_init ()
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
-}
-
-
-void
-TEH_keys_done ()
-{
-  GNUNET_assert (0 == pthread_mutex_lock (&skr_mutex));
-  terminating = true;
-  GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
 }
 
 
@@ -1699,7 +1692,7 @@ TEH_keys_update_states ()
 {
   __sync_fetch_and_add (&key_generation,
                         1);
-  TEH_resume_keys_requests ();
+  TEH_resume_keys_requests (false);
 }
 
 

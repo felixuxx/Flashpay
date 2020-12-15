@@ -1417,7 +1417,7 @@ run_single_request (void)
     }
     MHD_run (mhd);
   }
-  TEH_resume_keys_requests ();
+  TEH_resume_keys_requests (true);
   MHD_stop_daemon (mhd);
   mhd = NULL;
   if (cld != waitpid (cld,
@@ -1486,7 +1486,7 @@ run_main_loop (int fh,
   {
   case GNUNET_OK:
   case GNUNET_SYSERR:
-    TEH_resume_keys_requests ();
+    TEH_resume_keys_requests (true);
     MHD_stop_daemon (mhd);
     break;
   case GNUNET_NO:
@@ -1542,13 +1542,13 @@ run_main_loop (int fh,
              num_connections)
         sleep (1);
       /* Now we're really done, practice clean shutdown */
-      TEH_resume_keys_requests ();
+      TEH_resume_keys_requests (true);
       MHD_stop_daemon (mhd);
     }
     break;
   default:
     GNUNET_break (0);
-    TEH_resume_keys_requests ();
+    TEH_resume_keys_requests (true);
     MHD_stop_daemon (mhd);
     break;
   }

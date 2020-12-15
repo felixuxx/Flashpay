@@ -197,10 +197,10 @@ TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub);
  * Resumse all suspended /keys requests, we may now have key material
  * (or are shuting down).
  *
- * @param[in] connection to suspend
+ * @param do_shutdown are we shutting down?
  */
 void
-TEH_resume_keys_requests (void);
+TEH_resume_keys_requests (bool do_shutdown);
 
 
 /**
@@ -328,12 +328,6 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
  */
 int
 TEH_keys_init (void);
-
-/**
- * Close down keys submodule.
- */
-void
-TEH_keys_done (void);
 
 
 #endif
