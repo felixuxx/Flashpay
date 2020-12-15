@@ -95,6 +95,10 @@ handle_post_keys_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (json);
     hr.hint = TALER_JSON_get_error_hint (json);
     break;
+  case MHD_HTTP_NOT_FOUND:
+    hr.ec = TALER_JSON_get_error_code (json);
+    hr.hint = TALER_JSON_get_error_hint (json);
+    break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);

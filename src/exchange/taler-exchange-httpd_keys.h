@@ -217,10 +217,31 @@ TEH_resume_keys_requests (bool do_shutdown);
  * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_exchange_sign_ (const struct
-                         GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                         struct TALER_ExchangePublicKeyP *pub,
-                         struct TALER_ExchangeSignatureP *sig);
+TEH_keys_exchange_sign_ (
+  const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
+
+
+/**
+ * Sign the message in @a purpose with the exchange's signing key.
+ *
+ * The @a purpose data is the beginning of the data of which the signature is
+ * to be created. The `size` field in @a purpose must correctly indicate the
+ * number of bytes of the data structure, including its header.  Use
+ * #TEH_keys_exchange_sign() instead of calling this function directly!
+ *
+ * @param purpose the message to sign
+ * @param[out] pub set to the current public signing key of the exchange
+ * @param[out] sig signature over purpose using current signing key
+ * @return #TALER_EC_NONE on success
+ */
+enum TALER_ErrorCode
+TEH_keys_exchange_sign2_ (
+  struct TEH_KeyStateHandle *ksh,
+  const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig);
 
 
 /**
@@ -247,6 +268,40 @@ TEH_keys_exchange_sign_ (const struct
     TEH_keys_exchange_sign_ (&(ps)->purpose,          \
                              pub,                     \
                              sig);                    \
+  })
+
+
+/**
+ * @ingroup crypto
+ * @brief EdDSA sign a given block.
+ *
+ * The @a ps data must be a fixed-size struct for which the signature is to be
+ * created. The `size` field in @a ps->purpose must correctly indicate the
+ * number of bytes of the data structure, including its header.
+ *
+ * This allows requesting multiple denominations with the same @a ksh which
+ * thus will remain valid until the next call to
+ * #TEH_keys_denomination_by_hash() or #TEH_get_key_state() or
+ * #TEH_keys_exchange_sign().
+ *
+ * @param ksh key state to use
+ * @param ps packed struct with what to sign, MUST begin with a purpose
+ * @param[out] pub where to store the public key to use for the signing
+ * @param[out] sig where to write the signature
+ * @return #TALER_EC_NONE on success
+ */
+#define TEH_keys_exchange_sign2(ksh,ps,pub,sig)       \
+  ({                                                  \
+    /* check size is set correctly */                 \
+    GNUNET_assert (htonl ((ps)->purpose.size) ==      \
+                   sizeof (*ps));                     \
+    /* check 'ps' begins with the purpose */          \
+    GNUNET_static_assert (((void*) (ps)) ==           \
+                          ((void*) &(ps)->purpose));  \
+    TEH_keys_exchange_sign2_ (ksh,                    \
+                              &(ps)->purpose,         \
+                              pub,                     \
+                              sig);                    \
   })
 
 

@@ -157,7 +157,7 @@ add_keys (void *cls,
           MHD_HTTP_NOT_FOUND,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
           GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
-        return qs;
+        return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
     else
@@ -183,11 +183,12 @@ add_keys (void *cls,
             &akc->d_sigs[i].master_sig))
       {
         GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (
+        *mhd_ret = TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_FORBIDDEN,
-          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_ADD_SIGNATURE_INVALID,
+          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
           GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+        return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
     if (is_active)
@@ -253,7 +254,7 @@ add_keys (void *cls,
           MHD_HTTP_NOT_FOUND,
           TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_UNKNOWN,
           TALER_B2S (&akc->s_sigs[i].exchange_pub));
-        return qs;
+        return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
     else
@@ -273,11 +274,12 @@ add_keys (void *cls,
             &akc->s_sigs[i].master_sig))
       {
         GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (
+        *mhd_ret = TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_FORBIDDEN,
-          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
+          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_ADD_SIGNATURE_INVALID,
           GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+        return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
     if (is_active)

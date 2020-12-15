@@ -293,6 +293,12 @@ struct TEH_KeyStateHandle
    */
   struct GNUNET_TIME_Absolute next_reload;
 
+  /**
+   * True if #finish_keys_response() was not yet run and this key state
+   * is only suitable for the /management/keys API.
+   */
+  bool management_only;
+
 };
 
 
@@ -888,7 +894,10 @@ TEH_keys_init ()
   if (0 !=
       pthread_key_create (&key_state,
                           &destroy_key_state_cb))
+  {
+    GNUNET_break (0);
     return GNUNET_SYSERR;
+  }
   key_state_available = true;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
@@ -1121,87 +1130,6 @@ auditor_denom_cb (
   GNUNET_CONTAINER_DLL_insert (dk->as_head,
                                dk->as_tail,
                                as);
-}
-
-
-/**
- * Create a key state.
- *
- * @param[in] hs helper state to (re)use, NULL if not available
- * @return NULL on error (i.e. failed to access database)
- */
-static struct TEH_KeyStateHandle *
-build_key_state (struct HelperState *hs)
-{
-  struct TEH_KeyStateHandle *ksh;
-  enum GNUNET_DB_QueryStatus qs;
-
-  ksh = GNUNET_new (struct TEH_KeyStateHandle);
-  ksh->reload_time = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&ksh->reload_time);
-  /* We must use the key_generation from when we STARTED the process! */
-  ksh->key_generation = key_generation;
-  if (NULL == hs)
-  {
-    if (GNUNET_OK !=
-        setup_key_helpers (&ksh->helpers))
-    {
-      GNUNET_free (ksh);
-      return NULL;
-    }
-  }
-  else
-  {
-    ksh->helpers = *hs;
-  }
-  ksh->denomkey_map = GNUNET_CONTAINER_multihashmap_create (1024,
-                                                            GNUNET_YES);
-  ksh->signkey_map = GNUNET_CONTAINER_multipeermap_create (32,
-                                                           GNUNET_NO /* MUST be NO! */);
-  ksh->auditors = json_array ();
-  /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
-  qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
-                                          &denomination_info_cb,
-                                          ksh);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    destroy_key_state (ksh,
-                       true);
-    return NULL;
-  }
-  /* NOTE: ONLY fetches non-revoked AND master-signed signkeys! */
-  qs = TEH_plugin->iterate_active_signkeys (TEH_plugin->cls,
-                                            &signkey_info_cb,
-                                            ksh);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    destroy_key_state (ksh,
-                       true);
-    return NULL;
-  }
-  qs = TEH_plugin->iterate_active_auditors (TEH_plugin->cls,
-                                            &auditor_info_cb,
-                                            ksh);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    destroy_key_state (ksh,
-                       true);
-    return NULL;
-  }
-  qs = TEH_plugin->iterate_auditor_denominations (TEH_plugin->cls,
-                                                  &auditor_denom_cb,
-                                                  ksh);
-  if (qs < 0)
-  {
-    GNUNET_break (0);
-    destroy_key_state (ksh,
-                       true);
-    return NULL;
-  }
-  return ksh;
 }
 
 
@@ -1462,9 +1390,10 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     enum TALER_ErrorCode ec;
 
     if (TALER_EC_NONE !=
-        (ec = TEH_keys_exchange_sign (&ks,
-                                      &exchange_pub,
-                                      &exchange_sig)))
+        (ec = TEH_keys_exchange_sign2 (ksh,
+                                       &ks,
+                                       &exchange_pub,
+                                       &exchange_sig)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Could not create key response data: cannot sign (%s)\n",
@@ -1544,7 +1473,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
 
 
 /**
- * Update the "/keys" responses in @a ksh up to @a now into the future.
+ * Update the "/keys" responses in @a ksh, computing the detailed replies.
  *
  * This function is to recompute all (including cherry-picked) responses we
  * might want to return, based on the state already in @a ksh.
@@ -1553,7 +1482,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
  * @return #GNUNET_OK on success
  */
 static int
-update_keys_response (struct TEH_KeyStateHandle *ksh)
+finish_keys_response (struct TEH_KeyStateHandle *ksh)
 {
   json_t *recoup;
   struct SignKeyCtx sctx;
@@ -1686,7 +1615,106 @@ update_keys_response (struct TEH_KeyStateHandle *ksh)
   json_decref (sctx.signkeys);
   json_decref (recoup);
   json_decref (denoms);
+  ksh->management_only = false;
   return GNUNET_OK;
+}
+
+
+/**
+ * Create a key state.
+ *
+ * @param[in] hs helper state to (re)use, NULL if not available
+ * @param management_only if we should NOT run 'finish_keys_response()'
+ *                  because we only need the state for the /management/keys API
+ * @return NULL on error (i.e. failed to access database)
+ */
+static struct TEH_KeyStateHandle *
+build_key_state (struct HelperState *hs,
+                 bool management_only)
+{
+  struct TEH_KeyStateHandle *ksh;
+  enum GNUNET_DB_QueryStatus qs;
+
+  ksh = GNUNET_new (struct TEH_KeyStateHandle);
+  ksh->reload_time = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&ksh->reload_time);
+  /* We must use the key_generation from when we STARTED the process! */
+  ksh->key_generation = key_generation;
+  if (NULL == hs)
+  {
+    if (GNUNET_OK !=
+        setup_key_helpers (&ksh->helpers))
+    {
+      GNUNET_free (ksh);
+      return NULL;
+    }
+  }
+  else
+  {
+    ksh->helpers = *hs;
+  }
+  ksh->denomkey_map = GNUNET_CONTAINER_multihashmap_create (1024,
+                                                            GNUNET_YES);
+  ksh->signkey_map = GNUNET_CONTAINER_multipeermap_create (32,
+                                                           GNUNET_NO /* MUST be NO! */);
+  ksh->auditors = json_array ();
+  /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
+  qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
+                                          &denomination_info_cb,
+                                          ksh);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
+  /* NOTE: ONLY fetches non-revoked AND master-signed signkeys! */
+  qs = TEH_plugin->iterate_active_signkeys (TEH_plugin->cls,
+                                            &signkey_info_cb,
+                                            ksh);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
+  qs = TEH_plugin->iterate_active_auditors (TEH_plugin->cls,
+                                            &auditor_info_cb,
+                                            ksh);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
+  qs = TEH_plugin->iterate_auditor_denominations (TEH_plugin->cls,
+                                                  &auditor_denom_cb,
+                                                  ksh);
+  if (qs < 0)
+  {
+    GNUNET_break (0);
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
+  if (management_only)
+  {
+    ksh->management_only = true;
+    return ksh;
+  }
+  if (GNUNET_OK !=
+      finish_keys_response (ksh))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Could not finish /keys response (likely no signing keys available yet)\n");
+    destroy_key_state (ksh,
+                       true);
+    return NULL;
+  }
+  return ksh;
 }
 
 
@@ -1699,8 +1727,16 @@ TEH_keys_update_states ()
 }
 
 
-struct TEH_KeyStateHandle *
-TEH_get_key_state (void)
+/**
+ * Obtain the key state for the current thread. Should ONLY be used
+ * directly if @a management_only is true. Otherwise use #TEH_get_key_state().
+ *
+ * @param management_only if we should NOT run 'finish_keys_response()'
+ *                  because we only need the state for the /management/keys API
+ * @return NULL on error
+ */
+static struct TEH_KeyStateHandle *
+get_key_state (bool management_only)
 {
   struct TEH_KeyStateHandle *old_ksh;
   struct TEH_KeyStateHandle *ksh;
@@ -1709,7 +1745,8 @@ TEH_get_key_state (void)
   old_ksh = pthread_getspecific (key_state);
   if (NULL == old_ksh)
   {
-    ksh = build_key_state (NULL);
+    ksh = build_key_state (NULL,
+                           management_only);
     if (NULL == ksh)
       return NULL;
     if (0 != pthread_setspecific (key_state,
@@ -1728,7 +1765,8 @@ TEH_get_key_state (void)
                 "Rebuilding /keys, generation upgrade from %llu to %llu\n",
                 (unsigned long long) old_ksh->key_generation,
                 (unsigned long long) key_generation);
-    ksh = build_key_state (&old_ksh->helpers);
+    ksh = build_key_state (&old_ksh->helpers,
+                           management_only);
     if (0 != pthread_setspecific (key_state,
                                   ksh))
     {
@@ -1745,6 +1783,24 @@ TEH_get_key_state (void)
   }
   sync_key_helpers (&old_ksh->helpers);
   return old_ksh;
+}
+
+
+struct TEH_KeyStateHandle *
+TEH_get_key_state (void)
+{
+  struct TEH_KeyStateHandle *ksh;
+
+  ksh = get_key_state (false);
+  if (NULL == ksh)
+    return NULL;
+  if (ksh->management_only)
+  {
+    if (GNUNET_OK !=
+        finish_keys_response (ksh))
+      return NULL;
+  }
+  return ksh;
 }
 
 
@@ -1830,13 +1886,12 @@ TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub)
 
 
 enum TALER_ErrorCode
-TEH_keys_exchange_sign_ (const struct
-                         GNUNET_CRYPTO_EccSignaturePurpose *purpose,
-                         struct TALER_ExchangePublicKeyP *pub,
-                         struct TALER_ExchangeSignatureP *sig)
+TEH_keys_exchange_sign_ (
+  const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
 {
   struct TEH_KeyStateHandle *ksh;
-  enum TALER_ErrorCode ec;
 
   ksh = TEH_get_key_state ();
   if (NULL == ksh)
@@ -1847,6 +1902,22 @@ TEH_keys_exchange_sign_ (const struct
                 "Cannot sign request, no valid signing keys available.\n");
     return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
   }
+  return TEH_keys_exchange_sign2_ (ksh,
+                                   purpose,
+                                   pub,
+                                   sig);
+}
+
+
+enum TALER_ErrorCode
+TEH_keys_exchange_sign2_ (
+  struct TEH_KeyStateHandle *ksh,
+  const struct GNUNET_CRYPTO_EccSignaturePurpose *purpose,
+  struct TALER_ExchangePublicKeyP *pub,
+  struct TALER_ExchangeSignatureP *sig)
+{
+  enum TALER_ErrorCode ec;
+
   ec = TALER_CRYPTO_helper_esign_sign_ (ksh->helpers.esh,
                                         purpose,
                                         pub,
@@ -1968,11 +2039,6 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
 
     ksh = TEH_get_key_state ();
     if (NULL == ksh)
-    {
-      return suspend_request (connection);
-    }
-    if (GNUNET_OK !=
-        update_keys_response (ksh))
     {
       return suspend_request (connection);
     }
@@ -2152,7 +2218,7 @@ TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
   struct HelperDenomination *hd;
   int ok;
 
-  ksh = TEH_get_key_state ();
+  ksh = get_key_state (true);
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -2184,7 +2250,7 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct HelperSignkey *hsk;
   struct GNUNET_PeerIdentity pid;
 
-  ksh = TEH_get_key_state ();
+  ksh = get_key_state (true);
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -2354,7 +2420,7 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
   struct TEH_KeyStateHandle *ksh;
   json_t *reply;
 
-  ksh = TEH_get_key_state ();
+  ksh = get_key_state (true);
   if (NULL == ksh)
   {
     GNUNET_break (0);

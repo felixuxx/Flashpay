@@ -635,8 +635,8 @@ denom_revocation_cb (
                 "Upload failed for command %u with status %u: %s (%s)\n",
                 (unsigned int) drr->idx,
                 hr->http_status,
-                TALER_ErrorCode_get_hint (hr->ec),
-                hr->hint);
+                hr->hint,
+                TALER_JSON_get_error_hint (hr->reply));
     global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (drr_head,
@@ -724,8 +724,8 @@ signkey_revocation_cb (
                 "Upload failed for command %u with status %u: %s (%s)\n",
                 (unsigned int) srr->idx,
                 hr->http_status,
-                TALER_ErrorCode_get_hint (hr->ec),
-                hr->hint);
+                hr->hint,
+                TALER_JSON_get_error_hint (hr->reply));
     global_ret = 10;
   }
   GNUNET_CONTAINER_DLL_remove (srr_head,

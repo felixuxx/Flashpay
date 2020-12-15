@@ -696,7 +696,7 @@ handle_post_auditors (const struct TEH_RequestHandler *rh,
 
   if ( (NULL == args[0]) ||
        (NULL == args[1]) ||
-       (NULL != args[0]) )
+       (NULL != args[2]) )
   {
     GNUNET_break_op (0);
     return r404 (connection, "/auditors/$AUDITOR_PUB/$H_DENOM_PUB");
@@ -1476,12 +1476,7 @@ run_main_loop (int fh,
   }
 
   atexit (&write_stats);
-  ret = TEH_keys_init ();
-  if (GNUNET_OK == ret)
-  {
-    ret = TEH_loop_run ();
-    TEH_loop_done ();
-  }
+  ret = TEH_loop_run ();
   switch (ret)
   {
   case GNUNET_OK:
@@ -1696,6 +1691,9 @@ main (int argc,
   if (GNUNET_OK !=
       TEH_WIRE_init ())
     return 42;
+  if (GNUNET_OK !=
+      TEH_keys_init ())
+    return 43;
   ret = TEH_loop_init ();
   if (GNUNET_OK == ret)
   {
