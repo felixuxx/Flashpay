@@ -1448,6 +1448,9 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   struct TALER_ExchangeSignatureP exchange_sig;
   json_t *keys;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Creating /keys at cherry pick date %s\n",
+              GNUNET_STRINGS_absolute_time_to_string (last_cpd));
   /* Sign hash over denomination keys */
   {
     struct TALER_ExchangeKeySetPS ks = {
@@ -1721,6 +1724,10 @@ TEH_get_key_state (void)
   }
   if (old_ksh->key_generation < key_generation)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Rebuilding /keys, generation upgrade from %llu to %llu\n",
+                (unsigned long long) old_ksh->key_generation,
+                (unsigned long long) key_generation);
     ksh = build_key_state (&old_ksh->helpers);
     if (0 != pthread_setspecific (key_state,
                                   ksh))
