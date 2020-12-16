@@ -82,6 +82,10 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command all[] = {
+    TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
+                                              config_filename,
+                                              "EUR:0.01",
+                                              "EUR:0.01"),
     TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
                                    MHD_HTTP_NO_CONTENT,
                                    false),
