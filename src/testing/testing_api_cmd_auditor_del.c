@@ -117,17 +117,10 @@ auditor_del_run (void *cls,
   }
   else
   {
-    struct TALER_MasterDelAuditorPS kv = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_AUDITOR),
-      .purpose.size = htonl (sizeof (kv)),
-      .end_date = GNUNET_TIME_absolute_hton (now),
-      .auditor_pub = is->auditor_pub,
-    };
-
-    /* Finally sign ... */
-    GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
-                              &kv,
-                              &master_sig.eddsa_signature);
+    TALER_exchange_offline_auditor_del_sign (&is->auditor_pub,
+                                             now,
+                                             &is->master_priv,
+                                             &master_sig);
   }
   ds->dh = TALER_EXCHANGE_management_disable_auditor (
     is->ctx,

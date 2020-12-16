@@ -117,24 +117,11 @@ auditor_add_run (void *cls,
   }
   else
   {
-
-    /* now sign */
-    {
-      struct TALER_MasterAddAuditorPS kv = {
-        .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_ADD_AUDITOR),
-        .purpose.size = htonl (sizeof (kv)),
-        .start_date = GNUNET_TIME_absolute_hton (now),
-        .auditor_pub = is->auditor_pub,
-      };
-
-      GNUNET_CRYPTO_hash (is->auditor_url,
-                          strlen (is->auditor_url) + 1,
-                          &kv.h_auditor_url);
-      /* Finally sign ... */
-      GNUNET_CRYPTO_eddsa_sign (&is->master_priv.eddsa_priv,
-                                &kv,
-                                &master_sig.eddsa_signature);
-    }
+    TALER_exchange_offline_auditor_add_sign (&is->auditor_pub,
+                                             is->auditor_url,
+                                             now,
+                                             &is->master_priv,
+                                             &master_sig);
   }
   ds->dh = TALER_EXCHANGE_management_enable_auditor (
     is->ctx,

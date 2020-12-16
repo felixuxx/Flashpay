@@ -165,29 +165,19 @@ TEH_handler_management_auditors_AP_disable (
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
+  if (GNUNET_OK !=
+      TALER_exchange_offline_auditor_del_verify (
+        auditor_pub,
+        dac.validity_end,
+        &TEH_master_public_key,
+        &master_sig))
   {
-    struct TALER_MasterDelAuditorPS da = {
-      .purpose.purpose = htonl (
-        TALER_SIGNATURE_MASTER_DEL_AUDITOR),
-      .purpose.size = htonl (sizeof (da)),
-      .end_date = GNUNET_TIME_absolute_hton (dac.validity_end),
-      .auditor_pub = *auditor_pub
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (
-          TALER_SIGNATURE_MASTER_DEL_AUDITOR,
-          &da,
-          &master_sig.eddsa_signature,
-          &TEH_master_public_key.eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_FORBIDDEN,
-        TALER_EC_EXCHANGE_MANAGEMENT_AUDITOR_DEL_SIGNATURE_INVALID,
-        NULL);
-    }
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_FORBIDDEN,
+      TALER_EC_EXCHANGE_MANAGEMENT_AUDITOR_DEL_SIGNATURE_INVALID,
+      NULL);
   }
 
   qs = TEH_DB_run_transaction (connection,

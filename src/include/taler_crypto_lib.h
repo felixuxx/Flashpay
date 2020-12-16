@@ -1052,6 +1052,77 @@ TALER_CRYPTO_helper_esign_disconnect (
 
 /* ********************* offline signing ************************** */
 
+
+/**
+ * Create auditor addition signature.
+ *
+ * @param auditor_pub public key of the auditor
+ * @param auditor_url URL of the auditor
+ * @param start_date when to enable the auditor (for replay detection)
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_auditor_add_sign (
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const char *auditor_url,
+  struct GNUNET_TIME_Absolute start_date,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify auditor add signature.
+ *
+ * @param auditor_pub public key of the auditor
+ * @param auditor_url URL of the auditor
+ * @param start_date when to enable the auditor (for replay detection)
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_auditor_add_verify (
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  const char *auditor_url,
+  struct GNUNET_TIME_Absolute start_date,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Create auditor deletion signature.
+ *
+ * @param auditor_pub public key of the auditor
+ * @param end_date when to disable the auditor (for replay detection)
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_auditor_del_sign (
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  struct GNUNET_TIME_Absolute end_date,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify auditor del signature.
+ *
+ * @param auditor_pub public key of the auditor
+ * @param end_date when to disable the auditor (for replay detection)
+ * @param master_pub public key to verify against
+ * @param master_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+int
+TALER_exchange_offline_auditor_del_verify (
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  struct GNUNET_TIME_Absolute end_date,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig);
+
+
 /**
  * Create denomination revocation signature.
  *

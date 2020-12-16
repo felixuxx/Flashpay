@@ -146,6 +146,62 @@ struct SignkeyRevocationRequest
 
 
 /**
+ * Data structure for auditor add requests.
+ */
+struct AuditorAddRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct AuditorAddRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct AuditorAddRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementAuditorEnableHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
+ * Data structure for auditor del requests.
+ */
+struct AuditorDelRequest
+{
+
+  /**
+   * Kept in a DLL.
+   */
+  struct AuditorDelRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct AuditorDelRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementAuditorDisableHandle *h;
+
+  /**
+   * Array index of the associated command.
+   */
+  size_t idx;
+};
+
+
+/**
  * Data structure for wire add requests.
  */
 struct WireAddRequest
@@ -287,6 +343,26 @@ static struct SignkeyRevocationRequest *srr_head;
 static struct SignkeyRevocationRequest *srr_tail;
 
 /**
+ * Active auditor add requests.
+ */
+static struct AuditorAddRequest *aar_head;
+
+/**
+ * Active auditor add requests.
+ */
+static struct AuditorAddRequest *aar_tail;
+
+/**
+ * Active auditor del requests.
+ */
+static struct AuditorDelRequest *adr_head;
+
+/**
+ * Active auditor del requests.
+ */
+static struct AuditorDelRequest *adr_tail;
+
+/**
  * Active wire add requests.
  */
 static struct WireAddRequest *war_head;
@@ -368,6 +444,36 @@ do_shutdown (void *cls)
     }
   }
 
+  {
+    struct AuditorAddRequest *aar;
+
+    while (NULL != (aar = aar_head))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete auditor add #%u\n",
+                  (unsigned int) aar->idx);
+      TALER_EXCHANGE_management_enable_auditor_cancel (aar->h);
+      GNUNET_CONTAINER_DLL_remove (aar_head,
+                                   aar_tail,
+                                   aar);
+      GNUNET_free (aar);
+    }
+  }
+  {
+    struct AuditorDelRequest *adr;
+
+    while (NULL != (adr = adr_head))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete auditor del #%u\n",
+                  (unsigned int) adr->idx);
+      TALER_EXCHANGE_management_disable_auditor_cancel (adr->h);
+      GNUNET_CONTAINER_DLL_remove (adr_head,
+                                   adr_tail,
+                                   adr);
+      GNUNET_free (adr);
+    }
+  }
   {
     struct WireAddRequest *war;
 
@@ -474,6 +580,8 @@ test_shutdown (void)
 {
   if ( (NULL == drr_head) &&
        (NULL == srr_head) &&
+       (NULL == aar_head) &&
+       (NULL == adr_head) &&
        (NULL == war_head) &&
        (NULL == wdr_head) &&
        (NULL == wfr_head) &&
@@ -795,15 +903,206 @@ upload_signkey_revocation (const char *exchange_url,
 
 
 /**
+ * Function called with information about the post auditor add operation result.
+ *
+ * @param cls closure with a `struct AuditorAddRequest`
+ * @param hr HTTP response data
+ */
+static void
+auditor_add_cb (void *cls,
+                const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct AuditorAddRequest *aar = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) aar->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
+  }
+  GNUNET_CONTAINER_DLL_remove (aar_head,
+                               aar_tail,
+                               aar);
+  GNUNET_free (aar);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload auditor add data.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value argumets for denomination revocation
+ */
+static void
+upload_auditor_add (const char *exchange_url,
+                    size_t idx,
+                    const json_t *value)
+{
+  struct TALER_MasterSignatureP master_sig;
+  const char *auditor_url;
+  const char *auditor_name;
+  struct GNUNET_TIME_Absolute start_time;
+  struct TALER_AuditorPublicKeyP auditor_pub;
+  struct AuditorAddRequest *aar;
+  const char *err_name;
+  unsigned int err_line;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("auditor_url",
+                             &auditor_url),
+    GNUNET_JSON_spec_string ("auditor_name",
+                             &auditor_name),
+    GNUNET_JSON_spec_absolute_time ("validity_start",
+                                    &start_time),
+    GNUNET_JSON_spec_fixed_auto ("auditor_pub",
+                                 &auditor_pub),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input for adding auditor: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = 7;
+    test_shutdown ();
+    return;
+  }
+  aar = GNUNET_new (struct AuditorAddRequest);
+  aar->idx = idx;
+  aar->h =
+    TALER_EXCHANGE_management_enable_auditor (ctx,
+                                              exchange_url,
+                                              &auditor_pub,
+                                              auditor_url,
+                                              auditor_name,
+                                              start_time,
+                                              &master_sig,
+                                              &auditor_add_cb,
+                                              aar);
+  GNUNET_CONTAINER_DLL_insert (aar_head,
+                               aar_tail,
+                               aar);
+}
+
+
+/**
+ * Function called with information about the post auditor del operation result.
+ *
+ * @param cls closure with a `struct AuditorDelRequest`
+ * @param hr HTTP response data
+ */
+static void
+auditor_del_cb (void *cls,
+                const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct AuditorDelRequest *adr = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) adr->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = 10;
+  }
+  GNUNET_CONTAINER_DLL_remove (adr_head,
+                               adr_tail,
+                               adr);
+  GNUNET_free (adr);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload auditor del data.
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value argumets for denomination revocation
+ */
+static void
+upload_auditor_del (const char *exchange_url,
+                    size_t idx,
+                    const json_t *value)
+{
+  struct TALER_AuditorPublicKeyP auditor_pub;
+  struct TALER_MasterSignatureP master_sig;
+  struct GNUNET_TIME_Absolute end_time;
+  struct AuditorDelRequest *adr;
+  const char *err_name;
+  unsigned int err_line;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("auditor_pub",
+                                 &auditor_pub),
+    GNUNET_JSON_spec_absolute_time ("validity_end",
+                                    &end_time),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to disable auditor: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = 7;
+    test_shutdown ();
+    return;
+  }
+  adr = GNUNET_new (struct AuditorDelRequest);
+  adr->idx = idx;
+  adr->h =
+    TALER_EXCHANGE_management_disable_auditor (ctx,
+                                               exchange_url,
+                                               &auditor_pub,
+                                               end_time,
+                                               &master_sig,
+                                               &auditor_del_cb,
+                                               adr);
+  GNUNET_CONTAINER_DLL_insert (adr_head,
+                               adr_tail,
+                               adr);
+}
+
+
+/**
  * Function called with information about the post wire add operation result.
  *
  * @param cls closure with a `struct WireAddRequest`
  * @param hr HTTP response data
  */
 static void
-wire_add_cb (
-  void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+wire_add_cb (void *cls,
+             const struct TALER_EXCHANGE_HttpResponse *hr)
 {
   struct WireAddRequest *war = cls;
 
@@ -898,9 +1197,8 @@ upload_wire_add (const char *exchange_url,
  * @param hr HTTP response data
  */
 static void
-wire_del_cb (
-  void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr)
+wire_del_cb (void *cls,
+             const struct TALER_EXCHANGE_HttpResponse *hr)
 {
   struct WireDelRequest *wdr = cls;
 
@@ -1280,6 +1578,14 @@ trigger_upload (const char *exchange_url)
       .cb = &upload_signkey_revocation
     },
     {
+      .key = "enable-auditor",
+      .cb = &upload_auditor_add
+    },
+    {
+      .key = "disable-auditor",
+      .cb = &upload_auditor_del
+    },
+    {
       .key = "enable-wire",
       .cb = &upload_wire_add
     },
@@ -1502,6 +1808,137 @@ do_revoke_signkey (char *const *args)
                     json_pack ("{s:o, s:o}",
                                "exchange_pub",
                                GNUNET_JSON_from_data_auto (&exchange_pub),
+                               "master_sig",
+                               GNUNET_JSON_from_data_auto (&master_sig)));
+  next (args + 1);
+}
+
+
+/**
+ * Add auditor.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the auditor's public key, args[1] the auditor's
+ *        API base URL, and args[2] the auditor's name.
+ */
+static void
+do_add_auditor (char *const *args)
+{
+  struct TALER_MasterSignatureP master_sig;
+  struct TALER_AuditorPublicKeyP auditor_pub;
+  struct GNUNET_TIME_Absolute now;
+
+  if (NULL != in)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not adding auditor\n");
+    test_shutdown ();
+    global_ret = 4;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &auditor_pub,
+                                       sizeof (auditor_pub))) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify an auditor public key as first argument for this subcommand\n");
+    test_shutdown ();
+    global_ret = 5;
+    return;
+  }
+
+  if ( (NULL == args[1]) ||
+       (0 != strncmp ("http",
+                      args[1],
+                      strlen ("http"))) ||
+       (NULL == args[2]) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify an auditor URI and auditor name as 2nd and 3rd arguments to this subcommand\n");
+    test_shutdown ();
+    global_ret = 5;
+    return;
+  }
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
+
+  TALER_exchange_offline_auditor_add_sign (&auditor_pub,
+                                           args[1],
+                                           now,
+                                           &master_priv,
+                                           &master_sig);
+  output_operation ("enable-auditor",
+                    json_pack ("{s:s, s:s, s:o, s:o, s:o}",
+                               "auditor_url",
+                               args[1],
+                               "auditor_name",
+                               args[2],
+                               "validity_start",
+                               GNUNET_JSON_from_time_abs (now),
+                               "auditor_pub",
+                               GNUNET_JSON_from_data_auto (&auditor_pub),
+                               "master_sig",
+                               GNUNET_JSON_from_data_auto (&master_sig)));
+  next (args + 3);
+}
+
+
+/**
+ * Disable auditor account.
+ *
+ * @param args the array of command-line arguments to process next;
+ *        args[0] must be the hash of the denomination key to revoke
+ */
+static void
+do_del_auditor (char *const *args)
+{
+  struct TALER_MasterSignatureP master_sig;
+  struct TALER_AuditorPublicKeyP auditor_pub;
+  struct GNUNET_TIME_Absolute now;
+
+  if (NULL != in)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Downloaded data was not consumed, not deleting auditor account\n");
+    test_shutdown ();
+    global_ret = 4;
+    return;
+  }
+  if ( (NULL == args[0]) ||
+       (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (args[0],
+                                       strlen (args[0]),
+                                       &auditor_pub,
+                                       sizeof (auditor_pub))) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must specify an auditor public key as first argument for this subcommand\n");
+    test_shutdown ();
+    global_ret = 5;
+    return;
+  }
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
+
+  TALER_exchange_offline_auditor_del_sign (&auditor_pub,
+                                           now,
+                                           &master_priv,
+                                           &master_sig);
+  output_operation ("disable-auditor",
+                    json_pack ("{s:o, s:o, s:o}",
+                               "auditor_pub",
+                               GNUNET_JSON_from_data_auto (&auditor_pub),
+                               "validity_end",
+                               GNUNET_JSON_from_time_abs (now),
                                "master_sig",
                                GNUNET_JSON_from_data_auto (&master_sig)));
   next (args + 1);
@@ -2588,6 +3025,18 @@ work (void *cls)
       .help =
         "revoke exchange online signing key (public key must be given as argument)",
       .cb = &do_revoke_signkey
+    },
+    {
+      .name = "enable-auditor",
+      .help =
+        "enable auditor for the exchange (auditor-public key, auditor-URI and auditor name must given as arguments)",
+      .cb = &do_add_auditor
+    },
+    {
+      .name = "disable-auditor",
+      .help =
+        "disable auditor at the exchange (auditor-public key must be given as argument)",
+      .cb = &do_del_auditor
     },
     {
       .name = "enable-account",
