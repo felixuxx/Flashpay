@@ -475,8 +475,6 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  GNUNET_SCHEDULER_add_shutdown (&unload_db,
-                                 NULL);
   TALER_TESTING_run_with_fakebank (is,
                                    all,
                                    bc.exchange_auth.wire_gateway_url);
@@ -501,19 +499,10 @@ prepare_database (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  if (GNUNET_OK !=
-      dbc.plugin->create_tables (dbc.plugin->cls))
-  {
-    GNUNET_break (0);
-    TALER_EXCHANGEDB_plugin_unload (dbc.plugin);
-    dbc.plugin = NULL;
-    result = 77;
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
   dbc.session = dbc.plugin->get_session (dbc.plugin->cls);
   GNUNET_assert (NULL != dbc.session);
-
+  GNUNET_SCHEDULER_add_shutdown (&unload_db,
+                                 NULL);
   run (NULL,
        is);
 }

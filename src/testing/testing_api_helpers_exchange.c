@@ -723,6 +723,12 @@ TALER_TESTING_setup_with_exchange_cfg (
   {
     GNUNET_free (base_url);
     stop_helpers (helpers);
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (exchanged,
+                                          SIGTERM));
+    GNUNET_break (GNUNET_OK ==
+                  GNUNET_OS_process_wait (exchanged));
+    GNUNET_OS_process_destroy (exchanged);
     return 77;
   }
   GNUNET_free (base_url);
