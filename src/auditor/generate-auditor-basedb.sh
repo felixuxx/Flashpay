@@ -86,6 +86,11 @@ MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
 BANK_URL=http://localhost:${BANK_PORT}/
 AUDITOR_URL=http://localhost:8083/
+AUDITOR_PRIV_FILE=`taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE`
+AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
+mkdir -p $AUDITOR_PRIV_DIR
+gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
+AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
 
 # patch configuration
 taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
@@ -156,11 +161,11 @@ then
 fi
 echo " DONE"
 
-
 echo -n "Setting up keys"
 taler-exchange-offline -c $CONF \
   download sign \
   enable-account payto://x-taler-bank/localhost/2 \
+  enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
   wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 \
   upload &> taler-exchange-offline.log
 
@@ -211,7 +216,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
     --arg MERCHANT_URL "$MERCHANT_URL" \
     --arg EXCHANGE_URL "$EXCHANGE_URL" \
     --arg BANK_URL "$BANK_URL"
-  )"
+  )" &> taler-wallet-cli.log
 
 
 echo "Shutting down services"
@@ -223,8 +228,6 @@ pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
 
 echo $MASTER_PUB > ${BASEDB}.mpub
 
-WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
-cp $WIRE_FEE_DIR/x-taler-bank.fee ${BASEDB}.fees
 date +%s > ${BASEDB}.age
 
 # clean up

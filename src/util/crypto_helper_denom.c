@@ -369,7 +369,7 @@ await_read_ready (struct TALER_CRYPTO_DenominationHelper *dh)
   };
   sigset_t sigmask;
   struct timespec ts = {
-    .tv_sec = 5
+    .tv_sec = 1
   };
   int ret;
 
@@ -412,7 +412,15 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
         if (dh->synced)
           break;
         if (! await_read_ready (dh))
-          break; /* timeout */
+        {
+          /* timeout AND not synced => full reconnect */
+          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                      "Restarting connection to helper, did not come up properly\n");
+          do_disconnect (dh);
+          try_connect (dh);
+          if (-1 == dh->sock)
+            return; /* give up */
+        }
         continue; /* try again */
       }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,

@@ -72,6 +72,8 @@ export MERCHANT_URL=http://localhost:${MERCHANT_PORT}/
 BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
 export BANK_URL=http://localhost:${BANK_PORT}/
 export AUDITOR_URL=http://localhost:8083/
+AUDITOR_PRIV_FILE=`taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE`
+AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
 
 # patch configuration
 taler-config -c $CONF -s exchange -o MASTER_PUBLIC_KEY -V $MASTER_PUB
@@ -151,6 +153,7 @@ echo -n "Setting up keys"
 taler-exchange-offline -c $CONF \
   download sign \
   enable-account payto://x-taler-bank/localhost/2 \
+  enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
   wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 \
   upload &> taler-exchange-offline.log
 
