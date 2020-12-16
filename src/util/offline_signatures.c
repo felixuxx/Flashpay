@@ -23,15 +23,6 @@
 #include "taler_signatures.h"
 
 
-/**
- * Create auditor addition signature.
- *
- * @param auditor_pub public key of the auditor
- * @param auditor_url URL of the auditor
- * @param start_date when to enable the auditor (for replay detection)
- * @param master_priv private key to sign with
- * @param[out] master_sig where to write the signature
- */
 void
 TALER_exchange_offline_auditor_add_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
@@ -92,14 +83,6 @@ TALER_exchange_offline_auditor_add_verify (
 }
 
 
-/**
- * Create auditor deletion signature.
- *
- * @param auditor_pub public key of the auditor
- * @param end_date when to disable the auditor (for replay detection)
- * @param master_priv private key to sign with
- * @param[out] master_sig where to write the signature
- */
 void
 TALER_exchange_offline_auditor_del_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
@@ -120,15 +103,6 @@ TALER_exchange_offline_auditor_del_sign (
 }
 
 
-/**
- * Verify auditor del signature.
- *
- * @param auditor_pub public key of the auditor
- * @param end_date when to disable the auditor (for replay detection)
- * @param master_pub public key to verify against
- * @param master_sig the signature the signature
- * @return #GNUNET_OK if the signature is valid
- */
 int
 TALER_exchange_offline_auditor_del_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
