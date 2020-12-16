@@ -103,7 +103,9 @@ TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
 $TLIBEXEC/taler-helper-crypto-eddsa -c $CONF 2> taler-helper-crypto-eddsa.log &
+SIGNKEY_HELPER_PID=$!
 $TLIBEXEC/taler-helper-crypto-rsa -c $CONF 2> taler-helper-crypto-rsa.log &
+DENOM_HELPER_PID=$!
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 EXCHANGE_PID=$!
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
@@ -272,6 +274,12 @@ export TIMETRAVEL="--timetravel=604800000000"
 
 echo "Launching exchange 1 week in the future"
 kill -TERM $EXCHANGE_PID
+kill -TERM $DENOM_HELPER_PID
+kill -TERM $SIGNKEY_HELPER_PID
+$TLIBEXEC/taler-helper-crypto-eddsa $TIMETRAVEL -c $CONF 2> taler-helper-crypto-eddsa.log &
+SIGNKEY_HELPER_PID=$!
+$TLIBEXEC/taler-helper-crypto-rsa $TIMETRAVEL -c $CONF 2> taler-helper-crypto-rsa.log &
+DENOM_HELPER_PID=$!
 taler-exchange-httpd $TIMETRAVEL -c $CONF 2> taler-exchange-httpd.log &
 export EXCHANGE_PID=$!
 
@@ -372,11 +380,7 @@ echo "Dumping database"
 pg_dump -O $TARGET_DB | sed -e '/AS integer/d' > ${BASEDB}.sql
 
 echo $MASTER_PUB > ${BASEDB}.mpub
-
-WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
-cp $WIRE_FEE_DIR/x-taler-bank.fee ${BASEDB}.fees
 date +%s > ${BASEDB}.age
-
 
 # clean up
 echo "Final clean up"
