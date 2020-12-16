@@ -305,7 +305,6 @@ TALER_EXCHANGEDB_unload_accounts (void)
                                  wa_tail,
                                  wa);
     TALER_BANK_auth_free (&wa->auth);
-    TALER_EXCHANGEDB_fees_free (wa->af);
     GNUNET_free (wa->section_name);
     GNUNET_free (wa->method);
     GNUNET_free (wa);

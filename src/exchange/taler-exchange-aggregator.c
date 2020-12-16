@@ -455,21 +455,29 @@ deposit_cb (void *cls,
   au->execution_time = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&au->execution_time);
   {
-    struct TALER_EXCHANGEDB_AggregateFees *af;
+    struct TALER_Amount closing_fee;
+    struct GNUNET_TIME_Absolute start_date;
+    struct GNUNET_TIME_Absolute end_date;
+    struct TALER_MasterSignatureP master_sig;
+    enum GNUNET_DB_QueryStatus qs;
 
-    af = TALER_EXCHANGEDB_update_fees (cfg,
-                                       db_plugin,
-                                       au->wa,
-                                       au->execution_time,
-                                       au->session);
-    if (NULL == af)
+    qs = db_plugin->get_wire_fee (db_plugin->cls,
+                                  au->session,
+                                  au->wa->method,
+                                  au->execution_time,
+                                  &start_date,
+                                  &end_date,
+                                  &au->wire_fee,
+                                  &closing_fee,
+                                  &master_sig);
+    if (0 >= qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Could not get or persist wire fees for %s. Aborting run.\n",
+                  "Could not get wire fees for %s at %s. Aborting run.\n",
+                  au->wa->method,
                   GNUNET_STRINGS_absolute_time_to_string (au->execution_time));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    au->wire_fee = af->wire_fee;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,

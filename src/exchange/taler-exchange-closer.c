@@ -248,7 +248,7 @@ expired_reserve_cb (void *cls,
   struct GNUNET_TIME_Absolute now;
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount_without_fee;
-  const struct TALER_Amount *closing_fee;
+  struct TALER_Amount closing_fee;
   int ret;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_EXCHANGEDB_WireAccount *wa;
@@ -276,32 +276,41 @@ expired_reserve_cb (void *cls,
   /* lookup `closing_fee` from time of actual reserve expiration
      (we may be lagging behind!) */
   {
-    struct TALER_EXCHANGEDB_AggregateFees *af;
+    struct TALER_Amount wire_fee;
+    struct GNUNET_TIME_Absolute start_date;
+    struct GNUNET_TIME_Absolute end_date;
+    struct TALER_MasterSignatureP master_sig;
+    enum GNUNET_DB_QueryStatus qs;
 
-    af = TALER_EXCHANGEDB_update_fees (cfg,
-                                       db_plugin,
-                                       wa,
-                                       expiration_date,
-                                       session);
-    if (NULL == af)
+    qs = db_plugin->get_wire_fee (db_plugin->cls,
+                                  session,
+                                  wa->method,
+                                  expiration_date,
+                                  &start_date,
+                                  &end_date,
+                                  &wire_fee,
+                                  &closing_fee,
+                                  &master_sig);
+    if (0 >= qs)
     {
-      global_ret = GR_WIRE_TRANSFER_FEES_NOT_CONFIGURED;
-      GNUNET_SCHEDULER_shutdown ();
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Could not get wire fees for %s at %s. Aborting run.\n",
+                  wa->method,
+                  GNUNET_STRINGS_absolute_time_to_string (expiration_date));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    closing_fee = &af->closing_fee;
   }
 
   /* calculate transfer amount */
   ret = TALER_amount_subtract (&amount_without_fee,
                                left,
-                               closing_fee);
+                               &closing_fee);
   if ( (GNUNET_SYSERR == ret) ||
        (GNUNET_NO == ret) )
   {
     /* Closing fee higher than or equal to remaining balance, close
        without wire transfer. */
-    closing_fee = left;
+    closing_fee = *left;
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (left->currency,
                                           &amount_without_fee));
@@ -337,7 +346,7 @@ expired_reserve_cb (void *cls,
                                            account_payto_uri,
                                            &wtid,
                                            left,
-                                           closing_fee);
+                                           &closing_fee);
   else
     qs = GNUNET_DB_STATUS_HARD_ERROR;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

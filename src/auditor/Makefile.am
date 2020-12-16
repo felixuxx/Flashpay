@@ -15,7 +15,6 @@ bin_PROGRAMS = \
   taler-auditor-dbinit \
   taler-auditor-exchange \
   taler-auditor-httpd \
-  taler-auditor-sign \
   taler-helper-auditor-aggregation \
   taler-helper-auditor-coins \
   taler-helper-auditor-deposits \
@@ -156,17 +155,6 @@ taler_auditor_httpd_LDADD = \
   -lz \
   $(XLIB)
 
-taler_auditor_sign_SOURCES = \
-  taler-auditor-sign.c
-taler_auditor_sign_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil \
-  $(XLIB)
-
-
 taler_auditor_exchange_SOURCES = \
   taler-auditor-exchange.c
 taler_auditor_exchange_LDADD = \
@@ -195,9 +183,7 @@ EXTRA_DIST = \
   $(check_SCRIPTS) \
   auditor-basedb.age \
   auditor-basedb.sql \
-  auditor-basedb.fees \
   auditor-basedb.mpub \
   revoke-basedb.age \
   revoke-basedb.sql \
-  revoke-basedb.fees \
   revoke-basedb.mpub

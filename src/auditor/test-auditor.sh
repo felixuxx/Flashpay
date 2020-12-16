@@ -1798,12 +1798,6 @@ check_with_database()
     # Setup database-specific globals
     MASTER_PUB=`cat ${BASEDB}.mpub`
 
-    # Where to store wire fee details for aggregator
-    echo "Storing wire fees"
-    WIRE_FEE_DIR=`taler-config -c $CONF -f -s exchangedb -o WIREFEE_BASE_DIR`
-    mkdir -p $WIRE_FEE_DIR
-    cp ${BASEDB}.fees $WIRE_FEE_DIR/x-taler-bank.fee
-
     # Determine database age
     echo "Calculating database age based on ${BASEDB}.age"
     AGE=`cat ${BASEDB}.age`

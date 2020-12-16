@@ -206,15 +206,19 @@ TALER_TESTING_cleanup_files_cfg (void *cls,
 
 
 /**
- * Run `taler-exchange-keyup`.
+ * Run `taler-exchange-offline`.
  *
  * @param config_filename configuration file to use
- * @param output_filename where to write the output for the auditor
+ * @param payto_uri bank account to enable, can be NULL
+ * @param auditor_pub public key of auditor to enable, can be NULL
+ * @param auditor_url URL of auditor to enable, can be NULL
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_run_keyup (const char *config_filename,
-                         const char *output_filename);
+TALER_TESTING_run_exchange_offline (const char *config_filename,
+                                    const char *payto_uri,
+                                    const char *auditor_pub,
+                                    const char *auditor_url);
 
 
 /**
@@ -238,21 +242,13 @@ TALER_TESTING_exchange_db_reset (const char *config_filename);
 
 
 /**
- * Run `taler-auditor-sign`.
+ * Run `taler-auditor-offline` tool.
  *
  * @param config_filename configuration file to use
- * @param exchange_master_pub master public key of the exchange
- * @param auditor_base_url what is the base URL of the auditor
- * @param signdata_in where is the information from taler-exchange-keyup
- * @param signdata_out where to write the output for the exchange
  * @return #GNUNET_OK on success
  */
 int
-TALER_TESTING_run_auditor_sign (const char *config_filename,
-                                const char *exchange_master_pub,
-                                const char *auditor_base_url,
-                                const char *signdata_in,
-                                const char *signdata_out);
+TALER_TESTING_run_auditor_offline (const char *config_filename);
 
 
 /**
@@ -1218,18 +1214,6 @@ TALER_TESTING_cmd_exec_closer (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_transfer (const char *label,
                                  const char *config_filename);
-
-
-/**
- * Make a "auditor sign" CMD.
- *
- * @param label command label
- * @param config_filename configuration filename
- * @return the command.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_exec_auditor_sign (const char *label,
-                                     const char *config_filename);
 
 
 /**
