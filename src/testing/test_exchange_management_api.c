@@ -57,13 +57,11 @@ run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
   struct TALER_TESTING_Command commands[] = {
-#if FIXME_MIGRATION_DONE
     /* this currently fails, because the
        auditor is already added by the test setup logic */
     TALER_TESTING_cmd_auditor_del ("del-auditor-NOT-FOUND",
                                    MHD_HTTP_NOT_FOUND,
                                    false),
-#endif
     TALER_TESTING_cmd_auditor_add ("add-auditor-BAD-SIG",
                                    MHD_HTTP_FORBIDDEN,
                                    true),
