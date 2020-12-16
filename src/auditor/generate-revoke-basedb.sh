@@ -73,6 +73,9 @@ BANK_PORT=`taler-config -c $CONF -s BANK -o HTTP_PORT`
 export BANK_URL=http://localhost:${BANK_PORT}/
 export AUDITOR_URL=http://localhost:8083/
 AUDITOR_PRIV_FILE=`taler-config -f -c $CONF -s AUDITOR -o AUDITOR_PRIV_FILE`
+AUDITOR_PRIV_DIR=`dirname $AUDITOR_PRIV_FILE`
+mkdir -p $AUDITOR_PRIV_DIR
+gnunet-ecc -g1 $AUDITOR_PRIV_FILE > /dev/null
 AUDITOR_PUB=`gnunet-ecc -p $AUDITOR_PRIV_FILE`
 
 # patch configuration
