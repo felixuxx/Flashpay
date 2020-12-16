@@ -123,9 +123,7 @@ revoke_traits (void *cls,
 
 
 /**
- * Run the "revoke" command.  The core of the function
- * is to call the "keyup" utility passing it the base32
- * encoding of the denomination to revoke.
+ * Run the "revoke" command.
  *
  * @param cls closure.
  * @param cmd the command to execute.

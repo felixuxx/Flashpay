@@ -170,7 +170,7 @@ main (int argc,
                                       &bc))
     return 77;
   TALER_TESTING_cleanup_files (CONFIG_FILE);
-  /* @helpers.  Run keyup, create tables, ... Note: it
+  /* @helpers.  Create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
   switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
