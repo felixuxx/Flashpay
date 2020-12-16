@@ -484,23 +484,22 @@ run (void *cls,
 
 
 /**
- * Prepare database an launch the test.
+ * Prepare database and launch the test.
  *
  * @param cls unused
- * @param cfg our configuration
- * @return #GNUNET_NO if database could not be prepared,
- * otherwise #GNUNET_OK
+ * @param is interpreter to use
  */
-static int
+static void
 prepare_database (void *cls,
-                  const struct GNUNET_CONFIGURATION_Handle *cfg)
+                  struct TALER_TESTING_Interpreter *is)
 {
-  dbc.plugin = TALER_EXCHANGEDB_plugin_load (cfg);
+  dbc.plugin = TALER_EXCHANGEDB_plugin_load (is->cfg);
   if (NULL == dbc.plugin)
   {
     GNUNET_break (0);
     result = 77;
-    return GNUNET_NO;
+    TALER_TESTING_interpreter_fail (is);
+    return;
   }
   if (GNUNET_OK !=
       dbc.plugin->create_tables (dbc.plugin->cls))
@@ -509,17 +508,14 @@ prepare_database (void *cls,
     TALER_EXCHANGEDB_plugin_unload (dbc.plugin);
     dbc.plugin = NULL;
     result = 77;
-    return GNUNET_NO;
+    TALER_TESTING_interpreter_fail (is);
+    return;
   }
   dbc.session = dbc.plugin->get_session (dbc.plugin->cls);
   GNUNET_assert (NULL != dbc.session);
 
-  result = TALER_TESTING_setup (&run,
-                                NULL,
-                                cfg,
-                                NULL, // no exchange process handle.
-                                GNUNET_NO); // do not try to connect to the exchange
-  return GNUNET_OK;
+  run (NULL,
+       is);
 }
 
 
@@ -570,10 +566,11 @@ main (int argc,
     TALER_LOG_WARNING ("Could not prepare the fakebank\n");
     return 77;
   }
+  result = GNUNET_OK;
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_parse_and_run (config_filename,
-                                          &prepare_database,
-                                          NULL))
+      TALER_TESTING_setup_with_exchange (&prepare_database,
+                                         NULL,
+                                         config_filename))
   {
     TALER_LOG_WARNING ("Could not prepare database for tests.\n");
     return result;
