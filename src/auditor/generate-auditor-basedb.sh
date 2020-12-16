@@ -164,7 +164,7 @@ echo " DONE"
 echo -n "Setting up keys"
 taler-exchange-offline -c $CONF \
   download sign \
-  enable-account payto://x-taler-bank/localhost/2 \
+  enable-account payto://x-taler-bank/localhost/Exchange \
   enable-auditor $AUDITOR_PUB $AUDITOR_URL "TESTKUDOS Auditor" \
   wire-fee now x-taler-bank TESTKUDOS:0.01 TESTKUDOS:0.01 \
   upload &> taler-exchange-offline.log
