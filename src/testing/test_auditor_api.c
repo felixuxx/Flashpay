@@ -620,6 +620,10 @@ run (void *cls,
   };
 
   struct TALER_TESTING_Command commands[] = {
+    TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
+                                              CONFIG_FILE,
+                                              "EUR:0.01",
+                                              "EUR:0.01"),
     TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
                                    MHD_HTTP_NO_CONTENT,
                                    false),
