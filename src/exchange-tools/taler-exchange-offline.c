@@ -2618,14 +2618,6 @@ do_show (char *const *args)
     }
     GNUNET_JSON_parse_free (spec);
   }
-  /* do NOT consume input if next argument is '-' */
-  if ( (NULL != args[0]) &&
-       (0 == strcmp ("-",
-                     args[0])) )
-  {
-    next (args + 1);
-    return;
-  }
   json_decref (in);
   in = NULL;
   next (args);
@@ -3053,7 +3045,7 @@ work (void *cls)
     {
       .name = "wire-fee",
       .help =
-        "sign wire fees for the given year (year, wire fee and closing fee must be given as arguments)",
+        "sign wire fees for the given year (year, wire method, wire fee and closing fee must be given as arguments)",
       .cb = &do_set_wire_fee
     },
     {

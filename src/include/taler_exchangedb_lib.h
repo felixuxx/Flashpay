@@ -64,17 +64,6 @@ struct TALER_EXCHANGEDB_AccountInfo
   const char *method;
 
   /**
-   * payto://-URL of the account.
-   */
-  const char *payto_uri;
-
-  /**
-   * Filename containing the signed /wire response, or NULL
-   * if not given.
-   */
-  const char *wire_response_filename;
-
-  /**
    * #GNUNET_YES if this account is enabed to be debited
    * by the taler-exchange-aggregator.
    */

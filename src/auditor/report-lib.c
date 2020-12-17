@@ -752,10 +752,10 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
           strlen (master_public_key_str),
           &TALER_ARL_master_pub.eddsa_pub))
     {
-      GNUNET_log_config_malformed (GNUNET_ERROR_TYPE_ERROR,
-                                   "exchange",
-                                   "MASTER_PUBLIC_KEY",
-                                   "invalid key");
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "MASTER_PUBLIC_KEY",
+                                 "invalid key");
       GNUNET_free (master_public_key_str);
       return GNUNET_SYSERR;
     }
@@ -772,7 +772,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     char *fn;
 
     if (GNUNET_OK ==
-        GNUNET_CONFIGURATION_get_value_filename (kcfg,
+        GNUNET_CONFIGURATION_get_value_filename (c,
                                                  "auditor",
                                                  "AUDITOR_PRIV_FILE",
                                                  &fn))
@@ -785,7 +785,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
                                              &auditor_priv.eddsa_priv))
       {
         GNUNET_CRYPTO_eddsa_key_get_public (&auditor_priv.eddsa_priv,
-                                            &auditor_pub.eddsa_pub);
+                                            &TALER_ARL_auditor_pub.eddsa_pub);
       }
       GNUNET_free (fn);
     }
@@ -797,7 +797,7 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     char *auditor_public_key_str;
 
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (TALER_ARL_cfg,
+        GNUNET_CONFIGURATION_get_value_string (c,
                                                "auditor",
                                                "PUBLIC_KEY",
                                                &auditor_public_key_str))
@@ -810,13 +810,13 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_public_key_from_string (
           auditor_public_key_str,
-          strlen (auditor_master_public_key_str),
+          strlen (auditor_public_key_str),
           &TALER_ARL_auditor_pub.eddsa_pub))
     {
-      GNUNET_log_config_malformed (GNUNET_ERROR_TYPE_ERROR,
-                                   "auditor",
-                                   "PUBLIC_KEY",
-                                   "invalid key");
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "auditor",
+                                 "PUBLIC_KEY",
+                                 "invalid key");
       GNUNET_free (auditor_public_key_str);
       return GNUNET_SYSERR;
     }

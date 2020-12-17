@@ -76,7 +76,6 @@ check_for_account (void *cls,
   struct FindAccountContext *ctx = cls;
   char *method;
   char *payto_uri;
-  char *wire_response_filename;
 
   if (0 != strncasecmp (section,
                         "exchange-account-",
@@ -104,18 +103,10 @@ check_for_account (void *cls,
     GNUNET_free (payto_uri);
     return;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (ctx->cfg,
-                                               section,
-                                               "WIRE_RESPONSE",
-                                               &wire_response_filename))
-    wire_response_filename = NULL;
   {
     struct TALER_EXCHANGEDB_AccountInfo ai = {
       .section_name = section,
       .method = method,
-      .payto_uri = payto_uri,
-      .wire_response_filename = wire_response_filename,
       .debit_enabled = (GNUNET_YES ==
                         GNUNET_CONFIGURATION_get_value_yesno (
                           ctx->cfg,
@@ -130,9 +121,7 @@ check_for_account (void *cls,
     ctx->cb (ctx->cb_cls,
              &ai);
   }
-  GNUNET_free (payto_uri);
   GNUNET_free (method);
-  GNUNET_free (wire_response_filename);
 }
 
 
