@@ -495,7 +495,6 @@ check_with_database()
     done
     # echo "Cleanup (disabled, leaving database $DB behind)"
     dropdb $DB
-    rm -r $WIRE_FEE_DIR
     rm -f test-audit.log test-wire-audit.log
 }
 

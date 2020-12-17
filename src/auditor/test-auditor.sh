@@ -1305,12 +1305,12 @@ echo "===========22: denomination key expired ================="
 
 H_DENOM=`echo 'SELECT denom_pub_hash FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
 
-OLD_START=`echo "SELECT valid_from FROM auditor_denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
-OLD_WEXP=`echo "SELECT expire_withdraw FROM auditor_denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
+OLD_START=`echo "SELECT valid_from FROM denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
+OLD_WEXP=`echo "SELECT expire_withdraw FROM denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
 # Basically expires 'immediately', so that the withdraw must have been 'invalid'
 NEW_WEXP=`expr $OLD_START + 1 || true`
 
-echo "UPDATE auditor_denominations SET expire_withdraw=${NEW_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
+echo "UPDATE denominations SET expire_withdraw=${NEW_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
 
 
 run_audit
@@ -1321,7 +1321,7 @@ jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserv
 echo PASS
 
 # Undo modification
-echo "UPDATE auditor_denominations SET expire_withdraw=${OLD_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
+echo "UPDATE denominations SET expire_withdraw=${OLD_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
 
 }
 
@@ -1650,7 +1650,7 @@ fi
 function test_29() {
 echo "===========29: withdraw fee inconsistency ================="
 
-echo "UPDATE auditor_denominations SET fee_withdraw_frac=5000000 WHERE coin_val=1;" | psql -Aqt $DB
+echo "UPDATE denominations SET fee_withdraw_frac=5000000 WHERE coin_val=1;" | psql -Aqt $DB
 
 run_audit
 
@@ -1668,7 +1668,7 @@ then
 fi
 echo "OK"
 # Undo
-echo "UPDATE auditor_denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
+echo "UPDATE denominations SET fee_withdraw_frac=2000000 WHERE coin_val=1;" | psql -Aqt $DB
 
 }
 
@@ -1678,7 +1678,7 @@ echo "UPDATE auditor_denominations SET fee_withdraw_frac=2000000 WHERE coin_val=
 function test_30() {
 echo "===========30: melt fee inconsistency ================="
 
-echo "UPDATE auditor_denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
+echo "UPDATE denominations SET fee_refresh_frac=5000000 WHERE coin_val=10;" | psql -Aqt $DB
 
 run_audit
 echo -n "Testing inconsistency detection... "
@@ -1697,7 +1697,7 @@ fi
 jq -e .emergencies[0] < test-audit-coins.json > /dev/null && exit_fail "Unexpected emergency detected in ordinary run"
 echo "OK"
 # Undo
-echo "UPDATE auditor_denominations SET fee_refresh_frac=3000000 WHERE coin_val=1;" | psql -Aqt $DB
+echo "UPDATE denominations SET fee_refresh_frac=3000000 WHERE coin_val=1;" | psql -Aqt $DB
 
 }
 
@@ -1715,7 +1715,7 @@ then
 
     echo "===========31: deposit fee inconsistency ================="
 
-    echo "UPDATE auditor_denominations SET fee_deposit_frac=5000000 WHERE coin_val=8;" | psql -Aqt $DB
+    echo "UPDATE denominations SET fee_deposit_frac=5000000 WHERE coin_val=8;" | psql -Aqt $DB
 
     run_audit aggregator
     echo -n "Testing inconsistency detection... "
@@ -1733,7 +1733,7 @@ then
 
     echo "OK"
     # Undo
-    echo "UPDATE auditor_denominations SET fee_deposit_frac=2000000 WHERE coin_val=8;" | psql -Aqt $DB
+    echo "UPDATE denominations SET fee_deposit_frac=2000000 WHERE coin_val=8;" | psql -Aqt $DB
 
 else
     echo "Test skipped (database too new)"
@@ -1821,7 +1821,6 @@ check_with_database()
     done
     echo "Cleanup (disabled, leaving database $DB behind)"
     # dropdb $DB
-    rm -r $WIRE_FEE_DIR
 }
 
 

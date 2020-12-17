@@ -62,6 +62,11 @@ struct TALER_AUDITORDB_Session *TALER_ARL_asession;
 struct TALER_MasterPublicKeyP TALER_ARL_master_pub;
 
 /**
+ * Public key of the auditor.
+ */
+static struct TALER_AuditorPublicKeyP TALER_ARL_auditor_pub;
+
+/**
  * At what time did the auditor process start?
  */
 struct GNUNET_TIME_Absolute start_time;
@@ -150,21 +155,84 @@ TALER_ARL_report (json_t *array,
 
 
 /**
- * Function called with the results of select_denomination_info()
+ * Function called with the results of iterate_denomination_info(),
+ * or directly (!).  Used to check and add the respective denomination
+ * to our hash table.
  *
  * @param cls closure, NULL
+ * @param denom_pub public key, sometimes NULL (!)
  * @param issue issuing information with value, fees and other info about the denomination.
- * @return #GNUNET_OK (to continue)
  */
-static int
+static void
 add_denomination (void *cls,
-                  const struct TALER_DenominationKeyValidityPS *issue)
+                  const struct TALER_DenominationPublicKey *denom_pub,
+                  const struct
+                  TALER_EXCHANGEDB_DenominationKeyInformationP *validity)
 {
+  const struct TALER_DenominationKeyValidityPS *issue = &validity->properties;
+
   (void) cls;
+  (void) denom_pub;
   if (NULL !=
       GNUNET_CONTAINER_multihashmap_get (denominations,
                                          &issue->denom_hash))
-    return GNUNET_OK; /* value already known */
+    return; /* value already known */
+#if FIXME_IMPLEMENT
+  qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
+                                                TALER_ARL_esession,
+                                                &issue->denom_hash,
+                                                &TALER_ARL_auditor_pub,
+                                                &auditor_sig);
+  if (0 >= qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Encountered denomination `%s' that this auditor is not auditing!\n",
+                GNUNET_h2s (&issue->denom_hash));
+    return; /* skip! */
+  }
+  {
+    // TODO: one of the auditor passes should really just do this
+    // add problems to JSON report (even if the implications are unclear),
+    // instead of doing it here!
+    struct TALER_Amount coin_value;
+    struct TALER_Amount fee_withdraw;
+    struct TALER_Amount fee_deposit;
+    struct TALER_Amount fee_refresh;
+    struct TALER_Amount fee_refund;
+
+    TALER_amount_hton (&coin_value,
+                       &issue->value);
+    TALER_amount_hton (&fee_withdraw,
+                       &issue->fee_withdraw);
+    TALER_amount_hton (&fee_deposit,
+                       &issue->fee_deposit);
+    TALER_amount_hton (&fee_refresh,
+                       &issue->fee_refresh);
+    TALER_amount_hton (&fee_refund,
+                       &issue->fee_refund);
+    if (GNUNET_OK !=
+        TALER_auditor_denom_validity_verify (
+          TALER_ARL_auditor_url,
+          &issue->denom_hash,
+          &TALER_ARL_master_pub,
+          GNUNET_TIME_absolute_ntoh (issue->start),
+          GNUNET_TIME_absolute_ntoh (issue->expire_withdraw),
+          GNUNET_TIME_absolute_ntoh (issue->expire_deposit),
+          GNUNET_TIME_absolute_ntoh (issue->expire_legal),
+          &coin_value,
+          &fee_withdraw,
+          &fee_deposit,
+          &fee_refresh,
+          &fee_refund,
+          &TALER_ARL_auditor_pub,
+          &auditor_sig))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Exchange has invalid signature from this auditor for denomination `%s' in its database!\n",
+                  GNUNET_h2s (&issue->denom_hash));
+    }
+  }
+#endif
 #if GNUNET_EXTRA_LOGGING >= 1
   {
     struct TALER_Amount value;
@@ -201,7 +269,6 @@ add_denomination (void *cls,
                                                       i,
                                                       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
   }
-  return GNUNET_OK;
 }
 
 
@@ -214,9 +281,9 @@ add_denomination (void *cls,
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
-                                         const struct
-                                         TALER_DenominationKeyValidityPS **issue)
+TALER_ARL_get_denomination_info_by_hash (
+  const struct GNUNET_HashCode *dh,
+  const struct TALER_DenominationKeyValidityPS **issue)
 {
   enum GNUNET_DB_QueryStatus qs;
 
@@ -224,11 +291,10 @@ TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
   {
     denominations = GNUNET_CONTAINER_multihashmap_create (256,
                                                           GNUNET_NO);
-    qs = TALER_ARL_adb->select_denomination_info (TALER_ARL_adb->cls,
-                                                  TALER_ARL_asession,
-                                                  &TALER_ARL_master_pub,
-                                                  &add_denomination,
-                                                  NULL);
+    qs = TALER_ARL_edb->iterate_denomination_info (TALER_ARL_edb->cls,
+                                                   // FIXME: change API to pass session!?
+                                                   &add_denomination,
+                                                   NULL);
     if (0 > qs)
     {
       *issue = NULL;
@@ -248,18 +314,24 @@ TALER_ARL_get_denomination_info_by_hash (const struct GNUNET_HashCode *dh,
     }
   }
   /* maybe database changed since we last iterated, give it one more shot */
-  qs = TALER_ARL_adb->select_denomination_info (TALER_ARL_adb->cls,
-                                                TALER_ARL_asession,
-                                                &TALER_ARL_master_pub,
-                                                &add_denomination,
-                                                NULL);
-  if (qs <= 0)
   {
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Denomination %s not found\n",
-                  TALER_B2S (dh));
-    return qs;
+    struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+
+    qs = TALER_ARL_edb->get_denomination_info (TALER_ARL_edb->cls,
+                                               TALER_ARL_esession,
+                                               dh,
+                                               &issue);
+    if (qs <= 0)
+    {
+      if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Denomination %s not found\n",
+                    TALER_B2S (dh));
+      return qs;
+    }
+    add_denomination (NULL,
+                      NULL,
+                      &issue);
   }
   {
     const struct TALER_DenominationKeyValidityPS *i;
@@ -659,13 +731,13 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
   if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_master_pub))
   {
     /* -m option not given, try configuration */
-    char *TALER_ARL_master_public_key_str;
+    char *master_public_key_str;
 
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_string (TALER_ARL_cfg,
                                                "exchange",
                                                "MASTER_PUBLIC_KEY",
-                                               &TALER_ARL_master_public_key_str))
+                                               &master_public_key_str))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Pass option -m or set MASTER_PUBLIC_KEY in the configuration!\n");
@@ -676,23 +748,80 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     }
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_public_key_from_string (
-          TALER_ARL_master_public_key_str,
-          strlen (
-            TALER_ARL_master_public_key_str),
-          &TALER_ARL_master_pub.
-          eddsa_pub))
+          master_public_key_str,
+          strlen (master_public_key_str),
+          &TALER_ARL_master_pub.eddsa_pub))
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Malformed master public key given in configuration file.");
-      GNUNET_free (TALER_ARL_master_public_key_str);
+      GNUNET_log_config_malformed (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange",
+                                   "MASTER_PUBLIC_KEY",
+                                   "invalid key");
+      GNUNET_free (master_public_key_str);
       return GNUNET_SYSERR;
     }
-    GNUNET_free (TALER_ARL_master_public_key_str);
+    GNUNET_free (master_public_key_str);
   } /* end of -m not given */
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Taler auditor running for exchange master public key %s\n",
               TALER_B2S (&TALER_ARL_master_pub));
+
+  if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_auditor_pub))
+  {
+    /* try loading private key and deriving public key */
+    char *fn;
+
+    if (GNUNET_OK ==
+        GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                                 "auditor",
+                                                 "AUDITOR_PRIV_FILE",
+                                                 &fn))
+    {
+      struct TALER_AuditorPrivateKeyP auditor_priv;
+
+      if (GNUNET_OK ==
+          GNUNET_CRYPTO_eddsa_key_from_file (fn,
+                                             GNUNET_NO, /* do NOT create it! */
+                                             &auditor_priv.eddsa_priv))
+      {
+        GNUNET_CRYPTO_eddsa_key_get_public (&auditor_priv.eddsa_priv,
+                                            &auditor_pub.eddsa_pub);
+      }
+      GNUNET_free (fn);
+    }
+  }
+
+  if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_auditor_pub))
+  {
+    /* private key not available, try configuration for public key */
+    char *auditor_public_key_str;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (TALER_ARL_cfg,
+                                               "auditor",
+                                               "PUBLIC_KEY",
+                                               &auditor_public_key_str))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "auditor",
+                                 "PUBLIC_KEY");
+      return GNUNET_SYSERR;
+    }
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_public_key_from_string (
+          auditor_public_key_str,
+          strlen (auditor_master_public_key_str),
+          &TALER_ARL_auditor_pub.eddsa_pub))
+    {
+      GNUNET_log_config_malformed (GNUNET_ERROR_TYPE_ERROR,
+                                   "auditor",
+                                   "PUBLIC_KEY",
+                                   "invalid key");
+      GNUNET_free (auditor_public_key_str);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (auditor_public_key_str);
+  }
 
   if (GNUNET_OK !=
       TALER_config_get_currency (TALER_ARL_cfg,

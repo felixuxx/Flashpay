@@ -45,23 +45,6 @@ typedef void
 
 
 /**
- * Function called with the results of select_denomination_info()
- *
- * @param cls closure
- * @param issue issuing information with value, fees and other info about the denomination.
- *
- * @return sets the return value of select_denomination_info(),
- *         #GNUNET_OK to continue,
- *         #GNUNET_NO to stop processing further rows
- *         #GNUNET_SYSERR or other values on error.
- */
-typedef int
-(*TALER_AUDITORDB_DenominationInfoDataCallback)(
-  void *cls,
-  const struct TALER_DenominationKeyValidityPS *issue);
-
-
-/**
  * Function called with the results of select_historic_denom_revenue()
  *
  * @param cls closure
@@ -581,41 +564,6 @@ struct TALER_AUDITORDB_Plugin
     uint64_t start_id,
     TALER_AUDITORDB_DepositConfirmationCallback cb,
     void *cb_cls);
-
-
-  /**
-   * Insert information about a denomination key and in particular
-   * the properties (value, fees, expiration times) the coins signed
-   * with this key have.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
-   * @param issue issuing information with value, fees and other info about the denomination
-   * @return status of database operation
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_denomination_info)(
-    void *cls,
-    struct TALER_AUDITORDB_Session *session,
-    const struct TALER_DenominationKeyValidityPS *issue);
-
-
-  /**
-   * Get information about denomination keys of a particular exchange.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
-   * @param master_pub master public key of the exchange
-   * @param cb function to call with the results
-   * @param cb_cls closure for @a cb
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*select_denomination_info)(void *cls,
-                              struct TALER_AUDITORDB_Session *session,
-                              const struct TALER_MasterPublicKeyP *master_pub,
-                              TALER_AUDITORDB_DenominationInfoDataCallback cb,
-                              void *cb_cls);
 
 
   /**

@@ -64,25 +64,6 @@ static int result = -1;
 static struct TALER_AUDITORDB_Plugin *plugin;
 
 
-static int
-select_denomination_info_result (void *cls,
-                                 const struct
-                                 TALER_DenominationKeyValidityPS *issue2)
-{
-  const struct TALER_DenominationKeyValidityPS *issue1 = cls;
-
-  if (0 != GNUNET_memcmp (issue1,
-                          issue2))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "select_denomination_info_result: issue does not match\n");
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
-}
-
-
 /**
  * Main function that will be run by the scheduler.
  *
@@ -187,48 +168,6 @@ run (void *cls)
                                    &master_pub,
                                    "https://exchange/"));
 
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: insert_denomination_info\n");
-
-  struct TALER_DenominationKeyValidityPS issue = { 0 };
-  issue.master = master_pub;
-  issue.denom_hash = denom_pub_hash;
-
-  issue.start = GNUNET_TIME_absolute_hton (now);
-  issue.expire_withdraw = GNUNET_TIME_absolute_hton
-                            (GNUNET_TIME_absolute_add (now,
-                                                       GNUNET_TIME_UNIT_HOURS));
-  issue.expire_deposit = GNUNET_TIME_absolute_hton
-                           (GNUNET_TIME_absolute_add
-                             (now,
-                             GNUNET_TIME_relative_multiply (
-                               GNUNET_TIME_UNIT_HOURS, 2)));
-  issue.expire_legal = GNUNET_TIME_absolute_hton
-                         (GNUNET_TIME_absolute_add
-                           (now,
-                           GNUNET_TIME_relative_multiply (
-                             GNUNET_TIME_UNIT_HOURS, 3)));
-  TALER_amount_hton (&issue.value, &value);
-  TALER_amount_hton (&issue.fee_withdraw, &fee_withdraw);
-  TALER_amount_hton (&issue.fee_deposit, &fee_deposit);
-  TALER_amount_hton (&issue.fee_refresh, &fee_refresh);
-  TALER_amount_hton (&issue.fee_refund, &fee_refund);
-
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_denomination_info (plugin->cls,
-                                            session,
-                                            &issue));
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Test: select_denomination_info\n");
-
-  FAILIF (0 >=
-          plugin->select_denomination_info (plugin->cls,
-                                            session,
-                                            &master_pub,
-                                            &select_denomination_info_result,
-                                            &issue));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: insert_auditor_progress\n");

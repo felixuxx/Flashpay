@@ -41,28 +41,6 @@ COMMENT ON TABLE auditor_exchange_signkeys
   IS 'list of the online signing keys of exchanges we are auditing';
 
 
-CREATE TABLE IF NOT EXISTS auditor_denominations
-  (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
-  ,master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
-  ,valid_from INT8 NOT NULL
-  ,expire_withdraw INT8 NOT NULL
-  ,expire_deposit INT8 NOT NULL
-  ,expire_legal INT8 NOT NULL
-  ,coin_val INT8 NOT NULL
-  ,coin_frac INT4 NOT NULL
-  ,fee_withdraw_val INT8 NOT NULL
-  ,fee_withdraw_frac INT4 NOT NULL
-  ,fee_deposit_val INT8 NOT NULL
-  ,fee_deposit_frac INT4 NOT NULL
-  ,fee_refresh_val INT8 NOT NULL
-  ,fee_refresh_frac INT4 NOT NULL
-  ,fee_refund_val INT8 NOT NULL
-  ,fee_refund_frac INT4 NOT NULL
-  );
-COMMENT ON TABLE auditor_denominations
-  IS 'denomination keys the auditor is aware of';
-
-
 CREATE TABLE IF NOT EXISTS auditor_progress_reserve
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,last_reserve_in_serial_id INT8 NOT NULL DEFAULT 0
@@ -173,7 +151,7 @@ COMMENT ON TABLE auditor_wire_fee_balance
 
 
 CREATE TABLE IF NOT EXISTS auditor_denomination_pending
-  (denom_pub_hash BYTEA PRIMARY KEY REFERENCES auditor_denominations (denom_pub_hash) ON DELETE CASCADE
+  (denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
   ,denom_balance_val INT8 NOT NULL
   ,denom_balance_frac INT4 NOT NULL
   ,denom_loss_val INT8 NOT NULL

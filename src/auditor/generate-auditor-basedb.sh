@@ -120,7 +120,7 @@ $TLIBEXEC/taler-helper-crypto-rsa -c $CONF 2> taler-helper-crypto-rsa.log &
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 taler-merchant-httpd -c $CONF -L INFO 2> taler-merchant-httpd.log &
 taler-exchange-wirewatch -c $CONF 2> taler-exchange-wirewatch.log &
-taler-auditor-httpd -c $CONF 2> taler-auditor-httpd.log &
+taler-auditor-httpd -L INFO -c $CONF 2> taler-auditor-httpd.log &
 
 # Wait for all bank to be available (usually the slowest)
 for n in `seq 1 50`

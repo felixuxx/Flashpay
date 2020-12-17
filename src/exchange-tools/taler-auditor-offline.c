@@ -376,6 +376,7 @@ denomination_add_cb (
              hr->http_status,
              TALER_ErrorCode_get_hint (hr->ec),
              hr->hint);
+    global_ret = 42;
   }
   GNUNET_CONTAINER_DLL_remove (dar_head,
                                dar_tail,

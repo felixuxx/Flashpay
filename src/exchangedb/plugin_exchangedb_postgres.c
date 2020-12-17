@@ -8683,8 +8683,8 @@ postgres_insert_auditor_denom_sig (
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
+    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
     GNUNET_PQ_query_param_auto_from_type (auditor_sig),
     GNUNET_PQ_query_param_end
   };

@@ -95,6 +95,7 @@ taler-exchange-dbinit -c $CONF
 # setup auditor
 echo "Setting up auditor"
 taler-auditor-dbinit -c $CONF
+taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
 
 # Launch services
 echo "Launching services"
