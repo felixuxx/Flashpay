@@ -2332,11 +2332,11 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
     return GNUNET_OK;
   }
   /* persist keys for future runs */
-  ret = GNUNET_DISK_fn_write (fn,
-                              secm,
-                              sizeof (old),
-                              GNUNET_DISK_PERM_USER_READ);
-  if (ret != sizeof (old))
+  if (GNUNET_OK !=
+      GNUNET_DISK_fn_write (fn,
+                            secm,
+                            sizeof (old),
+                            GNUNET_DISK_PERM_USER_READ))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to store key material in file `%s'\n",
