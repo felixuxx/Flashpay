@@ -23,6 +23,24 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 
+/**
+ * Name of the input of a denomination key signature for the 'upload' operation.
+ * The "auditor-" prefix ensures that there is no ambiguity between
+ * taler-exchange-offline and taler-auditor-offline JSON formats.
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_SIGN_DENOMINATION "auditor-sign-denomination-0"
+
+/**
+ * Name of the input for the 'sign' and 'show' operations.
+ * The "auditor-" prefix ensures that there is no ambiguity between
+ * taler-exchange-offline and taler-auditor-offline JSON formats.
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_INPUT_KEYS "auditor-keys-0"
+
 
 /**
  * Our private key, initialized in #load_offline_key().
@@ -452,7 +470,7 @@ trigger_upload (const char *exchange_url)
 {
   struct UploadHandler uhs[] = {
     {
-      .key = "sign-denomination",
+      .key = OP_SIGN_DENOMINATION,
       .cb = &upload_denomination_add
     },
     /* array termination */
@@ -605,15 +623,18 @@ keys_cb (
     global_ret = 4;
     return;
   }
+  in = json_pack ("{s:s,s:O}",
+                  "operation",
+                  OP_INPUT_KEYS,
+                  "arguments",
+                  hr->reply);
   if (NULL == args[0])
   {
-    json_dumpf (hr->reply,
+    json_dumpf (in,
                 stdout,
                 JSON_INDENT (2));
-  }
-  else
-  {
-    in = json_incref ((json_t*) hr->reply);
+    json_decref (in);
+    in = NULL;
   }
   TALER_EXCHANGE_disconnect (exchange);
   exchange = NULL;
@@ -796,13 +817,26 @@ show_denomkeys (const json_t *denomkeys)
 
 
 /**
- * Show exchange denomination keys.
+ * Parse the '/keys' input for operation called @a command_name.
  *
- * @param args the array of command-line arguments to process next
+ * @param command_name name of the command, for logging errors
+ * @return NULL if the input is malformed
  */
-static void
-do_show (char *const *args)
+static json_t *
+parse_keys (const char *command_name)
 {
+  json_t *keys;
+  const char *op_str;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("arguments",
+                           &keys),
+    GNUNET_JSON_spec_string ("operation",
+                             &op_str),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *err_name;
+  unsigned int err_line;
+
   if (NULL == in)
   {
     json_error_t err;
@@ -820,57 +854,105 @@ do_show (char *const *args)
                err.position);
       global_ret = 2;
       test_shutdown ();
-      return;
+      return NULL;
     }
   }
-
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (in,
+                         spec,
+                         &err_name,
+                         &err_line))
   {
-    const char *err_name;
-    unsigned int err_line;
-    json_t *denomkeys;
-    struct TALER_MasterPublicKeyP mpub;
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_json ("denoms",
-                             &denomkeys),
-      GNUNET_JSON_spec_fixed_auto ("master_public_key",
-                                   &mpub),
-      GNUNET_JSON_spec_end ()
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (in,
-                           spec,
-                           &err_name,
-                           &err_line))
-    {
-      fprintf (stderr,
-               "Invalid input to 'show': %s#%u (skipping)\n",
-               err_name,
-               err_line);
-      global_ret = 7;
-      test_shutdown ();
-      return;
-    }
-    if (0 !=
-        GNUNET_memcmp (&mpub,
-                       &master_pub))
-    {
-      fprintf (stderr,
-               "Exchange master public key does not match key we have configured (aborting)\n");
-      global_ret = 7;
-      test_shutdown ();
-      return;
-    }
-    if (GNUNET_OK !=
-        show_denomkeys (denomkeys))
-    {
-      global_ret = 8;
-      test_shutdown ();
-      GNUNET_JSON_parse_free (spec);
-      return;
-    }
-    GNUNET_JSON_parse_free (spec);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to '%s': %s#%u (skipping)\n",
+                command_name,
+                err_name,
+                err_line);
+    json_dumpf (in,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = 7;
+    test_shutdown ();
+    return NULL;
   }
+  if (0 != strcmp (op_str,
+                   OP_INPUT_KEYS))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to '%s' : operation is `%s', expected `%s'\n",
+                command_name,
+                op_str,
+                OP_INPUT_KEYS);
+    GNUNET_JSON_parse_free (spec);
+    return NULL;
+  }
+  json_decref (in);
+  in = NULL;
+  return keys;
+}
+
+
+/**
+ * Show exchange denomination keys.
+ *
+ * @param args the array of command-line arguments to process next
+ */
+static void
+do_show (char *const *args)
+{
+  json_t *keys;
+  const char *err_name;
+  unsigned int err_line;
+  json_t *denomkeys;
+  struct TALER_MasterPublicKeyP mpub;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("denoms",
+                           &denomkeys),
+    GNUNET_JSON_spec_fixed_auto ("master_public_key",
+                                 &mpub),
+    GNUNET_JSON_spec_end ()
+  };
+
+  keys = parse_keys ("show");
+  if (NULL == keys)
+    return;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (keys,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    fprintf (stderr,
+             "Invalid input to 'show': %s#%u (skipping)\n",
+             err_name,
+             err_line);
+    global_ret = 7;
+    test_shutdown ();
+    json_decref (keys);
+    return;
+  }
+  if (0 !=
+      GNUNET_memcmp (&mpub,
+                     &master_pub))
+  {
+    fprintf (stderr,
+             "Exchange master public key does not match key we have configured (aborting)\n");
+    global_ret = 7;
+    test_shutdown ();
+    json_decref (keys);
+    return;
+  }
+  if (GNUNET_OK !=
+      show_denomkeys (denomkeys))
+  {
+    global_ret = 8;
+    test_shutdown ();
+    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
+  }
+  GNUNET_JSON_parse_free (spec);
+  json_decref (keys);
   /* do NOT consume input if next argument is '-' */
   if ( (NULL != args[0]) &&
        (0 == strcmp ("-",
@@ -879,8 +961,6 @@ do_show (char *const *args)
     next (args + 1);
     return;
   }
-  json_decref (in);
-  in = NULL;
   next (args);
 }
 
@@ -996,7 +1076,7 @@ sign_denomkeys (const json_t *denomkeys)
                                          &fee_refund,
                                          &auditor_priv,
                                          &auditor_sig);
-      output_operation ("sign-denomination",
+      output_operation (OP_SIGN_DENOMINATION,
                         json_pack ("{s:o, s:o}",
                                    "h_denom_pub",
                                    GNUNET_JSON_from_data_auto (&h_denom_pub),
@@ -1017,79 +1097,67 @@ sign_denomkeys (const json_t *denomkeys)
 static void
 do_sign (char *const *args)
 {
-  if (NULL == in)
-  {
-    json_error_t err;
+  json_t *keys;
+  const char *err_name;
+  unsigned int err_line;
+  struct TALER_MasterPublicKeyP mpub;
+  json_t *denomkeys;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("denoms",
+                           &denomkeys),
+    GNUNET_JSON_spec_fixed_auto ("master_public_key",
+                                 &mpub),
+    GNUNET_JSON_spec_end ()
+  };
 
-    out = json_loadf (stdin,
-                      JSON_REJECT_DUPLICATES,
-                      &err);
-    if (NULL == in)
-    {
-      fprintf (stderr,
-               "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
-               err.text,
-               err.line,
-               err.source,
-               err.position);
-      global_ret = 2;
-      test_shutdown ();
-      return;
-    }
-  }
+  keys = parse_keys ("sign");
+  if (NULL == keys)
+    return;
   if (GNUNET_OK !=
       load_offline_key ())
-    return;
-
   {
-    const char *err_name;
-    unsigned int err_line;
-    struct TALER_MasterPublicKeyP mpub;
-    json_t *denomkeys;
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_json ("denoms",
-                             &denomkeys),
-      GNUNET_JSON_spec_fixed_auto ("master_public_key",
-                                   &mpub),
-      GNUNET_JSON_spec_end ()
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (in,
-                           spec,
-                           &err_name,
-                           &err_line))
-    {
-      fprintf (stderr,
-               "Invalid input to 'sign': %s#%u (skipping)\n",
-               err_name,
-               err_line);
-      global_ret = 7;
-      test_shutdown ();
-      return;
-    }
-    if (0 !=
-        GNUNET_memcmp (&mpub,
-                       &master_pub))
-    {
-      fprintf (stderr,
-               "Exchange master public key does not match key we have configured (aborting)\n");
-      global_ret = 7;
-      test_shutdown ();
-      return;
-    }
-    if (GNUNET_OK !=
-        sign_denomkeys (denomkeys))
-    {
-      global_ret = 8;
-      test_shutdown ();
-      GNUNET_JSON_parse_free (spec);
-      return;
-    }
-    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
   }
-  json_decref (in);
-  in = NULL;
+
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (keys,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    fprintf (stderr,
+             "Invalid input to 'sign': %s#%u (skipping)\n",
+             err_name,
+             err_line);
+    global_ret = 7;
+    test_shutdown ();
+    json_decref (keys);
+    return;
+  }
+  if (0 !=
+      GNUNET_memcmp (&mpub,
+                     &master_pub))
+  {
+    fprintf (stderr,
+             "Exchange master public key does not match key we have configured (aborting)\n");
+    global_ret = 7;
+    test_shutdown ();
+    json_decref (keys);
+    return;
+  }
+  if (GNUNET_OK !=
+      sign_denomkeys (denomkeys))
+  {
+    global_ret = 8;
+    test_shutdown ();
+    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
+  }
+  GNUNET_JSON_parse_free (spec);
+  json_decref (keys);
   next (args);
 }
 

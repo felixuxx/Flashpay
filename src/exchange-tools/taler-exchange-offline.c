@@ -23,6 +23,69 @@
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
 
+/**
+ * Name of the input for the 'sign' and 'show' operation.
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_INPUT_KEYS "exchange-input-keys-0"
+
+/**
+ * Name of the operation to 'disable auditor'
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_DISABLE_AUDITOR "exchange-disable-auditor-0"
+
+/**
+ * Name of the operation to 'enable auditor'
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_ENABLE_AUDITOR "exchange-enable-auditor-0"
+
+/**
+ * Name of the operation to 'enable wire'
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_ENABLE_WIRE "exchange-enable-wire-0"
+
+/**
+ * Name of the operation to 'disable wire'
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_DISABLE_WIRE "exchange-disable-wire-0"
+
+/**
+ * Name of the operation to set a 'wire-fee'
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_SET_WIRE_FEE "exchange-set-wire-fee-0"
+
+/**
+ * Name of the operation to 'upload' key signatures
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_UPLOAD_SIGS "exchange-upload-sigs-0"
+
+/**
+ * Name of the operation to 'revoke-denomination' key
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_REVOKE_DENOMINATION "exchange-revoke-denomination-0"
+
+/**
+ * Name of the operation to 'revoke-signkey'
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_REVOKE_SIGNKEY "exchange-revoke-signkey-0"
+
 
 /**
  * Our private key, initialized in #load_offline_key().
@@ -1570,35 +1633,35 @@ trigger_upload (const char *exchange_url)
 {
   struct UploadHandler uhs[] = {
     {
-      .key = "revoke-denomination",
+      .key = OP_REVOKE_DENOMINATION,
       .cb = &upload_denom_revocation
     },
     {
-      .key = "revoke-signkey",
+      .key = OP_REVOKE_SIGNKEY,
       .cb = &upload_signkey_revocation
     },
     {
-      .key = "enable-auditor",
+      .key = OP_ENABLE_AUDITOR,
       .cb = &upload_auditor_add
     },
     {
-      .key = "disable-auditor",
+      .key = OP_DISABLE_AUDITOR,
       .cb = &upload_auditor_del
     },
     {
-      .key = "enable-wire",
+      .key = OP_ENABLE_WIRE,
       .cb = &upload_wire_add
     },
     {
-      .key = "disable-wire",
+      .key = OP_DISABLE_WIRE,
       .cb = &upload_wire_del
     },
     {
-      .key = "set-wire-fee",
+      .key = OP_SET_WIRE_FEE,
       .cb = &upload_wire_fee
     },
     {
-      .key = "upload-keys",
+      .key = OP_UPLOAD_SIGS,
       .cb = &upload_keys
     },
     /* array termination */
@@ -1755,7 +1818,7 @@ do_revoke_denomination_key (char *const *args)
   TALER_exchange_offline_denomination_revoke_sign (&h_denom_pub,
                                                    &master_priv,
                                                    &master_sig);
-  output_operation ("revoke-denomination",
+  output_operation (OP_REVOKE_DENOMINATION,
                     json_pack ("{s:o, s:o}",
                                "h_denom_pub",
                                GNUNET_JSON_from_data_auto (&h_denom_pub),
@@ -1804,7 +1867,7 @@ do_revoke_signkey (char *const *args)
   TALER_exchange_offline_signkey_revoke_sign (&exchange_pub,
                                               &master_priv,
                                               &master_sig);
-  output_operation ("revoke-signkey",
+  output_operation (OP_REVOKE_SIGNKEY,
                     json_pack ("{s:o, s:o}",
                                "exchange_pub",
                                GNUNET_JSON_from_data_auto (&exchange_pub),
@@ -1873,7 +1936,7 @@ do_add_auditor (char *const *args)
                                            now,
                                            &master_priv,
                                            &master_sig);
-  output_operation ("enable-auditor",
+  output_operation (OP_ENABLE_AUDITOR,
                     json_pack ("{s:s, s:s, s:o, s:o, s:o}",
                                "auditor_url",
                                args[1],
@@ -1933,7 +1996,7 @@ do_del_auditor (char *const *args)
                                            now,
                                            &master_priv,
                                            &master_sig);
-  output_operation ("disable-auditor",
+  output_operation (OP_DISABLE_AUDITOR,
                     json_pack ("{s:o, s:o, s:o}",
                                "auditor_pub",
                                GNUNET_JSON_from_data_auto (&auditor_pub),
@@ -1987,7 +2050,7 @@ do_add_wire (char *const *args)
   TALER_exchange_wire_signature_make (args[0],
                                       &master_priv,
                                       &master_sig_wire);
-  output_operation ("enable-wire",
+  output_operation (OP_ENABLE_WIRE,
                     json_pack ("{s:s, s:o, s:o, s:o}",
                                "payto_uri",
                                args[0],
@@ -2039,7 +2102,7 @@ do_del_wire (char *const *args)
                                         now,
                                         &master_priv,
                                         &master_sig);
-  output_operation ("disable-wire",
+  output_operation (OP_DISABLE_WIRE,
                     json_pack ("{s:s, s:o, s:o}",
                                "payto_uri",
                                args[0],
@@ -2116,7 +2179,7 @@ do_set_wire_fee (char *const *args)
                                         &closing_fee,
                                         &master_priv,
                                         &master_sig);
-  output_operation ("set-wire-fee",
+  output_operation (OP_SET_WIRE_FEE,
                     json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
                                "wire_method",
                                args[1],
@@ -2166,15 +2229,18 @@ download_cb (void *cls,
     global_ret = 4;
     return;
   }
+  in = json_pack ("{s:s,s:O}",
+                  "operation",
+                  OP_INPUT_KEYS,
+                  "arguments",
+                  hr->reply);
   if (NULL == args[0])
   {
-    json_dumpf (hr->reply,
+    json_dumpf (in,
                 stdout,
                 JSON_INDENT (2));
-  }
-  else
-  {
-    in = json_incref ((json_t*) hr->reply);
+    json_decref (in);
+    in = NULL;
   }
   next (args);
 }
@@ -2516,13 +2582,26 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
 
 
 /**
- * Show future keys.
+ * Parse the input of exchange keys for the 'show' and 'sign' commands.
  *
- * @param args the array of command-line arguments to process next
+ * @param command_name name of the command, for logging
+ * @return NULL on error, otherwise the keys details to be free'd by caller
  */
-static void
-do_show (char *const *args)
+static json_t *
+parse_keys_input (const char *command_name)
 {
+  const char *op_str;
+  json_t *keys;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("arguments",
+                           &keys),
+    GNUNET_JSON_spec_string ("operation",
+                             &op_str),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *err_name;
+  unsigned int err_line;
+
   if (NULL == in)
   {
     json_error_t err;
@@ -2540,86 +2619,132 @@ do_show (char *const *args)
                   err.position);
       global_ret = 2;
       test_shutdown ();
-      return;
+      return NULL;
     }
   }
   if (GNUNET_OK !=
-      load_offline_key ())
-    return;
-
+      GNUNET_JSON_parse (in,
+                         spec,
+                         &err_name,
+                         &err_line))
   {
-    const char *err_name;
-    unsigned int err_line;
-    json_t *denomkeys;
-    json_t *signkeys;
-    struct TALER_MasterPublicKeyP mpub;
-    struct TALER_SecurityModulePublicKeyP secm[2];
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_json ("future_denoms",
-                             &denomkeys),
-      GNUNET_JSON_spec_json ("future_signkeys",
-                             &signkeys),
-      GNUNET_JSON_spec_fixed_auto ("master_pub",
-                                   &mpub),
-      GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
-                                   &secm[0]),
-      GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
-                                   &secm[1]),
-      GNUNET_JSON_spec_end ()
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (in,
-                           spec,
-                           &err_name,
-                           &err_line))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid input to 'show': %s#%u (skipping)\n",
-                  err_name,
-                  err_line);
-      json_dumpf (in,
-                  stderr,
-                  JSON_INDENT (2));
-      global_ret = 7;
-      test_shutdown ();
-      return;
-    }
-    if (0 !=
-        GNUNET_memcmp (&master_pub,
-                       &mpub))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Fatal: exchange uses different master key!\n");
-      global_ret = 6;
-      test_shutdown ();
-      GNUNET_JSON_parse_free (spec);
-      return;
-    }
-    if (GNUNET_SYSERR ==
-        tofu_check (secm))
-    {
-      global_ret = 8;
-      test_shutdown ();
-      GNUNET_JSON_parse_free (spec);
-      return;
-    }
-    if ( (GNUNET_OK !=
-          show_signkeys (&secm[1],
-                         signkeys)) ||
-         (GNUNET_OK !=
-          show_denomkeys (&secm[0],
-                          denomkeys)) )
-    {
-      global_ret = 8;
-      test_shutdown ();
-      GNUNET_JSON_parse_free (spec);
-      return;
-    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to '%s': %s#%u (skipping)\n",
+                command_name,
+                err_name,
+                err_line);
+    json_dumpf (in,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = 7;
+    test_shutdown ();
+    return NULL;
+  }
+  if (0 != strcmp (op_str,
+                   OP_INPUT_KEYS))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to '%s' : operation is `%s', expected `%s'\n",
+                command_name,
+                op_str,
+                OP_INPUT_KEYS);
     GNUNET_JSON_parse_free (spec);
+    return NULL;
   }
   json_decref (in);
   in = NULL;
+  return keys;
+}
+
+
+/**
+ * Show future keys.
+ *
+ * @param args the array of command-line arguments to process next
+ */
+static void
+do_show (char *const *args)
+{
+  json_t *keys;
+  const char *err_name;
+  unsigned int err_line;
+  json_t *denomkeys;
+  json_t *signkeys;
+  struct TALER_MasterPublicKeyP mpub;
+  struct TALER_SecurityModulePublicKeyP secm[2];
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("future_denoms",
+                           &denomkeys),
+    GNUNET_JSON_spec_json ("future_signkeys",
+                           &signkeys),
+    GNUNET_JSON_spec_fixed_auto ("master_pub",
+                                 &mpub),
+    GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
+                                 &secm[0]),
+    GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+                                 &secm[1]),
+    GNUNET_JSON_spec_end ()
+  };
+
+  keys = parse_keys_input ("show");
+  if (NULL == keys)
+    return;
+
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (keys,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to 'show': %s #%u (skipping)\n",
+                err_name,
+                err_line);
+    json_dumpf (in,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = 7;
+    test_shutdown ();
+    json_decref (keys);
+    return;
+  }
+  if (0 !=
+      GNUNET_memcmp (&master_pub,
+                     &mpub))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Fatal: exchange uses different master key!\n");
+    global_ret = 6;
+    test_shutdown ();
+    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
+  }
+  if (GNUNET_SYSERR ==
+      tofu_check (secm))
+  {
+    global_ret = 8;
+    test_shutdown ();
+    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
+  }
+  if ( (GNUNET_OK !=
+        show_signkeys (&secm[1],
+                       signkeys)) ||
+       (GNUNET_OK !=
+        show_denomkeys (&secm[0],
+                        denomkeys)) )
+  {
+    global_ret = 8;
+    test_shutdown ();
+    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
+  }
+  json_decref (keys);
+  GNUNET_JSON_parse_free (spec);
   next (args);
 }
 
@@ -2670,7 +2795,7 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                            &err_line))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid input for signing key to 'show': %s#%u at %u (skipping)\n",
+                  "Invalid input for signing key to 'show': %s #%u at %u (skipping)\n",
                   err_name,
                   err_line,
                   (unsigned int) index);
@@ -2711,7 +2836,7 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_assert (0 ==
                      json_array_append_new (
                        result,
-                       json_pack ("{s:o, s:o}",
+                       json_pack ("{s:o,s:o}",
                                   "exchange_pub",
                                   GNUNET_JSON_from_data_auto (&exchange_pub),
                                   "master_sig",
@@ -2791,7 +2916,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                            &err_line))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid input for denomination key to 'sign': %s#%u at %u (skipping)\n",
+                  "Invalid input for denomination key to 'sign': %s #%u at %u (skipping)\n",
                   err_name,
                   err_line,
                   (unsigned int) index);
@@ -2842,11 +2967,12 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_assert (0 ==
                      json_array_append_new (
                        result,
-                       json_pack ("{s:o, s:o}",
-                                  "h_denom_pub",
-                                  GNUNET_JSON_from_data_auto (&h_denom_pub),
-                                  "master_sig",
-                                  GNUNET_JSON_from_data_auto (&master_sig))));
+                       json_pack (
+                         "{s:o,s:o}",
+                         "h_denom_pub",
+                         GNUNET_JSON_from_data_auto (&h_denom_pub),
+                         "master_sig",
+                         GNUNET_JSON_from_data_auto (&master_sig))));
     }
     GNUNET_JSON_parse_free (spec);
   }
@@ -2862,123 +2988,110 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
 static void
 do_sign (char *const *args)
 {
-  if (NULL == in)
-  {
-    json_error_t err;
+  json_t *keys;
+  const char *err_name;
+  unsigned int err_line;
+  json_t *denomkeys;
+  json_t *signkeys;
+  struct TALER_MasterPublicKeyP mpub;
+  struct TALER_SecurityModulePublicKeyP secm[2];
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("future_denoms",
+                           &denomkeys),
+    GNUNET_JSON_spec_json ("future_signkeys",
+                           &signkeys),
+    GNUNET_JSON_spec_fixed_auto ("master_pub",
+                                 &mpub),
+    GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
+                                 &secm[0]),
+    GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+                                 &secm[1]),
+    GNUNET_JSON_spec_end ()
+  };
 
-    in = json_loadf (stdin,
-                     JSON_REJECT_DUPLICATES,
-                     &err);
-    if (NULL == in)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to read JSON input: %s at %d:%s (offset: %d)\n",
-                  err.text,
-                  err.line,
-                  err.source,
-                  err.position);
-      global_ret = 2;
-      test_shutdown ();
-      return;
-    }
-  }
+  keys = parse_keys_input ("sign");
+  if (NULL == keys)
+    return;
   if (GNUNET_OK !=
       load_offline_key ())
-    return;
-
   {
-    const char *err_name;
-    unsigned int err_line;
-    json_t *denomkeys;
-    json_t *signkeys;
-    struct TALER_MasterPublicKeyP mpub;
-    struct TALER_SecurityModulePublicKeyP secm[2];
-    struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_json ("future_denoms",
-                             &denomkeys),
-      GNUNET_JSON_spec_json ("future_signkeys",
-                             &signkeys),
-      GNUNET_JSON_spec_fixed_auto ("master_pub",
-                                   &mpub),
-      GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
-                                   &secm[0]),
-      GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
-                                   &secm[1]),
-      GNUNET_JSON_spec_end ()
-    };
+    json_decref (keys);
+    return;
+  }
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (keys,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to 'sign' : %s #%u (skipping)\n",
+                err_name,
+                err_line);
+    json_dumpf (in,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = 7;
+    test_shutdown ();
+    json_decref (keys);
+    return;
+  }
+  if (0 !=
+      GNUNET_memcmp (&master_pub,
+                     &mpub))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Fatal: exchange uses different master key!\n");
+    global_ret = 6;
+    test_shutdown ();
+    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
+  }
+  if (GNUNET_SYSERR ==
+      tofu_check (secm))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Fatal: security module keys changed!\n");
+    global_ret = 8;
+    test_shutdown ();
+    GNUNET_JSON_parse_free (spec);
+    json_decref (keys);
+    return;
+  }
+  {
+    json_t *signkey_sig_array = json_array ();
+    json_t *denomkey_sig_array = json_array ();
 
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (in,
-                           spec,
-                           &err_name,
-                           &err_line))
+    GNUNET_assert (NULL != signkey_sig_array);
+    GNUNET_assert (NULL != denomkey_sig_array);
+    if ( (GNUNET_OK !=
+          sign_signkeys (&secm[1],
+                         signkeys,
+                         signkey_sig_array)) ||
+         (GNUNET_OK !=
+          sign_denomkeys (&secm[0],
+                          denomkeys,
+                          denomkey_sig_array)) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid input to 'sign': %s#%u (skipping)\n",
-                  err_name,
-                  err_line);
-      json_dumpf (in,
-                  stderr,
-                  JSON_INDENT (2));
-      global_ret = 7;
-      test_shutdown ();
-      return;
-    }
-    if (0 !=
-        GNUNET_memcmp (&master_pub,
-                       &mpub))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Fatal: exchange uses different master key!\n");
-      global_ret = 6;
-      test_shutdown ();
-      GNUNET_JSON_parse_free (spec);
-      return;
-    }
-    if (GNUNET_SYSERR ==
-        tofu_check (secm))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Fatal: security module keys changed!\n");
       global_ret = 8;
       test_shutdown ();
+      json_decref (signkey_sig_array);
+      json_decref (denomkey_sig_array);
       GNUNET_JSON_parse_free (spec);
+      json_decref (keys);
       return;
     }
-    {
-      json_t *signkey_sig_array = json_array ();
-      json_t *denomkey_sig_array = json_array ();
 
-      GNUNET_assert (NULL != signkey_sig_array);
-      GNUNET_assert (NULL != denomkey_sig_array);
-      if ( (GNUNET_OK !=
-            sign_signkeys (&secm[1],
-                           signkeys,
-                           signkey_sig_array)) ||
-           (GNUNET_OK !=
-            sign_denomkeys (&secm[0],
-                            denomkeys,
-                            denomkey_sig_array)) )
-      {
-        global_ret = 8;
-        test_shutdown ();
-        json_decref (signkey_sig_array);
-        json_decref (denomkey_sig_array);
-        GNUNET_JSON_parse_free (spec);
-        return;
-      }
-
-      output_operation ("upload-keys",
-                        json_pack ("{s:o, s:o}",
-                                   "denom_sigs",
-                                   denomkey_sig_array,
-                                   "signkey_sigs",
-                                   signkey_sig_array));
-    }
-    GNUNET_JSON_parse_free (spec);
+    output_operation (OP_UPLOAD_SIGS,
+                      json_pack ("{s:o,s:o}",
+                                 "denom_sigs",
+                                 denomkey_sig_array,
+                                 "signkey_sigs",
+                                 signkey_sig_array));
   }
-  json_decref (in);
-  in = NULL;
+  GNUNET_JSON_parse_free (spec);
+  json_decref (keys);
   next (args);
 }
 
@@ -3002,8 +3115,7 @@ work (void *cls)
     },
     {
       .name = "sign",
-      .help =
-        "sing all future public keys from the input",
+      .help = "sign all future public keys from the input",
       .cb = &do_sign
     },
     {
@@ -3021,7 +3133,7 @@ work (void *cls)
     {
       .name = "enable-auditor",
       .help =
-        "enable auditor for the exchange (auditor-public key, auditor-URI and auditor name must given as arguments)",
+        "enable auditor for the exchange (auditor-public key, auditor-URI and auditor-name must be given as arguments)",
       .cb = &do_add_auditor
     },
     {
@@ -3081,12 +3193,11 @@ work (void *cls)
     global_ret = 3;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-
               "Supported subcommands:\n");
   for (unsigned int i = 0; NULL != cmds[i].name; i++)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "\t%s - %s\n",
+                "- %s: %s\n",
                 cmds[i].name,
                 cmds[i].help);
   }
