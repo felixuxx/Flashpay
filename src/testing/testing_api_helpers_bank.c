@@ -129,7 +129,9 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
     NULL);
   if (NULL == nexus_proc)
   {
-    GNUNET_break (0);
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "exec",
+                              "libeufin-nexus");
     return ret;
   }
   GNUNET_asprintf (&curl_check_cmd,

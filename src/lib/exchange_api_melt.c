@@ -434,7 +434,7 @@ handle_melt_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for exchange melt\n",
                 (unsigned int) response_code,
                 hr.ec);
     GNUNET_break_op (0);

@@ -74,7 +74,7 @@ struct TALER_AUDITOR_ListExchangesHandle
 
 /**
  * Function called when we're done processing the
- * HTTP /deposit-confirmation request.
+ * HTTP /exchanges request.
  *
  * @param cls the `struct TALER_AUDITOR_ListExchangesHandle`
  * @param response_code HTTP response code, 0 on error
@@ -178,7 +178,7 @@ handle_exchanges_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (json);
     hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for auditor list-exchanges request\n",
                 (unsigned int) response_code,
                 (int) hr.ec);
     GNUNET_break_op (0);

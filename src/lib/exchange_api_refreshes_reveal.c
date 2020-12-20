@@ -255,6 +255,11 @@ handle_refresh_reveal_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_GONE:
+    /* Server claims key expired or has been revoked */
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
@@ -267,7 +272,7 @@ handle_refresh_reveal_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for exchange refreshes reveal\n",
                 (unsigned int) response_code,
                 (int) hr.ec);
     break;

@@ -43,18 +43,6 @@
 #define CONFIG_FILE "test_exchange_api_keys_cherry_picking.conf"
 
 /**
- * Used to increase the number of denomination keys.
- */
-#define CONFIG_FILE_EXTENDED \
-  "test_exchange_api_keys_cherry_picking_extended.conf"
-
-/**
- * Used to increase the number of denomination keys.
- */
-#define CONFIG_FILE_EXTENDED_2 \
-  "test_exchange_api_keys_cherry_picking_extended_2.conf"
-
-/**
  * Exchange configuration data.
  */
 static struct TALER_TESTING_ExchangeConfiguration ec;

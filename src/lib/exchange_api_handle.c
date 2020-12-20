@@ -790,6 +790,9 @@ decode_keys_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  json_dumpf (resp_obj,
+              stderr,
+              JSON_INDENT (2));
   /* check the version */
   {
     const char *ver;
@@ -2023,6 +2026,9 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
          (0 == GNUNET_memcmp (pub,
                               &keys->sign_keys[i].key)) )
       return GNUNET_OK;
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Signing key not valid at time %llu\n",
+              (unsigned long long) now.abs_value_us);
   return GNUNET_SYSERR;
 }
 

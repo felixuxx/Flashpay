@@ -361,6 +361,19 @@ handle_deposit_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_FORBIDDEN:
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    /* Nothing really to verify, exchange says one of the signatures is
+       invalid; as we checked them, this should never happen, we
+       should pass the JSON reply to the application */
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    /* Nothing really to verify, this should never
+     happen, we should pass the JSON reply to the application */
+    break;
   case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
     if (GNUNET_OK !=
@@ -377,18 +390,13 @@ handle_deposit_finished (void *cls,
       hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
-  case MHD_HTTP_FORBIDDEN:
+  case MHD_HTTP_GONE:
+    /* could happen if denomination was revoked */
+    /* Note: one might want to check /keys for revocation
+       signature here, alas tricky in case our /keys
+       is outdated => left to clients */
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
-    /* Nothing really to verify, exchange says one of the signatures is
-       invalid; as we checked them, this should never happen, we
-       should pass the JSON reply to the application */
-    break;
-  case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
-    /* Nothing really to verify, this should never
-     happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     hr.ec = TALER_JSON_get_error_code (j);
@@ -401,7 +409,7 @@ handle_deposit_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for exchange deposit\n",
                 (unsigned int) response_code,
                 hr.ec);
     GNUNET_break_op (0);

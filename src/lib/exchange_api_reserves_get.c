@@ -217,7 +217,7 @@ handle_reserves_get_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for reserves get\n",
                 (unsigned int) response_code,
                 (int) hr.ec);
     break;

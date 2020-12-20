@@ -365,7 +365,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     {
       /* unexpected type, new version on server? */
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unexpected type `%s' in response\n",
+                  "Unexpected type `%s' in response for exchange refund\n",
                   type);
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -622,7 +622,7 @@ handle_refund_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for exchange refund\n",
                 (unsigned int) response_code,
                 hr.ec);
     break;

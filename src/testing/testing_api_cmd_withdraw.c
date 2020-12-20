@@ -265,6 +265,9 @@ reserve_withdraw_cb (void *cls,
   case MHD_HTTP_CONFLICT:
     /* nothing to check */
     break;
+  case MHD_HTTP_GONE:
+    /* theoretically could check that the key was actually */
+    break;
   case MHD_HTTP_NOT_FOUND:
     /* nothing to check */
     break;

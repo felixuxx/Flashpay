@@ -275,6 +275,22 @@ handle_reserve_withdraw_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_FORBIDDEN:
+    GNUNET_break_op (0);
+    /* Nothing really to verify, exchange says one of the signatures is
+       invalid; as we checked them, this should never happen, we
+       should pass the JSON reply to the application */
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    /* Nothing really to verify, the exchange basically just says
+       that it doesn't know this reserve.  Can happen if we
+       query before the wire transfer went through.
+       We should simply pass the JSON reply to the application. */
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_CONFLICT:
     /* The exchange says that the reserve has insufficient funds;
        check the signatures in the history... */
@@ -292,19 +308,11 @@ handle_reserve_withdraw_finished (void *cls,
       hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
-  case MHD_HTTP_FORBIDDEN:
-    GNUNET_break_op (0);
-    /* Nothing really to verify, exchange says one of the signatures is
-       invalid; as we checked them, this should never happen, we
-       should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
-    break;
-  case MHD_HTTP_NOT_FOUND:
-    /* Nothing really to verify, the exchange basically just says
-       that it doesn't know this reserve.  Can happen if we
-       query before the wire transfer went through.
-       We should simply pass the JSON reply to the application. */
+  case MHD_HTTP_GONE:
+    /* could happen if denomination was revoked */
+    /* Note: one might want to check /keys for revocation
+       signature here, alas tricky in case our /keys
+       is outdated => left to clients */
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
@@ -320,7 +328,7 @@ handle_reserve_withdraw_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for exchange withdraw\n",
                 (unsigned int) response_code,
                 (int) hr.ec);
     break;

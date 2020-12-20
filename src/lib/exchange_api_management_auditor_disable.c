@@ -108,7 +108,7 @@ handle_auditor_disable_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (json);
     hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d\n",
+                "Unexpected response code %u/%d for exchange management auditor disable\n",
                 (unsigned int) response_code,
                 (int) hr.ec);
     break;

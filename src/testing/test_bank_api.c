@@ -220,17 +220,13 @@ main (int argc,
       return 77;
     }
     libeufin_services = TALER_TESTING_run_libeufin (&bc);
-    if ( (NULL == libeufin_services.nexus) || (NULL ==
-                                               libeufin_services.sandbox) )
-    {
-      GNUNET_break (0);
+    if ( (NULL == libeufin_services.nexus) ||
+         (NULL == libeufin_services.sandbox) )
       return 77;
-    }
   }
   else
   {
     /* no bank service was ever invoked.  */
-    GNUNET_break (0);
     return 77;
   }
 
