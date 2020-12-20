@@ -103,7 +103,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_responses.c taler-exchange-httpd_responses.h \
   taler-exchange-httpd_terms.c taler-exchange-httpd_terms.h \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
-  taler-exchange-httpd_wire2.c taler-exchange-httpd_wire.h \
+  taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
 
 #  taler-exchange-httpd_management_post_keys.c
