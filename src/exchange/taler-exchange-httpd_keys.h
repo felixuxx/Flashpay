@@ -194,7 +194,7 @@ TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub);
 
 /**
  * Resumse all suspended /keys requests, we may now have key material
- * (or are shuting down).
+ * (or are shutting down).
  *
  * @param do_shutdown are we shutting down?
  */

@@ -63,7 +63,7 @@ struct WireStateHandle
 
 
 /**
- * Free memory assciated with @a wsh
+ * Free memory associated with @a wsh
  *
  * @param[in] wsh wire state to destroy
  */
@@ -76,7 +76,7 @@ destroy_wire_state (struct WireStateHandle *wsh)
 
 
 /**
- * Free memory assciated with wire state. Signature
+ * Free memory associated with wire state. Signature
  * suitable for pthread_key_create().
  *
  * @param[in] cls the `struct WireStateHandle` to destroy
@@ -154,7 +154,7 @@ add_wire_account (void *cls,
  * @param closing_fee the closing fee we charge
  * @param start_date from when are these fees valid (start date)
  * @param end_date until when are these fees valid (end date, exclusive)
- * @param master_sig master key signature affirming that this is the corrrect
+ * @param master_sig master key signature affirming that this is the correct
  *                   fee (of purpose #TALER_SIGNATURE_MASTER_WIRE_FEES)
  */
 static void
