@@ -689,7 +689,7 @@ setup_key (struct Key *key,
                    keydir,
                    (unsigned long long) (key->anchor.abs_value_us
                                          / GNUNET_TIME_UNIT_SECONDS.rel_value_us));
-  if (sizeof (priv) !=
+  if (GNUNET_OK !=
       GNUNET_DISK_fn_write (key->filename,
                             &priv,
                             sizeof (priv),

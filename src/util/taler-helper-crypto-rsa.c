@@ -836,7 +836,7 @@ setup_key (struct DenominationKey *dk,
                    denom->section,
                    (unsigned long long) (dk->anchor.abs_value_us
                                          / GNUNET_TIME_UNIT_SECONDS.rel_value_us));
-  if (buf_size !=
+  if (GNUNET_OK !=
       GNUNET_DISK_fn_write (dk->filename,
                             buf,
                             buf_size,
