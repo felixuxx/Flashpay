@@ -573,6 +573,27 @@ handle_sign_request (const struct sockaddr_un *addr,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received request to sign over %u bytes\n",
               (unsigned int) purpose_size);
+  {
+    struct GNUNET_TIME_Absolute now;
+
+    now = GNUNET_TIME_absolute_get ();
+    if ( (now.abs_value_us >= keys_head->anchor.abs_value_us) &&
+         (now.abs_value_us < keys_head->anchor.abs_value_us
+          + duration.rel_value_us) )
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Signing at %llu with key valid from %llu to %llu\n",
+                  (unsigned long long) now.abs_value_us,
+                  (unsigned long long) keys_head->anchor.abs_value_us,
+                  (unsigned long long) keys_head->anchor.abs_value_us
+                  + duration.rel_value_us);
+    else
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Signing at %llu with key valid from %llu to %llu\n",
+                  (unsigned long long) now.abs_value_us,
+                  (unsigned long long) keys_head->anchor.abs_value_us,
+                  (unsigned long long) keys_head->anchor.abs_value_us
+                  + duration.rel_value_us);
+  }
   wi = GNUNET_new (struct WorkItem);
   wi->addr = *addr;
   wi->addr_size = addr_size;
