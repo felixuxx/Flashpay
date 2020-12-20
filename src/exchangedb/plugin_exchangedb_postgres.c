@@ -266,7 +266,7 @@ postgres_get_session (void *cls)
     struct GNUNET_PQ_ExecuteStatement *es = NULL;
 #endif
     struct GNUNET_PQ_PreparedStatement ps[] = {
-      /* Used in #postgres_insert_denomination_info() [FIXME: soon obsolete!] and
+      /* Used in #postgres_insert_denomination_info() and
          #postgres_add_denomination_key() */
       GNUNET_PQ_make_prepare ("denomination_insert",
                               "INSERT INTO denominations "
