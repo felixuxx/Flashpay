@@ -52,6 +52,10 @@
  */
 #define EXCHANGE_SERIALIZATION_FORMAT_VERSION 0
 
+/**
+ * Set to 1 for extra debug logging.
+ */
+#define DEBUG 0
 
 /**
  * Log error related to CURL operations.
@@ -524,9 +528,11 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                          NULL, NULL))
   {
     GNUNET_break_op (0);
+#if DEBUG
     json_dumpf (auditor_obj,
                 stderr,
                 JSON_INDENT (2));
+#endif
     return GNUNET_SYSERR;
   }
   auditor->auditor_url = GNUNET_strdup (auditor_url);
@@ -790,9 +796,11 @@ decode_keys_json (const json_t *resp_obj,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+#if DEBUG
   json_dumpf (resp_obj,
               stderr,
               JSON_INDENT (2));
+#endif
   /* check the version */
   {
     const char *ver;

@@ -29,6 +29,12 @@
 #include "taler_json_lib.h"
 
 /**
+ * Set to 1 for extra debug logging.
+ */
+#define DEBUG 0
+
+
+/**
  * @brief Handle for a GET /management/keys request.
  */
 struct TALER_EXCHANGE_ManagementGetKeysHandle
@@ -196,9 +202,11 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
+#if DEBUG
       json_dumpf (j,
                   stderr,
                   JSON_INDENT (2));
+#endif
       ok = false;
       break;
     }
