@@ -213,6 +213,13 @@ build_wire_state (void)
     json_decref (wire_accounts_array);
     return NULL;
   }
+  if (0 == json_array_size (wire_accounts_array))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "No bank accounts for the exchange configured. Administrator must `enable-account` with taler-exchange-offline!\n");
+    json_decref (wire_accounts_array);
+    return NULL;
+  }
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
   {
@@ -241,6 +248,15 @@ build_wire_state (void)
           json_decref (a);
           json_decref (wire_fee_object);
           json_decref (wire_accounts_array);
+          return NULL;
+        }
+        if (0 == json_array_size (a))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "No wire fees for `%s' configured. Administrator must set `wire-fee` with taler-exchange-offline!\n",
+                      wire_method);
+          json_decref (wire_accounts_array);
+          json_decref (wire_fee_object);
           return NULL;
         }
         GNUNET_assert (0 ==
