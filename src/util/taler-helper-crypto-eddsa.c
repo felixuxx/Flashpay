@@ -18,11 +18,6 @@
  * @brief Standalone process to perform private key EDDSA operations
  * @author Christian Grothoff
  *
- * INTEGRATION NOTES:
- * - Option 'DURATION_OVERLAP' renamed to 'OVERLAP_DURATION' for consistency;
- *   => need to update in deployment scripts and default configuration!
- * - option 'KEY_DIR' moved from section 'exchange' to 'taler-helper-crypto-eddsa'!
- *
  * Key design points:
  * - EVERY thread of the exchange will have its own pair of connections to the
  *   crypto helpers.  This way, every threat will also have its own /keys state
@@ -236,7 +231,7 @@ static char *keydir;
 /**
  * How much should coin creation duration overlap
  * with the next key?  Basically, the starting time of two
- * keys is always #duration - #duration_overlap apart.
+ * keys is always #duration - #overlap_duration apart.
  */
 static struct GNUNET_TIME_Relative overlap_duration;
 

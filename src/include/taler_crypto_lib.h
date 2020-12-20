@@ -463,7 +463,7 @@ struct TALER_TrackTransferDetails
  *         #GNUNET_NO if it is invalid
  *         #GNUNET_SYSERR if an internal error occurred
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
                        const struct TALER_DenominationPublicKey *denom_pub);
 
@@ -650,7 +650,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps);
  *               other withdraw operations
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
                         struct GNUNET_HashCode *c_hash,
@@ -668,7 +668,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
  * @param[out] coin set to the details of the fresh coin
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
                         const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
                         const struct TALER_PlanchetSecretsP *ps,
@@ -1081,7 +1081,7 @@ TALER_exchange_offline_auditor_add_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_add_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
@@ -1115,7 +1115,7 @@ TALER_exchange_offline_auditor_del_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_del_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   struct GNUNET_TIME_Absolute end_date,
@@ -1145,7 +1145,7 @@ TALER_exchange_offline_denomination_revoke_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denomination_revoke_verify (
   const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -1174,7 +1174,7 @@ TALER_exchange_offline_signkey_revoke_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_signkey_revoke_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -1212,7 +1212,7 @@ TALER_exchange_offline_signkey_validity_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_signkey_validity_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct GNUNET_TIME_Absolute start_sign,
@@ -1271,7 +1271,7 @@ TALER_exchange_offline_denom_validity_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denom_validity_verify (
   const struct GNUNET_HashCode *h_denom_pub,
   struct GNUNET_TIME_Absolute stamp_start,
@@ -1315,7 +1315,7 @@ TALER_exchange_secmod_eddsa_sign (
  * @param secm_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_eddsa_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct GNUNET_TIME_Absolute start_sign,
@@ -1347,7 +1347,7 @@ TALER_exchange_secmod_rsa_sign (
 /**
  * Verify security module RSA signature.
  *
- * @param h_ednom_pub hash of the public key to validate
+ * @param h_denom_pub hash of the public key to validate
  * @param section_name name of the section in the configuration
  * @param start_sign starting point of validity for signing
  * @param duration how long will the key be in use
@@ -1355,7 +1355,7 @@ TALER_exchange_secmod_rsa_sign (
  * @param secm_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_rsa_verify (
   const struct GNUNET_HashCode *h_denom_pub,
   const char *section_name,
@@ -1420,7 +1420,7 @@ TALER_auditor_denom_validity_sign (
  * @param auditor_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_auditor_denom_validity_verify (
   const char *auditor_url,
   const struct GNUNET_HashCode *h_denom_pub,
@@ -1475,7 +1475,7 @@ TALER_exchange_offline_wire_fee_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_fee_verify (
   const char *payment_method,
   struct GNUNET_TIME_Absolute start_time,
@@ -1511,7 +1511,7 @@ TALER_exchange_offline_wire_add_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
   const char *payto_uri,
   struct GNUNET_TIME_Absolute sign_time,
@@ -1544,7 +1544,7 @@ TALER_exchange_offline_wire_del_sign (
  * @param master_sig the signature the signature
  * @return #GNUNET_OK if the signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_del_verify (
   const char *payto_uri,
   struct GNUNET_TIME_Absolute sign_time,
@@ -1572,7 +1572,7 @@ TALER_exchange_wire_signature_hash (const char *payto_uri,
  * @param master_sig signature of the exchange
  * @return #GNUNET_OK if signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_wire_signature_check (
   const char *payto_uri,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -1617,7 +1617,7 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
  * @param merch_sig signature of the merchant
  * @return #GNUNET_OK if signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
   const char *payto_uri,
   const char *salt,
@@ -1645,13 +1645,13 @@ TALER_merchant_wire_signature_make (
  * Blinds the given message with the given blinding key
  *
  * @param hash hash of the message to sign
- * @param bkey the blinding key
+ * @param bks the blinding key
  * @param pkey the public key of the signer
  * @param[out] buf set to a buffer with the blinded message to be signed
  * @param[out] buf_size number of bytes stored in @a buf
  * @return #GNUNET_YES if successful, #GNUNET_NO if RSA key is malicious
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_rsa_blind (const struct GNUNET_HashCode *hash,
                  const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
                  struct GNUNET_CRYPTO_RsaPublicKey *pkey,
@@ -1661,8 +1661,8 @@ TALER_rsa_blind (const struct GNUNET_HashCode *hash,
 
 /**
  * Unblind a blind-signed signature.  The signature should have been generated
- * with #GNUNET_CRYPTO_rsa_sign() using a hash that was blinded with
- * #GNUNET_CRYPTO_rsa_blind().
+ * with GNUNET_CRYPTO_rsa_sign() using a hash that was blinded with
+ * GNUNET_CRYPTO_rsa_blind().
  *
  * @param sig the signature made on the blinded signature purpose
  * @param bks the blinding key secret used to blind the signature purpose

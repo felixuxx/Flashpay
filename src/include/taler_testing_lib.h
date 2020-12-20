@@ -1808,15 +1808,17 @@ TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
  *        of downloads is less than @a generation, the logic will
  *        first make sure that @a generation downloads are done,
  *        and _then_ execute the rest of the command.
- * @param last_denom_date date to be set in the "last_denom_issue"
- *        URL parameter of /keys.
+ * @param last_denom_date_ref previous /keys command to use to
+ *        obtain the "last_denom_date" value from; "zero" can be used
+ *        as a special value to force an absolute time of zero to be
+ *        given to as an argument
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_with_last_denom (
   const char *label,
   unsigned int generation,
-  struct GNUNET_TIME_Absolute last_denom_date);
+  const char *last_denom_date_ref);
 
 
 /**

@@ -47,17 +47,7 @@ TALER_exchange_offline_auditor_add_sign (
 }
 
 
-/**
- * Verify auditor add signature.
- *
- * @param auditor_pub public key of the auditor
- * @param auditor_url URL of the auditor
- * @param start_date when to enable the auditor (for replay detection)
- * @param master_pub public key to verify against
- * @param master_sig the signature the signature
- * @return #GNUNET_OK if the signature is valid
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_add_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
@@ -103,7 +93,7 @@ TALER_exchange_offline_auditor_del_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_del_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   struct GNUNET_TIME_Absolute end_date,
@@ -143,7 +133,7 @@ TALER_exchange_offline_denomination_revoke_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denomination_revoke_verify (
   const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -183,7 +173,7 @@ TALER_exchange_offline_signkey_revoke_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_signkey_revoke_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -231,7 +221,7 @@ TALER_exchange_offline_signkey_validity_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_signkey_validity_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct GNUNET_TIME_Absolute start_sign,
@@ -305,7 +295,7 @@ TALER_exchange_offline_denom_validity_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denom_validity_verify (
   const struct GNUNET_HashCode *h_denom_pub,
   struct GNUNET_TIME_Absolute stamp_start,
@@ -374,7 +364,7 @@ TALER_exchange_offline_wire_add_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
   const char *payto_uri,
   struct GNUNET_TIME_Absolute sign_time,
@@ -421,7 +411,7 @@ TALER_exchange_offline_wire_del_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_del_verify (
   const char *payto_uri,
   struct GNUNET_TIME_Absolute sign_time,
@@ -475,7 +465,7 @@ TALER_exchange_offline_wire_fee_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_fee_verify (
   const char *payment_method,
   struct GNUNET_TIME_Absolute start_time,

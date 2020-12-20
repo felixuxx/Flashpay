@@ -53,7 +53,7 @@ TALER_exchange_wire_signature_hash (const char *payto_uri,
  * @param master_sig signature of the exchange
  * @return #GNUNET_OK if signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_wire_signature_check (
   const char *payto_uri,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -143,7 +143,7 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
  * @param merch_sig signature of the merchant
  * @return #GNUNET_OK if signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
   const char *payto_uri,
   const char *salt,

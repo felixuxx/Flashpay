@@ -548,7 +548,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   struct TEH_KeyStateHandle *ksh;
   struct GNUNET_TIME_Absolute now;
 
-  ksh = TEH_get_key_state ();
+  ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     return TALER_MHD_reply_with_error (connection,

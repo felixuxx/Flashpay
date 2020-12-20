@@ -26,9 +26,8 @@
 #include <gcrypt.h>
 
 /**
- * Should we use the RSA blind signing implementation
- * from libgnunetutil?  The blinding only works
- * correctly with a current version of libgnunetutil.
+ * Should we use the RSA blind signing implementation from libgnunetutil?  The
+ * blinding only works correctly with a current version of libgnunetutil.
  *
  * Only applies to blinding and unblinding, but
  * not to blind signing.
@@ -82,17 +81,7 @@ TALER_gcrypt_init ()
 }
 
 
-/**
- * Check if a coin is valid; that is, whether the denomination key exists,
- * is not expired, and the signature is correct.
- *
- * @param coin_public_info the coin public info to check for validity
- * @param denom_pub denomination key, must match @a coin_public_info's `denom_pub_hash`
- * @return #GNUNET_YES if the coin is valid,
- *         #GNUNET_NO if it is invalid
- *         #GNUNET_SYSERR if an internal error occurred
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
                        const struct TALER_DenominationPublicKey *denom_pub)
 {
@@ -122,17 +111,6 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
 }
 
 
-/**
- * Given the coin and the transfer private keys, compute the
- * transfer secret.  (Technically, we only need one of the two
- * private keys, but the caller currently trivially only has
- * the two private keys, so we derive one of the public keys
- * internally to this function.)
- *
- * @param coin_priv coin key
- * @param trans_priv transfer private key
- * @param[out] ts computed transfer secret
- */
 void
 TALER_link_derive_transfer_secret (
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
@@ -151,14 +129,6 @@ TALER_link_derive_transfer_secret (
 }
 
 
-/**
- * Decrypt the shared @a secret from the information in the
- * @a trans_priv and @a coin_pub.
- *
- * @param trans_priv transfer private key
- * @param coin_pub coin public key
- * @param[out] transfer_secret set to the shared secret
- */
 void
 TALER_link_reveal_transfer_secret (
   const struct TALER_TransferPrivateKeyP *trans_priv,
@@ -172,14 +142,6 @@ TALER_link_reveal_transfer_secret (
 }
 
 
-/**
- * Decrypt the shared @a secret from the information in the
- * @a trans_priv and @a coin_pub.
- *
- * @param trans_pub transfer private key
- * @param coin_priv coin public key
- * @param[out] transfer_secret set to the shared secret
- */
 void
 TALER_link_recover_transfer_secret (
   const struct TALER_TransferPublicKeyP *trans_pub,
@@ -193,13 +155,6 @@ TALER_link_recover_transfer_secret (
 }
 
 
-/**
- * Setup information for a fresh coin.
- *
- * @param secret_seed seed to use for KDF to derive coin keys
- * @param coin_num_salt number of the coin to include in KDF
- * @param[out] ps value to initialize
- */
 void
 TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                               uint32_t coin_num_salt,
@@ -220,11 +175,6 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
 }
 
 
-/**
- * Setup information for a fresh coin.
- *
- * @param[out] ps value to initialize
- */
 void
 TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
 {
@@ -234,17 +184,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
 }
 
 
-/**
- * Prepare a planchet for tipping.  Creates and blinds a coin.
- *
- * @param dk denomination key for the coin to be created
- * @param ps secret planchet internals (for #TALER_planchet_to_coin)
- * @param[out] c_hash set to the hash of the public key of the coin (needed later)
- * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
- *               other withdraw operations
- * @return #GNUNET_OK on success
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
                         struct GNUNET_HashCode *c_hash,
@@ -273,18 +213,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 }
 
 
-/**
- * Obtain a coin from the planchet's secrets and the blind signature
- * of the exchange.
- *
- * @param dk denomination key, must match what was given to #TALER_planchet_prepare()
- * @param blind_sig blind signature from the exchange
- * @param ps secrets from #TALER_planchet_prepare()
- * @param c_hash hash of the coin's public key for verification of the signature
- * @param[out] coin set to the details of the fresh coin
- * @return #GNUNET_OK on success
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
                         const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
                         const struct TALER_PlanchetSecretsP *ps,
@@ -311,17 +240,6 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
 }
 
 
-/**
- * Compute the commitment for a /refresh/melt operation from
- * the respective public inputs.
- *
- * @param[out] rc set to the value the wallet must commit to
- * @param kappa number of transfer public keys involved (must be #TALER_CNC_KAPPA)
- * @param num_new_coins number of new coins to be created
- * @param rcs commitments array of @a kappa commitments
- * @param coin_pub public key of the coin to be melted
- * @param amount_with_fee amount to be melted, including fee
- */
 void
 TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
                               uint32_t kappa,
@@ -556,7 +474,6 @@ rsa_gcd_validate (gcry_mpi_t r, gcry_mpi_t n)
  *
  * @param hash initial hash of the message to sign
  * @param pkey the public key of the signer
- * @param rsize If not NULL, the number of bytes actually stored in buffer
  * @return MPI value set to the FDH, NULL if RSA key is malicious
  */
 static gcry_mpi_t
@@ -598,7 +515,7 @@ rsa_full_domain_hash (const struct GNUNET_CRYPTO_RsaPublicKey *pkey,
 /**
  * Create a blinding key
  *
- * @param len length of the key in bits (i.e. 2048)
+ * @param pkey the public key to blind for
  * @param bks pre-secret to use to derive the blinding key
  * @return the newly created blinding key, NULL if RSA key is malicious
  */
@@ -638,7 +555,7 @@ rsa_blinding_key_derive (const struct GNUNET_CRYPTO_RsaPublicKey *pkey,
  * Print an MPI to a newly created buffer
  *
  * @param v MPI to print.
- * @param[out] newly allocated buffer containing the result
+ * @param[out] buffer newly allocated buffer containing the result
  * @return number of bytes stored in @a buffer
  */
 static size_t
@@ -669,17 +586,7 @@ numeric_mpi_alloc_n_print (gcry_mpi_t v,
 #endif /* ! USE_GNUNET_RSA_BLINDING */
 
 
-/**
- * Blinds the given message with the given blinding key
- *
- * @param hash hash of the message to sign
- * @param bkey the blinding key
- * @param pkey the public key of the signer
- * @param[out] buf set to a buffer with the blinded message to be signed
- * @param[out] buf_size number of bytes stored in @a buf
- * @return #GNUNET_YES if successful, #GNUNET_NO if RSA key is malicious
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_rsa_blind (const struct GNUNET_HashCode *hash,
                  const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
                  struct GNUNET_CRYPTO_RsaPublicKey *pkey,
@@ -710,7 +617,7 @@ TALER_rsa_blind (const struct GNUNET_HashCode *hash,
     GNUNET_break (0);
     *buf = NULL;
     *buf_size = 0;
-    return 0;
+    return GNUNET_NO;
   }
 
   data = rsa_full_domain_hash (pkey, hash);
@@ -758,16 +665,6 @@ rsa_gcd_validate_failure:
 }
 
 
-/**
- * Unblind a blind-signed signature.  The signature should have been generated
- * with #GNUNET_CRYPTO_rsa_sign() using a hash that was blinded with
- * #GNUNET_CRYPTO_rsa_blind().
- *
- * @param sig the signature made on the blinded signature purpose
- * @param bks the blinding key secret used to blind the signature purpose
- * @param pkey the public key of the signer
- * @return unblinded signature on success, NULL if RSA key is bad or malicious.
- */
 struct GNUNET_CRYPTO_RsaSignature *
 TALER_rsa_unblind (const struct GNUNET_CRYPTO_RsaSignature *sig,
                    const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,

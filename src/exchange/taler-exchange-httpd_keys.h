@@ -101,13 +101,13 @@ struct TEH_KeyStateHandle;
  * state if we have reason to believe that something changed.
  *
  * The result is ONLY valid until the next call to
- * #TEH_keys_denomination_by_hash() or #TEH_get_key_state()
+ * #TEH_keys_denomination_by_hash() or #TEH_keys_get_state()
  * or #TEH_keys_exchange_sign().
  *
  * @return NULL on error
  */
 struct TEH_KeyStateHandle *
-TEH_get_key_state (void);
+TEH_keys_get_state (void);
 
 
 /**
@@ -117,7 +117,7 @@ TEH_get_key_state (void);
  *
  * (We do not do so immediately, but merely signal to all threads that they
  * need to rebuild their key state upon the next call to
- * #TEH_get_key_state()).
+ * #TEH_keys_get_state()).
  */
 void
 TEH_keys_update_states (void);
@@ -128,7 +128,6 @@ TEH_keys_update_states (void);
  * must only be used in this thread and only until another key or
  * key state is resolved.
  *
- * @param key_state state to look in
  * @param h_denom_pub hash of denomination public key
  * @param[out] ec set to the error code, in case the operation failed
  * @param[out] hc set to the HTTP status code to use
@@ -145,9 +144,9 @@ TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
  * Look up the issue for a denom public key using a given @a ksh.  This allows
  * requesting multiple denominations with the same @a ksh which thus will
  * remain valid until the next call to #TEH_keys_denomination_by_hash() or
- * #TEH_get_key_state() or #TEH_keys_exchange_sign().
+ * #TEH_keys_get_state() or #TEH_keys_exchange_sign().
  *
- * @param key_state state to look in
+ * @param ksh key state state to look in
  * @param h_denom_pub hash of denomination public key
  * @param[out] ec set to the error code, in case the operation failed
  * @param[out] hc set to the HTTP status code to use
@@ -231,6 +230,7 @@ TEH_keys_exchange_sign_ (
  * number of bytes of the data structure, including its header.  Use
  * #TEH_keys_exchange_sign() instead of calling this function directly!
  *
+ * @param ksh key state state to look in
  * @param purpose the message to sign
  * @param[out] pub set to the current public signing key of the exchange
  * @param[out] sig signature over purpose using current signing key
@@ -281,7 +281,7 @@ TEH_keys_exchange_sign2_ (
  *
  * This allows requesting multiple denominations with the same @a ksh which
  * thus will remain valid until the next call to
- * #TEH_keys_denomination_by_hash() or #TEH_get_key_state() or
+ * #TEH_keys_denomination_by_hash() or #TEH_keys_get_state() or
  * #TEH_keys_exchange_sign().
  *
  * @param ksh key state to use

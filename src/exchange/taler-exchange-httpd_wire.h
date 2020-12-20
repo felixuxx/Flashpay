@@ -49,7 +49,7 @@ TEH_WIRE_done (void);
  *
  * (We do not do so immediately, but merely signal to all threads that they
  * need to rebuild their wire state upon the next call to
- * #wire_get_state()).
+ * #TEH_handler_wire()).
  */
 void
 TEH_wire_update_state (void);

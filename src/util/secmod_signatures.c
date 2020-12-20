@@ -45,7 +45,7 @@ TALER_exchange_secmod_eddsa_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_eddsa_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct GNUNET_TIME_Absolute start_sign,
@@ -96,7 +96,7 @@ TALER_exchange_secmod_rsa_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_rsa_verify (
   const struct GNUNET_HashCode *h_denom_pub,
   const char *section_name,

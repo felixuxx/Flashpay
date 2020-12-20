@@ -70,7 +70,7 @@ TALER_auditor_denom_validity_sign (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_auditor_denom_validity_verify (
   const char *auditor_url,
   const struct GNUNET_HashCode *h_denom_pub,

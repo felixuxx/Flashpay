@@ -18,11 +18,6 @@
  * @brief Standalone process to perform private key RSA operations
  * @author Christian Grothoff
  *
- * INTEGRATION NOTES:
- * - Option 'DURATION_OVERLAP' renamed to 'OVERLAP_DURATION' for consistency;
- *   => need to update in deployment scripts and default configuration!
- * - option 'KEY_DIR' moved from section 'exchange' to 'taler-helper-crypto-rsa'!
- *
  * Key design points:
  * - EVERY thread of the exchange will have its own pair of connections to the
  *   crypto helpers.  This way, every threat will also have its own /keys state
@@ -288,7 +283,7 @@ static char *keydir;
 /**
  * How much should coin creation (@e duration_withdraw) duration overlap
  * with the next denomination?  Basically, the starting time of two
- * denominations is always @e duration_withdraw - #duration_overlap apart.
+ * denominations is always @e duration_withdraw - #overlap_duration apart.
  */
 static struct GNUNET_TIME_Relative overlap_duration;
 

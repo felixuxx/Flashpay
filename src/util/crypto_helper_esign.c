@@ -317,7 +317,7 @@ handle_mt_purge (struct TALER_CRYPTO_ExchangeSignHelper *esh,
 /**
  * Wait until the socket is ready to read.
  *
- * @param dh helper to wait for
+ * @param esh helper to wait for
  * @return false on timeout (after 5s)
  */
 static bool
@@ -591,7 +591,8 @@ void
 TALER_CRYPTO_helper_esign_disconnect (
   struct TALER_CRYPTO_ExchangeSignHelper *esh)
 {
-  do_disconnect (esh);
+  if (-1 != esh->sock)
+    do_disconnect (esh);
   GNUNET_free (esh->template);
   GNUNET_free (esh);
 }

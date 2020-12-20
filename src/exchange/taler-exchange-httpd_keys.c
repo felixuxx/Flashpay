@@ -147,7 +147,7 @@ struct HelperSignkey
  * State associated with the crypto helpers / security modules.
  * Created per-thread, but NOT updated when the #key_generation
  * is updated (instead constantly kept in sync whenever
- * #TEH_get_key_state() is called).
+ * #TEH_keys_get_state() is called).
  */
 struct HelperState
 {
@@ -335,8 +335,8 @@ static pthread_key_t key_state;
  * Counter incremented whenever we have a reason to re-build the keys because
  * something external changed (in another thread).  The counter is manipulated
  * using an atomic update, and thus to ensure that threads notice when it
- * changes, the variable MUST be volatile.  See #TEH_get_key_state() and
- * #TEH_update_key_state() for uses of this variable.
+ * changes, the variable MUST be volatile.  See #TEH_keys_get_state() and
+ * #TEH_keys_update_states() for uses of this variable.
  */
 static volatile uint64_t key_generation;
 
@@ -816,7 +816,7 @@ clear_denomination_cb (void *cls,
  * Free denomination key data.
  *
  * @param cls a `struct TEH_KeyStateHandle`, unused
- * @param h_denom_pub hash of the denomination public key, unused
+ * @param pid the online signing key (type-disguised), unused
  * @param value a `struct SigningKey` to free
  * @return #GNUNET_OK (continue to iterate)
  */
@@ -1729,7 +1729,7 @@ TEH_keys_update_states ()
 
 /**
  * Obtain the key state for the current thread. Should ONLY be used
- * directly if @a management_only is true. Otherwise use #TEH_get_key_state().
+ * directly if @a management_only is true. Otherwise use #TEH_keys_get_state().
  *
  * @param management_only if we should NOT run 'finish_keys_response()'
  *                  because we only need the state for the /management/keys API
@@ -1787,7 +1787,7 @@ get_key_state (bool management_only)
 
 
 struct TEH_KeyStateHandle *
-TEH_get_key_state (void)
+TEH_keys_get_state (void)
 {
   struct TEH_KeyStateHandle *ksh;
 
@@ -1811,7 +1811,7 @@ TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
 {
   struct TEH_KeyStateHandle *ksh;
 
-  ksh = TEH_get_key_state ();
+  ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     *hc = MHD_HTTP_INTERNAL_SERVER_ERROR;
@@ -1854,7 +1854,7 @@ TEH_keys_denomination_sign (const struct GNUNET_HashCode *h_denom_pub,
   struct TEH_KeyStateHandle *ksh;
   struct TALER_DenominationSignature none = { NULL };
 
-  ksh = TEH_get_key_state ();
+  ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     *ec = TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
@@ -1873,7 +1873,7 @@ TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub)
 {
   struct TEH_KeyStateHandle *ksh;
 
-  ksh = TEH_get_key_state ();
+  ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -1893,7 +1893,7 @@ TEH_keys_exchange_sign_ (
 {
   struct TEH_KeyStateHandle *ksh;
 
-  ksh = TEH_get_key_state ();
+  ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     /* This *can* happen if the exchange's crypto helper is not running
@@ -1956,7 +1956,7 @@ TEH_keys_exchange_revoke (const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct TEH_KeyStateHandle *ksh;
 
-  ksh = TEH_get_key_state ();
+  ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
     GNUNET_break (0);
@@ -2037,7 +2037,7 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
     struct TEH_KeyStateHandle *ksh;
     const struct KeysResponseData *krd;
 
-    ksh = TEH_get_key_state ();
+    ksh = TEH_keys_get_state ();
     if (NULL == ksh)
     {
       return suspend_request (connection);

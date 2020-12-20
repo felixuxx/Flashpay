@@ -461,7 +461,7 @@ upload_denomination_add (const char *exchange_url,
 
 
 /**
- * Perform uploads based on the JSON in #io.
+ * Perform uploads based on the JSON in #out.
  *
  * @param exchange_url base URL of the exchange to use
  */

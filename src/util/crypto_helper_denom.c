@@ -663,7 +663,8 @@ void
 TALER_CRYPTO_helper_denom_disconnect (
   struct TALER_CRYPTO_DenominationHelper *dh)
 {
-  do_disconnect (dh);
+  if (-1 != dh->sock)
+    do_disconnect (dh);
   GNUNET_free (dh->template);
   GNUNET_free (dh);
 }

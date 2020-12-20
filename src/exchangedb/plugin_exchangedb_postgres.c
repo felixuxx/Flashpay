@@ -2186,7 +2186,7 @@ struct SignkeysIteratorContext
 
 
 /**
- * Helper function for #postgres_active_signkeys().
+ * Helper function for #postgres_iterate_active_signkeys().
  * Calls the callback with each signkey.
  *
  * @param cls a `struct SignkeysIteratorContext`
@@ -2294,7 +2294,7 @@ struct AuditorsIteratorContext
 
 
 /**
- * Helper function for #postgres_active_auditors().
+ * Helper function for #postgres_iterate_active_auditors().
  * Calls the callback with each auditor.
  *
  * @param cls a `struct SignkeysIteratorContext`
@@ -5226,7 +5226,6 @@ postgres_get_coin_transactions (
   *tlp = chc.head;
   if (NULL == chc.head)
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-  GNUNET_break (chc.have_deposit_or_melt);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
@@ -8519,15 +8518,13 @@ postgres_lookup_denomination_key (
 
 
 /**
- * Activate future denomination key, turning it into a "current" or "valid"
- * denomination key by adding the master signature.  Deletes the
- * denomination key from the 'future' table an inserts the data into the
- * main denominations table. Because this function will trigger multiple SQL
- * statements, it must be run within a transaction.
+ * Activate denomination key, turning it into a "current" or "valid"
+ * denomination key by adding the master signature.
  *
  * @param cls closure
  * @param session a session
  * @param h_denom_pub hash of the denomination public key
+ * @param denom_pub the actual denomination key
  * @param meta meta data about the denomination
  * @param master_pub master public key
  * @param master_sig master signature to add

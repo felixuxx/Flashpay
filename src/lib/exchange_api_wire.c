@@ -129,7 +129,6 @@ parse_fees (json_t *fees)
 
     if (0 == (len = json_array_size (fee_array)))
     {
-      GNUNET_break_op (0);
       GNUNET_free (fe);
       continue; /* skip */
     }

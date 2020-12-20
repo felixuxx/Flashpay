@@ -161,7 +161,7 @@ TALER_ARL_report (json_t *array,
  *
  * @param cls closure, NULL
  * @param denom_pub public key, sometimes NULL (!)
- * @param issue issuing information with value, fees and other info about the denomination.
+ * @param validity issuing information with value, fees and other info about the denomination.
  */
 static void
 add_denomination (void *cls,

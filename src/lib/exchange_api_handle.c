@@ -215,17 +215,6 @@ struct TALER_EXCHANGE_Handle
    */
   enum ExchangeHandleState state;
 
-  /**
-   * If #GNUNET_YES, use fake now given by the user, in
-   * request of "/keys".
-   */
-  int with_now;
-
-  /**
-   * Fake now given by the user.
-   */
-  struct GNUNET_TIME_Absolute now;
-
 };
 
 
@@ -1044,12 +1033,12 @@ decode_keys_json (const json_t *resp_obj,
 
   if (check_sig)
   {
-    struct TALER_ExchangeKeySetPS ks;
+    struct TALER_ExchangeKeySetPS ks = {
+      .purpose.size = htonl (sizeof (ks)),
+      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET),
+      .list_issue_date = GNUNET_TIME_absolute_hton (key_data->list_issue_date)
+    };
 
-    /* Validate signature... */
-    ks.purpose.size = htonl (sizeof (ks));
-    ks.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET);
-    ks.list_issue_date = GNUNET_TIME_absolute_hton (key_data->list_issue_date);
     GNUNET_CRYPTO_hash_context_finish (hash_context,
                                        &ks.hc);
     hash_context = NULL;
@@ -1112,34 +1101,6 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
  */
 static void
 request_keys (void *cls);
-
-
-/**
- * Set the fake now to be used when requesting "/keys".
- *
- * @param exchange exchange handle.
- * @param now fake now to use.  Note: this value will be
- *        used _until_ its use will be unset via @a TALER_EXCHANGE_unset_now()
- */
-void
-TALER_EXCHANGE_set_now (struct TALER_EXCHANGE_Handle *exchange,
-                        struct GNUNET_TIME_Absolute now)
-{
-  exchange->with_now = GNUNET_YES;
-  exchange->now = now;
-}
-
-
-/**
- * Unset the fake now to be used when requesting "/keys".
- *
- * @param exchange exchange handle.
- */
-void
-TALER_EXCHANGE_unset_now (struct TALER_EXCHANGE_Handle *exchange)
-{
-  exchange->with_now = GNUNET_NO;
-}
 
 
 /**
@@ -1938,15 +1899,6 @@ request_keys (void *cls)
              (unsigned long
               long) exchange->key_data.last_denom_issue_date.abs_value_us
              / 1000000LLU);
-  }
-
-  if (GNUNET_YES == exchange->with_now)
-  {
-    TALER_LOG_DEBUG ("Faking now to GET /keys: %s\n",
-                     GNUNET_STRINGS_absolute_time_to_string (exchange->now));
-    sprintf (&url[strlen (url)],
-             "now=%llu&",
-             (unsigned long long) exchange->now.abs_value_us / 1000000LLU);
   }
 
   /* Clean the last '&'/'?' sign that we optimistically put.  */
