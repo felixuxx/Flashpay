@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2018 Taler Systems SA
+  (C) 2018, 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -18,15 +18,9 @@
 */
 /**
  * @file testing/testing_api_cmd_check_keys.c
- * @brief Implementation of "check keys" test command.  XXX-NOTE:
- *        the number of 'expected keys' is NOT the number of the
- *        downloaded keys, but rather the number of keys that the
- *        libtalerutil library keeps locally.  As for the current
- *        design, keys are _never_ discarded by the library,
- *        therefore their (expected) number is monotonically
- *        ascending.
- *
+ * @brief Implementation of "check keys" test command.
  * @author Marcello Stanisci
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include "taler_json_lib.h"
@@ -47,37 +41,21 @@ struct CheckKeysState
   unsigned int generation;
 
   /**
-   * If this value is GNUNET_YES, then the "cherry
+   * If this value is true, then the "cherry
    * picking" facility is turned off; whole /keys is
    * downloaded.
    */
-  unsigned int pull_all_keys;
+  bool pull_all_keys;
 
   /**
-   * If GNUNET_YES, then the user must specify the
-   * last_denom_issue_date manually.  This way, it is possible
-   * to force whatever X value here (including 0): /keys?last_denom_issue=X.
+   * Label of a command to use to derive the "last_denom_issue" date to use.
    */
-  unsigned int set_last_denom;
+  const char *last_denom_date_ref;
 
   /**
-   * Value X to set as the URL parameter:
-   * "/keys?last_denom_issue=X" is used only when `set_last_denom'
-   * equals #GNUNET_YES.
+   * Last denomination date we received when doing this request.
    */
-  struct GNUNET_TIME_Absolute last_denom_date;
-
-  /**
-   * If #GNUNET_YES, then we'll provide the "/keys" request.
-   * with the "now" argument.
-   */
-  int with_now;
-
-  /**
-   * Fake now as passed by the user.
-   */
-  struct GNUNET_TIME_Absolute now;
-
+  struct GNUNET_TIME_Absolute my_denom_date;
 };
 
 
@@ -100,58 +78,74 @@ check_keys_run (void *cls,
               cmd->label,
               is->ip,
               is->key_generation);
-
   if (is->key_generation < cks->generation)
   {
+    struct GNUNET_TIME_Absolute rdate;
+
     is->working = GNUNET_NO;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Triggering GET /keys, cmd `%s'\n",
                 cmd->label);
-
-    if (GNUNET_YES == cks->set_last_denom)
+    if (NULL != cks->last_denom_date_ref)
     {
-      TALER_LOG_DEBUG ("Forcing last_denom_date URL argument\n");
-      TALER_EXCHANGE_set_last_denom (is->exchange,
-                                     cks->last_denom_date);
+      if (0 == strcmp ("zero",
+                       cks->last_denom_date_ref))
+      {
+        TALER_LOG_DEBUG ("Forcing last_denom_date URL argument set to zero\n");
+        TALER_EXCHANGE_set_last_denom (is->exchange,
+                                       GNUNET_TIME_UNIT_ZERO_ABS);
+      }
+      else
+      {
+        const struct GNUNET_TIME_Absolute *last_denom_date;
+        const struct TALER_TESTING_Command *ref;
+
+        ref = TALER_TESTING_interpreter_lookup_command (is,
+                                                        cks->last_denom_date_ref);
+        if (NULL == ref)
+        {
+          GNUNET_break (0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+        if (GNUNET_OK !=
+            TALER_TESTING_get_trait_absolute_time (ref,
+                                                   0,
+                                                   &last_denom_date))
+        {
+          GNUNET_break (0);
+          TALER_TESTING_interpreter_fail (is);
+          return;
+        }
+
+        TALER_LOG_DEBUG ("Forcing last_denom_date URL argument\n");
+        TALER_EXCHANGE_set_last_denom (is->exchange,
+                                       *last_denom_date);
+      }
     }
 
-    if (GNUNET_YES == cks->with_now)
-      TALER_EXCHANGE_set_now (is->exchange,
-                              cks->now);
+    rdate = TALER_EXCHANGE_check_keys_current (
+      is->exchange,
+      cks->pull_all_keys
+      ? TALER_EXCHANGE_CKF_FORCE_ALL_NOW
+      : TALER_EXCHANGE_CKF_FORCE_DOWNLOAD);
     /* Redownload /keys.  */
-    GNUNET_break
-      (0 == TALER_EXCHANGE_check_keys_current
-        (is->exchange,
-        cks->pull_all_keys
-        ? TALER_EXCHANGE_CKF_FORCE_ALL_NOW
-        : TALER_EXCHANGE_CKF_FORCE_DOWNLOAD).abs_value_us);
+    GNUNET_break (0 ==
+                  rdate.abs_value_us);
     return;
   }
-
-#if 0
-  /**
-   * Not sure this check makes sense: GET /keys is performed on
-   * a "maybe" basis, so it can get quite hard to track /keys
-   * request.  Rather, this CMD should just check if /keys was
-   * requested AT LEAST n times before going ahead with checks.
-   *///
-  if (is->key_generation > cks->generation)
   {
-    /* We got /keys too often, strange. Fatal. May theoretically
-       happen if somehow we were really unlucky and /keys expired
-       "naturally", but obviously with a sane configuration this
-       should also not be. */
-    GNUNET_break (0);
-    TALER_LOG_ERROR ("Acutal- vs expected key"
-                     " generation: %u vs %u\n",
-                     is->key_generation,
-                     cks->generation);
-    TALER_TESTING_interpreter_fail (is);
-    return;
+    const struct TALER_EXCHANGE_Keys *keys;
+
+    keys = TALER_EXCHANGE_get_keys (is->exchange);
+    if (NULL == keys)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    cks->my_denom_date = keys->last_denom_issue_date;
   }
-#endif
-  /* Let's unset the fake now before moving on.  */
-  TALER_EXCHANGE_unset_now (is->exchange);
   TALER_TESTING_interpreter_next (is);
 }
 
@@ -173,28 +167,34 @@ check_keys_cleanup (void *cls,
 }
 
 
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_keys_with_last_denom (
-  const char *label,
-  unsigned int generation,
-  struct GNUNET_TIME_Absolute last_denom_date)
+/**
+ * Offer internal data to a "check_keys" CMD state to other
+ * commands.
+ *
+ * @param cls closure
+ * @param[out] ret result (could be anything)
+ * @param trait name of the trait
+ * @param index index number of the object to offer.
+ * @return #GNUNET_OK on success
+ */
+static int
+check_keys_traits (void *cls,
+                   const void **ret,
+                   const char *trait,
+                   unsigned int index)
 {
-  struct CheckKeysState *cks;
+  struct CheckKeysState *cks = cls;
+  struct TALER_TESTING_Trait traits[] = {
+    /* history entry MUST be first due to response code logic below! */
+    TALER_TESTING_make_trait_absolute_time (0,
+                                            &cks->my_denom_date),
+    TALER_TESTING_trait_end ()
+  };
 
-  cks = GNUNET_new (struct CheckKeysState);
-  cks->generation = generation;
-  cks->set_last_denom = GNUNET_YES;
-  cks->last_denom_date = last_denom_date;
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = cks,
-      .label = label,
-      .run = &check_keys_run,
-      .cleanup = &check_keys_cleanup
-    };
-
-    return cmd;
-  }
+  return TALER_TESTING_get_trait (traits,
+                                  ret,
+                                  trait,
+                                  index);
 }
 
 
@@ -211,7 +211,8 @@ TALER_TESTING_cmd_check_keys (const char *label,
       .cls = cks,
       .label = label,
       .run = &check_keys_run,
-      .cleanup = &check_keys_cleanup
+      .cleanup = &check_keys_cleanup,
+      .traits = &check_keys_traits
     };
 
     return cmd;
@@ -223,21 +224,28 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_keys_pull_all_keys (const char *label,
                                             unsigned int generation)
 {
-  struct CheckKeysState *cks;
+  struct TALER_TESTING_Command cmd
+    = TALER_TESTING_cmd_check_keys (label,
+                                    generation);
+  struct CheckKeysState *cks = cmd.cls;
 
-  cks = GNUNET_new (struct CheckKeysState);
-  cks->generation = generation;
-  cks->pull_all_keys = GNUNET_YES;
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = cks,
-      .label = label,
-      .run = &check_keys_run,
-      .cleanup = &check_keys_cleanup
-    };
+  cks->pull_all_keys = true;
+  return cmd;
+}
 
-    return cmd;
-  }
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_keys_with_last_denom (
+  const char *label,
+  unsigned int generation,
+  const char *last_denom_date_ref)
+{
+  struct TALER_TESTING_Command cmd
+    = TALER_TESTING_cmd_check_keys (label,
+                                    generation);
+  struct CheckKeysState *cks = cmd.cls;
+  cks->last_denom_date_ref = last_denom_date_ref;
+  return cmd;
 }
 
 

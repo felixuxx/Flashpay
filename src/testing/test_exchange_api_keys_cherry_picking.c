@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as pub
@@ -42,75 +42,13 @@ lished
 #define CONFIG_FILE "test_exchange_api_keys_cherry_picking.conf"
 
 /**
- * Used to increase the number of denomination keys.
- */
-#define CONFIG_FILE_EXTENDED \
-  "test_exchange_api_keys_cherry_picking_extended.conf"
-
-/**
- * Used to increase the number of denomination keys.
- */
-#define CONFIG_FILE_EXTENDED_2 \
-  "test_exchange_api_keys_cherry_picking_extended_2.conf"
-
-
-#define NDKS_RIGHT_BEFORE_SERIALIZATION 40
-
-/**
- * Add seconds.
- *
- * @param base absolute time to add seconds to.
- * @param relative number of seconds to add.
- * @return a new absolute time, modified according to @e relative.
- */
-#define ADDSECS(base, secs) \
-  GNUNET_TIME_absolute_add \
-    (base, \
-    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
-                                   secs))
-
-/**
- * Subtract seconds.
- *
- * @param base absolute time to subtract seconds to.
- * @param secs relative number of _seconds_ to subtract.
- * @return a new absolute time, modified according to @e relative.
- */
-#define SUBSECS(base, secs) \
-  GNUNET_TIME_absolute_subtract \
-    (base, \
-    GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_SECONDS, \
-                                   secs))
-#define JAN1971 "1971-01-01"
-#define JAN2030 "2030-01-01"
-
-/**
  * Exchange configuration data.
  */
 static struct TALER_TESTING_ExchangeConfiguration ec;
 
 
 /**
- * Wrapper around the time parser.
- *
- * @param str human-readable time string.
- * @return the parsed time from @a str.
- */
-static struct GNUNET_TIME_Absolute
-TTH_parse_time (const char *str)
-{
-  struct GNUNET_TIME_Absolute ret;
-
-  GNUNET_assert
-    (GNUNET_OK == GNUNET_STRINGS_fancy_time_to_absolute (str,
-                                                         &ret));
-  return ret;
-}
-
-
-/**
- * Main function that will tell the interpreter what commands to
- * run.
+ * Main function that will tell the interpreter what commands to run.
  *
  * @param cls closure
  * @param is[in,out] interpreter state
@@ -119,92 +57,6 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  struct TALER_TESTING_Command keys_serialization[] = {
-    TALER_TESTING_cmd_serialize_keys
-      ("serialize-keys"),
-    TALER_TESTING_cmd_connect_with_state
-      ("reconnect-with-state",
-      "serialize-keys"),
-    /**
-     * Make sure we have the same keys situation as
-     * it was before the serialization.
-     */
-    TALER_TESTING_cmd_check_keys_with_now (
-      "check-keys-after-deserialization",
-      4,
-      NDKS_RIGHT_BEFORE_SERIALIZATION,
-      /**
-       * Pretend 5 seconds passed.
-       */
-      ADDSECS (TTH_parse_time (JAN2030),
-               5)),
-    /**
-     * Use one of the deserialized keys.
-     */
-    TALER_TESTING_cmd_wire
-      ("verify-/wire-with-serialized-keys",
-      "x-taler-bank",
-      NULL,
-      MHD_HTTP_OK),
-    TALER_TESTING_cmd_end (),
-  };
-
-  struct TALER_TESTING_Command ordinary_cherry_pick[] = {
-    /**
-     * 1 DK with 80s withdraw duration, lookahead_sign is 60s
-     * => expect 1 DK.
-     */
-    TALER_TESTING_cmd_check_keys ("check-keys-1",
-                                  1, /* generation */
-                                  1),
-    /**
-     * The far-future now will cause "keyup" to start a fresh
-     * key set.  The new KS will have only one key, because the
-     * current lookahead_sign == 60 seconds and the key's withdraw
-     * duration is 80 seconds.
-     *///
-    TALER_TESTING_cmd_exec_keyup_with_now ("keyup-1",
-                                           CONFIG_FILE,
-                                           TTH_parse_time (JAN2030)),
-    /**
-     * Should return 1 new key, + the original one.  NOTE: the
-     * original DK will never be 'cancelled' as for the current
-     * libtalerexchange logic, so it must always be counted.
-     *///
-    TALER_TESTING_cmd_check_keys_with_now ("check-keys-2",
-                                           2, /* generation */
-                                           2,
-                                           TTH_parse_time (JAN2030)),
-    TALER_TESTING_cmd_exec_keyup_with_now
-      ("keyup-3",
-      CONFIG_FILE_EXTENDED_2,
-      /* Taking care of not using a 'now' that equals the
-       * last DK timestamp, otherwise it would get silently
-       * overridden.  */
-      ADDSECS (TTH_parse_time (JAN2030),
-               10)),
-    /**
-     * Expected number of DK:
-     *
-     * 3000 (the lookahead_sign time frame, in seconds)
-     * - 69 (how many seconds are covered by the latest DK, 79s - 10s already past)
-     * ----
-     * 2931
-     * / 79 (how many seconds each DK will cover, 80-1)
-     * ----
-     *   38 (rounded up)
-     *  + 2 (old DKs already stored locally: 1 from the
-     *       very initial setup, and 1 from the 'keyup-1' CMD)
-     * ----
-     *   40
-     *///
-    TALER_TESTING_cmd_check_keys_with_now (
-      "check-keys-3",
-      3 /* generation */,
-      NDKS_RIGHT_BEFORE_SERIALIZATION,
-      TTH_parse_time (JAN2030)),
-    TALER_TESTING_cmd_end ()
-  };
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
                                    MHD_HTTP_NO_CONTENT,
@@ -213,15 +65,37 @@ run (void *cls,
                                 "payto://x-taler-bank/localhost/2",
                                 MHD_HTTP_NO_CONTENT,
                                 false),
+    TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
+                                              CONFIG_FILE,
+                                              "EUR:0.01",
+                                              "EUR:0.01"),
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
                                               CONFIG_FILE),
-    TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
-                                                1,
-                                                1 /* FIXME: wrong number... */),
-    TALER_TESTING_cmd_batch ("ordinary-cherry-pick",
-                             ordinary_cherry_pick),
-    TALER_TESTING_cmd_batch ("keys-serialization",
-                             keys_serialization),
+    TALER_TESTING_cmd_check_keys_pull_all_keys ("initial-/keys",
+                                                1),
+    TALER_TESTING_cmd_sleep ("sleep",
+                             6 /* seconds */),
+    TALER_TESTING_cmd_check_keys ("check-keys-1",
+                                  2 /* generation */),
+    TALER_TESTING_cmd_check_keys_with_last_denom ("check-keys-2",
+                                                  3 /* generation */,
+                                                  "check-keys-1"),
+    TALER_TESTING_cmd_serialize_keys ("serialize-keys"),
+    TALER_TESTING_cmd_connect_with_state ("reconnect-with-state",
+                                          "serialize-keys"),
+    /**
+     * Make sure we have the same keys situation as
+     * it was before the serialization.
+     */
+    TALER_TESTING_cmd_check_keys ("check-keys-after-deserialization",
+                                  4),
+    /**
+     * Use one of the deserialized keys.
+     */
+    TALER_TESTING_cmd_wire ("wire-with-serialized-keys",
+                            "x-taler-bank",
+                            NULL,
+                            MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 

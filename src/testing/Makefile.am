@@ -130,6 +130,7 @@ check_PROGRAMS = \
   test_bank_api_with_pybank \
   test_bank_api_with_nexus \
   test_exchange_api \
+  test_exchange_api_keys_cherry_picking \
   test_exchange_api_revocation \
   test_exchange_api_overlapping_keys_bug \
   test_exchange_management_api \
@@ -142,8 +143,6 @@ if HAVE_TWISTER
     test_bank_api_with_pybank_twisted
 endif
 
-# test_exchange_api_keys_cherry_picking disabled for now:
-# needs to be rewritten as we no longer support /keys timetravel!
 
 
 TESTS = \
@@ -373,8 +372,6 @@ EXTRA_DIST = \
   test_exchange_api.conf \
   test_exchange_api_twisted.conf \
   test_exchange_api_keys_cherry_picking.conf \
-  test_exchange_api_keys_cherry_picking_extended.conf \
-  test_exchange_api_keys_cherry_picking_extended_2.conf \
   test_exchange_api_expire_reserve_now.conf \
   test-taler-exchange-aggregator-postgres.conf \
   test-taler-exchange-wirewatch-postgres.conf

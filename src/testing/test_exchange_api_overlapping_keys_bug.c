@@ -87,7 +87,7 @@ run (void *cls,
     /* Causes GET /keys?last_denom_issue=0 */
     TALER_TESTING_cmd_check_keys_with_last_denom ("second-download",
                                                   1,
-                                                  GNUNET_TIME_UNIT_ZERO_ABS),
+                                                  "zero"),
     TALER_TESTING_cmd_end ()
   };
 
