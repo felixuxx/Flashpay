@@ -627,7 +627,6 @@ helper_denom_cb (
   struct HelperState *hs = cls;
   struct HelperDenomination *hd;
 
-  check_denom_sm_pub (sm_pub);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "RSA helper announces key %s for denomination type %s with validity %s\n",
               GNUNET_h2s (h_denom_pub),
@@ -650,7 +649,8 @@ helper_denom_cb (
                               hd->section_name));
     return;
   }
-
+  GNUNET_assert (NULL != sm_pub);
+  check_denom_sm_pub (sm_pub);
   hd = GNUNET_new (struct HelperDenomination);
   hd->start_time = start_time;
   hd->validity_duration = validity_duration;
@@ -697,7 +697,6 @@ helper_esign_cb (
   struct HelperSignkey *hsk;
   struct GNUNET_PeerIdentity pid;
 
-  check_esign_sm_pub (sm_pub);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "EdDSA helper announces signing key %s with validity %s\n",
               TALER_B2S (exchange_pub),
@@ -717,7 +716,8 @@ helper_esign_cb (
                   hsk->start_time.abs_value_us);
     return;
   }
-
+  GNUNET_assert (NULL != sm_pub);
+  check_esign_sm_pub (sm_pub);
   hsk = GNUNET_new (struct HelperSignkey);
   hsk->start_time = start_time;
   hsk->validity_duration = validity_duration;
