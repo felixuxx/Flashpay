@@ -2197,6 +2197,81 @@ recoup_refresh_cb (void *cls,
 
 
 /**
+ * Function called with the results of iterate_denomination_info(),
+ * or directly (!).  Used to check that we correctly signed the
+ * denomination and to warn if there are denominations not approved
+ * by this auditor.
+ *
+ * @param cls closure, NULL
+ * @param denom_pub public key, sometimes NULL (!)
+ * @param validity issuing information with value, fees and other info about the denomination.
+ */
+static void
+check_denomination (
+  void *cls,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *validity)
+{
+  const struct TALER_DenominationKeyValidityPS *issue = &validity->properties;
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_AuditorSignatureP auditor_sig;
+
+  qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
+                                                TALER_ARL_esession,
+                                                &issue->denom_hash,
+                                                &TALER_ARL_auditor_pub,
+                                                &auditor_sig);
+  if (0 >= qs)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Encountered denomination `%s' that this auditor is not auditing!\n",
+                GNUNET_h2s (&issue->denom_hash));
+    return; /* skip! */
+  }
+  {
+    struct TALER_Amount coin_value;
+    struct TALER_Amount fee_withdraw;
+    struct TALER_Amount fee_deposit;
+    struct TALER_Amount fee_refresh;
+    struct TALER_Amount fee_refund;
+
+    TALER_amount_ntoh (&coin_value,
+                       &issue->value);
+    TALER_amount_ntoh (&fee_withdraw,
+                       &issue->fee_withdraw);
+    TALER_amount_ntoh (&fee_deposit,
+                       &issue->fee_deposit);
+    TALER_amount_ntoh (&fee_refresh,
+                       &issue->fee_refresh);
+    TALER_amount_ntoh (&fee_refund,
+                       &issue->fee_refund);
+    if (GNUNET_OK !=
+        TALER_auditor_denom_validity_verify (
+          TALER_ARL_auditor_url,
+          &issue->denom_hash,
+          &TALER_ARL_master_pub,
+          GNUNET_TIME_absolute_ntoh (issue->start),
+          GNUNET_TIME_absolute_ntoh (issue->expire_withdraw),
+          GNUNET_TIME_absolute_ntoh (issue->expire_deposit),
+          GNUNET_TIME_absolute_ntoh (issue->expire_legal),
+          &coin_value,
+          &fee_withdraw,
+          &fee_deposit,
+          &fee_refresh,
+          &fee_refund,
+          &TALER_ARL_auditor_pub,
+          &auditor_sig))
+    {
+      // FIXME: add properly to audit report!
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Exchange has invalid signature from this auditor for denomination `%s' in its database!\n",
+                  GNUNET_h2s (&issue->denom_hash));
+    }
+  }
+}
+
+
+/**
  * Analyze the exchange's processing of coins.
  *
  * @param cls closure
@@ -2211,6 +2286,17 @@ analyze_coins (void *cls)
   enum GNUNET_DB_QueryStatus qsp;
 
   (void) cls;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Checking denominations...\n");
+  qs = TALER_ARL_edb->iterate_denomination_info (TALER_ARL_edb->cls,
+                                                 TALER_ARL_esession,
+                                                 &check_denomination,
+                                                 NULL);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing coins\n");
   qsp = TALER_ARL_adb->get_auditor_progress_coin (TALER_ARL_adb->cls,

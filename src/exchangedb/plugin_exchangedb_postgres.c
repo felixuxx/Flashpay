@@ -1597,6 +1597,14 @@ postgres_get_session (void *cls)
                               ") VALUES "
                               "($1, $2, $3);",
                               3),
+      /* used in #postgres_select_auditor_denom_sig() */
+      GNUNET_PQ_make_prepare ("select_auditor_denom_sig",
+                              "SELECT"
+                              " auditor_sig"
+                              " FROM auditor_denom_sigs"
+                              " WHERE auditor_pub=$1"
+                              " AND denom_pub_hash=$2",
+                              2),
       /* used in #postgres_lookup_wire_fee_by_time() */
       GNUNET_PQ_make_prepare ("lookup_wire_fee_by_time",
                               "SELECT"
@@ -8696,6 +8704,43 @@ postgres_insert_auditor_denom_sig (
 
 
 /**
+ * Select information about an auditor auditing a denomination key.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param h_denom_pub the audited denomination
+ * @param auditor_pub the auditor's key
+ * @param[out] auditor_sig set to signature affirming the auditor's audit activity
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_auditor_denom_sig (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  struct TALER_AuditorSignatureP *auditor_sig)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (auditor_pub),
+    GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("auditor_sig",
+                                          auditor_sig),
+    GNUNET_PQ_result_spec_end
+  };
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "select_auditor_denom_sig",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
  * Closure for #wire_fee_by_time_helper()
  */
 struct WireFeeLookupContext
@@ -9036,6 +9081,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_lookup_denomination_key;
   plugin->insert_auditor_denom_sig
     = &postgres_insert_auditor_denom_sig;
+  plugin->select_auditor_denom_sig
+    = &postgres_select_auditor_denom_sig;
   plugin->lookup_wire_fee_by_time
     = &postgres_lookup_wire_fee_by_time;
   plugin->add_denomination_key

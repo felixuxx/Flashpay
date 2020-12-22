@@ -3437,6 +3437,25 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Obtain information about an auditor auditing a denomination key.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param h_denom_pub the audited denomination
+   * @param auditor_pub the auditor's key
+   * @param[out] auditor_sig set to signature affirming the auditor's audit activity
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_auditor_denom_sig)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct GNUNET_HashCode *h_denom_pub,
+    const struct TALER_AuditorPublicKeyP *auditor_pub,
+    struct TALER_AuditorSignatureP *auditor_sig);
+
+
+  /**
    * Lookup information about known wire fees.
    *
    * @param cls closure

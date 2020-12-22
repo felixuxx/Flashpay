@@ -64,7 +64,12 @@ struct TALER_MasterPublicKeyP TALER_ARL_master_pub;
 /**
  * Public key of the auditor.
  */
-static struct TALER_AuditorPublicKeyP TALER_ARL_auditor_pub;
+struct TALER_AuditorPublicKeyP TALER_ARL_auditor_pub;
+
+/**
+ * REST API endpoint of the auditor.
+ */
+char *TALER_ARL_auditor_url;
 
 /**
  * At what time did the auditor process start?
@@ -177,62 +182,6 @@ add_denomination (
       GNUNET_CONTAINER_multihashmap_get (denominations,
                                          &issue->denom_hash))
     return; /* value already known */
-#if FIXME_IMPLEMENT
-  qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
-                                                TALER_ARL_esession,
-                                                &issue->denom_hash,
-                                                &TALER_ARL_auditor_pub,
-                                                &auditor_sig);
-  if (0 >= qs)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Encountered denomination `%s' that this auditor is not auditing!\n",
-                GNUNET_h2s (&issue->denom_hash));
-    return; /* skip! */
-  }
-  {
-    // TODO: one of the auditor passes should really just do this
-    // add problems to JSON report (even if the implications are unclear),
-    // instead of doing it here!
-    struct TALER_Amount coin_value;
-    struct TALER_Amount fee_withdraw;
-    struct TALER_Amount fee_deposit;
-    struct TALER_Amount fee_refresh;
-    struct TALER_Amount fee_refund;
-
-    TALER_amount_hton (&coin_value,
-                       &issue->value);
-    TALER_amount_hton (&fee_withdraw,
-                       &issue->fee_withdraw);
-    TALER_amount_hton (&fee_deposit,
-                       &issue->fee_deposit);
-    TALER_amount_hton (&fee_refresh,
-                       &issue->fee_refresh);
-    TALER_amount_hton (&fee_refund,
-                       &issue->fee_refund);
-    if (GNUNET_OK !=
-        TALER_auditor_denom_validity_verify (
-          TALER_ARL_auditor_url,
-          &issue->denom_hash,
-          &TALER_ARL_master_pub,
-          GNUNET_TIME_absolute_ntoh (issue->start),
-          GNUNET_TIME_absolute_ntoh (issue->expire_withdraw),
-          GNUNET_TIME_absolute_ntoh (issue->expire_deposit),
-          GNUNET_TIME_absolute_ntoh (issue->expire_legal),
-          &coin_value,
-          &fee_withdraw,
-          &fee_deposit,
-          &fee_refresh,
-          &fee_refund,
-          &TALER_ARL_auditor_pub,
-          &auditor_sig))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Exchange has invalid signature from this auditor for denomination `%s' in its database!\n",
-                  GNUNET_h2s (&issue->denom_hash));
-    }
-  }
-#endif
 #if GNUNET_EXTRA_LOGGING >= 1
   {
     struct TALER_Amount value;
@@ -728,6 +677,18 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 {
   TALER_ARL_cfg = c;
   start_time = GNUNET_TIME_absolute_get ();
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TALER_ARL_cfg,
+                                             "auditor",
+                                             "BASE_URL",
+                                             &TALER_ARL_auditor_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "auditor",
+                               "BASE_URL");
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_master_pub))
   {
     /* -m option not given, try configuration */
@@ -944,6 +905,7 @@ TALER_ARL_done (json_t *report)
                 JSON_INDENT (2));
     json_decref (report);
   }
+  GNUNET_free (TALER_ARL_auditor_url);
 }
 
 
