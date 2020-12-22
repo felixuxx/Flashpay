@@ -75,6 +75,11 @@ static json_t *report_emergencies_by_count;
 static json_t *report_row_inconsistencies;
 
 /**
+ * Array of reports about denominations not counter-signed by the auditor.
+ */
+static json_t *report_denominations_without_sigs;
+
+/**
  * Report about amount calculation differences (causing profit
  * or loss at the exchange).
  */
@@ -2262,10 +2267,19 @@ check_denomination (
           &TALER_ARL_auditor_pub,
           &auditor_sig))
     {
-      // FIXME: add properly to audit report!
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Exchange has invalid signature from this auditor for denomination `%s' in its database!\n",
-                  GNUNET_h2s (&issue->denom_hash));
+      TALER_ARL_report (report_denominations_without_sigs,
+                        json_pack ("{s:o, s:o, s:o, s:o}",
+                                   "denomination",
+                                   GNUNET_JSON_from_data_auto (
+                                     &issue->denom_hash),
+                                   "value",
+                                   TALER_JSON_from_amount (&coin_value),
+                                   "start_time",
+                                   TALER_ARL_json_from_time_abs_nbo (
+                                     issue->start),
+                                   "end_time",
+                                   TALER_ARL_json_from_time_abs_nbo (
+                                     issue->expire_legal)));
     }
   }
 }
@@ -2581,6 +2595,8 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_row_inconsistencies = json_array ()));
   GNUNET_assert (NULL !=
+                 (report_denominations_without_sigs = json_array ()));
+  GNUNET_assert (NULL !=
                  (report_amount_arithmetic_inconsistencies =
                     json_array ()));
   GNUNET_assert (NULL !=
@@ -2602,7 +2618,8 @@ run (void *cls,
                       " s:o, s:o, s:o, s:o, s:o,"
                       " s:I, s:I, s:I, s:I, s:I,"
                       " s:I, s:I, s:I, s:I, s:I,"
-                      " s:I, s:I, s:o, s:o, s:o}",
+                      " s:I, s:I, s:o, s:o, s:o,"
+                      " s:o}",
                       /* Block #1 */
                       "total_escrow_balance",
                       TALER_JSON_from_amount (&total_escrow_balance),
@@ -2703,7 +2720,10 @@ run (void *cls,
                         GNUNET_TIME_absolute_get ()),
                       "total_irregular_recoups",
                       TALER_JSON_from_amount (
-                        &total_irregular_recoups)
+                        &total_irregular_recoups),
+                      /* Block #8 */
+                      "unsigned_denominations",
+                      report_denominations_without_sigs
                       );
   GNUNET_break (NULL != report);
   TALER_ARL_done (report);

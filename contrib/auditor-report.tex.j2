@@ -967,6 +967,39 @@ with respect to outgoing wire transfers.
 
 \section{Minor irregularities}
 
+\subsection{Denominations without auditor signature}
+
+This section highlights denomination keys that lack a proper
+signature from the {\t taler-auditor-offline} tool. This may be
+legitimate, say in case where the auditor's involvement in the
+exchange business is ending and a new auditor is responsible for
+future denomnations. So this must be read with a keen eye on the
+business situation.
+
+
+{% if coins.unsigned_denominations() == 0 %}
+  {\bf All denominations officially audited by this auditor.}
+{% else %}
+  \begin{longtable}{p{6cm}|r|r|r}
+  {\bf Denomination} & {\bf Value} & {\bf Start} & {\bf End} \\ \hline \hline
+\endfirsthead
+  {\bf Denomination} & {\bf Value} & {\bf Start} & {\bf End} \\ \hline \hline
+\endhead
+  \hline \hline
+  {\bf Denomination} & {\bf Value} & {\bf Start} & {\bf End} \\ \hline \hline
+\endfoot
+  \caption{Denominations not officially audited by this auditor.}
+  \label{table:denominations:denoms_without_signatures}
+\endlastfoot
+{% for item in coins.unsigned_denominations %}
+ {\tt \tiny {{ item.denomination }} } &
+  {{ item.value }} &
+  {{ item.start_time }} &
+  {{ item.end_time }} \\ \hline
+{% endfor %}
+  \end{longtable}
+{% endif %}
+
 \subsection{Incorrect reserve balance summary in database}
 
 This section highlights cases where the reserve balance summary
