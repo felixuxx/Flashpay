@@ -164,10 +164,10 @@ TALER_ARL_report (json_t *array,
  * @param validity issuing information with value, fees and other info about the denomination.
  */
 static void
-add_denomination (void *cls,
-                  const struct TALER_DenominationPublicKey *denom_pub,
-                  const struct
-                  TALER_EXCHANGEDB_DenominationKeyInformationP *validity)
+add_denomination (
+  void *cls,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_EXCHANGEDB_DenominationKeyInformationP *validity)
 {
   const struct TALER_DenominationKeyValidityPS *issue = &validity->properties;
 
@@ -292,7 +292,7 @@ TALER_ARL_get_denomination_info_by_hash (
     denominations = GNUNET_CONTAINER_multihashmap_create (256,
                                                           GNUNET_NO);
     qs = TALER_ARL_edb->iterate_denomination_info (TALER_ARL_edb->cls,
-                                                   // FIXME: change API to pass session!?
+                                                   TALER_ARL_esession,
                                                    &add_denomination,
                                                    NULL);
     if (0 > qs)

@@ -1904,12 +1904,14 @@ struct TALER_EXCHANGEDB_Plugin
    * own read-only transaction (hence no session provided).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session session to use
    * @param cb function to call on each denomination key
    * @param cb_cls closure for @a cb
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*iterate_denomination_info)(void *cls,
+                               struct TALER_EXCHANGEDB_Session *session,
                                TALER_EXCHANGEDB_DenominationCallback cb,
                                void *cb_cls);
 

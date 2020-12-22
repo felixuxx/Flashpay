@@ -2004,12 +2004,14 @@ domination_cb_helper (void *cls,
  * Fetch information about all known denomination keys.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
+ * @param session connection to use
  * @param cb function to call on each denomination key
  * @param cb_cls closure for @a cb
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_iterate_denomination_info (void *cls,
+                                    struct TALER_EXCHANGEDB_Session *session,
                                     TALER_EXCHANGEDB_DenominationCallback cb,
                                     void *cb_cls)
 {
@@ -2022,9 +2024,9 @@ postgres_iterate_denomination_info (void *cls,
     .cb_cls = cb_cls,
     .pg = pc
   };
-  struct TALER_EXCHANGEDB_Session *session;
 
-  session = postgres_get_session (pc);
+  if (NULL == session)
+    session = postgres_get_session (pc);
   if (NULL == session)
     return GNUNET_DB_STATUS_HARD_ERROR;
   return GNUNET_PQ_eval_prepared_multi_select (session->conn,
