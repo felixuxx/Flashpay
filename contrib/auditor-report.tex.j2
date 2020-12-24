@@ -977,7 +977,7 @@ future denomnations. So this must be read with a keen eye on the
 business situation.
 
 
-{% if coins.unsigned_denominations() == 0 %}
+{% if coins.unsigned_denominations|length() == 0 %}
   {\bf All denominations officially audited by this auditor.}
 {% else %}
   \begin{longtable}{p{6cm}|r|r|r}

@@ -2331,6 +2331,74 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
     GNUNET_free (fn);
     return GNUNET_OK;
   }
+  else
+  {
+    char *key;
+
+    /* check against SECMOD-keys pinned in configuration */
+    if (GNUNET_OK ==
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                               "exchange-offline",
+                                               "SECM_ESIGN_PUBKEY",
+                                               &key))
+    {
+      struct TALER_SecurityModulePublicKeyP k;
+
+      if (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (key,
+                                         strlen (key),
+                                         &k,
+                                         sizeof (k)))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange-offline",
+                                   "SECM_ESIGN_PUBKEY",
+                                   "key malformed");
+        GNUNET_free (key);
+        return GNUNET_SYSERR;
+      }
+      GNUNET_free (key);
+      if (0 !=
+          GNUNET_memcmp (&k,
+                         &secm[1]))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "ESIGN security module key does not match SECM_ESIGN_PUBKEY in configuration\n");
+        return GNUNET_SYSERR;
+      }
+    }
+    if (GNUNET_OK ==
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                               "exchange-offline",
+                                               "SECM_DENOM_PUBKEY",
+                                               &key))
+    {
+      struct TALER_SecurityModulePublicKeyP k;
+
+      if (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (key,
+                                         strlen (key),
+                                         &k,
+                                         sizeof (k)))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange-offline",
+                                   "SECM_DENOM_PUBKEY",
+                                   "key malformed");
+        GNUNET_free (key);
+        return GNUNET_SYSERR;
+      }
+      GNUNET_free (key);
+      if (0 !=
+          GNUNET_memcmp (&k,
+                         &secm[0]))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "DENOM security module key does not match SECM_DENOM_PUBKEY in configuration\n");
+        return GNUNET_SYSERR;
+      }
+    }
+  }
   /* persist keys for future runs */
   if (GNUNET_OK !=
       GNUNET_DISK_fn_write (fn,
