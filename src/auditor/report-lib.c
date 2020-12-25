@@ -681,12 +681,12 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (TALER_ARL_cfg,
                                              "auditor",
-                                             "AUDITOR_URL",
+                                             "BASE_URL",
                                              &TALER_ARL_auditor_url))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "auditor",
-                               "AUDITOR_URL");
+                               "BASE_URL");
     return GNUNET_SYSERR;
   }
   if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_master_pub))
