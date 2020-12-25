@@ -129,11 +129,16 @@ AC_CHECK_HEADERS([gnunet/platform.h gnunet/gnunet_util_lib.h],
  [AC_CHECK_LIB([gnunetutil], [GNUNET_SCHEDULER_run], libgnunetutil=1)],
   [], [#ifdef HAVE_GNUNET_PLATFORM_H
         #include <gnunet/platform.h>
+       #endif
+        #include <gnunet/gnunet_common.h>
+       #if GNUNET_UTIL_VERSION < 0x00A0104
+        #fail libgnunetutil is too old
        #endif])
 AS_IF([test $libgnunetutil != 1],
   [AC_MSG_ERROR([[
 ***
-*** You need libgnunetutil to build this program.
+*** You need libgnunetutil > 0.14.0 to build this program.
+*** (Yes, ">", libgnunetutil 0.14.0 is NOT enough.)
 *** This library is part of GNUnet, available at
 ***   https://gnunet.org
 *** ]])])
