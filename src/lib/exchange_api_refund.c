@@ -292,7 +292,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &rr.merchant),
         GNUNET_JSON_spec_uint64 ("rtransaction_id",
-                                 &rr.rtransaction_id), // FIXME: shouldn't this be NBO!?
+                                 &rr.rtransaction_id), /* Note: converted to NBO below */
         GNUNET_JSON_spec_end ()
       };
 
