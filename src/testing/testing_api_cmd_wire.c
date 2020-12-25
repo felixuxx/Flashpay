@@ -91,7 +91,9 @@ wire_cb (void *cls,
   ws->wh = NULL;
   if (ws->expected_response_code != hr->http_status)
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Received unexpected status code %u\n",
+                hr->http_status);
     TALER_TESTING_interpreter_fail (ws->is);
     return;
   }

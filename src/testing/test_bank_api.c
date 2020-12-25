@@ -185,8 +185,7 @@ main (int argc,
                                                     "_with_pybank"))
   {
     TALER_LOG_DEBUG ("Running against the Pybank.\n");
-    // FIXME: is the line below correct?
-    cfgfile = CONFIG_FILE_FAKEBANK;
+    cfgfile = CONFIG_FILE_PYBANK;
     if (GNUNET_OK !=
         TALER_TESTING_prepare_bank (CONFIG_FILE_PYBANK,
                                     GNUNET_YES,

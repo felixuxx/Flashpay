@@ -639,9 +639,6 @@ helper_denom_cb (
   {
     /* should be just an update (revocation!), so update existing entry */
     hd->validity_duration = validity_duration;
-    GNUNET_break (0 ==
-                  GNUNET_memcmp (sm_sig,
-                                 &hd->sm_sig));
     GNUNET_break (start_time.abs_value_us ==
                   hd->start_time.abs_value_us);
     GNUNET_break (0 ==
@@ -709,9 +706,6 @@ helper_esign_cb (
   {
     /* should be just an update (revocation!), so update existing entry */
     hsk->validity_duration = validity_duration;
-    GNUNET_break (0 ==
-                  GNUNET_memcmp (sm_sig,
-                                 &hsk->sm_sig));
     GNUNET_break (start_time.abs_value_us ==
                   hsk->start_time.abs_value_us);
     return;
