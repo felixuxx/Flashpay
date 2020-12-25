@@ -627,6 +627,13 @@ postgres_get_session (void *cls)
                               " FROM known_coins"
                               " WHERE coin_pub=$1;",
                               1),
+      /* Used in #postgres_ensure_coin_known() */
+      GNUNET_PQ_make_prepare ("get_known_coin_dh",
+                              "SELECT"
+                              " denom_pub_hash"
+                              " FROM known_coins"
+                              " WHERE coin_pub=$1;",
+                              1),
       /* Used in #postgres_get_coin_denomination() to fetch
          the denomination public key hash for
          a coin known to the exchange. */
@@ -2844,11 +2851,12 @@ postgres_insert_withdraw_info (
   {
     /* The reserve history was checked to make sure there is enough of a balance
        left before we tried this; however, concurrent operations may have changed
-       the situation by now.  We should re-try the transaction.  */
+       the situation by now, causing us to fail here. As reserves can no longer
+       be topped up, retrying should not help either.  */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Withdrawal from reserve `%s' refused due to balance mismatch. Retrying.\n",
+                "Withdrawal from reserve `%s' refused due to insufficient balance.\n",
                 TALER_B2S (&collectable->reserve_pub));
-    return GNUNET_DB_STATUS_SOFT_ERROR; // FIXME: really soft error? would retry help!?
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   expiry = GNUNET_TIME_absolute_add (now,
                                      pg->legal_reserve_expiration_time);
@@ -3853,7 +3861,16 @@ postgres_ensure_coin_known (void *cls,
 {
   struct PostgresClosure *pc = cls;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_CoinPublicInfo known_coin;
+  struct GNUNET_HashCode denom_pub_hash;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                          &denom_pub_hash),
+    GNUNET_PQ_result_spec_end
+  };
 #if EXPLICIT_LOCKS
   struct GNUNET_PQ_QueryParam no_params[] = {
     GNUNET_PQ_query_param_end
@@ -3864,13 +3881,11 @@ postgres_ensure_coin_known (void *cls,
                                                     no_params)))
     return qs;
 #endif
-
   /* check if the coin is already known */
-  // FIXME: modify to not also fetch the RSA signature, needlessly costly!
-  qs = postgres_get_known_coin (pc,
-                                session,
-                                &coin->coin_pub,
-                                &known_coin);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                 "get_known_coin_dh",
+                                                 params,
+                                                 rs);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
@@ -3878,8 +3893,7 @@ postgres_ensure_coin_known (void *cls,
   case GNUNET_DB_STATUS_SOFT_ERROR:
     return TALER_EXCHANGEDB_CKS_HARD_FAIL;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    GNUNET_CRYPTO_rsa_signature_free (known_coin.denom_sig.rsa_signature);
-    if (0 == GNUNET_memcmp (&known_coin.denom_pub_hash,
+    if (0 == GNUNET_memcmp (&denom_pub_hash,
                             &coin->denom_pub_hash))
       return TALER_EXCHANGEDB_CKS_PRESENT;
     GNUNET_break_op (0);
