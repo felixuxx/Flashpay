@@ -29,6 +29,7 @@
 #include <sys/resource.h>
 #include "taler_mhd_lib.h"
 #include "taler_auditordb_lib.h"
+#include "taler_exchangedb_lib.h"
 #include "taler-auditor-httpd_deposit-confirmation.h"
 #include "taler-auditor-httpd_exchanges.h"
 #include "taler-auditor-httpd_mhd.h"
@@ -68,6 +69,11 @@ static struct GNUNET_CONFIGURATION_Handle *cfg;
  * Our DB plugin.
  */
 struct TALER_AUDITORDB_Plugin *TAH_plugin;
+
+/**
+ * Our DB plugin to talk to the *exchange* database.
+ */
+struct TALER_EXCHANGEDB_Plugin *TAH_eplugin;
 
 /**
  * Public key of this auditor.
@@ -434,7 +440,14 @@ auditor_serve_process_config (void)
       (TAH_plugin = TALER_AUDITORDB_plugin_load (cfg)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize DB subsystem\n");
+                "Failed to initialize DB subsystem to interact with auditor database\n");
+    return GNUNET_SYSERR;
+  }
+  if (NULL ==
+      (TAH_eplugin = TALER_EXCHANGEDB_plugin_load (cfg)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem to query exchange database\n");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -729,6 +742,8 @@ main (int argc,
   }
   TALER_AUDITORDB_plugin_unload (TAH_plugin);
   TAH_plugin = NULL;
+  TALER_EXCHANGEDB_plugin_unload (TAH_eplugin);
+  TAH_eplugin = NULL;
   TEAH_DEPOSIT_CONFIRMATION_done ();
   return (GNUNET_SYSERR == ret) ? 1 : 0;
 }

@@ -148,6 +148,7 @@ taler_auditor_httpd_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lmicrohttpd \
   -ljansson \
   -lgnunetjson \

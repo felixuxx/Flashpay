@@ -3341,6 +3341,23 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Obtain information about a revoked online signing key.
+   *
+   * @param cls closure
+   * @param session a session (can be NULL)
+   * @param exchange_pub exchange online signing key that was revoked
+   * @param[out] master_sig signature affirming the revocation
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_signkey_revocation)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Session *session,
+    const struct TALER_ExchangePublicKeyP *exchange_pub,
+    struct TALER_MasterSignatureP *master_sig);
+
+
+  /**
    * Lookup information about current denomination key.
    *
    * @param cls closure

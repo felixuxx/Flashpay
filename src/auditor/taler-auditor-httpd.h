@@ -25,12 +25,18 @@
 
 #include <microhttpd.h>
 #include "taler_auditordb_plugin.h"
+#include "taler_exchangedb_plugin.h"
 
 
 /**
  * Our DB plugin.
  */
 extern struct TALER_AUDITORDB_Plugin *TAH_plugin;
+
+/**
+ * Our DB plugin to talk to the *exchange* database.
+ */
+extern struct TALER_EXCHANGEDB_Plugin *TAH_eplugin;
 
 
 /**

@@ -1555,6 +1555,13 @@ postgres_get_session (void *cls)
                               ") VALUES "
                               "($1, $2);",
                               2),
+      /* used in #postgres_insert_signkey_revocation() */
+      GNUNET_PQ_make_prepare ("lookup_signkey_revocation",
+                              "SELECT "
+                              " master_sig"
+                              " FROM signkey_revocations"
+                              " WHERE exchange_pub=$1;",
+                              1),
       /* used in #postgres_insert_signkey() */
       GNUNET_PQ_make_prepare ("insert_signkey",
                               "INSERT INTO exchange_sign_keys "
@@ -8488,6 +8495,46 @@ postgres_insert_signkey_revocation (
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_signkey_revocation",
                                              params);
+}
+
+
+/**
+ * Obtain information about a revoked online signing key.
+ *
+ * @param cls closure
+ * @param session a session (can be NULL)
+ * @param exchange_pub exchange online signing key
+ * @param[out] master_sig set to signature affirming the revocation (if revoked)
+ * @return transaction status code
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_signkey_revocation (
+  void *cls,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  struct TALER_MasterSignatureP *master_sig)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (exchange_pub),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_result_spec_auto_from_type ("master_sig",
+                                         master_sig),
+    GNUNET_PQ_result_spec_end
+  };
+
+  (void) cls;
+  if (NULL == session)
+    session = postgres_get_session (pg);
+  if (NULL == session)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   "lookup_signkey_revocation",
+                                                   params,
+                                                   rs);
 }
 
 

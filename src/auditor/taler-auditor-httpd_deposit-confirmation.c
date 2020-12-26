@@ -35,7 +35,7 @@
 /**
  * Cache of already verified exchange signing keys.  Maps the hash of the
  * `struct TALER_ExchangeSigningKeyValidityPS` to the (static) string
- * "verified".  Access to this map is guarded by the #lock.
+ * "verified" or "revoked".  Access to this map is guarded by the #lock.
  */
 static struct GNUNET_CONTAINER_MultiHashMap *cache;
 
@@ -66,7 +66,7 @@ verify_and_execute_deposit_confirmation (
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_HashCode h;
-  int cached;
+  const char *cached;
   struct TALER_ExchangeSigningKeyValidityPS skv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
     .purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS)),
@@ -94,10 +94,9 @@ verify_and_execute_deposit_confirmation (
                       sizeof (skv),
                       &h);
   GNUNET_assert (0 == pthread_mutex_lock (&lock));
-  cached = GNUNET_CONTAINER_multihashmap_contains (cache,
-                                                   &h);
+  cached = GNUNET_CONTAINER_multihashmap_get (cache,
+                                              &h);
   GNUNET_assert (0 == pthread_mutex_unlock (&lock));
-
   session = TAH_plugin->get_session (TAH_plugin->cls);
   if (NULL == session)
   {
@@ -107,7 +106,7 @@ verify_and_execute_deposit_confirmation (
                                        TALER_EC_GENERIC_DB_SETUP_FAILED,
                                        NULL);
   }
-  if (! cached)
+  if (NULL == cached)
   {
     /* Not in cache, need to verify the signature, persist it, and possibly cache it */
     if (GNUNET_OK !=
@@ -139,17 +138,42 @@ verify_and_execute_deposit_confirmation (
                                          TALER_EC_GENERIC_DB_STORE_FAILED,
                                          "exchange signing key");
     }
-
-    /* Cache it, due to concurreny it might already be in the cache,
-       so we do not cache it twice but also don't insist on the 'put' to
-       succeed. */
-    GNUNET_assert (0 == pthread_mutex_lock (&lock));
-    (void) GNUNET_CONTAINER_multihashmap_put (cache,
-                                              &h,
-                                              "verified",
-                                              GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
-    GNUNET_assert (0 == pthread_mutex_unlock (&lock));
+    cached = "verified";
   }
+
+  if (0 == strcmp (cached,
+                   "verified"))
+  {
+    struct TALER_MasterSignatureP master_sig;
+
+    /* check for revocation */
+    qs = TAH_eplugin->lookup_signkey_revocation (TAH_eplugin->cls,
+                                                 NULL,
+                                                 &es->exchange_pub,
+                                                 &master_sig);
+    if (0 > qs)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+      TALER_LOG_WARNING (
+        "Failed to check for signing key revocation in database\n");
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                         "exchange signing key revocation");
+    }
+    if (0 < qs)
+      cached = "revoked";
+  }
+
+  /* Cache it, due to concurreny it might already be in the cache,
+     so we do not cache it twice but also don't insist on the 'put' to
+     succeed. */
+  GNUNET_assert (0 == pthread_mutex_lock (&lock));
+  (void) GNUNET_CONTAINER_multihashmap_put (cache,
+                                            &h,
+                                            (void *) cached,
+                                            GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
+  GNUNET_assert (0 == pthread_mutex_unlock (&lock));
 
   /* check deposit confirmation signature */
   {
