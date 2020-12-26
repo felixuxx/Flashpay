@@ -120,6 +120,13 @@ handle_deposit_confirmation_finished (void *cls,
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
     break;
+  case MHD_HTTP_GONE:
+    hr.ec = TALER_JSON_get_error_code (json);
+    hr.hint = TALER_JSON_get_error_hint (json);
+    /* Nothing really to verify, auditor says one of the signatures is
+       invalid; as we checked them, this should never happen, we
+       should pass the JSON reply to the application */
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     hr.ec = TALER_JSON_get_error_code (json);
     hr.hint = TALER_JSON_get_error_hint (json);
@@ -134,7 +141,6 @@ handle_deposit_confirmation_finished (void *cls,
                 "Unexpected response code %u/%d for auditor deposit confirmation\n",
                 (unsigned int) response_code,
                 hr.ec);
-    GNUNET_break_op (0);
     break;
   }
   dh->cb (dh->cb_cls,
