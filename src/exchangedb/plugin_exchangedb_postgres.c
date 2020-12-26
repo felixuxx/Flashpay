@@ -9138,6 +9138,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_get_wire_fees;
   plugin->insert_signkey_revocation
     = &postgres_insert_signkey_revocation;
+  plugin->lookup_signkey_revocation
+    = &postgres_lookup_signkey_revocation;
   plugin->lookup_denomination_key
     = &postgres_lookup_denomination_key;
   plugin->insert_auditor_denom_sig
