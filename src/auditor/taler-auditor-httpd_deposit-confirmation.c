@@ -175,6 +175,17 @@ verify_and_execute_deposit_confirmation (
                                             GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY);
   GNUNET_assert (0 == pthread_mutex_unlock (&lock));
 
+  if (0 == strcmp (cached,
+                   "revoked"))
+  {
+    TALER_LOG_WARNING (
+      "Invalid signature on /deposit-confirmation request: key was revoked\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_GONE,
+                                       TALER_EC_AUDITOR_EXCHANGE_SIGNING_KEY_REVOKED,
+                                       "exchange signing key was revoked");
+  }
+
   /* check deposit confirmation signature */
   {
     struct TALER_DepositConfirmationPS dcs = {
