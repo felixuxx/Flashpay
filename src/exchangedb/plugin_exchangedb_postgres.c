@@ -8520,8 +8520,8 @@ postgres_lookup_signkey_revocation (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_auto_from_type ("master_sig",
-                                         master_sig),
+    GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                          master_sig),
     GNUNET_PQ_result_spec_end
   };
 
