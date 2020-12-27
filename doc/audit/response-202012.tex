@@ -209,13 +209,14 @@ section ``Exchange crypto helper design'' at \url{https://docs.taler.net/} of
 Chapter 12.
 
 {\bf Update:} In doing so, we also added a new type of signing key, the
-``security module'' signing key. This is used by the newly separated processes
-to sign the public keys that they guard the private keys for. The security
-module signatures are verified by the new ``taler-exchange-offline`` tool to
-ensure that even if the exchange process is compromised, we do not sign keys
-into existence that did not originate from the security module(s).  The
-security module public keys can be given in the configuration, or are learned
-TOFU-style.
+``security module'' signing key. This is used by the newly separated ``security
+module`` processes to sign the public keys that they guard the private keys
+for. The security module signatures are verified by the new
+``taler-exchange-offline`` tool to ensure that even if the {\tt
+taler-exchange-httpd} process is compromised, the offline signature tool would
+refuse to sign new public keys that do not originate from the security
+module(s).  The security module public keys can be given in the configuration,
+or are learned TOFU-style.
 
 
 \subsection{File system access}
@@ -234,9 +235,9 @@ We have started to better document the operational requirements on running the
 auditor.
 
 {\bf Update:} On the exchange side, we have now moved additional information
-into the database, in particular information about offline signatures
+from the file system into the database, in particular information about offline signatures
 (including key revocations) and wire fees.  This simplifies the deployment and
-the interaction with the offline key.  The remaining disk accesses are for
+the interaction with offline key signing mechanism.  The remaining disk accesses are for
 quite fundamental configuration data (which ports to bind to, configuration to
 access the database, etc.), and of course the program logic itself.
 
