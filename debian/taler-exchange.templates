@@ -1,26 +1,64 @@
-Template: taler-systempeer/username
+Template: taler-exchange/eusername
 Type: string
 Default: taler
 _Description: Taler user:
- Please choose the user that the Taler server process will run as.
+ Please choose the user that the taler-exchange-httpd process will run as.
  .
  This should be a dedicated account. If the specified account does not
  already exist, it will automatically be created, with no login shell.
 
-Template: taler-systempeer/groupname
+Template: taler-exchange/rsecusername
+Type: string
+Default: taler
+_Description: Taler user:
+ Please choose the user that the taler-exchange-helper-rsa process will run as.
+ .
+ This should be a dedicated account. If the specified account does not
+ already exist, it will automatically be created, with no login shell.
+
+Template: taler-exchange/esecusername
+Type: string
+Default: taler
+_Description: Taler user:
+ Please choose the user that the taler-exchange-helper-eddsa process will run as.
+ .
+ This should be a dedicated account. If the specified account does not
+ already exist, it will automatically be created, with no login shell.
+
+Template: taler-exchange/wireusername
+Type: string
+Default: taler
+_Description: Taler user:
+ Please choose the user that the taler-exchange-transfer and
+ taler-exchange-wirewatch processes will run as.
+ .
+ This should be a dedicated account. If the specified account does not
+ already exist, it will automatically be created, with no login shell.
+
+Template: taler-exchange/aggrusername
+Type: string
+Default: taler
+_Description: Taler user:
+ Please choose the user that the taler-exchange-aggregator process will run as.
+ .
+ This should be a dedicated account. If the specified account does not
+ already exist, it will automatically be created, with no login shell.
+
+Template: taler-exchange/groupname
 Type: string
 Default: taler
 _Description: Taler group:
- Please choose the group that the Taler peer process will run as.
+ Please choose the group that the Taler exchange and security
+ modules will run as.
  .
  This should be a dedicated group, not one that already owns data.
- Only the members of this group will have access to Taler data, and
- be allowed to start and stop the Taler server.
+ Only the members of this group will have access to Taler private
+ online signing keys.
 
-Template: taler-systempeer/autostart
+Template: taler-exchange/autostart
 Type: boolean
 Default: true
-_Description: Should the Taler server be launched on boot?
- If you choose this option, a Taler peer will be launched each time
+_Description: Should the Taler exchange be launched on boot?
+ If you choose this option, a Taler exchange will be launched each time
  the system is started. Otherwise, you will need to launch
  Taler each time you want to use it.

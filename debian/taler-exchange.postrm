@@ -22,27 +22,46 @@ case "${1}" in
 			. /usr/share/debconf/confmodule
 			db_version 2.0
 
-			db_get taler-systempeer/username
-			_USERNAME="${RET:-taler}"
+			db_get taler-exchange/eusername
+			_EUSERNAME="${RET:-taler-exchange-httpd}"
 
-			db_get taler-systempeer/groupname
-			_GROUPNAME="${RET:-taler}"
+			db_get taler-exchange/rsecusername
+			_RSECUSERNAME="${RET:-taler-helper-rsa}"
+
+			db_get taler-exchange/esecusername
+			_ESECUSERNAME="${RET:-taler-helper-eddsa}"
+
+			db_get taler-exchange/wireusername
+			_WIREUSERNAME="${RET:-taler-exchange-wire}"
+
+			db_get taler-exchange/aggrusername
+			_AGGRUSERNAME="${RET:-taler-exchange-aggregator}"
+
+			db_get taler-exchange/groupname
+			_GROUPNAME="${RET:-taler-private}"
 		else
-			_USERNAME="taler"
-			_GROUPNAME="taler"
+			_EUSERNAME="taler-exchange-httpd"
+			_RSECUSERNAME="taler-helper-rsa"
+			_ESECUSERNAME="taler-helper-eddsa"
+			_WIREUSERNAME="taler-exchange-wire"
+			_AGGRUSERNAME="taler-exchange-aggregator"
+			_GROUPNAME="taler-private"
 		fi
 
 		TALERDNS_GROUP="talerdns"
 
 		if pathfind deluser
 		then
-			deluser --quiet --system ${_USERNAME} || true
+			deluser --quiet --system ${_EUSERNAME} || true
+			deluser --quiet --system ${_RSECUSERNAME} || true
+			deluser --quiet --system ${_ESECUSERNAME} || true
+			deluser --quiet --system ${_WIREUSERNAME} || true
+			deluser --quiet --system ${_AGGRUSERNAME} || true
 		fi
 
 		if pathfind delgroup
 		then
 			delgroup --quiet --system --only-if-empty ${_GROUPNAME} || true
-			delgroup --quiet --system --only-if-empty ${TALERDNS_GROUP} || true
 		fi
 
 		rm -rf /var/log/taler/ /var/lib/taler /etc/default/taler

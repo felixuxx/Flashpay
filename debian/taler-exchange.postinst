@@ -8,13 +8,25 @@ case "${1}" in
 	configure)
 		db_version 2.0
 
-		db_get taler-systempeer/username
-		_USERNAME="${RET:-taler}"
+		db_get taler-exchange/eusername
+		_EUSERNAME="${RET:-taler-exchange-httpd}"
 
-		db_get taler-systempeer/groupname
-		_GROUPNAME="${RET:-taler}"
+		db_get taler-exchange/rsecusername
+		_RSECUSERNAME="${RET:-taler-helper-rsa}"
 
-		db_get taler-systempeer/autostart
+		db_get taler-exchange/esecusername
+		_ESECUSERNAME="${RET:-taler-helper-eddsa}"
+
+		db_get taler-exchange/wireusername
+		_WIREUSERNAME="${RET:-taler-exchange-wire}"
+
+		db_get taler-exchange/aggrusername
+		_AGGRUSERNAME="${RET:-taler-exchange-aggregator}"
+
+		db_get taler-exchange/groupname
+		_GROUPNAME="${RET:-taler-private}"
+
+		db_get taler-exchange/autostart
 		_AUTOSTART="${RET}" # boolean
 
 		db_stop
@@ -33,54 +45,133 @@ case "${1}" in
 			echo " done."
 		fi
 
-		# Creating taler user if needed
-		if ! getent passwd ${_USERNAME} > /dev/null
+		# Creating taler users if needed
+		if ! getent passwd ${_EUSERNAME} > /dev/null
 		then
-			echo -n "Creating new Taler user ${_USERNAME}:"
-			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_USERNAME}
+			echo -n "Creating new Taler user ${_EUSERNAME}:"
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/httpd ${_EUSERNAME}
+			echo " done."
+		fi
+		if ! getent passwd ${_RSECUSERNAME} > /dev/null
+		then
+			echo -n "Creating new Taler user ${_RSECUSERNAME}:"
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/helper-rsa ${_USERNAME}
+			echo " done."
+		fi
+		if ! getent passwd ${_ESECUSERNAME} > /dev/null
+		then
+			echo -n "Creating new Taler user ${_ESECUSERNAME}:"
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/helper-eddsa ${_ESECUSERNAME}
+			echo " done."
+		fi
+		if ! getent passwd ${_WIREUSERNAME} > /dev/null
+		then
+			echo -n "Creating new Taler user ${_WIREUSERNAME}:"
+			adduser --quiet --system --home ${TALER_HOME}/wire ${_WIREUSERNAME}
+			echo " done."
+		fi
+		if ! getent passwd ${_AGGRUSERNAME} > /dev/null
+		then
+			echo -n "Creating new Taler user ${_AGGRUSERNAME}:"
+			adduser --quiet --system --home ${TALER_HOME}/aggregator ${_AGGRUSERNAME}
 			echo " done."
 		fi
 
-		# Add a special secured group
-		TALERDNS_GROUP="talerdns"
-
-		# Creating talerdns group if needed
-		if ! getent group ${TALERDNS_GROUP} > /dev/null
-		then
-			echo -n "Creating new secured Taler group ${TALERDNS_GROUP}:"
-			addgroup --quiet --system ${TALERDNS_GROUP}
-			echo " done."
-		fi
-
-fi
-
-# Writing new values to configuration file
-echo -n "Writing new configuration file:"
-CONFIG_NEW=$(tempfile)
+        # Writing new values to configuration file
+        echo -n "Writing new configuration file:"
+        CONFIG_NEW=$(tempfile)
 
 cat > "${CONFIG_NEW}" <<EOF
 # This file controls the behaviour of the Taler init script.
 # It will be parsed as a shell script.
-# please do not edit by hand, use 'dpkg-reconfigure taler-systempeer'.
+# please do not edit by hand, use 'dpkg-reconfigure taler-exchange'.
 
-TALER_USER=${_USERNAME}
+TALER_EUSER=${_EUSERNAME}
+TALER_RSECUSER=${_RESCUSERNAME}
+TALER_ESECUSER=${_ESECUSERNAME}
+TALER_WIREUSER=${_WIREUSERNAME}
+TALER_AGGRUSER=${_AGGRUSERNAME}
 TALER_GROUP=${_GROUPNAME}
 TALER_AUTOSTART="${_AUTOSTART}"
 EOF
 
-cat > "/etc/systemd/system/taler.service" <<EOF
+cat > "/etc/systemd/system/taler-exchange-httpd.service" <<EOF
 [Unit]
-Description=GNU Taler payment system
+Description=GNU Taler payment system exchange REST API
+Requires=taler-exchange-helper-rsa.service taler-exchange-helper-eddsa.service
+Wants=taler-exchange-wirewatch taler-exchange-aggregator taler-exchange-transfer
+After=postgres.service network.target
 
 [Service]
 EnvironmentFile=/etc/default/taler
-User=${_USERNAME}
-Type=forking
-ExecStart=/usr/bin/taler-arm -s -c /etc/taler.conf
-ExecStop=/usr/bin/taler-arm -e -c /etc/taler.conf
+User=${_EUSERNAME}
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler.conf
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+cat > "/etc/systemd/system/taler-exchange-helper-rsa.service" <<EOF
+[Unit]
+Description=GNU Taler payment system exchange RSA security module
+
+[Service]
+EnvironmentFile=/etc/default/taler
+User=${_RSECUSERNAME}
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-helper-rsa -c /etc/taler.conf
+
+[Install]
+WantedBy=multi-user.target
+EOF
+cat > "/etc/systemd/system/taler-exchange-helper-eddsa.service" <<EOF
+[Unit]
+Description=GNU Taler payment system exchange EdDSA security module
+
+[Service]
+EnvironmentFile=/etc/default/taler
+User=${_ESECUSERNAME}
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-helper-eddsa -c /etc/taler.conf
+EOF
+cat > "/etc/systemd/system/taler-exchange-wirewatch.service" <<EOF
+[Unit]
+Description=GNU Taler payment system exchange wirewatch service
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/default/taler
+User=${_WIREUSERNAME}
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-wirewatch -c /etc/taler-wire.conf
+EOF
+cat > "/etc/systemd/system/taler-exchange-transfer.service" <<EOF
+[Unit]
+Description=GNU Taler payment system exchange transfer service
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/default/taler
+User=${_WIREUSERNAME}
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-wirewatch -c /etc/taler-wire.conf
+EOF
+cat > "/etc/systemd/system/taler-exchange-aggregator.service" <<EOF
+[Unit]
+Description=GNU Taler payment system exchange aggregator service
+
+[Service]
+EnvironmentFile=/etc/default/taler
+User=${_AGGRUSERNAME}
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-aggregator -c /etc/taler.conf
 EOF
 
 		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
