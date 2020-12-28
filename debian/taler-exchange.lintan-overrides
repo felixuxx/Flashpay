@@ -1,0 +1,3 @@
+# internal libraries are not splitted out into a dedicated package to avoid
+# micropackaging.
+taler-exchange: package-name-doesnt-match-sonames

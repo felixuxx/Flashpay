@@ -1,0 +1,63 @@
+#!/bin/sh
+
+set -e
+
+pathfind() {
+	OLDIFS="$IFS"
+	IFS=:
+	for p in $PATH; do
+		if [ -x "$p/$*" ]; then
+			IFS="$OLDIFS"
+			return 0
+		fi
+	done
+	IFS="$OLDIFS"
+	return 1
+}
+
+case "${1}" in
+	purge)
+		if [ -e /usr/share/debconf/confmodule ]
+		then
+			. /usr/share/debconf/confmodule
+			db_version 2.0
+
+			db_get taler-systempeer/username
+			_USERNAME="${RET:-taler}"
+
+			db_get taler-systempeer/groupname
+			_GROUPNAME="${RET:-taler}"
+		else
+			_USERNAME="taler"
+			_GROUPNAME="taler"
+		fi
+
+		TALERDNS_GROUP="talerdns"
+
+		if pathfind deluser
+		then
+			deluser --quiet --system ${_USERNAME} || true
+		fi
+
+		if pathfind delgroup
+		then
+			delgroup --quiet --system --only-if-empty ${_GROUPNAME} || true
+			delgroup --quiet --system --only-if-empty ${TALERDNS_GROUP} || true
+		fi
+
+		rm -rf /var/log/taler/ /var/lib/taler /etc/default/taler
+		;;
+
+	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+
+		;;
+
+	*)
+		echo "postrm called with unknown argument \`${1}'" >&2
+		exit 1
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0

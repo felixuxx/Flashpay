@@ -1,0 +1,35 @@
+#!/usr/bin/make -f
+
+SHELL := sh -e
+
+include /usr/share/dpkg/architecture.mk
+
+%:
+	dh ${@}
+
+override_dh_auto_configure-arch:
+	dh_auto_configure -- --disable-rpath --with-microhttpd=yes $(shell dpkg-buildflags --export=configure)
+
+override_dh_auto_configure-indep:
+
+override_dh_auto_build-indep:
+
+override_dh_auto_test:
+	# Disabling test suite, incomplete
+
+override_dh_auto_install-arch:
+	dh_auto_install
+
+	# Create config file
+	mkdir -p debian/tmp/etc
+	cp debian/etc/taler.conf debian/tmp/etc/
+
+	# Removing useless files
+	rm -f debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.la \
+		debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/taler/*.la \
+		debian/tmp/usr/share/doc/taler/COPYING
+
+override_dh_auto_install-indep:
+
+override_dh_auto_clean:
+	dh_auto_clean

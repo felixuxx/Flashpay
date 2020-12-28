@@ -1,0 +1,22 @@
+From: Bertrand Marc <bmarc@debian.org>
+Date: Sun, 5 Jul 2020 14:58:43 +0200
+Subject: Dont_copy_license_file
+
+---
+ contrib/Makefile.inc | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/contrib/Makefile.inc b/contrib/Makefile.inc
+index a563ef4..c737a07 100644
+--- a/contrib/Makefile.inc
++++ b/contrib/Makefile.inc
+@@ -8,8 +8,7 @@ BUILDCOMMON_SHLIB_FILES = \
+     build-common/sh/lib.sh/existence_python.sh \
+     build-common/sh/lib.sh/msg.sh \
+     build-common/sh/lib.sh/progname.sh \
+-    build-common/sh/lib.sh/version_gnunet.sh \
+-    build-common/LICENSE
++    build-common/sh/lib.sh/version_gnunet.sh
+ 
+ BUILDCOMMON_CONF_FILES = \
+     build-common/conf/.dir-locals.el \

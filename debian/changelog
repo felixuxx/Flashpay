@@ -1,0 +1,5 @@
+taler-exchange (0.9.0-0) unstable; urgency=medium
+
+  * Initial Release.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Thu, 00 Jan 2021 00:00:00 +0000

@@ -1,0 +1,107 @@
+#!/bin/bash
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+case "${1}" in
+	configure)
+		db_version 2.0
+
+		db_get taler-systempeer/username
+		_USERNAME="${RET:-taler}"
+
+		db_get taler-systempeer/groupname
+		_GROUPNAME="${RET:-taler}"
+
+		db_get taler-systempeer/autostart
+		_AUTOSTART="${RET}" # boolean
+
+		db_stop
+
+		CONFIG_FILE="/etc/default/taler"
+
+		# Read default values
+		TALER_HOME="/var/lib/taler-exchange"
+		eval $(grep TALER_HOME /etc/taler.conf | tr -d '[:blank:]')
+
+		# Creating taler group if needed
+		if ! getent group ${_GROUPNAME} > /dev/null
+		then
+			echo -n "Creating new Taler group ${_GROUPNAME}:"
+			addgroup --quiet --system ${_GROUPNAME}
+			echo " done."
+		fi
+
+		# Creating taler user if needed
+		if ! getent passwd ${_USERNAME} > /dev/null
+		then
+			echo -n "Creating new Taler user ${_USERNAME}:"
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_USERNAME}
+			echo " done."
+		fi
+
+		# Add a special secured group
+		TALERDNS_GROUP="talerdns"
+
+		# Creating talerdns group if needed
+		if ! getent group ${TALERDNS_GROUP} > /dev/null
+		then
+			echo -n "Creating new secured Taler group ${TALERDNS_GROUP}:"
+			addgroup --quiet --system ${TALERDNS_GROUP}
+			echo " done."
+		fi
+
+fi
+
+# Writing new values to configuration file
+echo -n "Writing new configuration file:"
+CONFIG_NEW=$(tempfile)
+
+cat > "${CONFIG_NEW}" <<EOF
+# This file controls the behaviour of the Taler init script.
+# It will be parsed as a shell script.
+# please do not edit by hand, use 'dpkg-reconfigure taler-systempeer'.
+
+TALER_USER=${_USERNAME}
+TALER_GROUP=${_GROUPNAME}
+TALER_AUTOSTART="${_AUTOSTART}"
+EOF
+
+cat > "/etc/systemd/system/taler.service" <<EOF
+[Unit]
+Description=GNU Taler payment system
+
+[Service]
+EnvironmentFile=/etc/default/taler
+User=${_USERNAME}
+Type=forking
+ExecStart=/usr/bin/taler-arm -s -c /etc/taler.conf
+ExecStop=/usr/bin/taler-arm -e -c /etc/taler.conf
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
+		echo " done."
+
+		# Cleaning
+		rm -f "${CONFIG_NEW}"
+		echo "All done."
+
+		;;
+
+	abort-upgrade|abort-remove|abort-deconfigure)
+
+		;;
+
+	*)
+		echo "postinst called with unknown argument \`${1}'" >&2
+		exit 1
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0

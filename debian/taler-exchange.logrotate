@@ -1,0 +1,10 @@
+/var/log/taler/exchange.log {
+	weekly
+	size=100k
+	rotate 7
+	compress
+	copytruncate
+	delaycompress
+	notifempty
+	missingok
+}

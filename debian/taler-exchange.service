@@ -1,0 +1,12 @@
+[Unit]
+Description=GNU's payment system
+
+[Service]
+EnvironmentFile=/etc/default/taler
+User=${TALER_USER}
+Type=forking
+ExecStart=/usr/bin/gnunet-arm -s -c /etc/taler.conf
+ExecStop=/usr/bin/gnunet-arm -e -c /etc/taler.conf
+
+[Install]
+WantedBy=multi-user.target
