@@ -22,14 +22,24 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
 # support for non-recursive builds
+AC_CANONICAL_TARGET
+AC_CANONICAL_HOST
+AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE([subdir-objects 1.9 tar-pax])
 
 # pretty build rules
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_MACRO_DIR([m4])
+AC_PROG_AWK
+AC_PROG_CC_C99
+AC_PROG_OBJC
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AM_PROG_CC_C_O
 
-LT_INIT
+LT_INIT([disable-static dlopen])
 
 DX_INIT_DOXYGEN([taler-exchange],,,
  DX_PS_FEATURE(OFF),
