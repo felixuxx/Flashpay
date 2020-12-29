@@ -18,6 +18,7 @@
 #
 AC_PREREQ([2.69])
 AC_INIT([taler-exchange], [0.8.1], [taler-bug@gnunet.org])
+AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
 # support for non-recursive builds

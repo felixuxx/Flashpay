@@ -33,3 +33,8 @@ override_dh_auto_install-indep:
 
 override_dh_auto_clean:
 	dh_auto_clean
+
+# Remove files already present in libtalerexchange from main taler-exchange package
+override_dh_install:
+	dh_install
+	cd debian/libtalerexchange; find . -type f -exec rm -f ../taler-exchange/{} \;

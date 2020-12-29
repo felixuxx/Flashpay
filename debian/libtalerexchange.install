@@ -1,2 +1,3 @@
+bin/taler-config
 usr/lib/*/*.so.*
 usr/share/
