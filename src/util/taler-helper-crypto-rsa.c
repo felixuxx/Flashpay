@@ -498,7 +498,13 @@ free_dk (struct DenominationKey *dk)
 
 
 /**
- * Send a message starting with @a hdr to @a client.
+ * Send a message starting with @a hdr to @a client.  We expect that
+ * the client is mostly able to handle everything at whatever speed
+ * we have (after all, the crypto should be the slow part). However,
+ * especially on startup when we send all of our keys, it is possible
+ * that the client cannot keep up. In that case, we throttle when
+ * sending fails. This does not work with poll() as we cannot specify
+ * the sendto() target address with poll(). So we nanosleep() instead.
  *
  * @param addr address where to send the message
  * @param addr_size number of bytes in @a addr
@@ -512,18 +518,32 @@ transmit (const struct sockaddr_un *addr,
 {
   ssize_t ret;
 
-  ret = GNUNET_NETWORK_socket_sendto (unix_sock,
-                                      hdr,
-                                      ntohs (hdr->size),
-                                      (const struct sockaddr *) addr,
-                                      addr_size);
-  if (ret != ntohs (hdr->size))
+  for (unsigned int i = 0; i<100; i++)
   {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_INFO,
-                         "sendto");
-    return GNUNET_SYSERR;
+    ret = GNUNET_NETWORK_socket_sendto (unix_sock,
+                                        hdr,
+                                        ntohs (hdr->size),
+                                        (const struct sockaddr *) addr,
+                                        addr_size);
+    if ( (-1 == ret) &&
+         (EAGAIN == errno) )
+    {
+      /* Wait a bit, in case client is just too slow */
+      struct timespec req = {
+        .tv_sec = 0,
+        .tv_nsec = 1000
+      };
+      nanosleep (&req, NULL);
+      continue;
+    }
+    if (ret == ntohs (hdr->size))
+      return GNUNET_OK;
+    if (ret != ntohs (hdr->size))
+      break;
   }
-  return GNUNET_OK;
+  GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                       "sendto");
+  return GNUNET_SYSERR;
 }
 
 
