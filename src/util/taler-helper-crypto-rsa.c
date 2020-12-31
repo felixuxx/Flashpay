@@ -591,6 +591,8 @@ handle_done (void *cls)
               buf,
               buf_size);
       GNUNET_free (buf);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Sending RSA signature\n");
       (void) transmit (&wi->addr,
                        wi->addr_size,
                        &sr->header);
@@ -740,6 +742,10 @@ notify_client_dk_add (struct Client *client,
   {
     int ret = GNUNET_OK;
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Sending RSA denomination key %s (%s)\n",
+                GNUNET_h2s (&dk->h_denom_pub),
+                denom->section);
     if (GNUNET_OK !=
         transmit (&client->addr,
                   client->addr_size,
@@ -774,6 +780,9 @@ notify_client_dk_del (struct Client *client,
     .h_denom_pub = dk->h_denom_pub
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Sending RSA denomination expiration %sn",
+              GNUNET_h2s (&dk->h_denom_pub));
   if (GNUNET_OK !=
       transmit (&client->addr,
                 client->addr_size,
@@ -1063,6 +1072,8 @@ read_job (void *cls)
           .size = htons (sizeof (synced))
         };
 
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Sending RSA SYNCED message\n");
         if (GNUNET_OK !=
             transmit (&client->addr,
                       client->addr_size,
@@ -2032,7 +2043,7 @@ main (int argc,
   GNUNET_OS_init (TALER_project_data_default ());
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-helper-crypto-rsa",
-                                   "WARNING",
+                                   "INFO",
                                    NULL));
   now = now_tmp = GNUNET_TIME_absolute_get ();
   ret = GNUNET_PROGRAM_run (argc, argv,

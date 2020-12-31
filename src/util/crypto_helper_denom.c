@@ -295,6 +295,10 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
     }
     GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
                                        &h_denom_pub);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Received RSA key %s (%s)\n",
+                GNUNET_h2s (&h_denom_pub),
+                section_name);
     if (GNUNET_OK !=
         TALER_exchange_secmod_rsa_verify (
           &h_denom_pub,
