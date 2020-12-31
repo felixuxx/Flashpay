@@ -1,16 +1,22 @@
 taler-exchange
 --------------
 
-By default, the Taler exchange will start automatically when the system is booted.
-If you prefere to start it manually when you use it, change its configuration
-with:
-
-  # dpkg-reconfigure -plow taler-exchange
+Note that the configuration installed in /etc/taler.conf is incomplete and
+that Debian cannot launch an exchange with this minimal template. You must
+setup the currency, denominations and bank account access details before
+launching the Taler exchange can possibly succeed.
 
 In order to start, stop or restart manually the server, use:
 
-  # /etc/init.d/taler-exchange
+  # systemctl start taler-exchange
+  # systemctl stop taler-exchange
+  # systemctl restart taler-exchange
 
-with the parameter start, stop or restart.
+To permanently the exchange whenever the system boots, use:
+
+  # systemctl enable taler-exchange
+
+None of these are done by the Debian package because we cannot provide the
+required complete configuration details.
 
  -- Christian Grothoff <grothoff@gnu.org>  Mon 28 Dec 2020 11:37:14 AM CET

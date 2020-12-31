@@ -65,12 +65,6 @@ case "${1}" in
 		fi
 
 		rm -rf /var/log/taler/ /var/lib/taler /etc/default/taler
-        for X in httpd helper-rsa helper-eddsa wirewatch transfer
-        do
-            rm -f /etc/systemd/system/taler-exchange-${X}.service
-        done
-        systemctl daemon-reload
-
 		;;
 
 	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)

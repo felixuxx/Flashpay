@@ -179,6 +179,11 @@ EOF
 		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
 		echo " done."
 
+        mkdir -p /var/lib/taler-exchange/tmp
+        chown root:taler /var/lib/taler-exchange/tmp
+        chmod 770 /var/lib/taler-exchange/tmp
+        chmod +s /var/lib/taler-exchange/tmp
+
 		# Cleaning
 		rm -f "${CONFIG_NEW}"
 		echo "All done."
