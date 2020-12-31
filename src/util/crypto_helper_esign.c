@@ -377,9 +377,9 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
           /* timeout AND not synced => full reconnect */
           GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                       "Restarting connection to EdDSA helper, did not come up properly\n");
-          do_disconnect (dh);
-          try_connect (dh);
-          if (-1 == dh->sock)
+          do_disconnect (esh);
+          try_connect (esh);
+          if (-1 == esh->sock)
             return; /* give up */
         }
         continue; /* try again */
