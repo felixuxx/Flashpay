@@ -24,4 +24,5 @@ libtalermhd_la_LIBADD = \
   -lgnunetutil \
   -lmicrohttpd \
   -ljansson \
+  -lz \
   $(XLIB)

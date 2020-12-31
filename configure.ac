@@ -211,9 +211,9 @@ AS_IF([test "$gnurl" = 1],
              [AM_CONDITIONAL(HAVE_LIBGNURL, false)
               AC_DEFINE([HAVE_LIBGNURL],[0],[Lacking libgnurl])
               AM_CONDITIONAL(HAVE_LIBCURL, true)
-              AC_DEFINE([HAVE_LIBCURL],[1],[Have libcurl])],
-              [LIBGNURLCURL_LIBS="-lcurl"]
-             [AC_MSG_ERROR([WARNING: No libgnurl/libcurl, taler-bank support will not be compiled])])])
+              AC_DEFINE([HAVE_LIBCURL],[1],[Have libcurl])
+              [LIBGNURLCURL_LIBS="-lcurl"]],
+             [AC_MSG_ERROR([FATAL: No libgnurl/libcurl])])])
 
 AC_SUBST([LIBGNURLCURL_LIBS])
 
