@@ -26,10 +26,10 @@ case "${1}" in
 			_EUSERNAME="${RET:-taler-exchange-httpd}"
 
 			db_get taler-exchange/rsecusername
-			_RSECUSERNAME="${RET:-taler-helper-rsa}"
+			_RSECUSERNAME="${RET:-taler-exchange-helper-rsa}"
 
 			db_get taler-exchange/esecusername
-			_ESECUSERNAME="${RET:-taler-helper-eddsa}"
+			_ESECUSERNAME="${RET:-taler-exchange-helper-eddsa}"
 
 			db_get taler-exchange/wireusername
 			_WIREUSERNAME="${RET:-taler-exchange-wire}"
@@ -41,8 +41,8 @@ case "${1}" in
 			_GROUPNAME="${RET:-taler-private}"
 		else
 			_EUSERNAME="taler-exchange-httpd"
-			_RSECUSERNAME="taler-helper-rsa"
-			_ESECUSERNAME="taler-helper-eddsa"
+			_RSECUSERNAME="taler-exchange-helper-rsa"
+			_ESECUSERNAME="taler-exchange-helper-eddsa"
 			_WIREUSERNAME="taler-exchange-wire"
 			_AGGRUSERNAME="taler-exchange-aggregator"
 			_GROUPNAME="taler-private"

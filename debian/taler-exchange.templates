@@ -1,6 +1,6 @@
 Template: taler-exchange/eusername
 Type: string
-Default: taler
+Default: taler-exchange-httpd
 _Description: Taler user:
  Please choose the user that the taler-exchange-httpd process will run as.
  .
@@ -9,7 +9,7 @@ _Description: Taler user:
 
 Template: taler-exchange/rsecusername
 Type: string
-Default: taler
+Default: taler-exchange-helper-rsa
 _Description: Taler user:
  Please choose the user that the taler-exchange-helper-rsa process will run as.
  .
@@ -18,7 +18,7 @@ _Description: Taler user:
 
 Template: taler-exchange/esecusername
 Type: string
-Default: taler
+Default: taler-exchange-helper-eddsa
 _Description: Taler user:
  Please choose the user that the taler-exchange-helper-eddsa process will run as.
  .
@@ -27,7 +27,7 @@ _Description: Taler user:
 
 Template: taler-exchange/wireusername
 Type: string
-Default: taler
+Default: taler-exchange-wire
 _Description: Taler user:
  Please choose the user that the taler-exchange-transfer and
  taler-exchange-wirewatch processes will run as.
@@ -37,7 +37,7 @@ _Description: Taler user:
 
 Template: taler-exchange/aggrusername
 Type: string
-Default: taler
+Default: taler-exchange-aggregator
 _Description: Taler user:
  Please choose the user that the taler-exchange-aggregator process will run as.
  .
