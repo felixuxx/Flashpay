@@ -639,11 +639,6 @@ helper_denom_cb (
   {
     /* should be just an update (revocation!), so update existing entry */
     hd->validity_duration = validity_duration;
-    GNUNET_break (start_time.abs_value_us ==
-                  hd->start_time.abs_value_us);
-    GNUNET_break (0 ==
-                  strcasecmp (section_name,
-                              hd->section_name));
     return;
   }
   GNUNET_assert (NULL != sm_pub);
