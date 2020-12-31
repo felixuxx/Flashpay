@@ -59,6 +59,7 @@ libtalerexchangedb_la_LIBADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
+  -lpthread \
   $(XLIB)
 libtalerexchangedb_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \

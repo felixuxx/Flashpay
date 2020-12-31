@@ -47,6 +47,7 @@ libtalerbank_la_SOURCES = \
 libtalerbank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \
@@ -62,8 +63,10 @@ libtalerfakebank_la_SOURCES = \
 libtalerfakebank_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/mhd/libtalermhd.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetutil \
   -ljansson \
+  $(LIBGNURLCURL_LIBS) \
   -lmicrohttpd \
   $(XLIB)

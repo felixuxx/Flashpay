@@ -106,6 +106,7 @@ libtalertesting_la_SOURCES = \
   testing_api_trait_uuid.c \
   testing_api_trait_wtid.c
 libtalertesting_la_LIBADD = \
+  $(top_builddir)/src/lib/libtalerauditor.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \

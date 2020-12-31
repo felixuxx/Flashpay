@@ -43,7 +43,9 @@ libauditorreport_la_LIBADD = \
   $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
-  -lgnunetutil $(XLIB)
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
 
 taler_auditor_dbinit_SOURCES = \
   taler-auditor-dbinit.c

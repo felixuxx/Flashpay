@@ -17,4 +17,8 @@ libtalercurl_la_SOURCES = \
 libtalercurl_la_LIBADD = \
   -lgnunetcurl \
   -lgnunetutil \
+  $(LIBGNURLCURL_LIBS) \
+  -ljansson \
+  -lz \
+  -lm \
   $(XLIB)

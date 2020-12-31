@@ -43,6 +43,7 @@ libtaler_plugin_auditordb_postgres_la_LDFLAGS = \
   -lpq \
   -lgnunetpq \
   -lgnunetutil \
+  -lpthread \
   $(XLIB)
 
 lib_LTLIBRARIES = \
