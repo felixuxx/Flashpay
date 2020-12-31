@@ -7,8 +7,6 @@ if USE_COVERAGE
 endif
 
 
-libexecdir = $(libdir)/taler/libexec
-
 pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
@@ -22,7 +20,7 @@ EXTRA_DIST = \
   test_helper_eddsa.conf \
   test_helper_rsa.conf
 
-libexec_PROGRAMS = \
+bin_PROGRAMS = \
   taler-helper-crypto-eddsa \
   taler-helper-crypto-rsa
 

@@ -586,7 +586,7 @@ start_helpers (const char *config_filename,
 
   pd = GNUNET_OS_project_data_get ();
   GNUNET_OS_init (TALER_project_data_default ());
-  dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_LIBEXECDIR);
+  dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
   GNUNET_OS_init (pd);
   if (NULL == dir)
   {

@@ -537,7 +537,7 @@ main (int argc,
                     "WARNING",
                     NULL);
   GNUNET_OS_init (TALER_project_data_default ());
-  libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_LIBEXECDIR);
+  libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
   GNUNET_asprintf (&binary_name,
                    "%s/%s",
                    libexec_dir,
