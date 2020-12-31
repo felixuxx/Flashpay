@@ -605,6 +605,7 @@ start_helpers (const char *config_filename,
                                           fn,
                                           "taler-helper-crypto-eddsa",
                                           "-c", config_filename,
+                                          "-L", "INFO",
                                           NULL);
     GNUNET_free (fn);
   }
@@ -620,6 +621,7 @@ start_helpers (const char *config_filename,
                                           fn,
                                           "taler-helper-crypto-rsa",
                                           "-c", config_filename,
+                                          "-L", "INFO",
                                           NULL);
     GNUNET_free (fn);
   }

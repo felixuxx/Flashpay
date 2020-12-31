@@ -1642,10 +1642,6 @@ main (int argc,
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
   GNUNET_OS_init (TALER_project_data_default ());
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-helper-crypto-eddsa",
-                                   "WARNING",
-                                   NULL));
   now = now_tmp = GNUNET_TIME_absolute_get ();
   ret = GNUNET_PROGRAM_run (argc, argv,
                             "taler-helper-crypto-eddsa",
