@@ -415,7 +415,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
         {
           /* timeout AND not synced => full reconnect */
           GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                      "Restarting connection to helper, did not come up properly\n");
+                      "Restarting connection to RSA helper, did not come up properly\n");
           do_disconnect (dh);
           try_connect (dh);
           if (-1 == dh->sock)
