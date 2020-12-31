@@ -369,7 +369,7 @@ await_read_ready (struct TALER_CRYPTO_DenominationHelper *dh)
   };
   sigset_t sigmask;
   struct timespec ts = {
-    .tv_sec = 1
+    .tv_sec = 5
   };
   int ret;
 
