@@ -47,6 +47,7 @@ libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \
   -lpthread \
   -lgnunetpq \
   -lgnunetutil \
+  -ljansson \
   $(XLIB)
 
 lib_LTLIBRARIES = \

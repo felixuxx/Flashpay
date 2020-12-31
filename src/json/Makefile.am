@@ -22,6 +22,7 @@ libtalerjson_la_LIBADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil \
   -ljansson \
+  -lm \
   $(XLIB)
 
 TESTS = \
