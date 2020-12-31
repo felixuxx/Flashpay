@@ -174,6 +174,8 @@ Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-aggregator -c /etc/taler.conf
 EOF
 
+        systemctl daemon-reload
+
 		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
 		echo " done."
 
