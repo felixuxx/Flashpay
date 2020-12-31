@@ -55,7 +55,7 @@ case "${1}" in
 		if ! getent passwd ${_RSECUSERNAME} > /dev/null
 		then
 			echo -n "Creating new Taler user ${_RSECUSERNAME}:"
-			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/helper-rsa ${_USERNAME}
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/helper-rsa ${_RSECUSERNAME}
 			echo " done."
 		fi
 		if ! getent passwd ${_ESECUSERNAME} > /dev/null
