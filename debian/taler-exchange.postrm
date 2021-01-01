@@ -15,6 +15,43 @@ pathfind() {
 	return 1
 }
 
+apache_remove() {
+    if [ diff /etc/taler-exchange/apache.conf /etc/apache2/conf-available/taler-exchange.conf >/dev/null 2>&1 ];
+    then
+	    rm -f /etc/apache2/conf-available/taler-exchange.conf
+    fi
+}
+
+nginx_remove() {
+    if [ diff /etc/taler-exchange/nginx.conf /etc/nginx/conf-available/taler-exchange.conf >/dev/null 2>&1 ];
+    then
+	    rm -f /etc/nginx/conf-available/taler-exchange.conf
+    fi
+}
+
+if [ -f /usr/share/dbconfig-common/dpkg/postrm.pgsql ]; then
+    . /usr/share/dbconfig-common/dpkg/postrm.pgsql
+    dbc_go taler-exchange "$@"
+fi
+
+
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+	if [ -f /usr/share/debconf/confmodule ]; then
+		db_version 2.0
+		db_get taler-exchange/reconfigure-webserver
+		webservers="$RET"
+		for webserver in $webservers; do
+			webserver=${webserver%,}
+			if [ "$webserver" = "nginx" ] ; then
+				nginx_remove
+			else
+				apache_remove
+			fi
+		done
+	fi
+fi
+
+
 case "${1}" in
 	purge)
 		if [ -e /usr/share/debconf/confmodule ]
@@ -48,8 +85,6 @@ case "${1}" in
 			_GROUPNAME="taler-private"
 		fi
 
-		TALERDNS_GROUP="talerdns"
-
 		if pathfind deluser
 		then
 			deluser --quiet --system ${_EUSERNAME} || true
@@ -64,7 +99,7 @@ case "${1}" in
 			delgroup --quiet --system --only-if-empty ${_GROUPNAME} || true
 		fi
 
-		rm -rf /var/log/taler/ /var/lib/taler /etc/default/taler
+		rm -rf /var/log/taler-exchange/ /var/lib/taler-exchange /etc/default/taler-exchange
 		;;
 
 	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)

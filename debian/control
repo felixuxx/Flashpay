@@ -54,6 +54,7 @@ Depends:
  adduser,
  lsb-base,
  netbase,
+ dbconfig-pgsql | dbconfig-no-thanks,
  python3-jinja2,
  ${misc:Depends},
  ${shlibs:Depends}

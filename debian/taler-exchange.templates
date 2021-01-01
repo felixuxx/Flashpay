@@ -46,7 +46,7 @@ _Description: Taler user:
 
 Template: taler-exchange/groupname
 Type: string
-Default: taler
+Default: taler-private
 _Description: Taler group:
  Please choose the group that the Taler exchange and security
  modules will run as.
@@ -55,10 +55,13 @@ _Description: Taler group:
  Only the members of this group will have access to Taler private
  online signing keys.
 
-Template: taler-exchange/autostart
-Type: boolean
-Default: true
-_Description: Should the Taler exchange be launched on boot?
- If you choose this option, a Taler exchange will be launched each time
- the system is started. Otherwise, you will need to launch
- Taler each time you want to use it.
+
+Template: taler-exchange/dbgroupname
+Type: string
+Default: taler-exchange-db
+_Description: Taler group:
+ Please choose the group that the Taler users with database access
+ should be in.
+ .
+ This should be a dedicated group, not one that already owns data.
+ Only the members of this group will have access to Taler database.

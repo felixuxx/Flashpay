@@ -1,3 +1,6 @@
-etc/taler.conf
 usr/bin/
 usr/lib/*/taler/*.so
+debian/etc/* etc/
+debian/db/install/* usr/share/dbconfig-common/scripts/taler-exchange/install/
+debian/db/upgrade/* usr/share/dbconfig-common/scripts/taler-exchange/upgrade/
+debian/conf/* etc/taler-exchange/

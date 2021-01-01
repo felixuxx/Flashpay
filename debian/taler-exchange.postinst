@@ -2,6 +2,27 @@
 
 set -e
 
+
+apache_install() {
+	mkdir -p /etc/apache2/conf-available
+    if [ ! -f /etc/apache2/conf-available/taler-exchange.conf ];
+    then
+	    cp /etc/taler-exchange/apache.conf /etc/apache2/conf-available/taler-exchange.conf
+    fi
+    a2enmod proxy
+    a2enmod proxy_http
+    a2enmod headers
+}
+
+
+nginx_install() {
+	mkdir -p /etc/nginx/conf-available
+    if [ ! -f /etc/apache2/conf-available/taler-exchange.conf ];
+    then
+	    cp /etc/taler-exchange/nginx.conf /etc/nginx/conf-available/taler-exchange.conf
+    fi
+}
+
 . /usr/share/debconf/confmodule
 
 case "${1}" in
@@ -26,16 +47,13 @@ case "${1}" in
 		db_get taler-exchange/groupname
 		_GROUPNAME="${RET:-taler-private}"
 
-		db_get taler-exchange/autostart
-		_AUTOSTART="${RET}" # boolean
+   		db_get taler-exchange/dbgroupname
+		_DBGROUPNAME="${RET:-taler-exchange-db}"
 
 		db_stop
 
-		CONFIG_FILE="/etc/default/taler"
-
-		# Read default values
+		CONFIG_FILE="/etc/default/taler-exchange"
 		TALER_HOME="/var/lib/taler-exchange"
-		eval $(grep TALER_HOME /etc/taler.conf | tr -d '[:blank:]')
 
 		# Creating taler group if needed
 		if ! getent group ${_GROUPNAME} > /dev/null
@@ -50,6 +68,7 @@ case "${1}" in
 		then
 			echo -n "Creating new Taler user ${_EUSERNAME}:"
 			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/httpd ${_EUSERNAME}
+            adduser ${_EUSERNAME} ${_DBGROUPNAME}
 			echo " done."
 		fi
 		if ! getent passwd ${_RSECUSERNAME} > /dev/null
@@ -68,12 +87,14 @@ case "${1}" in
 		then
 			echo -n "Creating new Taler user ${_WIREUSERNAME}:"
 			adduser --quiet --system --home ${TALER_HOME}/wire ${_WIREUSERNAME}
+            adduser ${_WIREUSERNAME} ${_DBGROUPNAME}
 			echo " done."
 		fi
 		if ! getent passwd ${_AGGRUSERNAME} > /dev/null
 		then
 			echo -n "Creating new Taler user ${_AGGRUSERNAME}:"
 			adduser --quiet --system --home ${TALER_HOME}/aggregator ${_AGGRUSERNAME}
+            adduser ${_AGGRUSERNAME} ${_DBGROUPNAME}
 			echo " done."
 		fi
 
@@ -92,7 +113,6 @@ TALER_ESECUSER=${_ESECUSERNAME}
 TALER_WIREUSER=${_WIREUSERNAME}
 TALER_AGGRUSER=${_AGGRUSERNAME}
 TALER_GROUP=${_GROUPNAME}
-TALER_AUTOSTART="${_AUTOSTART}"
 EOF
 
 cat > "/etc/systemd/system/taler-exchange-httpd.service" <<EOF
@@ -103,11 +123,11 @@ Wants=taler-exchange-wirewatch taler-exchange-aggregator taler-exchange-transfer
 After=postgres.service network.target
 
 [Service]
-EnvironmentFile=/etc/default/taler
+EnvironmentFile=/etc/default/taler-exchange
 User=${_EUSERNAME}
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler.conf
+ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler-exchange.conf
 
 [Install]
 WantedBy=multi-user.target
@@ -118,11 +138,11 @@ cat > "/etc/systemd/system/taler-exchange-helper-rsa.service" <<EOF
 Description=GNU Taler payment system exchange RSA security module
 
 [Service]
-EnvironmentFile=/etc/default/taler
+EnvironmentFile=/etc/default/taler-exchange
 User=${_RSECUSERNAME}
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-helper-crypto-rsa -c /etc/taler.conf
+ExecStart=/usr/bin/taler-helper-crypto-rsa -c /etc/taler-exchange.conf
 
 [Install]
 WantedBy=multi-user.target
@@ -132,11 +152,11 @@ cat > "/etc/systemd/system/taler-exchange-helper-eddsa.service" <<EOF
 Description=GNU Taler payment system exchange EdDSA security module
 
 [Service]
-EnvironmentFile=/etc/default/taler
+EnvironmentFile=/etc/default/taler-exchange
 User=${_ESECUSERNAME}
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-helper-crypto-eddsa -c /etc/taler.conf
+ExecStart=/usr/bin/taler-helper-crypto-eddsa -c /etc/taler-exchange.conf
 EOF
 cat > "/etc/systemd/system/taler-exchange-wirewatch.service" <<EOF
 [Unit]
@@ -144,7 +164,7 @@ Description=GNU Taler payment system exchange wirewatch service
 After=network.target
 
 [Service]
-EnvironmentFile=/etc/default/taler
+EnvironmentFile=/etc/default/taler-exchange
 User=${_WIREUSERNAME}
 Type=simple
 Restart=on-failure
@@ -156,7 +176,7 @@ Description=GNU Taler payment system exchange transfer service
 After=network.target
 
 [Service]
-EnvironmentFile=/etc/default/taler
+EnvironmentFile=/etc/default/taler-exchange
 User=${_WIREUSERNAME}
 Type=simple
 Restart=on-failure
@@ -167,7 +187,7 @@ cat > "/etc/systemd/system/taler-exchange-aggregator.service" <<EOF
 Description=GNU Taler payment system exchange aggregator service
 
 [Service]
-EnvironmentFile=/etc/default/taler
+EnvironmentFile=/etc/default/taler-exchange
 User=${_AGGRUSERNAME}
 Type=simple
 Restart=on-failure
@@ -183,6 +203,40 @@ EOF
         chown root:taler /var/lib/taler-exchange/tmp
         chmod 770 /var/lib/taler-exchange/tmp
         chmod +s /var/lib/taler-exchange/tmp
+
+        # Setup postgres database (needs dbconfig-pgsql package)
+        if [ -f /usr/share/dbconfig-common/dpkg/postinst.pgsql ]; then
+            . /usr/share/dbconfig-common/dpkg/postinst.pgsql
+            # dbc_dbfile_* should not apply for Postgres, but better be safe...
+            dbc_dbfile_owner="${_EUSERNAME}:${_DBGROUPNAME}"
+            dbc_dbfile_perms="0660"
+            dbc_pgsql_createdb_encoding="UTF8"
+            dbc_go taler-exchange "$@"
+        fi
+        # get database settings from dbconfig-common
+        if [ -f /etc/dbconfig-common/taler-exchange.conf ]; then
+            . /etc/dbconfig-common/taler-exchange.conf
+            case "$dbc_dbtype" in
+                pgsql)
+                    taler-config -c /etc/taler-exchange-db.conf \
+                                 -s "exchangedb-postgres" \
+                                 -o "CONFIG" \
+                                 -V "postgres://$dbc_dbuser:$dbc_dbpass@$dbc_dbserver/$dbc_dbname"
+                    taler-config -c /etc/taler-exchange-db.conf \
+                                 -s "exchange" \
+                                 -o "DB" \
+                                 -V "postgres"
+                    chown ${_EUSERNAME}:${_DBGROUPNAME} /etc/taler-exchange-db.conf
+                    chmod 440 /etc/taler-exchange-db.conf
+                ;;
+                "")
+                ;;
+                *)
+                    echo "Unsupported database type $dbc_type."
+                    exit 1
+                    ;;
+            esac
+        fi
 
 		# Cleaning
 		rm -f "${CONFIG_NEW}"
