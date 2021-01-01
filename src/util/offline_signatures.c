@@ -213,8 +213,6 @@ TALER_exchange_offline_signkey_validity_sign (
     .signkey_pub = *exchange_pub
   };
 
-  GNUNET_CRYPTO_eddsa_key_get_public (&master_priv->eddsa_priv,
-                                      &skv.master_public_key.eddsa_pub);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &skv,
                             &master_sig->eddsa_signature);
@@ -234,7 +232,6 @@ TALER_exchange_offline_signkey_validity_verify (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
     .purpose.size = htonl (sizeof (skv)),
-    .master_public_key = *master_pub,
     .start = GNUNET_TIME_absolute_hton (start_sign),
     .expire = GNUNET_TIME_absolute_hton (end_sign),
     .end = GNUNET_TIME_absolute_hton (end_legal),

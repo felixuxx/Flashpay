@@ -70,7 +70,6 @@ verify_and_execute_deposit_confirmation (
   struct TALER_ExchangeSigningKeyValidityPS skv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
     .purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS)),
-    .master_public_key = es->master_public_key,
     .start = GNUNET_TIME_absolute_hton (es->ep_start),
     .expire = GNUNET_TIME_absolute_hton (es->ep_expire),
     .end = GNUNET_TIME_absolute_hton (es->ep_end),

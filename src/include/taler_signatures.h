@@ -754,12 +754,6 @@ struct TALER_ExchangeSigningKeyValidityPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Master public key of the exchange corresponding to @e signature.
-   * This is the long-term offline master key of the exchange.
-   */
-  struct TALER_MasterPublicKeyP master_public_key;
-
-  /**
    * When does this signing key begin to be valid?
    */
   struct GNUNET_TIME_AbsoluteNBO start;
