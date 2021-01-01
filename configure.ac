@@ -71,6 +71,8 @@ CFLAGS="-Wall -Wno-address-of-packed-member $CFLAGS"
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h stdlib.h string.h unistd.h sys/socket.h sys/un.h netinet/in.h netinet/ip.h])
 
+AX_PYTHON_MODULE([jinja2],true)
+
 
 # Require minimum libgcrypt version
 need_libgcrypt_version=1.6.1
