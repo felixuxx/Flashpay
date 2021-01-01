@@ -1,0 +1,15 @@
+.debhelper/
+autoreconf.after
+autoreconf.before
+debhelper-build-stamp
+files
+libtalerexchange.debhelper.log
+libtalerexchange.substvars
+libtalerexchange/
+taler-exchange-dev.debhelper.log
+taler-exchange-dev.substvars
+taler-exchange-dev/
+taler-exchange.debhelper.log
+taler-exchange.substvars
+taler-exchange/
+tmp/
