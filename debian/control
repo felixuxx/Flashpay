@@ -60,12 +60,12 @@ Depends:
  ${shlibs:Depends}
 Description: GNU's payment system operator.
 
-Package: taler-exchange-dev
+Package: libtalerexchange-dev
 Section: libdevel
 Architecture: any
 Depends:
  libtalerexchange (= ${binary:Version}),
- gnunet-dev (>=1:0.6.3),
+ libgnunet-dev (>=1:0.6.3),
  libgcrypt20-dev (>=1.6),
  libmicrohttpd-dev (>=0.9.33),
  ${misc:Depends}

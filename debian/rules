@@ -20,10 +20,6 @@ override_dh_auto_test:
 override_dh_auto_install-arch:
 	dh_auto_install
 
-	# Create config file
-	mkdir -p debian/tmp/etc
-	cp debian/etc/taler.conf debian/tmp/etc/
-
 	# Removing useless files
 	rm -f debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/*.la \
 		debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/taler/*.la \
