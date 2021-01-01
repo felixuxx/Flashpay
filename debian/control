@@ -65,7 +65,7 @@ Section: libdevel
 Architecture: any
 Depends:
  libtalerexchange (= ${binary:Version}),
- libgnunet-dev (>=1:0.14.0),
+ libgnunet-dev (>=0.14.0),
  libgcrypt20-dev (>=1.6),
  libmicrohttpd-dev (>=0.9.33),
  ${misc:Depends}

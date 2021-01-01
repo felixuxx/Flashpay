@@ -55,11 +55,17 @@ case "${1}" in
 		CONFIG_FILE="/etc/default/taler-exchange"
 		TALER_HOME="/var/lib/taler-exchange"
 
-		# Creating taler group if needed
+		# Creating taler groups as needed
 		if ! getent group ${_GROUPNAME} > /dev/null
 		then
 			echo -n "Creating new Taler group ${_GROUPNAME}:"
 			addgroup --quiet --system ${_GROUPNAME}
+			echo " done."
+		fi
+		if ! getent group ${_DBGROUPNAME} > /dev/null
+		then
+			echo -n "Creating new Taler group ${_DBGROUPNAME}:"
+			addgroup --quiet --system ${_DBGROUPNAME}
 			echo " done."
 		fi
 
@@ -87,14 +93,14 @@ case "${1}" in
 		then
 			echo -n "Creating new Taler user ${_WIREUSERNAME}:"
 			adduser --quiet --system --home ${TALER_HOME}/wire ${_WIREUSERNAME}
-            adduser ${_WIREUSERNAME} ${_DBGROUPNAME}
+            adduser --quiet ${_WIREUSERNAME} ${_DBGROUPNAME}
 			echo " done."
 		fi
 		if ! getent passwd ${_AGGRUSERNAME} > /dev/null
 		then
 			echo -n "Creating new Taler user ${_AGGRUSERNAME}:"
 			adduser --quiet --system --home ${TALER_HOME}/aggregator ${_AGGRUSERNAME}
-            adduser ${_AGGRUSERNAME} ${_DBGROUPNAME}
+            adduser --quiet ${_AGGRUSERNAME} ${_DBGROUPNAME}
 			echo " done."
 		fi
 
@@ -194,58 +200,26 @@ Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-aggregator -c /etc/taler.conf
 EOF
 
-        systemctl daemon-reload
-
 		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
+		rm -f "${CONFIG_NEW}"
 		echo " done."
 
+        echo -n "Setting up system services "
+
         mkdir -p /var/lib/taler-exchange/tmp
-        chown root:taler /var/lib/taler-exchange/tmp
+        chown root:${_GROUPNAME} /var/lib/taler-exchange/tmp
         chmod 770 /var/lib/taler-exchange/tmp
         chmod +s /var/lib/taler-exchange/tmp
 
-        # Setup postgres database (needs dbconfig-pgsql package)
-        if [ -f /usr/share/dbconfig-common/dpkg/postinst.pgsql ]; then
-            . /usr/share/dbconfig-common/dpkg/postinst.pgsql
-            # dbc_dbfile_* should not apply for Postgres, but better be safe...
-            dbc_dbfile_owner="${_EUSERNAME}:${_DBGROUPNAME}"
-            dbc_dbfile_perms="0660"
-            dbc_pgsql_createdb_encoding="UTF8"
-            dbc_go taler-exchange "$@"
-        fi
-        # get database settings from dbconfig-common
-        if [ -f /etc/dbconfig-common/taler-exchange.conf ]; then
-            . /etc/dbconfig-common/taler-exchange.conf
-            case "$dbc_dbtype" in
-                pgsql)
-                    taler-config -c /etc/taler-exchange-db.conf \
-                                 -s "exchangedb-postgres" \
-                                 -o "CONFIG" \
-                                 -V "postgres://$dbc_dbuser:$dbc_dbpass@$dbc_dbserver/$dbc_dbname"
-                    taler-config -c /etc/taler-exchange-db.conf \
-                                 -s "exchange" \
-                                 -o "DB" \
-                                 -V "postgres"
-                    chown ${_EUSERNAME}:${_DBGROUPNAME} /etc/taler-exchange-db.conf
-                    chmod 440 /etc/taler-exchange-db.conf
-                ;;
-                "")
-                ;;
-                *)
-                    echo "Unsupported database type $dbc_type."
-                    exit 1
-                    ;;
-            esac
-        fi
+        systemctl daemon-reload
+
+        echo "done."
 
 		# Cleaning
-		rm -f "${CONFIG_NEW}"
 		echo "All done."
-
 		;;
 
 	abort-upgrade|abort-remove|abort-deconfigure)
-
 		;;
 
 	*)

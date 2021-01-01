@@ -1,2 +1,0 @@
-#!/bin/sh
-taler-exchange-dbinit -c /etc/taler.conf

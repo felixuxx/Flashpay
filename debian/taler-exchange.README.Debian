@@ -1,12 +1,22 @@
 taler-exchange
 --------------
 
-Note that the configuration installed in /etc/taler.conf is incomplete and
-that Debian cannot launch an exchange with this minimal template. You must
-setup the currency, denominations and bank account access details before
-launching the Taler exchange can possibly succeed.
+Note that the configuration is incomplete, and that Debian cannot launch an
+exchange with this minimal template. You must:
 
-In order to start, stop or restart manually the server, use:
+* Configure the Postgres database for the exchange, ideally including
+  remote replication of the database to the auditor.
+* Run taler-exchange-dbinit (also after package upgrades).
+* Edit /etc/taler-exchange.conf to must setup the currency and denominations
+  details.
+* Edit /etc/taler-wire.conf to provide details about the bank account access.
+
+None of these are done by the Debian package because we cannot provide the
+required complete configuration details.
+
+
+Once you have done this, you can use the following commands to start, stop or
+restart the Taler exchange:
 
   # systemctl start taler-exchange
   # systemctl stop taler-exchange
@@ -16,7 +26,5 @@ To permanently the exchange whenever the system boots, use:
 
   # systemctl enable taler-exchange
 
-None of these are done by the Debian package because we cannot provide the
-required complete configuration details.
 
  -- Christian Grothoff <grothoff@gnu.org>  Mon 28 Dec 2020 11:37:14 AM CET

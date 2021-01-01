@@ -8,10 +8,5 @@ if [ -f /usr/share/debconf/confmodule ]; then
 fi
 . /usr/share/dbconfig-common/dpkg/prerm
 
-if [ -f /usr/share/dbconfig-common/dpkg/prerm.pgsql ]; then
-    . /usr/share/dbconfig-common/dpkg/prerm.pgsql
-    dbc_go taler-exchange "$@"
-fi
-
 db_stop
 exit 0
