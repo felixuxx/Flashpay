@@ -1,3 +1,11 @@
+taler-exchange (0.9.0-2) unstable; urgency=medium
+
+  * Modify setup to not touch database (too complex anyway).
+  * Fix build of taler-config.
+  * Correct dependencies.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Sat, 02 Jan 2020 23:00:00 +0000
+
 taler-exchange (0.9.0-1) unstable; urgency=medium
 
   * Fixing various minor issues with the package, in particular how systemd units are started.
