@@ -211,6 +211,13 @@ EOF
         chmod 770 /var/lib/taler-exchange/tmp
         chmod +s /var/lib/taler-exchange/tmp
 
+        chown ${_WIREUSERNAME}:root /etc/taler-wire.conf
+        chmod 460 /etc/taler-wire.conf
+        chown root:${_DBGROUPNAME} /etc/taler-exchange-db.conf
+        chmod 640 /etc/taler-exchange-db.conf
+        chown ${_EUSERNAME}:${_GROUPNAME} /etc/taler-exchange.conf
+        chmod 460 /etc/taler-wire.conf
+
         systemctl daemon-reload
 
         echo "done."
