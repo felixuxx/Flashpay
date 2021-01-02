@@ -35,6 +35,8 @@ taler-config: taler-config.in
 	chmod a-w+x $@.tmp && \
 	mv $@.tmp $@
 
+CLEANFILES = \
+  taler-config
 
 taler_helper_crypto_rsa_SOURCES = \
   taler-helper-crypto-rsa.c taler-helper-crypto-rsa.h

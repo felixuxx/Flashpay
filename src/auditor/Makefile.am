@@ -11,6 +11,9 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
   auditor.conf
 
+clean-local:
+	rm -rf revocation-tmp-*
+
 bin_PROGRAMS = \
   taler-auditor-dbinit \
   taler-auditor-exchange \

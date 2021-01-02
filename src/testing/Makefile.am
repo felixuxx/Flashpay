@@ -10,6 +10,8 @@ if USE_COVERAGE
   XLIB = -lgcov
 endif
 
+clean-local:
+	rm -rf report*
 
 # Libraries
 
