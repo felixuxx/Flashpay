@@ -1,0 +1,8 @@
+usr/bin/taler-auditor
+usr/bin/taler-auditor-dbinit
+usr/bin/taler-auditor-exchange
+usr/bin/taler-auditor-httpd
+usr/bin/taler-auditor-offline
+usr/bin/taler-helper-auditor-*
+debian/etc/taler-auditor.conf etc/
+debian/auditor-conf/* etc/taler-auditor/

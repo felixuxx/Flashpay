@@ -3,26 +3,6 @@
 set -e
 
 
-apache_install() {
-	mkdir -p /etc/apache2/conf-available
-    if [ ! -f /etc/apache2/conf-available/taler-exchange.conf ];
-    then
-	    cp /etc/taler-exchange/apache.conf /etc/apache2/conf-available/taler-exchange.conf
-    fi
-    a2enmod proxy
-    a2enmod proxy_http
-    a2enmod headers
-}
-
-
-nginx_install() {
-	mkdir -p /etc/nginx/conf-available
-    if [ ! -f /etc/apache2/conf-available/taler-exchange.conf ];
-    then
-	    cp /etc/taler-exchange/nginx.conf /etc/nginx/conf-available/taler-exchange.conf
-    fi
-}
-
 . /usr/share/debconf/confmodule
 
 case "${1}" in

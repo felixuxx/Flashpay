@@ -1,4 +1,4 @@
 usr/bin/
 usr/lib/*/taler/*.so
 debian/etc/* etc/
-debian/conf/* etc/taler-exchange/
+debian/exchange-conf/* etc/taler-exchange/

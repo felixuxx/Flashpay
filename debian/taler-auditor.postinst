@@ -1,0 +1,95 @@
+#!/bin/bash
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+case "${1}" in
+	configure)
+		db_version 2.0
+
+		db_get taler-auditor/username
+		_USERNAME="${RET:-taler-auditor-httpd}"
+
+		db_get taler-auditor/groupname
+		_GROUPNAME="${RET:-taler-auditor-httpd}"
+
+		db_stop
+
+		CONFIG_FILE="/etc/default/taler-auditor"
+		TALER_HOME="/var/lib/taler-auditor"
+
+		# Creating taler groups as needed
+		if ! getent group ${_GROUPNAME} > /dev/null
+		then
+			echo -n "Creating new Taler group ${_GROUPNAME}:"
+			addgroup --quiet --system ${_GROUPNAME}
+			echo " done."
+		fi
+		# Creating taler users if needed
+		if ! getent passwd ${_USERNAME} > /dev/null
+		then
+			echo -n "Creating new Taler user ${_USERNAME}:"
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/httpd ${_USERNAME}
+			echo " done."
+		fi
+        # Writing new values to configuration file
+        echo -n "Writing new configuration file:"
+        CONFIG_NEW=$(tempfile)
+
+cat > "${CONFIG_NEW}" <<EOF
+# This file controls the behaviour of the Taler init script.
+# It will be parsed as a shell script.
+# please do not edit by hand, use 'dpkg-reconfigure taler-auditor'.
+
+TALER_USER=${_USERNAME}
+TALER_GROUP=${_GROUPNAME}
+EOF
+
+cat > "/etc/systemd/system/taler-auditor-httpd.service" <<EOF
+[Unit]
+Description=GNU Taler payment system auditor REST API
+After=postgres.service network.target
+
+[Service]
+EnvironmentFile=/etc/default/taler-auditor
+User=${_USERNAME}
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler-auditor.conf
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
+		rm -f "${CONFIG_NEW}"
+		echo " done."
+
+        echo -n "Setting up system services "
+
+        mkdir -p /var/lib/taler-auditor/tmp
+        chown root:${_GROUPNAME} /var/lib/taler-auditor/tmp
+        chmod 770 /var/lib/taler-auditor/tmp
+        chmod +s /var/lib/taler-auditor/tmp
+
+        systemctl daemon-reload
+
+        echo "done."
+
+		# Cleaning
+		echo "All done."
+		;;
+
+	abort-upgrade|abort-remove|abort-deconfigure)
+		;;
+
+	*)
+		echo "postinst called with unknown argument \`${1}'" >&2
+		exit 1
+		;;
+esac
+
+#DEBHELPER#
+
+exit 0

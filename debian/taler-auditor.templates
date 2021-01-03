@@ -1,0 +1,16 @@
+Template: taler-auditor/username
+Type: string
+Default: taler-auditor-httpd
+_Description: Taler user:
+ Please choose the user that the taler-auditor-httpd process will run as.
+ .
+ This should be a dedicated account. If the specified account does not
+ already exist, it will automatically be created, with no login shell.
+
+Template: taler-auditor/groupname
+Type: string
+Default: taler-auditor-httpd
+_Description: Taler group:
+ Please choose the group that the taler-auditor-httpd will run as.
+ .
+ This should be a dedicated group, not one that already owns data.

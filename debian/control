@@ -55,10 +55,24 @@ Depends:
  lsb-base,
  netbase,
  dbconfig-pgsql | dbconfig-no-thanks,
- python3-jinja2,
  ${misc:Depends},
  ${shlibs:Depends}
 Description: GNU's payment system operator.
+
+Package: taler-auditor
+Architecture: any
+Pre-Depends:
+ ${misc:Pre-Depends}
+Depends:
+ libtalerexchange (= ${binary:Version}),
+ adduser,
+ lsb-base,
+ netbase,
+ dbconfig-pgsql | dbconfig-no-thanks,
+ python3-jinja2,
+ ${misc:Depends},
+ ${shlibs:Depends}
+Description: GNU's payment system auditor.
 
 Package: libtalerexchange-dev
 Section: libdevel
