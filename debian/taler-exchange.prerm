@@ -2,11 +2,10 @@
 
 set -e
 
-
-if [ -f /usr/share/debconf/confmodule ]; then
+if [ -f /usr/share/debconf/confmodule ];
+then
     . /usr/share/debconf/confmodule
 fi
-. /usr/share/dbconfig-common/dpkg/prerm
 
 db_stop
 exit 0

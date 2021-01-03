@@ -15,39 +15,10 @@ pathfind() {
 	return 1
 }
 
-apache_remove() {
-    if [ diff /etc/taler-exchange/apache.conf /etc/apache2/conf-available/taler-exchange.conf >/dev/null 2>&1 ];
-    then
-	    rm -f /etc/apache2/conf-available/taler-exchange.conf
-    fi
-}
-
-nginx_remove() {
-    if [ diff /etc/taler-exchange/nginx.conf /etc/nginx/conf-available/taler-exchange.conf >/dev/null 2>&1 ];
-    then
-	    rm -f /etc/nginx/conf-available/taler-exchange.conf
-    fi
-}
-
 if [ -f /usr/share/debconf/confmodule ];
 then
     . /usr/share/debconf/confmodule
 fi
-
-if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
-	db_version 2.0
-	db_get taler-exchange/reconfigure-webserver
-	webservers="$RET"
-	for webserver in $webservers; do
-		webserver=${webserver%,}
-		if [ "$webserver" = "nginx" ] ; then
-			nginx_remove
-		else
-			apache_remove
-		fi
-	done
-fi
-
 
 case "${1}" in
 	purge)
