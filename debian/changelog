@@ -4,6 +4,8 @@ taler-exchange (0.9.0-3) unstable; urgency=medium
   * Split out taler-auditor package.
   * Setup user and systemd service for taler-auditor-httpd.
 
+ -- Christian Grothoff <grothoff@gnu.org>  Sun, 03 Jan 2020 23:00:00 +0000
+
 taler-exchange (0.9.0-2) unstable; urgency=medium
 
   * Modify setup to not touch database (too complex anyway).
