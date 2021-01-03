@@ -136,3 +136,5 @@ build-aux/
 src/testing/test_exchange_api_home/.local/share/taler/exchange/offline-keys/secm_tofus.pub
 src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/offline-keys/secm_tofus.pub
 src/testing/test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/secm_tofus.pub
+debian/taler-auditor.debhelper.log
+debian/libtalerexchange-dev.debhelper.log
