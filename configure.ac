@@ -48,18 +48,6 @@ DX_INIT_DOXYGEN([taler-exchange],,,
  DX_CHI_FEATURE(OFF),
  DX_XML_FEATURE(OFF))
 
-AC_MSG_CHECKING([whether to compile documentation ONLY])
-AC_ARG_ENABLE([only-doc],
-  [AS_HELP_STRING([--enable-only-doc], [only compile Taler documentation])],
-  [doc_only=${enableval}],
-  [doc_only=no])
-AC_MSG_RESULT($doc_only)
-AM_CONDITIONAL([DOC_ONLY], [test "x$doc_only" = "xyes"])
-
-
-# Not indented, as most of the file falls under this one...
-AS_IF([test "x$doc_only" != xyes],[
-
 # Checks for programs.
 
 AC_PROG_CC
@@ -194,11 +182,11 @@ LIBS_SAVE=$LIBS
 LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
 LIBCURL_CHECK_CONFIG(,7.34.0,[curl=1],[curl=0])
 
+# cURL must support CURLINFO_TLS_SESSION, version >= 7.34
 AS_IF([test "x$curl" = x1],[
  AC_CHECK_HEADER([curl/curl.h],
-  AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=1],[curl=0],[[#include <curl/curl.h>]]),
+  [AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=1],[curl=0],[[#include <curl/curl.h>]])],
   [curl=0])
- # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
 ])
 
 
@@ -500,32 +488,6 @@ AC_TYPE_UINTMAX_T
 
 # Checks for library functions.
 AC_CHECK_FUNCS([strdup])
-
-
-AC_ARG_ENABLE([[doc]],
-  [AS_HELP_STRING([[--disable-doc]], [do not build any documentation])], ,
-    [enable_doc=yes])
-test "x$enable_doc" = "xno" || enable_doc=yes
-AM_CONDITIONAL([ENABLE_DOC], [test "x$enable_doc" = "xyes"])
-
-
-],[  # This is the big test "$doc_only" on top of the file!
-
-
-# logic if doc_only is set, make sure conditionals are still defined
-AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [false])
-AM_CONDITIONAL([MHD_HAVE_EPOLL], [false])
-AM_CONDITIONAL([HAVE_POSTGRESQL], [false])
-AM_CONDITIONAL([HAVE_SQLITE], [false])
-AM_CONDITIONAL([HAVE_LIBCURL], [false])
-AM_CONDITIONAL([HAVE_LIBGNURL], [false])
-AM_CONDITIONAL([HAVE_DEVELOPER], [false])
-AM_CONDITIONAL([USE_COVERAGE], [false])
-AM_CONDITIONAL([ENABLE_DOC], [true])
-AM_CONDITIONAL([HAVE_TWISTER], [false])
-
-# end of 'doc_only'
-])
 
 AC_CONFIG_FILES([Makefile
                  contrib/Makefile
