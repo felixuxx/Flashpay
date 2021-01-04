@@ -182,11 +182,11 @@ LIBS_SAVE=$LIBS
 LIBGNURL_CHECK_CONFIG(,7.34.0,gnurl=1,gnurl=0)
 LIBCURL_CHECK_CONFIG(,7.34.0,[curl=1],[curl=0])
 
+# cURL must support CURLINFO_TLS_SESSION, version >= 7.34
 AS_IF([test "x$curl" = x1],[
  AC_CHECK_HEADER([curl/curl.h],
-  AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=1],[curl=0],[[#include <curl/curl.h>]]),
+  [AC_CHECK_DECLS(CURLINFO_TLS_SESSION,[curl=1],[curl=0],[[#include <curl/curl.h>]])],
   [curl=0])
- # cURL must support CURLINFO_TLS_SESSION, version >= 7.34
 ])
 
 
