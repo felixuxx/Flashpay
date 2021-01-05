@@ -438,7 +438,7 @@ postgres_get_session (void *cls)
       /* Used in #postgres_insert_reserve_closed() */
       GNUNET_PQ_make_prepare ("reserves_close_insert",
                               "INSERT INTO reserves_close "
-                              "(reserve_pub"
+                              "(reserve_uuid"
                               ",execution_date"
                               ",wtid"
                               ",receiver_account"
@@ -446,8 +446,9 @@ postgres_get_session (void *cls)
                               ",amount_frac"
                               ",closing_fee_val"
                               ",closing_fee_frac"
-                              ") VALUES "
-                              "($1, $2, $3, $4, $5, $6, $7, $8);",
+                              ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7, $8"
+                              "  FROM reserves"
+                              "  WHERE reserve_pub=$1;",
                               8),
       /* Used in #reserves_update() when the reserve is updated */
       GNUNET_PQ_make_prepare ("reserve_update",
@@ -457,22 +458,22 @@ postgres_get_session (void *cls)
                               ",gc_date=$2"
                               ",current_balance_val=$3"
                               ",current_balance_frac=$4"
-                              " WHERE"
-                              " reserve_pub=$5;",
+                              " WHERE reserve_pub=$5;",
                               5),
       /* Used in #postgres_reserves_in_insert() to store transaction details */
       GNUNET_PQ_make_prepare ("reserves_in_add_transaction",
                               "INSERT INTO reserves_in "
-                              "(reserve_pub"
+                              "(reserve_uuid"
                               ",wire_reference"
                               ",credit_val"
                               ",credit_frac"
                               ",exchange_account_section"
                               ",sender_account_details"
                               ",execution_date"
-                              ") VALUES "
-                              "($1, $2, $3, $4, $5, $6, $7) "
-                              "ON CONFLICT DO NOTHING;",
+                              ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7"
+                              "  FROM reserves"
+                              "  WHERE reserve_pub=$1"
+                              " ON CONFLICT DO NOTHING;",
                               7),
       /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
          transactions for reserves with serial id '\geq' the given parameter */
@@ -488,7 +489,7 @@ postgres_get_session (void *cls)
          transactions for reserves with serial id '\geq' the given parameter */
       GNUNET_PQ_make_prepare ("audit_reserves_in_get_transactions_incr",
                               "SELECT"
-                              " reserve_pub"
+                              " reserves.reserve_pub"
                               ",wire_reference"
                               ",credit_val"
                               ",credit_frac"
@@ -496,6 +497,8 @@ postgres_get_session (void *cls)
                               ",sender_account_details"
                               ",reserve_in_serial_id"
                               " FROM reserves_in"
+                              " JOIN reserves"
+                              "   USING (reserve_uuid)"
                               " WHERE reserve_in_serial_id>=$1"
                               " ORDER BY reserve_in_serial_id;",
                               1),
@@ -504,7 +507,7 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare (
         "audit_reserves_in_get_transactions_incr_by_account",
         "SELECT"
-        " reserve_pub"
+        " reserves.reserve_pub"
         ",wire_reference"
         ",credit_val"
         ",credit_frac"
@@ -512,6 +515,8 @@ postgres_get_session (void *cls)
         ",sender_account_details"
         ",reserve_in_serial_id"
         " FROM reserves_in"
+        " JOIN reserves "
+        "   USING (reserve_uuid)"
         " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
         " ORDER BY reserve_in_serial_id;",
         2),
@@ -525,7 +530,10 @@ postgres_get_session (void *cls)
                               ",execution_date"
                               ",sender_account_details"
                               " FROM reserves_in"
-                              " WHERE reserve_pub=$1;",
+                              " WHERE reserve_uuid="
+                              " (SELECT reserve_uuid "
+                              "   FROM reserves"
+                              "   WHERE reserve_pub=$1);",
                               1),
       /* Lock withdraw table; NOTE: we may want to eventually shard the
          deposit table to avoid this lock being the main point of
@@ -539,18 +547,20 @@ postgres_get_session (void *cls)
          the coin's denomination information (public key, signature)
          and the blinded message as well as the reserve that the coin
          is being withdrawn from and the signature of the message
-         authorizing the withdrawal. */GNUNET_PQ_make_prepare ("insert_withdraw_info",
+         authorizing the withdrawal. */
+      GNUNET_PQ_make_prepare ("insert_withdraw_info",
                               "INSERT INTO reserves_out "
                               "(h_blind_ev"
                               ",denom_pub_hash"
                               ",denom_sig"
-                              ",reserve_pub"
+                              ",reserve_uuid"
                               ",reserve_sig"
                               ",execution_date"
                               ",amount_with_fee_val"
                               ",amount_with_fee_frac"
-                              ") VALUES "
-                              "($1, $2, $3, $4, $5, $6, $7, $8);",
+                              ") SELECT $1, $2, $3, reserve_uuid, $5, $6, $7, $8"
+                              "    FROM reserves"
+                              "    WHERE reserve_pub=$4;",
                               8),
       /* Used in #postgres_get_withdraw_info() to
          locate the response for a /reserve/withdraw request
@@ -561,13 +571,15 @@ postgres_get_session (void *cls)
                               " denom_pub_hash"
                               ",denom_sig"
                               ",reserve_sig"
-                              ",reserve_pub"
+                              ",reserves.reserve_pub"
                               ",execution_date"
                               ",amount_with_fee_val"
                               ",amount_with_fee_frac"
                               ",denom.fee_withdraw_val"
                               ",denom.fee_withdraw_frac"
                               " FROM reserves_out"
+                              "    JOIN reserves"
+                              "      USING (reserve_uuid)"
                               "    JOIN denominations denom"
                               "      USING (denom_pub_hash)"
                               " WHERE h_blind_ev=$1;",
@@ -590,7 +602,10 @@ postgres_get_session (void *cls)
                               " FROM reserves_out"
                               "    JOIN denominations denom"
                               "      USING (denom_pub_hash)"
-                              " WHERE reserve_pub=$1;",
+                              " WHERE reserve_uuid="
+                              "   (SELECT reserve_uuid"
+                              "      FROM reserves"
+                              "     WHERE reserve_pub=$1);",
                               1),
       /* Used in #postgres_select_withdrawals_above_serial_id() */
       GNUNET_PQ_make_prepare ("audit_get_reserves_out_incr",
@@ -598,12 +613,14 @@ postgres_get_session (void *cls)
                               " h_blind_ev"
                               ",denom.denom_pub"
                               ",reserve_sig"
-                              ",reserve_pub"
+                              ",reserves.reserve_pub"
                               ",execution_date"
                               ",amount_with_fee_val"
                               ",amount_with_fee_frac"
                               ",reserve_out_serial_id"
                               " FROM reserves_out"
+                              "    JOIN reserves"
+                              "      USING (reserve_uuid)"
                               "    JOIN denominations denom"
                               "      USING (denom_pub_hash)"
                               " WHERE reserve_out_serial_id>=$1"
@@ -1268,7 +1285,7 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " recoup_uuid"
                               ",timestamp"
-                              ",ro.reserve_pub"
+                              ",reserves.reserve_pub"
                               ",coin_pub"
                               ",coin_sig"
                               ",coin_blind"
@@ -1283,6 +1300,8 @@ postgres_get_session (void *cls)
                               "      USING (coin_pub)"
                               "    JOIN reserves_out ro"
                               "      USING (h_blind_ev)"
+                              "    JOIN reserves"
+                              "      USING (reserve_uuid)"
                               "    JOIN denominations denoms"
                               "      ON (coins.denom_pub_hash = denoms.denom_pub_hash)"
                               " WHERE recoup_uuid>=$1"
@@ -1324,7 +1343,7 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("reserves_close_get_incr",
                               "SELECT"
                               " close_uuid"
-                              ",reserve_pub"
+                              ",reserves.reserve_pub"
                               ",execution_date"
                               ",wtid"
                               ",receiver_account"
@@ -1333,6 +1352,8 @@ postgres_get_session (void *cls)
                               ",closing_fee_val"
                               ",closing_fee_frac"
                               " FROM reserves_close"
+                              " JOIN reserves"
+                              "   USING (reserve_uuid)"
                               " WHERE close_uuid>=$1"
                               " ORDER BY close_uuid ASC;",
                               1),
@@ -1353,7 +1374,10 @@ postgres_get_session (void *cls)
                               "      USING (coin_pub)"
                               "    JOIN reserves_out ro"
                               "      USING (h_blind_ev)"
-                              " WHERE ro.reserve_pub=$1;",
+                              " WHERE ro.reserve_uuid="
+                              "   (SELECT reserve_uuid"
+                              "     FROM reserves"
+                              "    WHERE reserve_pub=$1);",
                               1),
       /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
          affecting old coins of refreshed coins */
@@ -1389,7 +1413,10 @@ postgres_get_session (void *cls)
                               ",receiver_account"
                               ",wtid"
                               " FROM reserves_close"
-                              " WHERE reserve_pub=$1;",
+                              " WHERE reserve_uuid="
+                              "   (SELECT reserve_uuid"
+                              "     FROM reserves"
+                              "    WHERE reserve_pub=$1);",
                               1),
       /* Used in #postgres_get_expired_reserves() */
       GNUNET_PQ_make_prepare ("get_expired_reserves",
@@ -1410,7 +1437,7 @@ postgres_get_session (void *cls)
          for a coin */
       GNUNET_PQ_make_prepare ("recoup_by_coin",
                               "SELECT"
-                              " ro.reserve_pub"
+                              " reserves.reserve_pub"
                               ",coins.denom_pub_hash"
                               ",coin_sig"
                               ",coin_blind"
@@ -1421,6 +1448,8 @@ postgres_get_session (void *cls)
                               " FROM recoup"
                               " JOIN reserves_out ro"
                               "   USING (h_blind_ev)"
+                              " JOIN reserves"
+                              "   USING (reserve_uuid)"
                               " JOIN known_coins coins"
                               "   USING (coin_pub)"
                               " WHERE recoup.coin_pub=$1;",
@@ -1450,8 +1479,10 @@ postgres_get_session (void *cls)
       /* Used in #postgres_get_reserve_by_h_blind() */
       GNUNET_PQ_make_prepare ("reserve_by_h_blind",
                               "SELECT"
-                              " reserve_pub"
+                              " reserves.reserve_pub"
                               " FROM reserves_out"
+                              " JOIN reserves"
+                              "   USING (reserve_uuid)"
                               " WHERE h_blind_ev=$1"
                               " LIMIT 1;",
                               1),

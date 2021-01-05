@@ -42,8 +42,76 @@ COMMENT ON INDEX prepare_get_index
   IS 'for wire_prepare_data_get';
 
 
+-- need serial IDs on various tables for exchange-auditor replication
+ALTER TABLE denominations
+  ADD COLUMN denominations_serial BIGSERIAL UNIQUE;
+COMMENT ON COLUMN denominations.denominations_serial
+  IS 'needed for exchange-auditor replication logic';
+ALTER TABLE refresh_revealed_coins
+  ADD COLUMN rrc_serial BIGSERIAL UNIQUE;
+COMMENT ON COLUMN refresh_revealed_coins.rrc_serial
+  IS 'needed for exchange-auditor replication logic';
+ALTER TABLE refresh_transfer_keys
+  ADD COLUMN rtc_serial BIGSERIAL UNIQUE;
+COMMENT ON COLUMN refresh_transfer_keys.rtc_serial
+  IS 'needed for exchange-auditor replication logic';
+ALTER TABLE wire_fee
+  ADD COLUMN wire_fee_serial BIGSERIAL UNIQUE;
+COMMENT ON COLUMN wire_fee.wire_fee_serial
+  IS 'needed for exchange-auditor replication logic';
+
+-- for the reserves, we add the new reserve_uuid, and also
+-- change the foreign keys to use the new BIGSERIAL instead
+-- of the public key to reference the entry
+ALTER TABLE reserves
+  ADD COLUMN reserve_uuid BIGSERIAL UNIQUE;
+ALTER TABLE reserves_in
+  ADD COLUMN reserve_uuid INT8 REFERENCES reserves (reserve_uuid) ON DELETE CASCADE;
+UPDATE reserves_in
+  SET reserve_uuid=r.reserve_uuid
+  FROM reserves_in rin
+  INNER JOIN reserves r USING(reserve_pub);
+ALTER TABLE reserves_in
+  ALTER COLUMN reserve_uuid SET NOT NULL;
+ALTER TABLE reserves_out
+  ADD COLUMN reserve_uuid INT8 REFERENCES reserves (reserve_uuid) ON DELETE CASCADE;
+UPDATE reserves_out
+  SET reserve_uuid=r.reserve_uuid
+  FROM reserves_out rout
+  INNER JOIN reserves r USING(reserve_pub);
+ALTER TABLE reserves_out
+  ALTER COLUMN reserve_uuid SET NOT NULL;
+ALTER TABLE reserves_close
+  ADD COLUMN reserve_uuid INT8 REFERENCES reserves (reserve_uuid) ON DELETE CASCADE;
+UPDATE reserves_close
+  SET reserve_uuid=r.reserve_uuid
+  FROM reserves_close rclose
+  INNER JOIN reserves r USING(reserve_pub);
+ALTER TABLE reserves_close
+  ALTER COLUMN reserve_uuid SET NOT NULL;
+
+ALTER TABLE reserves_in
+  DROP COLUMN reserve_pub;
+ALTER TABLE reserves_out
+  DROP COLUMN reserve_pub;
+ALTER TABLE reserves_close
+  DROP COLUMN reserve_pub;
+
+
+-- "reserves" has no BIGSERIAL because it is a 'mutable' table
+--            the auditor recomputes these balances itself
+--            => verify_reserve_balance check only done for 'internal' auditor
+-- "deposits" is updated with 'tiny' and 'done' bits
+--            => those SHALL NOT to be used by the (external) auditor!
+-- "prewire" is updated with 'finished' and 'failed' bits, but
+--            those are of no concern for the auditor (prewire is not auditable!)
+-- "auditors" is updated with 'is_active' and 'last_change', but
+--            those are of no concern for the auditor
+
+
 CREATE TABLE IF NOT EXISTS auditors
-  (auditor_pub BYTEA PRIMARY KEY CHECK (LENGTH(auditor_pub)=32)
+  (auditor_uuid BIGSERIAL UNIQUE
+  ,auditor_pub BYTEA PRIMARY KEY CHECK (LENGTH(auditor_pub)=32)
   ,auditor_name VARCHAR NOT NULL
   ,auditor_url VARCHAR NOT NULL
   ,is_active BOOLEAN NOT NULL
@@ -59,10 +127,13 @@ COMMENT ON COLUMN auditors.is_active
   IS 'true if we are currently supporting the use of this auditor.';
 COMMENT ON COLUMN auditors.last_change
   IS 'Latest time when active status changed. Used to detect replays of old messages.';
+-- "auditors" has no BIGSERIAL because it is a 'mutable' table
+--            and is of no concern to the auditor
 
 
 CREATE TABLE IF NOT EXISTS auditor_denom_sigs
-  (auditor_pub BYTEA NOT NULL REFERENCES auditors (auditor_pub) ON DELETE CASCADE
+  (auditor_denom_serial BIGSERIAL UNIQUE
+  ,auditor_pub BYTEA NOT NULL REFERENCES auditors (auditor_pub) ON DELETE CASCADE
   ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
   ,auditor_sig BYTEA CHECK (LENGTH(auditor_sig)=64)
   ,PRIMARY KEY (denom_pub_hash, auditor_pub)
@@ -78,7 +149,8 @@ COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
 
 
 CREATE TABLE IF NOT EXISTS exchange_sign_keys
-  (exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
+  (esk_serial BIGSERIAL UNIQUE
+  ,exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   ,valid_from INT8 NOT NULL
   ,expire_sign INT8 NOT NULL
@@ -114,6 +186,8 @@ COMMENT ON COLUMN wire_accounts.is_active
   IS 'true if we are currently supporting the use of this account.';
 COMMENT ON COLUMN wire_accounts.last_change
   IS 'Latest time when active status changed. Used to detect replays of old messages.';
+-- "wire_accounts" has no BIGSERIAL because it is a 'mutable' table
+--            and is of no concern to the auditor
 
 
 CREATE TABLE IF NOT EXISTS signkey_revocations
