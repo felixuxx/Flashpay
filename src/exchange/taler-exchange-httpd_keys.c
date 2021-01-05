@@ -2412,7 +2412,6 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
   ksh = get_key_state (true);
   if (NULL == ksh)
   {
-    GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,

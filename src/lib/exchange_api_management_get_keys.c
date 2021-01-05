@@ -298,7 +298,6 @@ handle_get_keys_finished (void *cls,
     break;
   default:
     /* unexpected response code */
-    GNUNET_break_op (0);
     hr.ec = TALER_JSON_get_error_code (json);
     hr.hint = TALER_JSON_get_error_hint (json);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

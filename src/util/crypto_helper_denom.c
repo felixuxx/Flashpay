@@ -234,6 +234,9 @@ TALER_CRYPTO_helper_denom_connect (
     if (GNUNET_OK !=
         GNUNET_DISK_directory_create_for_file (template))
     {
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                                "mkdir",
+                                template);
       GNUNET_free (dh);
       GNUNET_free (template);
       return NULL;
