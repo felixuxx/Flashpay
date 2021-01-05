@@ -21,10 +21,10 @@ AC_INIT([taler-exchange], [0.8.1], [taler-bug@gnunet.org])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
-# support for non-recursive builds
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_BUILD
+# support for non-recursive builds
 AM_INIT_AUTOMAKE([subdir-objects 1.9 tar-pax])
 
 # pretty build rules
@@ -32,6 +32,8 @@ AM_SILENT_RULES([yes])
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_PROG_AWK
+AC_PROG_CC
+# FIXME: AC_PROG_CC_C99 is obsolete, remove for autoconf 2.70
 AC_PROG_CC_C99
 AC_PROG_OBJC
 AC_PROG_INSTALL
@@ -48,12 +50,19 @@ DX_INIT_DOXYGEN([taler-exchange],,,
  DX_CHI_FEATURE(OFF),
  DX_XML_FEATURE(OFF))
 
-# Checks for programs.
+AC_MSG_CHECKING([whether to compile documentation ONLY])
+AC_ARG_ENABLE([only-doc],
+  [AS_HELP_STRING([--enable-only-doc], [only compile Taler documentation])],
+  [doc_only=${enableval}],
+  [doc_only=no])
+AC_MSG_RESULT($doc_only)
+AM_CONDITIONAL([DOC_ONLY], [test "x$doc_only" = "xyes"])
 
-AC_PROG_CC
-AC_PROG_CC_C99
 
+# Not indented, as most of the file falls under this one...
+AS_IF([test "x$doc_only" != xyes],[
 
+# Force some CFLAGS
 CFLAGS="-Wall -Wno-address-of-packed-member $CFLAGS"
 
 # Checks for header files.
@@ -488,6 +497,32 @@ AC_TYPE_UINTMAX_T
 
 # Checks for library functions.
 AC_CHECK_FUNCS([strdup])
+
+
+AC_ARG_ENABLE([[doc]],
+  [AS_HELP_STRING([[--disable-doc]], [do not build any documentation])], ,
+    [enable_doc=yes])
+test "x$enable_doc" = "xno" || enable_doc=yes
+AM_CONDITIONAL([ENABLE_DOC], [test "x$enable_doc" = "xyes"])
+
+
+],[  # This is the big test "$doc_only" on top of the file!
+
+
+# logic if doc_only is set, make sure conditionals are still defined
+AM_CONDITIONAL([HAVE_EXPENSIVE_TESTS], [false])
+AM_CONDITIONAL([MHD_HAVE_EPOLL], [false])
+AM_CONDITIONAL([HAVE_POSTGRESQL], [false])
+AM_CONDITIONAL([HAVE_SQLITE], [false])
+AM_CONDITIONAL([HAVE_LIBCURL], [false])
+AM_CONDITIONAL([HAVE_LIBGNURL], [false])
+AM_CONDITIONAL([HAVE_DEVELOPER], [false])
+AM_CONDITIONAL([USE_COVERAGE], [false])
+AM_CONDITIONAL([ENABLE_DOC], [true])
+AM_CONDITIONAL([HAVE_TWISTER], [false])
+
+# end of 'doc_only'
+])
 
 AC_CONFIG_FILES([Makefile
                  contrib/Makefile
