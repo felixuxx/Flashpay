@@ -21,10 +21,10 @@ AC_INIT([taler-exchange], [0.8.1], [taler-bug@gnunet.org])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR([src/util/util.c])
 AC_CONFIG_HEADERS([taler_config.h])
-# support for non-recursive builds
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_BUILD
+# support for non-recursive builds
 AM_INIT_AUTOMAKE([subdir-objects 1.9 tar-pax])
 
 # pretty build rules
@@ -32,6 +32,8 @@ AM_SILENT_RULES([yes])
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_PROG_AWK
+AC_PROG_CC
+# FIXME: AC_PROG_CC_C99 is obsolete, remove for autoconf 2.70
 AC_PROG_CC_C99
 AC_PROG_OBJC
 AC_PROG_INSTALL
@@ -60,12 +62,7 @@ AM_CONDITIONAL([DOC_ONLY], [test "x$doc_only" = "xyes"])
 # Not indented, as most of the file falls under this one...
 AS_IF([test "x$doc_only" != xyes],[
 
-# Checks for programs.
-
-AC_PROG_CC
-AC_PROG_CC_C99
-
-
+# Force some CFLAGS
 CFLAGS="-Wall -Wno-address-of-packed-member $CFLAGS"
 
 # Checks for header files.

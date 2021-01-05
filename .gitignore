@@ -27,7 +27,6 @@ config.sub
 libtool
 ltmain.sh
 test-driver
-m4/
 GPATH
 GRTAGS
 GTAGS
