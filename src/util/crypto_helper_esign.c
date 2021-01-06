@@ -93,6 +93,8 @@ do_disconnect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
 static void
 try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
 {
+  char *tmpdir;
+
   if (-1 != esh->sock)
     return;
   esh->sock = socket (AF_UNIX,
@@ -104,46 +106,53 @@ try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
                          "socket");
     return;
   }
+  tmpdir = GNUNET_DISK_mktemp (esh->template);
+  if (NULL == tmpdir)
   {
-    char *tmpdir;
-
-    tmpdir = GNUNET_DISK_mktemp (esh->template);
-    if (NULL == tmpdir)
-    {
-      do_disconnect (esh);
-      return;
-    }
-    /* we use >= here because we want the sun_path to always
-       be 0-terminated */
-    if (strlen (tmpdir) >= sizeof (esh->sa.sun_path))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "PATHS",
-                                 "TALER_RUNTIME_DIR",
-                                 "path too long");
-      GNUNET_free (tmpdir);
-      do_disconnect (esh);
-      return;
-    }
-    esh->my_sa.sun_family = AF_UNIX;
-    strncpy (esh->my_sa.sun_path,
-             tmpdir,
-             sizeof (esh->sa.sun_path));
-    if (0 != unlink (tmpdir))
-      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                "unlink",
-                                tmpdir);
-    GNUNET_free (tmpdir);
+    do_disconnect (esh);
+    return;
   }
+  /* we use >= here because we want the sun_path to always
+     be 0-terminated */
+  if (strlen (tmpdir) >= sizeof (esh->sa.sun_path))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "PATHS",
+                               "TALER_RUNTIME_DIR",
+                               "path too long");
+    GNUNET_free (tmpdir);
+    do_disconnect (esh);
+    return;
+  }
+  esh->my_sa.sun_family = AF_UNIX;
+  strncpy (esh->my_sa.sun_path,
+           tmpdir,
+           sizeof (esh->sa.sun_path));
+  if (0 != unlink (tmpdir))
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "unlink",
+                              tmpdir);
   if (0 != bind (esh->sock,
                  (const struct sockaddr *) &esh->my_sa,
                  sizeof (esh->my_sa)))
   {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "bind");
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "bind",
+                              tmpdir);
     do_disconnect (esh);
+    GNUNET_free (tmpdir);
     return;
   }
+  /* Fix permissions on UNIX domain socket, just
+     in case umask() is not set to enable group write */
+  if (0 != chmod (tmpdir,
+                  S_IRUSR | S_IWUSR | S_IWGRP))
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "chmod",
+                              tmpdir);
+  }
+  GNUNET_free (tmpdir);
   {
     struct GNUNET_MessageHeader hdr = {
       .size = htons (sizeof (hdr)),

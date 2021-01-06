@@ -92,6 +92,8 @@ do_disconnect (struct TALER_CRYPTO_DenominationHelper *dh)
 static void
 try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
 {
+  char *tmpdir;
+
   if (-1 != dh->sock)
     return;
   dh->sock = socket (AF_UNIX,
@@ -103,46 +105,53 @@ try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
                          "socket");
     return;
   }
+  tmpdir = GNUNET_DISK_mktemp (dh->template);
+  if (NULL == tmpdir)
   {
-    char *tmpdir;
-
-    tmpdir = GNUNET_DISK_mktemp (dh->template);
-    if (NULL == tmpdir)
-    {
-      do_disconnect (dh);
-      return;
-    }
-    /* we use >= here because we want the sun_path to always
-       be 0-terminated */
-    if (strlen (tmpdir) >= sizeof (dh->sa.sun_path))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "PATHS",
-                                 "TALER_RUNTIME_DIR",
-                                 "path too long");
-      GNUNET_free (tmpdir);
-      do_disconnect (dh);
-      return;
-    }
-    dh->my_sa.sun_family = AF_UNIX;
-    strncpy (dh->my_sa.sun_path,
-             tmpdir,
-             sizeof (dh->sa.sun_path));
-    if (0 != unlink (tmpdir))
-      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                "unlink",
-                                tmpdir);
-    GNUNET_free (tmpdir);
+    do_disconnect (dh);
+    return;
   }
+  /* we use >= here because we want the sun_path to always
+     be 0-terminated */
+  if (strlen (tmpdir) >= sizeof (dh->sa.sun_path))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "PATHS",
+                               "TALER_RUNTIME_DIR",
+                               "path too long");
+    GNUNET_free (tmpdir);
+    do_disconnect (dh);
+    return;
+  }
+  dh->my_sa.sun_family = AF_UNIX;
+  strncpy (dh->my_sa.sun_path,
+           tmpdir,
+           sizeof (dh->sa.sun_path));
+  if (0 != unlink (tmpdir))
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "unlink",
+                              tmpdir);
   if (0 != bind (dh->sock,
                  (const struct sockaddr *) &dh->my_sa,
                  sizeof (dh->my_sa)))
   {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "bind");
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "bind",
+                              tmpdir);
     do_disconnect (dh);
+    GNUNET_free (tmpdir);
     return;
   }
+  /* Fix permissions on UNIX domain socket, just
+     in case umask() is not set to enable group write */
+  if (0 != chmod (tmpdir,
+                  S_IRUSR | S_IWUSR | S_IWGRP))
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                              "chmod",
+                              tmpdir);
+  }
+  GNUNET_free (tmpdir);
   {
     struct GNUNET_MessageHeader hdr = {
       .size = htons (sizeof (hdr)),
@@ -242,6 +251,15 @@ TALER_CRYPTO_helper_denom_connect (
       return NULL;
     }
     dh->template = template;
+    if (strlen (template) >= sizeof (dh->sa.sun_path))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "PATHS",
+                                 "TALER_RUNTIME_DIR",
+                                 "path too long");
+      TALER_CRYPTO_helper_denom_disconnect (dh);
+      return NULL;
+    }
   }
   TALER_CRYPTO_helper_denom_poll (dh);
   return dh;
