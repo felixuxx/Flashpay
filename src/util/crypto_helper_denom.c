@@ -237,7 +237,7 @@ TALER_CRYPTO_helper_denom_connect (
       tmpdir = GNUNET_strdup ("/tmp");
     }
     GNUNET_asprintf (&template,
-                     "%s/crypto-rsa-client/XXXXXX",
+                     "%s/crypto-rsa-client/cli",
                      tmpdir);
     GNUNET_free (tmpdir);
     if (GNUNET_OK !=

@@ -238,7 +238,7 @@ TALER_CRYPTO_helper_esign_connect (
       tmpdir = GNUNET_strdup ("/tmp");
     }
     GNUNET_asprintf (&template,
-                     "%s/crypto-eddsa-client/XXXXXX",
+                     "%s/crypto-eddsa-client/cli",
                      tmpdir);
     GNUNET_free (tmpdir);
     if (GNUNET_OK !=
