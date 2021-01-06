@@ -2757,8 +2757,9 @@ do_show (char *const *args)
   keys = parse_keys_input ("show");
   if (NULL == keys)
     return;
-
-
+  if (GNUNET_OK !=
+      load_offline_key ())
+    return;
   if (GNUNET_OK !=
       GNUNET_JSON_parse (keys,
                          spec,
