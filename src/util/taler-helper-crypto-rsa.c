@@ -516,18 +516,19 @@ transmit (const struct sockaddr_un *addr,
           socklen_t addr_size,
           const struct GNUNET_MessageHeader *hdr)
 {
-  ssize_t ret;
-
   for (unsigned int i = 0; i<100; i++)
   {
-    ret = GNUNET_NETWORK_socket_sendto (unix_sock,
-                                        hdr,
-                                        ntohs (hdr->size),
-                                        (const struct sockaddr *) addr,
-                                        addr_size);
+    ssize_t ret = sendto (GNUNET_NETWORK_get_fd (unix_sock),
+                          hdr,
+                          ntohs (hdr->size),
+                          0 /* no flags => blocking! */,
+                          (const struct sockaddr *) addr,
+                          addr_size);
     if ( (-1 == ret) &&
          (EAGAIN == errno) )
     {
+      /* _Maybe_ with blocking sendto(), this should no
+         longer be needed; still keeping it just in case. */
       /* Wait a bit, in case client is just too slow */
       struct timespec req = {
         .tv_sec = 0,
