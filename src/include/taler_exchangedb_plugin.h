@@ -77,6 +77,73 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
+ * Enumeration of all of the tables replicated by exchange-auditor
+ * database replication.
+ */
+enum TALER_EXCHANGEDB_ReplicatedTable
+{
+
+  /**
+   * The "denominations" table.
+   */
+  TALER_EXCHANGEDB_RT_DENOMINATIONS,
+
+  // FIXME...
+
+};
+
+
+/**
+ * Record of a single entry in a replicated table.
+ */
+struct TALER_EXCHANGEDB_TableData
+{
+  /**
+   * Data of which table is returned here?
+   */
+  enum TALER_EXCHANGEDB_ReplicatedTable table;
+
+  /**
+   * Serial number of the record.
+   */
+  uint64_t serial;
+
+  /**
+   * Table-specific details.
+   */
+  union
+  {
+
+    /**
+     * Details from the 'denominations' table.
+     */
+    struct
+    {
+      // FIXME...
+    } denominations;
+
+    // FIXME...
+
+  } details;
+
+};
+
+
+/**
+ * Function called on data to replicate in the auditor's database.
+ *
+ * @param cls closure
+ * @param td record from an exchange table
+ * @return #GNUNET_OK to continue to iterate,
+ *         #GNUNET_SYSERR to fail with an error
+ */
+typedef int
+(*TALER_EXCHANGEDB_ReplicationCallback)(
+  void *cls,
+  const struct TALER_EXCHANGEDB_TableData *td);
+
+
+/**
  * @brief All information about a denomination key (which is used to
  * sign coins into existence).
  */
@@ -3498,6 +3565,60 @@ struct TALER_EXCHANGEDB_Plugin
     struct TALER_Amount *wire_fee,
     struct TALER_Amount *closing_fee);
 
+
+  /**
+   * Lookup the latest serial number of @a table.  Used in
+   * exchange-auditor database replication.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param table table for which we should return the serial
+   * @param[out] latest serial number in use
+   * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+   *         @a table does not have a serial number
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_serial_by_table)(void *cls,
+                            struct TALER_EXCHANGEDB_Session *session,
+                            enum TALER_EXCHANGEDB_ReplicatedTable table,
+                            uint64_t *serial);
+
+  /**
+   * Lookup records above @a serial number in @a table. Used in
+   * exchange-auditor database replication.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param table table for which we should return the serial
+   * @param serial largest serial number to exclude
+   * @param cb function to call on the records
+   * @param cb_cls closure for @a cb
+   * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+   *         @a table does not have a serial number
+   */
+  enum GNUNET_DB_QueryStatus
+  (*lookup_records_by_table)(void *cls,
+                             struct TALER_EXCHANGEDB_Session *session,
+                             enum TALER_EXCHANGEDB_ReplicatedTable table,
+                             uint64_t serial,
+                             TALER_EXCHANGEDB_ReplicationCallback cb,
+                             void *cb_cls);
+
+
+  /**
+   * Insert record set into @a table.  Used in exchange-auditor database
+   * replication.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param tb table data to insert
+   * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+   *         @a table does not have a serial number
+   */
+  enum GNUNET_DB_QueryStatus
+  (*insert_records_by_table)(void *cls,
+                             struct TALER_EXCHANGEDB_Session *session,
+                             const struct TALER_EXCHANGEDB_TableData *td);
 
 };
 

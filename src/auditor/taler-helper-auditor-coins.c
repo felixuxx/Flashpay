@@ -193,6 +193,11 @@ struct CoinHistory
  */
 static struct CoinHistory coin_histories[MAX_COIN_HISTORIES];
 
+/**
+ * Should we run checks that only work for exchange-internal audits?
+ */
+static int internal_checks;
+
 
 /**
  * Return the index we should use for @a coin_pub in #coin_histories.
@@ -2742,6 +2747,10 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_flag ('i',
+                               "internal",
+                               "perform checks only applicable for exchange-internal audits",
+                               &internal_checks),
     GNUNET_GETOPT_option_base32_auto ('m',
                                       "exchange-key",
                                       "KEY",

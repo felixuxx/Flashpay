@@ -98,17 +98,6 @@ ALTER TABLE reserves_close
   DROP COLUMN reserve_pub;
 
 
--- "reserves" has no BIGSERIAL because it is a 'mutable' table
---            the auditor recomputes these balances itself
---            => verify_reserve_balance check only done for 'internal' auditor
--- "deposits" is updated with 'tiny' and 'done' bits
---            => those SHALL NOT to be used by the (external) auditor!
--- "prewire" is updated with 'finished' and 'failed' bits, but
---            those are of no concern for the auditor (prewire is not auditable!)
--- "auditors" is updated with 'is_active' and 'last_change', but
---            those are of no concern for the auditor
-
-
 CREATE TABLE IF NOT EXISTS auditors
   (auditor_uuid BIGSERIAL UNIQUE
   ,auditor_pub BYTEA PRIMARY KEY CHECK (LENGTH(auditor_pub)=32)
