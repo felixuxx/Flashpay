@@ -92,6 +92,9 @@ taler-config -c $CONF -s exchange -o REVOCATION_DIR -V "${TMP_DIR}/revdir/"
 echo "Setting up exchange"
 taler-exchange-dbinit -c $CONF
 
+echo "Setting up merchant"
+taler-merchant-dbinit -c $CONF
+
 # setup auditor
 echo "Setting up auditor"
 taler-auditor-dbinit -c $CONF
