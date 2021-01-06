@@ -62,6 +62,7 @@ struct TALER_CRYPTO_ExchangeSignHelper
    * Have we reached the sync'ed state?
    */
   bool synced;
+
 };
 
 
@@ -239,6 +240,15 @@ TALER_CRYPTO_helper_esign_connect (
       return NULL;
     }
     esh->template = template;
+    if (strlen (template) >= sizeof (esh->sa.sun_path))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "PATHS",
+                                 "TALER_RUNTIME_DIR",
+                                 "path too long");
+      TALER_CRYPTO_helper_esign_disconnect (esh);
+      return NULL;
+    }
   }
   TALER_CRYPTO_helper_esign_poll (esh);
   return esh;
