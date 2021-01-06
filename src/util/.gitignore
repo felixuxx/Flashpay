@@ -4,3 +4,4 @@ taler-helper-crypto-rsa
 taler-helper-crypto-eddsa
 test_helper_rsa
 test_helper_eddsa
+test_helper_eddsa_home/

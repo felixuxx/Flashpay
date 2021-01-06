@@ -13,3 +13,9 @@ taler-exchange.debhelper.log
 taler-exchange.substvars
 taler-exchange/
 tmp/
+libtalerexchange-dev.substvars
+libtalerexchange-dev/
+taler-auditor.postrm.debhelper
+taler-auditor.substvars
+taler-auditor/
+taler-exchange.postrm.debhelper
