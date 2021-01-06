@@ -1236,6 +1236,21 @@ upload_wire_add (const char *exchange_url,
     test_shutdown ();
     return;
   }
+  {
+    char *wire_method;
+
+    wire_method = TALER_payto_get_method (payto_uri);
+    if (NULL == wire_method)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "payto:// URI `%s' is malformed\n",
+                  payto_uri);
+      global_ret = 7;
+      test_shutdown ();
+      return;
+    }
+    GNUNET_free (wire_method);
+  }
   war = GNUNET_new (struct WireAddRequest);
   war->idx = idx;
   war->h =
@@ -2043,6 +2058,21 @@ do_add_wire (char *const *args)
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
 
+  {
+    char *wire_method;
+
+    wire_method = TALER_payto_get_method (args[0]);
+    if (NULL == wire_method)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "payto:// URI `%s' is malformed\n",
+                  args[0]);
+      global_ret = 7;
+      test_shutdown ();
+      return;
+    }
+    GNUNET_free (wire_method);
+  }
   TALER_exchange_offline_wire_add_sign (args[0],
                                         now,
                                         &master_priv,

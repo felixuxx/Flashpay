@@ -232,6 +232,15 @@ build_wire_state (void)
                                                                   "payto_uri"));
       GNUNET_assert (NULL != payto_uri);
       wire_method = TALER_payto_get_method (payto_uri);
+      if (NULL == wire_method)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "payto:// URI `%s' stored in our database is malformed\n",
+                    payto_uri);
+        json_decref (wire_accounts_array);
+        json_decref (wire_fee_object);
+        return NULL;
+      }
       if (NULL == json_object_get (wire_fee_object,
                                    wire_method))
       {
@@ -248,6 +257,7 @@ build_wire_state (void)
           json_decref (a);
           json_decref (wire_fee_object);
           json_decref (wire_accounts_array);
+          GNUNET_free (wire_method);
           return NULL;
         }
         if (0 == json_array_size (a))
@@ -257,6 +267,7 @@ build_wire_state (void)
                       wire_method);
           json_decref (wire_accounts_array);
           json_decref (wire_fee_object);
+          GNUNET_free (wire_method);
           return NULL;
         }
         GNUNET_assert (0 ==

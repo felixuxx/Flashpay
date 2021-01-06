@@ -195,6 +195,23 @@ TEH_handler_management_denominations_wire (
       TALER_EC_EXCHANGE_MANAGEMENT_WIRE_DETAILS_SIGNATURE_INVALID,
       NULL);
   }
+  {
+    char *wire_method;
+
+    wire_method = TALER_payto_get_method (awc.payto_uri);
+    if (NULL == wire_method)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "payto:// URI `%s' is malformed\n",
+                  awc.payto_uri);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "payto_uri");
+    }
+    GNUNET_free (wire_method);
+  }
 
   qs = TEH_DB_run_transaction (connection,
                                "add wire",
