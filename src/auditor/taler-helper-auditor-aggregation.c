@@ -1490,10 +1490,6 @@ main (int argc,
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
     return 4;
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-helper-auditor-aggregation",
-                                   "MESSAGE",
-                                   NULL));
   ret = GNUNET_PROGRAM_run (
     argc,
     argv,

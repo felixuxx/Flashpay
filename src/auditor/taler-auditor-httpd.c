@@ -569,11 +569,18 @@ main (int argc,
   int fh = -1;
   enum TALER_MHD_GlobalOptions go;
 
-  if (0 >=
-      GNUNET_GETOPT_run ("taler-auditor-httpd",
-                         options,
-                         argc, argv))
+  {
+    enum GNUNET_GenericReturnValue ret;
+
+    ret = GNUNET_GETOPT_run ("taler-auditor-httpd",
+                             options,
+                             argc, argv);
+    if (GNUNET_NO == ret)
+      return 0;
+    if (GNUNET_SYSERR == ret)
+      return 3;
     return 1;
+  }
   go = TALER_MHD_GO_NONE;
   if (auditor_connection_close)
     go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;

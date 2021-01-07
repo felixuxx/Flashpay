@@ -227,7 +227,7 @@ credit_history_cb (void *cls,
  * mentioned in the config section given by the user.
  */
 static void
-execute_credit_history ()
+execute_credit_history (void)
 {
   if (NULL != subject)
   {
@@ -329,7 +329,7 @@ debit_history_cb (void *cls,
  * mentioned in the config section given by the user.
  */
 static void
-execute_debit_history ()
+execute_debit_history (void)
 {
   if (NULL != subject)
   {
@@ -396,7 +396,7 @@ confirmation_cb (void *cls,
  * Ask the bank to execute a wire transfer.
  */
 static void
-execute_wire_transfer ()
+execute_wire_transfer (void)
 {
   struct TALER_WireTransferIdentifierRawP wtid;
   void *buf;
@@ -511,7 +511,7 @@ res_cb (void *cls,
  * Ask the bank to execute a wire transfer to the exchange.
  */
 static void
-execute_admin_transfer ()
+execute_admin_transfer (void)
 {
   struct TALER_ReservePublicKeyP reserve_pub;
 
@@ -674,7 +674,6 @@ main (int argc,
                                  "URL",
                                  "Wire gateway URL to use to talk to the bank",
                                  &auth.wire_gateway_url),
-    GNUNET_GETOPT_option_help ("Deposit funds into a Taler reserve"),
     GNUNET_GETOPT_option_string ('C',
                                  "credit",
                                  "ACCOUNT",
@@ -720,21 +719,30 @@ main (int argc,
                                 &start_row),
     GNUNET_GETOPT_OPTION_END
   };
+  enum GNUNET_GenericReturnValue ret;
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-bank-transfer",
-                                   "WARNING",
-                                   NULL));
-  global_ret = 1;
+  /* force linker to link against libtalerutil; if we do
+     not do this, the linker may "optimize" libtalerutil
+     away and skip #TALER_OS_init(), which we do need */
+  (void) TALER_project_data_default ();
   if (GNUNET_OK !=
-      GNUNET_PROGRAM_run (argc, argv,
-                          "taler-bank-transfer",
-                          "Client tool of the Taler Wire Gateway",
-                          options,
-                          &run, NULL))
-    return 1;
+      GNUNET_STRINGS_get_utf8_args (argc, argv,
+                                    &argc, &argv))
+    return 4;
+  global_ret = 1;
+  ret = GNUNET_PROGRAM_run (
+    argc, argv,
+    "taler-wire-gateway-client",
+    gettext_noop ("Client tool of the Taler Wire Gateway"),
+    options,
+    &run, NULL);
+  GNUNET_free_nz ((void *) argv);
+  if (GNUNET_SYSERR == ret)
+    return 3;
+  if (GNUNET_NO == ret)
+    return 0;
   return global_ret;
 }
 
 
-/* end taler-bank-transfer.c */
+/* end taler-wire-gateway-client.c */

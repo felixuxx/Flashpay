@@ -92,10 +92,17 @@ main (int argc,
                  GNUNET_log_setup ("taler-auditor-exchange",
                                    "WARNING",
                                    NULL));
-  if (GNUNET_GETOPT_run ("taler-auditor-exchange",
-                         options,
-                         argc, argv) <= 0)
-    return 1;
+  {
+    enum GNUNET_GenericReturnValue ret;
+
+    ret = GNUNET_GETOPT_run ("taler-auditor-exchange",
+                             options,
+                             argc, argv);
+    if (GNUNET_NO == ret)
+      return 0;
+    if (GNUNET_OK != ret)
+      return 1;
+  }
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
   cfg = GNUNET_CONFIGURATION_create ();
