@@ -27,7 +27,6 @@ rdata_DATA = \
 
 bin_SCRIPTS = \
   taler-bank-manage-testing \
-  taler-exchange-revoke \
   taler-nexus-prepare
 
 EXTRA_DIST = \

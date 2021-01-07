@@ -118,7 +118,7 @@ static char *cfg_filename;
 /**
  * Exit code.
  */
-static int result;
+static enum GNUNET_GenericReturnValue result;
 
 /**
  * Use the fakebank instead of the Python bank.
@@ -459,7 +459,7 @@ run (void *cls,
   GNUNET_free (amount_4);
   GNUNET_free (amount_5);
   GNUNET_free (withdraw_fee_str);
-  result = 1;
+  result = GNUNET_OK;
 }
 
 
@@ -546,7 +546,7 @@ parallel_benchmark (TALER_TESTING_Main main_cb,
                     void *main_cb_cls,
                     const char *config_file)
 {
-  int result = GNUNET_OK;
+  enum GNUNET_GenericReturnValue result = GNUNET_OK;
   pid_t cpids[howmany_clients];
   pid_t fakebank = -1;
   int wstatus;
@@ -989,6 +989,8 @@ main (int argc,
                                    argv)))
   {
     GNUNET_free (cfg_filename);
+    if (GNUNET_NO == result)
+      return 0;
     return BAD_CLI_ARG;
   }
   GNUNET_log_setup ("taler-exchange-benchmark",

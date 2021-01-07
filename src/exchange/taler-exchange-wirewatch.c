@@ -625,23 +625,24 @@ main (int argc,
                                &reset_mode),
     GNUNET_GETOPT_OPTION_END
   };
+  enum GNUNET_GenericReturnValue ret;
 
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
     return GR_CMD_LINE_UTF8_ERROR;
-  if (GNUNET_OK !=
-      GNUNET_PROGRAM_run (argc, argv,
-                          "taler-exchange-wirewatch",
-                          gettext_noop (
-                            "background process that watches for incoming wire transfers from customers"),
-                          options,
-                          &run, NULL))
-  {
-    GNUNET_free_nz ((void *) argv);
-    return GR_CMD_LINE_OPTIONS_WRONG;
-  }
+  ret = GNUNET_PROGRAM_run (
+    argc, argv,
+    "taler-exchange-wirewatch",
+    gettext_noop (
+      "background process that watches for incoming wire transfers from customers"),
+    options,
+    &run, NULL);
   GNUNET_free_nz ((void *) argv);
+  if (GNUNET_SYSERR == ret)
+    return GR_CMD_LINE_OPTIONS_WRONG;
+  if (GNUNET_NO == ret)
+    return 0;
   return global_ret;
 }
 

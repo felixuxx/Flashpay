@@ -1480,24 +1480,33 @@ main (int argc,
                                      "timetravel"),
     GNUNET_GETOPT_OPTION_END
   };
+  enum GNUNET_GenericReturnValue ret;
 
   /* force linker to link against libtalerutil; if we do
      not do this, the linker may "optimize" libtalerutil
      away and skip #TALER_OS_init(), which we do need */
   (void) TALER_project_data_default ();
+  if (GNUNET_OK !=
+      GNUNET_STRINGS_get_utf8_args (argc, argv,
+                                    &argc, &argv))
+    return 4;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-helper-auditor-aggregation",
                                    "MESSAGE",
                                    NULL));
-  if (GNUNET_OK !=
-      GNUNET_PROGRAM_run (argc,
-                          argv,
-                          "taler-helper-auditor-aggregation",
-                          "Audit Taler exchange aggregation activity",
-                          options,
-                          &run,
-                          NULL))
-    return 1;
+  ret = GNUNET_PROGRAM_run (
+    argc,
+    argv,
+    "taler-helper-auditor-aggregation",
+    gettext_noop ("Audit Taler exchange aggregation activity"),
+    options,
+    &run,
+    NULL);
+  GNUNET_free_nz ((void *) argv);
+  if (GNUNET_SYSERR == ret)
+    return 3;
+  if (GNUNET_NO == ret)
+    return 0;
   return global_ret;
 }
 
