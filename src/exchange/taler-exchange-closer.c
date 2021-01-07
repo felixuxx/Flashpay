@@ -475,7 +475,7 @@ run_reserve_closures (void *cls)
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "No more idle reserves, going back to aggregation\n");
+                "No more idle reserves to close, going to sleep.\n");
     db_plugin->rollback (db_plugin->cls,
                          session);
     GNUNET_assert (NULL == task);

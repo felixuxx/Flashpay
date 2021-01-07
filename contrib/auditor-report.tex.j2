@@ -227,7 +227,11 @@ the tiny threshold. Below, we report {\em non-tiny} wire transfers that are lagg
   {{ item.deadline }} &
   {{ item.amount }} &
   {{ item.row }} &
-  {{ item.claimed_done }} \\
+{% if 'claimed_done' in item %}
+  {{ item.claimed_done }}
+{% else %}
+  N/A
+{% endif %}  \\
 \nopagebreak
   \multicolumn{4}{l}{ {\tt \small {{ item.coin_pub }} } } \\
 \nopagebreak

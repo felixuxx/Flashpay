@@ -1177,14 +1177,14 @@ then
 
     OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
+    RES_UUID=`echo "SELECT reserve_uuid FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_uuid='${RES_UUID}';" | psql $DB -Aqt`
     VAL_DELTA=1
     NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
     NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
     NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
     echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
 
     # Need to run with the aggregator so the reserve closure happens
     run_audit aggregator
@@ -1215,11 +1215,11 @@ echo "===========20: reserve closure missing ================="
 
 OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+RES_UUID=`echo "SELECT reserve_uuid FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
 NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
 NEW_CREDIT=`expr $OLD_VAL + 100 || true`
 echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=100+current_balance_val WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
 
 # This time, run without the aggregator so the reserve closure is skipped!
 run_audit
@@ -1236,7 +1236,7 @@ fi
 
 # Undo
 echo "UPDATE reserves_in SET execution_date='${OLD_TIME}',credit_val=${OLD_VAL} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-echo "UPDATE reserves SET current_balance_val=current_balance_val-100 WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+echo "UPDATE reserves SET current_balance_val=current_balance_val-100 WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
 
 }
 
@@ -1255,14 +1255,14 @@ then
 
     OLD_TIME=`echo "SELECT execution_date FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
     OLD_VAL=`echo "SELECT credit_val FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    RES_PUB=`echo "SELECT reserve_pub FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
-    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_pub='${RES_PUB}';" | psql $DB -Aqt`
+    RES_UUID=`echo "SELECT reserve_uuid FROM reserves_in WHERE reserve_in_serial_id=1;" | psql $DB -Aqt`
+    OLD_EXP=`echo "SELECT expiration_date FROM reserves WHERE reserve_uuid='${RES_UUID}';" | psql $DB -Aqt`
     VAL_DELTA=1
     NEW_TIME=`expr $OLD_TIME - 3024000000000 || true`  # 5 weeks
     NEW_EXP=`expr $OLD_EXP - 3024000000000 || true`  # 5 weeks
     NEW_CREDIT=`expr $OLD_VAL + $VAL_DELTA || true`
     echo "UPDATE reserves_in SET execution_date='${NEW_TIME}',credit_val=${NEW_CREDIT} WHERE reserve_in_serial_id=1;" | psql -Aqt $DB
-    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_pub='${RES_PUB}';" | psql -Aqt $DB
+    echo "UPDATE reserves SET current_balance_val=${VAL_DELTA}+current_balance_val,expiration_date='${NEW_EXP}' WHERE reserve_uuid='${RES_UUID}';" | psql -Aqt $DB
 
     # Need to first run the aggregator so the transfer is marked as done exists
     pre_audit aggregator
