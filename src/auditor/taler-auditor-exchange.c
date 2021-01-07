@@ -93,14 +93,14 @@ main (int argc,
                                    "WARNING",
                                    NULL));
   {
-    enum GNUNET_GenericReturnValue ret;
+    int ret;
 
     ret = GNUNET_GETOPT_run ("taler-auditor-exchange",
                              options,
                              argc, argv);
     if (GNUNET_NO == ret)
       return 0;
-    if (GNUNET_OK != ret)
+    if (GNUNET_SYSERR == ret)
       return 1;
   }
   if (NULL == cfgfile)

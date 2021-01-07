@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2018 Taler Systems SA
+  Copyright (C) 2014-2020 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -570,7 +570,7 @@ main (int argc,
   enum TALER_MHD_GlobalOptions go;
 
   {
-    enum GNUNET_GenericReturnValue ret;
+    int ret;
 
     ret = GNUNET_GETOPT_run ("taler-auditor-httpd",
                              options,
@@ -579,7 +579,6 @@ main (int argc,
       return 0;
     if (GNUNET_SYSERR == ret)
       return 3;
-    return 1;
   }
   go = TALER_MHD_GO_NONE;
   if (auditor_connection_close)

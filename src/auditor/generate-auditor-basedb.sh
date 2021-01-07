@@ -109,8 +109,8 @@ taler-merchant-dbinit -c $CONF
 
 # setup auditor
 echo "Setting up auditor"
-taler-auditor-dbinit -c $CONF
-taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL
+taler-auditor-dbinit -c $CONF || exit_skip "Failed to initialize auditor DB"
+taler-auditor-exchange -c $CONF -m $MASTER_PUB -u $EXCHANGE_URL || exit_skip "Failed to add exchange to auditor"
 
 # Launch services
 echo "Launching services"
