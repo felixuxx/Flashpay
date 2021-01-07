@@ -1026,7 +1026,6 @@ verify_reserve_balance (void *cls,
 {
   struct ReserveContext *rc = cls;
   struct ReserveSummary *rs = value;
-  struct TALER_EXCHANGEDB_Reserve reserve;
   struct TALER_Amount balance;
   struct TALER_Amount nbalance;
   enum GNUNET_DB_QueryStatus qs;
@@ -1063,73 +1062,81 @@ verify_reserve_balance (void *cls,
                                           &nbalance));
   }
 
-  /* Now check OUR balance calculation vs. the one the exchange has
-     in its database */
-  reserve.pub = rs->reserve_pub;
-  qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
-                                    TALER_ARL_esession,
-                                    &reserve);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+  if (internal_checks)
   {
-    /* If the exchange doesn't have this reserve in the summary, it
-       is like the exchange 'lost' that amount from its records,
-       making an illegitimate gain over the amount it dropped.
-       We don't add the amount to some total simply because it is
-       not an actualized gain and could be trivially corrected by
-       restoring the summary. *///
-    TALER_ARL_report (report_reserve_balance_insufficient_inconsistencies,
-                      json_pack ("{s:o, s:o}",
-                                 "reserve_pub",
-                                 GNUNET_JSON_from_data_auto (&rs->reserve_pub),
-                                 "gain",
-                                 TALER_JSON_from_amount (&nbalance)));
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      GNUNET_break (0);
-      qs = GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    rc->qs = qs;
-  }
-  else
-  {
-    /* Check that exchange's balance matches our expected balance for the reserve */
-    if (0 != TALER_amount_cmp (&nbalance,
-                               &reserve.balance))
-    {
-      struct TALER_Amount delta;
+    /* Now check OUR balance calculation vs. the one the exchange has
+       in its database. This can only be done when we are doing an
+       internal audit, as otherwise the balance of the 'reserves' table
+       is not replicated at the auditor. */
+    struct TALER_EXCHANGEDB_Reserve reserve;
 
-      if (0 < TALER_amount_cmp (&nbalance,
-                                &reserve.balance))
-      {
-        /* balance > reserve.balance */
-        TALER_ARL_amount_subtract (&delta,
-                                   &nbalance,
-                                   &reserve.balance);
-        TALER_ARL_amount_add (&total_balance_summary_delta_plus,
-                              &total_balance_summary_delta_plus,
-                              &delta);
-      }
-      else
-      {
-        /* balance < reserve.balance */
-        TALER_ARL_amount_subtract (&delta,
-                                   &reserve.balance,
-                                   &nbalance);
-        TALER_ARL_amount_add (&total_balance_summary_delta_minus,
-                              &total_balance_summary_delta_minus,
-                              &delta);
-      }
-      TALER_ARL_report (report_reserve_balance_summary_wrong_inconsistencies,
-                        json_pack ("{s:o, s:o, s:o}",
+    reserve.pub = rs->reserve_pub;
+    qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
+                                      TALER_ARL_esession,
+                                      &reserve);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+    {
+      /* If the exchange doesn't have this reserve in the summary, it
+         is like the exchange 'lost' that amount from its records,
+         making an illegitimate gain over the amount it dropped.
+         We don't add the amount to some total simply because it is
+         not an actualized gain and could be trivially corrected by
+         restoring the summary. *///
+      TALER_ARL_report (report_reserve_balance_insufficient_inconsistencies,
+                        json_pack ("{s:o, s:o}",
                                    "reserve_pub",
                                    GNUNET_JSON_from_data_auto (
                                      &rs->reserve_pub),
-                                   "exchange",
-                                   TALER_JSON_from_amount (&reserve.balance),
-                                   "auditor",
+                                   "gain",
                                    TALER_JSON_from_amount (&nbalance)));
+      if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+      {
+        GNUNET_break (0);
+        qs = GNUNET_DB_STATUS_HARD_ERROR;
+      }
+      rc->qs = qs;
     }
-  }
+    else
+    {
+      /* Check that exchange's balance matches our expected balance for the reserve */
+      if (0 != TALER_amount_cmp (&nbalance,
+                                 &reserve.balance))
+      {
+        struct TALER_Amount delta;
+
+        if (0 < TALER_amount_cmp (&nbalance,
+                                  &reserve.balance))
+        {
+          /* balance > reserve.balance */
+          TALER_ARL_amount_subtract (&delta,
+                                     &nbalance,
+                                     &reserve.balance);
+          TALER_ARL_amount_add (&total_balance_summary_delta_plus,
+                                &total_balance_summary_delta_plus,
+                                &delta);
+        }
+        else
+        {
+          /* balance < reserve.balance */
+          TALER_ARL_amount_subtract (&delta,
+                                     &reserve.balance,
+                                     &nbalance);
+          TALER_ARL_amount_add (&total_balance_summary_delta_minus,
+                                &total_balance_summary_delta_minus,
+                                &delta);
+        }
+        TALER_ARL_report (report_reserve_balance_summary_wrong_inconsistencies,
+                          json_pack ("{s:o, s:o, s:o}",
+                                     "reserve_pub",
+                                     GNUNET_JSON_from_data_auto (
+                                       &rs->reserve_pub),
+                                     "exchange",
+                                     TALER_JSON_from_amount (&reserve.balance),
+                                     "auditor",
+                                     TALER_JSON_from_amount (&nbalance)));
+      }
+    }
+  } /* end of 'if (internal_checks)' */
 
   /* Check that reserve is being closed if it is past its expiration date
      (and the closing fee would not exceed the remaining balance) */
