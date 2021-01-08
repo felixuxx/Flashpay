@@ -357,11 +357,11 @@ postgres_get_session (void *cls)
       /* Used in #postgres_iterate_auditor_denominations() */
       GNUNET_PQ_make_prepare ("select_auditor_denoms",
                               "SELECT"
-                              " auditor_denom_sigs.auditor_pub"
+                              " auditors.auditor_pub"
                               ",denominations.denom_pub_hash"
                               ",auditor_denom_sigs.auditor_sig"
                               " FROM auditor_denom_sigs"
-                              " JOIN auditors USING (auditor_pub)"
+                              " JOIN auditors USING (auditor_uuid)"
                               " JOIN denominations USING (denominations_serial)"
                               " WHERE auditors.is_active;",
                               0),
@@ -1663,12 +1663,17 @@ postgres_get_session (void *cls)
                               1),
       /* used in #postgres_insert_auditor_denom_sig() */
       GNUNET_PQ_make_prepare ("insert_auditor_denom_sig",
+                              "WITH ax AS"
+                              " (SELECT auditor_uuid"
+                              "    FROM auditors"
+                              "   WHERE auditor_pub=$1)"
                               "INSERT INTO auditor_denom_sigs "
-                              "(auditor_pub"
+                              "(auditor_uuid"
                               ",denominations_serial"
                               ",auditor_sig"
-                              ") SELECT $1, denominations_serial, $3 "
+                              ") SELECT ax.auditor_uuid, denominations_serial, $3 "
                               "    FROM denominations"
+                              "   CROSS JOIN ax"
                               "   WHERE denom_pub_hash=$2;",
                               3),
       /* used in #postgres_select_auditor_denom_sig() */
@@ -1676,7 +1681,10 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " auditor_sig"
                               " FROM auditor_denom_sigs"
-                              " WHERE auditor_pub=$1"
+                              " WHERE auditor_uuid="
+                              "  (SELECT auditor_uuid"
+                              "    FROM auditors"
+                              "    WHERE auditor_pub=$1)"
                               " AND denominations_serial="
                               "  (SELECT denominations_serial"
                               "    FROM denominations"
@@ -1847,6 +1855,212 @@ postgres_get_session (void *cls)
                               " LIMIT 1;",
                               0),
       /* For postgres_lookup_records_by_table */
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_denominations",
+                              "SELECT"
+                              " denominations_serial AS serial"
+                              ",denom_pub"
+                              ",master_sig"
+                              ",valid_from"
+                              ",expire_withdraw"
+                              ",expire_deposit"
+                              ",expire_legal"
+                              ",coin_val"
+                              ",coin_frac"
+                              ",fee_withdraw_val"
+                              ",fee_withdraw_frac"
+                              ",fee_deposit_val"
+                              ",fee_deposit_frac"
+                              ",fee_refresh_val"
+                              ",fee_refresh_frac"
+                              ",fee_refund_val"
+                              ",fee_refund_frac"
+                              " FROM denominations"
+                              " WHERE denominations_serial > $1"
+                              " ORDER BY denominations_serial ASC;",
+                              1),
+      GNUNET_PQ_make_prepare (
+        "select_above_serial_by_table_denomination_revocations",
+        "SELECT"
+        " denom_revocations_serial_id AS serial"
+        ",master_sig"
+        ",denominations_serial"
+        " FROM denomination_revocations"
+        " ORDER BY denom_revocations_serial_id DESC"
+        " LIMIT 1;",
+        0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves",
+                              "SELECT"
+                              " reserve_uuid AS serial"
+                              ",reserve_pub"
+                              ",account_details"
+                              ",current_balance_val"
+                              ",current_balance_frac"
+                              ",expiration_date"
+                              ",gc_date"
+                              " FROM reserves"
+                              " ORDER BY reserve_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_in",
+                              "SELECT"
+                              " reserve_in_serial_id AS serial"
+                              ",wire_reference"
+                              ",credit_val"
+                              ",credit_frac"
+                              ",sender_account_details"
+                              ",exchange_account_section"
+                              ",execution_date"
+                              " FROM reserves_in"
+                              " ORDER BY reserve_in_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_close",
+                              "SELECT"
+                              " close_uuid AS serial"
+                              ",execution_date"
+                              ",wtid"
+                              ",receiver_account"
+                              ",amount_val"
+                              ",amount_frac"
+                              ",closing_fee_val"
+                              ",closing_fee_frac"
+                              ",reserve_uuid"
+                              " FROM reserves_close"
+                              " ORDER BY close_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_out",
+                              "SELECT"
+                              " reserve_out_serial_id AS serial"
+                              ",h_blind_ev"
+                              ",denom_sig"
+                              ",reserve_sig"
+                              ",execution_date"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",reserve_uuid"
+                              ",denominations_serial"
+                              " FROM reserves_out"
+                              " ORDER BY reserve_out_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_auditors",
+                              "SELECT"
+                              " auditor_uuid AS serial"
+                              ",auditor_pub"
+                              ",auditor_name"
+                              ",auditor_url"
+                              ",is_active"
+                              ",last_change"
+                              " FROM auditors"
+                              " ORDER BY auditor_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_auditor_denom_sigs",
+                              "SELECT"
+                              " auditor_denom_serial AS serial"
+                              ",auditor_uuid"
+                              " FROM auditor_denom_sigs"
+                              " ORDER BY auditor_denom_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_exchange_sign_keys",
+                              "SELECT"
+                              " esk_serial AS serial"
+                              " FROM exchange_sign_keys"
+                              " ORDER BY esk_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare (
+        "select_above_serial_by_table_signkey_revocations",
+        "SELECT"
+        " signkey_revocations_serial_id AS serial"
+        " FROM signkey_revocations"
+        " ORDER BY signkey_revocations_serial_id DESC"
+        " LIMIT 1;",
+        0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_known_coins",
+                              "SELECT"
+                              " known_coin_id AS serial"
+                              " FROM known_coins"
+                              " ORDER BY known_coin_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare (
+        "select_above_serial_by_table_refresh_commitments",
+        "SELECT"
+        " melt_serial_id AS serial"
+        " FROM refresh_commitments"
+        " ORDER BY melt_serial_id DESC"
+        " LIMIT 1;",
+        0),
+      GNUNET_PQ_make_prepare (
+        "select_above_serial_by_table_refresh_revealed_coins",
+        "SELECT"
+        " rrc_serial AS serial"
+        " FROM refresh_revealed_coins"
+        " ORDER BY rrc_serial DESC"
+        " LIMIT 1;",
+        0),
+      GNUNET_PQ_make_prepare (
+        "select_above_serial_by_table_refresh_transfer_keys",
+        "SELECT"
+        " rtc_serial AS serial"
+        " FROM refresh_transfer_keys"
+        " ORDER BY rtc_serial DESC"
+        " LIMIT 1;",
+        0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_deposits",
+                              "SELECT"
+                              " deposit_serial_id AS serial"
+                              " FROM deposits"
+                              " ORDER BY deposit_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_refunds",
+                              "SELECT"
+                              " refund_serial_id AS serial"
+                              " FROM refunds"
+                              " ORDER BY refund_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_out",
+                              "SELECT"
+                              " wireout_uuid AS serial"
+                              " FROM wire_out"
+                              " ORDER BY wireout_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare (
+        "select_above_serial_by_table_aggregation_tracking",
+        "SELECT"
+        " aggregation_serial_id AS serial"
+        " FROM aggregation_tracking"
+        " ORDER BY aggregation_serial_id DESC"
+        " LIMIT 1;",
+        0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_fee",
+                              "SELECT"
+                              " wire_fee_serial AS serial"
+                              " FROM wire_fee"
+                              " ORDER BY wire_fee_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup",
+                              "SELECT"
+                              " recoup_uuid AS serial"
+                              " FROM recoup"
+                              " ORDER BY recoup_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup_refresh",
+                              "SELECT"
+                              " recoup_refresh_uuid AS serial"
+                              " FROM recoup_refresh"
+                              " ORDER BY recoup_refresh_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+
       // FIXME...
       /* For postgres_insert_records_by_table */
       // FIXME...

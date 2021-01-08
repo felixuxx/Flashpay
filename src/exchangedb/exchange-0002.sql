@@ -166,15 +166,15 @@ COMMENT ON COLUMN auditors.last_change
 
 CREATE TABLE IF NOT EXISTS auditor_denom_sigs
   (auditor_denom_serial BIGSERIAL UNIQUE
-  ,auditor_pub BYTEA NOT NULL REFERENCES auditors (auditor_pub) ON DELETE CASCADE
+  ,auditor_uuid INT8 NOT NULL REFERENCES auditors (auditor_uuid) ON DELETE CASCADE
   ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
   ,auditor_sig BYTEA CHECK (LENGTH(auditor_sig)=64)
-  ,PRIMARY KEY (denominations_serial, auditor_pub)
+  ,PRIMARY KEY (denominations_serial, auditor_uuid)
   );
 COMMENT ON TABLE auditor_denom_sigs
   IS 'Table with auditor signatures on exchange denomination keys.';
-COMMENT ON COLUMN auditor_denom_sigs.auditor_pub
-  IS 'Public key of the auditor.';
+COMMENT ON COLUMN auditor_denom_sigs.auditor_uuid
+  IS 'Identifies the auditor.';
 COMMENT ON COLUMN auditor_denom_sigs.denominations_serial
   IS 'Denomination the signature is for.';
 COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
