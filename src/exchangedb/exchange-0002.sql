@@ -20,6 +20,8 @@ BEGIN;
 -- Check patch versioning is in place.
 SELECT _v.register_patch('exchange-0002', NULL, NULL);
 
+-- Need 'failed' bit to prevent hanging transfer tool in case
+-- bank API fails.
 ALTER TABLE prewire
   ADD failed BOOLEAN NOT NULL DEFAULT false;
 
@@ -143,6 +145,93 @@ ALTER TABLE refresh_revealed_coins
 ALTER TABLE refresh_revealed_coins
   DROP COLUMN denom_pub_hash;
 
+-- Change all foreign keys involving 'coin_pub' to use known_coin_id instead.
+ALTER TABLE recoup_refresh
+  ADD COLUMN known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
+UPDATE recoup_refresh
+  SET known_coin_id=d.known_coin_id
+  FROM recoup_refresh o
+  INNER JOIN known_coins d USING(coin_pub);
+ALTER TABLE recoup_refresh
+  ALTER COLUMN known_coin_id SET NOT NULL;
+ALTER TABLE recoup_refresh
+  DROP COLUMN coin_pub;
+
+ALTER TABLE recoup
+  ADD COLUMN known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
+UPDATE recoup
+  SET known_coin_id=d.known_coin_id
+  FROM recoup o
+  INNER JOIN known_coins d USING(coin_pub);
+ALTER TABLE recoup
+  ALTER COLUMN known_coin_id SET NOT NULL;
+ALTER TABLE recoup
+  DROP COLUMN coin_pub;
+
+ALTER TABLE refresh_commitments
+  ADD COLUMN old_known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
+UPDATE refresh_commitments
+  SET old_known_coin_id=d.known_coin_id
+  FROM refresh_commitments o
+  INNER JOIN known_coins d ON(o.old_coin_pub=d.coin_pub);
+ALTER TABLE refresh_commitments
+  ALTER COLUMN old_known_coin_id SET NOT NULL;
+ALTER TABLE refresh_commitments
+  DROP COLUMN old_coin_pub;
+
+ALTER TABLE deposits
+  ADD COLUMN known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
+UPDATE deposits
+  SET known_coin_id=d.known_coin_id
+  FROM deposits o
+  INNER JOIN known_coins d USING(coin_pub);
+ALTER TABLE deposits
+  ALTER COLUMN known_coin_id SET NOT NULL;
+ALTER TABLE deposits
+  DROP COLUMN coin_pub;
+
+ALTER TABLE refunds
+  ADD COLUMN known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
+UPDATE refunds
+  SET known_coin_id=d.known_coin_id
+  FROM refunds o
+  INNER JOIN known_coins d USING(coin_pub);
+ALTER TABLE refunds
+  ALTER COLUMN known_coin_id SET NOT NULL;
+ALTER TABLE refunds
+  DROP COLUMN coin_pub;
+
+-- Change 'h_blind_ev' in recoup table to 'reserve_out_serial_id'
+ALTER TABLE recoup
+  ADD COLUMN reserve_out_serial_id INT8 REFERENCES reserves_out (reserve_out_serial_id) ON DELETE CASCADE;
+UPDATE recoup
+  SET reserve_out_serial_id=d.reserve_out_serial_id
+  FROM recoup o
+  INNER JOIN reserves_out d USING(h_blind_ev);
+ALTER TABLE recoup
+  ALTER COLUMN reserve_out_serial_id SET NOT NULL;
+ALTER TABLE recoup
+  DROP COLUMN h_blind_ev;
+COMMENT ON COLUMN recoup.reserve_out_serial_id
+  IS 'Identifies the h_blind_ev of the recouped coin.';
+
+
+-- Change 'h_blind_ev' in recoup_refresh table to 'rrc_serial'
+ALTER TABLE recoup_refresh
+  ADD COLUMN rrc_serial INT8 REFERENCES refresh_revealed_coins (rrc_serial) ON DELETE CASCADE;
+UPDATE recoup_refresh
+  SET rrc_serial=d.rrc_serial
+  FROM recoup_refresh o
+  INNER JOIN refresh_revealed_coins d ON (d.h_coin_ev = o.h_blind_ev);
+ALTER TABLE recoup_refresh
+  ALTER COLUMN rrc_serial SET NOT NULL;
+ALTER TABLE recoup_refresh
+  DROP COLUMN h_blind_ev;
+COMMENT ON COLUMN recoup_refresh.rrc_serial
+  IS 'Identifies the h_blind_ev of the recouped coin (as h_coin_ev).';
+
+
+-- Create additional tables...
 
 CREATE TABLE IF NOT EXISTS auditors
   (auditor_uuid BIGSERIAL UNIQUE
@@ -225,7 +314,7 @@ COMMENT ON COLUMN wire_accounts.last_change
 
 CREATE TABLE IF NOT EXISTS signkey_revocations
   (signkey_revocations_serial_id BIGSERIAL UNIQUE
-  ,exchange_pub BYTEA PRIMARY KEY REFERENCES exchange_sign_keys (exchange_pub) ON DELETE CASCADE
+  ,esk_serial INT8 PRIMARY KEY REFERENCES exchange_sign_keys (esk_serial) ON DELETE CASCADE
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   );
 COMMENT ON TABLE signkey_revocations

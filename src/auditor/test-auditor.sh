@@ -862,10 +862,10 @@ function test_13() {
 
 echo "===========13: wrong melt signature ==========="
 # Modify denom_sig, so it is wrong
-COIN_PUB=`echo "SELECT old_coin_pub FROM refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
-OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_coin_pub='$COIN_PUB';" | psql $DB -Aqt`
+COIN_ID=`echo "SELECT old_known_coin_id FROM refresh_commitments LIMIT 1;"  | psql $DB -Aqt`
+OLD_SIG=`echo "SELECT old_coin_sig FROM refresh_commitments WHERE old_known_coin_id='$COIN_ID';" | psql $DB -Aqt`
 NEW_SIG="\xba588af7c13c477dca1ac458f65cc484db8fba53b969b873f4353ecbd815e6b4c03f42c0cb63a2b609c2d726e612fd8e0c084906a41f409b6a23a08a83c89a02"
-echo "UPDATE refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_coin_pub='$COIN_PUB'" | psql -Aqt $DB
+echo "UPDATE refresh_commitments SET old_coin_sig='$NEW_SIG' WHERE old_known_coin_id='$COIN_ID'" | psql -Aqt $DB
 
 run_audit
 
