@@ -1303,14 +1303,14 @@ fi
 function test_22() {
 echo "===========22: denomination key expired ================="
 
-H_DENOM=`echo 'SELECT denom_pub_hash FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
+S_DENOM=`echo 'SELECT denominations_serial FROM reserves_out LIMIT 1;' | psql $DB -Aqt`
 
-OLD_START=`echo "SELECT valid_from FROM denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
-OLD_WEXP=`echo "SELECT expire_withdraw FROM denominations WHERE denom_pub_hash='${H_DENOM}';" | psql $DB -Aqt`
+OLD_START=`echo "SELECT valid_from FROM denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
+OLD_WEXP=`echo "SELECT expire_withdraw FROM denominations WHERE denominations_serial='${S_DENOM}';" | psql $DB -Aqt`
 # Basically expires 'immediately', so that the withdraw must have been 'invalid'
 NEW_WEXP=`expr $OLD_START + 1 || true`
 
-echo "UPDATE denominations SET expire_withdraw=${NEW_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
+echo "UPDATE denominations SET expire_withdraw=${NEW_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
 
 
 run_audit
@@ -1321,7 +1321,7 @@ jq -e .denomination_key_validity_withdraw_inconsistencies[0] < test-audit-reserv
 echo PASS
 
 # Undo modification
-echo "UPDATE denominations SET expire_withdraw=${OLD_WEXP} WHERE denom_pub_hash='${H_DENOM}';" | psql -Aqt $DB
+echo "UPDATE denominations SET expire_withdraw=${OLD_WEXP} WHERE denominations_serial='${S_DENOM}';" | psql -Aqt $DB
 
 }
 

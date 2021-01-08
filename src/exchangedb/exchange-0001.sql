@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS reserves_in
   );
 COMMENT ON TABLE reserves_in
   IS 'list of transfers of funds into the reserves, one per incoming wire transfer';
-
+-- FIXME: explain 'wire_reference'!
 CREATE INDEX IF NOT EXISTS reserves_in_execution_index
   ON reserves_in
   (exchange_account_section
@@ -151,6 +151,7 @@ COMMENT ON COLUMN reserves_out.h_blind_ev
   IS 'Hash of the blinded coin, used as primary key here so that broken clients that use a non-random coin or blinding factor fail to withdraw (otherwise they would fail on deposit when the coin is not unique there).';
 COMMENT ON COLUMN reserves_out.denom_pub_hash
   IS 'We do not CASCADE ON DELETE here, we may keep the denomination data alive';
+-- FIXME: replace denom_pub_hash with denominations_serial *EVERYWHERE*
 
 CREATE INDEX IF NOT EXISTS reserves_out_reserve_pub_index
   ON reserves_out

@@ -73,6 +73,8 @@ UPDATE reserves_in
   INNER JOIN reserves r USING(reserve_pub);
 ALTER TABLE reserves_in
   ALTER COLUMN reserve_uuid SET NOT NULL;
+ALTER TABLE reserves_in
+  DROP COLUMN reserve_pub;
 ALTER TABLE reserves_out
   ADD COLUMN reserve_uuid INT8 REFERENCES reserves (reserve_uuid) ON DELETE CASCADE;
 UPDATE reserves_out
@@ -81,6 +83,8 @@ UPDATE reserves_out
   INNER JOIN reserves r USING(reserve_pub);
 ALTER TABLE reserves_out
   ALTER COLUMN reserve_uuid SET NOT NULL;
+ALTER TABLE reserves_out
+  DROP COLUMN reserve_pub;
 ALTER TABLE reserves_close
   ADD COLUMN reserve_uuid INT8 REFERENCES reserves (reserve_uuid) ON DELETE CASCADE;
 UPDATE reserves_close
@@ -89,13 +93,55 @@ UPDATE reserves_close
   INNER JOIN reserves r USING(reserve_pub);
 ALTER TABLE reserves_close
   ALTER COLUMN reserve_uuid SET NOT NULL;
-
-ALTER TABLE reserves_in
-  DROP COLUMN reserve_pub;
-ALTER TABLE reserves_out
-  DROP COLUMN reserve_pub;
 ALTER TABLE reserves_close
   DROP COLUMN reserve_pub;
+
+-- change all foreign keys using 'denom_pub_hash' to using 'denominations_serial' instead
+ALTER TABLE reserves_out
+  ADD COLUMN denominations_serial INT8 REFERENCES denominations (denominations_serial) ON DELETE CASCADE;
+UPDATE reserves_out
+  SET denominations_serial=d.denominations_serial
+  FROM reserves_out o
+  INNER JOIN denominations d USING(denom_pub_hash);
+ALTER TABLE reserves_out
+  ALTER COLUMN denominations_serial SET NOT NULL;
+ALTER TABLE reserves_out
+  DROP COLUMN denom_pub_hash;
+
+ALTER TABLE known_coins
+  ADD COLUMN denominations_serial INT8 REFERENCES denominations (denominations_serial) ON DELETE CASCADE;
+UPDATE known_coins
+  SET denominations_serial=d.denominations_serial
+  FROM known_coins o
+  INNER JOIN denominations d USING(denom_pub_hash);
+ALTER TABLE known_coins
+  ALTER COLUMN denominations_serial SET NOT NULL;
+ALTER TABLE known_coins
+  DROP COLUMN denom_pub_hash;
+
+ALTER TABLE denomination_revocations
+  ADD COLUMN denominations_serial INT8 REFERENCES denominations (denominations_serial) ON DELETE CASCADE;
+UPDATE denomination_revocations
+  SET denominations_serial=d.denominations_serial
+  FROM denomination_revocations o
+  INNER JOIN denominations d USING(denom_pub_hash);
+ALTER TABLE denomination_revocations
+  ALTER COLUMN denominations_serial SET NOT NULL;
+ALTER TABLE denomination_revocations
+  DROP COLUMN denom_pub_hash;
+ALTER TABLE denomination_revocations
+  ADD CONSTRAINT denominations_serial_pk PRIMARY KEY (denominations_serial);
+
+ALTER TABLE refresh_revealed_coins
+  ADD COLUMN denominations_serial INT8 REFERENCES denominations (denominations_serial) ON DELETE CASCADE;
+UPDATE refresh_revealed_coins
+  SET denominations_serial=d.denominations_serial
+  FROM refresh_revealed_coins o
+  INNER JOIN denominations d USING(denom_pub_hash);
+ALTER TABLE refresh_revealed_coins
+  ALTER COLUMN denominations_serial SET NOT NULL;
+ALTER TABLE refresh_revealed_coins
+  DROP COLUMN denom_pub_hash;
 
 
 CREATE TABLE IF NOT EXISTS auditors
@@ -116,22 +162,20 @@ COMMENT ON COLUMN auditors.is_active
   IS 'true if we are currently supporting the use of this auditor.';
 COMMENT ON COLUMN auditors.last_change
   IS 'Latest time when active status changed. Used to detect replays of old messages.';
--- "auditors" has no BIGSERIAL because it is a 'mutable' table
---            and is of no concern to the auditor
 
 
 CREATE TABLE IF NOT EXISTS auditor_denom_sigs
   (auditor_denom_serial BIGSERIAL UNIQUE
   ,auditor_pub BYTEA NOT NULL REFERENCES auditors (auditor_pub) ON DELETE CASCADE
-  ,denom_pub_hash BYTEA NOT NULL REFERENCES denominations (denom_pub_hash) ON DELETE CASCADE
+  ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
   ,auditor_sig BYTEA CHECK (LENGTH(auditor_sig)=64)
-  ,PRIMARY KEY (denom_pub_hash, auditor_pub)
+  ,PRIMARY KEY (denominations_serial, auditor_pub)
   );
 COMMENT ON TABLE auditor_denom_sigs
   IS 'Table with auditor signatures on exchange denomination keys.';
 COMMENT ON COLUMN auditor_denom_sigs.auditor_pub
   IS 'Public key of the auditor.';
-COMMENT ON COLUMN auditor_denom_sigs.denom_pub_hash
+COMMENT ON COLUMN auditor_denom_sigs.denominations_serial
   IS 'Denomination the signature is for.';
 COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
   IS 'Signature of the auditor, of purpose TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS.';

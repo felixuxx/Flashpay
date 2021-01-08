@@ -336,7 +336,7 @@ postgres_get_session (void *cls)
                               ",denom_pub"
                               " FROM denominations"
                               " LEFT JOIN "
-                              "   denomination_revocations USING (denom_pub_hash);",
+                              "   denomination_revocations USING (denominations_serial);",
                               0),
       /* Used in #postgres_iterate_active_signkeys() */
       GNUNET_PQ_make_prepare ("select_signkeys",
@@ -358,10 +358,11 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_auditor_denoms",
                               "SELECT"
                               " auditor_denom_sigs.auditor_pub"
-                              ",auditor_denom_sigs.denom_pub_hash"
+                              ",denominations.denom_pub_hash"
                               ",auditor_denom_sigs.auditor_sig"
                               " FROM auditor_denom_sigs"
                               " JOIN auditors USING (auditor_pub)"
+                              " JOIN denominations USING (denominations_serial)"
                               " WHERE auditors.is_active;",
                               0),
       /* Used in #postgres_iterate_active_auditors() */
@@ -399,10 +400,11 @@ postgres_get_session (void *cls)
       /* Used in #postgres_insert_denomination_revocation() */
       GNUNET_PQ_make_prepare ("denomination_revocation_insert",
                               "INSERT INTO denomination_revocations "
-                              "(denom_pub_hash"
+                              "(denominations_serial"
                               ",master_sig"
-                              ") VALUES "
-                              "($1, $2);",
+                              ") SELECT denominations_serial,$2"
+                              "    FROM denominations"
+                              "   WHERE denom_pub_hash=$1;",
                               2),
       /* Used in #postgres_get_denomination_revocation() */
       GNUNET_PQ_make_prepare ("denomination_revocation_get",
@@ -410,7 +412,10 @@ postgres_get_session (void *cls)
                               " master_sig"
                               ",denom_revocations_serial_id"
                               " FROM denomination_revocations"
-                              " WHERE denom_pub_hash=$1;",
+                              " WHERE denominations_serial="
+                              "  (SELECT denominations_serial"
+                              "    FROM denominations"
+                              "    WHERE denom_pub_hash=$1);",
                               1),
       /* Used in #postgres_reserves_get() */
       GNUNET_PQ_make_prepare ("reserves_get",
@@ -549,17 +554,22 @@ postgres_get_session (void *cls)
          is being withdrawn from and the signature of the message
          authorizing the withdrawal. */
       GNUNET_PQ_make_prepare ("insert_withdraw_info",
+                              "WITH ds AS"
+                              " (SELECT denominations_serial"
+                              "    FROM denominations"
+                              "   WHERE denom_pub_hash=$2)"
                               "INSERT INTO reserves_out "
                               "(h_blind_ev"
-                              ",denom_pub_hash"
+                              ",denominations_serial"
                               ",denom_sig"
                               ",reserve_uuid"
                               ",reserve_sig"
                               ",execution_date"
                               ",amount_with_fee_val"
                               ",amount_with_fee_frac"
-                              ") SELECT $1, $2, $3, reserve_uuid, $5, $6, $7, $8"
+                              ") SELECT $1, ds.denominations_serial, $3, reserve_uuid, $5, $6, $7, $8"
                               "    FROM reserves"
+                              "    CROSS JOIN ds"
                               "    WHERE reserve_pub=$4;",
                               8),
       /* Used in #postgres_get_withdraw_info() to
@@ -568,7 +578,7 @@ postgres_get_session (void *cls)
          make sure /reserve/withdraw requests are idempotent. */
       GNUNET_PQ_make_prepare ("get_withdraw_info",
                               "SELECT"
-                              " denom_pub_hash"
+                              " denom.denom_pub_hash"
                               ",denom_sig"
                               ",reserve_sig"
                               ",reserves.reserve_pub"
@@ -581,7 +591,7 @@ postgres_get_session (void *cls)
                               "    JOIN reserves"
                               "      USING (reserve_uuid)"
                               "    JOIN denominations denom"
-                              "      USING (denom_pub_hash)"
+                              "      USING (denominations_serial)"
                               " WHERE h_blind_ev=$1;",
                               1),
       /* Used during #postgres_get_reserve_history() to
@@ -591,7 +601,7 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("get_reserves_out",
                               "SELECT"
                               " h_blind_ev"
-                              ",denom_pub_hash"
+                              ",denom.denom_pub_hash"
                               ",denom_sig"
                               ",reserve_sig"
                               ",execution_date"
@@ -601,7 +611,7 @@ postgres_get_session (void *cls)
                               ",denom.fee_withdraw_frac"
                               " FROM reserves_out"
                               "    JOIN denominations denom"
-                              "      USING (denom_pub_hash)"
+                              "      USING (denominations_serial)"
                               " WHERE reserve_uuid="
                               "   (SELECT reserve_uuid"
                               "      FROM reserves"
@@ -622,7 +632,7 @@ postgres_get_session (void *cls)
                               "    JOIN reserves"
                               "      USING (reserve_uuid)"
                               "    JOIN denominations denom"
-                              "      USING (denom_pub_hash)"
+                              "      USING (denominations_serial)"
                               " WHERE reserve_out_serial_id>=$1"
                               " ORDER BY reserve_out_serial_id ASC;",
                               1),
@@ -632,23 +642,28 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " COUNT(*) AS count"
                               " FROM known_coins"
-                              " WHERE denom_pub_hash=$1;",
+                              " WHERE denominations_serial="
+                              "  (SELECT denominations_serial"
+                              "    FROM denominations"
+                              "    WHERE denom_pub_hash=$1);",
                               1),
       /* Used in #postgres_get_known_coin() to fetch
          the denomination public key and signature for
          a coin known to the exchange. */
       GNUNET_PQ_make_prepare ("get_known_coin",
                               "SELECT"
-                              " denom_pub_hash"
+                              " denominations.denom_pub_hash"
                               ",denom_sig"
                               " FROM known_coins"
+                              " JOIN denominations USING (denominations_serial)"
                               " WHERE coin_pub=$1;",
                               1),
       /* Used in #postgres_ensure_coin_known() */
       GNUNET_PQ_make_prepare ("get_known_coin_dh",
                               "SELECT"
-                              " denom_pub_hash"
+                              " denominations.denom_pub_hash"
                               " FROM known_coins"
+                              " JOIN denominations USING (denominations_serial)"
                               " WHERE coin_pub=$1;",
                               1),
       /* Used in #postgres_get_coin_denomination() to fetch
@@ -656,8 +671,9 @@ postgres_get_session (void *cls)
          a coin known to the exchange. */
       GNUNET_PQ_make_prepare ("get_coin_denomination",
                               "SELECT"
-                              " denom_pub_hash"
+                              " denominations.denom_pub_hash"
                               " FROM known_coins"
+                              " JOIN denominations USING (denominations_serial)"
                               " WHERE coin_pub=$1"
                               " FOR SHARE;",
                               1),
@@ -673,10 +689,11 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("insert_known_coin",
                               "INSERT INTO known_coins "
                               "(coin_pub"
-                              ",denom_pub_hash"
+                              ",denominations_serial"
                               ",denom_sig"
-                              ") VALUES "
-                              "($1,$2,$3);",
+                              ") SELECT $1, denominations_serial, $3 "
+                              "    FROM denominations"
+                              "   WHERE denom_pub_hash=$2;",
                               3),
 
       /* Used in #postgres_insert_melt() to store
@@ -696,9 +713,9 @@ postgres_get_session (void *cls)
          high-level information about a melt operation */
       GNUNET_PQ_make_prepare ("get_melt",
                               "SELECT"
-                              " kc.denom_pub_hash"
-                              ",denom.fee_refresh_val"
-                              ",denom.fee_refresh_frac"
+                              " denoms.denom_pub_hash"
+                              ",denoms.fee_refresh_val"
+                              ",denoms.fee_refresh_frac"
                               ",old_coin_pub"
                               ",old_coin_sig"
                               ",amount_with_fee_val"
@@ -707,8 +724,8 @@ postgres_get_session (void *cls)
                               " FROM refresh_commitments"
                               "   JOIN known_coins kc"
                               "     ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
-                              "   JOIN denominations denom"
-                              "     ON (kc.denom_pub_hash = denom.denom_pub_hash)"
+                              "   JOIN denominations denoms"
+                              "     ON (kc.denominations_serial = denoms.denominations_serial)"
                               " WHERE rc=$1;",
                               1),
       /* Used in #postgres_get_melt_index() to fetch
@@ -735,7 +752,7 @@ postgres_get_session (void *cls)
                               "   JOIN known_coins kc"
                               "     ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
                               "   JOIN denominations denom"
-                              "     ON (kc.denom_pub_hash = denom.denom_pub_hash)"
+                              "     ON (kc.denominations_serial = denom.denominations_serial)"
                               " WHERE melt_serial_id>=$1"
                               " ORDER BY melt_serial_id ASC;",
                               1),
@@ -746,15 +763,15 @@ postgres_get_session (void *cls)
                               ",old_coin_sig"
                               ",amount_with_fee_val"
                               ",amount_with_fee_frac"
-                              ",kc.denom_pub_hash"
-                              ",denom.fee_refresh_val "
-                              ",denom.fee_refresh_frac "
+                              ",denoms.denom_pub_hash"
+                              ",denoms.fee_refresh_val "
+                              ",denoms.fee_refresh_frac "
                               ",melt_serial_id"
                               " FROM refresh_commitments"
                               " JOIN known_coins kc"
                               "   ON (refresh_commitments.old_coin_pub = kc.coin_pub)"
-                              " JOIN denominations denom"
-                              "   USING (denom_pub_hash)"
+                              " JOIN denominations denoms"
+                              "   USING (denominations_serial)"
                               " WHERE old_coin_pub=$1;",
                               1),
 
@@ -765,12 +782,13 @@ postgres_get_session (void *cls)
                               "(rc "
                               ",freshcoin_index "
                               ",link_sig "
-                              ",denom_pub_hash "
+                              ",denominations_serial "
                               ",coin_ev"
                               ",h_coin_ev"
                               ",ev_sig"
-                              ") VALUES "
-                              "($1, $2, $3, $4, $5, $6, $7);",
+                              ") SELECT $1, $2, $3, denominations_serial, $5, $6, $7 "
+                              "    FROM denominations"
+                              "   WHERE denom_pub_hash=$4;",
                               7),
       /* Obtain information about the coins created in a refresh
          operation, used in #postgres_get_refresh_reveal() */
@@ -783,7 +801,7 @@ postgres_get_session (void *cls)
                               ",ev_sig"
                               " FROM refresh_revealed_coins"
                               "    JOIN denominations denom "
-                              "      USING (denom_pub_hash)"
+                              "      USING (denominations_serial)"
                               " WHERE rc=$1"
                               "   ORDER BY freshcoin_index ASC;",
                               1),
@@ -836,7 +854,7 @@ postgres_get_session (void *cls)
                               ",refund_serial_id"
                               " FROM refunds"
                               "    JOIN known_coins USING (coin_pub)"
-                              "    JOIN denominations denom USING (denom_pub_hash)"
+                              "    JOIN denominations denom USING (denominations_serial)"
                               " WHERE coin_pub=$1;",
                               1),
       /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
@@ -864,7 +882,7 @@ postgres_get_session (void *cls)
                               ",refund_serial_id"
                               " FROM refunds"
                               "   JOIN known_coins kc USING (coin_pub)"
-                              "   JOIN denominations denom ON (kc.denom_pub_hash = denom.denom_pub_hash)"
+                              "   JOIN denominations denom ON (kc.denominations_serial = denom.denominations_serial)"
                               " WHERE refund_serial_id>=$1"
                               " ORDER BY refund_serial_id ASC;",
                               1),
@@ -910,7 +928,7 @@ postgres_get_session (void *cls)
                               ",h_wire"
                               " FROM deposits"
                               " JOIN known_coins USING (coin_pub)"
-                              " JOIN denominations USING (denom_pub_hash)"
+                              " JOIN denominations USING (denominations_serial)"
                               " WHERE ((coin_pub=$1)"
                               "    AND (merchant_pub=$3)"
                               "    AND (h_contract_terms=$2));",
@@ -934,7 +952,7 @@ postgres_get_session (void *cls)
                               ",deposit_serial_id"
                               " FROM deposits"
                               "    JOIN known_coins USING (coin_pub)"
-                              "    JOIN denominations denom USING (denom_pub_hash)"
+                              "    JOIN denominations denom USING (denominations_serial)"
                               " WHERE ("
                               "  (deposit_serial_id>=$1)"
                               " )"
@@ -951,7 +969,7 @@ postgres_get_session (void *cls)
                               ",wire_deadline"
                               " FROM deposits"
                               "    JOIN known_coins USING (coin_pub)"
-                              "    JOIN denominations denom USING (denom_pub_hash)"
+                              "    JOIN denominations denom USING (denominations_serial)"
                               " WHERE ("
                               "      (coin_pub=$1)"
                               "    AND (merchant_pub=$2)"
@@ -976,7 +994,7 @@ postgres_get_session (void *cls)
                               ",wallet_timestamp"
                               " FROM deposits"
                               "    JOIN known_coins USING (coin_pub)"
-                              "    JOIN denominations denom USING (denom_pub_hash)"
+                              "    JOIN denominations denom USING (denominations_serial)"
                               " WHERE tiny=FALSE"
                               "    AND done=FALSE"
                               "    AND wire_deadline<=$1"
@@ -998,7 +1016,7 @@ postgres_get_session (void *cls)
                               "    JOIN known_coins"
                               "      USING (coin_pub)"
                               "    JOIN denominations denom"
-                              "      USING (denom_pub_hash)"
+                              "      USING (denominations_serial)"
                               " WHERE"
                               "     merchant_pub=$1 AND"
                               "     h_wire=$2 AND"
@@ -1035,9 +1053,9 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " amount_with_fee_val"
                               ",amount_with_fee_frac"
-                              ",denom.fee_deposit_val"
-                              ",denom.fee_deposit_frac"
-                              ",kc.denom_pub_hash"
+                              ",denoms.fee_deposit_val"
+                              ",denoms.fee_deposit_frac"
+                              ",denoms.denom_pub_hash"
                               ",wallet_timestamp"
                               ",refund_deadline"
                               ",wire_deadline"
@@ -1051,8 +1069,8 @@ postgres_get_session (void *cls)
                               " FROM deposits"
                               "    JOIN known_coins kc"
                               "      USING (coin_pub)"
-                              "    JOIN denominations denom"
-                              "      USING (denom_pub_hash)"
+                              "    JOIN denominations denoms"
+                              "      USING (denominations_serial)"
                               " WHERE coin_pub=$1;",
                               1),
 
@@ -1069,7 +1087,7 @@ postgres_get_session (void *cls)
                               "     JOIN refresh_transfer_keys tp"
                               "       USING (rc)"
                               "     JOIN denominations denoms"
-                              "       ON (rrc.denom_pub_hash = denoms.denom_pub_hash)"
+                              "       ON (rrc.denominations_serial = denoms.denominations_serial)"
                               " WHERE old_coin_pub=$1"
                               " ORDER BY tp.transfer_pub",
                               1),
@@ -1094,7 +1112,7 @@ postgres_get_session (void *cls)
                               "    JOIN known_coins"
                               "      USING (coin_pub)"
                               "    JOIN denominations denom"
-                              "      USING (denom_pub_hash)"
+                              "      USING (denominations_serial)"
                               "    JOIN wire_out"
                               "      USING (wtid_raw)"
                               " WHERE wtid_raw=$1;",
@@ -1114,7 +1132,7 @@ postgres_get_session (void *cls)
                               "    JOIN known_coins"
                               "      USING (coin_pub)"
                               "    JOIN denominations denom"
-                              "      USING (denom_pub_hash)"
+                              "      USING (denominations_serial)"
                               "    JOIN wire_out"
                               "      USING (wtid_raw)"
                               " WHERE coin_pub=$1"
@@ -1290,7 +1308,7 @@ postgres_get_session (void *cls)
                               ",coin_sig"
                               ",coin_blind"
                               ",h_blind_ev"
-                              ",coins.denom_pub_hash"
+                              ",denoms.denom_pub_hash"
                               ",coins.denom_sig"
                               ",denoms.denom_pub"
                               ",amount_val"
@@ -1303,7 +1321,7 @@ postgres_get_session (void *cls)
                               "    JOIN reserves"
                               "      USING (reserve_uuid)"
                               "    JOIN denominations denoms"
-                              "      ON (coins.denom_pub_hash = denoms.denom_pub_hash)"
+                              "      ON (coins.denominations_serial = denoms.denominations_serial)"
                               " WHERE recoup_uuid>=$1"
                               " ORDER BY recoup_uuid ASC;",
                               1),
@@ -1314,13 +1332,13 @@ postgres_get_session (void *cls)
                               " recoup_refresh_uuid"
                               ",timestamp"
                               ",rc.old_coin_pub"
-                              ",old_coins.denom_pub_hash AS old_denom_pub_hash"
+                              ",old_denoms.denom_pub_hash AS old_denom_pub_hash"
                               ",recoup_refresh.coin_pub"
                               ",coin_sig"
                               ",coin_blind"
-                              ",denoms.denom_pub"
+                              ",new_denoms.denom_pub"
                               ",h_blind_ev"
-                              ",new_coins.denom_pub_hash"
+                              ",new_denoms.denom_pub_hash"
                               ",new_coins.denom_sig"
                               ",amount_val"
                               ",amount_frac"
@@ -1333,8 +1351,10 @@ postgres_get_session (void *cls)
                               "      ON (rc.old_coin_pub = old_coins.coin_pub)"
                               "    INNER JOIN known_coins new_coins"
                               "      ON (new_coins.coin_pub = recoup_refresh.coin_pub)"
-                              "    INNER JOIN denominations denoms"
-                              "      ON (new_coins.denom_pub_hash = denoms.denom_pub_hash)"
+                              "    INNER JOIN denominations new_denoms"
+                              "      ON (new_coins.denominations_serial = new_denoms.denominations_serial)"
+                              "    INNER JOIN denominations old_denoms"
+                              "      ON (old_coins.denominations_serial = old_denoms.denominations_serial)"
                               " WHERE recoup_refresh_uuid>=$1"
                               " ORDER BY recoup_refresh_uuid ASC;",
                               1),
@@ -1367,11 +1387,13 @@ postgres_get_session (void *cls)
                               ",amount_val"
                               ",amount_frac"
                               ",timestamp"
-                              ",coins.denom_pub_hash"
+                              ",denoms.denom_pub_hash"
                               ",coins.denom_sig"
                               " FROM recoup"
                               "    JOIN known_coins coins"
                               "      USING (coin_pub)"
+                              "    JOIN denominations denoms"
+                              "      USING (denominations_serial)"
                               "    JOIN reserves_out ro"
                               "      USING (h_blind_ev)"
                               " WHERE ro.reserve_uuid="
@@ -1389,12 +1411,14 @@ postgres_get_session (void *cls)
                               ",amount_val"
                               ",amount_frac"
                               ",timestamp"
-                              ",coins.denom_pub_hash"
+                              ",denoms.denom_pub_hash"
                               ",coins.denom_sig"
                               ",recoup_refresh_uuid"
                               " FROM recoup_refresh"
                               " JOIN known_coins coins"
                               "   USING (coin_pub)"
+                              " JOIN denominations denoms"
+                              "   USING (denominations_serial)"
                               " WHERE h_blind_ev IN"
                               "   (SELECT rrc.h_coin_ev"
                               "    FROM refresh_commitments"
@@ -1438,7 +1462,7 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("recoup_by_coin",
                               "SELECT"
                               " reserves.reserve_pub"
-                              ",coins.denom_pub_hash"
+                              ",denoms.denom_pub_hash"
                               ",coin_sig"
                               ",coin_blind"
                               ",amount_val"
@@ -1452,6 +1476,8 @@ postgres_get_session (void *cls)
                               "   USING (reserve_uuid)"
                               " JOIN known_coins coins"
                               "   USING (coin_pub)"
+                              " JOIN denominations denoms"
+                              "   ON (denoms.denominations_serial = coins.denominations_serial)"
                               " WHERE recoup.coin_pub=$1;",
                               1),
       /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
@@ -1464,7 +1490,7 @@ postgres_get_session (void *cls)
                               ",amount_val"
                               ",amount_frac"
                               ",timestamp"
-                              ",coins.denom_pub_hash"
+                              ",denoms.denom_pub_hash"
                               ",coins.denom_sig"
                               ",recoup_refresh_uuid"
                               " FROM recoup_refresh"
@@ -1474,6 +1500,8 @@ postgres_get_session (void *cls)
                               "      ON (rrc.rc = rc.rc)"
                               "    JOIN known_coins coins"
                               "      USING (coin_pub)"
+                              "    JOIN denominations denoms"
+                              "      ON (denoms.denominations_serial = coins.denominations_serial)"
                               " WHERE coin_pub=$1;",
                               1),
       /* Used in #postgres_get_reserve_by_h_blind() */
@@ -1637,10 +1665,11 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("insert_auditor_denom_sig",
                               "INSERT INTO auditor_denom_sigs "
                               "(auditor_pub"
-                              ",denom_pub_hash"
+                              ",denominations_serial"
                               ",auditor_sig"
-                              ") VALUES "
-                              "($1, $2, $3);",
+                              ") SELECT $1, denominations_serial, $3 "
+                              "    FROM denominations"
+                              "   WHERE denom_pub_hash=$2;",
                               3),
       /* used in #postgres_select_auditor_denom_sig() */
       GNUNET_PQ_make_prepare ("select_auditor_denom_sig",
@@ -1648,7 +1677,10 @@ postgres_get_session (void *cls)
                               " auditor_sig"
                               " FROM auditor_denom_sigs"
                               " WHERE auditor_pub=$1"
-                              " AND denom_pub_hash=$2",
+                              " AND denominations_serial="
+                              "  (SELECT denominations_serial"
+                              "    FROM denominations"
+                              "    WHERE denom_pub_hash=$2);",
                               2),
       /* used in #postgres_lookup_wire_fee_by_time() */
       GNUNET_PQ_make_prepare ("lookup_wire_fee_by_time",
@@ -1666,6 +1698,158 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("do_commit",
                               "COMMIT",
                               0),
+      /* used in #postgres_lookup_serial_by_table() */
+      GNUNET_PQ_make_prepare ("select_serial_by_table_denominations",
+                              "SELECT"
+                              " denominations_serial AS serial"
+                              " FROM denominations"
+                              " ORDER BY denominations_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_denomination_revocations",
+                              "SELECT"
+                              " denom_revocations_serial_id AS serial"
+                              " FROM denomination_revocations"
+                              " ORDER BY denom_revocations_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_reserves",
+                              "SELECT"
+                              " reserve_uuid AS serial"
+                              " FROM reserves"
+                              " ORDER BY reserve_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_in",
+                              "SELECT"
+                              " reserve_in_serial_id AS serial"
+                              " FROM reserves_in"
+                              " ORDER BY reserve_in_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_close",
+                              "SELECT"
+                              " close_uuid AS serial"
+                              " FROM reserves_close"
+                              " ORDER BY close_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_out",
+                              "SELECT"
+                              " reserve_out_serial_id AS serial"
+                              " FROM reserves_out"
+                              " ORDER BY reserve_out_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_auditors",
+                              "SELECT"
+                              " auditor_uuid AS serial"
+                              " FROM auditors"
+                              " ORDER BY auditor_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_auditor_denom_sigs",
+                              "SELECT"
+                              " auditor_denom_serial AS serial"
+                              " FROM auditor_denom_sigs"
+                              " ORDER BY auditor_denom_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_exchange_sign_keys",
+                              "SELECT"
+                              " esk_serial AS serial"
+                              " FROM exchange_sign_keys"
+                              " ORDER BY esk_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_signkey_revocations",
+                              "SELECT"
+                              " signkey_revocations_serial_id AS serial"
+                              " FROM signkey_revocations"
+                              " ORDER BY signkey_revocations_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_known_coins",
+                              "SELECT"
+                              " known_coin_id AS serial"
+                              " FROM known_coins"
+                              " ORDER BY known_coin_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_commitments",
+                              "SELECT"
+                              " melt_serial_id AS serial"
+                              " FROM refresh_commitments"
+                              " ORDER BY melt_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_revealed_coins",
+                              "SELECT"
+                              " rrc_serial AS serial"
+                              " FROM refresh_revealed_coins"
+                              " ORDER BY rrc_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_transfer_keys",
+                              "SELECT"
+                              " rtc_serial AS serial"
+                              " FROM refresh_transfer_keys"
+                              " ORDER BY rtc_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_deposits",
+                              "SELECT"
+                              " deposit_serial_id AS serial"
+                              " FROM deposits"
+                              " ORDER BY deposit_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_refunds",
+                              "SELECT"
+                              " refund_serial_id AS serial"
+                              " FROM refunds"
+                              " ORDER BY refund_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_wire_out",
+                              "SELECT"
+                              " wireout_uuid AS serial"
+                              " FROM wire_out"
+                              " ORDER BY wireout_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_aggregation_tracking",
+                              "SELECT"
+                              " aggregation_serial_id AS serial"
+                              " FROM aggregation_tracking"
+                              " ORDER BY aggregation_serial_id DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_wire_fee",
+                              "SELECT"
+                              " wire_fee_serial AS serial"
+                              " FROM wire_fee"
+                              " ORDER BY wire_fee_serial DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_recoup",
+                              "SELECT"
+                              " recoup_uuid AS serial"
+                              " FROM recoup"
+                              " ORDER BY recoup_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      GNUNET_PQ_make_prepare ("select_serial_by_table_recoup_refresh",
+                              "SELECT"
+                              " recoup_refresh_uuid AS serial"
+                              " FROM recoup_refresh"
+                              " ORDER BY recoup_refresh_uuid DESC"
+                              " LIMIT 1;",
+                              0),
+      /* For postgres_lookup_records_by_table */
+      // FIXME...
+      /* For postgres_insert_records_by_table */
+      // FIXME...
       GNUNET_PQ_PREPARED_STATEMENT_END
     };
 
@@ -8988,6 +9172,301 @@ postgres_lookup_wire_fee_by_time (
 
 
 /**
+   * Lookup the latest serial number of @a table.  Used in
+   * exchange-auditor database replication.
+   *
+   * @param cls closure
+   * @param session a session
+   * @param table table for which we should return the serial
+   * @param[out] latest serial number in use
+   * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+   *         @a table does not have a serial number
+   */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_serial_by_table (void *cls,
+                                 struct TALER_EXCHANGEDB_Session *session,
+                                 enum TALER_EXCHANGEDB_ReplicatedTable table,
+                                 uint64_t *serial)
+{
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_uint64 ("serial",
+                                  serial),
+    GNUNET_PQ_result_spec_end
+  };
+  const char *statement;
+
+  switch (table)
+  {
+  case TALER_EXCHANGEDB_RT_DENOMINATIONS:
+    statement = "select_serial_by_table_denominations";
+    break;
+  case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
+    statement = "select_serial_by_table_denomination_revocations";
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES:
+    statement = "select_serial_by_table_reserves";
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_IN:
+    statement = "select_serial_by_table_reserves_in";
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
+    statement = "select_serial_by_table_reserves_close";
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OUT:
+    statement = "select_serial_by_table_reserves_out";
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITORS:
+    statement = "select_serial_by_table_auditors";
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS:
+    statement = "select_serial_by_table_auditor_denom_sigs";
+    break;
+  case TALER_EXCHANGEDB_RT_EXCHANGE_SIGN_KEYS:
+    statement = "select_serial_by_table_exchange_sign_keys";
+    break;
+  case TALER_EXCHANGEDB_RT_SIGNKEY_REVOCATIONS:
+    statement = "select_serial_by_table_signkey_revocations";
+    break;
+  case TALER_EXCHANGEDB_RT_KNOWN_COINS:
+    statement = "select_serial_by_table_known_coins";
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS:
+    statement = "select_serial_by_table_refresh_commitments";
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS:
+    statement = "select_serial_by_table_refresh_revealed_coins";
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS:
+    statement = "select_serial_by_table_refresh_transfer_keys";
+    break;
+  case TALER_EXCHANGEDB_RT_DEPOSITS:
+    statement = "select_serial_by_table_deposits";
+    break;
+  case TALER_EXCHANGEDB_RT_REFUNDS:
+    statement = "select_serial_by_table_refunds";
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_OUT:
+    statement = "select_serial_by_table_wire_out";
+    break;
+  case TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING:
+    statement = "select_serial_by_table_aggregation_tracking";
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_FEE:
+    statement = "select_serial_by_table_wire_fee";
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP:
+    statement = "select_serial_by_table_recoup";
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
+    statement = "select_serial_by_table_recoup_refresh";
+    break;
+  default:
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
+  (void) cls;
+  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                   statement,
+                                                   params,
+                                                   rs);
+}
+
+
+/**
+ * Closure for callbacks used by #postgres_lookup_records_by_table.
+ */
+struct LookupRecordsByTableContext
+{
+  /**
+   * Plugin context.
+   */
+  struct PostgresClosure *pc;
+
+  /**
+   * Function to call with the results.
+   */
+  TALER_EXCHANGEDB_ReplicationCallback cb;
+
+  /**
+   * Closure for @a cb.
+   */
+  void *cb_cls;
+
+  /**
+   * Set to true on errors.
+   */
+  bool error;
+};
+
+
+#include "lrbt_callbacks.c"
+
+
+/**
+ * Lookup records above @a serial number in @a table. Used in
+ * exchange-auditor database replication.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param table table for which we should return the serial
+ * @param serial largest serial number to exclude
+ * @param cb function to call on the records
+ * @param cb_cls closure for @a cb
+ * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+ *         @a table does not have a serial number
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_lookup_records_by_table (void *cls,
+                                  struct TALER_EXCHANGEDB_Session *session,
+                                  enum TALER_EXCHANGEDB_ReplicatedTable table,
+                                  uint64_t serial,
+                                  TALER_EXCHANGEDB_ReplicationCallback cb,
+                                  void *cb_cls)
+{
+  struct PostgresClosure *pc = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&serial),
+    GNUNET_PQ_query_param_end
+  };
+  struct LookupRecordsByTableContext ctx = {
+    .pc = pc,
+    .cb = cb,
+    .cb_cls = cb_cls
+  };
+  GNUNET_PQ_PostgresResultHandler rh;
+  const char *statement;
+  enum GNUNET_DB_QueryStatus qs;
+
+  switch (table)
+  {
+  case TALER_EXCHANGEDB_RT_DENOMINATIONS:
+    statement = "select_above_serial_by_table_denominations";
+    rh = &lrbt_cb_table_denominations;
+    break;
+  case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
+    statement = "select_above_serial_by_table_denomination_revocations";
+    rh = &lrbt_cb_table_denomination_revocations;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES:
+    statement = "select_above_serial_by_table_reserves";
+    rh = &lrbt_cb_table_reserves;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_IN:
+    statement = "select_above_serial_by_table_reserves_in";
+    rh = &lrbt_cb_table_reserves_in;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
+    statement = "select_above_serial_by_table_reserves_close";
+    rh = &lrbt_cb_table_reserves_close;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OUT:
+    statement = "select_above_serial_by_table_reserves_out";
+    rh = &lrbt_cb_table_reserves_out;
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITORS:
+    statement = "select_above_serial_by_table_auditors";
+    rh = &lrbt_cb_table_auditors;
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS:
+    statement = "select_above_serial_by_table_auditor_denom_sigs";
+    rh = &lrbt_cb_table_auditor_denom_sigs;
+    break;
+  case TALER_EXCHANGEDB_RT_EXCHANGE_SIGN_KEYS:
+    statement = "select_above_serial_by_table_exchange_sign_keys";
+    rh = &lrbt_cb_table_exchange_sign_keys;
+    break;
+  case TALER_EXCHANGEDB_RT_SIGNKEY_REVOCATIONS:
+    statement = "select_above_serial_by_table_signkey_revocations";
+    rh = &lrbt_cb_table_signkey_revocations;
+    break;
+  case TALER_EXCHANGEDB_RT_KNOWN_COINS:
+    statement = "select_above_serial_by_table_known_coins";
+    rh = &lrbt_cb_table_known_coins;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS:
+    statement = "select_above_serial_by_table_refresh_commitments";
+    rh = &lrbt_cb_table_refresh_commitments;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS:
+    statement = "select_above_serial_by_table_refresh_revealed_coins";
+    rh = &lrbt_cb_table_refresh_revealed_coins;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS:
+    statement = "select_above_serial_by_table_refresh_transfer_keys";
+    rh = &lrbt_cb_table_refresh_transfer_keys;
+    break;
+  case TALER_EXCHANGEDB_RT_DEPOSITS:
+    statement = "select_above_serial_by_table_deposits";
+    rh = &lrbt_cb_table_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_REFUNDS:
+    statement = "select_above_serial_by_table_refunds";
+    rh = &lrbt_cb_table_refunds;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_OUT:
+    statement = "select_above_serial_by_table_wire_out";
+    rh = &lrbt_cb_table_wire_out;
+    break;
+  case TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING:
+    statement = "select_above_serial_by_table_aggregation_tracking";
+    rh = &lrbt_cb_table_aggregation_tracking;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_FEE:
+    statement = "select_above_serial_by_table_wire_fee";
+    rh = &lrbt_cb_table_wire_fee;
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP:
+    statement = "select_above_serial_by_table_recoup";
+    rh = &lrbt_cb_table_recoup;
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
+    statement = "select_above_serial_by_table_recoup_refresh";
+    rh = &lrbt_cb_table_recoup_refresh;
+    break;
+  default:
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
+  (void) cls;
+  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+                                             statement,
+                                             params,
+                                             rh,
+                                             &ctx);
+  if (qs < 0)
+    return qs;
+  if (ctx.error)
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  return qs;
+}
+
+
+/**
+ * Insert record set into @a table.  Used in exchange-auditor database
+ * replication.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param tb table data to insert
+ * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
+ *         @a table does not have a serial number
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_insert_records_by_table (void *cls,
+                                  struct TALER_EXCHANGEDB_Session *session,
+                                  const struct TALER_EXCHANGEDB_TableData *td)
+{
+  GNUNET_break (0); // FIXME: not implemented!
+  return GNUNET_DB_STATUS_HARD_ERROR;
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -9185,6 +9664,12 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_activate_signing_key;
   plugin->lookup_signing_key
     = &postgres_lookup_signing_key;
+  plugin->lookup_serial_by_table
+    = &postgres_lookup_serial_by_table;
+  plugin->lookup_records_by_table
+    = &postgres_lookup_records_by_table;
+  plugin->insert_records_by_table
+    = &postgres_insert_records_by_table;
   return plugin;
 }
 

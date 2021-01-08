@@ -82,14 +82,27 @@ GNUNET_NETWORK_STRUCT_END
  */
 enum TALER_EXCHANGEDB_ReplicatedTable
 {
-
-  /**
-   * The "denominations" table.
-   */
   TALER_EXCHANGEDB_RT_DENOMINATIONS,
-
-  // FIXME...
-
+  TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS,
+  TALER_EXCHANGEDB_RT_RESERVES,
+  TALER_EXCHANGEDB_RT_RESERVES_IN,
+  TALER_EXCHANGEDB_RT_RESERVES_CLOSE,
+  TALER_EXCHANGEDB_RT_RESERVES_OUT,
+  TALER_EXCHANGEDB_RT_AUDITORS,
+  TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS,
+  TALER_EXCHANGEDB_RT_EXCHANGE_SIGN_KEYS,
+  TALER_EXCHANGEDB_RT_SIGNKEY_REVOCATIONS,
+  TALER_EXCHANGEDB_RT_KNOWN_COINS,
+  TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS,
+  TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS,
+  TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS,
+  TALER_EXCHANGEDB_RT_DEPOSITS,
+  TALER_EXCHANGEDB_RT_REFUNDS,
+  TALER_EXCHANGEDB_RT_WIRE_OUT,
+  TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING,
+  TALER_EXCHANGEDB_RT_WIRE_FEE,
+  TALER_EXCHANGEDB_RT_RECOUP,
+  TALER_EXCHANGEDB_RT_RECOUP_REFRESH
 };
 
 
@@ -119,10 +132,83 @@ struct TALER_EXCHANGEDB_TableData
      */
     struct
     {
-      // FIXME...
+      struct TALER_DenominationPublicKey denom_pub;
+      struct TALER_MasterSignatureP master_sig;
+      struct GNUNET_TIME_Absolute valid_from;
+      struct GNUNET_TIME_Absolute expire_withdraw;
+      struct GNUNET_TIME_Absolute expire_deposit;
+      struct GNUNET_TIME_Absolute expire_legal;
+      struct TALER_Amount coin;
+      struct TALER_Amount fee_withdraw;
+      struct TALER_Amount fee_deposit;
+      struct TALER_Amount fee_refresh;
+      struct TALER_Amount fee_refund;
     } denominations;
 
-    // FIXME...
+    struct
+    {
+      struct GNUNET_HashCode denom_pub_hash;
+      struct TALER_MasterSignatureP master_sig;
+    } denomination_revocations;
+
+    struct
+    {
+      struct TALER_ReservePublicKeyP reserve_pub;
+      char *account_details;
+      /**
+       * Note: not useful for auditor, because not UPDATEd!
+       */
+      struct TALER_Amount current_balance;
+      struct GNUNET_TIME_Absolute expiration_date;
+      struct GNUNET_TIME_Absolute gc_date;
+    } reserves;
+
+    struct
+    {
+      uint64_t wire_reference;
+      struct TALER_Amount credit;
+      char *sender_account_details;
+      char *exchange_account_section;
+      struct GNUNET_TIME_Absolute execution_date;
+      uint64_t reserve_uuid;
+    } reserves_in;
+
+    struct
+    {
+      struct GNUNET_TIME_Absolute execution_date;
+      struct TALER_WireTransferIdentifierRawP wtid;
+      char *receiver_account;
+      struct TALER_Amount amount;
+      struct TALER_Amount closing_fee;
+      uint64_t reserve_uuid;
+    } reserves_close;
+
+    struct
+    {
+      struct GNUNET_HashCode h_blind_ev;
+      struct GNUNET_HashCode denom_pub_hash; // FIXME
+      struct TALER_DenominationSignature denom_sig;
+      struct TALER_ReserveSignatureP reserve_sig;
+      struct GNUNET_TIME_Absolute execution_date;
+      struct TALER_Amount amount_with_fee;
+      uint64_t reserve_uuid;
+    } reserves_out;
+
+    struct {} auditors;
+    struct {} auditor_denom_sigs;
+    struct {} exchange_sign_keys;
+    struct {} signkey_revocations;
+    struct {} known_coins;
+    struct {} refresh_commitments;
+    struct {} refresh_revealed_coins;
+    struct {} refresh_transfer_keys;
+    struct {} deposits;
+    struct {} refunds;
+    struct {} wire_out;
+    struct {} aggregation_tracking;
+    struct {} wire_fee;
+    struct {} recoup;
+    struct {} recoup_refresh;
 
   } details;
 

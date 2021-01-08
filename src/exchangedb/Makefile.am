@@ -25,6 +25,7 @@ EXTRA_DIST = \
   exchangedb.conf \
   exchangedb-postgres.conf \
   plugin_exchangedb_common.c \
+  lrbt_callbacks.c \
   test-exchange-db-postgres.conf \
   $(sql_DATA)
 
