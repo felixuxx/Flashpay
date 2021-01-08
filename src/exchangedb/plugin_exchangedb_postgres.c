@@ -2056,18 +2056,45 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_deposits",
                               "SELECT"
                               " deposit_serial_id AS serial"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",wallet_timestamp"
+                              ",exchange_timestamp"
+                              ",refund_deadline"
+                              ",wire_deadline"
+                              ",merchant_pub"
+                              ",h_contract_terms"
+                              ",h_wire"
+                              ",coin_sig"
+                              ",wire"
+                              ",tiny"
+                              ",done"
+                              ",known_coin_id"
                               " FROM deposits"
                               " ORDER BY deposit_serial_id ASC;",
                               0),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_refunds",
                               "SELECT"
                               " refund_serial_id AS serial"
+                              ",merchant_pub"
+                              ",merchant_sig"
+                              ",h_contract_terms"
+                              ",rtransaction_id"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",known_coin_id"
                               " FROM refunds"
                               " ORDER BY refund_serial_id ASC;",
                               0),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_out",
                               "SELECT"
                               " wireout_uuid AS serial"
+                              ",execution_date"
+                              ",wtid_raw"
+                              ",wire_target"
+                              ",exchange_account_section"
+                              ",amount_val"
+                              ",amount_frac"
                               " FROM wire_out"
                               " ORDER BY wireout_uuid ASC;",
                               0),
@@ -2075,29 +2102,51 @@ postgres_get_session (void *cls)
         "select_above_serial_by_table_aggregation_tracking",
         "SELECT"
         " aggregation_serial_id AS serial"
+        ",deposit_serial_id"
+        ",wtid_raw"
         " FROM aggregation_tracking"
         " ORDER BY aggregation_serial_id ASC;",
         0),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_fee",
                               "SELECT"
                               " wire_fee_serial AS serial"
+                              ",wire_method"
+                              ",start_date"
+                              ",end_date"
+                              ",wire_fee_val"
+                              ",wire_fee_frac"
+                              ",closing_fee_val"
+                              ",closing_fee_frac"
+                              ",master_sig"
                               " FROM wire_fee"
                               " ORDER BY wire_fee_serial ASC;",
                               0),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup",
                               "SELECT"
                               " recoup_uuid AS serial"
+                              ",coin_sig"
+                              ",coin_blind"
+                              ",amount_val"
+                              ",amount_frac"
+                              ",timestamp"
+                              ",known_coin_id"
+                              ",reserve_out_serial_id"
                               " FROM recoup"
                               " ORDER BY recoup_uuid ASC;",
                               0),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup_refresh",
                               "SELECT"
                               " recoup_refresh_uuid AS serial"
+                              ",coin_sig"
+                              ",coin_blind"
+                              ",amount_val"
+                              ",amount_frac"
+                              ",timestamp"
+                              ",known_coin_id"
+                              ",rrc_serial"
                               " FROM recoup_refresh"
                               " ORDER BY recoup_refresh_uuid ASC;",
                               0),
-
-      // FIXME...
       /* For postgres_insert_records_by_table */
       // FIXME...
       GNUNET_PQ_PREPARED_STATEMENT_END
@@ -3432,9 +3481,8 @@ add_bank_to_exchange (void *cls,
     bt = GNUNET_new (struct TALER_EXCHANGEDB_BankTransfer);
     {
       struct GNUNET_PQ_ResultSpec rs[] = {
-        GNUNET_PQ_result_spec_variable_size ("wire_reference",
-                                             &bt->wire_reference,
-                                             &bt->wire_reference_size),
+        GNUNET_PQ_result_spec_uint64 ("wire_reference",
+                                      &bt->wire_reference),
         TALER_PQ_RESULT_SPEC_AMOUNT ("credit",
                                      &bt->amount),
         TALER_PQ_result_spec_absolute_time ("execution_date",
@@ -9534,7 +9582,7 @@ struct LookupRecordsByTableContext
   /**
    * Plugin context.
    */
-  struct PostgresClosure *pc;
+  struct PostgresClosure *pg;
 
   /**
    * Function to call with the results.
@@ -9583,7 +9631,7 @@ postgres_lookup_records_by_table (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct LookupRecordsByTableContext ctx = {
-    .pc = pc,
+    .pg = pc,
     .cb = cb,
     .cb_cls = cb_cls
   };

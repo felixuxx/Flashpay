@@ -186,12 +186,12 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct GNUNET_HashCode h_blind_ev;
-      struct GNUNET_HashCode denom_pub_hash; // FIXME
       struct TALER_DenominationSignature denom_sig;
       struct TALER_ReserveSignatureP reserve_sig;
       struct GNUNET_TIME_Absolute execution_date;
       struct TALER_Amount amount_with_fee;
       uint64_t reserve_uuid;
+      uint64_t denominations_serial;
     } reserves_out;
 
     struct {} auditors;
@@ -287,12 +287,7 @@ struct TALER_EXCHANGEDB_BankTransfer
   /**
    * Data uniquely identifying the wire transfer (wire transfer-type specific)
    */
-  void *wire_reference;
-
-  /**
-   * Number of bytes in @e wire_reference.
-   */
-  size_t wire_reference_size;
+  uint64_t wire_reference;
 
 };
 

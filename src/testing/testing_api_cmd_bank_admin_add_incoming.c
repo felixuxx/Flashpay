@@ -115,11 +115,6 @@ struct AdminAddIncomingState
   uint64_t serial_id;
 
   /**
-   * Set to the wire transfer's row ID in network byte order.
-   */
-  uint64_t row_id_nbo;
-
-  /**
    * Timestamp of the transaction (as returned from the bank).
    */
   struct GNUNET_TIME_Absolute timestamp;
@@ -214,11 +209,8 @@ confirmation_cb (void *cls,
   struct TALER_TESTING_Interpreter *is = fts->is;
 
   (void) json;
-  fts->row_id_nbo = GNUNET_htonll (serial_id);
   fts->reserve_history.details.in_details.timestamp = timestamp;
-  fts->reserve_history.details.in_details.wire_reference = &fts->row_id_nbo;
-  fts->reserve_history.details.in_details.wire_reference_size
-    = sizeof (fts->row_id_nbo);
+  fts->reserve_history.details.in_details.wire_reference = serial_id;
   fts->aih = NULL;
   switch (http_status)
   {

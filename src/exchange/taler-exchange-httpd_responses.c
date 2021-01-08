@@ -511,7 +511,7 @@ TEH_RESPONSE_compile_reserve_history (
         if (0 !=
             json_array_append_new (
               json_history,
-              json_pack ("{s:s, s:o, s:s, s:o, s:o}",
+              json_pack ("{s:s, s:o, s:s, s:I, s:o}",
                          "type",
                          "CREDIT",
                          "timestamp",
@@ -519,8 +519,7 @@ TEH_RESPONSE_compile_reserve_history (
                          "sender_account_url",
                          bank->sender_account_details,
                          "wire_reference",
-                         GNUNET_JSON_from_data (bank->wire_reference,
-                                                bank->wire_reference_size),
+                         (json_int_t) bank->wire_reference,
                          "amount",
                          TALER_JSON_from_amount (&bank->amount))))
         {

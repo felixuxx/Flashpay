@@ -1027,17 +1027,12 @@ struct TALER_EXCHANGE_ReserveHistory
       /**
        * Information that uniquely identifies the wire transfer.
        */
-      void *wire_reference;
+      uint64_t wire_reference;
 
       /**
        * When did the wire transfer happen?
        */
       struct GNUNET_TIME_Absolute timestamp;
-
-      /**
-       * Number of bytes stored in @e wire_reference.
-       */
-      size_t wire_reference_size;
 
     } in_details;
 

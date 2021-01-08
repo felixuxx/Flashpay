@@ -38,6 +38,7 @@ lrbt_cb_table_denominations (void *cls,
                              unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_DENOMINATIONS
   };
@@ -45,6 +46,33 @@ lrbt_cb_table_denominations (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_rsa_public_key (
+        "denom_pub",
+        &td.details.denominations.denom_pub.rsa_public_key),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &td.details.denominations.master_sig),
+      TALER_PQ_result_spec_absolute_time ("valid_from",
+                                          &td.details.denominations.valid_from),
+      TALER_PQ_result_spec_absolute_time ("expire_withdraw",
+                                          &td.details.denominations.
+                                          expire_withdraw),
+      TALER_PQ_result_spec_absolute_time ("expire_deposit",
+                                          &td.details.denominations.
+                                          expire_deposit),
+      TALER_PQ_result_spec_absolute_time ("expire_legal",
+                                          &td.details.denominations.expire_legal),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
+                                   &td.details.denominations.coin),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
+                                   &td.details.denominations.fee_withdraw),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                   &td.details.denominations.fee_deposit),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
+                                   &td.details.denominations.fee_refresh),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
+                                   &td.details.denominations.fee_refund),
       GNUNET_PQ_result_spec_end
     };
 
@@ -84,6 +112,14 @@ lrbt_cb_table_denomination_revocations (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "denom_pub_hash",
+        &td.details.denomination_revocations.denom_pub_hash),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "master_sig",
+        &td.details.denomination_revocations.master_sig),
       GNUNET_PQ_result_spec_end
     };
 
@@ -116,6 +152,7 @@ lrbt_cb_table_reserves (void *cls,
                         unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_RESERVES
   };
@@ -123,6 +160,18 @@ lrbt_cb_table_reserves (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
+                                            &td.details.reserves.reserve_pub),
+      GNUNET_PQ_result_spec_string ("account_details",
+                                    &td.details.reserves.account_details),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
+                                   &td.details.reserves.current_balance),
+      TALER_PQ_result_spec_absolute_time ("expiration_date",
+                                          &td.details.reserves.expiration_date),
+      TALER_PQ_result_spec_absolute_time ("gc_date",
+                                          &td.details.reserves.gc_date),
       GNUNET_PQ_result_spec_end
     };
 
@@ -155,6 +204,7 @@ lrbt_cb_table_reserves_in (void *cls,
                            unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_RESERVES_IN
   };
@@ -162,6 +212,22 @@ lrbt_cb_table_reserves_in (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_uint64 ("wire_reference",
+                                    &td.details.reserves_in.wire_reference),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("credit",
+                                   &td.details.reserves_in.credit),
+      GNUNET_PQ_result_spec_string ("sender_account_details",
+                                    &td.details.reserves_in.
+                                    sender_account_details),
+      GNUNET_PQ_result_spec_string ("exchange_account_section",
+                                    &td.details.reserves_in.
+                                    exchange_account_section),
+      TALER_PQ_result_spec_absolute_time ("execution_date",
+                                          &td.details.reserves_in.execution_date),
+      GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
+                                    &td.details.reserves_in.reserve_uuid),
       GNUNET_PQ_result_spec_end
     };
 
@@ -194,6 +260,7 @@ lrbt_cb_table_reserves_close (void *cls,
                               unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_RESERVES_CLOSE
   };
@@ -201,6 +268,23 @@ lrbt_cb_table_reserves_close (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      TALER_PQ_result_spec_absolute_time (
+        "execution_date",
+        &td.details.reserves_close.execution_date),
+      GNUNET_PQ_result_spec_auto_from_type ("wtid",
+                                            &td.details.reserves_close.wtid),
+      GNUNET_PQ_result_spec_string (
+        "receiver_account",
+        &td.details.reserves_close.receiver_account),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &td.details.reserves_close.amount),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
+                                   &td.details.reserves_close.closing_fee),
+      GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
+                                    &td.details.reserves_close.reserve_uuid),
+
       GNUNET_PQ_result_spec_end
     };
 
@@ -233,6 +317,7 @@ lrbt_cb_table_reserves_out (void *cls,
                             unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_RESERVES_OUT
   };
@@ -240,6 +325,25 @@ lrbt_cb_table_reserves_out (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
+                                            &td.details.reserves_out.h_blind_ev),
+      GNUNET_PQ_result_spec_rsa_signature (
+        "denom_sig",
+        &td.details.reserves_out.denom_sig.rsa_signature),
+      GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
+                                            &td.details.reserves_out.reserve_sig),
+      TALER_PQ_result_spec_absolute_time (
+        "execution_date",
+        &td.details.reserves_out.execution_date),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                   &td.details.reserves_out.amount_with_fee),
+      GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
+                                    &td.details.reserves_out.reserve_uuid),
+      GNUNET_PQ_result_spec_uint64 ("denominations_serial",
+                                    &td.details.reserves_out.
+                                    denominations_serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -279,6 +383,8 @@ lrbt_cb_table_auditors (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -318,6 +424,8 @@ lrbt_cb_table_auditor_denom_sigs (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -357,6 +465,8 @@ lrbt_cb_table_exchange_sign_keys (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -396,6 +506,8 @@ lrbt_cb_table_signkey_revocations (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -435,6 +547,8 @@ lrbt_cb_table_known_coins (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -474,6 +588,8 @@ lrbt_cb_table_refresh_commitments (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -513,6 +629,8 @@ lrbt_cb_table_refresh_revealed_coins (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -552,6 +670,8 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -591,6 +711,8 @@ lrbt_cb_table_deposits (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -630,6 +752,8 @@ lrbt_cb_table_refunds (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -669,6 +793,8 @@ lrbt_cb_table_wire_out (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -708,6 +834,8 @@ lrbt_cb_table_aggregation_tracking (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -747,6 +875,8 @@ lrbt_cb_table_wire_fee (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -786,6 +916,8 @@ lrbt_cb_table_recoup (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -825,6 +957,8 @@ lrbt_cb_table_recoup_refresh (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       GNUNET_PQ_result_spec_end
     };
 

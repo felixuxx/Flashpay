@@ -84,13 +84,10 @@ history_entry_cmp (const struct TALER_EXCHANGE_ReserveHistory *h1,
     if ( (0 ==
           TALER_amount_cmp (&h1->amount,
                             &h2->amount)) &&
-         (h1->details.in_details.wire_reference_size ==
-          h2->details.in_details.wire_reference_size) &&
          (0 == strcasecmp (h1->details.in_details.sender_url,
                            h2->details.in_details.sender_url)) &&
-         (0 == memcmp (h1->details.in_details.wire_reference,
-                       h2->details.in_details.wire_reference,
-                       h1->details.in_details.wire_reference_size)) &&
+         (h1->details.in_details.wire_reference ==
+          h2->details.in_details.wire_reference) &&
          (h1->details.in_details.timestamp.abs_value_us ==
           h2->details.in_details.timestamp.abs_value_us) )
       return 0;

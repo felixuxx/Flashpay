@@ -101,14 +101,11 @@ TALER_EXCHANGE_parse_reserve_history (
                          "CREDIT"))
     {
       const char *wire_url;
-      void *wire_reference;
-      size_t wire_reference_size;
+      uint64_t wire_reference;
       struct GNUNET_TIME_Absolute timestamp;
-
       struct GNUNET_JSON_Specification withdraw_spec[] = {
-        GNUNET_JSON_spec_varsize ("wire_reference",
-                                  &wire_reference,
-                                  &wire_reference_size),
+        GNUNET_JSON_spec_uint64 ("wire_reference",
+                                 &wire_reference),
         TALER_JSON_spec_absolute_time ("timestamp",
                                        &timestamp),
         GNUNET_JSON_spec_string ("sender_account_url",
@@ -136,8 +133,6 @@ TALER_EXCHANGE_parse_reserve_history (
       }
       rh->details.in_details.sender_url = GNUNET_strdup (wire_url);
       rh->details.in_details.wire_reference = wire_reference;
-      rh->details.in_details.wire_reference_size =
-        wire_reference_size;
       rh->details.in_details.timestamp = timestamp;
       /* end type==DEPOSIT */
     }
@@ -425,7 +420,6 @@ TALER_EXCHANGE_free_reserve_history (
     switch (rhistory[i].type)
     {
     case TALER_EXCHANGE_RTT_CREDIT:
-      GNUNET_free (rhistory[i].details.in_details.wire_reference);
       GNUNET_free (rhistory[i].details.in_details.sender_url);
       break;
     case TALER_EXCHANGE_RTT_WITHDRAWAL:

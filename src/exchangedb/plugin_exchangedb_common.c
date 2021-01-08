@@ -41,7 +41,6 @@ common_free_reserve_history (void *cls,
 
         bt = rh->details.bank;
         GNUNET_free (bt->sender_account_details);
-        GNUNET_free (bt->wire_reference);
         GNUNET_free (bt);
         break;
       }
