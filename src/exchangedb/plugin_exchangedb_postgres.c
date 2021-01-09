@@ -781,16 +781,22 @@ postgres_get_session (void *cls)
       /* Store information about the desired denominations for a
          refresh operation, used in #postgres_insert_refresh_reveal() */
       GNUNET_PQ_make_prepare ("insert_refresh_revealed_coin",
+                              "WITH rcx AS"
+                              " (SELECT melt_serial_id"
+                              "    FROM refresh_commitments"
+                              "   WHERE rc=$1)"
                               "INSERT INTO refresh_revealed_coins "
-                              "(rc "
+                              "(melt_serial_id "
                               ",freshcoin_index "
                               ",link_sig "
                               ",denominations_serial "
                               ",coin_ev"
                               ",h_coin_ev"
                               ",ev_sig"
-                              ") SELECT $1, $2, $3, denominations_serial, $5, $6, $7 "
+                              ") SELECT rcx.melt_serial_id, $2, $3, "
+                              "         denominations_serial, $5, $6, $7 "
                               "    FROM denominations"
+                              "   CROSS JOIN rcx"
                               "   WHERE denom_pub_hash=$4;",
                               7),
       /* Obtain information about the coins created in a refresh
@@ -805,6 +811,8 @@ postgres_get_session (void *cls)
                               " FROM refresh_revealed_coins"
                               "    JOIN denominations denom "
                               "      USING (denominations_serial)"
+                              "    JOIN refresh_commitments"
+                              "      USING (melt_serial_id)"
                               " WHERE rc=$1"
                               "   ORDER BY freshcoin_index ASC;",
                               1),
@@ -813,11 +821,12 @@ postgres_get_session (void *cls)
          keys we learned */
       GNUNET_PQ_make_prepare ("insert_refresh_transfer_keys",
                               "INSERT INTO refresh_transfer_keys "
-                              "(rc"
+                              "(melt_serial_id"
                               ",transfer_pub"
                               ",transfer_privs"
-                              ") VALUES "
-                              "($1, $2, $3);",
+                              ") SELECT melt_serial_id, $2, $3"
+                              "    FROM refresh_commitments"
+                              "   WHERE rc=$1",
                               3),
       /* Used in #postgres_get_refresh_reveal() to retrieve transfer
          keys from /refresh/reveal */
@@ -826,23 +835,24 @@ postgres_get_session (void *cls)
                               " transfer_pub"
                               ",transfer_privs"
                               " FROM refresh_transfer_keys"
+                              " JOIN refresh_commitments"
+                              "   USING (melt_serial_id)"
                               " WHERE rc=$1;",
                               1),
-
-
       /* Used in #postgres_insert_refund() to store refund information */
       GNUNET_PQ_make_prepare ("insert_refund",
                               "INSERT INTO refunds "
-                              "(known_coin_id "
-                              ",merchant_pub "
+                              "(deposit_serial_id "
                               ",merchant_sig "
-                              ",h_contract_terms "
                               ",rtransaction_id "
                               ",amount_with_fee_val "
                               ",amount_with_fee_frac "
-                              ") SELECT known_coin_id, $2, $3, $4, $5, $6, $7"
-                              "    FROM known_coins"
-                              "   WHERE coin_pub=$1",
+                              ") SELECT deposit_serial_id, $3, $5, $6, $7"
+                              "    FROM deposits"
+                              "    JOIN known_coins USING (known_coin_id)"
+                              "   WHERE coin_pub=$1"
+                              "     AND h_contract_terms=$4"
+                              "     AND merchant_pub=$2",
                               7),
       /* Query the 'refunds' by coin public key */
       GNUNET_PQ_make_prepare ("get_refunds_by_coin",
@@ -851,12 +861,13 @@ postgres_get_session (void *cls)
                               ",merchant_sig"
                               ",h_contract_terms"
                               ",rtransaction_id"
-                              ",amount_with_fee_val"
-                              ",amount_with_fee_frac"
+                              ",refunds.amount_with_fee_val"
+                              ",refunds.amount_with_fee_frac"
                               ",denom.fee_refund_val "
                               ",denom.fee_refund_frac "
                               ",refund_serial_id"
                               " FROM refunds"
+                              " JOIN deposits USING (deposit_serial_id)"
                               " JOIN known_coins USING (known_coin_id)"
                               " JOIN denominations denom USING (denominations_serial)"
                               " WHERE coin_pub=$1;",
@@ -864,9 +875,10 @@ postgres_get_session (void *cls)
       /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
       GNUNET_PQ_make_prepare ("get_refunds_by_coin_and_contract",
                               "SELECT"
-                              " amount_with_fee_val"
-                              ",amount_with_fee_frac"
+                              " refunds.amount_with_fee_val"
+                              ",refunds.amount_with_fee_frac"
                               " FROM refunds"
+                              " JOIN deposits USING (deposit_serial_id)"
                               " JOIN known_coins USING (known_coin_id)"
                               " WHERE coin_pub=$1"
                               "   AND merchant_pub=$2"
@@ -881,10 +893,11 @@ postgres_get_session (void *cls)
                               ",rtransaction_id"
                               ",denom.denom_pub"
                               ",kc.coin_pub"
-                              ",amount_with_fee_val"
-                              ",amount_with_fee_frac"
+                              ",refunds.amount_with_fee_val"
+                              ",refunds.amount_with_fee_frac"
                               ",refund_serial_id"
                               " FROM refunds"
+                              "   JOIN deposits USING (deposit_serial_id)"
                               "   JOIN known_coins kc USING (known_coin_id)"
                               "   JOIN denominations denom ON (kc.denominations_serial = denom.denominations_serial)"
                               " WHERE refund_serial_id>=$1"
@@ -1086,9 +1099,9 @@ postgres_get_session (void *cls)
                               ",rrc.link_sig"
                               " FROM refresh_commitments"
                               "     JOIN refresh_revealed_coins rrc"
-                              "       USING (rc)"
+                              "       USING (melt_serial_id)"
                               "     JOIN refresh_transfer_keys tp"
-                              "       USING (rc)"
+                              "       USING (melt_serial_id)"
                               "     JOIN denominations denoms"
                               "       ON (rrc.denominations_serial = denoms.denominations_serial)"
                               " WHERE old_known_coin_id="
@@ -1239,16 +1252,17 @@ postgres_get_session (void *cls)
                               ",wire_deadline"
                               ",tiny"
                               ",done"
-                              " FROM deposits"
+                              " FROM deposits d"
                               " JOIN known_coins USING (known_coin_id)"
                               " WHERE wire_deadline >= $1"
                               " AND wire_deadline < $2"
                               " AND NOT (EXISTS (SELECT 1"
                               "            FROM refunds"
-                              "            WHERE (refunds.known_coin_id = deposits.known_coin_id))"
+                              "            JOIN deposits dx USING (deposit_serial_id)"
+                              "            WHERE (dx.known_coin_id = d.known_coin_id))"
                               "       OR EXISTS (SELECT 1"
                               "            FROM aggregation_tracking"
-                              "            WHERE (aggregation_tracking.deposit_serial_id = deposits.deposit_serial_id)))"
+                              "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
                               " ORDER BY wire_deadline ASC",
                               2),
       /* Used in #postgres_select_wire_out_above_serial_id() */
@@ -1364,10 +1378,10 @@ postgres_get_session (void *cls)
                               " FROM recoup_refresh"
                               "    INNER JOIN refresh_revealed_coins rrc"
                               "      USING (rrc_serial)"
-                              "    INNER JOIN refresh_commitments rc"
-                              "      ON (rrc.rc = rc.rc)"
+                              "    INNER JOIN refresh_commitments rfc"
+                              "      ON (rrc.melt_serial_id = rfc.melt_serial_id)"
                               "    INNER JOIN known_coins old_coins"
-                              "      ON (rc.old_known_coin_id = old_coins.known_coin_id)"
+                              "      ON (rfc.old_known_coin_id = old_coins.known_coin_id)"
                               "    INNER JOIN known_coins new_coins"
                               "      ON (new_coins.known_coin_id = recoup_refresh.known_coin_id)"
                               "    INNER JOIN denominations new_denoms"
@@ -1442,7 +1456,7 @@ postgres_get_session (void *cls)
                               "   (SELECT rrc.rrc_serial"
                               "    FROM refresh_commitments"
                               "       JOIN refresh_revealed_coins rrc"
-                              "           USING (rc)"
+                              "           USING (melt_serial_id)"
                               "    WHERE old_known_coin_id="
                               "       (SELECT known_coin_id"
                               "          FROM known_coins"
@@ -1518,10 +1532,10 @@ postgres_get_session (void *cls)
                               " FROM recoup_refresh"
                               "    JOIN refresh_revealed_coins rrc"
                               "      USING (rrc_serial)"
-                              "    JOIN refresh_commitments rc"
-                              "      ON (rrc.rc = rc.rc)"
+                              "    JOIN refresh_commitments rfc"
+                              "      ON (rrc.melt_serial_id = rfc.melt_serial_id)"
                               "    JOIN known_coins old_coins"
-                              "      ON (rc.old_known_coin_id = old_coins.known_coin_id)"
+                              "      ON (rfc.old_known_coin_id = old_coins.known_coin_id)"
                               "    JOIN known_coins coins"
                               "      ON (recoup_refresh.known_coin_id = coins.known_coin_id)"
                               "    JOIN denominations denoms"
@@ -1543,7 +1557,7 @@ postgres_get_session (void *cls)
                               "SELECT"
                               " okc.coin_pub AS old_coin_pub"
                               " FROM refresh_revealed_coins rrc"
-                              " JOIN refresh_commitments rcom USING (rc)"
+                              " JOIN refresh_commitments rcom USING (melt_serial_id)"
                               " JOIN known_coins okc ON (rcom.old_known_coin_id = okc.known_coin_id)"
                               " WHERE h_coin_ev=$1"
                               " LIMIT 1;",
@@ -2041,6 +2055,7 @@ postgres_get_session (void *cls)
         ",rrc_serial"
         ",denominations_serial"
         " FROM refresh_revealed_coins"
+        " JOIN refresh_commitments USING (melt_serial_id)"
         " ORDER BY rrc_serial ASC;",
         0),
       GNUNET_PQ_make_prepare (
@@ -2051,6 +2066,7 @@ postgres_get_session (void *cls)
         ",transfer_pub"
         ",transfer_privs"
         " FROM refresh_transfer_keys"
+        " JOIN refresh_commitments USING (melt_serial_id)"
         " ORDER BY rtc_serial ASC;",
         0),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_deposits",
@@ -2080,10 +2096,11 @@ postgres_get_session (void *cls)
                               ",merchant_sig"
                               ",h_contract_terms"
                               ",rtransaction_id"
-                              ",amount_with_fee_val"
-                              ",amount_with_fee_frac"
+                              ",refunds.amount_with_fee_val"
+                              ",refunds.amount_with_fee_frac"
                               ",known_coin_id"
                               " FROM refunds"
+                              " JOIN deposits USING (deposit_serial_id)"
                               " ORDER BY refund_serial_id ASC;",
                               0),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_out",

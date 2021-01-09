@@ -75,6 +75,32 @@ struct TALER_EXCHANGEDB_DenominationKeyInformationP
 
 GNUNET_NETWORK_STRUCT_END
 
+/**
+ * Meta data about an exchange online signing key.
+ */
+struct TALER_EXCHANGEDB_SignkeyMetaData
+{
+  /**
+   * Start time of the validity period for this key.
+   */
+  struct GNUNET_TIME_Absolute start;
+
+  /**
+   * The exchange will sign messages with this key between @e start and this time.
+   */
+  struct GNUNET_TIME_Absolute expire_sign;
+
+  /**
+   * When do signatures with this sign key become invalid?
+   * After this point, these signatures cannot be used in (legal)
+   * disputes anymore, as the Exchange is then allowed to destroy its side
+   * of the evidence.  @e expire_legal is expected to be significantly
+   * larger than @e expire_sign (by a year or more).
+   */
+  struct GNUNET_TIME_Absolute expire_legal;
+
+};
+
 
 /**
  * Enumeration of all of the tables replicated by exchange-auditor
@@ -194,16 +220,97 @@ struct TALER_EXCHANGEDB_TableData
       uint64_t denominations_serial;
     } reserves_out;
 
-    struct {} auditors;
-    struct {} auditor_denom_sigs;
-    struct {} exchange_sign_keys;
-    struct {} signkey_revocations;
-    struct {} known_coins;
-    struct {} refresh_commitments;
-    struct {} refresh_revealed_coins;
-    struct {} refresh_transfer_keys;
-    struct {} deposits;
-    struct {} refunds;
+    struct
+    {
+      struct TALER_AuditorPublicKeyP auditor_pub;
+      char *auditor_url;
+      char *auditor_name;
+      bool is_active;
+      struct GNUNET_TIME_Absolute last_change;
+    } auditors;
+
+    struct
+    {
+      uint64_t auditor_uuid;
+      uint64_t denominations_serial;
+      struct TALER_AuditorSignatureP auditor_sig;
+    } auditor_denom_sigs;
+
+    struct
+    {
+      struct TALER_ExchangePublicKeyP exchange_pub;
+      struct TALER_MasterSignatureP master_sig;
+      struct TALER_EXCHANGEDB_SignkeyMetaData meta;
+    } exchange_sign_keys;
+
+    struct
+    {
+      uint64_t esk_serial;
+      struct TALER_MasterSignatureP master_sig;
+    } signkey_revocations;
+
+    struct
+    {
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_DenominationSignature denom_sig;
+      uint64_t denominations_serial;
+    } known_coins;
+
+    struct
+    {
+      struct TALER_RefreshCommitmentP rc;
+      struct TALER_CoinSpendSignatureP old_coin_sig;
+      struct TALER_Amount amount_with_fee;
+      uint32_t noreveal_index;
+      uint64_t old_known_coin_id;
+    } refresh_commitments;
+
+    struct
+    {
+      uint64_t freshcoin_index;
+      struct TALER_CoinSpendSignatureP link_sig;
+      void *coin_ev;
+      size_t coin_ev_size;
+      // h_coin_ev omitted, to be recomputed!
+      struct TALER_DenominationSignature ev_sig;
+      uint64_t denominations_serial;
+      uint64_t melt_serial_id;
+    } refresh_revealed_coins;
+
+    struct
+    {
+      struct TALER_TransferPublicKeyP tp;
+      struct TALER_TransferPrivateKeyP tprivs[TALER_CNC_KAPPA - 1];
+      uint64_t melt_serial_id;
+    } refresh_transfer_keys;
+
+    struct
+    {
+      struct TALER_Amount amount_with_fee;
+      struct GNUNET_TIME_Absolute wallet_timestamp;
+      struct GNUNET_TIME_Absolute exchange_timestamp;
+      struct GNUNET_TIME_Absolute refund_deadline;
+      struct GNUNET_TIME_Absolute wire_deadline;
+      struct TALER_MerchantPublicKeyP merchant_pub;
+      struct GNUNET_HashCode h_contract_terms;
+      // h_wire omitted, to be recomputed!
+      struct TALER_CoinSpendSignatureP coin_sig;
+      json_t *wire;
+      bool tiny;
+      bool done;
+      uint64_t known_coin_id;
+    } deposits;
+
+    struct
+    {
+      struct TALER_MerchantPublicKeyP merchant_pub; // FIXME
+      struct TALER_MerchantSignatureP merchant_sig;
+      struct GNUNET_HashCode h_contract_terms; // FIXME
+      uint64_t rtransaction_id;
+      struct TALER_Amount amount_with_fee;
+      uint64_t known_coin_id;
+    } refunds;
+
     struct {} wire_out;
     struct {} aggregation_tracking;
     struct {} wire_fee;
@@ -461,33 +568,6 @@ typedef void
   const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
   const struct TALER_MasterSignatureP *master_sig,
   bool recoup_possible);
-
-
-/**
- * Meta data about an exchange online signing key.
- */
-struct TALER_EXCHANGEDB_SignkeyMetaData
-{
-  /**
-   * Start time of the validity period for this key.
-   */
-  struct GNUNET_TIME_Absolute start;
-
-  /**
-   * The exchange will sign messages with this key between @e start and this time.
-   */
-  struct GNUNET_TIME_Absolute expire_sign;
-
-  /**
-   * When do signatures with this sign key become invalid?
-   * After this point, these signatures cannot be used in (legal)
-   * disputes anymore, as the Exchange is then allowed to destroy its side
-   * of the evidence.  @e expire_legal is expected to be significantly
-   * larger than @e expire_sign (by a year or more).
-   */
-  struct GNUNET_TIME_Absolute expire_legal;
-
-};
 
 
 /**

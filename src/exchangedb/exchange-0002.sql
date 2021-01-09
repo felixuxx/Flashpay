@@ -231,6 +231,56 @@ COMMENT ON COLUMN recoup_refresh.rrc_serial
   IS 'Identifies the h_blind_ev of the recouped coin (as h_coin_ev).';
 
 
+-- Change 'rc' in refresh_transfer_keys and refresh_revealed_coins tables to 'melt_serial_id'
+ALTER TABLE refresh_transfer_keys
+  ADD COLUMN melt_serial_id INT8 REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE;
+UPDATE refresh_transfer_keys
+  SET melt_serial_id=d.melt_serial_id
+  FROM refresh_transfer_keys o
+  INNER JOIN refresh_commitments d ON (d.rc = o.rc);
+ALTER TABLE refresh_transfer_keys
+  ALTER COLUMN melt_serial_id SET NOT NULL;
+ALTER TABLE refresh_transfer_keys
+  DROP COLUMN rc;
+COMMENT ON COLUMN refresh_transfer_keys.melt_serial_id
+  IS 'Identifies the refresh commitment (rc) of the operation.';
+
+ALTER TABLE refresh_revealed_coins
+  ADD COLUMN melt_serial_id INT8 REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE;
+UPDATE refresh_revealed_coins
+  SET melt_serial_id=d.melt_serial_id
+  FROM refresh_revealed_coins o
+  INNER JOIN refresh_commitments d ON (d.rc = o.rc);
+ALTER TABLE refresh_revealed_coins
+  ALTER COLUMN melt_serial_id SET NOT NULL;
+ALTER TABLE refresh_revealed_coins
+  DROP COLUMN rc;
+COMMENT ON COLUMN refresh_revealed_coins.melt_serial_id
+  IS 'Identifies the refresh commitment (rc) of the operation.';
+
+
+-- Change 'merchant_pub' and 'h_contract_terms' and 'known_coin_id' in 'refunds' table
+-- to 'deposit_serial_id' instead!
+ALTER TABLE refunds
+  ADD COLUMN deposit_serial_id INT8 REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE;
+UPDATE refunds
+  SET deposit_serial_id=d.deposit_serial_id
+  FROM refunds o
+  INNER JOIN deposits d
+    ON ( (d.known_coin_id = o.known_coin_id) AND
+         (d.h_contract_terms = o.h_contract_terms) AND
+         (d.merchant_pub = o.merchant_pub) );
+ALTER TABLE refunds
+  ALTER COLUMN deposit_serial_id SET NOT NULL;
+ALTER TABLE refunds
+  DROP COLUMN merchant_pub,
+  DROP COLUMN h_contract_terms,
+  DROP COLUMN known_coin_id;
+COMMENT ON COLUMN refunds.deposit_serial_id
+  IS 'Identifies ONLY the merchant_pub, h_contract_terms and known_coin_id. Multiple deposits may match a refund, this only identifies one of them.';
+
+
+
 -- Create additional tables...
 
 CREATE TABLE IF NOT EXISTS auditors
