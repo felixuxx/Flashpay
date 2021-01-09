@@ -280,7 +280,6 @@ COMMENT ON COLUMN refunds.deposit_serial_id
   IS 'Identifies ONLY the merchant_pub, h_contract_terms and known_coin_id. Multiple deposits may match a refund, this only identifies one of them.';
 
 
-
 -- Create additional tables...
 
 CREATE TABLE IF NOT EXISTS auditors

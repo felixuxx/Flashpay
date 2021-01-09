@@ -349,7 +349,7 @@ refreshes_reveal_transaction (void *cls,
       else
       {
         /* Reconstruct coin envelopes from transfer private key */
-        struct TALER_TransferPrivateKeyP *tpriv
+        const struct TALER_TransferPrivateKeyP *tpriv
           = &rctx->transfer_privs[i - off];
         struct TALER_TransferSecretP ts;
 
@@ -695,32 +695,22 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (GNUNET_OK != res)
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     /* Check link_sigs[i] signature */
+    if (GNUNET_OK !=
+        TALER_wallet_link_verify (
+          &dk_h[i],
+          &rctx->gamma_tp,
+          rcds[i].coin_ev,
+          rcds[i].coin_ev_size,
+          &melt.session.coin.coin_pub,
+          &link_sigs[i]))
     {
-      struct TALER_LinkDataPS ldp = {
-        .purpose.size = htonl (sizeof (ldp)),
-        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
-        .h_denom_pub = dk_h[i],
-        .old_coin_pub = melt.session.coin.coin_pub,
-        .transfer_pub = rctx->gamma_tp
-      };
-
-      GNUNET_CRYPTO_hash (rcds[i].coin_ev,
-                          rcds[i].coin_ev_size,
-                          &ldp.coin_envelope_hash);
-      if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (
-            TALER_SIGNATURE_WALLET_COIN_LINK,
-            &ldp,
-            &link_sigs[i].eddsa_signature,
-            &melt.session.coin.coin_pub.eddsa_pub))
-      {
-        GNUNET_break_op (0);
-        ret = TALER_MHD_reply_with_error (connection,
-                                          MHD_HTTP_FORBIDDEN,
-                                          TALER_EC_EXCHANGE_REFRESHES_REVEAL_LINK_SIGNATURE_INVALID,
-                                          NULL);
-        goto cleanup;
-      }
+      GNUNET_break_op (0);
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_REFRESHES_REVEAL_LINK_SIGNATURE_INVALID,
+        NULL);
+      goto cleanup;
     }
   }
 

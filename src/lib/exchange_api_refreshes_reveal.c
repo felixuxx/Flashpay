@@ -391,30 +391,20 @@ TALER_EXCHANGE_refreshes_reveal (
                    json_array_append_new (coin_evs,
                                           GNUNET_JSON_from_data (pd.coin_ev,
                                                                  pd.coin_ev_size)));
-
-    /* compute link signature */
     {
       struct TALER_CoinSpendSignatureP link_sig;
-      struct TALER_LinkDataPS ldp;
 
-      ldp.purpose.size = htonl (sizeof (ldp));
-      ldp.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK);
-      ldp.h_denom_pub = denom_hash;
-      GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
-                                          &ldp.old_coin_pub.eddsa_pub);
-      ldp.transfer_pub = transfer_pub;
-      GNUNET_CRYPTO_hash (pd.coin_ev,
-                          pd.coin_ev_size,
-                          &ldp.coin_envelope_hash);
-      GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
-                                &ldp,
-                                &link_sig.eddsa_signature);
+      TALER_wallet_link_sign (&denom_hash,
+                              &transfer_pub,
+                              pd.coin_ev,
+                              pd.coin_ev_size,
+                              &md->melted_coin.coin_priv,
+                              &link_sig);
       GNUNET_assert (0 ==
-                     json_array_append_new (link_sigs,
-                                            GNUNET_JSON_from_data_auto (
-                                              &link_sig)));
+                     json_array_append_new (
+                       link_sigs,
+                       GNUNET_JSON_from_data_auto (&link_sig)));
     }
-
     GNUNET_free (pd.coin_ev);
   }
 

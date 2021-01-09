@@ -1274,6 +1274,7 @@ struct TALER_EXCHANGEDB_LinkList
    * link data, of type #TALER_SIGNATURE_WALLET_COIN_LINK
    */
   struct TALER_CoinSpendSignatureP orig_coin_link_sig;
+
 };
 
 

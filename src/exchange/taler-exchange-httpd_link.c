@@ -83,8 +83,8 @@ handle_link_data (void *cls,
 
     obj = json_pack ("{s:o, s:o, s:o}",
                      "denom_pub",
-                     GNUNET_JSON_from_rsa_public_key
-                       (pos->denom_pub.rsa_public_key),
+                     GNUNET_JSON_from_rsa_public_key (
+                       pos->denom_pub.rsa_public_key),
                      "ev_sig",
                      GNUNET_JSON_from_rsa_signature
                        (pos->ev_sig.rsa_signature),

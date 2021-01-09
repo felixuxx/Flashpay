@@ -1050,6 +1050,47 @@ TALER_CRYPTO_helper_esign_disconnect (
   struct TALER_CRYPTO_ExchangeSignHelper *esh);
 
 
+/* ********************* wallet signing ************************** */
+
+/**
+ * Sign link data.
+ *
+ * @param h_denom_pub hash of the denomiantion public key of the new coin
+ * @param transfer_pub transfer public key
+ * @param coin_ev coin envelope
+ * @param coin_ev_size number of bytes in @a coin_ev
+ * @param old_coin_priv private key to sign with
+ * @param[out] coin_sig resulting signature
+ */
+void
+TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
+                        const struct TALER_TransferPublicKeyP *transfer_pub,
+                        const void *coin_ev,
+                        size_t coin_ev_size,
+                        const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
+                        struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Verify link signature.
+ *
+ * @param h_denom_pub hash of the denomiantion public key of the new coin
+ * @param transfer_pub transfer public key
+ * @param coin_ev coin envelope
+ * @param coin_ev_size number of bytes in @a coin_ev
+ * @param old_coin_priv private key to sign with
+ * @param coin_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_link_verify (
+  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_TransferPublicKeyP *transfer_pub,
+  const void *coin_ev,
+  size_t coin_ev_size,
+  const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig);
+
 /* ********************* offline signing ************************** */
 
 

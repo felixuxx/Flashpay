@@ -794,7 +794,7 @@ postgres_get_session (void *cls)
                               ",h_coin_ev"
                               ",ev_sig"
                               ") SELECT rcx.melt_serial_id, $2, $3, "
-                              "         denominations_serial, $5, $6, $7 "
+                              "         denominations_serial, $5, $6, $7"
                               "    FROM denominations"
                               "   CROSS JOIN rcx"
                               "   WHERE denom_pub_hash=$4;",
@@ -1108,7 +1108,7 @@ postgres_get_session (void *cls)
                               "   (SELECT known_coin_id "
                               "      FROM known_coins"
                               "     WHERE coin_pub=$1)"
-                              " ORDER BY tp.transfer_pub",
+                              " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC",
                               1),
       /* Used in #postgres_lookup_wire_transfer */
       GNUNET_PQ_make_prepare ("lookup_transactions",
@@ -2323,6 +2323,11 @@ postgres_preflight (void *cls,
   };
 
   (void) cls;
+  if (NULL == session)
+  {
+    GNUNET_break (0);
+    return;
+  }
   if (NULL == session->transaction_name)
     return; /* all good */
   if (GNUNET_OK ==

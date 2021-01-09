@@ -75,7 +75,7 @@ struct TALER_EXCHANGE_LinkHandle
  *
  * @param lh link handle
  * @param json json reply with the data for one coin
- * @param coin_num number of the coin to decode
+ * @param coin_num number of the coin
  * @param trans_pub our transfer public key
  * @param[out] coin_priv where to return private coin key
  * @param[out] sig where to return private coin signature
@@ -85,7 +85,7 @@ struct TALER_EXCHANGE_LinkHandle
 static int
 parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                  const json_t *json,
-                 unsigned int coin_num,
+                 uint32_t coin_num,
                  const struct TALER_TransferPublicKeyP *trans_pub,
                  struct TALER_CoinSpendPrivateKeyP *coin_priv,
                  struct TALER_DenominationSignature *sig,
@@ -112,7 +112,6 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
   TALER_link_recover_transfer_secret (trans_pub,
                                       &lh->coin_priv,
                                       &secret);
@@ -130,14 +129,10 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   {
     struct TALER_PlanchetDetail pd;
     struct GNUNET_HashCode c_hash;
-    struct TALER_LinkDataPS ldp = {
-      .purpose.size = htonl (sizeof (ldp)),
-      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
-      .transfer_pub = *trans_pub
-    };
+    struct TALER_CoinSpendPublicKeyP old_coin_pub;
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
-                                        &ldp.old_coin_pub.eddsa_pub);
+                                        &old_coin_pub.eddsa_pub);
     pub->rsa_public_key = rpub;
     if (GNUNET_OK !=
         TALER_planchet_prepare (pub,
@@ -149,22 +144,20 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    ldp.h_denom_pub = pd.denom_pub_hash;
-    GNUNET_CRYPTO_hash (pd.coin_ev,
-                        pd.coin_ev_size,
-                        &ldp.coin_envelope_hash);
-    GNUNET_free (pd.coin_ev);
-
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
-                                    &ldp,
-                                    &link_sig.eddsa_signature,
-                                    &ldp.old_coin_pub.eddsa_pub))
+        TALER_wallet_link_verify (&pd.denom_pub_hash,
+                                  trans_pub,
+                                  pd.coin_ev,
+                                  pd.coin_ev_size,
+                                  &old_coin_pub,
+                                  &link_sig))
     {
       GNUNET_break_op (0);
+      GNUNET_free (pd.coin_ev);
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
+    GNUNET_free (pd.coin_ev);
   }
 
   /* clean up */
@@ -457,11 +450,11 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
 
-    end = GNUNET_STRINGS_data_to_string (&coin_pub,
-                                         sizeof (struct
-                                                 TALER_CoinSpendPublicKeyP),
-                                         pub_str,
-                                         sizeof (pub_str));
+    end = GNUNET_STRINGS_data_to_string (
+      &coin_pub,
+      sizeof (struct TALER_CoinSpendPublicKeyP),
+      pub_str,
+      sizeof (pub_str));
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),

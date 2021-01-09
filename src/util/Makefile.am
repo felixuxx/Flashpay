@@ -76,6 +76,7 @@ libtalerutil_la_SOURCES = \
   taler_error_codes.c \
   url.c \
   util.c \
+  wallet_signatures.c \
   yna.c \
   os_installation.c
 
