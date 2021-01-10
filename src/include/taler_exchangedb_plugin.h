@@ -267,7 +267,7 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      uint64_t freshcoin_index;
+      uint32_t freshcoin_index;
       struct TALER_CoinSpendSignatureP link_sig;
       void *coin_ev;
       size_t coin_ev_size;

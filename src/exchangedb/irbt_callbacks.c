@@ -149,6 +149,15 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.wire_reference),
+    TALER_PQ_query_param_amount (&td->details.reserves_in.credit),
+    GNUNET_PQ_query_param_string (
+      td->details.reserves_in.sender_account_details),
+    GNUNET_PQ_query_param_string (
+      td->details.reserves_in.exchange_account_section),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.reserves_in.execution_date),
+    GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.reserve_uuid),
     GNUNET_PQ_query_param_end
   };
 
@@ -173,6 +182,13 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.reserves_close.execution_date),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.reserves_close.wtid),
+    GNUNET_PQ_query_param_string (td->details.reserves_close.receiver_account),
+    TALER_PQ_query_param_amount (&td->details.reserves_close.amount),
+    TALER_PQ_query_param_amount (&td->details.reserves_close.closing_fee),
+    GNUNET_PQ_query_param_uint64 (&td->details.reserves_close.reserve_uuid),
     GNUNET_PQ_query_param_end
   };
 
@@ -197,6 +213,17 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.reserves_out.h_blind_ev),
+    GNUNET_PQ_query_param_rsa_signature (
+      td->details.reserves_out.denom_sig.rsa_signature),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_out.reserve_sig),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.reserves_out.execution_date),
+    TALER_PQ_query_param_amount (&td->details.reserves_out.amount_with_fee),
+    GNUNET_PQ_query_param_uint64 (&td->details.reserves_out.reserve_uuid),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.reserves_out.denominations_serial),
     GNUNET_PQ_query_param_end
   };
 
@@ -219,8 +246,14 @@ irbt_cb_table_auditors (struct PostgresClosure *pg,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
+  uint8_t is_active = td->details.auditors.is_active ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.auditors.auditor_pub),
+    GNUNET_PQ_query_param_string (td->details.auditors.auditor_name),
+    GNUNET_PQ_query_param_string (td->details.auditors.auditor_url),
+    GNUNET_PQ_query_param_auto_from_type (&is_active),
+    GNUNET_PQ_query_param_absolute_time (&td->details.auditors.last_change),
     GNUNET_PQ_query_param_end
   };
 
@@ -245,6 +278,11 @@ irbt_cb_table_auditor_denom_sigs (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (&td->details.auditor_denom_sigs.auditor_uuid),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.auditor_denom_sigs.denominations_serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.auditor_denom_sigs.auditor_sig),
     GNUNET_PQ_query_param_end
   };
 
@@ -269,6 +307,16 @@ irbt_cb_table_exchange_sign_keys (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.exchange_sign_keys.exchange_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.exchange_sign_keys.master_sig),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.exchange_sign_keys.meta.start),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.exchange_sign_keys.meta.expire_sign),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.exchange_sign_keys.meta.expire_legal),
     GNUNET_PQ_query_param_end
   };
 
@@ -293,6 +341,9 @@ irbt_cb_table_signkey_revocations (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (&td->details.signkey_revocations.esk_serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.signkey_revocations.master_sig),
     GNUNET_PQ_query_param_end
   };
 
@@ -317,6 +368,11 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.known_coins.coin_pub),
+    GNUNET_PQ_query_param_rsa_signature (
+      td->details.known_coins.denom_sig.rsa_signature),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.known_coins.denominations_serial),
     GNUNET_PQ_query_param_end
   };
 
@@ -341,6 +397,15 @@ irbt_cb_table_refresh_commitments (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.refresh_commitments.rc),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.refresh_commitments.old_coin_sig),
+    TALER_PQ_query_param_amount (
+      &td->details.refresh_commitments.amount_with_fee),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.refresh_commitments.noreveal_index),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.refresh_commitments.old_known_coin_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -364,12 +429,31 @@ irbt_cb_table_refresh_revealed_coins (struct PostgresClosure *pg,
                                       const struct
                                       TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_HashCode h_coin_ev;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint32 (
+      &td->details.refresh_revealed_coins.freshcoin_index),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.refresh_revealed_coins.link_sig),
+    GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
+    GNUNET_PQ_query_param_fixed_size (
+      td->details.refresh_revealed_coins.coin_ev,
+      td->details.refresh_revealed_coins.
+      coin_ev_size),
+    GNUNET_PQ_query_param_rsa_signature (
+      td->details.refresh_revealed_coins.ev_sig.rsa_signature),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.refresh_revealed_coins.denominations_serial),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.refresh_revealed_coins.melt_serial_id),
     GNUNET_PQ_query_param_end
   };
 
   (void) pg;
+  GNUNET_CRYPTO_hash (td->details.refresh_revealed_coins.coin_ev,
+                      td->details.refresh_revealed_coins.coin_ev_size,
+                      &h_coin_ev);
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_into_table_refresh_revealed_coins",
                                              params);

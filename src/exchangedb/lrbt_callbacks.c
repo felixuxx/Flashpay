@@ -694,7 +694,7 @@ lrbt_cb_table_refresh_revealed_coins (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "serial",
         &td.serial),
-      GNUNET_PQ_result_spec_uint64 (
+      GNUNET_PQ_result_spec_uint32 (
         "freshcoin_index",
         &td.details.refresh_revealed_coins.freshcoin_index),
       GNUNET_PQ_result_spec_auto_from_type (
