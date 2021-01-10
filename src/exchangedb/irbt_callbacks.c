@@ -37,6 +37,15 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
                              struct TALER_EXCHANGEDB_Session *session,
                              const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -53,6 +62,15 @@ irbt_cb_table_denomination_revocations (struct PostgresClosure *pg,
                                         const struct
                                         TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -68,6 +86,15 @@ irbt_cb_table_reserves (struct PostgresClosure *pg,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -83,6 +110,15 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
                            struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -98,6 +134,15 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
                               struct TALER_EXCHANGEDB_Session *session,
                               const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -113,6 +158,15 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
                             struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -128,6 +182,15 @@ irbt_cb_table_auditors (struct PostgresClosure *pg,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -143,6 +206,15 @@ irbt_cb_table_auditor_denom_sigs (struct PostgresClosure *pg,
                                   struct TALER_EXCHANGEDB_Session *session,
                                   const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -158,6 +230,15 @@ irbt_cb_table_exchange_sign_keys (struct PostgresClosure *pg,
                                   struct TALER_EXCHANGEDB_Session *session,
                                   const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -173,6 +254,15 @@ irbt_cb_table_signkey_revocations (struct PostgresClosure *pg,
                                    struct TALER_EXCHANGEDB_Session *session,
                                    const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -188,6 +278,15 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
                            struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -203,6 +302,15 @@ irbt_cb_table_refresh_commitments (struct PostgresClosure *pg,
                                    struct TALER_EXCHANGEDB_Session *session,
                                    const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -219,6 +327,15 @@ irbt_cb_table_refresh_revealed_coins (struct PostgresClosure *pg,
                                       const struct
                                       TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -235,6 +352,15 @@ irbt_cb_table_refresh_transfer_keys (struct PostgresClosure *pg,
                                      const struct
                                      TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -250,6 +376,15 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -265,6 +400,15 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
                        struct TALER_EXCHANGEDB_Session *session,
                        const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -280,6 +424,15 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -295,6 +448,15 @@ irbt_cb_table_aggregation_tracking (struct PostgresClosure *pg,
                                     struct TALER_EXCHANGEDB_Session *session,
                                     const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -310,6 +472,15 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -325,6 +496,15 @@ irbt_cb_table_recoup (struct PostgresClosure *pg,
                       struct TALER_EXCHANGEDB_Session *session,
                       const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
@@ -340,6 +520,15 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
                               struct TALER_EXCHANGEDB_Session *session,
                               const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_end
+  };
+
+  (void) pg;
+  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                             "insert_into_table_",
+                                             params);
 }
 
 
