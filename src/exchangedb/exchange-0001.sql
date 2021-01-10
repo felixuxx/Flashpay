@@ -341,10 +341,12 @@ COMMENT ON TABLE wire_out
 CREATE TABLE IF NOT EXISTS aggregation_tracking
   (aggregation_serial_id BIGSERIAL UNIQUE
   ,deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE
-  ,wtid_raw BYTEA  CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE
+  ,wtid_raw BYTEA CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE
   );
 COMMENT ON TABLE aggregation_tracking
   IS 'mapping from wire transfer identifiers (WTID) to deposits (and back)';
+COMMENT ON COLUMN aggregation_tracking.wtid_raw
+  IS 'We first create entries in the aggregation_tracking table and then finally the wire_out entry once we know the total amount. Hence the constraint must be deferrable and we cannot use a wireout_uuid here, because we do not have it when these rows are created. Changing the logic to first INSERT a dummy row into wire_out and then UPDATEing that row in the same transaction would theoretically reduce per-deposit storage costs by 5 percent (24/~460 bytes).';
 
 CREATE INDEX IF NOT EXISTS aggregation_tracking_wtid_index
   ON aggregation_tracking

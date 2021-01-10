@@ -378,11 +378,6 @@ struct TALER_LinkDataPS
   struct GNUNET_HashCode h_denom_pub;
 
   /**
-   * Public key of the old coin being refreshed.
-   */
-  struct TALER_CoinSpendPublicKeyP old_coin_pub;
-
-  /**
    * Transfer public key (for which the private key was not revealed)
    */
   struct TALER_TransferPublicKeyP transfer_pub;

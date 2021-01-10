@@ -303,19 +303,56 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      struct TALER_MerchantPublicKeyP merchant_pub; // FIXME
       struct TALER_MerchantSignatureP merchant_sig;
-      struct GNUNET_HashCode h_contract_terms; // FIXME
       uint64_t rtransaction_id;
       struct TALER_Amount amount_with_fee;
-      uint64_t known_coin_id;
+      uint64_t deposit_serial_id;
     } refunds;
 
-    struct {} wire_out;
-    struct {} aggregation_tracking;
-    struct {} wire_fee;
-    struct {} recoup;
-    struct {} recoup_refresh;
+    struct
+    {
+      struct GNUNET_TIME_Absolute execution_date;
+      struct TALER_WireTransferIdentifierRawP wtid_raw;
+      json_t *wire_target;
+      char *exchange_account_section;
+      struct TALER_Amount amount;
+    } wire_out;
+
+    struct
+    {
+      uint64_t deposit_serial_id;
+      struct TALER_WireTransferIdentifierRawP wtid_raw;
+    } aggregation_tracking;
+
+    struct
+    {
+      char *wire_method;
+      struct GNUNET_TIME_Absolute start_date;
+      struct GNUNET_TIME_Absolute end_date;
+      struct TALER_Amount wire_fee;
+      struct TALER_Amount closing_fee;
+      struct TALER_MasterSignatureP master_sig;
+    } wire_fee;
+
+    struct
+    {
+      struct TALER_CoinSpendSignatureP coin_sig;
+      struct TALER_DenominationBlindingKeyP coin_blind;
+      struct TALER_Amount amount;
+      struct GNUNET_TIME_Absolute timestamp;
+      uint64_t known_coin_id;
+      uint64_t reserve_out_serial_id;
+    } recoup;
+
+    struct
+    {
+      struct TALER_CoinSpendSignatureP coin_sig;
+      struct TALER_DenominationBlindingKeyP coin_blind;
+      struct TALER_Amount amount;
+      struct GNUNET_TIME_Absolute timestamp;
+      uint64_t known_coin_id;
+      uint64_t rrc_serial;
+    } recoup_refresh;
 
   } details;
 
@@ -1638,7 +1675,7 @@ typedef int
  *
  * @param cls closure
  * @param rowid unique serial ID for the refresh session in our DB
- * @param reserve_pub public key of the reserve (also the WTID)
+ * @param reserve_pub public key of the reserve (also the wire subject)
  * @param credit amount that was received
  * @param sender_account_details information about the sender's bank account, in payto://-format
  * @param wire_reference unique identifier for the wire transfer

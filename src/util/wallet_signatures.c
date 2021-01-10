@@ -41,8 +41,6 @@ TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
   GNUNET_CRYPTO_hash (coin_ev,
                       coin_ev_size,
                       &ldp.coin_envelope_hash);
-  GNUNET_CRYPTO_eddsa_key_get_public (&old_coin_priv->eddsa_priv,
-                                      &ldp.old_coin_pub.eddsa_pub);
   GNUNET_CRYPTO_eddsa_sign (&old_coin_priv->eddsa_priv,
                             &ldp,
                             &coin_sig->eddsa_signature);
@@ -62,7 +60,6 @@ TALER_wallet_link_verify (
     .purpose.size = htonl (sizeof (ldp)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
     .h_denom_pub = *h_denom_pub,
-    .old_coin_pub = *old_coin_pub,
     .transfer_pub = *transfer_pub
   };
 
