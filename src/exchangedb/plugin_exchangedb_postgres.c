@@ -3625,9 +3625,9 @@ add_recoup (void *cls,
                                             &recoup->timestamp),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                               &recoup->coin.denom_pub_hash),
-        GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                             &recoup->coin.denom_sig.
-                                             rsa_signature),
+        GNUNET_PQ_result_spec_rsa_signature (
+          "denom_sig",
+          &recoup->coin.denom_sig.rsa_signature),
         GNUNET_PQ_result_spec_end
       };
 
@@ -5976,10 +5976,14 @@ postgres_lookup_transfer_by_deposit (
   struct TALER_Amount amount_with_fee;
   struct TALER_Amount deposit_fee;
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("wtid_raw", &wtid),
-    TALER_PQ_result_spec_absolute_time ("execution_date", &exec_time),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee", &amount_with_fee),
-    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit", &deposit_fee),
+    GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
+                                          &wtid),
+    TALER_PQ_result_spec_absolute_time ("execution_date",
+                                        &exec_time),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                 &amount_with_fee),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                 &deposit_fee),
     GNUNET_PQ_result_spec_end
   };
 

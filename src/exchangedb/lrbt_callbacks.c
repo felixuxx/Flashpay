@@ -382,9 +382,20 @@ lrbt_cb_table_auditors (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
+    uint8_t is_active8 = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("auditor_pub",
+                                            &td.details.auditors.auditor_pub),
+      GNUNET_PQ_result_spec_string ("auditor_url",
+                                    &td.details.auditors.auditor_url),
+      GNUNET_PQ_result_spec_string ("auditor_name",
+                                    &td.details.auditors.auditor_name),
+      GNUNET_PQ_result_spec_auto_from_type ("is_active",
+                                            &is_active8),
+      TALER_PQ_result_spec_absolute_time ("last_change",
+                                          &td.details.auditors.last_change),
       GNUNET_PQ_result_spec_end
     };
 
@@ -397,6 +408,7 @@ lrbt_cb_table_auditors (void *cls,
       ctx->error = true;
       return;
     }
+    td.details.auditors.is_active = (0 != is_active8);
     ctx->cb (ctx->cb_cls,
              &td);
     GNUNET_PQ_cleanup_result (rs);
@@ -426,6 +438,12 @@ lrbt_cb_table_auditor_denom_sigs (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_uint64 ("denominations_serial",
+                                    &td.details.auditor_denom_sigs.
+                                    denominations_serial),
+      GNUNET_PQ_result_spec_auto_from_type ("auditor_sig",
+                                            &td.details.auditor_denom_sigs.
+                                            auditor_sig),
       GNUNET_PQ_result_spec_end
     };
 
@@ -467,6 +485,21 @@ lrbt_cb_table_exchange_sign_keys (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("exchange_pub",
+                                            &td.details.exchange_sign_keys.
+                                            exchange_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &td.details.exchange_sign_keys.
+                                            master_sig),
+      TALER_PQ_result_spec_absolute_time ("valid_from",
+                                          &td.details.exchange_sign_keys.meta.
+                                          start),
+      TALER_PQ_result_spec_absolute_time ("expire_sign",
+                                          &td.details.exchange_sign_keys.meta.
+                                          expire_sign),
+      TALER_PQ_result_spec_absolute_time ("expire_legal",
+                                          &td.details.exchange_sign_keys.meta.
+                                          expire_legal),
       GNUNET_PQ_result_spec_end
     };
 
@@ -508,6 +541,11 @@ lrbt_cb_table_signkey_revocations (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_uint64 ("esk_serial",
+                                    &td.details.signkey_revocations.esk_serial),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &td.details.signkey_revocations.
+                                            master_sig),
       GNUNET_PQ_result_spec_end
     };
 
@@ -549,6 +587,13 @@ lrbt_cb_table_known_coins (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                            &td.details.known_coins.coin_pub),
+      GNUNET_PQ_result_spec_rsa_signature (
+        "denom_sig",
+        &td.details.known_coins.denom_sig.rsa_signature),
+      GNUNET_PQ_result_spec_uint64 ("denominations_serial",
+                                    &td.details.known_coins.denominations_serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -581,6 +626,7 @@ lrbt_cb_table_refresh_commitments (void *cls,
                                    unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS
   };
@@ -588,8 +634,24 @@ lrbt_cb_table_refresh_commitments (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "rc",
+        &td.details.refresh_commitments.rc),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "old_coin_sig",
+        &td.details.refresh_commitments.old_coin_sig),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.refresh_commitments.amount_with_fee),
+      GNUNET_PQ_result_spec_uint32 (
+        "noreveal_index",
+        &td.details.refresh_commitments.noreveal_index),
+      GNUNET_PQ_result_spec_uint64 (
+        "old_known_coin_id",
+        &td.details.refresh_commitments.old_known_coin_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -629,8 +691,28 @@ lrbt_cb_table_refresh_revealed_coins (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "freshcoin_index",
+        &td.details.refresh_revealed_coins.freshcoin_index),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "link_sig",
+        &td.details.refresh_revealed_coins.link_sig),
+      GNUNET_PQ_result_spec_variable_size (
+        "coin_ev",
+        (void **) &td.details.refresh_revealed_coins.coin_ev,
+        &td.details.refresh_revealed_coins.coin_ev_size),
+      GNUNET_PQ_result_spec_rsa_signature (
+        "ev_sig",
+        &td.details.refresh_revealed_coins.ev_sig.rsa_signature),
+      GNUNET_PQ_result_spec_uint64 (
+        "denominations_serial",
+        &td.details.refresh_revealed_coins.denominations_serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "melt_serial_id",
+        &td.details.refresh_revealed_coins.melt_serial_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -669,9 +751,19 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
+    void *tpriv;
+    size_t tpriv_size;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("transfer_pub",
+                                            &td.details.refresh_transfer_keys.tp),
+      GNUNET_PQ_result_spec_variable_size ("transfer_privs",
+                                           &tpriv,
+                                           &tpriv_size),
+      GNUNET_PQ_result_spec_uint64 ("melt_serial_id",
+                                    &td.details.refresh_transfer_keys.
+                                    melt_serial_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -684,6 +776,21 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
       ctx->error = true;
       return;
     }
+    /* Both conditions should be identical, but we conservatively also guard against
+       unwarranted changes to the structure here. */
+    if ( (tpriv_size !=
+          sizeof (td.details.refresh_transfer_keys.tprivs)) ||
+         (tpriv_size !=
+          (TALER_CNC_KAPPA - 1) * sizeof (struct TALER_TransferPrivateKeyP)) )
+    {
+      GNUNET_break (0);
+      GNUNET_PQ_cleanup_result (rs);
+      ctx->error = true;
+      return;
+    }
+    memcpy (&td.details.refresh_transfer_keys.tprivs[0],
+            tpriv,
+            tpriv_size);
     ctx->cb (ctx->cb_cls,
              &td);
     GNUNET_PQ_cleanup_result (rs);
@@ -704,15 +811,55 @@ lrbt_cb_table_deposits (void *cls,
                         unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_DEPOSITS
   };
 
   for (unsigned int i = 0; i<num_results; i++)
   {
+    uint8_t tiny = 0; /* initialized to make compiler happy */
+    uint8_t done = 0; /* initialized to make compiler happy */
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.deposits.amount_with_fee),
+      TALER_PQ_result_spec_absolute_time (
+        "wallet_timestamp",
+        &td.details.deposits.wallet_timestamp),
+      TALER_PQ_result_spec_absolute_time (
+        "exchange_timestamp",
+        &td.details.deposits.exchange_timestamp),
+      TALER_PQ_result_spec_absolute_time (
+        "refund_deadline",
+        &td.details.deposits.refund_deadline),
+      TALER_PQ_result_spec_absolute_time (
+        "wire_deadline",
+        &td.details.deposits.wire_deadline),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "merchant_pub",
+        &td.details.deposits.merchant_pub),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "h_contract_terms",
+        &td.details.deposits.h_contract_terms),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_sig",
+        &td.details.deposits.coin_sig),
+      TALER_PQ_result_spec_json (
+        "wire",
+        &td.details.deposits.wire),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "tiny",
+        &td.details.deposits.tiny),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "done",
+        &td.details.deposits.done),
+      GNUNET_PQ_result_spec_uint64 (
+        "known_coin_id",
+        &td.details.deposits.known_coin_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -725,6 +872,8 @@ lrbt_cb_table_deposits (void *cls,
       ctx->error = true;
       return;
     }
+    td.details.deposits.tiny = (0 != tiny);
+    td.details.deposits.done = (0 != done);
     ctx->cb (ctx->cb_cls,
              &td);
     GNUNET_PQ_cleanup_result (rs);
@@ -745,6 +894,7 @@ lrbt_cb_table_refunds (void *cls,
                        unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_REFUNDS
   };
@@ -754,6 +904,14 @@ lrbt_cb_table_refunds (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
+                                            &td.details.refunds.merchant_sig),
+      GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
+                                    &td.details.refunds.rtransaction_id),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                   &td.details.refunds.amount_with_fee),
+      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
+                                    &td.details.refunds.deposit_serial_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -786,6 +944,7 @@ lrbt_cb_table_wire_out (void *cls,
                         unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_WIRE_OUT
   };
@@ -793,8 +952,17 @@ lrbt_cb_table_wire_out (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
+      TALER_PQ_result_spec_absolute_time ("execution_date",
+                                          &td.details.wire_out.execution_date),
+      GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
+                                            &td.details.wire_out.wtid_raw),
+      TALER_PQ_result_spec_json ("wire_target",
+                                 &td.details.wire_out.wire_target),
+      GNUNET_PQ_result_spec_string (
+        "exchnage_account_section",
+        &td.details.wire_out.exchange_account_section),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &td.details.wire_out.amount),
       GNUNET_PQ_result_spec_end
     };
 
@@ -836,6 +1004,12 @@ lrbt_cb_table_aggregation_tracking (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "deposit_serial_id",
+        &td.details.aggregation_tracking.deposit_serial_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wtid_raw",
+        &td.details.aggregation_tracking.wtid_raw),
       GNUNET_PQ_result_spec_end
     };
 
@@ -868,6 +1042,7 @@ lrbt_cb_table_wire_fee (void *cls,
                         unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_WIRE_FEE
   };
@@ -877,6 +1052,16 @@ lrbt_cb_table_wire_fee (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      TALER_PQ_result_spec_absolute_time ("start_date",
+                                          &td.details.wire_fee.start_date),
+      TALER_PQ_result_spec_absolute_time ("end_date",
+                                          &td.details.wire_fee.end_date),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
+                                   &td.details.wire_fee.wire_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
+                                   &td.details.wire_fee.closing_fee),
+      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
+                                            &td.details.wire_fee.master_sig),
       GNUNET_PQ_result_spec_end
     };
 
@@ -909,6 +1094,7 @@ lrbt_cb_table_recoup (void *cls,
                       unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_RECOUP
   };
@@ -918,6 +1104,18 @@ lrbt_cb_table_recoup (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                            &td.details.recoup.coin_sig),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
+                                            &td.details.recoup.coin_blind),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &td.details.recoup.amount),
+      TALER_PQ_result_spec_absolute_time ("timestamp",
+                                          &td.details.recoup.timestamp),
+      GNUNET_PQ_result_spec_uint64 ("known_coin_id",
+                                    &td.details.recoup.known_coin_id),
+      GNUNET_PQ_result_spec_uint64 ("reserve_out_serial_id",
+                                    &td.details.recoup.reserve_out_serial_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -950,6 +1148,7 @@ lrbt_cb_table_recoup_refresh (void *cls,
                               unsigned int num_results)
 {
   struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
   struct TALER_EXCHANGEDB_TableData td = {
     .table = TALER_EXCHANGEDB_RT_RECOUP_REFRESH
   };
@@ -959,6 +1158,19 @@ lrbt_cb_table_recoup_refresh (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
+                                            &td.details.recoup_refresh.coin_sig),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_blind",
+        &td.details.recoup_refresh.coin_blind),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
+                                   &td.details.recoup_refresh.amount),
+      TALER_PQ_result_spec_absolute_time ("timestamp",
+                                          &td.details.recoup_refresh.timestamp),
+      GNUNET_PQ_result_spec_uint64 ("known_coin_id",
+                                    &td.details.recoup_refresh.known_coin_id),
+      GNUNET_PQ_result_spec_uint64 ("rrc_serial",
+                                    &td.details.recoup_refresh.rrc_serial),
       GNUNET_PQ_result_spec_end
     };
 
