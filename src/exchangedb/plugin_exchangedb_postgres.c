@@ -25,6 +25,7 @@
 #include "platform.h"
 #include "taler_error_codes.h"
 #include "taler_pq_lib.h"
+#include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include <pthread.h>
 #include <libpq-fe.h>

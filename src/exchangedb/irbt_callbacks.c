@@ -468,13 +468,21 @@ irbt_cb_table_refresh_revealed_coins (struct PostgresClosure *pg,
  * @param td record to insert
  */
 static enum GNUNET_DB_QueryStatus
-irbt_cb_table_refresh_transfer_keys (struct PostgresClosure *pg,
-                                     struct TALER_EXCHANGEDB_Session *session,
-                                     const struct
-                                     TALER_EXCHANGEDB_TableData *td)
+irbt_cb_table_refresh_transfer_keys (
+  struct PostgresClosure *pg,
+  struct TALER_EXCHANGEDB_Session *session,
+  const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.refresh_transfer_keys.tp),
+    GNUNET_PQ_query_param_fixed_size (
+      &td->details.refresh_transfer_keys.tprivs[0],
+      (TALER_CNC_KAPPA - 1)
+      * sizeof (struct TALER_TransferPrivateKeyP)),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.refresh_transfer_keys.melt_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -497,12 +505,32 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
                         struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td)
 {
+  uint8_t tiny = td->details.deposits.tiny ? 1 : 0;
+  uint8_t done = td->details.deposits.done ? 1 : 0;
+  struct GNUNET_HashCode h_wire;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    TALER_PQ_query_param_amount (&td->details.deposits.amount_with_fee),
+    TALER_PQ_query_param_absolute_time (&td->details.deposits.wallet_timestamp),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.deposits.exchange_timestamp),
+    TALER_PQ_query_param_absolute_time (&td->details.deposits.refund_deadline),
+    TALER_PQ_query_param_absolute_time (&td->details.deposits.wire_deadline),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.merchant_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.deposits.h_contract_terms),
+    GNUNET_PQ_query_param_auto_from_type (&h_wire),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.coin_sig),
+    TALER_PQ_query_param_json (td->details.deposits.wire),
+    GNUNET_PQ_query_param_auto_from_type (&tiny),
+    GNUNET_PQ_query_param_auto_from_type (&done),
+    GNUNET_PQ_query_param_uint64 (&td->details.deposits.known_coin_id),
     GNUNET_PQ_query_param_end
   };
 
   (void) pg;
+  TALER_JSON_merchant_wire_signature_hash (td->details.deposits.wire,
+                                           &h_wire);
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_into_table_deposits",
                                              params);
@@ -523,6 +551,10 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.refunds.merchant_sig),
+    GNUNET_PQ_query_param_uint64 (&td->details.refunds.rtransaction_id),
+    TALER_PQ_query_param_amount (&td->details.refunds.amount_with_fee),
+    GNUNET_PQ_query_param_uint64 (&td->details.refunds.deposit_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -547,6 +579,12 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    TALER_PQ_query_param_absolute_time (&td->details.wire_out.execution_date),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.wire_out.wtid_raw),
+    TALER_PQ_query_param_json (td->details.wire_out.wire_target),
+    GNUNET_PQ_query_param_string (
+      td->details.wire_out.exchange_account_section),
+    TALER_PQ_query_param_amount (&td->details.wire_out.amount),
     GNUNET_PQ_query_param_end
   };
 
@@ -571,6 +609,10 @@ irbt_cb_table_aggregation_tracking (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.aggregation_tracking.deposit_serial_id),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.aggregation_tracking.wtid_raw),
     GNUNET_PQ_query_param_end
   };
 
@@ -595,6 +637,12 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_string (td->details.wire_fee.wire_method),
+    TALER_PQ_query_param_absolute_time (&td->details.wire_fee.start_date),
+    TALER_PQ_query_param_absolute_time (&td->details.wire_fee.end_date),
+    TALER_PQ_query_param_amount (&td->details.wire_fee.wire_fee),
+    TALER_PQ_query_param_amount (&td->details.wire_fee.closing_fee),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.wire_fee.master_sig),
     GNUNET_PQ_query_param_end
   };
 
@@ -619,6 +667,12 @@ irbt_cb_table_recoup (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.recoup.coin_sig),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.recoup.coin_blind),
+    TALER_PQ_query_param_amount (&td->details.recoup.amount),
+    TALER_PQ_query_param_absolute_time (&td->details.recoup.timestamp),
+    GNUNET_PQ_query_param_uint64 (&td->details.recoup.known_coin_id),
+    GNUNET_PQ_query_param_uint64 (&td->details.recoup.reserve_out_serial_id),
     GNUNET_PQ_query_param_end
   };
 
@@ -643,6 +697,13 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.recoup_refresh.coin_sig),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.recoup_refresh.coin_blind),
+    TALER_PQ_query_param_amount (&td->details.recoup_refresh.amount),
+    TALER_PQ_query_param_absolute_time (&td->details.recoup_refresh.timestamp),
+    GNUNET_PQ_query_param_uint64 (&td->details.recoup_refresh.known_coin_id),
+    GNUNET_PQ_query_param_uint64 (&td->details.recoup_refresh.rrc_serial),
     GNUNET_PQ_query_param_end
   };
 

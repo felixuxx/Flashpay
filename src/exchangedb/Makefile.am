@@ -44,6 +44,7 @@ libtaler_plugin_exchangedb_postgres_la_LIBADD = \
 libtaler_plugin_exchangedb_postgres_la_LDFLAGS = \
   $(TALER_PLUGIN_LDFLAGS) \
   $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lpq \
   -lpthread \
