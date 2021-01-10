@@ -9771,6 +9771,23 @@ postgres_lookup_records_by_table (void *cls,
 
 
 /**
+ * Signature of helper functions of #postgres_insert_records_by_table.
+ *
+ * @param pg plugin context
+ * @param session database session
+ * @param td record to insert
+ * @return transaction status code
+ */
+typedef enum GNUNET_DB_QueryStatus
+(*InsertRecordCallback)(struct PostgresClosure *pg,
+                        struct TALER_EXCHANGEDB_Session *session,
+                        const struct TALER_EXCHANGEDB_TableData *td);
+
+
+#include "irbt_callbacks.c"
+
+
+/**
  * Insert record set into @a table.  Used in exchange-auditor database
  * replication.
  *
@@ -9778,15 +9795,88 @@ postgres_lookup_records_by_table (void *cls,
  * @param session a session
  * @param tb table data to insert
  * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
- *         @a table does not have a serial number
+ *         @e table in @a tr is not supported
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_records_by_table (void *cls,
                                   struct TALER_EXCHANGEDB_Session *session,
                                   const struct TALER_EXCHANGEDB_TableData *td)
 {
-  GNUNET_break (0); // FIXME: not implemented!
-  return GNUNET_DB_STATUS_HARD_ERROR;
+  struct PostgresClosure *pg = cls;
+  InsertRecordCallback rh;
+
+  switch (td->table)
+  {
+  case TALER_EXCHANGEDB_RT_DENOMINATIONS:
+    rh = &irbt_cb_table_denominations;
+    break;
+  case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
+    rh = &irbt_cb_table_denomination_revocations;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES:
+    rh = &irbt_cb_table_reserves;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_IN:
+    rh = &irbt_cb_table_reserves_in;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_CLOSE:
+    rh = &irbt_cb_table_reserves_close;
+    break;
+  case TALER_EXCHANGEDB_RT_RESERVES_OUT:
+    rh = &irbt_cb_table_reserves_out;
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITORS:
+    rh = &irbt_cb_table_auditors;
+    break;
+  case TALER_EXCHANGEDB_RT_AUDITOR_DENOM_SIGS:
+    rh = &irbt_cb_table_auditor_denom_sigs;
+    break;
+  case TALER_EXCHANGEDB_RT_EXCHANGE_SIGN_KEYS:
+    rh = &irbt_cb_table_exchange_sign_keys;
+    break;
+  case TALER_EXCHANGEDB_RT_SIGNKEY_REVOCATIONS:
+    rh = &irbt_cb_table_signkey_revocations;
+    break;
+  case TALER_EXCHANGEDB_RT_KNOWN_COINS:
+    rh = &irbt_cb_table_known_coins;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_COMMITMENTS:
+    rh = &irbt_cb_table_refresh_commitments;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_REVEALED_COINS:
+    rh = &irbt_cb_table_refresh_revealed_coins;
+    break;
+  case TALER_EXCHANGEDB_RT_REFRESH_TRANSFER_KEYS:
+    rh = &irbt_cb_table_refresh_transfer_keys;
+    break;
+  case TALER_EXCHANGEDB_RT_DEPOSITS:
+    rh = &irbt_cb_table_deposits;
+    break;
+  case TALER_EXCHANGEDB_RT_REFUNDS:
+    rh = &irbt_cb_table_refunds;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_OUT:
+    rh = &irbt_cb_table_wire_out;
+    break;
+  case TALER_EXCHANGEDB_RT_AGGREGATION_TRACKING:
+    rh = &irbt_cb_table_aggregation_tracking;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_FEE:
+    rh = &irbt_cb_table_wire_fee;
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP:
+    rh = &irbt_cb_table_recoup;
+    break;
+  case TALER_EXCHANGEDB_RT_RECOUP_REFRESH:
+    rh = &irbt_cb_table_recoup_refresh;
+    break;
+  default:
+    GNUNET_break (0);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  return rh (pg,
+             session,
+             td);
 }
 
 
