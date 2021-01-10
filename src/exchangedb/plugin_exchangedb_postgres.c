@@ -2165,7 +2165,266 @@ postgres_get_session (void *cls)
                               " ORDER BY recoup_refresh_uuid ASC;",
                               0),
       /* For postgres_insert_records_by_table */
-      // FIXME...
+      GNUNET_PQ_make_prepare ("insert_into_table_denominations",
+                              "INSERT INTO denominations"
+                              "(denominations_serial"
+                              ",denom_pub_hash"
+                              ",denom_pub"
+                              ",master_pub"
+                              ",master_sig"
+                              ",valid_from"
+                              ",expire_withdraw"
+                              ",expire_deposit"
+                              ",expire_legal"
+                              ",coin_val"
+                              ",coin_frac"
+                              ",fee_withdraw_val"
+                              ",fee_withdraw_frac"
+                              ",fee_deposit_val"
+                              ",fee_deposit_frac"
+                              ",fee_refresh_val"
+                              ",fee_refresh_frac"
+                              ",fee_refund_val"
+                              ",fee_refund_frac"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+                              " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
+                              19),
+      GNUNET_PQ_make_prepare ("insert_into_table_denomination_revocations",
+                              "INSERT INTO denomination_revocations"
+                              "(denom_revocations_serial_id"
+                              ",master_sig"
+                              ",denominations_serial"
+                              ") VALUES "
+                              "($1, $2, $3);",
+                              3),
+      GNUNET_PQ_make_prepare ("insert_into_table_reserves",
+                              "INSERT INTO reserves"
+                              "(reserve_uuid"
+                              ",reserve_pub"
+                              ",account_details"
+                              ",current_balance_val"
+                              ",current_balance_frac"
+                              ",expiration_date"
+                              ",gc_date"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7);",
+                              7),
+      GNUNET_PQ_make_prepare ("insert_into_table_reserves_in",
+                              "INSERT INTO reserves_in"
+                              "(reserve_in_serial_id"
+                              ",wire_reference"
+                              ",credit_val"
+                              ",credit_frac"
+                              ",sender_account_details"
+                              ",exchange_account_section"
+                              ",execution_date"
+                              ",reserve_uuid"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8);",
+                              8),
+      GNUNET_PQ_make_prepare ("insert_into_table_reserves_close",
+                              "INSERT INTO reserves_close"
+                              "(close_uuid"
+                              ",execution_date"
+                              ",wtid"
+                              ",receiver_account"
+                              ",amount_val"
+                              ",amount_frac"
+                              ",closing_fee_val"
+                              ",closing_fee_frac"
+                              ",reserve_uuid"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+                              9),
+      GNUNET_PQ_make_prepare ("insert_into_table_reserves_out",
+                              "INSERT INTO reserves_out"
+                              "(reserve_out_serial_id"
+                              ",h_blind_ev"
+                              ",denom_sig"
+                              ",reserve_sig"
+                              ",execution_date"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",reserve_uuid"
+                              ",denominations_serial"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+                              9),
+      GNUNET_PQ_make_prepare ("insert_into_table_auditors",
+                              "INSERT INTO auditors"
+                              "(auditor_uuid"
+                              ",auditor_pub"
+                              ",auditor_name"
+                              ",auditor_url"
+                              ",is_active"
+                              ",last_change"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6);",
+                              6),
+      GNUNET_PQ_make_prepare ("insert_into_table_auditor_denom_sigs",
+                              "INSERT INTO auditor_denom_sigs"
+                              "(auditor_denom_serial"
+                              ",auditor_uuid"
+                              ",denominations_serial"
+                              ",auditor_sig"
+                              ") VALUES "
+                              "($1, $2, $3, $4);",
+                              4),
+      GNUNET_PQ_make_prepare ("insert_into_table_exchange_sign_keys",
+                              "INSERT INTO exchange_sign_keys"
+                              "(esk_serial"
+                              ",exchange_pub"
+                              ",master_sig"
+                              ",valid_from"
+                              ",expire_sign"
+                              ",expire_legal"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6);",
+                              6),
+      GNUNET_PQ_make_prepare ("insert_into_table_signkey_revocations",
+                              "INSERT INTO signkey_revocations"
+                              "(signkey_revocations_serial_id"
+                              ",esk_serial"
+                              ",master_sig"
+                              ") VALUES "
+                              "($1, $2, $3);",
+                              3),
+      GNUNET_PQ_make_prepare ("insert_into_table_known_coins",
+                              "INSERT INTO known_coins"
+                              "(known_coin_id"
+                              ",coin_pub"
+                              ",denom_sig"
+                              ",denominations_serial"
+                              ") VALUES "
+                              "($1, $2, $3, $4);",
+                              4),
+      GNUNET_PQ_make_prepare ("insert_into_table_refresh_commitments",
+                              "INSERT INTO refresh_commitments"
+                              "(melt_serial_id"
+                              ",rc"
+                              ",old_coin_sig"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",noreveal_index"
+                              ",old_known_coin_id"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7);",
+                              7),
+      GNUNET_PQ_make_prepare ("insert_into_table_refresh_revealed_coins",
+                              "INSERT INTO refresh_revealed_coins"
+                              "(rrc_serial"
+                              ",freshcoin_index"
+                              ",link_sig"
+                              ",coin_ev"
+                              ",h_coin_ev"
+                              ",ev_sig"
+                              ",denominations_serial"
+                              ",melt_serial_id"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8);",
+                              8),
+      GNUNET_PQ_make_prepare ("insert_into_table_refresh_transfer_keys",
+                              "INSERT INTO refresh_transfer_keys"
+                              "(rtc_serial"
+                              ",transfer_pub"
+                              ",transfer_privs"
+                              ",melt_serial_id"
+                              ") VALUES "
+                              "($1, $2, $3, $4);",
+                              4),
+      GNUNET_PQ_make_prepare ("insert_into_table_deposits",
+                              "INSERT INTO deposits"
+                              "(deposit_serial_id"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",wallet_timestamp"
+                              ",exchange_timestamp"
+                              ",refund_deadline"
+                              ",wire_deadline"
+                              ",merchant_pub"
+                              ",h_contract_terms"
+                              ",h_wire"
+                              ",coin_sig"
+                              ",wire"
+                              ",tiny"
+                              ",done"
+                              ",known_coin_id"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+                              " $11, $12, $13, $14, $15);",
+                              15),
+      GNUNET_PQ_make_prepare ("insert_into_table_refunds",
+                              "INSERT INTO refunds"
+                              "(refund_serial_id"
+                              ",merchant_sig"
+                              ",rtransaction_id"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",deposit_serial_id"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6);",
+                              6),
+      GNUNET_PQ_make_prepare ("insert_into_table_wire_out",
+                              "INSERT INTO wire_out"
+                              "(wireout_uuid"
+                              ",execution_date"
+                              ",wtid_raw"
+                              ",wire_target"
+                              ",exchange_account_section"
+                              ",amount_val"
+                              ",amount_frac"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7);",
+                              7),
+      GNUNET_PQ_make_prepare ("insert_into_table_aggregation_tracking",
+                              "INSERT INTO aggregation_tracking"
+                              "(aggregation_serial_id"
+                              ",deposit_serial_id"
+                              ",wtid_raw"
+                              ") VALUES "
+                              "($1, $2, $3);",
+                              3),
+      GNUNET_PQ_make_prepare ("insert_into_table_wire_fee",
+                              "INSERT INTO wire_fee"
+                              "(wire_fee_serial"
+                              ",wire_method"
+                              ",start_date"
+                              ",end_date"
+                              ",wire_fee_val"
+                              ",wire_fee_frac"
+                              ",closing_fee_val"
+                              ",closing_fee_frac"
+                              ",master_sig"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+                              9),
+      GNUNET_PQ_make_prepare ("insert_into_table_recoup",
+                              "INSERT INTO recoup"
+                              "(recoup_uuid"
+                              ",coin_sig"
+                              ",coin_blind"
+                              ",amount_val"
+                              ",amount_frac"
+                              ",timestamp"
+                              ",known_coin_id"
+                              ",reserve_out_serial_id"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8);",
+                              8),
+      GNUNET_PQ_make_prepare ("insert_into_table_recoup_refresh",
+                              "INSERT INTO recoup_refresh"
+                              "(recoup_refresh_uuid"
+                              ",coin_sig"
+                              ",coin_blind"
+                              ",amount_val"
+                              ",amount_frac"
+                              ",timestamp"
+                              ",known_coin_id"
+                              ",rrc_serial"
+                              ") VALUES "
+                              "($1, $2, $3, $4, $5, $6, $7, $8);",
+                              8),
       GNUNET_PQ_PREPARED_STATEMENT_END
     };
 
