@@ -44,7 +44,7 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_denominations",
                                              params);
 }
 
@@ -69,7 +69,7 @@ irbt_cb_table_denomination_revocations (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_denomination_revocations",
                                              params);
 }
 
@@ -93,7 +93,7 @@ irbt_cb_table_reserves (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_reserves",
                                              params);
 }
 
@@ -117,7 +117,7 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_reserves_in",
                                              params);
 }
 
@@ -141,7 +141,7 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_reserves_close",
                                              params);
 }
 
@@ -165,7 +165,7 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_reserves_out",
                                              params);
 }
 
@@ -189,7 +189,7 @@ irbt_cb_table_auditors (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_auditors",
                                              params);
 }
 
@@ -213,7 +213,7 @@ irbt_cb_table_auditor_denom_sigs (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_auditor_denom_sigs",
                                              params);
 }
 
@@ -237,7 +237,7 @@ irbt_cb_table_exchange_sign_keys (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_exchange_sign_keys",
                                              params);
 }
 
@@ -261,7 +261,7 @@ irbt_cb_table_signkey_revocations (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_signkey_revocations",
                                              params);
 }
 
@@ -285,7 +285,7 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_known_coins",
                                              params);
 }
 
@@ -309,7 +309,7 @@ irbt_cb_table_refresh_commitments (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_refresh_commitments",
                                              params);
 }
 
@@ -334,7 +334,7 @@ irbt_cb_table_refresh_revealed_coins (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_refresh_revealed_coins",
                                              params);
 }
 
@@ -359,7 +359,7 @@ irbt_cb_table_refresh_transfer_keys (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_refresh_transfer_keys",
                                              params);
 }
 
@@ -383,7 +383,7 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_deposits",
                                              params);
 }
 
@@ -407,7 +407,7 @@ irbt_cb_table_refunds (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_refunds",
                                              params);
 }
 
@@ -431,7 +431,7 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_wire_out",
                                              params);
 }
 
@@ -455,7 +455,7 @@ irbt_cb_table_aggregation_tracking (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_aggregation_tracking",
                                              params);
 }
 
@@ -479,7 +479,7 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_wire_fee",
                                              params);
 }
 
@@ -503,7 +503,7 @@ irbt_cb_table_recoup (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_recoup",
                                              params);
 }
 
@@ -527,7 +527,7 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
 
   (void) pg;
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "insert_into_table_",
+                                             "insert_into_table_recoup_refresh",
                                              params);
 }
 
