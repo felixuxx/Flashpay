@@ -114,9 +114,9 @@ lrbt_cb_table_denomination_revocations (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "denom_pub_hash",
-        &td.details.denomination_revocations.denom_pub_hash),
+      GNUNET_PQ_result_spec_uint64 (
+        "denominations_serial",
+        &td.details.denomination_revocations.denominations_serial),
       GNUNET_PQ_result_spec_auto_from_type (
         "master_sig",
         &td.details.denomination_revocations.master_sig),

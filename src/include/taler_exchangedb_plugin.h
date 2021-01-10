@@ -173,8 +173,8 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
-      struct GNUNET_HashCode denom_pub_hash;
       struct TALER_MasterSignatureP master_sig;
+      uint64_t denominations_serial;
     } denomination_revocations;
 
     struct

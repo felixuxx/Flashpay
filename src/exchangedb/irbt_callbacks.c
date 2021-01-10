@@ -37,12 +37,40 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
                              struct TALER_EXCHANGEDB_Session *session,
                              const struct TALER_EXCHANGEDB_TableData *td)
 {
+  struct GNUNET_HashCode denom_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&denom_hash),
+    GNUNET_PQ_query_param_rsa_public_key (
+      td->details.denominations.denom_pub.rsa_public_key),
+    // GNUNET_PQ_query_param_auto_from_type (&master_pub), // FIXME: !?
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.denominations.master_sig),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.denominations.valid_from),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.denominations.expire_withdraw),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.denominations.expire_deposit),
+    TALER_PQ_query_param_absolute_time (
+      &td->details.denominations.expire_legal),
+    TALER_PQ_query_param_amount (&td->details.denominations.coin),
+    TALER_PQ_query_param_amount (
+      &td->details.denominations.fee_withdraw),
+    TALER_PQ_query_param_amount (
+      &td->details.denominations.fee_deposit),
+    TALER_PQ_query_param_amount (
+      &td->details.denominations.fee_refresh),
+    TALER_PQ_query_param_amount (
+      &td->details.denominations.fee_refund),
     GNUNET_PQ_query_param_end
   };
 
   (void) pg;
+  GNUNET_CRYPTO_rsa_public_key_hash (
+    td->details.denominations.denom_pub.rsa_public_key,
+    &denom_hash);
+
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "insert_into_table_denominations",
                                              params);
@@ -64,6 +92,10 @@ irbt_cb_table_denomination_revocations (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.denomination_revocations.master_sig),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.denomination_revocations.denominations_serial),
     GNUNET_PQ_query_param_end
   };
 
@@ -88,6 +120,11 @@ irbt_cb_table_reserves (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.reserves.reserve_pub),
+    GNUNET_PQ_query_param_string (td->details.reserves.account_details),
+    TALER_PQ_query_param_amount (&td->details.reserves.current_balance),
+    TALER_PQ_query_param_absolute_time (&td->details.reserves.expiration_date),
+    TALER_PQ_query_param_absolute_time (&td->details.reserves.gc_date),
     GNUNET_PQ_query_param_end
   };
 
