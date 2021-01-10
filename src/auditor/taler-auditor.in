@@ -1,6 +1,73 @@
-#!/bin/sh
+#!/bin/bash
 
 set -eu
+
+function usage {
+  cat - <<EOF
+taler-auditor
+Audit Taler exchange database for consistency.
+Arguments mandatory for long options are also mandatory for short options.
+  -c, --config=FILENAME      use configuration file FILENAME
+  -h, --help                 print this help
+  -i, --internal             perform checks only applicable for
+                               exchange-internal audits
+  -L, --log=LOGLEVEL         configure logging to use LOGLEVEL
+  -l, --logfile=FILENAME     configure logging to write logs to FILENAME
+  -m, --exchange-key=KEY     public key of the exchange (Crockford base32
+                               encoded)
+  -T, --timetravel=[+/-]MICROSECONDS
+                             modify system time by given offset (for
+                               debugging/testing only)
+  -v, --version              print the version number
+Report bugs to taler@gnu.org.
+Home page: http://www.gnu.org/s/taler/
+General help using GNU software: http://www.gnu.org/gethelp/
+EOF
+}
+
+TEMP=`getopt -o c:hiL:l:m:T:v --long config:,help,internal,log:,logfile:exchange-key:,timetravel:,version -n 'taler-auditor' -- "$@"`
+
+if [ $? != 0 ] ;
+then
+  exit 1 ;
+fi
+
+# Note the quotes around `$TEMP': they are essential!
+eval set -- "$TEMP"
+
+VERBOSE=false
+DEBUG=false
+MEMORY=
+DEBUGFILE=
+JAVA_MISC_OPT=
+while true; do
+  case "$1" in
+    -c | --config ) shift 2 ;;
+    -h | --help )
+        usage
+        exit 0
+        ;;
+    -i | --internal ) shift ;;
+    -L | --log ) shift 2;;
+    -l | --logfile ) shift ;;
+    -m | --exchange-key ) shift 2 ;;
+    -t | --timetravel ) shift 2 ;;
+    -m | --memory ) MEMORY="$2"; shift 2 ;;
+    -v | --version )
+        taler-helper-auditor-deposits -v | sed -e 's/taler-helper-auditor-deposits/taler-auditor/'
+        exit 0
+        ;;
+    -- )
+        shift;
+        break
+        ;;
+    * )
+        usage
+        exit 1
+        ;;
+  esac
+done
+
 
 DIR=`mktemp -d reportXXXXXX`
 for n in aggregation coins deposits reserves wire
