@@ -3773,7 +3773,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param session a session
    * @param table table for which we should return the serial
    * @param[out] latest serial number in use
-   * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+   * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
    *         @a table does not have a serial number
    */
   enum GNUNET_DB_QueryStatus
