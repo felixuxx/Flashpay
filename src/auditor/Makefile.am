@@ -18,6 +18,7 @@ bin_PROGRAMS = \
   taler-auditor-dbinit \
   taler-auditor-exchange \
   taler-auditor-httpd \
+  taler-auditor-sync \
   taler-helper-auditor-aggregation \
   taler-helper-auditor-coins \
   taler-helper-auditor-deposits \
@@ -169,6 +170,23 @@ taler_auditor_exchange_LDADD = \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
   -lgnunetutil \
   $(XLIB)
+
+taler_auditor_sync_SOURCES = \
+  taler-auditor-sync.c
+taler_auditor_sync_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  -lgnunetutil \
+  $(XLIB)
+taler_auditor_dbinit_LDFLAGS = \
+  $(POSTGRESQL_LDFLAGS)
+taler_auditor_dbinit_CPPFLAGS = \
+  -I$(top_srcdir)/src/include \
+  -I$(top_srcdir)/src/pq/ \
+  $(POSTGRESQL_CPPFLAGS)
+
 
 check_SCRIPTS = \
   test-auditor.sh \
