@@ -25,6 +25,9 @@ General help using GNU software: http://www.gnu.org/gethelp/
 EOF
 }
 
+
+function optcheck {
+
 TEMP=`getopt -o c:hiL:l:m:T:v --long config:,help,internal,log:,logfile:exchange-key:,timetravel:,version -n 'taler-auditor' -- "$@"`
 
 if [ $? != 0 ] ;
@@ -67,6 +70,12 @@ while true; do
         ;;
   esac
 done
+
+}
+# End of function 'optcheck'
+
+
+optcheck "$@"
 
 
 DIR=`mktemp -d reportXXXXXX`
