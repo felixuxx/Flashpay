@@ -85,9 +85,26 @@ static struct Table
 
 
 /**
+ * Closure for #do_insert.
+ */
+struct InsertContext
+{
+  /**
+   * Database session to use.
+   */
+  struct TALER_EXCHANGEDB_Session *ds;
+
+  /**
+   * Set to error if insertion created an error.
+   */
+  enum GNUNET_DB_QueryStatus qs;
+};
+
+
+/**
  * Function called on data to replicate in the auditor's database.
  *
- * @param cls closure
+ * @param cls closure, a `struct InsertContext`
  * @param td record from an exchange table
  * @return #GNUNET_OK to continue to iterate,
  *         #GNUNET_SYSERR to fail with an error
@@ -96,7 +113,21 @@ static int
 do_insert (void *cls,
            const struct TALER_EXCHANGEDB_TableData *td)
 {
-  // FIXME ...
+  struct InsertContext *ctx = cls;
+  enum GNUNET_DB_QueryStatus qs;
+
+  if (0 >= ctx->qs)
+    return GNUNET_SYSERR;
+  qs = dst->insert_records_by_table (dst->cls,
+                                     ctx->ds,
+                                     td);
+  if (0 >= qs)
+  {
+    ctx->qs = qs;
+    return GNUNET_SYSERR;
+  }
+  actual_size++;
+  return GNUNET_OK;
 }
 
 
@@ -109,7 +140,12 @@ static int
 transact (struct TALER_EXCHANGEDB_Session *ss,
           struct TALER_EXCHANGEDB_Session *ds)
 {
-  if (GNUNET_OK !=
+  struct InsertContext ctx = {
+    .ds = ds,
+    .qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
+  };
+
+  if (0 >
       src->start (src->cls,
                   ss,
                   "lookup src serials"))
@@ -119,7 +155,7 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
                                  ss,
                                  tables[i].rt,
                                  &tables[i].end_serial);
-  if (GNUNET_OK !=
+  if (0 >
       src->commit (src->cls,
                    ss))
     return GNUNET_SYSERR;
@@ -133,7 +169,7 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
                                  ds,
                                  tables[i].rt,
                                  &tables[i].start_serial);
-  if (GNUNET_OK !=
+  if (0 >
       dst->commit (dst->cls,
                    ds))
     return GNUNET_SYSERR;
@@ -160,7 +196,9 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
                                          tables[i].rt,
                                          tables[i].start_serial,
                                          &do_insert,
-                                         ds);
+                                         &ctx);
+      if (ctx.qs < 0)
+        qs = ctx.qs;
       if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       {
         global_ret = 3;
@@ -174,15 +212,22 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
         global_ret = 4;
         return GNUNET_SYSERR;
       }
+      if (0 == ctx.qs)
+        return GNUNET_SYSERR; /* insertion failed, maybe record existed? try again */
+      src->rollback (src->cls,
+                     ss);
+      qs = dst->commit (dst->cls,
+                        ds);
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        continue;
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        global_ret = 5;
+        return GNUNET_SYSERR;
+      }
     }
   }
   /* we do not care about conflicting UPDATEs to src table, so safe to just rollback */
-  src->rollback (src->cls,
-                 ss);
-  if (GNUNET_OK !=
-      dst->commit (dst->cls,
-                   ds))
-    return GNUNET_SYSERR;
   printf ("\n");
   return GNUNET_OK;
 }

@@ -2056,8 +2056,9 @@ postgres_get_session (void *cls)
         ",master_sig"
         ",denominations_serial"
         " FROM denomination_revocations"
+        " WHERE denom_revocations_serial_id > $1"
         " ORDER BY denom_revocations_serial_id ASC;",
-        0),
+        1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves",
                               "SELECT"
                               " reserve_uuid AS serial"
@@ -2068,8 +2069,9 @@ postgres_get_session (void *cls)
                               ",expiration_date"
                               ",gc_date"
                               " FROM reserves"
+                              " WHERE reserve_uuid > $1"
                               " ORDER BY reserve_uuid ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_in",
                               "SELECT"
                               " reserve_in_serial_id AS serial"
@@ -2079,9 +2081,11 @@ postgres_get_session (void *cls)
                               ",sender_account_details"
                               ",exchange_account_section"
                               ",execution_date"
+                              ",reserve_uuid"
                               " FROM reserves_in"
+                              " WHERE reserve_in_serial_id > $1"
                               " ORDER BY reserve_in_serial_id ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_close",
                               "SELECT"
                               " close_uuid AS serial"
@@ -2094,8 +2098,9 @@ postgres_get_session (void *cls)
                               ",closing_fee_frac"
                               ",reserve_uuid"
                               " FROM reserves_close"
+                              " WHERE close_uuid > $1"
                               " ORDER BY close_uuid ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_out",
                               "SELECT"
                               " reserve_out_serial_id AS serial"
@@ -2108,8 +2113,9 @@ postgres_get_session (void *cls)
                               ",reserve_uuid"
                               ",denominations_serial"
                               " FROM reserves_out"
+                              " WHERE reserve_out_serial_id > $1"
                               " ORDER BY reserve_out_serial_id ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_auditors",
                               "SELECT"
                               " auditor_uuid AS serial"
@@ -2119,16 +2125,18 @@ postgres_get_session (void *cls)
                               ",is_active"
                               ",last_change"
                               " FROM auditors"
+                              " WHERE auditor_uuid > $1"
                               " ORDER BY auditor_uuid ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_auditor_denom_sigs",
                               "SELECT"
                               " auditor_denom_serial AS serial"
                               ",auditor_uuid"
                               ",denominations_serial"
                               " FROM auditor_denom_sigs"
+                              " WHERE auditor_denom_serial > $1"
                               " ORDER BY auditor_denom_serial ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_exchange_sign_keys",
                               "SELECT"
                               " esk_serial AS serial"
@@ -2138,8 +2146,9 @@ postgres_get_session (void *cls)
                               ",expire_sign"
                               ",expire_legal"
                               " FROM exchange_sign_keys"
+                              " WHERE esk_serial > $1"
                               " ORDER BY esk_serial ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare (
         "select_above_serial_by_table_signkey_revocations",
         "SELECT"
@@ -2147,8 +2156,9 @@ postgres_get_session (void *cls)
         ",esk_serial"
         ",master_sig"
         " FROM signkey_revocations"
+        " WHERE signkey_revocations_serial_id > $1"
         " ORDER BY signkey_revocations_serial_id ASC;",
-        0),
+        1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_known_coins",
                               "SELECT"
                               " known_coin_id AS serial"
@@ -2156,8 +2166,9 @@ postgres_get_session (void *cls)
                               ",denom_sig"
                               ",denominations_serial"
                               " FROM known_coins"
+                              " WHERE known_coin_id > $1"
                               " ORDER BY known_coin_id ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare (
         "select_above_serial_by_table_refresh_commitments",
         "SELECT"
@@ -2169,8 +2180,9 @@ postgres_get_session (void *cls)
         ",amount_with_fee_frac"
         ",noreveal_index"
         " FROM refresh_commitments"
+        " WHERE melt_serial_id > $1"
         " ORDER BY melt_serial_id ASC;",
-        0),
+        1),
       GNUNET_PQ_make_prepare (
         "select_above_serial_by_table_refresh_revealed_coins",
         "SELECT"
@@ -2185,8 +2197,9 @@ postgres_get_session (void *cls)
         ",denominations_serial"
         " FROM refresh_revealed_coins"
         " JOIN refresh_commitments USING (melt_serial_id)"
+        " WHERE rrc_serial > $1"
         " ORDER BY rrc_serial ASC;",
-        0),
+        1),
       GNUNET_PQ_make_prepare (
         "select_above_serial_by_table_refresh_transfer_keys",
         "SELECT"
@@ -2196,8 +2209,9 @@ postgres_get_session (void *cls)
         ",transfer_privs"
         " FROM refresh_transfer_keys"
         " JOIN refresh_commitments USING (melt_serial_id)"
+        " WHERE rtc_serial > $1"
         " ORDER BY rtc_serial ASC;",
-        0),
+        1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_deposits",
                               "SELECT"
                               " deposit_serial_id AS serial"
@@ -2216,8 +2230,9 @@ postgres_get_session (void *cls)
                               ",done"
                               ",known_coin_id"
                               " FROM deposits"
+                              " WHERE deposit_serial_id > $1"
                               " ORDER BY deposit_serial_id ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_refunds",
                               "SELECT"
                               " refund_serial_id AS serial"
@@ -2230,8 +2245,9 @@ postgres_get_session (void *cls)
                               ",known_coin_id"
                               " FROM refunds"
                               " JOIN deposits USING (deposit_serial_id)"
+                              " WHERE refund_serial_id > $1"
                               " ORDER BY refund_serial_id ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_out",
                               "SELECT"
                               " wireout_uuid AS serial"
@@ -2242,8 +2258,9 @@ postgres_get_session (void *cls)
                               ",amount_val"
                               ",amount_frac"
                               " FROM wire_out"
+                              " WHERE wireout_uuid > $1"
                               " ORDER BY wireout_uuid ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare (
         "select_above_serial_by_table_aggregation_tracking",
         "SELECT"
@@ -2251,8 +2268,9 @@ postgres_get_session (void *cls)
         ",deposit_serial_id"
         ",wtid_raw"
         " FROM aggregation_tracking"
+        " WHERE aggregation_serial_id > $1"
         " ORDER BY aggregation_serial_id ASC;",
-        0),
+        1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_fee",
                               "SELECT"
                               " wire_fee_serial AS serial"
@@ -2265,8 +2283,9 @@ postgres_get_session (void *cls)
                               ",closing_fee_frac"
                               ",master_sig"
                               " FROM wire_fee"
+                              " WHERE wire_fee_serial > $1"
                               " ORDER BY wire_fee_serial ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup",
                               "SELECT"
                               " recoup_uuid AS serial"
@@ -2278,8 +2297,9 @@ postgres_get_session (void *cls)
                               ",known_coin_id"
                               ",reserve_out_serial_id"
                               " FROM recoup"
+                              " WHERE recoup_uuid > $1"
                               " ORDER BY recoup_uuid ASC;",
-                              0),
+                              1),
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup_refresh",
                               "SELECT"
                               " recoup_refresh_uuid AS serial"
@@ -2291,8 +2311,9 @@ postgres_get_session (void *cls)
                               ",known_coin_id"
                               ",rrc_serial"
                               " FROM recoup_refresh"
+                              " WHERE recoup_refresh_uuid > $1"
                               " ORDER BY recoup_refresh_uuid ASC;",
-                              0),
+                              1),
       /* For postgres_insert_records_by_table */
       GNUNET_PQ_make_prepare ("insert_into_table_denominations",
                               "INSERT INTO denominations"
@@ -2618,14 +2639,12 @@ postgres_start (void *cls,
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
+  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting transaction named: %s\n",
               name);
-
   postgres_preflight (cls,
                       session);
-
-  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting transaction on %p\n",
               session->conn);
