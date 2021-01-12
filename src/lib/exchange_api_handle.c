@@ -68,27 +68,6 @@
   GNUNET_log (type, "Curl function `%s' has failed at `%s:%d' with error: %s", \
               function, __FILE__, __LINE__, curl_easy_strerror (code));
 
-/**
- * Stages of initialization for the `struct TALER_EXCHANGE_Handle`
- */
-enum ExchangeHandleState
-{
-  /**
-   * Just allocated.
-   */
-  MHS_INIT = 0,
-
-  /**
-   * Obtained the exchange's certification data and keys.
-   */
-  MHS_CERT = 1,
-
-  /**
-   * Failed to initialize (fatal).
-   */
-  MHS_FAILED = 2
-};
-
 
 /**
  * Data for the request to get the /keys of a exchange.
@@ -145,83 +124,6 @@ struct TEAH_AuditorListEntry
 };
 
 
-/**
- * Handle to the exchange
- */
-struct TALER_EXCHANGE_Handle
-{
-  /**
-   * The context of this handle
-   */
-  struct GNUNET_CURL_Context *ctx;
-
-  /**
-   * The URL of the exchange (i.e. "http://exchange.taler.net/")
-   */
-  char *url;
-
-  /**
-   * Function to call with the exchange's certification data,
-   * NULL if this has already been done.
-   */
-  TALER_EXCHANGE_CertificationCallback cert_cb;
-
-  /**
-   * Closure to pass to @e cert_cb.
-   */
-  void *cert_cb_cls;
-
-  /**
-   * Data for the request to get the /keys of a exchange,
-   * NULL once we are past stage #MHS_INIT.
-   */
-  struct KeysRequest *kr;
-
-  /**
-   * Task for retrying /keys request.
-   */
-  struct GNUNET_SCHEDULER_Task *retry_task;
-
-  /**
-   * Raw key data of the exchange, only valid if
-   * @e handshake_complete is past stage #MHS_CERT.
-   */
-  json_t *key_data_raw;
-
-  /**
-   * Head of DLL of auditors of this exchange.
-   */
-  struct TEAH_AuditorListEntry *auditors_head;
-
-  /**
-   * Tail of DLL of auditors of this exchange.
-   */
-  struct TEAH_AuditorListEntry *auditors_tail;
-
-  /**
-   * Key data of the exchange, only valid if
-   * @e handshake_complete is past stage #MHS_CERT.
-   */
-  struct TALER_EXCHANGE_Keys key_data;
-
-  /**
-   * Retry /keys frequency.
-   */
-  struct GNUNET_TIME_Relative retry_delay;
-
-  /**
-   * When does @e key_data expire?
-   */
-  struct GNUNET_TIME_Absolute key_data_expiration;
-
-  /**
-   * Stage of the exchange's initialization routines.
-   */
-  enum ExchangeHandleState state;
-
-};
-
-
 /* ***************** Internal /keys fetching ************* */
 
 /**
@@ -250,6 +152,7 @@ struct KeysRequest
    */
   struct GNUNET_TIME_Absolute expire;
 
+  struct GNUNET_SCHEDULER_Task *timeout_task;
 };
 
 
@@ -1201,6 +1104,8 @@ keys_completed_cb (void *cls,
   {
   case 0:
     free_keys_request (kr);
+    /* FIXME:  Maybe we should only increment when we know it's a timeout? */
+    exchange->keys_error_count++;
     exchange->kr = NULL;
     GNUNET_assert (NULL == exchange->retry_task);
     exchange->retry_delay = EXCHANGE_LIB_BACKOFF (exchange->retry_delay);
@@ -1209,6 +1114,7 @@ keys_completed_cb (void *cls,
                                                          exchange);
     return;
   case MHD_HTTP_OK:
+    exchange->keys_error_count = 0;
     if (NULL == j)
     {
       response_code = 0;
@@ -1290,6 +1196,8 @@ keys_completed_cb (void *cls,
     exchange->retry_delay = GNUNET_TIME_UNIT_ZERO;
     break;
   default:
+    if (MHD_HTTP_GATEWAY_TIMEOUT == response_code)
+      exchange->keys_error_count++;
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1883,6 +1791,20 @@ TALER_EXCHANGE_connect (
 
 
 /**
+ * Compute the network timeout for the next request to /keys.
+ *
+ * @param exchange the exchange handle
+ * @returns the timeout in seconds (for use by CURL)
+ */
+static long
+get_keys_timeout_seconds (struct TALER_EXCHANGE_Handle *exchange)
+{
+  return GNUNET_MIN (60,
+                     5 + (1L << exchange->keys_error_count));
+}
+
+
+/**
  * Initiate download of /keys from the exchange.
  *
  * @param cls exchange where to download /keys from
@@ -1936,7 +1858,7 @@ request_keys (void *cls)
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,
                                   CURLOPT_TIMEOUT,
-                                  (long) 300));
+                                  get_keys_timeout_seconds (exchange)));
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_HEADERFUNCTION,

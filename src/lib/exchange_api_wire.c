@@ -219,6 +219,8 @@ handle_wire_finished (void *cls,
   {
   case 0:
     hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    /* FIXME:  Maybe we should only increment when we know it's a timeout? */
+    wh->exchange->wire_error_count++;
     break;
   case MHD_HTTP_OK:
     {
@@ -232,6 +234,8 @@ handle_wire_finished (void *cls,
         GNUNET_JSON_spec_json ("fees", &fees),
         GNUNET_JSON_spec_end ()
       };
+
+      wh->exchange->wire_error_count = 0;
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (j,
@@ -356,6 +360,8 @@ handle_wire_finished (void *cls,
     break;
   default:
     /* unexpected response code */
+    if (MHD_HTTP_GATEWAY_TIMEOUT == response_code)
+      wh->exchange->wire_error_count++;
     GNUNET_break_op (0);
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
@@ -371,6 +377,20 @@ handle_wire_finished (void *cls,
             0,
             NULL);
   TALER_EXCHANGE_wire_cancel (wh);
+}
+
+
+/**
+ * Compute the network timeout for the next request to /wire.
+ *
+ * @param exchange the exchange handle
+ * @returns the timeout in seconds (for use by CURL)
+ */
+static long
+get_wire_timeout_seconds (struct TALER_EXCHANGE_Handle *exchange)
+{
+  return GNUNET_MIN (60,
+                     5 + (1L << exchange->wire_error_count));
 }
 
 
@@ -416,6 +436,10 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   wh->url = TEAH_path_to_url (exchange,
                               "/wire");
   eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_TIMEOUT,
+                                  get_wire_timeout_seconds (wh->exchange)));
   if (NULL == eh)
   {
     GNUNET_break (0);

@@ -58,6 +58,118 @@ struct TEAH_AuditorInteractionEntry
   struct TALER_AUDITOR_DepositConfirmationHandle *dch;
 };
 
+/**
+ * Stages of initialization for the `struct TALER_EXCHANGE_Handle`
+ */
+enum ExchangeHandleState
+{
+  /**
+   * Just allocated.
+   */
+  MHS_INIT = 0,
+
+  /**
+   * Obtained the exchange's certification data and keys.
+   */
+  MHS_CERT = 1,
+
+  /**
+   * Failed to initialize (fatal).
+   */
+  MHS_FAILED = 2
+};
+
+
+/**
+ * Handle to the exchange
+ */
+struct TALER_EXCHANGE_Handle
+{
+  /**
+   * The context of this handle
+   */
+  struct GNUNET_CURL_Context *ctx;
+
+  /**
+   * The URL of the exchange (i.e. "http://exchange.taler.net/")
+   */
+  char *url;
+
+  /**
+   * Function to call with the exchange's certification data,
+   * NULL if this has already been done.
+   */
+  TALER_EXCHANGE_CertificationCallback cert_cb;
+
+  /**
+   * Closure to pass to @e cert_cb.
+   */
+  void *cert_cb_cls;
+
+  /**
+   * Data for the request to get the /keys of a exchange,
+   * NULL once we are past stage #MHS_INIT.
+   */
+  struct KeysRequest *kr;
+
+  /**
+   * Task for retrying /keys request.
+   */
+  struct GNUNET_SCHEDULER_Task *retry_task;
+
+  /**
+   * Raw key data of the exchange, only valid if
+   * @e handshake_complete is past stage #MHS_CERT.
+   */
+  json_t *key_data_raw;
+
+  /**
+   * Head of DLL of auditors of this exchange.
+   */
+  struct TEAH_AuditorListEntry *auditors_head;
+
+  /**
+   * Tail of DLL of auditors of this exchange.
+   */
+  struct TEAH_AuditorListEntry *auditors_tail;
+
+  /**
+   * Key data of the exchange, only valid if
+   * @e handshake_complete is past stage #MHS_CERT.
+   */
+  struct TALER_EXCHANGE_Keys key_data;
+
+  /**
+   * Retry /keys frequency.
+   */
+  struct GNUNET_TIME_Relative retry_delay;
+
+  /**
+   * When does @e key_data expire?
+   */
+  struct GNUNET_TIME_Absolute key_data_expiration;
+
+  /**
+   * Number of subsequent failed requests to /keys.
+   *
+   * Used to compute the CURL timeout for the request.
+   */
+  unsigned int keys_error_count;
+
+  /**
+   * Number of subsequent failed requests to /wire.
+   *
+   * Used to compute the CURL timeout for the request.
+   */
+  unsigned int wire_error_count;
+
+  /**
+   * Stage of the exchange's initialization routines.
+   */
+  enum ExchangeHandleState state;
+
+};
+
 
 /**
  * Function called for each auditor to give us a chance to possibly
@@ -110,6 +222,15 @@ TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
 struct GNUNET_CURL_Context *
 TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h);
 
+
+/**
+ * Check if the handle is ready to process requests.
+ *
+ * @param h the exchange handle to query
+ * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
+ */
+int
+TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
 
 /**
  * Check if the handle is ready to process requests.
