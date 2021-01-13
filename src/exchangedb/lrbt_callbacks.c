@@ -436,14 +436,18 @@ lrbt_cb_table_auditor_denom_sigs (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_uint64 ("denominations_serial",
-                                    &td.details.auditor_denom_sigs.
-                                    denominations_serial),
-      GNUNET_PQ_result_spec_auto_from_type ("auditor_sig",
-                                            &td.details.auditor_denom_sigs.
-                                            auditor_sig),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "auditor_uuid",
+        &td.details.auditor_denom_sigs.auditor_uuid),
+      GNUNET_PQ_result_spec_uint64 (
+        "denominations_serial",
+        &td.details.auditor_denom_sigs.denominations_serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "auditor_sig",
+        &td.details.auditor_denom_sigs.auditor_sig),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1052,6 +1056,8 @@ lrbt_cb_table_wire_fee (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_string ("wire_method",
+                                    &td.details.wire_fee.wire_method),
       TALER_PQ_result_spec_absolute_time ("start_date",
                                           &td.details.wire_fee.start_date),
       TALER_PQ_result_spec_absolute_time ("end_date",

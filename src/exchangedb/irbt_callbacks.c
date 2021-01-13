@@ -437,11 +437,11 @@ irbt_cb_table_refresh_revealed_coins (struct PostgresClosure *pg,
       &td->details.refresh_revealed_coins.freshcoin_index),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.refresh_revealed_coins.link_sig),
-    GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
     GNUNET_PQ_query_param_fixed_size (
       td->details.refresh_revealed_coins.coin_ev,
       td->details.refresh_revealed_coins.
       coin_ev_size),
+    GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
     GNUNET_PQ_query_param_rsa_signature (
       td->details.refresh_revealed_coins.ev_sig.rsa_signature),
     GNUNET_PQ_query_param_uint64 (

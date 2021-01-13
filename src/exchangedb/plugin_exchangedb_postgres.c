@@ -1753,22 +1753,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_denominations",
                               "SELECT"
                               " denominations_serial AS serial"
-                              ",denom_pub"
-                              ",master_sig"
-                              ",valid_from"
-                              ",expire_withdraw"
-                              ",expire_deposit"
-                              ",expire_legal"
-                              ",coin_val"
-                              ",coin_frac"
-                              ",fee_withdraw_val"
-                              ",fee_withdraw_frac"
-                              ",fee_deposit_val"
-                              ",fee_deposit_frac"
-                              ",fee_refresh_val"
-                              ",fee_refresh_frac"
-                              ",fee_refund_val"
-                              ",fee_refund_frac"
                               " FROM denominations"
                               " ORDER BY denominations_serial DESC"
                               " LIMIT 1;",
@@ -1776,8 +1760,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_denomination_revocations",
                               "SELECT"
                               " denom_revocations_serial_id AS serial"
-                              ",master_sig"
-                              ",denominations_serial"
                               " FROM denomination_revocations"
                               " ORDER BY denom_revocations_serial_id DESC"
                               " LIMIT 1;",
@@ -1785,12 +1767,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_reserves",
                               "SELECT"
                               " reserve_uuid AS serial"
-                              ",reserve_pub"
-                              ",account_details"
-                              ",current_balance_val"
-                              ",current_balance_frac"
-                              ",expiration_date"
-                              ",gc_date"
                               " FROM reserves"
                               " ORDER BY reserve_uuid DESC"
                               " LIMIT 1;",
@@ -1798,13 +1774,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_in",
                               "SELECT"
                               " reserve_in_serial_id AS serial"
-                              ",wire_reference"
-                              ",credit_val"
-                              ",credit_frac"
-                              ",sender_account_details"
-                              ",exchange_account_section"
-                              ",execution_date"
-                              ",reserve_uuid"
                               " FROM reserves_in"
                               " ORDER BY reserve_in_serial_id DESC"
                               " LIMIT 1;",
@@ -1812,14 +1781,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_close",
                               "SELECT"
                               " close_uuid AS serial"
-                              ",execution_date"
-                              ",wtid"
-                              ",receiver_account"
-                              ",amount_val"
-                              ",amount_frac"
-                              ",closing_fee_val"
-                              ",closing_fee_frac"
-                              ",reserve_uuid"
                               " FROM reserves_close"
                               " ORDER BY close_uuid DESC"
                               " LIMIT 1;",
@@ -1827,14 +1788,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_out",
                               "SELECT"
                               " reserve_out_serial_id AS serial"
-                              ",h_blind_ev"
-                              ",denom_sig"
-                              ",reserve_sig"
-                              ",execution_date"
-                              ",amount_with_fee_val"
-                              ",amount_with_fee_frac"
-                              ",reserve_uuid"
-                              ",denominations_serial"
                               " FROM reserves_out"
                               " ORDER BY reserve_out_serial_id DESC"
                               " LIMIT 1;",
@@ -1842,11 +1795,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_auditors",
                               "SELECT"
                               " auditor_uuid AS serial"
-                              ",auditor_pub"
-                              ",auditor_name"
-                              ",auditor_url"
-                              ",is_active"
-                              ",last_change"
                               " FROM auditors"
                               " ORDER BY auditor_uuid DESC"
                               " LIMIT 1;",
@@ -1854,9 +1802,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_auditor_denom_sigs",
                               "SELECT"
                               " auditor_denom_serial AS serial"
-                              ",auditor_uuid"
-                              ",denominations_serial"
-                              ",auditor_sig"
                               " FROM auditor_denom_sigs"
                               " ORDER BY auditor_denom_serial DESC"
                               " LIMIT 1;",
@@ -1864,11 +1809,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_exchange_sign_keys",
                               "SELECT"
                               " esk_serial AS serial"
-                              ",exchange_pub"
-                              ",master_sig"
-                              ",valid_from"
-                              ",expire_sign"
-                              ",expire_legal"
                               " FROM exchange_sign_keys"
                               " ORDER BY esk_serial DESC"
                               " LIMIT 1;",
@@ -1876,8 +1816,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_signkey_revocations",
                               "SELECT"
                               " signkey_revocations_serial_id AS serial"
-                              ",esk_serial"
-                              ",master_sig"
                               " FROM signkey_revocations"
                               " ORDER BY signkey_revocations_serial_id DESC"
                               " LIMIT 1;",
@@ -1885,9 +1823,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_known_coins",
                               "SELECT"
                               " known_coin_id AS serial"
-                              ",coin_pub"
-                              ",denom_sig"
-                              ",denominations_serial"
                               " FROM known_coins"
                               " ORDER BY known_coin_id DESC"
                               " LIMIT 1;",
@@ -1895,12 +1830,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_commitments",
                               "SELECT"
                               " melt_serial_id AS serial"
-                              ",rc"
-                              ",old_coin_sig"
-                              ",amount_with_fee_val"
-                              ",amount_with_fee_frac"
-                              ",noreveal_index"
-                              ",old_known_coin_id"
                               " FROM refresh_commitments"
                               " ORDER BY melt_serial_id DESC"
                               " LIMIT 1;",
@@ -1908,12 +1837,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_revealed_coins",
                               "SELECT"
                               " rrc_serial AS serial"
-                              ",freshcoin_index"
-                              ",link_sig"
-                              ",coin_ev"
-                              ",ev_sig"
-                              ",denominations_serial"
-                              ",melt_serial_id"
                               " FROM refresh_revealed_coins"
                               " ORDER BY rrc_serial DESC"
                               " LIMIT 1;",
@@ -1921,9 +1844,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_transfer_keys",
                               "SELECT"
                               " rtc_serial AS serial"
-                              ",transfer_pub"
-                              ",transfer_privs"
-                              ",melt_serial_id"
                               " FROM refresh_transfer_keys"
                               " ORDER BY rtc_serial DESC"
                               " LIMIT 1;",
@@ -1931,19 +1851,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_deposits",
                               "SELECT"
                               " deposit_serial_id AS serial"
-                              ",amount_with_fee_val"
-                              ",amount_with_fee_frac"
-                              ",wallet_timestamp"
-                              ",exchange_timestamp"
-                              ",refund_deadline"
-                              ",wire_deadline"
-                              ",merchant_pub"
-                              ",h_contract_terms"
-                              ",coin_sig"
-                              ",wire"
-                              ",tiny"
-                              ",done"
-                              ",known_coin_id"
                               " FROM deposits"
                               " ORDER BY deposit_serial_id DESC"
                               " LIMIT 1;",
@@ -1951,11 +1858,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_refunds",
                               "SELECT"
                               " refund_serial_id AS serial"
-                              ",merchant_sig"
-                              ",rtransaction_id"
-                              ",amount_with_fee_val"
-                              ",amount_with_fee_frac"
-                              ",deposit_serial_id"
                               " FROM refunds"
                               " ORDER BY refund_serial_id DESC"
                               " LIMIT 1;",
@@ -1963,12 +1865,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_wire_out",
                               "SELECT"
                               " wireout_uuid AS serial"
-                              ",execution_date"
-                              ",wtid_raw"
-                              ",wire_target"
-                              ",exchange_account_section"
-                              ",amount_val"
-                              ",amount_frac"
                               " FROM wire_out"
                               " ORDER BY wireout_uuid DESC"
                               " LIMIT 1;",
@@ -1976,8 +1872,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_aggregation_tracking",
                               "SELECT"
                               " aggregation_serial_id AS serial"
-                              ",deposit_serial_id"
-                              ",wtid_raw"
                               " FROM aggregation_tracking"
                               " ORDER BY aggregation_serial_id DESC"
                               " LIMIT 1;",
@@ -1985,14 +1879,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_wire_fee",
                               "SELECT"
                               " wire_fee_serial AS serial"
-                              ",wire_method"
-                              ",start_date"
-                              ",end_date"
-                              ",wire_fee_val"
-                              ",wire_fee_frac"
-                              ",closing_fee_val"
-                              ",closing_fee_frac"
-                              ",master_sig"
                               " FROM wire_fee"
                               " ORDER BY wire_fee_serial DESC"
                               " LIMIT 1;",
@@ -2000,13 +1886,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_recoup",
                               "SELECT"
                               " recoup_uuid AS serial"
-                              ",coin_sig"
-                              ",coin_blind"
-                              ",amount_val"
-                              ",amount_frac"
-                              ",timestamp"
-                              ",known_coin_id"
-                              ",reserve_out_serial_id"
                               " FROM recoup"
                               " ORDER BY recoup_uuid DESC"
                               " LIMIT 1;",
@@ -2014,13 +1893,6 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_serial_by_table_recoup_refresh",
                               "SELECT"
                               " recoup_refresh_uuid AS serial"
-                              ",coin_sig"
-                              ",coin_blind"
-                              ",amount_val"
-                              ",amount_frac"
-                              ",timestamp"
-                              ",known_coin_id"
-                              ",rrc_serial"
                               " FROM recoup_refresh"
                               " ORDER BY recoup_refresh_uuid DESC"
                               " LIMIT 1;",
@@ -2133,6 +2005,7 @@ postgres_get_session (void *cls)
                               " auditor_denom_serial AS serial"
                               ",auditor_uuid"
                               ",denominations_serial"
+                              ",auditor_sig"
                               " FROM auditor_denom_sigs"
                               " WHERE auditor_denom_serial > $1"
                               " ORDER BY auditor_denom_serial ASC;",
@@ -2187,16 +2060,14 @@ postgres_get_session (void *cls)
         "select_above_serial_by_table_refresh_revealed_coins",
         "SELECT"
         " rrc_serial AS serial"
-        ",rc"
         ",freshcoin_index"
         ",link_sig"
         ",coin_ev"
         ",h_coin_ev"
         ",ev_sig"
-        ",rrc_serial"
+        ",melt_serial_id"
         ",denominations_serial"
         " FROM refresh_revealed_coins"
-        " JOIN refresh_commitments USING (melt_serial_id)"
         " WHERE rrc_serial > $1"
         " ORDER BY rrc_serial ASC;",
         1),
@@ -2204,11 +2075,10 @@ postgres_get_session (void *cls)
         "select_above_serial_by_table_refresh_transfer_keys",
         "SELECT"
         " rtc_serial AS serial"
-        ",rc"
         ",transfer_pub"
         ",transfer_privs"
+        ",melt_serial_id"
         " FROM refresh_transfer_keys"
-        " JOIN refresh_commitments USING (melt_serial_id)"
         " WHERE rtc_serial > $1"
         " ORDER BY rtc_serial ASC;",
         1),
@@ -2236,15 +2106,12 @@ postgres_get_session (void *cls)
       GNUNET_PQ_make_prepare ("select_above_serial_by_table_refunds",
                               "SELECT"
                               " refund_serial_id AS serial"
-                              ",merchant_pub"
                               ",merchant_sig"
-                              ",h_contract_terms"
                               ",rtransaction_id"
-                              ",refunds.amount_with_fee_val"
-                              ",refunds.amount_with_fee_frac"
-                              ",known_coin_id"
+                              ",amount_with_fee_val"
+                              ",amount_with_fee_frac"
+                              ",deposit_serial_id"
                               " FROM refunds"
-                              " JOIN deposits USING (deposit_serial_id)"
                               " WHERE refund_serial_id > $1"
                               " ORDER BY refund_serial_id ASC;",
                               1),

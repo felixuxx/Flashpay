@@ -190,7 +190,8 @@ taler_auditor_dbinit_CPPFLAGS = \
 
 check_SCRIPTS = \
   test-auditor.sh \
-  test-revocation.sh
+  test-revocation.sh \
+  test-sync.sh
 
 .NOTPARALLEL:
 TESTS = $(check_SCRIPTS)
@@ -200,6 +201,8 @@ EXTRA_DIST = \
   taler-helper-auditor-render.py \
   auditor.conf \
   test-auditor.conf \
+  test-sync-in.conf \
+  test-sync-out.conf \
   generate-auditor-basedb.sh \
   generate-revoke-basedb.sh \
   generate-auditor-basedb.conf \

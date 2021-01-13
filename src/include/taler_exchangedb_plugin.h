@@ -3811,7 +3811,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param session a session
    * @param tb table data to insert
-   * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+   * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
    *         @a table does not have a serial number
    */
   enum GNUNET_DB_QueryStatus
