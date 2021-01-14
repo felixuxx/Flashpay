@@ -111,6 +111,7 @@ doc/prebuilt/*
 contrib/taler-exchange.tag
 doxygen-doc/
 src/testing/test_exchange_api_keys_cherry_picking
+src/auditor/taler-auditor-sync
 src/auditor/taler-wire-auditor
 contrib/auditor-report.aux
 contrib/auditor-report.log
