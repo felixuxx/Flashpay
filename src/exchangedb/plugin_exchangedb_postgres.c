@@ -273,7 +273,6 @@ postgres_get_session (void *cls)
                               "INSERT INTO denominations "
                               "(denom_pub_hash"
                               ",denom_pub"
-                              ",master_pub"
                               ",master_sig"
                               ",valid_from"
                               ",expire_withdraw"
@@ -291,13 +290,12 @@ postgres_get_session (void *cls)
                               ",fee_refund_frac"
                               ") VALUES "
                               "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-                              " $11, $12, $13, $14, $15, $16, $17, $18);",
-                              18),
+                              " $11, $12, $13, $14, $15, $16, $17);",
+                              17),
       /* Used in #postgres_iterate_denomination_info() */
       GNUNET_PQ_make_prepare ("denomination_iterate",
                               "SELECT"
-                              " master_pub"
-                              ",master_sig"
+                              " master_sig"
                               ",valid_from"
                               ",expire_withdraw"
                               ",expire_deposit"
@@ -379,8 +377,7 @@ postgres_get_session (void *cls)
       /* Used in #postgres_get_denomination_info() */
       GNUNET_PQ_make_prepare ("denomination_get",
                               "SELECT"
-                              " master_pub"
-                              ",master_sig"
+                              " master_sig"
                               ",valid_from"
                               ",expire_withdraw"
                               ",expire_deposit"
@@ -2187,7 +2184,6 @@ postgres_get_session (void *cls)
                               "(denominations_serial"
                               ",denom_pub_hash"
                               ",denom_pub"
-                              ",master_pub"
                               ",master_sig"
                               ",valid_from"
                               ",expire_withdraw"
@@ -2205,8 +2201,8 @@ postgres_get_session (void *cls)
                               ",fee_refund_frac"
                               ") VALUES "
                               "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-                              " $11, $12, $13, $14, $15, $16, $17, $18, $19);",
-                              19),
+                              " $11, $12, $13, $14, $15, $16, $17, $18);",
+                              18),
       GNUNET_PQ_make_prepare ("insert_into_table_denomination_revocations",
                               "INSERT INTO denomination_revocations"
                               "(denom_revocations_serial_id"
@@ -2642,7 +2638,6 @@ postgres_insert_denomination_info (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
-    GNUNET_PQ_query_param_auto_from_type (&issue->properties.master),
     GNUNET_PQ_query_param_auto_from_type (&issue->signature),
     TALER_PQ_query_param_absolute_time_nbo (&issue->properties.start),
     TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
@@ -2700,8 +2695,6 @@ postgres_get_denomination_info (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("master_pub",
-                                          &issue->properties.master),
     GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                           &issue->signature),
     TALER_PQ_result_spec_absolute_time_nbo ("valid_from",
@@ -2725,6 +2718,9 @@ postgres_get_denomination_info (
     GNUNET_PQ_result_spec_end
   };
 
+  memset (&issue->properties.master,
+          0,
+          sizeof (issue->properties.master));
   qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
                                                  "denomination_get",
                                                  params,
@@ -2783,8 +2779,6 @@ domination_cb_helper (void *cls,
     struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
     struct TALER_DenominationPublicKey denom_pub;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("master_pub",
-                                            &issue.properties.master),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &issue.signature),
       TALER_PQ_result_spec_absolute_time_nbo ("valid_from",
@@ -2810,6 +2804,9 @@ domination_cb_helper (void *cls,
       GNUNET_PQ_result_spec_end
     };
 
+    memset (&issue.properties.master,
+            0,
+            sizeof (issue.properties.master));
     if (GNUNET_OK !=
         GNUNET_PQ_extract_result (result,
                                   rs,
@@ -9411,7 +9408,6 @@ postgres_lookup_denomination_key (
  * @param h_denom_pub hash of the denomination public key
  * @param denom_pub the actual denomination key
  * @param meta meta data about the denomination
- * @param master_pub master public key
  * @param master_sig master signature to add
  * @return transaction status code
  */
@@ -9422,14 +9418,12 @@ postgres_add_denomination_key (
   const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
-  const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam iparams[] = {
     GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
-    GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     TALER_PQ_query_param_absolute_time (&meta->start),
     TALER_PQ_query_param_absolute_time (&meta->expire_withdraw),

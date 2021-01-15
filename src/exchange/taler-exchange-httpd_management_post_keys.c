@@ -199,7 +199,6 @@ add_keys (void *cls,
       &akc->d_sigs[i].h_denom_pub,
       &denom_pub,
       &meta,
-      &TEH_master_public_key,
       &akc->d_sigs[i].master_sig);
     GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
     if (qs < 0)

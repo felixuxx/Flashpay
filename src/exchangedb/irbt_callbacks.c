@@ -38,13 +38,11 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
                              const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct GNUNET_HashCode denom_hash;
-  static struct TALER_MasterPublicKeyP master_pub;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&denom_hash),
     GNUNET_PQ_query_param_rsa_public_key (
       td->details.denominations.denom_pub.rsa_public_key),
-    GNUNET_PQ_query_param_auto_from_type (&master_pub), // FIXME: !?
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.denominations.master_sig),
     TALER_PQ_query_param_absolute_time (

@@ -44,6 +44,10 @@ COMMENT ON INDEX prepare_get_index
   IS 'for wire_prepare_data_get';
 
 
+-- we do not actually need the master public key, it is always the same
+ALTER TABLE denominations
+  DROP COLUMN master_pub;
+
 -- need serial IDs on various tables for exchange-auditor replication
 ALTER TABLE denominations
   ADD COLUMN denominations_serial BIGSERIAL UNIQUE;

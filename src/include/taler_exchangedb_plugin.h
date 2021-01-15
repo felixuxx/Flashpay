@@ -2017,10 +2017,12 @@ typedef void
 
 /**
  * Function called with information about the exchange's denomination keys.
+ * Note that the 'master' field in @a issue will not yet be initialized when
+ * this function is called!
  *
  * @param cls closure
  * @param denom_pub public key of the denomination
- * @param issue detailed information about the denomination (value, expiration times, fees)
+ * @param issue detailed information about the denomination (value, expiration times, fees);
  */
 typedef void
 (*TALER_EXCHANGEDB_DenominationCallback)(
@@ -2167,7 +2169,9 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Function called on every known denomination key.  Runs in its
-   * own read-only transaction (hence no session provided).
+   * own read-only transaction (hence no session provided).  Note that
+   * the "master" field in the callback's 'issue' argument will NOT
+   * be initialized yet.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param session session to use
@@ -3648,7 +3652,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param h_denom_pub hash of the denomination public key
    * @param denom_pub the denomination public key
    * @param meta meta data about the denomination
-   * @param master_pub master public key (consider removing this in the future!)
    * @param master_sig master signature to add
    * @return transaction status code
    */
@@ -3659,7 +3662,6 @@ struct TALER_EXCHANGEDB_Plugin
     const struct GNUNET_HashCode *h_denom_pub,
     const struct TALER_DenominationPublicKey *denom_pub,
     const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
-    const struct TALER_MasterPublicKeyP *master_pub,
     const struct TALER_MasterSignatureP *master_sig);
 
 

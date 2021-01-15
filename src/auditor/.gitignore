@@ -18,3 +18,4 @@ generate-auditor-basedb-prod.conf
 generate-auditor-basedb-revocation.conf
 revocation-tmp-*
 auditor-basedb.wdb
+taler-auditor-sync

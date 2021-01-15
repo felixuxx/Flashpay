@@ -212,6 +212,7 @@ add_denomination (
 
     i = GNUNET_new (struct TALER_DenominationKeyValidityPS);
     *i = *issue;
+    i->master = TALER_ARL_master_pub;
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_CONTAINER_multihashmap_put (denominations,
                                                       &issue->denom_hash,
