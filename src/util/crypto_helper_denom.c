@@ -126,7 +126,7 @@ try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
   dh->my_sa.sun_family = AF_UNIX;
   strncpy (dh->my_sa.sun_path,
            tmpdir,
-           sizeof (dh->sa.sun_path));
+           sizeof (dh->sa.sun_path) - 1);
   if (0 != unlink (tmpdir))
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                               "unlink",
@@ -219,7 +219,7 @@ TALER_CRYPTO_helper_denom_connect (
   dh->sa.sun_family = AF_UNIX;
   strncpy (dh->sa.sun_path,
            unixpath,
-           sizeof (dh->sa.sun_path));
+           sizeof (dh->sa.sun_path) - 1);
   dh->sock = -1;
   {
     char *tmpdir;

@@ -127,7 +127,7 @@ try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
   esh->my_sa.sun_family = AF_UNIX;
   strncpy (esh->my_sa.sun_path,
            tmpdir,
-           sizeof (esh->sa.sun_path));
+           sizeof (esh->sa.sun_path) - 1);
   if (0 != unlink (tmpdir))
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                               "unlink",
@@ -220,7 +220,7 @@ TALER_CRYPTO_helper_esign_connect (
   esh->sa.sun_family = AF_UNIX;
   strncpy (esh->sa.sun_path,
            unixpath,
-           sizeof (esh->sa.sun_path));
+           sizeof (esh->sa.sun_path) - 1);
   esh->sock = -1;
   {
     char *tmpdir;
@@ -484,8 +484,9 @@ TALER_CRYPTO_helper_esign_sign_ (
                   sizeof (esh->sa));
     if (ret < 0)
     {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                           "sendto");
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "sendto",
+                                esh->sa.sun_path);
       do_disconnect (esh);
       return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
     }
