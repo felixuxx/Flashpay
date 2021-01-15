@@ -275,7 +275,7 @@ struct TEH_KeyStateHandle
    * Information we track for thecrypto helpers.  Preserved
    * when the @e key_generation changes, thus kept separate.
    */
-  struct HelperState helpers;
+  struct HelperState *helpers;
 
   /**
    * For which (global) key_generation was this data structure created?
@@ -851,7 +851,10 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
     ksh->management_keys_reply = NULL;
   }
   if (free_helper)
-    destroy_key_helpers (&ksh->helpers);
+  {
+    destroy_key_helpers (ksh->helpers);
+    GNUNET_free (ksh->helpers);
+  }
   GNUNET_free (ksh);
 }
 
@@ -1631,8 +1634,9 @@ build_key_state (struct HelperState *hs,
   ksh->key_generation = key_generation;
   if (NULL == hs)
   {
+    ksh->helpers = GNUNET_new (struct HelperState);
     if (GNUNET_OK !=
-        setup_key_helpers (&ksh->helpers))
+        setup_key_helpers (ksh->helpers))
     {
       GNUNET_free (ksh);
       return NULL;
@@ -1640,7 +1644,7 @@ build_key_state (struct HelperState *hs,
   }
   else
   {
-    ksh->helpers = *hs;
+    ksh->helpers = hs;
   }
   ksh->denomkey_map = GNUNET_CONTAINER_multihashmap_create (1024,
                                                             GNUNET_YES);
@@ -1754,7 +1758,7 @@ get_key_state (bool management_only)
                 "Rebuilding /keys, generation upgrade from %llu to %llu\n",
                 (unsigned long long) old_ksh->key_generation,
                 (unsigned long long) key_generation);
-    ksh = build_key_state (&old_ksh->helpers,
+    ksh = build_key_state (old_ksh->helpers,
                            management_only);
     if (0 != pthread_setspecific (key_state,
                                   ksh))
@@ -1770,7 +1774,7 @@ get_key_state (bool management_only)
                          false);
     return ksh;
   }
-  sync_key_helpers (&old_ksh->helpers);
+  sync_key_helpers (old_ksh->helpers);
   return old_ksh;
 }
 
@@ -1849,7 +1853,7 @@ TEH_keys_denomination_sign (const struct GNUNET_HashCode *h_denom_pub,
     *ec = TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
     return none;
   }
-  return TALER_CRYPTO_helper_denom_sign (ksh->helpers.dh,
+  return TALER_CRYPTO_helper_denom_sign (ksh->helpers->dh,
                                          h_denom_pub,
                                          msg,
                                          msg_size,
@@ -1868,7 +1872,7 @@ TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub)
     GNUNET_break (0);
     return;
   }
-  TALER_CRYPTO_helper_denom_revoke (ksh->helpers.dh,
+  TALER_CRYPTO_helper_denom_revoke (ksh->helpers->dh,
                                     h_denom_pub);
   TEH_keys_update_states ();
 }
@@ -1907,7 +1911,7 @@ TEH_keys_exchange_sign2_ (
 {
   enum TALER_ErrorCode ec;
 
-  ec = TALER_CRYPTO_helper_esign_sign_ (ksh->helpers.esh,
+  ec = TALER_CRYPTO_helper_esign_sign_ (ksh->helpers->esh,
                                         purpose,
                                         pub,
                                         sig);
@@ -1951,7 +1955,7 @@ TEH_keys_exchange_revoke (const struct TALER_ExchangePublicKeyP *exchange_pub)
     GNUNET_break (0);
     return;
   }
-  TALER_CRYPTO_helper_esign_revoke (ksh->helpers.esh,
+  TALER_CRYPTO_helper_esign_revoke (ksh->helpers->esh,
                                     exchange_pub);
   TEH_keys_update_states ();
 }
@@ -2214,7 +2218,7 @@ TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
     return GNUNET_SYSERR;
   }
 
-  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers.denom_keys,
+  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
                                           h_denom_pub);
   meta->start = hd->start_time;
   meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
@@ -2247,7 +2251,7 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   }
 
   pid.public_key = exchange_pub->eddsa_pub;
-  hsk = GNUNET_CONTAINER_multipeermap_get (ksh->helpers.esign_keys,
+  hsk = GNUNET_CONTAINER_multipeermap_get (ksh->helpers->esign_keys,
                                            &pid);
   meta->start = hsk->start_time;
   meta->expire_sign = GNUNET_TIME_absolute_add (meta->start,
@@ -2427,10 +2431,10 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
 
     GNUNET_assert (NULL != fbc.denoms);
     GNUNET_assert (NULL != fbc.signkeys);
-    GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers.denom_keys,
+    GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers->denom_keys,
                                            &add_future_denomkey_cb,
                                            &fbc);
-    GNUNET_CONTAINER_multipeermap_iterate (ksh->helpers.esign_keys,
+    GNUNET_CONTAINER_multipeermap_iterate (ksh->helpers->esign_keys,
                                            &add_future_signkey_cb,
                                            &fbc);
     reply = json_pack (
