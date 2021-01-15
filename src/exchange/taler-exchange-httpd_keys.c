@@ -174,6 +174,12 @@ struct HelperState
    */
   struct GNUNET_CONTAINER_MultiPeerMap *esign_keys;
 
+  /**
+   * Cached reply for a GET /management/keys request.  Used so we do not
+   * re-create the reply every time.
+   */
+  json_t *management_keys_reply;
+
 };
 
 
@@ -253,12 +259,6 @@ struct TEH_KeyStateHandle
    * the information needed for the "auditors" field of the /keys response.
    */
   json_t *auditors;
-
-  /**
-   * Cached reply for a GET /management/keys request.  Used so we do not
-   * re-create the reply every time.
-   */
-  json_t *management_keys_reply;
 
   /**
    * Sorted array of responses to /keys (MUST be sorted by cherry-picking date) of
@@ -582,6 +582,11 @@ destroy_key_helpers (struct HelperState *hs)
                                          hs);
   GNUNET_CONTAINER_multipeermap_destroy (hs->esign_keys);
   hs->esign_keys = NULL;
+  if (NULL != hs->management_keys_reply)
+  {
+    json_decref (hs->management_keys_reply);
+    hs->management_keys_reply = NULL;
+  }
   if (NULL != hs->dh)
   {
     TALER_CRYPTO_helper_denom_disconnect (hs->dh);
@@ -658,6 +663,11 @@ helper_denom_cb (
       &hd->h_denom_pub,
       hd,
       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  if (NULL != hs->management_keys_reply)
+  {
+    json_decref (hs->management_keys_reply);
+    hs->management_keys_reply = NULL;
+  }
 }
 
 
@@ -719,6 +729,11 @@ helper_esign_cb (
       &pid,
       hsk,
       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  if (NULL != hs->management_keys_reply)
+  {
+    json_decref (hs->management_keys_reply);
+    hs->management_keys_reply = NULL;
+  }
 }
 
 
@@ -845,11 +860,6 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
   GNUNET_CONTAINER_multipeermap_destroy (ksh->signkey_map);
   json_decref (ksh->auditors);
   ksh->auditors = NULL;
-  if (NULL != ksh->management_keys_reply)
-  {
-    json_decref (ksh->management_keys_reply);
-    ksh->management_keys_reply = NULL;
-  }
   if (free_helper)
   {
     destroy_key_helpers (ksh->helpers);
@@ -2421,7 +2431,8 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                        "no key state");
   }
-  if (NULL == ksh->management_keys_reply)
+  sync_key_helpers (ksh->helpers);
+  if (NULL == ksh->helpers->management_keys_reply)
   {
     struct FutureBuilderContext fbc = {
       .ksh = ksh,
@@ -2459,11 +2470,11 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                          NULL);
-    ksh->management_keys_reply = json_incref (reply);
+    ksh->helpers->management_keys_reply = json_incref (reply);
   }
   else
   {
-    reply = json_incref (ksh->management_keys_reply);
+    reply = json_incref (ksh->helpers->management_keys_reply);
   }
   return TALER_MHD_reply_json (connection,
                                reply,
