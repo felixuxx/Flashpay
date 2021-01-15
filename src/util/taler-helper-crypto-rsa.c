@@ -802,7 +802,7 @@ notify_client_dk_del (struct Client *client,
   };
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Sending RSA denomination expiration %sn",
+              "Sending RSA denomination expiration %s\n",
               GNUNET_h2s (&dk->h_denom_pub));
   if (GNUNET_OK !=
       transmit (&client->addr,
