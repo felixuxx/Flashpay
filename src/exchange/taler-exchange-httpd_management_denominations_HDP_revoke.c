@@ -81,7 +81,7 @@ TEH_handler_management_denominations_HDP_revoke (
                                        TALER_EC_GENERIC_DB_STORE_FAILED,
                                        "denomination revocation");
   }
-  TEH_keys_update_states ();
+  TEH_keys_denomination_revoke (h_denom_pub);
   return TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,

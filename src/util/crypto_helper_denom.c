@@ -366,6 +366,9 @@ handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received revocation of denomination key %s\n",
+              GNUNET_h2s (&pn->h_denom_pub));
   dh->dkc (dh->dkc_cls,
            NULL,
            GNUNET_TIME_UNIT_ZERO_ABS,
@@ -681,6 +684,9 @@ TALER_CRYPTO_helper_denom_revoke (
   }
   /* We are using SOCK_DGRAM, partial writes should not be possible */
   GNUNET_break (((size_t) ret) == sizeof (rr));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Requested revocation of denomination key %s\n",
+              GNUNET_h2s (h_denom_pub));
 }
 
 

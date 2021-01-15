@@ -958,7 +958,6 @@ handle_revoke_request (const struct sockaddr_un *addr,
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                               "unlink",
                               dk->filename);
-
   /* Setup replacement key */
   denom = dk->denom;
   ndk = GNUNET_new (struct DenominationKey);
@@ -985,7 +984,8 @@ handle_revoke_request (const struct sockaddr_un *addr,
                                denom->keys_tail,
                                dk);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Revocation complete\n");
+              "Revocation of denomination key %s complete\n",
+              GNUNET_h2s (&rr->h_denom_pub));
 
   /* Tell clients this key is gone */
   {
