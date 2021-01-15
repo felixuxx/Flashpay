@@ -2334,34 +2334,38 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
                                "SECM_TOFU_FILE");
     return GNUNET_SYSERR;
   }
-  ret = GNUNET_DISK_fn_read (fn,
-                             &old,
-                             sizeof (old));
-  if (GNUNET_SYSERR != ret)
+  if (GNUNET_OK ==
+      GNUNET_DISK_file_test (fn))
   {
-    if (ret != sizeof (old))
+    ret = GNUNET_DISK_fn_read (fn,
+                               &old,
+                               sizeof (old));
+    if (GNUNET_SYSERR != ret)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "File `%s' corrupt\n",
-                  fn);
+      if (ret != sizeof (old))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "File `%s' corrupt\n",
+                    fn);
+        GNUNET_free (fn);
+        return GNUNET_SYSERR;
+      }
+      /* TOFU check */
+      if (0 != memcmp (old,
+                       secm,
+                       sizeof (old)))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Fatal: security module keys changed (file `%s')!\n",
+                    fn);
+        GNUNET_free (fn);
+        return GNUNET_SYSERR;
+      }
       GNUNET_free (fn);
-      return GNUNET_SYSERR;
+      return GNUNET_OK;
     }
-    /* TOFU check */
-    if (0 != memcmp (old,
-                     secm,
-                     sizeof (old)))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Fatal: security module keys changed (file `%s')!\n",
-                  fn);
-      GNUNET_free (fn);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_free (fn);
-    return GNUNET_OK;
   }
-  else
+
   {
     char *key;
 
