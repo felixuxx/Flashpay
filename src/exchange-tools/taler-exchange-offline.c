@@ -2429,6 +2429,15 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
       }
     }
   }
+  if (GNUNET_OK !=
+      GNUNET_DISK_directory_create_for_file (fn))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed create directory to store key material in file `%s'\n",
+                fn);
+    GNUNET_free (fn);
+    return GNUNET_SYSERR;
+  }
   /* persist keys for future runs */
   if (GNUNET_OK !=
       GNUNET_DISK_fn_write (fn,
