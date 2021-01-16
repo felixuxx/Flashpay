@@ -95,11 +95,6 @@ struct AggregationUnit
   struct TALER_EXCHANGEDB_Session *session;
 
   /**
-   * Wire preparation handle.
-   */
-  struct TALER_BANK_PrepareHandle *ph;
-
-  /**
    * Array of row_ids from the aggregation.
    */
   uint64_t additional_rows[TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT];
