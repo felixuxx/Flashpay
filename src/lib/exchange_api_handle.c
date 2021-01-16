@@ -1103,7 +1103,6 @@ keys_completed_cb (void *cls,
   {
   case 0:
     free_keys_request (kr);
-    /* FIXME:  Maybe we should only increment when we know it's a timeout? */
     exchange->keys_error_count++;
     exchange->kr = NULL;
     GNUNET_assert (NULL == exchange->retry_task);
