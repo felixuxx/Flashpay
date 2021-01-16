@@ -152,7 +152,6 @@ struct KeysRequest
    */
   struct GNUNET_TIME_Absolute expire;
 
-  struct GNUNET_SCHEDULER_Task *timeout_task;
 };
 
 
