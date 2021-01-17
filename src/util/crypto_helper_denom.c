@@ -21,7 +21,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
-#include "taler-helper-crypto-rsa.h"
+#include "taler-exchange-secmod-rsa.h"
 #include <poll.h>
 
 
@@ -193,12 +193,12 @@ TALER_CRYPTO_helper_denom_connect (
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "taler-helper-crypto-rsa",
+                                               "taler-exchange-secmod-rsa",
                                                "UNIXPATH",
                                                &unixpath))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-helper-crypto-rsa",
+                               "taler-exchange-secmod-rsa",
                                "UNIXPATH");
     return NULL;
   }
@@ -207,7 +207,7 @@ TALER_CRYPTO_helper_denom_connect (
   if (strlen (unixpath) >= sizeof (dh->sa.sun_path))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-helper-crypto-rsa",
+                               "taler-exchange-secmod-rsa",
                                "UNIXPATH",
                                "path too long");
     GNUNET_free (unixpath);

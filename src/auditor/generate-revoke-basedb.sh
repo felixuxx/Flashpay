@@ -106,9 +106,9 @@ taler-bank-manage-testing $CONF postgres:///$TARGET_DB serve &> revocation-bank.
 TFN=`which taler-exchange-httpd`
 TBINPFX=`dirname $TFN`
 TLIBEXEC=${TBINPFX}/../lib/taler/libexec/
-taler-helper-crypto-eddsa -c $CONF 2> taler-helper-crypto-eddsa.log &
+taler-exchange-secmod-eddsa -c $CONF 2> taler-exchange-secmod-eddsa.log &
 SIGNKEY_HELPER_PID=$!
-taler-helper-crypto-rsa -c $CONF 2> taler-helper-crypto-rsa.log &
+taler-exchange-secmod-rsa -c $CONF 2> taler-exchange-secmod-rsa.log &
 DENOM_HELPER_PID=$!
 taler-exchange-httpd -c $CONF 2> taler-exchange-httpd.log &
 EXCHANGE_PID=$!
@@ -280,9 +280,9 @@ echo "Launching exchange 1 week in the future"
 kill -TERM $EXCHANGE_PID
 kill -TERM $DENOM_HELPER_PID
 kill -TERM $SIGNKEY_HELPER_PID
-taler-helper-crypto-eddsa $TIMETRAVEL -c $CONF 2> taler-helper-crypto-eddsa.log &
+taler-exchange-secmod-eddsa $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-eddsa.log &
 SIGNKEY_HELPER_PID=$!
-taler-helper-crypto-rsa $TIMETRAVEL -c $CONF 2> taler-helper-crypto-rsa.log &
+taler-exchange-secmod-rsa $TIMETRAVEL -c $CONF 2> taler-exchange-secmod-rsa.log &
 DENOM_HELPER_PID=$!
 taler-exchange-httpd $TIMETRAVEL -c $CONF 2> taler-exchange-httpd.log &
 export EXCHANGE_PID=$!

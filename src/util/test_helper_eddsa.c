@@ -395,7 +395,7 @@ main (int argc,
   GNUNET_asprintf (&binary_name,
                    "%s/%s",
                    libexec_dir,
-                   "taler-helper-crypto-eddsa");
+                   "taler-exchange-secmod-eddsa");
   GNUNET_free (libexec_dir);
   helper = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ERR,
                                     NULL, NULL, NULL,

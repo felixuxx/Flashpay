@@ -21,7 +21,7 @@
 #include "platform.h"
 #include "taler_util.h"
 #include "taler_signatures.h"
-#include "taler-helper-crypto-eddsa.h"
+#include "taler-exchange-secmod-eddsa.h"
 #include <poll.h>
 
 
@@ -194,12 +194,12 @@ TALER_CRYPTO_helper_esign_connect (
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "taler-helper-crypto-eddsa",
+                                               "taler-exchange-secmod-eddsa",
                                                "UNIXPATH",
                                                &unixpath))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-helper-crypto-eddsa",
+                               "taler-exchange-secmod-eddsa",
                                "UNIXPATH");
     return NULL;
   }
@@ -208,7 +208,7 @@ TALER_CRYPTO_helper_esign_connect (
   if (strlen (unixpath) >= sizeof (esh->sa.sun_path))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "taler-helper-crypto-eddsa",
+                               "taler-exchange-secmod-eddsa",
                                "UNIXPATH",
                                "path too long");
     GNUNET_free (unixpath);

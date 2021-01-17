@@ -14,12 +14,12 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/taler-helper-crypto-rsa.h
+ * @file util/taler-exchange-secmod-rsa.h
  * @brief IPC messages for the RSA crypto helper.
  * @author Christian Grothoff
  */
-#ifndef TALER_HELPER_CRYPTO_RSA_H
-#define TALER_HELPER_CRYPTO_RSA_H
+#ifndef TALER_EXCHANGE_SECMOD_RSA_H
+#define TALER_EXCHANGE_SECMOD_RSA_H
 
 #define TALER_HELPER_RSA_MT_PURGE 1
 #define TALER_HELPER_RSA_MT_AVAIL 2

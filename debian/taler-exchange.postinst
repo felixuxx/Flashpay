@@ -128,7 +128,7 @@ EnvironmentFile=/etc/default/taler-exchange
 User=${_RSECUSERNAME}
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-helper-crypto-rsa -c /etc/taler-exchange.conf
+ExecStart=/usr/bin/taler-exchange-secmod-rsa -c /etc/taler-exchange.conf
 
 [Install]
 WantedBy=multi-user.target
@@ -142,7 +142,7 @@ EnvironmentFile=/etc/default/taler-exchange
 User=${_ESECUSERNAME}
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-helper-crypto-eddsa -c /etc/taler-exchange.conf
+ExecStart=/usr/bin/taler-exchange-secmod-eddsa -c /etc/taler-exchange.conf
 EOF
 cat > "/etc/systemd/system/taler-exchange-wirewatch.service" <<EOF
 [Unit]

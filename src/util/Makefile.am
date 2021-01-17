@@ -11,8 +11,8 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 
 pkgcfg_DATA = \
   paths.conf \
-  taler-helper-crypto-eddsa.conf \
-  taler-helper-crypto-rsa.conf
+  taler-exchange-secmod-eddsa.conf \
+  taler-exchange-secmod-rsa.conf
 
 EXTRA_DIST = \
   $(pkgcfg_DATA) \
@@ -21,8 +21,8 @@ EXTRA_DIST = \
   test_helper_rsa.conf
 
 bin_PROGRAMS = \
-  taler-helper-crypto-eddsa \
-  taler-helper-crypto-rsa
+  taler-exchange-secmod-eddsa \
+  taler-exchange-secmod-rsa
 
 bin_SCRIPTS = \
   taler-config
@@ -38,18 +38,18 @@ taler-config: taler-config.in
 CLEANFILES = \
   taler-config
 
-taler_helper_crypto_rsa_SOURCES = \
-  taler-helper-crypto-rsa.c taler-helper-crypto-rsa.h
-taler_helper_crypto_rsa_LDADD = \
+taler_exchange_secmod_rsa_SOURCES = \
+  taler-exchange-secmod-rsa.c taler-exchange-secmod-rsa.h
+taler_exchange_secmod_rsa_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
   -lpthread \
   $(LIBGCRYPT_LIBS) \
   $(XLIB)
 
-taler_helper_crypto_eddsa_SOURCES = \
-  taler-helper-crypto-eddsa.c taler-helper-crypto-eddsa.h
-taler_helper_crypto_eddsa_LDADD = \
+taler_exchange_secmod_eddsa_SOURCES = \
+  taler-exchange-secmod-eddsa.c taler-exchange-secmod-eddsa.h
+taler_exchange_secmod_eddsa_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
   -lpthread \

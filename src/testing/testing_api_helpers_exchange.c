@@ -599,11 +599,11 @@ start_helpers (const char *config_filename,
     GNUNET_asprintf (&fn,
                      "%s/%s",
                      dir,
-                     "taler-helper-crypto-eddsa");
+                     "taler-exchange-secmod-eddsa");
     helpers[0] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                           NULL, NULL, NULL,
                                           fn,
-                                          "taler-helper-crypto-eddsa",
+                                          "taler-exchange-secmod-eddsa",
                                           "-c", config_filename,
                                           "-L", "INFO",
                                           NULL);
@@ -615,11 +615,11 @@ start_helpers (const char *config_filename,
     GNUNET_asprintf (&fn,
                      "%s/%s",
                      dir,
-                     "taler-helper-crypto-rsa");
+                     "taler-exchange-secmod-rsa");
     helpers[1] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                           NULL, NULL, NULL,
                                           fn,
-                                          "taler-helper-crypto-rsa",
+                                          "taler-exchange-secmod-rsa",
                                           "-c", config_filename,
                                           "-L", "INFO",
                                           NULL);

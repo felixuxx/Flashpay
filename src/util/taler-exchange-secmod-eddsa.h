@@ -14,12 +14,12 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/taler-helper-crypto-eddsa.h
+ * @file util/taler-exchange-secmod-eddsa.h
  * @brief IPC messages for the EDDSA crypto helper.
  * @author Christian Grothoff
  */
-#ifndef TALER_HELPER_CRYPTO_EDDSA_H
-#define TALER_HELPER_CRYPTO_EDDSA_H
+#ifndef TALER_EXCHANGE_SECMOD_EDDSA_H
+#define TALER_EXCHANGE_SECMOD_EDDSA_H
 
 #define TALER_HELPER_EDDSA_MT_PURGE 11
 #define TALER_HELPER_EDDSA_MT_AVAIL 12
