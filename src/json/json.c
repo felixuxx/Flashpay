@@ -260,31 +260,6 @@ forget (const json_t *in)
 }
 
 
-/**
- * Hash a JSON contract for binary signing.
- *
- * Contracts can contain "forgettable" parts. Those components of the JSON
- * object are indicated in a "_forgettable" field containing key-value
- * pairs. The keys are the names of other fields that are forgettable, and the
- * values are salt values to be used in the HKDF when hashing the forgettable
- * field. To compute the overall hash, the values of all "_forgettable" fields
- * are replaced with 'null', and the "_forgettable" field itself is removed,
- * and a special "_forgotten" field is added with a map of forgotten entries
- * to the respective HKDF values (see also #6365).
- *
- * Forgetting parts is not only applied at the top-level entry of the
- * contract, but recursively to all entries.
- *
- * See https://tools.ietf.org/html/draft-rundgren-json-canonicalization-scheme-15
- * for fun JSON canonicalization problems.  Callers must ensure that
- * those are avoided in the input. We will use libjanson's "JSON_COMPACT"
- * encoding for whitespace and "JSON_SORT_KEYS" to canonicalize as best
- * as we can.
- *
- * @param[in] json some JSON value
- * @param[out] hc resulting hash code
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
 int
 TALER_JSON_contract_hash (const json_t *json,
                           struct GNUNET_HashCode *hc)
@@ -306,13 +281,6 @@ TALER_JSON_contract_hash (const json_t *json,
 }
 
 
-/**
- * Mark part of a contract object as 'forgettable'.
- *
- * @param[in,out] json some JSON object to modify
- * @param field name of the field to mark as forgettable
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
 int
 TALER_JSON_contract_mark_forgettable (json_t *json,
                                       const char *field)
@@ -361,13 +329,6 @@ TALER_JSON_contract_mark_forgettable (json_t *json,
 }
 
 
-/**
- * Forget part of a contract object.
- *
- * @param[in,out] json some JSON object to modify
- * @param field name of the field to forget
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
 int
 TALER_JSON_contract_part_forget (json_t *json,
                                  const char *field)
@@ -387,21 +348,27 @@ TALER_JSON_contract_part_forget (json_t *json,
   if (NULL == (part = json_object_get (json,
                                        field)))
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Did not find field `%s' we were asked to forget\n",
+                field);
     return GNUNET_SYSERR;
   }
   fg = json_object_get (json,
                         "_forgettable");
   if (NULL == fg)
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Did not find _forgettable attribute trying to forget field `%s'\n",
+                field);
     return GNUNET_SYSERR;
   }
   salt = json_string_value (json_object_get (fg,
                                              field));
   if (NULL == salt)
   {
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Did not find required salt to forget field `%s'\n",
+                field);
     return GNUNET_SYSERR;
   }
 
@@ -467,7 +434,7 @@ TALER_JSON_contract_part_forget (json_t *json,
  * @param path the path to parse.
  * @param cb the callback to call, if we get to the end of @e path.
  * @param cb_cls the closure for the callback.
- * @return GNUNET_OK on success, GNUNET_SYSERR if @e path is malformed.
+ * @return #GNUNET_OK on success, #GNUNET_SYSERR if @e path is malformed.
  */
 static int
 parse_path (json_t *obj,
@@ -576,17 +543,6 @@ parse_path (json_t *obj,
 }
 
 
-/**
- * Expands a path for a json object. May call the callback several times
- * if the path contains a wildcard.
- *
- * @param json the json object the path references.
- * @param path the path to expand. Must begin with "$." and follow dot notation,
- *        and may include array indices and wildcards.
- * @param cb the callback.
- * @param cb_cls closure for the callback.
- * @return GNUNET_OK on success, GNUNET_SYSERR if @e path is invalid.
- */
 int
 TALER_JSON_expand_path (json_t *json,
                         const char *path,
@@ -601,13 +557,6 @@ TALER_JSON_expand_path (json_t *json,
 }
 
 
-/**
- * Extract the Taler error code from the given @a json object.
- * Note that #TALER_EC_NONE is returned if no "code" is present.
- *
- * @param json response to extract the error code from
- * @return the "code" value from @a json
- */
 enum TALER_ErrorCode
 TALER_JSON_get_error_code (const json_t *json)
 {
@@ -634,13 +583,6 @@ TALER_JSON_get_error_code (const json_t *json)
 }
 
 
-/**
- * Extract the Taler error hint from the given @a json object.
- * Note that NULL is returned if no "hint" is present.
- *
- * @param json response to extract the error hint from
- * @return the "hint" value from @a json; only valid as long as @a json is valid
- */
 const char *
 TALER_JSON_get_error_hint (const json_t *json)
 {
@@ -665,14 +607,6 @@ TALER_JSON_get_error_hint (const json_t *json)
 }
 
 
-/**
- * Extract the Taler error code from the given @a data object, which is expected to be in JSON.
- * Note that #TALER_EC_INVALID is returned if no "code" is present or if @a data is not in JSON.
- *
- * @param data response to extract the error code from
- * @param data_size number of bytes in @a data
- * @return the "code" value from @a json
- */
 enum TALER_ErrorCode
 TALER_JSON_get_error_code2 (const void *data,
                             size_t data_size)
