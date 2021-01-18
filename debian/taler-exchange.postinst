@@ -13,10 +13,10 @@ case "${1}" in
 		_EUSERNAME="${RET:-taler-exchange-httpd}"
 
 		db_get taler-exchange/rsecusername
-		_RSECUSERNAME="${RET:-taler-exchange-helper-rsa}"
+		_RSECUSERNAME="${RET:-taler-exchange-secmod-rsa}"
 
 		db_get taler-exchange/esecusername
-		_ESECUSERNAME="${RET:-taler-exchange-helper-eddsa}"
+		_ESECUSERNAME="${RET:-taler-exchange-secmod-eddsa}"
 
 		db_get taler-exchange/wireusername
 		_WIREUSERNAME="${RET:-taler-exchange-wire}"
@@ -60,13 +60,13 @@ case "${1}" in
 		if ! getent passwd ${_RSECUSERNAME} > /dev/null
 		then
 			echo -n "Creating new Taler user ${_RSECUSERNAME}:"
-			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/helper-rsa ${_RSECUSERNAME}
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/secmod-rsa ${_RSECUSERNAME}
 			echo " done."
 		fi
 		if ! getent passwd ${_ESECUSERNAME} > /dev/null
 		then
 			echo -n "Creating new Taler user ${_ESECUSERNAME}:"
-			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/helper-eddsa ${_ESECUSERNAME}
+			adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/secmod-eddsa ${_ESECUSERNAME}
 			echo " done."
 		fi
 		if ! getent passwd ${_WIREUSERNAME} > /dev/null
@@ -104,7 +104,7 @@ EOF
 cat > "/etc/systemd/system/taler-exchange-httpd.service" <<EOF
 [Unit]
 Description=GNU Taler payment system exchange REST API
-Requires=taler-exchange-helper-rsa.service taler-exchange-helper-eddsa.service
+Requires=taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
 Wants=taler-exchange-wirewatch taler-exchange-aggregator taler-exchange-transfer
 After=postgres.service network.target
 
@@ -119,7 +119,7 @@ ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler-exchange.conf
 WantedBy=multi-user.target
 EOF
 
-cat > "/etc/systemd/system/taler-exchange-helper-rsa.service" <<EOF
+cat > "/etc/systemd/system/taler-exchange-secmod-rsa.service" <<EOF
 [Unit]
 Description=GNU Taler payment system exchange RSA security module
 
@@ -133,7 +133,7 @@ ExecStart=/usr/bin/taler-exchange-secmod-rsa -c /etc/taler-exchange.conf
 [Install]
 WantedBy=multi-user.target
 EOF
-cat > "/etc/systemd/system/taler-exchange-helper-eddsa.service" <<EOF
+cat > "/etc/systemd/system/taler-exchange-secmod-eddsa.service" <<EOF
 [Unit]
 Description=GNU Taler payment system exchange EdDSA security module
 

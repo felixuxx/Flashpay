@@ -28,10 +28,10 @@ case "${1}" in
 		_EUSERNAME="${RET:-taler-exchange-httpd}"
 
 		db_get taler-exchange/rsecusername
-		_RSECUSERNAME="${RET:-taler-exchange-helper-rsa}"
+		_RSECUSERNAME="${RET:-taler-exchange-secmod-rsa}"
 
 		db_get taler-exchange/esecusername
-		_ESECUSERNAME="${RET:-taler-exchange-helper-eddsa}"
+		_ESECUSERNAME="${RET:-taler-exchange-secmod-eddsa}"
 
 		db_get taler-exchange/wireusername
 		_WIREUSERNAME="${RET:-taler-exchange-wire}"
