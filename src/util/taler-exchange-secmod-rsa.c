@@ -1934,7 +1934,7 @@ run (void *cls,
       un.sun_family = AF_UNIX;
       strncpy (un.sun_path,
                unixpath,
-               sizeof (un.sun_path));
+               sizeof (un.sun_path) - 1);
       if (0 != bind (sock,
                      (const struct sockaddr *) &un,
                      sizeof (un)))

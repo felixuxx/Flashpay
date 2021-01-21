@@ -1,0 +1,4 @@
+usr/bin/taler-config
+usr/lib/*/libtaler*
+usr/share/taler/config.d/*
+usr/share/taler/sql/*
