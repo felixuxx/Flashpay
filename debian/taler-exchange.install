@@ -1,4 +1,9 @@
 usr/bin/
 usr/lib/*/taler/*.so
+usr/share/man/man1/*
+usr/share/info/*
+usr/share/taler/sql/*
 debian/etc/* etc/
 debian/exchange-conf/* etc/taler-exchange/
+usr/share/taler-exchange/pp/*/*
+usr/share/taler-exchange/tos/*/*

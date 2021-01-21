@@ -3,6 +3,9 @@ usr/bin/taler-auditor-dbinit
 usr/bin/taler-auditor-exchange
 usr/bin/taler-auditor-httpd
 usr/bin/taler-auditor-offline
+usr/bin/taler-auditor-sync
 usr/bin/taler-helper-auditor-*
+usr/lib/*/libauditor*
 debian/etc/taler-auditor.conf etc/
 debian/auditor-conf/* etc/taler-auditor/
+usr/share/taler-exchange/auditor-report.tex.j2
