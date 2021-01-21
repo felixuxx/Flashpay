@@ -572,7 +572,7 @@ TALER_JSON_get_error_code (const json_t *json)
      so we are dealing with a missing error code here.  */
   if (NULL == jc)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Expected Taler error code `code' in JSON, but field does not exist!\n");
     return TALER_EC_INVALID;
   }
