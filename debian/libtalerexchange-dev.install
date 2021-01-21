@@ -1,1 +1,3 @@
 usr/include/taler/*
+usr/lib/*/libtalertesting.so.*
+usr/lib/*/libtalerfakebank.so.*

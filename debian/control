@@ -82,7 +82,8 @@ Depends:
  libgnunet-dev (>=0.14.0),
  libgcrypt20-dev (>=1.6),
  libmicrohttpd-dev (>=0.9.33),
- ${misc:Depends}
+ ${misc:Depends},
+ ${shlibs:Depends}
 Description: libraries to talk to a GNU Taler exchange (development)
  .
  This package contains the development files.
