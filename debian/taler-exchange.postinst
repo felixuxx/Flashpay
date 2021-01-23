@@ -114,6 +114,9 @@ User=${_EUSERNAME}
 Type=simple
 Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler-exchange.conf
+PrivateTmp=no
+PrivateDevices=yes
+ProtectSystem=full
 
 [Install]
 WantedBy=multi-user.target
@@ -129,9 +132,10 @@ User=${_RSECUSERNAME}
 Type=simple
 Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-secmod-rsa -c /etc/taler-exchange.conf
+PrivateTmp=no
+PrivateDevices=yes
+ProtectSystem=full
 
-[Install]
-WantedBy=multi-user.target
 EOF
 cat > "/etc/systemd/system/taler-exchange-secmod-eddsa.service" <<EOF
 [Unit]
@@ -143,6 +147,10 @@ User=${_ESECUSERNAME}
 Type=simple
 Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-secmod-eddsa -c /etc/taler-exchange.conf
+PrivateTmp=no
+PrivateDevices=yes
+ProtectSystem=full
+
 EOF
 cat > "/etc/systemd/system/taler-exchange-wirewatch.service" <<EOF
 [Unit]
@@ -155,6 +163,11 @@ User=${_WIREUSERNAME}
 Type=simple
 Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-wirewatch -c /etc/taler-wire.conf
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+
+
 EOF
 cat > "/etc/systemd/system/taler-exchange-transfer.service" <<EOF
 [Unit]
@@ -167,6 +180,10 @@ User=${_WIREUSERNAME}
 Type=simple
 Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-wirewatch -c /etc/taler-wire.conf
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+
 EOF
 cat > "/etc/systemd/system/taler-exchange-aggregator.service" <<EOF
 [Unit]
@@ -178,6 +195,11 @@ User=${_AGGRUSERNAME}
 Type=simple
 Restart=on-failure
 ExecStart=/usr/bin/taler-exchange-aggregator -c /etc/taler.conf
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
+
+
 EOF
 
 		cp -f "${CONFIG_NEW}" "${CONFIG_FILE}"
