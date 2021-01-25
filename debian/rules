@@ -33,10 +33,10 @@ override_dh_auto_clean:
 # Remove files already present in libtalerexchange from main taler-exchange package
 override_dh_install:
 	dh_install
-	cd debian/libtalerexchange-dev; find . -type f -exec rm -f ../libtalerauditor/{} \;
-	cd debian/libtalerexchange-dev; find . -type f -exec rm -f ../taler-exchange/{} \;
-	cd debian/libtalerexchange-dev; find . -type f -exec rm -f ../libtalerexchange/{} \;
-	cd debian/libtalerexchange-dev; find . -type f -exec rm -f ../libtalerauditor/{} \;
-	cd debian/taler-auditor; find . -type f -exec rm -f ../libtalerauditor/{} \;
-	cd debian/libtalerexchange; find . -type f -exec rm -f ../taler-exchange/{} \;
-	cd debian/taler-auditor; find . -type f -exec rm -f ../taler-exchange/{} \;
+	cd debian/libtalerexchange-dev; find . -type f,l -exec rm -f ../libtalerauditor/{} \;
+	cd debian/libtalerexchange-dev; find . -type f,l -exec rm -f ../taler-exchange/{} \;
+	cd debian/libtalerexchange-dev; find . -type f,l -exec rm -f ../libtalerexchange/{} \;
+	cd debian/libtalerexchange-dev; find . -type f,l -exec rm -f ../libtalerauditor/{} \;
+	cd debian/taler-auditor; find . -type f,l -exec rm -f ../libtalerauditor/{} \;
+	cd debian/libtalerexchange; find . -type f,l -exec rm -f ../taler-exchange/{} \;
+	cd debian/taler-auditor; find . -type f,l -exec rm -f ../taler-exchange/{} \;
