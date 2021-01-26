@@ -27,6 +27,7 @@
 #include <sched.h>
 #include <pthread.h>
 #include <sys/resource.h>
+#include <limits.h>
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_auditors.h"
 #include "taler-exchange-httpd_deposit.h"
@@ -1067,7 +1068,7 @@ exchange_serve_process_config (void)
                                              "MAX_REQUESTS",
                                              &req_max))
   {
-    req_max = ULONG_LONG_MAX;
+    req_max = ULLONG_MAX;
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
