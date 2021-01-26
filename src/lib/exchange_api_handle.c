@@ -1323,7 +1323,10 @@ parse_date_string (const char *date,
        ( (*end != '\n') &&
          (*end != '\r') ) )
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not parse date input `%s', failure at `%s'\n",
+                date,
+                end);
     return GNUNET_SYSERR;
   }
   t = mktime (&now);
