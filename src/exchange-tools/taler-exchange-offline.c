@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -85,6 +85,11 @@
  * and should be incremented whenever the JSON format of the 'argument' changes.
  */
 #define OP_REVOKE_SIGNKEY "exchange-revoke-signkey-0"
+
+/**
+ * Show the offline signing key.
+ */
+#define OP_SETUP "exchange-setup"
 
 
 /**
@@ -738,10 +743,11 @@ struct UploadHandler
 /**
  * Load the offline key (if not yet done). Triggers shutdown on failure.
  *
+ * @param do_create #GNUNET_YES if the key may be created
  * @return #GNUNET_OK on success
  */
 static int
-load_offline_key (void)
+load_offline_key (int do_create)
 {
   static bool done;
   int ret;
@@ -767,7 +773,7 @@ load_offline_key (void)
                 "Exchange master private key `%s' does not exist yet, creating it!\n",
                 fn);
   ret = GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           GNUNET_YES,
+                                           do_create,
                                            &master_priv.eddsa_priv);
   if (GNUNET_SYSERR == ret)
   {
@@ -1828,7 +1834,7 @@ do_revoke_denomination_key (char *const *args)
     return;
   }
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   TALER_exchange_offline_denomination_revoke_sign (&h_denom_pub,
                                                    &master_priv,
@@ -1877,7 +1883,7 @@ do_revoke_signkey (char *const *args)
     return;
   }
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   TALER_exchange_offline_signkey_revoke_sign (&exchange_pub,
                                               &master_priv,
@@ -1941,7 +1947,7 @@ do_add_auditor (char *const *args)
     return;
   }
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
@@ -2002,7 +2008,7 @@ do_del_auditor (char *const *args)
     return;
   }
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
@@ -2053,7 +2059,7 @@ do_add_wire (char *const *args)
     return;
   }
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
@@ -2123,7 +2129,7 @@ do_del_wire (char *const *args)
     return;
   }
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
@@ -2197,7 +2203,7 @@ do_set_wire_fee (char *const *args)
                        args[0]))
     year = GNUNET_TIME_get_current_year ();
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   start_time = GNUNET_TIME_year_to_time (year);
   end_time = GNUNET_TIME_year_to_time (year + 1);
@@ -2801,7 +2807,7 @@ do_show (char *const *args)
   if (NULL == keys)
     return;
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
     return;
   if (GNUNET_OK !=
       GNUNET_JSON_parse (keys,
@@ -3125,7 +3131,7 @@ do_sign (char *const *args)
   if (NULL == keys)
     return;
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
   {
     json_decref (keys);
     return;
@@ -3208,11 +3214,58 @@ do_sign (char *const *args)
 }
 
 
+/**
+ * Setup and output offline signing key.
+ *
+ * @param args the array of command-line arguments to process next
+ */
+static void
+do_setup (char *const *args)
+{
+  if (GNUNET_OK !=
+      load_offline_key (GNUNET_YES))
+  {
+    global_ret = 1;
+    return;
+  }
+  if (NULL != *args)
+  {
+    output_operation (OP_SETUP,
+                      json_pack ("{s:o}",
+                                 "exchange_offline_pub",
+                                 GNUNET_JSON_from_data_auto (&master_pub)));
+  }
+
+  else
+  {
+    char *pub_s;
+
+    pub_s = GNUNET_STRINGS_data_to_string_alloc (&master_pub,
+                                                 sizeof (master_pub));
+    fprintf (stdout,
+             "%s\n",
+             pub_s);
+    GNUNET_free (pub_s);
+  }
+  if ( (NULL != *args) &&
+       (0 == strcmp (*args,
+                     "-")) )
+    args++;
+  next (args);
+}
+
+
 static void
 work (void *cls)
 {
   char *const *args = cls;
   struct SubCommand cmds[] = {
+    {
+      .name = "setup",
+      .help =
+        "initialize offline key signing material and display public offline key",
+      .cb = &do_setup
+    },
     {
       .name = "download",
       .help =

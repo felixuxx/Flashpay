@@ -41,6 +41,12 @@
  */
 #define OP_INPUT_KEYS "auditor-keys-0"
 
+/**
+ * Show the offline signing key.
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
+ */
+#define OP_SETUP "auditor-setup-0"
 
 /**
  * Our private key, initialized in #load_offline_key().
@@ -323,10 +329,11 @@ struct UploadHandler
 /**
  * Load the offline key (if not yet done). Triggers shutdown on failure.
  *
+ * @param do_create #GNUNET_YES if the key may be created
  * @return #GNUNET_OK on success
  */
 static int
-load_offline_key (void)
+load_offline_key (int do_create)
 {
   static bool done;
   int ret;
@@ -352,7 +359,7 @@ load_offline_key (void)
                 "Auditor private key `%s' does not exist yet, creating it!\n",
                 fn);
   ret = GNUNET_CRYPTO_eddsa_key_from_file (fn,
-                                           GNUNET_YES,
+                                           do_create,
                                            &auditor_priv.eddsa_priv);
   if (GNUNET_SYSERR == ret)
   {
@@ -1114,7 +1121,7 @@ do_sign (char *const *args)
   if (NULL == keys)
     return;
   if (GNUNET_OK !=
-      load_offline_key ())
+      load_offline_key (GNUNET_NO))
   {
     json_decref (keys);
     return;
@@ -1162,11 +1169,58 @@ do_sign (char *const *args)
 }
 
 
+/**
+ * Setup and output offline signing key.
+ *
+ * @param args the array of command-line arguments to process next
+ */
+static void
+do_setup (char *const *args)
+{
+  if (GNUNET_OK !=
+      load_offline_key (GNUNET_YES))
+  {
+    global_ret = 1;
+    return;
+  }
+  if (NULL != *args)
+  {
+    output_operation (OP_SETUP,
+                      json_pack ("{s:o}",
+                                 "auditor_pub",
+                                 GNUNET_JSON_from_data_auto (&auditor_pub)));
+  }
+
+  else
+  {
+    char *pub_s;
+
+    pub_s = GNUNET_STRINGS_data_to_string_alloc (&auditor_pub,
+                                                 sizeof (auditor_pub));
+    fprintf (stdout,
+             "%s\n",
+             pub_s);
+    GNUNET_free (pub_s);
+  }
+  if ( (NULL != *args) &&
+       (0 == strcmp (*args,
+                     "-")) )
+    args++;
+  next (args);
+}
+
+
 static void
 work (void *cls)
 {
   char *const *args = cls;
   struct SubCommand cmds[] = {
+    {
+      .name = "setup",
+      .help =
+        "setup auditor offline private key and show the public key",
+      .cb = &do_setup
+    },
     {
       .name = "download",
       .help =
