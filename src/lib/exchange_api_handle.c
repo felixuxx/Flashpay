@@ -1299,37 +1299,94 @@ TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
 
 
 /**
+ * Define a max length for the HTTP "Expire:" header
+ */
+#define MAX_DATE_LINE_LEN 32
+
+
+/**
  * Parse HTTP timestamp.
  *
- * @param date header to parse header
+ * @param dateline header to parse header
  * @param at where to write the result
  * @return #GNUNET_OK on success
  */
 static int
-parse_date_string (const char *date,
+parse_date_string (const char *dateline,
                    struct GNUNET_TIME_Absolute *at)
 {
-  struct tm now;
+  static const char *MONTHS[] =
+  { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL };
+  int year;
+  int mon;
+  int day;
+  int hour;
+  int min;
+  int sec;
+  char month[4];
+  struct tm tm;
   time_t t;
-  const char *end;
 
-  memset (&now,
-          0,
-          sizeof (now));
-  end = strptime (date,
-                  "%a, %d %b %Y %H:%M:%S %Z", /* RFC-1123 standard spec */
-                  &now);
-  if ( (NULL == end) ||
-       ( (*end != '\n') &&
-         (*end != '\r') ) )
+  /* We recognize the three formats in RFC2616, section 3.3.1.  Month
+     names are always in English.  The formats are:
+      Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
+      Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+      Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+     Note that the first is preferred.
+   */
+
+  if (strlen (dateline) > MAX_DATE_LINE_LEN)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Could not parse date input `%s', failure at `%s'\n",
-                date,
-                end);
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  t = mktime (&now);
+  while (*dateline == ' ')
+    ++dateline;
+  while (*dateline && *dateline != ' ')
+    ++dateline;
+  while (*dateline == ' ')
+    ++dateline;
+  /* We just skipped over the day of the week. Now we have:*/
+  if ( (sscanf (dateline,
+                "%d %3s %d %d:%d:%d",
+                &day, month, &year, &hour, &min, &sec) != 6) &&
+       (sscanf (dateline,
+                "%d-%3s-%d %d:%d:%d",
+                &day, month, &year, &hour, &min, &sec) != 6) &&
+       (sscanf (dateline,
+                "%3s %d %d:%d:%d %d",
+                month, &day, &hour, &min, &sec, &year) != 6) )
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  /* Two digit dates are defined to be relative to 1900; all other dates
+   * are supposed to be represented as four digits. */
+  if (year < 100)
+    year += 1900;
+
+  for (mon = 0; ; mon++)
+  {
+    if (! MONTHS[mon])
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    if (0 == strcasecmp (month,
+                         MONTHS[mon]))
+      break;
+  }
+
+  memset (&tm, 0, sizeof(tm));
+  tm.tm_year = year - 1900;
+  tm.tm_mon = mon;
+  tm.tm_mday = day;
+  tm.tm_hour = hour;
+  tm.tm_min = min;
+  tm.tm_sec = sec;
+
+  t = mktime (&tm);
   if (((time_t) -1) == t)
   {
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
