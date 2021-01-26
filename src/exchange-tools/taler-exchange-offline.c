@@ -88,8 +88,10 @@
 
 /**
  * Show the offline signing key.
+ * The last component --by convention-- identifies the protocol version
+ * and should be incremented whenever the JSON format of the 'argument' changes.
  */
-#define OP_SETUP "exchange-setup"
+#define OP_SETUP "exchange-setup-0"
 
 
 /**
