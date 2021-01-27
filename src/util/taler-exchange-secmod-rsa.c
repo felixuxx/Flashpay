@@ -446,6 +446,8 @@ sign_worker (void *cls)
       }
       GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
     }
+    if (! in_shutdown)
+      break;
     /* queue is empty, wait for work */
     GNUNET_assert (0 ==
                    pthread_cond_wait (&work_cond,
