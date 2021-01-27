@@ -1,4 +1,4 @@
-taler-exchange (0.9.0-3) unstable; urgency=medium
+taler-exchange (0.9.0-4) unstable; urgency=medium
 
   * Added setup subcommand to taler-exchange-offline.
   * Fixed conflict between taler-auditor and libtaler exchange packages.
