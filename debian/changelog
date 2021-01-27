@@ -1,5 +1,14 @@
 taler-exchange (0.9.0-3) unstable; urgency=medium
 
+  * Added setup subcommand to taler-exchange-offline.
+  * Fixed conflict between taler-auditor and libtaler exchange packages.
+  * Fixed bad handling of non-C locales.
+  * Updated documentation.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Wed, 27 Jan 2021 12:02:10 +0100
+
+taler-exchange (0.9.0-3) unstable; urgency=medium
+
   * Renamed helper/secmod binaries for consistency.
   * Protocol improvements, removing unnecessary struct members.
   * Fixed /management/keys caching logic and key revocation handling.
