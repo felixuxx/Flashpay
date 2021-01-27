@@ -35,9 +35,16 @@
 #define NUM_REVOKES 3
 
 /**
- * How many iterations of the successful signing test should we run?
+ * How many iterations of the successful signing test should we run
+ * during the benchmark phase?
  */
-#define NUM_SIGN_TESTS 100
+#define NUM_SIGN_TESTS 3
+
+/**
+ * How many iterations of the successful signing test should we run
+ * during the benchmark phase?
+ */
+#define NUM_SIGN_PERFS 100
 
 
 /**
@@ -218,7 +225,7 @@ test_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh)
     .size = htonl (sizeof (purpose)),
   };
 
-  for (unsigned int i = 0; i<2; i++)
+  for (unsigned int i = 0; i<NUM_SIGN_TESTS; i++)
   {
     struct TALER_ExchangePublicKeyP exchange_pub;
     struct TALER_ExchangeSignatureP exchange_sig;
@@ -270,7 +277,7 @@ perf_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh)
   struct GNUNET_TIME_Relative duration;
 
   duration = GNUNET_TIME_UNIT_ZERO;
-  for (unsigned int j = 0; j<NUM_SIGN_TESTS;)
+  for (unsigned int j = 0; j<NUM_SIGN_PERFS; j++)
   {
     struct GNUNET_TIME_Relative delay;
     struct TALER_ExchangePublicKeyP exchange_pub;
@@ -292,7 +299,6 @@ perf_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh)
     delay = GNUNET_TIME_absolute_get_duration (start);
     duration = GNUNET_TIME_relative_add (duration,
                                          delay);
-    j++;
   } /* for j */
   fprintf (stderr,
            "%u (sequential) signature operations took %s\n",
