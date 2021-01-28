@@ -637,8 +637,8 @@ handle_sign_request (const struct sockaddr_un *addr,
   GNUNET_CONTAINER_DLL_insert (work_head,
                                work_tail,
                                wi);
-  GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
   GNUNET_assert (0 == pthread_cond_signal (&work_cond));
+  GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
 }
 
 
