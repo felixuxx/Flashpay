@@ -449,6 +449,8 @@ sign_worker (void *cls)
     if (! in_shutdown)
       break;
     /* queue is empty, wait for work */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Crypto worker waiting for work...\n");
     GNUNET_assert (0 ==
                    pthread_cond_wait (&work_cond,
                                       &work_lock));
@@ -2020,6 +2022,8 @@ run (void *cls,
   /* start crypto workers */
   if (0 == num_workers)
     num_workers = sysconf (_SC_NPROCESSORS_CONF);
+  if (0 == num_workers)
+    num_workers = 1;
   workers = GNUNET_new_array (num_workers,
                               pthread_t);
   for (unsigned int i = 0; i<num_workers; i++)
