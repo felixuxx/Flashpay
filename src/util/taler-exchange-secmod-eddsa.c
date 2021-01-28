@@ -355,6 +355,9 @@ sign_worker (void *cls)
                                    wi);
       work_counter--;
       GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Processing sign request %p\n",
+                  wi);
       {
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_sign_ (&wi->key->exchange_priv.eddsa_priv,
@@ -525,7 +528,8 @@ handle_done (void *cls)
       };
 
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Signing request failed, worker failed to produce signature\n");
+                  "Signing request %p failed, worker failed to produce signature\n",
+                  wi);
       (void) transmit (&wi->addr,
                        wi->addr_size,
                        &sf.header);
@@ -539,6 +543,9 @@ handle_done (void *cls)
         .exchange_sig = wi->signature
       };
 
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Transmitting signature for request %p\n",
+                  wi);
       (void) transmit (&wi->addr,
                        wi->addr_size,
                        &sr.header);
@@ -593,9 +600,6 @@ handle_sign_request (const struct sockaddr_un *addr,
                      &sf.header);
     return;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Received request to sign over %u bytes\n",
-              (unsigned int) purpose_size);
   {
     struct GNUNET_TIME_Absolute now;
 
@@ -624,6 +628,10 @@ handle_sign_request (const struct sockaddr_un *addr,
   keys_head->rc++;
   wi->purpose = GNUNET_memdup (purpose,
                                purpose_size);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received request to sign over %u bytes, queueing as %p\n",
+              (unsigned int) purpose_size,
+              wi);
   GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
   work_counter++;
   GNUNET_CONTAINER_DLL_insert (work_head,
