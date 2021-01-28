@@ -220,7 +220,7 @@ EOF
         chown ${_EUSERNAME}:${_GROUPNAME} /etc/taler-exchange.conf
         chmod 460 /etc/taler-wire.conf
 
-        systemctl daemon-reload
+        systemctl daemon-reload >/dev/null 2>&1  || true
 
         echo "done."
 
