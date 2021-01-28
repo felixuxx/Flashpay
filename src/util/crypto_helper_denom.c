@@ -518,6 +518,8 @@ TALER_CRYPTO_helper_denom_sign (
     try_connect (dh);
     if (-1 == dh->sock)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to connect to helper\n");
       *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
       return ds;
     }
@@ -556,6 +558,8 @@ TALER_CRYPTO_helper_denom_sign (
     if (! await_read_ready (dh))
     {
       do_disconnect (dh);
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Timeout waiting for helper\n");
       *ec = TALER_EC_GENERIC_TIMEOUT;
       return ds;
     }

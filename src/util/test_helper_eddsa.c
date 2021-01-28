@@ -253,7 +253,9 @@ test_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh)
       break;
     default:
       /* unexpected error */
-      GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected error %d\n",
+                  ec);
       return 7;
     }
   }
@@ -394,7 +396,7 @@ main (int argc,
   (void) argc;
   (void) argv;
   GNUNET_log_setup ("test-helper-eddsa",
-                    "WARNING",
+                    "INFO",
                     NULL);
   GNUNET_OS_init (TALER_project_data_default ());
   libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
@@ -410,7 +412,7 @@ main (int argc,
                                     "-c",
                                     "test_helper_eddsa.conf",
                                     "-L",
-                                    "WARNING",
+                                    "INFO",
                                     NULL);
   if (NULL == helper)
   {

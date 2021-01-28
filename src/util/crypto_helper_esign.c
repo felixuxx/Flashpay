@@ -469,7 +469,11 @@ TALER_CRYPTO_helper_esign_sign_ (
 
     try_connect (esh);
     if (-1 == esh->sock)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to connect to helper\n");
       return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
+    }
     sr->header.size = htons (sizeof (buf));
     sr->header.type = htons (TALER_HELPER_EDDSA_MT_REQ_SIGN);
     sr->reserved = htonl (0);
@@ -504,6 +508,8 @@ TALER_CRYPTO_helper_esign_sign_ (
     if (! await_read_ready (esh))
     {
       do_disconnect (esh);
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Timeout waiting for helper\n");
       return TALER_EC_GENERIC_TIMEOUT;
     }
     ret = recv (esh->sock,
