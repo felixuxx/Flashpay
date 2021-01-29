@@ -410,6 +410,8 @@ static void *
 sign_worker (void *cls)
 {
   (void) cls;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Crypto worker launching\n");
   GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
   while (! in_shutdown)
   {
@@ -423,6 +425,9 @@ sign_worker (void *cls)
                                    wi);
       work_counter--;
       GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "Processing sign request %p\n",
+                  wi);
       wi->rsa_signature
         = GNUNET_CRYPTO_rsa_sign_blinded (wi->dk->denom_priv.rsa_private_key,
                                           wi->blinded_msg,
@@ -446,10 +451,10 @@ sign_worker (void *cls)
       }
       GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
     }
-    if (! in_shutdown)
+    if (in_shutdown)
       break;
     /* queue is empty, wait for work */
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Crypto worker waiting for work...\n");
     GNUNET_assert (0 ==
                    pthread_cond_wait (&work_cond,
@@ -457,6 +462,8 @@ sign_worker (void *cls)
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&work_lock));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Crypto worker exiting\n");
   return NULL;
 }
 
@@ -2024,6 +2031,9 @@ run (void *cls,
     num_workers = sysconf (_SC_NPROCESSORS_CONF);
   if (0 == num_workers)
     num_workers = 1;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting %u crypto workers\n",
+              num_workers);
   workers = GNUNET_new_array (num_workers,
                               pthread_t);
   for (unsigned int i = 0; i<num_workers; i++)
