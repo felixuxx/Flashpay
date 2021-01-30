@@ -1,3 +1,9 @@
+taler-exchange (0.9.0-5) unstable; urgency=medium
+
+  * Fixed a few bugs.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Sat, 30 Jan 2021 12:02:10 +0100
+
 taler-exchange (0.9.0-4) unstable; urgency=medium
 
   * Added setup subcommand to taler-exchange-offline.
