@@ -250,7 +250,7 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'testPay' \
   "$(jq -n '
     {
       amount: "TESTKUDOS:1",
-      merchantApiKey: "sandbox",
+      merchantAuthToken: "secret-token:sandbox",
       merchantBaseUrl: $MERCHANT_URL,
       summary: "foo",
     }' \
@@ -365,7 +365,7 @@ taler-wallet-cli $TIMETRAVEL --no-throttle --wallet-db=$WALLET_DB api 'testPay' 
   "$(jq -n '
     {
       amount: "TESTKUDOS:0.02",
-      merchantApiKey: "sandbox",
+      merchantAuthToken: "secret-token:sandbox",
       merchantBaseUrl: $MERCHANT_URL,
       summary: "bar",
     }' \
