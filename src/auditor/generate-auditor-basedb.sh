@@ -213,7 +213,6 @@ taler-wallet-cli --no-throttle --wallet-db=$WALLET_DB api 'runIntegrationTest' \
       amountToWithdraw: "TESTKUDOS:10",
       bankBaseUrl: $BANK_URL,
       exchangeBaseUrl: $EXCHANGE_URL,
-      merchantAuthToken: "secret-token:sandbox",
       merchantBaseUrl: $MERCHANT_URL,
     }' \
     --arg MERCHANT_URL "$MERCHANT_URL" \
