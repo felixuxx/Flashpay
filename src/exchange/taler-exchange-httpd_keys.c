@@ -1405,16 +1405,17 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   }
 
   keys = json_pack (
-    "{s:s, s:o, s:o, s:O, s:O,"
+    "{s:s, s:s, s:o, s:o, s:O, s:O,"
     " s:O, s:O, s:o, s:o, s:o}",
-    /* 1-5 */
+    /* 1-6 */
     "version", EXCHANGE_PROTOCOL_VERSION,
+    "currency", TEH_currency,
     "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
     "reserve_closing_delay", GNUNET_JSON_from_time_rel (
       TEH_reserve_closing_delay),
     "signkeys", signkeys,
     "recoup", recoup,
-    /* 6-10 */
+    /* 7-11 */
     "denoms", denoms,
     "auditors", ksh->auditors,
     "list_issue_date", GNUNET_JSON_from_time_abs (last_cpd),
