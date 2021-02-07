@@ -1427,13 +1427,16 @@ do_shutdown (void *cls)
     done_task = NULL;
   }
   /* shut down worker threads */
-  GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
-  in_shutdown = true;
-  GNUNET_assert (0 == pthread_cond_broadcast (&work_cond));
-  GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
-  for (unsigned int i = 0; i<num_workers; i++)
-    GNUNET_assert (0 == pthread_join (workers[i],
-                                      NULL));
+  if (NULL != workers)
+  {
+    GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
+    in_shutdown = true;
+    GNUNET_assert (0 == pthread_cond_broadcast (&work_cond));
+    GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
+    for (unsigned int i = 0; i<num_workers; i++)
+      GNUNET_assert (0 == pthread_join (workers[i],
+                                        NULL));
+  }
   if (NULL != done_signal)
   {
     GNUNET_break (GNUNET_OK ==
