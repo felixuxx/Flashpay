@@ -2912,7 +2912,12 @@ enum TALER_TESTING_URL_Type
   /**
    * HTTP URL of the exchange's bank account at the bank.
    */
-  TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL = 2
+  TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL = 2,
+
+  /**
+   * A taler://-URL.
+   */
+  TALER_TESTING_UT_TALER_URL = 3
 };
 
 
