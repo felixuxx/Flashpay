@@ -132,10 +132,10 @@ TALER_TESTING_make_trait_url (unsigned int index,
     .ptr = (const void *) url
   };
 
-  GNUNET_assert (0 != strncasecmp (url,
-                                   "payto://",
-                                   strlen ("payto://")));
-
+  GNUNET_assert ( (NULL == url) ||
+                  (0 != strncasecmp (url,
+                                     "payto://",
+                                     strlen ("payto://"))) );
   return ret;
 }
 
