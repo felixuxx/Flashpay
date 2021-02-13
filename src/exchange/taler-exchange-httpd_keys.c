@@ -2461,11 +2461,11 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
                                          TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                          NULL);
     GNUNET_assert (NULL == ksh->management_keys_reply);
-    ksh->management_keys_reply = json_incref (reply);
+    ksh->management_keys_reply = reply;
   }
   else
   {
-    reply = json_incref (ksh->management_keys_reply);
+    reply = ksh->management_keys_reply;
   }
   return TALER_MHD_reply_json (connection,
                                reply,

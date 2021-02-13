@@ -372,7 +372,7 @@ TEH_handler_wire (const struct TEH_RequestHandler *rh,
                                        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        NULL);
   return TALER_MHD_reply_json (connection,
-                               json_incref (wsh->wire_reply),
+                               wsh->wire_reply,
                                MHD_HTTP_OK);
 }
 
