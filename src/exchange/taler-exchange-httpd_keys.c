@@ -1640,6 +1640,7 @@ build_key_state (struct HelperState *hs,
         setup_key_helpers (ksh->helpers))
     {
       GNUNET_free (ksh->helpers);
+      GNUNET_assert (NULL == ksh->management_keys_reply);
       GNUNET_free (ksh);
       return NULL;
     }
@@ -1768,15 +1769,12 @@ get_key_state (bool management_only)
       GNUNET_break (0);
       if (NULL != ksh)
         destroy_key_state (ksh,
-                           (NULL == old_ksh));
+                           false);
       return NULL;
     }
-    if (NULL != old_ksh)
-    {
-      old_ksh->helpers = NULL;
-      destroy_key_state (old_ksh,
-                         false);
-    }
+    old_ksh->helpers = NULL;
+    destroy_key_state (old_ksh,
+                       false);
     return ksh;
   }
   sync_key_helpers (old_ksh->helpers);
