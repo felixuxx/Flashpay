@@ -220,6 +220,7 @@ TALER_CRYPTO_helper_denom_connect (
   strncpy (dh->sa.sun_path,
            unixpath,
            sizeof (dh->sa.sun_path) - 1);
+  GNUNET_free (unixpath);
   dh->sock = -1;
   {
     char *tmpdir;

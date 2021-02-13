@@ -121,6 +121,7 @@ check_for_account (void *cls,
     ctx->cb (ctx->cb_cls,
              &ai);
   }
+  GNUNET_free (payto_uri);
   GNUNET_free (method);
 }
 

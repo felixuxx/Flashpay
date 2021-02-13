@@ -280,12 +280,18 @@ build_wire_state (void)
     }
   }
   wire_reply = json_pack (
-    "{s:O, s:O, s:o}",
-    "accounts", wire_accounts_array,
-    "fees", wire_fee_object,
+    "{s:o, s:o, s:o}",
+    "accounts",
+    wire_accounts_array,
+    "fees",
+    wire_fee_object,
     "master_public_key",
     GNUNET_JSON_from_data_auto (&TEH_master_public_key));
-  GNUNET_assert (NULL != wire_reply);
+  if (NULL == wire_reply)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   {
     struct WireStateHandle *wsh;
 

@@ -434,6 +434,8 @@ TEH_handler_management_post_keys (
                                &ret,
                                &add_keys,
                                &akc);
+  GNUNET_free (akc.d_sigs);
+  GNUNET_free (akc.s_sigs);
   if (qs < 0)
     return ret;
   TEH_keys_update_states ();

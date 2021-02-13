@@ -564,6 +564,7 @@ handle_done (void *cls)
            (key->purge) )
         free_key (key);
     }
+    GNUNET_free (wi->purpose);
     GNUNET_free (wi);
     GNUNET_assert (0 == pthread_mutex_lock (&done_lock));
   }

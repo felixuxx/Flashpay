@@ -519,7 +519,7 @@ check_esign_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
  * Helper function for #destroy_key_helpers to free all entries
  * in the `denom_keys` map.
  *
- * @param cls the `struct HelperState`
+ * @param cls the `struct HelperDenomination`
  * @param h_denom_pub hash of the denomination public key
  * @param value the `struct HelperDenomination` to release
  * @return #GNUNET_OK (continue to iterate)
@@ -544,7 +544,7 @@ free_denom_cb (void *cls,
  * Helper function for #destroy_key_helpers to free all entries
  * in the `esign_keys` map.
  *
- * @param cls the `struct HelperState`
+ * @param cls the `struct HelperSignkey`
  * @param pid unused, matches the exchange public key
  * @param value the `struct HelperSignkey` to release
  * @return #GNUNET_OK (continue to iterate)
@@ -582,11 +582,6 @@ destroy_key_helpers (struct HelperState *hs)
                                          hs);
   GNUNET_CONTAINER_multipeermap_destroy (hs->esign_keys);
   hs->esign_keys = NULL;
-  if (NULL != hs->management_keys_reply)
-  {
-    json_decref (hs->management_keys_reply);
-    hs->management_keys_reply = NULL;
-  }
   if (NULL != hs->dh)
   {
     TALER_CRYPTO_helper_denom_disconnect (hs->dh);
@@ -596,6 +591,11 @@ destroy_key_helpers (struct HelperState *hs)
   {
     TALER_CRYPTO_helper_esign_disconnect (hs->esh);
     hs->esh = NULL;
+  }
+  if (NULL != hs->management_keys_reply)
+  {
+    json_decref (hs->management_keys_reply);
+    hs->management_keys_reply = NULL;
   }
 }
 
@@ -1777,7 +1777,7 @@ get_key_state (bool management_only)
       GNUNET_break (0);
       if (NULL != ksh)
         destroy_key_state (ksh,
-                           false);
+                           (NULL == old_ksh));
       return NULL;
     }
     if (NULL != old_ksh)
@@ -2463,9 +2463,6 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
       GNUNET_JSON_from_data_auto (&esign_sm_pub));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Returning GET /management/keys response:\n");
-    json_dumpf (reply,
-                stderr,
-                JSON_INDENT (2));
     if (NULL == reply)
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,

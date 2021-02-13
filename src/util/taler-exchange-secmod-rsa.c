@@ -614,6 +614,8 @@ handle_done (void *cls)
 
       buf_size = GNUNET_CRYPTO_rsa_signature_encode (wi->rsa_signature,
                                                      &buf);
+      GNUNET_CRYPTO_rsa_signature_free (wi->rsa_signature);
+      wi->rsa_signature = NULL;
       tsize = sizeof (*sr) + buf_size;
       GNUNET_assert (tsize < UINT16_MAX);
       sr = GNUNET_malloc (tsize);
@@ -638,6 +640,7 @@ handle_done (void *cls)
            (dk->purge) )
         free_dk (dk);
     }
+    GNUNET_free (wi->blinded_msg);
     GNUNET_free (wi);
     GNUNET_assert (0 == pthread_mutex_lock (&done_lock));
   }

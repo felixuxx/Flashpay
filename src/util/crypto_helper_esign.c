@@ -221,6 +221,7 @@ TALER_CRYPTO_helper_esign_connect (
   strncpy (esh->sa.sun_path,
            unixpath,
            sizeof (esh->sa.sun_path) - 1);
+  GNUNET_free (unixpath);
   esh->sock = -1;
   {
     char *tmpdir;
