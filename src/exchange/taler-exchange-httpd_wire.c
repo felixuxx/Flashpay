@@ -198,7 +198,6 @@ build_wire_state (void)
 {
   json_t *wire_accounts_array;
   json_t *wire_fee_object;
-  json_t *wire_reply;
   uint64_t wg = wire_generation; /* must be obtained FIRST */
   enum GNUNET_DB_QueryStatus qs;
 
@@ -230,6 +229,7 @@ build_wire_state (void)
       char *wire_method;
       const char *payto_uri = json_string_value (json_object_get (account,
                                                                   "payto_uri"));
+
       GNUNET_assert (NULL != payto_uri);
       wire_method = TALER_payto_get_method (payto_uri);
       if (NULL == wire_method)
@@ -265,6 +265,7 @@ build_wire_state (void)
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                       "No wire fees for `%s' configured. Administrator must set `wire-fee` with taler-exchange-offline!\n",
                       wire_method);
+          json_decref (a);
           json_decref (wire_accounts_array);
           json_decref (wire_fee_object);
           GNUNET_free (wire_method);
@@ -276,25 +277,25 @@ build_wire_state (void)
                                             a));
       }
       GNUNET_free (wire_method);
-
     }
   }
-  wire_reply = json_pack (
-    "{s:o, s:o, s:o}",
-    "accounts",
-    wire_accounts_array,
-    "fees",
-    wire_fee_object,
-    "master_public_key",
-    GNUNET_JSON_from_data_auto (&TEH_master_public_key));
-  if (NULL == wire_reply)
   {
-    GNUNET_break (0);
-    return NULL;
-  }
-  {
+    json_t *wire_reply;
     struct WireStateHandle *wsh;
 
+    wire_reply = json_pack (
+      "{s:o, s:o, s:o}",
+      "accounts",
+      wire_accounts_array,
+      "fees",
+      wire_fee_object,
+      "master_public_key",
+      GNUNET_JSON_from_data_auto (&TEH_master_public_key));
+    if (NULL == wire_reply)
+    {
+      GNUNET_break (0);
+      return NULL;
+    }
     wsh = GNUNET_new (struct WireStateHandle);
     wsh->wire_reply = wire_reply;
     wsh->wire_generation = wg;
@@ -322,12 +323,13 @@ struct WireStateHandle *
 get_wire_state (void)
 {
   struct WireStateHandle *old_wsh;
-  struct WireStateHandle *wsh;
 
   old_wsh = pthread_getspecific (wire_state);
   if ( (NULL == old_wsh) ||
        (old_wsh->wire_generation < wire_generation) )
   {
+    struct WireStateHandle *wsh;
+
     wsh = build_wire_state ();
     if (NULL == wsh)
       return NULL;
