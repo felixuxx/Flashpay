@@ -343,6 +343,7 @@ TEH_handler_management_post_keys (
          json_is_array (signkey_sigs)) )
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_BAD_REQUEST,
@@ -385,6 +386,7 @@ TEH_handler_management_post_keys (
   if (! ok)
   {
     GNUNET_free (akc.d_sigs);
+    GNUNET_JSON_parse_free (spec);
     return ret;
   }
   akc.ns_sigs = json_array_size (signkey_sigs);
@@ -423,6 +425,7 @@ TEH_handler_management_post_keys (
   {
     GNUNET_free (akc.d_sigs);
     GNUNET_free (akc.s_sigs);
+    GNUNET_JSON_parse_free (spec);
     return ret;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -436,6 +439,7 @@ TEH_handler_management_post_keys (
                                &akc);
   GNUNET_free (akc.d_sigs);
   GNUNET_free (akc.s_sigs);
+  GNUNET_JSON_parse_free (spec);
   if (qs < 0)
     return ret;
   TEH_keys_update_states ();
