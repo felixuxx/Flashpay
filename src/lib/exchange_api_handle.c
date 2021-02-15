@@ -677,6 +677,7 @@ decode_keys_json (const json_t *resp_obj,
   struct TALER_ExchangeSignatureP sig;
   struct GNUNET_HashContext *hash_context;
   struct TALER_ExchangePublicKeyP pub;
+  const char *currency;
   struct GNUNET_JSON_Specification mspec[] = {
     GNUNET_JSON_spec_fixed_auto ("eddsa_sig",
                                  &sig),
@@ -691,7 +692,7 @@ decode_keys_json (const json_t *resp_obj,
     TALER_JSON_spec_relative_time ("reserve_closing_delay",
                                    &key_data->reserve_closing_delay),
     GNUNET_JSON_spec_string ("currency",
-                             &key_data->currency),
+                             &currency),
     GNUNET_JSON_spec_end ()
   };
 
@@ -755,6 +756,7 @@ decode_keys_json (const json_t *resp_obj,
           GNUNET_JSON_parse (resp_obj,
                              (check_sig) ? mspec : &mspec[2],
                              NULL, NULL));
+  key_data->currency = GNUNET_strdup (currency);
   /* parse the master public key and issue date of the response */
   if (check_sig)
     hash_context = GNUNET_CRYPTO_hash_context_start ();
