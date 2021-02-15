@@ -803,7 +803,7 @@ handle_revoke_request (const struct sockaddr_un *addr,
   struct Key *key;
   struct Key *nkey;
 
-  nkey = NULL;
+  key = NULL;
   for (struct Key *pos = keys_head; NULL != pos; pos = pos->next)
     if (0 == GNUNET_memcmp (&pos->exchange_pub,
                             &rr->exchange_pub))
