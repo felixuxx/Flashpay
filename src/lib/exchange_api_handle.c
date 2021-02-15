@@ -690,6 +690,8 @@ decode_keys_json (const json_t *resp_obj,
                                    &key_data->list_issue_date),
     TALER_JSON_spec_relative_time ("reserve_closing_delay",
                                    &key_data->reserve_closing_delay),
+    GNUNET_JSON_spec_string ("currency",
+                             &key_data->currency),
     GNUNET_JSON_spec_end ()
   };
 
@@ -1743,11 +1745,13 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
       return NULL;
     }
   }
-  keys = json_pack ("{s:s, s:o, s:o, s:o, s:o"
+  keys = json_pack ("{s:s, s:s, s:o, s:o, s:o, s:o"
                     ",s:o, s:o}",
                     /* 1 */
                     "version",
                     kd->version,
+                    "currency",
+                    kd->currency,
                     "master_public_key",
                     GNUNET_JSON_from_data_auto (&kd->master_pub),
                     "reserve_closing_delay",
@@ -1756,7 +1760,7 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
                     GNUNET_JSON_from_time_abs (kd->list_issue_date),
                     "signkeys",
                     signkeys,
-                    /* #6 */
+                    /* #7 */
                     "denoms",
                     denoms,
                     "auditors",

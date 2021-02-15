@@ -253,6 +253,11 @@ struct TALER_EXCHANGE_Keys
   char *version;
 
   /**
+   * Supported currency of the exchange.
+   */
+  char *currency;
+
+  /**
    * How long after a reserve went idle will the exchange close it?
    * This is an approximate number, not cryptographically signed by
    * the exchange (advisory-only, may change anytime).
