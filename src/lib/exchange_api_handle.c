@@ -1008,6 +1008,8 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
                      0);
   GNUNET_free (key_data->version);
   key_data->version = NULL;
+  GNUNET_free (key_data->currency);
+  key_data->currency = NULL;
 }
 
 
