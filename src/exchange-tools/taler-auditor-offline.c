@@ -539,13 +539,13 @@ do_upload (char *const *args)
 {
   char *exchange_url;
 
-  if (GNUNET_YES == GNUNET_is_zero (&TALER_ARL_auditor_pub))
+  if (GNUNET_YES == GNUNET_is_zero (&auditor_pub))
   {
     /* private key not available, try configuration for public key */
     char *auditor_public_key_str;
 
     if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_string (c,
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
                                                "auditor",
                                                "PUBLIC_KEY",
                                                &auditor_public_key_str))
@@ -553,7 +553,9 @@ do_upload (char *const *args)
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "auditor",
                                  "PUBLIC_KEY");
-      return GNUNET_SYSERR;
+      global_ret = 4;
+      test_shutdown ();
+      return;
     }
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_public_key_from_string (
@@ -566,7 +568,9 @@ do_upload (char *const *args)
                                  "PUBLIC_KEY",
                                  "invalid key");
       GNUNET_free (auditor_public_key_str);
-      return GNUNET_SYSERR;
+      global_ret = 4;
+      test_shutdown ();
+      return;
     }
     GNUNET_free (auditor_public_key_str);
   }
