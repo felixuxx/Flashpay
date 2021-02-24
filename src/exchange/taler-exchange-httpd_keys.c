@@ -1676,9 +1676,9 @@ build_key_state (struct HelperState *hs,
                        true);
     return NULL;
   }
-  qs = TEH_plugin->iterate_active_auditors (TEH_plugin->cls,
-                                            &auditor_info_cb,
-                                            ksh);
+  qs = TEH_plugin->iterate_auditor_denominations (TEH_plugin->cls,
+                                                  &auditor_denom_cb,
+                                                  ksh);
   if (qs < 0)
   {
     GNUNET_break (0);
@@ -1686,9 +1686,9 @@ build_key_state (struct HelperState *hs,
                        true);
     return NULL;
   }
-  qs = TEH_plugin->iterate_auditor_denominations (TEH_plugin->cls,
-                                                  &auditor_denom_cb,
-                                                  ksh);
+  qs = TEH_plugin->iterate_active_auditors (TEH_plugin->cls,
+                                            &auditor_info_cb,
+                                            ksh);
   if (qs < 0)
   {
     GNUNET_break (0);
