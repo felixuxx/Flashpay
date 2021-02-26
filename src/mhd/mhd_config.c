@@ -124,6 +124,7 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "unixpath `%s' is too long\n",
                   *unix_path);
+      GNUNET_free (*unix_path);
       return GNUNET_SYSERR;
     }
 
@@ -136,6 +137,7 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  section,
                                  "UNIXPATH_MODE");
+      GNUNET_free (*unix_path);
       return GNUNET_SYSERR;
     }
     errno = 0;
@@ -147,6 +149,7 @@ TALER_MHD_parse_config (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                  "UNIXPATH_MODE",
                                  "must be octal number");
       GNUNET_free (modestring);
+      GNUNET_free (*unix_path);
       return GNUNET_SYSERR;
     }
     GNUNET_free (modestring);
@@ -332,8 +335,14 @@ TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                 &unixpath_mode))
       return -1;
     if (NULL != serve_unixpath)
-      return TALER_MHD_open_unix_path (serve_unixpath,
-                                       unixpath_mode);
+    {
+      int ret;
+
+      ret = TALER_MHD_open_unix_path (serve_unixpath,
+                                      unixpath_mode);
+      GNUNET_free (serve_unixpath);
+      return ret;
+    }
   }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
