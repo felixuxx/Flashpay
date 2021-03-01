@@ -247,8 +247,9 @@ TALER_url_join (const char *base_url,
   {
     /* Must be an actual base URL! */
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Base URL `%s' does not end with '/'\n",
-                base_url);
+                "Base URL `%s' does not end with '/', cannot join with `%s'\n",
+                base_url,
+                path);
     return NULL;
   }
   if ('/' == path[0])

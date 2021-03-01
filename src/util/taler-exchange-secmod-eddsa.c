@@ -342,8 +342,6 @@ static void *
 sign_worker (void *cls)
 {
   (void) cls;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Crypto worker launching\n");
   GNUNET_assert (0 == pthread_mutex_lock (&work_lock));
   while (! in_shutdown)
   {
@@ -357,9 +355,6 @@ sign_worker (void *cls)
                                    wi);
       work_counter--;
       GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Processing sign request %p\n",
-                  wi);
       {
         if (GNUNET_OK !=
             GNUNET_CRYPTO_eddsa_sign_ (&wi->key->exchange_priv.eddsa_priv,
@@ -391,16 +386,12 @@ sign_worker (void *cls)
     if (in_shutdown)
       break;
     /* queue is empty, wait for work */
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Crypto worker waiting for work...\n");
     GNUNET_assert (0 ==
                    pthread_cond_wait (&work_cond,
                                       &work_lock));
   }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&work_lock));
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Crypto worker exiting\n");
   return NULL;
 }
 
@@ -549,9 +540,6 @@ handle_done (void *cls)
         .exchange_sig = wi->signature
       };
 
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Transmitting signature for request %p\n",
-                  wi);
       (void) transmit (&wi->addr,
                        wi->addr_size,
                        &sr.header);
