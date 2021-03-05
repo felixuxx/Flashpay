@@ -390,6 +390,12 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   ph->cb_cls = recoup_cb_cls;
   ph->url = TEAH_path_to_url (exchange,
                               arg_str);
+  if (NULL == ph->url)
+  {
+    json_decref (recoup_obj);
+    GNUNET_free (ph);
+    return NULL;
+  }
   ph->was_refreshed = was_refreshed;
   eh = TALER_EXCHANGE_curl_easy_get_ (ph->url);
   if ( (NULL == eh) ||

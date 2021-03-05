@@ -741,6 +741,12 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->cb_cls = cb_cls;
   dh->url = TEAH_path_to_url (exchange,
                               arg_str);
+  if (NULL == dh->url)
+  {
+    GNUNET_free (dh);
+    json_decref (deposit_obj);
+    return NULL;
+  }
   dh->depconf.purpose.size = htonl (sizeof (struct
                                             TALER_DepositConfirmationPS));
   dh->depconf.purpose.purpose = htonl (

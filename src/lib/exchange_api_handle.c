@@ -1293,14 +1293,10 @@ char *
 TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
                   const char *path)
 {
-  char *ret;
-
   GNUNET_assert ('/' == path[0]);
-  ret = TALER_url_join (h->url,
-                        path + 1,
-                        NULL);
-  GNUNET_assert (NULL != ret);
-  return ret;
+  return TALER_url_join (h->url,
+                         path + 1,
+                         NULL);
 }
 
 
@@ -1904,6 +1900,21 @@ request_keys (void *cls)
   url[strlen (url) - 1] = '\0';
   kr->url = TEAH_path_to_url (exchange,
                               url);
+  if (NULL == kr->url)
+  {
+    struct TALER_EXCHANGE_HttpResponse hr = {
+      .ec = TALER_EC_GENERIC_CONFIGURATION_INVALID
+    };
+
+    GNUNET_free (kr);
+    exchange->keys_error_count++;
+    exchange->state = MHS_FAILED;
+    exchange->cert_cb (exchange->cert_cb_cls,
+                       &hr,
+                       NULL,
+                       TALER_EXCHANGE_VC_PROTOCOL_ERROR);
+    return;
+  }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting keys with URL `%s'.\n",
@@ -1911,6 +1922,8 @@ request_keys (void *cls)
   eh = TALER_EXCHANGE_curl_easy_get_ (kr->url);
   if (NULL == eh)
   {
+    GNUNET_free (kr->url);
+    GNUNET_free (kr);
     exchange->retry_delay = EXCHANGE_LIB_BACKOFF (exchange->retry_delay);
     exchange->retry_task = GNUNET_SCHEDULER_add_delayed (exchange->retry_delay,
                                                          &request_keys,

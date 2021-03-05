@@ -360,6 +360,11 @@ TALER_AUDITOR_deposit_confirmation (
   dh->cb_cls = cb_cls;
   dh->url = TALER_AUDITOR_path_to_url_ (auditor,
                                         "/deposit-confirmation");
+  if (NULL == dh->url)
+  {
+    GNUNET_free (dh);
+    return NULL;
+  }
   eh = TALER_AUDITOR_curl_easy_get_ (dh->url);
 
   if ( (NULL == eh) ||

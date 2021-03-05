@@ -468,6 +468,11 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
   lh->coin_priv = *coin_priv;
   lh->url = TEAH_path_to_url (exchange,
                               arg_str);
+  if (NULL == lh->url)
+  {
+    GNUNET_free (lh);
+    return NULL;
+  }
   eh = TALER_EXCHANGE_curl_easy_get_ (lh->url);
   if (NULL == eh)
   {

@@ -290,6 +290,11 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
   rgh->reserve_pub = *reserve_pub;
   rgh->url = TEAH_path_to_url (exchange,
                                arg_str);
+  if (NULL == rgh->url)
+  {
+    GNUNET_free (rgh);
+    return NULL;
+  }
   eh = TALER_EXCHANGE_curl_easy_get_ (rgh->url);
   if (NULL == eh)
   {

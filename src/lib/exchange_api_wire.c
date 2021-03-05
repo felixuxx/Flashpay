@@ -435,6 +435,11 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
   wh->cb_cls = wire_cb_cls;
   wh->url = TEAH_path_to_url (exchange,
                               "/wire");
+  if (NULL == wh->url)
+  {
+    GNUNET_free (wh);
+    return NULL;
+  }
   eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
   GNUNET_break (CURLE_OK ==
                 curl_easy_setopt (eh,

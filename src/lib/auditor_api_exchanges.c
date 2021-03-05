@@ -221,7 +221,11 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
   leh->cb = cb;
   leh->cb_cls = cb_cls;
   leh->url = TALER_AUDITOR_path_to_url_ (auditor, "/exchanges");
-
+  if (NULL == leh->url)
+  {
+    GNUNET_free (leh);
+    return NULL;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "URL for list-exchanges: `%s'\n",
               leh->url);

@@ -739,6 +739,12 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
   rh->cb_cls = cb_cls;
   rh->url = TEAH_path_to_url (exchange,
                               arg_str);
+  if (NULL == rh->url)
+  {
+    json_decref (refund_obj);
+    GNUNET_free (rh);
+    return NULL;
+  }
   rh->depconf.purpose.size = htonl (sizeof (struct TALER_RefundConfirmationPS));
   rh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_REFUND);
   rh->depconf.h_contract_terms = *h_contract_terms;

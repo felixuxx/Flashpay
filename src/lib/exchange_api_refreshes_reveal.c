@@ -466,7 +466,12 @@ TALER_EXCHANGE_refreshes_reveal (
   rrh->md = md;
   rrh->url = TEAH_path_to_url (rrh->exchange,
                                arg_str);
-
+  if (NULL == rrh->url)
+  {
+    json_decref (reveal_obj);
+    GNUNET_free (rrh);
+    return NULL;
+  }
   eh = TALER_EXCHANGE_curl_easy_get_ (rrh->url);
   if ( (NULL == eh) ||
        (GNUNET_OK !=

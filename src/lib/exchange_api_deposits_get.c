@@ -373,6 +373,11 @@ TALER_EXCHANGE_deposits_get (
   dwh->cb_cls = cb_cls;
   dwh->url = TEAH_path_to_url (exchange,
                                arg_str);
+  if (NULL == dwh->url)
+  {
+    GNUNET_free (dwh);
+    return NULL;
+  }
   dwh->depconf.purpose.size = htonl (sizeof (struct TALER_ConfirmWirePS));
   dwh->depconf.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE);
   dwh->depconf.h_wire = *h_wire;

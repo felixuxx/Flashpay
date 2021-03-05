@@ -464,6 +464,12 @@ TALER_EXCHANGE_withdraw2 (
                 TALER_B2S (&wh->reserve_pub));
     wh->url = TEAH_path_to_url (exchange,
                                 arg_str);
+    if (NULL == wh->url)
+    {
+      json_decref (withdraw_obj);
+      GNUNET_free (wh);
+      return NULL;
+    }
     {
       CURL *eh;
       struct GNUNET_CURL_Context *ctx;

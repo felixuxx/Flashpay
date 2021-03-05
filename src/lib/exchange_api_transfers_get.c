@@ -381,6 +381,11 @@ TALER_EXCHANGE_transfers_get (
   }
   wdh->url = TEAH_path_to_url (wdh->exchange,
                                arg_str);
+  if (NULL == wdh->url)
+  {
+    GNUNET_free (wdh);
+    return NULL;
+  }
   eh = TALER_EXCHANGE_curl_easy_get_ (wdh->url);
   if (NULL == eh)
   {

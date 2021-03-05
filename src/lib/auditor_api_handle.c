@@ -407,13 +407,10 @@ char *
 TALER_AUDITOR_path_to_url_ (struct TALER_AUDITOR_Handle *h,
                             const char *path)
 {
-  char *ret;
   GNUNET_assert ('/' == path[0]);
-  ret = TALER_url_join (h->url,
-                        path + 1,
-                        NULL);
-  GNUNET_assert (NULL != ret);
-  return ret;
+  return TALER_url_join (h->url,
+                         path + 1,
+                         NULL);
 }
 
 
@@ -481,6 +478,18 @@ request_version (void *cls)
   vr->auditor = auditor;
   vr->url = TALER_AUDITOR_path_to_url_ (auditor,
                                         "/version");
+  if (NULL == vr->url)
+  {
+    struct TALER_AUDITOR_HttpResponse hr = {
+      .ec = TALER_EC_GENERIC_CONFIGURATION_INVALID
+    };
+
+    auditor->version_cb (auditor->version_cb_cls,
+                         &hr,
+                         NULL,
+                         TALER_AUDITOR_VC_PROTOCOL_ERROR);
+    return;
+  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requesting auditor version with URL `%s'.\n",
               vr->url);
