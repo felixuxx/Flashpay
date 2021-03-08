@@ -180,9 +180,9 @@ taler_auditor_sync_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil \
   $(XLIB)
-taler_auditor_dbinit_LDFLAGS = \
+taler_auditor_sync_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)
-taler_auditor_dbinit_CPPFLAGS = \
+taler_auditor_sync_CPPFLAGS = \
   -I$(top_srcdir)/src/include \
   -I$(top_srcdir)/src/pq/ \
   $(POSTGRESQL_CPPFLAGS)
