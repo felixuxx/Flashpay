@@ -728,7 +728,7 @@ decode_keys_json (const json_t *resp_obj,
       return GNUNET_SYSERR;
     }
     if (3 != sscanf (ver,
-                     "%u:%u:%u",
+                     "%u:%u:%u%c",
                      &current,
                      &revision,
                      &age,
