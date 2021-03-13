@@ -712,6 +712,7 @@ decode_keys_json (const json_t *resp_obj,
     unsigned int age;
     unsigned int revision;
     unsigned int current;
+    char dummy;
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("version",
                                &ver),
@@ -730,7 +731,8 @@ decode_keys_json (const json_t *resp_obj,
                      "%u:%u:%u",
                      &current,
                      &revision,
-                     &age))
+                     &age,
+                     &dummy))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
