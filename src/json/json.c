@@ -615,8 +615,9 @@ TALER_JSON_get_error_code2 (const void *data,
   enum TALER_ErrorCode ec;
   json_error_t err;
 
-  json = json_loads (data,
+  json = json_loadb (data,
                      data_size,
+                     JSON_REJECT_DUPLICATES,
                      &err);
   if (NULL == json)
     return TALER_EC_INVALID;
