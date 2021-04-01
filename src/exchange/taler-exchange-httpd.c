@@ -966,13 +966,19 @@ handle_mhd_request (void *cls,
     return ret;
   }
 
+  if ( (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_OPTIONS)) &&
+       (0 == strcmp ("*",
+                     url)) )
+    return TALER_MHD_reply_cors_preflight (connection);
+
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
     method = MHD_HTTP_METHOD_GET;   /* treat HEAD as GET here, MHD will do the rest */
 
   /* parse first part of URL */
   {
-    int found = GNUNET_NO;
+    bool found = false;
     size_t tok_size;
     const char *tok;
     const char *rest;
@@ -1000,7 +1006,7 @@ handle_mhd_request (void *cls,
                           tok_size)) ||
            (tok_size != strlen (rh->url) ) )
         continue;
-      found = GNUNET_YES;
+      found = true;
       /* The URL is a match!  What we now do depends on the method. */
       if (0 == strcasecmp (method, MHD_HTTP_METHOD_OPTIONS))
       {
@@ -1027,14 +1033,63 @@ handle_mhd_request (void *cls,
       }
     }
 
-    if (GNUNET_YES == found)
+    if (found)
     {
       /* we found a matching address, but the method is wrong */
+      struct MHD_Response *reply;
+      MHD_RESULT ret;
+      char *allowed = NULL;
+
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_METHOD_NOT_ALLOWED,
-                                         TALER_EC_GENERIC_METHOD_INVALID,
-                                         method);
+      for (unsigned int i = 0; NULL != handlers[i].url; i++)
+      {
+        struct TEH_RequestHandler *rh = &handlers[i];
+
+        if ( (0 != strncmp (tok,
+                            rh->url,
+                            tok_size)) ||
+             (tok_size != strlen (rh->url) ) )
+          continue;
+        if (NULL == allowed)
+        {
+          allowed = GNUNET_strdup (rh->method);
+        }
+        else
+        {
+          char *tmp;
+
+          GNUNET_asprintf (&tmp,
+                           "%s, %s",
+                           allowed,
+                           rh->method);
+          GNUNET_free (allowed);
+          allowed = tmp;
+        }
+        if (0 == strcasecmp (rh->method,
+                             MHD_HTTP_METHOD_GET))
+        {
+          char *tmp;
+
+          GNUNET_asprintf (&tmp,
+                           "%s, %s",
+                           allowed,
+                           MHD_HTTP_METHOD_HEAD);
+          GNUNET_free (allowed);
+          allowed = tmp;
+        }
+      }
+      reply = TALER_MHD_make_error (TALER_EC_GENERIC_METHOD_INVALID,
+                                    method);
+      GNUNET_break (MHD_YES ==
+                    MHD_add_response_header (reply,
+                                             MHD_HTTP_HEADER_ALLOW,
+                                             allowed));
+      GNUNET_free (allowed);
+      ret = MHD_queue_response (connection,
+                                MHD_HTTP_METHOD_NOT_ALLOWED,
+                                reply);
+      MHD_destroy_response (reply);
+      return ret;
     }
   }
 
