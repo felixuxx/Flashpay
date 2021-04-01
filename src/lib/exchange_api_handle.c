@@ -1863,8 +1863,14 @@ TALER_EXCHANGE_connect (
 static long
 get_keys_timeout_seconds (struct TALER_EXCHANGE_Handle *exchange)
 {
-  return GNUNET_MIN (60,
-                     5 + (1L << exchange->keys_error_count));
+  unsigned int kec;
+
+  /* if retry counter >= 8, do not bother to go further, we
+     stop the exponential back-off at 128 anyway. */
+  kec = GNUNET_MIN (7,
+                    exchange->keys_error_count);
+  return GNUNET_MIN (120,
+                     5 + (1L << kec));
 }
 
 
