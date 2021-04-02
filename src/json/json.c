@@ -110,7 +110,8 @@ forget (const json_t *in)
         json_decref (ret);
         return NULL;
       }
-      if (0 != json_array_append_new (ret, t))
+      if (0 != json_array_append_new (ret,
+                                      t))
       {
         GNUNET_break (0);
         json_decref (ret);
@@ -145,8 +146,7 @@ forget (const json_t *in)
       json_t *t;
       json_t *salt;
 
-      if (0 == strcmp (key,
-                       "_forgettable"))
+      if (fg == value)
         continue; /* skip! */
       if (rx == value)
         continue; /* skip! */
@@ -187,6 +187,7 @@ forget (const json_t *in)
           GNUNET_break (0);
           json_decref (ret);
           json_decref (rx);
+          json_decref (t);
           return NULL;
         }
         if (GNUNET_OK !=
@@ -197,15 +198,16 @@ forget (const json_t *in)
           GNUNET_break (0);
           json_decref (ret);
           json_decref (rx);
+          json_decref (t);
           return NULL;
         }
+        json_decref (t);
         if (NULL == rx)
           rx = json_object ();
         if (NULL == rx)
         {
           GNUNET_break (0);
           json_decref (ret);
-          json_decref (rx);
           return NULL;
         }
         if (0 !=

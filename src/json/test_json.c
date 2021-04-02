@@ -87,7 +87,7 @@ path_cb (void *cls,
 
 
 static int
-test_contract ()
+test_contract (void)
 {
   struct GNUNET_HashCode h1;
   struct GNUNET_HashCode h2;
