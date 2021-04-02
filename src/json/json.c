@@ -449,32 +449,34 @@ parse_path (json_t *obj,
   char *next_path;
   char *bracket;
   json_t *next_obj = NULL;
+  char *next_dot;
 
-  if (NULL != next_id)
-  {
-    bracket = strchr (next_id,
-                      '[');
-    *next_id = '\0';
-    next_id++;
-    next_path = GNUNET_strdup (next_id);
-    char *next_dot = strchr (next_id,
-                             '.');
-    if (NULL != next_dot)
-      *next_dot = '\0';
-  }
-  else
+  if (NULL == next_id)
   {
     cb (cb_cls,
         id,
         prev);
+    GNUNET_free (id);
     return GNUNET_OK;
   }
-
+  bracket = strchr (next_id,
+                    '[');
+  *next_id = '\0';
+  next_id++;
+  next_path = GNUNET_strdup (next_id);
+  next_dot = strchr (next_id,
+                     '.');
+  if (NULL != next_dot)
+    *next_dot = '\0';
   /* If this is the first time this is called, make sure id is "$" */
-  if ((NULL == prev) &&
-      (0 != strcmp (id,
-                    "$")))
+  if ( (NULL == prev) &&
+       (0 != strcmp (id,
+                     "$")))
+  {
+    GNUNET_free (id);
+    GNUNET_free (next_path);
     return GNUNET_SYSERR;
+  }
 
   /* Check for bracketed indices */
   if (NULL != bracket)
@@ -482,7 +484,11 @@ parse_path (json_t *obj,
     char *end_bracket = strchr (bracket,
                                 ']');
     if (NULL == end_bracket)
+    {
+      GNUNET_free (id);
+      GNUNET_free (next_path);
       return GNUNET_SYSERR;
+    }
     *end_bracket = '\0';
 
     *bracket = '\0';
@@ -496,6 +502,7 @@ parse_path (json_t *obj,
       size_t index;
       json_t *value;
       int ret = GNUNET_OK;
+
       json_array_foreach (array, index, value) {
         ret = parse_path (value,
                           obj,
@@ -505,6 +512,7 @@ parse_path (json_t *obj,
         if (GNUNET_OK != ret)
         {
           GNUNET_free (id);
+          GNUNET_free (next_path);
           return ret;
         }
       }
@@ -512,10 +520,15 @@ parse_path (json_t *obj,
     else
     {
       unsigned int index;
+
       if (1 != sscanf (bracket,
                        "%u",
                        &index))
+      {
+        GNUNET_free (id);
+        GNUNET_free (next_path);
         return GNUNET_SYSERR;
+      }
       next_obj = json_array_get (array,
                                  index);
     }
@@ -529,16 +542,17 @@ parse_path (json_t *obj,
 
   if (NULL != next_obj)
   {
-    return parse_path (next_obj,
-                       obj,
-                       next_path,
-                       cb,
-                       cb_cls);
+    int ret = parse_path (next_obj,
+                          obj,
+                          next_path,
+                          cb,
+                          cb_cls);
+    GNUNET_free (id);
+    GNUNET_free (next_path);
+    return ret;
   }
-
   GNUNET_free (id);
   GNUNET_free (next_path);
-
   return GNUNET_OK;
 }
 
