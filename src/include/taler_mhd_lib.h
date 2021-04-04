@@ -97,6 +97,20 @@ TALER_MHD_can_compress (struct MHD_Connection *connection);
 
 
 /**
+ * Check if @a mime matches the @a accept_pattern.  For this function, the @a
+ * accept_pattern may include multiple values separated by ";".
+ *
+ * @param accept_pattern a mime pattern like "text/plain"
+ *        or "image/STAR" or "text/plain; text/xml"
+ * @param mime the mime type to match
+ * @return true if @a mime matches the @a accept_pattern
+ */
+bool
+TALER_MHD_xmime_matches (const char *accept_pattern,
+                         const char *mime);
+
+
+/**
  * Send JSON object as response.
  *
  * @param connection the MHD connection

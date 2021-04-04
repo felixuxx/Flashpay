@@ -123,18 +123,9 @@ mime_matches (const char *accept_pattern,
 }
 
 
-/**
- * Check if @a mime matches the @a accept_pattern.  For this function, the @a
- * accept_pattern may include multiple values separated by ";".
- *
- * @param accept_pattern a mime pattern like "text/plain"
- *        or "image/STAR" or "text/plain; text/xml"
- * @param mime the mime type to match
- * @return true if @a mime matches the @a accept_pattern
- */
-static bool
-xmime_matches (const char *accept_pattern,
-               const char *mime)
+bool
+TALER_MHD_xmime_matches (const char *accept_pattern,
+                         const char *mime)
 {
   char *ap = GNUNET_strdup (accept_pattern);
   char *sptr;
@@ -155,14 +146,6 @@ xmime_matches (const char *accept_pattern,
 }
 
 
-/**
- * Generate a response with a legal document in the format and language of the
- * user's choosing.
- *
- * @param conn HTTP connection to handle
- * @param legal legal document to serve
- * @return MHD result code
- */
 MHD_RESULT
 TALER_MHD_reply_legal (struct MHD_Connection *conn,
                        struct TALER_MHD_Legal *legal)
@@ -220,12 +203,12 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
       struct Terms *p = &legal->terms[i];
 
       if ( (NULL == t) ||
-           (xmime_matches (mime,
-                           p->mime_type)) )
+           (TALER_MHD_xmime_matches (mime,
+                                     p->mime_type)) )
       {
         if ( (NULL == t) ||
-             (! xmime_matches (mime,
-                               t->mime_type)) ||
+             (! TALER_MHD_xmime_matches (mime,
+                                         t->mime_type)) ||
              (TALER_language_matches (lang,
                                       p->language) >
               TALER_language_matches (lang,
@@ -507,18 +490,6 @@ load_language (struct TALER_MHD_Legal *legal,
 }
 
 
-/**
- * Load set of legal documents as specified in @a cfg in section @a section
- * where the Etag is given under the @param tagoption and the directory under
- * the @a diroption.
- *
- * @param cfg configuration to use
- * @param section section to load values from
- * @param diroption name of the option with the path to the legal documents
- * @param tagoption name of the files to use
- *        for the legal documents and the Etag
- * @return NULL on error
- */
 struct TALER_MHD_Legal *
 TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
                       const char *section,
@@ -583,11 +554,6 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
 }
 
 
-/**
- * Free set of legal documents
- *
- * @param legal legal documents to free
- */
 void
 TALER_MHD_legal_free (struct TALER_MHD_Legal *legal)
 {
