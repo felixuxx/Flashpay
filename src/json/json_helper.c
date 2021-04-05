@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -26,12 +26,6 @@
 #include "taler_json_lib.h"
 
 
-/**
- * Convert a TALER amount to a JSON object.
- *
- * @param amount the amount
- * @return a json object describing the amount
- */
 json_t *
 TALER_JSON_from_amount (const struct TALER_Amount *amount)
 {
@@ -47,12 +41,6 @@ TALER_JSON_from_amount (const struct TALER_Amount *amount)
 }
 
 
-/**
- * Convert a TALER amount to a JSON object.
- *
- * @param amount the amount
- * @return a json object describing the amount
- */
 json_t *
 TALER_JSON_from_amount_nbo (const struct TALER_AmountNBO *amount)
 {
@@ -96,12 +84,6 @@ parse_amount (void *cls,
 }
 
 
-/**
- * Provide specification to parse given JSON object to an amount.
- *
- * @param name name of the amount field in the JSON
- * @param[out] r_amount where the amount has to be written
- */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount (const char *name,
                         struct TALER_Amount *r_amount)
@@ -151,12 +133,6 @@ parse_amount_nbo (void *cls,
 }
 
 
-/**
- * Provide specification to parse given JSON object to an amount.
- *
- * @param name name of the amount field in the JSON
- * @param[out] r_amount where the amount has to be written
- */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount_nbo (const char *name,
                             struct TALER_AmountNBO *r_amount)
@@ -234,13 +210,6 @@ parse_abs_time (void *cls,
 }
 
 
-/**
- * Provide specification to parse given JSON object to an absolute time.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the time field in the JSON
- * @param[out] r_time where the time has to be written
- */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_absolute_time (const char *name,
                                struct GNUNET_TIME_Absolute *r_time)
@@ -289,14 +258,6 @@ parse_abs_time_nbo (void *cls,
 }
 
 
-/**
- * Provide specification to parse given JSON object to an absolute time
- * in network byte order.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the time field in the JSON
- * @param[out] r_time where the time has to be written
- */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_absolute_time_nbo (const char *name,
                                    struct GNUNET_TIME_AbsoluteNBO *r_time)
@@ -375,13 +336,6 @@ parse_rel_time (void *cls,
 }
 
 
-/**
- * Provide specification to parse given JSON object to a relative time.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the time field in the JSON
- * @param[out] r_time where the time has to be written
- */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_relative_time (const char *name,
                                struct GNUNET_TIME_Relative *r_time)
@@ -400,13 +354,6 @@ TALER_JSON_spec_relative_time (const char *name,
 }
 
 
-/**
- * Generate line in parser specification for denomination public key.
- *
- * @param field name of the field
- * @param[out] pk key to initialize
- * @return corresponding field spec
- */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denomination_public_key (const char *field,
                                          struct TALER_DenominationPublicKey *pk)
@@ -416,19 +363,133 @@ TALER_JSON_spec_denomination_public_key (const char *field,
 }
 
 
-/**
- * Generate line in parser specification for denomination signature.
- *
- * @param field name of the field
- * @param sig the signature to initialize
- * @return corresponding field spec
- */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denomination_signature (const char *field,
                                         struct TALER_DenominationSignature *sig)
 {
   return GNUNET_JSON_spec_rsa_signature (field,
                                          &sig->rsa_signature);
+}
+
+
+/**
+ * Closure for #parse_i18n_string.
+ */
+struct I18nContext
+{
+  /**
+   * Language pattern to match.
+   */
+  const char *lp;
+
+  /**
+   * Name of the field to match.
+   */
+  const char *field;
+};
+
+
+/**
+ * Parse given JSON object to internationalized string.
+ *
+ * @param cls closure, our `struct I18nContext *`
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static int
+parse_i18n_string (void *cls,
+                   json_t *root,
+                   struct GNUNET_JSON_Specification *spec)
+{
+  struct I18nContext *ctx = cls;
+  json_t *i18n;
+  json_t *val;
+
+  {
+    char *i18nf;
+
+    GNUNET_asprintf (&i18nf,
+                     "%s_i18n",
+                     ctx->field);
+    i18n = json_object_get (root,
+                            i18nf);
+    GNUNET_free (i18nf);
+  }
+
+  val = json_object_get (root,
+                         ctx->field);
+  if (NULL != i18n)
+  {
+    double best = 0.0;
+    json_t *pos;
+    const char *lang;
+
+    json_object_foreach (i18n, lang, pos)
+    {
+      double score;
+
+      score = TALER_language_matches (ctx->lp,
+                                      lang);
+      if (score > best)
+      {
+        best = score;
+        val = pos;
+      }
+    }
+  }
+
+  {
+    const char *str;
+
+    str = json_string_value (val);
+    if (NULL == str)
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    *(const char **) spec->ptr = str;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Function called to clean up data from earlier parsing.
+ *
+ * @param cls closure
+ * @param spec our specification entry with data to clean.
+ */
+static void
+i18n_cleaner (void *cls,
+              struct GNUNET_JSON_Specification *spec)
+{
+  struct I18nContext *ctx = cls;
+
+  GNUNET_free (ctx);
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_i18n_string (const char *name,
+                             const char *language_pattern,
+                             const char **strptr)
+{
+  struct I18nContext *ctx = GNUNET_new (struct I18nContext);
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_i18n_string,
+    .cleaner = &i18n_cleaner,
+    .cls = ctx,
+    .field = NULL, /* we want the main object */
+    .ptr = strptr,
+    .ptr_size = 0,
+    .size_ptr = NULL
+  };
+
+  ctx->lp = language_pattern;
+  ctx->field = name;
+  *strptr = NULL;
+  return ret;
 }
 
 
