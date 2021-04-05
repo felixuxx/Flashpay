@@ -487,7 +487,8 @@ TALER_JSON_spec_i18n_string (const char *name,
     .size_ptr = NULL
   };
 
-  ctx->lp = GNUNET_strdup (language_pattern);
+  ctx->lp = (NULL != language_pattern) ? GNUNET_strdup (language_pattern) :
+            NULL;
   ctx->field = name;
   *strptr = NULL;
   return ret;
