@@ -419,7 +419,8 @@ parse_i18n_string (void *cls,
 
   val = json_object_get (root,
                          ctx->field);
-  if (NULL != i18n)
+  if ( (NULL != i18n) &&
+       (NULL != ctx->lp) )
   {
     double best = 0.0;
     json_t *pos;
