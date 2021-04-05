@@ -380,7 +380,7 @@ struct I18nContext
   /**
    * Language pattern to match.
    */
-  const char *lp;
+  char *lp;
 
   /**
    * Name of the field to match.
@@ -466,6 +466,7 @@ i18n_cleaner (void *cls,
 {
   struct I18nContext *ctx = cls;
 
+  GNUNET_free (ctx->lp);
   GNUNET_free (ctx);
 }
 
@@ -486,7 +487,7 @@ TALER_JSON_spec_i18n_string (const char *name,
     .size_ptr = NULL
   };
 
-  ctx->lp = language_pattern;
+  ctx->lp = GNUNET_strdup (language_pattern);
   ctx->field = name;
   *strptr = NULL;
   return ret;
@@ -497,9 +498,30 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_i18n_str (const char *name,
                           const char **strptr)
 {
-  return TALER_JSON_spec_i18n_string (name,
-                                      getenv ("LANG"),
-                                      strptr);
+  const char *lang = getenv ("LANG");
+  char *dot;
+  char *l;
+  struct GNUNET_JSON_Specification ret;
+
+  if (NULL != lang)
+  {
+    dot = strchr (lang,
+                  '.');
+    if (NULL == dot)
+      l = GNUNET_strdup (lang);
+    else
+      l = GNUNET_strndup (lang,
+                          dot - lang);
+  }
+  else
+  {
+    l = NULL;
+  }
+  ret = TALER_JSON_spec_i18n_string (name,
+                                     l,
+                                     strptr);
+  GNUNET_free (l);
+  return ret;
 }
 
 
