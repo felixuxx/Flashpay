@@ -180,6 +180,10 @@ AS_IF([test $libgnunetjson != 1],
 *** building GNUnet.
 *** ]])])
 
+# check for gettext
+AM_GNU_GETTEXT([external])
+AM_GNU_GETTEXT_VERSION([0.19.8])
+
 
 # Save before checking libgnurl/libcurl
 CFLAGS_SAVE=$CFLAGS
@@ -528,6 +532,7 @@ AC_CONFIG_FILES([Makefile
                  contrib/Makefile
                  doc/Makefile
                  doc/doxygen/Makefile
+                 po/Makefile.in
                  src/Makefile
                  src/auditor/Makefile
                  src/auditordb/Makefile

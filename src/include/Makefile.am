@@ -2,7 +2,7 @@
 talerincludedir = $(includedir)/taler
 
 talerinclude_HEADERS = \
-  platform.h \
+  platform.h gettext.h \
   taler_auditor_service.h \
   taler_amount_lib.h \
   taler_auditordb_lib.h \

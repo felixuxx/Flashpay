@@ -6,6 +6,7 @@
 *.gcda
 *.mo
 .dirstamp
+m4/*.m4
 doc/coverage/
 doc/taler-exchange.cps
 aclocal.m4
@@ -42,12 +43,10 @@ src/bank-lib/test_bank_api_with_fakebank
 src/bank-lib/test_bank_api_with_fakebank_twisted
 src/bank-lib/test_bank_api_with_pybank_twisted
 src/lib/test_exchange_api
-
 src/testing/test_taler_exchange_httpd_home/.local/share/taler/exchange/live-keys/
 src/testing/test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/
 src/testing/test_taler_exchange_httpd_home/.local/share/taler/auditor/
 src/testing/test_taler_exchange_httpd_home/.local/share/taler/auditors/
-
 src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/live-keys/
 src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/
 src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/auditor/
@@ -139,3 +138,8 @@ src/testing/test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchan
 src/testing/test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/secm_tofus.pub
 debian/taler-auditor.debhelper.log
 debian/libtalerexchange-dev.debhelper.log
+po/Makevars.template
+po/POTFILES
+po/stamp-po
+po/taler-exchange.pot
+po/remove-potcdate.sed
