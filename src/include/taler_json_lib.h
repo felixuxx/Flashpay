@@ -142,6 +142,45 @@ TALER_JSON_spec_denomination_signature (const char *field,
 
 
 /**
+ * The expected field stores a possibly internationalized string.
+ * Internationalization means that there is another field "$name_i18n"
+ * which is an object where the keys are languages.  If this is
+ * present, and if @a language_pattern is non-NULL, this function
+ * should return the best match from @a language pattern from the
+ * "_i18n" field.  If no language matches, the normal field under
+ * @a name is to be returned.
+ *
+ * The @a language_pattern is given using the format from
+ * https://tools.ietf.org/html/rfc7231#section-5.3.1
+ * so that #TALER_language_matches() can be used.
+ *
+ * @param name name of the JSON field
+ * @param language_pattern language pattern to use to find best match, possibly NULL
+ * @param[out] strptr where to store a pointer to the field with the best variant
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_i18n_string (const char *name,
+                             const char *language_pattern,
+                             const char **strptr);
+
+
+/**
+ * The expected field stores a possibly internationalized string.
+ * Internationalization means that there is another field "$name_i18n" which
+ * is an object where the keys are languages.  If this is present, this
+ * function should return the best match based on the locale from the "_i18n"
+ * field.  If no language matches, the normal field under @a name is to be
+ * returned.
+ *
+ * @param name name of the JSON field
+ * @param[out] strptr where to store a pointer to the field with the best variant
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_i18n_str (const char *name,
+                          const char **strptr);
+
+
+/**
  * Hash a JSON for binary signing.
  *
  * See https://tools.ietf.org/html/draft-rundgren-json-canonicalization-scheme-15

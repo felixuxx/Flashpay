@@ -493,4 +493,14 @@ TALER_JSON_spec_i18n_string (const char *name,
 }
 
 
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_i18n_str (const char *name,
+                          const char **strptr)
+{
+  return TALER_JSON_spec_i18n_string (name,
+                                      getenv ("LANG"),
+                                      strptr);
+}
+
+
 /* end of json/json_helper.c */
