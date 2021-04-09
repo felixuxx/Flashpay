@@ -7,6 +7,12 @@ if ! git --version >/dev/null; then
   exit 1
 fi
 
+
+git submodule update --init
+
+./contrib/gana-update.sh
+
+
 ./contrib/gana.sh
 
 # This is more portable than `which' but comes with
