@@ -6,3 +6,5 @@ set -eu
 cd contrib/gana
 git pull origin master
 cd ../..
+
+exec ./contrib/gana-update.sh

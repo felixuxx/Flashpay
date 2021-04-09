@@ -8,12 +8,10 @@ if ! git --version >/dev/null; then
 fi
 
 
-git submodule update --init
+echo "$0: Updating submodules"
+echo | git submodule update --init
 
 ./contrib/gana-update.sh
-
-
-./contrib/gana.sh
 
 # This is more portable than `which' but comes with
 # the caveat of not(?) properly working on busybox's ash:
