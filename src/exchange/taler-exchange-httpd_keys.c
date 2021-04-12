@@ -701,8 +701,7 @@ helper_esign_cb (
   {
     /* should be just an update (revocation!), so update existing entry */
     hsk->validity_duration = validity_duration;
-    GNUNET_break (start_time.abs_value_us ==
-                  hsk->start_time.abs_value_us);
+    GNUNET_break (0 == start_time.abs_value_us);
     return;
   }
   GNUNET_assert (NULL != sm_pub);
