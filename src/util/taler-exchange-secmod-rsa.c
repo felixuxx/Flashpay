@@ -1195,6 +1195,8 @@ create_key (struct Denomination *denom,
 static struct GNUNET_TIME_Absolute
 denomination_action_time (const struct Denomination *denom)
 {
+  if (NULL == denom->keys_head)
+    return GNUNET_TIME_UNIT_ZERO_ABS;
   return GNUNET_TIME_absolute_min (
     GNUNET_TIME_absolute_add (denom->keys_head->anchor,
                               denom->duration_withdraw),
@@ -1340,9 +1342,9 @@ update_denominations (void *cls)
   struct GNUNET_TIME_Absolute now;
 
   (void) cls;
+  keygen_task = NULL;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
-  keygen_task = NULL;
   do {
     denom = denom_head;
     update_keys (denom,
