@@ -289,8 +289,7 @@ output_operation (const char *op_name,
 {
   json_t *action;
 
-  if (NULL == out)
-    out = json_array ();
+  GNUNET_assert (NULL != out);
   action = json_pack ("{ s:s, s:o }",
                       "operation",
                       op_name,
@@ -526,6 +525,8 @@ trigger_upload (const char *exchange_url)
       return;
     }
   }
+  /* test here, in case no upload was triggered (i.e. empty input) */
+  test_shutdown ();
 }
 
 
@@ -1161,8 +1162,6 @@ do_sign (char *const *args)
     json_decref (keys);
     return;
   }
-
-
   if (GNUNET_OK !=
       GNUNET_JSON_parse (keys,
                          spec,
@@ -1189,6 +1188,8 @@ do_sign (char *const *args)
     json_decref (keys);
     return;
   }
+  if (NULL == out)
+    out = json_array ();
   if (GNUNET_OK !=
       sign_denomkeys (denomkeys))
   {
@@ -1220,6 +1221,8 @@ do_setup (char *const *args)
   }
   if (NULL != *args)
   {
+    if (NULL == out)
+      out = json_array ();
     output_operation (OP_SETUP,
                       json_pack ("{s:o}",
                                  "auditor_pub",

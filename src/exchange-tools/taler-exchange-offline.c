@@ -1953,7 +1953,6 @@ do_add_auditor (char *const *args)
     return;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
-
   TALER_exchange_offline_auditor_add_sign (&auditor_pub,
                                            args[1],
                                            now,
