@@ -1024,6 +1024,8 @@ create_key (void)
 static struct GNUNET_TIME_Absolute
 key_action_time (void)
 {
+  if (NULL == keys_head)
+    return GNUNET_TIME_UNIT_ZERO_ABS;
   return GNUNET_TIME_absolute_min (
     GNUNET_TIME_absolute_add (keys_head->anchor,
                               duration),
