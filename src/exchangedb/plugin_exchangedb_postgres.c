@@ -4703,9 +4703,9 @@ postgres_ensure_coin_known (void *cls,
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
-    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
     return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     if (0 == GNUNET_memcmp (&denom_pub_hash,
                             &coin->denom_pub_hash))
