@@ -803,7 +803,7 @@ decode_keys_json (const json_t *resp_obj,
 
     json_array_foreach (denom_keys_array, index, denom_key_obj) {
       struct TALER_EXCHANGE_DenomPublicKey dk;
-      int found = GNUNET_NO;
+      bool found = false;
 
       memset (&dk,
               0,
@@ -822,11 +822,11 @@ decode_keys_json (const json_t *resp_obj,
         if (0 == denoms_cmp (&dk,
                              &key_data->denom_keys[j]))
         {
-          found = GNUNET_YES;
+          found = true;
           break;
         }
       }
-      if (GNUNET_YES == found)
+      if (found)
       {
         /* 0:0:0 did not support /keys cherry picking */
         TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
@@ -862,7 +862,7 @@ decode_keys_json (const json_t *resp_obj,
     /* Merge with the existing auditor information we have (/keys cherry picking) */
     json_array_foreach (auditors_array, index, auditor_info) {
       struct TALER_EXCHANGE_AuditorInformation ai;
-      int found = GNUNET_NO;
+      bool found = false;
 
       memset (&ai,
               0,
@@ -879,22 +879,35 @@ decode_keys_json (const json_t *resp_obj,
         if (0 == GNUNET_memcmp (&ai.auditor_pub,
                                 &aix->auditor_pub))
         {
-          found = GNUNET_YES;
+          found = true;
           /* Merge denomination key signatures of downloaded /keys into existing
              auditor information 'aix'. */
           TALER_LOG_DEBUG (
             "Merging %u new audited keys with %u known audited keys\n",
             aix->num_denom_keys,
             ai.num_denom_keys);
+          for (unsigned int i = 0; i<ai.num_denom_keys; i++)
+          {
+            bool kfound = false;
 
-          GNUNET_array_concatenate (aix->denom_keys,
-                                    aix->num_denom_keys,
-                                    ai.denom_keys,
-                                    ai.num_denom_keys);
+            for (unsigned int k = 0; k<aix->num_denom_keys; k++)
+            {
+              if (aix->denom_keys[k].denom_key_offset ==
+                  ai.denom_keys[i].denom_key_offset)
+              {
+                kfound = true;
+                break;
+              }
+            }
+            if (! kfound)
+              GNUNET_array_append (aix->denom_keys,
+                                   aix->num_denom_keys,
+                                   ai.denom_keys[i]);
+          }
           break;
         }
       }
-      if (GNUNET_YES == found)
+      if (found)
       {
         GNUNET_array_grow (ai.denom_keys,
                            ai.num_denom_keys,
