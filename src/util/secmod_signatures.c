@@ -61,11 +61,6 @@ TALER_exchange_secmod_eddsa_verify (
     .duration = GNUNET_TIME_relative_hton (duration)
   };
 
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "Verifying key `%s' with duration %s\n",
-              TALER_B2S (exchange_pub),
-              GNUNET_STRINGS_relative_time_to_string (duration,
-                                                      GNUNET_NO));
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_SIGNING_KEY,
                                 &ska,
