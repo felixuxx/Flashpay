@@ -2312,6 +2312,8 @@ add_future_denomkey_cb (void *cls,
                                           h_denom_pub);
   if (NULL != dk)
     return GNUNET_OK; /* skip: this key is already active! */
+  if (0 == hd->validity_duration.rel_value_us)
+    return GNUNET_OK; /* this key already expired! */
   meta.start = hd->start_time;
   meta.expire_withdraw = GNUNET_TIME_absolute_add (meta.start,
                                                    hd->validity_duration);
@@ -2386,6 +2388,8 @@ add_future_signkey_cb (void *cls,
                                           pid);
   if (NULL != sk)
     return GNUNET_OK; /* skip: this key is already active */
+  if (0 == hsk->validity_duration.rel_value_us)
+    return GNUNET_OK; /* this key already expired! */
   stamp_expire = GNUNET_TIME_absolute_add (hsk->start_time,
                                            hsk->validity_duration);
   legal_end = GNUNET_TIME_absolute_add (stamp_expire,
