@@ -52,6 +52,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_bank_history_debit.c \
   testing_api_cmd_bank_transfer.c \
   testing_api_cmd_batch.c \
+  testing_api_cmd_change_auth.c \
   testing_api_cmd_check_keys.c \
   testing_api_cmd_deposit.c \
   testing_api_cmd_deposits_get.c \

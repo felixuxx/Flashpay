@@ -575,6 +575,7 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
 struct GNUNET_CURL_Context *
 TALER_TESTING_interpreter_get_context (struct TALER_TESTING_Interpreter *is);
 
+
 /**
  * Obtain label of the command being now run.
  *
@@ -929,6 +930,21 @@ TALER_TESTING_has_in_name (const char *prog,
 
 
 /* ************** Specific interpreter commands ************ */
+
+
+/**
+ * Command to modify authorization header used in the CURL context.
+ * This will destroy the existing CURL context and create a fresh
+ * one. The command will fail (badly) if the existing CURL context
+ * still has active HTTP requests associated with it.
+ *
+ * @param label command label.
+ * @param auth_token auth token to use henceforth, can be NULL
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_set_authorization (const char *label,
+                                     const char *auth_token);
 
 
 /**
