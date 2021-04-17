@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2018 Taler Systems SA
+  (C) 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
