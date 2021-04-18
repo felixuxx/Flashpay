@@ -26,7 +26,7 @@
 #ifndef TALER_TWISTER_TESTING_LIB_H
 #define TALER_TWISTER_TESTING_LIB_H
 
-#include <taler/taler_testing_lib.h>
+#include "taler_testing_lib.h"
 
 #define TWISTER_FAIL() \
   do {GNUNET_break (0); return NULL; } while (0)
