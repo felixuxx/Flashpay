@@ -1729,8 +1729,8 @@ main (int argc,
     if ( (-1 == flags) &&
          (EBADF == errno) )
     {
-      fprintf (stderr,
-               "Bad listen socket passed, ignored\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Bad listen socket passed, ignored\n");
       fh = -1;
     }
     flags |= FD_CLOEXEC;
@@ -1740,6 +1740,8 @@ main (int argc,
                       flags)) )
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                            "fcntl");
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Successfully obtained listen socket from hypervisor\n");
   }
 
   /* initialize #internal_key_state with an RC of 1 */

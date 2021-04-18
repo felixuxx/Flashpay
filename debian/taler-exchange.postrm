@@ -57,6 +57,7 @@ case "${1}" in
 		fi
 
 		rm -rf /var/log/taler-exchange/ /var/lib/taler-exchange /etc/default/taler-exchange
+        rm -f /etc/taler-wire.conf /etc/taler-exchange-db.conf /etc/taler-exchange.conf
 		;;
 
 	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)

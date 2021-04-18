@@ -101,11 +101,29 @@ TALER_AGGRUSER=${_AGGRUSERNAME}
 TALER_GROUP=${_GROUPNAME}
 EOF
 
+cat > "/etc/systemd/system/taler-exchange-httpd.socket" <<EOF
+[Unit]
+Description=Taler Exchange Socket
+PartOf=taler-exchange-httpd.service
+
+[Socket]
+ListenStream=/var/lib/taler-exchange/exchange.sock
+Accept=no
+Service=taler-exchange-httpd.service
+SocketUser=${_EUSERNAME}
+SocketGroup=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target
+EOF
+
 cat > "/etc/systemd/system/taler-exchange-httpd.service" <<EOF
 [Unit]
 Description=GNU Taler payment system exchange REST API
-Requires=taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
-Wants=taler-exchange-wirewatch taler-exchange-aggregator taler-exchange-transfer
+AssertPathExists=/var/lib/taler-exchange/
+Requires=taler-exchange-httpd.socket taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
+Wants=taler-exchange-wirewatch.service taler-exchange-aggregator.service taler-exchange-transfer.service
 After=postgres.service network.target
 
 [Service]
@@ -131,7 +149,7 @@ EnvironmentFile=/etc/default/taler-exchange
 User=${_RSECUSERNAME}
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-exchange-secmod-rsa -c /etc/taler-exchange.conf
+ExecStart=/usr/bin/taler-exchange-secmod-rsa -c /etc/taler-secmod.conf
 PrivateTmp=no
 PrivateDevices=yes
 ProtectSystem=full
@@ -146,7 +164,7 @@ EnvironmentFile=/etc/default/taler-exchange
 User=${_ESECUSERNAME}
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-exchange-secmod-eddsa -c /etc/taler-exchange.conf
+ExecStart=/usr/bin/taler-exchange-secmod-eddsa -c /etc/taler-secmod.conf
 PrivateTmp=no
 PrivateDevices=yes
 ProtectSystem=full
@@ -213,6 +231,8 @@ EOF
         chmod 770 /var/lib/taler-exchange/tmp
         chmod +s /var/lib/taler-exchange/tmp
 
+        chown root:${_GROUPNAME} /etc/taler-secmod.conf
+        chmod 640 /etc/taler-secmod.conf
         chown ${_WIREUSERNAME}:root /etc/taler-wire.conf
         chmod 460 /etc/taler-wire.conf
         chown root:${_DBGROUPNAME} /etc/taler-exchange-db.conf
@@ -221,6 +241,7 @@ EOF
         chmod 460 /etc/taler-wire.conf
 
         systemctl daemon-reload >/dev/null 2>&1  || true
+
 
         echo "done."
 

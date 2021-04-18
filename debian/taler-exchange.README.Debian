@@ -6,10 +6,14 @@ exchange with this minimal template. You must:
 
 * Configure the Postgres database for the exchange, ideally including
   remote replication of the database to the auditor.
-* Run taler-exchange-dbinit (also after package upgrades).
-* Edit /etc/taler-exchange.conf to must setup the currency and denominations
+* Run `taler-exchange-dbinit` (also after package upgrades).
+* Edit ``/etc/taler-secmod.conf`` to must setup the currency and denominations
   details.
-* Edit /etc/taler-wire.conf to provide details about the bank account access.
+* Edit `/etc/taler-wire.conf` to provide details about the bank account access.
+* Run `taler-exchange-offline setup` on your offline system and add
+  the resulting master public key into the ``[exchange]`` section of
+  ``/etc/taler-exchange.conf`` under ``MASTER_PUBLIC_KEY``.
+
 
 None of these are done by the Debian package because we cannot provide the
 required complete configuration details.
@@ -18,13 +22,13 @@ required complete configuration details.
 Once you have done this, you can use the following commands to start, stop or
 restart the Taler exchange:
 
-  # systemctl start taler-exchange
-  # systemctl stop taler-exchange
-  # systemctl restart taler-exchange
+  # systemctl start taler-exchange-httpd.service
+  # systemctl stop taler-exchange-httpd.service
+  # systemctl restart taler-exchange-httpd.service
 
 To permanently the exchange whenever the system boots, use:
 
-  # systemctl enable taler-exchange
+  # systemctl enable taler-exchange-httpd
 
 
  -- Christian Grothoff <grothoff@gnu.org>  Mon 28 Dec 2020 11:37:14 AM CET
