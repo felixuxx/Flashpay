@@ -82,7 +82,7 @@ main (int argc,
                               NULL),
       "https://taler.net/foo/bar/baz?x=a%26b&c=d&e=");
 
-  return 0;
+  return 1; // fault injection to test buildbot...
 }
 
 
