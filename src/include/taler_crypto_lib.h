@@ -1078,7 +1078,7 @@ TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
  * @param transfer_pub transfer public key
  * @param coin_ev coin envelope
  * @param coin_ev_size number of bytes in @a coin_ev
- * @param old_coin_priv private key to sign with
+ * @param old_coin_pub old coin key that the link signature is for
  * @param coin_sig resulting signature
  * @return #GNUNET_OK if the signature is valid
  */

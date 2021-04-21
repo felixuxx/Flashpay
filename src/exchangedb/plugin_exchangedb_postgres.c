@@ -9765,16 +9765,16 @@ postgres_lookup_wire_fee_by_time (
 
 
 /**
-   * Lookup the latest serial number of @a table.  Used in
-   * exchange-auditor database replication.
-   *
-   * @param cls closure
-   * @param session a session
-   * @param table table for which we should return the serial
-   * @param[out] latest serial number in use
-   * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
-   *         @a table does not have a serial number
-   */
+ * Lookup the latest serial number of @a table.  Used in
+ * exchange-auditor database replication.
+ *
+ * @param cls closure
+ * @param session a session
+ * @param table table for which we should return the serial
+ * @param[out] serial latest serial number in use
+ * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
+ *         @a table does not have a serial number
+ */
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_serial_by_table (void *cls,
                                  struct TALER_EXCHANGEDB_Session *session,
@@ -10062,7 +10062,7 @@ typedef enum GNUNET_DB_QueryStatus
  *
  * @param cls closure
  * @param session a session
- * @param tb table data to insert
+ * @param td table data to insert
  * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
  *         @e table in @a tr is not supported
  */

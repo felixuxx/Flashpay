@@ -83,6 +83,19 @@
       <arglist>(n, type)</arglist>
     </member>
   </compound>
+
+  <compound kind="file">
+    <name>gnunet_strings_lib.h</name>
+    <path></path>
+    <filename>gnunet_strings_lib.h</filename>
+    <member kind="function">
+      <type>#define</type>
+      <name>GNUNET_STRINGS_filename_expand</name>
+      <anchorfile>gnunet_strings_lib.h</anchorfile>
+      <arglist>(const char *name)</arglist>
+    </member>
+  </compound>
+
   <compound kind="file">
     <name>gnunet_db_lib.h</name>
     <path></path>
@@ -96,6 +109,18 @@
     <member kind="define">
       <type>#define</type>
       <name>GNUNET_DB_STATUS_SUCCESS_NO_RESULTS</name>
+      <anchorfile>gnunet_db_lib.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>GNUNET_DB_STATUS_HARD_ERROR</name>
+      <anchorfile>gnunet_db_lib.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>GNUNET_DB_STATUS_SOFT_ERROR</name>
       <anchorfile>gnunet_db_lib.h</anchorfile>
       <arglist></arglist>
     </member>

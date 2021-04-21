@@ -17,7 +17,7 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file testing/testing_api_change_auth.c
+ * @file testing/testing_api_cmd_change_auth.c
  * @brief command(s) to change CURL context authorization header
  * @author Christian Grothoff
  */

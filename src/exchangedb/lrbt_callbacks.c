@@ -30,7 +30,7 @@
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_denominations (void *cls,
@@ -97,7 +97,7 @@ lrbt_cb_table_denominations (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_denomination_revocations (void *cls,
@@ -144,7 +144,7 @@ lrbt_cb_table_denomination_revocations (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_reserves (void *cls,
@@ -196,7 +196,7 @@ lrbt_cb_table_reserves (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_reserves_in (void *cls,
@@ -252,7 +252,7 @@ lrbt_cb_table_reserves_in (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_reserves_close (void *cls,
@@ -309,7 +309,7 @@ lrbt_cb_table_reserves_close (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_reserves_out (void *cls,
@@ -368,7 +368,7 @@ lrbt_cb_table_reserves_out (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_auditors (void *cls,
@@ -421,7 +421,7 @@ lrbt_cb_table_auditors (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_auditor_denom_sigs (void *cls,
@@ -472,7 +472,7 @@ lrbt_cb_table_auditor_denom_sigs (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_exchange_sign_keys (void *cls,
@@ -528,7 +528,7 @@ lrbt_cb_table_exchange_sign_keys (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_signkey_revocations (void *cls,
@@ -574,7 +574,7 @@ lrbt_cb_table_signkey_revocations (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_known_coins (void *cls,
@@ -622,7 +622,7 @@ lrbt_cb_table_known_coins (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_refresh_commitments (void *cls,
@@ -680,7 +680,7 @@ lrbt_cb_table_refresh_commitments (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_refresh_revealed_coins (void *cls,
@@ -741,7 +741,7 @@ lrbt_cb_table_refresh_revealed_coins (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_refresh_transfer_keys (void *cls,
@@ -807,7 +807,7 @@ lrbt_cb_table_refresh_transfer_keys (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_deposits (void *cls,
@@ -890,7 +890,7 @@ lrbt_cb_table_deposits (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_refunds (void *cls,
@@ -940,7 +940,7 @@ lrbt_cb_table_refunds (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_wire_out (void *cls,
@@ -991,7 +991,7 @@ lrbt_cb_table_wire_out (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_aggregation_tracking (void *cls,
@@ -1038,7 +1038,7 @@ lrbt_cb_table_aggregation_tracking (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_wire_fee (void *cls,
@@ -1092,7 +1092,7 @@ lrbt_cb_table_wire_fee (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_recoup (void *cls,
@@ -1146,7 +1146,7 @@ lrbt_cb_table_recoup (void *cls,
  *
  * @param cls closure
  * @param result the postgres result
- * @param num_result the number of results in @a result
+ * @param num_results the number of results in @a result
  */
 static void
 lrbt_cb_table_recoup_refresh (void *cls,
