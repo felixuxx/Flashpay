@@ -1625,7 +1625,6 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
  * Function called with information about a refresh order.
  *
  * @param cls closure
- * @param rowid unique serial ID for the row in our database
  * @param num_freshcoins size of the @a rrcs array
  * @param rrcs array of @a num_freshcoins information about coins to be created
  * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
@@ -1976,7 +1975,7 @@ typedef enum GNUNET_DB_QueryStatus
  * @param coin information about the coin
  * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding key of the coin
- * @param h_blind_ev blinded envelope, as calculated by the exchange
+ * @param h_blinded_ev blinded envelope, as calculated by the exchange
  * @param amount total amount to be paid back
  */
 typedef void

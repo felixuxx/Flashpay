@@ -1847,9 +1847,6 @@ struct TALER_EXCHANGE_RecoupHandle;
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param amount amount the exchange will wire back for this coin,
- *        on error the total balance remaining, or NULL
- * @param timestamp what time did the exchange receive the /recoup request
  * @param reserve_pub public key of the reserve receiving the recoup, NULL if refreshed or on error
  * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
  */
