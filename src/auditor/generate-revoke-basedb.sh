@@ -230,7 +230,7 @@ taler-exchange-offline -c $CONF \
 
 sleep 1 # Give exchange time to create replacmenent key
 
-# Re-sign replacment keys
+# Re-sign replacement keys
 taler-auditor-offline -c $CONF \
   download sign upload &> taler-auditor-offline.log
 
@@ -328,7 +328,7 @@ taler-exchange-offline -c $CONF \
 
 sleep 1 # Give exchange time to create replacmenent key
 
-# Re-sign replacment keys
+# Re-sign replacement keys
 taler-auditor-offline -c $CONF \
   download sign upload &> taler-auditor-offline.log
 

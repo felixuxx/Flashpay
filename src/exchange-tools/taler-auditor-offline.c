@@ -415,7 +415,7 @@ denomination_add_cb (
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_denomination_add (const char *exchange_url,

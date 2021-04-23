@@ -831,7 +831,7 @@ denom_revocation_cb (
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_denom_revocation (const char *exchange_url,
@@ -920,7 +920,7 @@ signkey_revocation_cb (
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_signkey_revocation (const char *exchange_url,
@@ -1008,7 +1008,7 @@ auditor_add_cb (void *cls,
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_auditor_add (const char *exchange_url,
@@ -1108,7 +1108,7 @@ auditor_del_cb (void *cls,
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_auditor_del (const char *exchange_url,
@@ -1200,7 +1200,7 @@ wire_add_cb (void *cls,
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_wire_add (const char *exchange_url,
@@ -1311,7 +1311,7 @@ wire_del_cb (void *cls,
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_wire_del (const char *exchange_url,
@@ -1404,7 +1404,7 @@ wire_fee_cb (
  *
  * @param exchange_url base URL of the exchange
  * @param idx index of the operation we are performing (for logging)
- * @param value argumets for denomination revocation
+ * @param value arguments for denomination revocation
  */
 static void
 upload_wire_fee (const char *exchange_url,

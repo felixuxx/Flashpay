@@ -184,7 +184,7 @@ Specific comments:
 
 > We added remarks on the level of anonymity that Zerocash achieves.
 > We suspect Zerocash's inherent scaling issues limit its anonymity
-> for normal purchases, as compaired to that a large Taler exchange
+> for normal purchases, as compared to that a large Taler exchange
 > provides.  We mention that Zerocash is likely to provide better
 > anonymtiy for large transactions that do not need to be cashed out.
 

@@ -29,7 +29,7 @@ do
         dropdb talercheck-in
         dropdb talercheck-out
         echo "FAIL"
-        echo "Record count missmatch: $CIN / $COUT in table $table"
+        echo "Record count mismatch: $CIN / $COUT in table $table"
         exit 1
     fi
 done
