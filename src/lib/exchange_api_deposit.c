@@ -520,20 +520,6 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
 }
 
 
-/**
- * Sign a deposit permission.  Function for wallets.
- *
- * @param amount the amount to be deposited
- * @param deposit_fee the deposit fee we expect to pay
- * @param h_wire hash of the merchant’s account details
- * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
- * @param h_denom_pub hash of the coin denomination's public key
- * @param coin_priv coin’s private key
- * @param wallet_timestamp timestamp when the contract was finalized, must not be too far in the future
- * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
- * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT
- */
 void
 TALER_EXCHANGE_deposit_permission_sign (
   const struct TALER_Amount *amount,
@@ -576,38 +562,6 @@ TALER_EXCHANGE_deposit_permission_sign (
 }
 
 
-/**
- * Submit a deposit permission to the exchange and get the exchange's response.
- * Note that while we return the response verbatim to the caller for
- * further processing, we do already verify that the response is
- * well-formed (i.e. that signatures included in the response are all
- * valid).  If the exchange's reply is not well-formed, we return an
- * HTTP status code of zero to @a cb.
- *
- * We also verify that the @a coin_sig is valid for this deposit
- * request, and that the @a ub_sig is a valid signature for @a
- * coin_pub.  Also, the @a exchange must be ready to operate (i.e.  have
- * finished processing the /keys reply).  If either check fails, we do
- * NOT initiate the transaction with the exchange and instead return NULL.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param amount the amount to be deposited
- * @param wire_deadline date until which the merchant would like the exchange to settle the balance (advisory, the exchange cannot be
- *        forced to settle in the past or upon very short notice, but of course a well-behaved exchange will limit aggregation based on the advice received)
- * @param wire_details the merchant’s account details, in a format supported by the exchange
- * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
- * @param coin_pub coin’s public key
- * @param denom_pub denomination key with which the coin is signed
- * @param denom_sig exchange’s unblinded signature of the coin
- * @param timestamp timestamp when the contract was finalized, must not be too far in the future
- * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
- * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
- * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @return a handle for this request; NULL if the inputs are invalid (i.e.
- *         signatures fail to verify).  In this case, the callback is not called.
- */
 struct TALER_EXCHANGE_DepositHandle *
 TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_Amount *amount,
@@ -622,7 +576,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         struct GNUNET_TIME_Absolute refund_deadline,
                         const struct TALER_CoinSpendSignatureP *coin_sig,
                         TALER_EXCHANGE_DepositResultCallback cb,
-                        void *cb_cls)
+                        void *cb_cls,
+                        enum TALER_ErrorCode *ec)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
@@ -654,7 +609,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   (void) GNUNET_TIME_round_abs (&refund_deadline);
   if (refund_deadline.abs_value_us > wire_deadline.abs_value_us)
   {
-    GNUNET_break (0);
+    GNUNET_break_op (0);
+    *ec = TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE;
     return NULL;
   }
   GNUNET_assert (GNUNET_YES ==
@@ -665,6 +621,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                                                &h_wire))
   {
     GNUNET_break (0);
+    *ec = TALER_EC_GENERIC_FAILED_COMPUTE_JSON_HASH;
     return NULL;
   }
   key_state = TALER_EXCHANGE_get_keys (exchange);
@@ -672,7 +629,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                                              denom_pub);
   if (NULL == dki)
   {
-    GNUNET_break (0);
+    *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+    GNUNET_break_op (0);
     return NULL;
   }
   if (0 >
@@ -680,6 +638,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                              amount,
                              &dki->fee_deposit))
   {
+    *ec = TALER_EC_EXCHANGE_DEPOSIT_FEE_ABOVE_AMOUNT;
     GNUNET_break_op (0);
     return NULL;
   }
@@ -699,6 +658,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                          refund_deadline,
                          coin_sig))
   {
+    *ec = TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID;
     GNUNET_break_op (0);
     return NULL;
   }
@@ -730,6 +690,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                            );
   if (NULL == deposit_obj)
   {
+    *ec = TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE;
     GNUNET_break (0);
     return NULL;
   }
@@ -743,6 +704,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                               arg_str);
   if (NULL == dh->url)
   {
+    GNUNET_break (0);
+    *ec = TALER_EC_GENERIC_ALLOCATION_FAILURE;
     GNUNET_free (dh);
     json_decref (deposit_obj);
     return NULL;
@@ -771,6 +734,7 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                               eh,
                               deposit_obj)) )
   {
+    *ec = TALER_EC_GENERIC_CURL_ALLOCATION_FAILURE;
     GNUNET_break (0);
     if (NULL != eh)
       curl_easy_cleanup (eh);
@@ -793,12 +757,6 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Change the chance that our deposit confirmation will be given to the
- * auditor to 100%.
- *
- * @param deposit the deposit permission request handle
- */
 void
 TALER_EXCHANGE_deposit_force_dc (struct TALER_EXCHANGE_DepositHandle *deposit)
 {
@@ -806,12 +764,6 @@ TALER_EXCHANGE_deposit_force_dc (struct TALER_EXCHANGE_DepositHandle *deposit)
 }
 
 
-/**
- * Cancel a deposit permission request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param deposit the deposit permission request handle
- */
 void
 TALER_EXCHANGE_deposit_cancel (struct TALER_EXCHANGE_DepositHandle *deposit)
 {

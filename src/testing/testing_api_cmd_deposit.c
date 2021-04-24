@@ -296,6 +296,7 @@ deposit_run (void *cls,
   struct GNUNET_TIME_Absolute wire_deadline;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_HashCode h_contract_terms;
+  enum TALER_ErrorCode ec;
 
   (void) cmd;
   ds->is = is;
@@ -429,10 +430,14 @@ deposit_run (void *cls,
                                    ds->refund_deadline,
                                    &coin_sig,
                                    &deposit_cb,
-                                   ds);
+                                   ds,
+                                   &ec);
   if (NULL == ds->dh)
   {
     GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Could not create deposit with EC %d\n",
+                (int) ec);
     TALER_TESTING_interpreter_fail (is);
     return;
   }

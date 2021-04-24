@@ -842,6 +842,7 @@ typedef void
  * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
+ * @param[out] ec if NULL is returned, set to the error code explaining why the operation failed
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
  *         signatures fail to verify).  In this case, the callback is not called.
  */
@@ -859,7 +860,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         struct GNUNET_TIME_Absolute refund_deadline,
                         const struct TALER_CoinSpendSignatureP *coin_sig,
                         TALER_EXCHANGE_DepositResultCallback cb,
-                        void *cb_cls);
+                        void *cb_cls,
+                        enum TALER_ErrorCode *ec);
 
 
 /**
