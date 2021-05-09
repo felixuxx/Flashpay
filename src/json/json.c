@@ -17,11 +17,47 @@
  * @file json/json.c
  * @brief helper functions for JSON processing using libjansson
  * @author Sree Harsha Totakura <sreeharsha@totakura.in>
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_util.h"
 #include "taler_json_lib.h"
+
+
+/**
+ * Check if @a json contains a 'real' value anywhere.
+ *
+ * @param json json to check
+ * @return true if a real is in it somewhere
+ */
+static bool
+contains_real (const json_t *json)
+{
+  if (json_is_real (json))
+    return true;
+  if (json_is_object (json))
+  {
+    json_t *member;
+    const char *name;
+
+    json_object_foreach ((json_t *) json, name, member)
+    if (contains_real (member))
+      return true;
+    return false;
+  }
+  if (json_is_array (json))
+  {
+    json_t *member;
+    size_t index;
+
+    json_array_foreach ((json_t *) json, index, member)
+    if (contains_real (member))
+      return true;
+    return false;
+  }
+  return false;
+}
 
 
 /**
@@ -41,7 +77,16 @@ dump_and_hash (const json_t *json,
   char *wire_enc;
   size_t len;
 
-  GNUNET_break (NULL != json);
+  if (NULL == json)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (contains_real (json))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   if (NULL == (wire_enc = json_dumps (json,
                                       JSON_ENCODE_ANY
                                       | JSON_COMPACT
@@ -79,7 +124,7 @@ dump_and_hash (const json_t *json,
 
 
 /**
- * Replace "forgettable" parts of a JSON object with its salted hash.
+ * Replace "forgettable" parts of a JSON object with their salted hash.
  *
  * @param[in] in some JSON value
  * @return NULL on error
@@ -87,6 +132,12 @@ dump_and_hash (const json_t *json,
 static json_t *
 forget (const json_t *in)
 {
+  if (json_is_real (in))
+  {
+    /* floating point is not allowed! */
+    GNUNET_break (0);
+    return NULL;
+  }
   if (json_is_array (in))
   {
     /* array is a JSON array */
@@ -202,6 +253,16 @@ forget (const json_t *in)
           return NULL;
         }
         json_decref (t);
+        /* scrub salt */
+        if (0 !=
+            json_object_del (fg,
+                             key))
+        {
+          GNUNET_break (0);
+          json_decref (ret);
+          json_decref (rx);
+          return NULL;
+        }
         if (NULL == rx)
           rx = json_object ();
         if (NULL == rx)
@@ -268,8 +329,11 @@ TALER_JSON_contract_hash (const json_t *json,
 {
   int ret;
   json_t *cjson;
+  json_t *dc;
 
-  cjson = forget (json);
+  dc = json_deep_copy (json);
+  cjson = forget (dc);
+  json_decref (dc);
   if (NULL == cjson)
   {
     GNUNET_break (0);
@@ -295,9 +359,26 @@ TALER_JSON_contract_mark_forgettable (json_t *json,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  /* check field name is legal for forgettable field */
+  for (const char *f = field; '\0' != *f; f++)
+  {
+    char c = *f;
+
+    if ( (c >= 'a') && (c <= 'z') )
+      continue;
+    if ( (c >= 'A') && (c <= 'Z') )
+      continue;
+    if ( (c >= '0') && (c <= '9') )
+      continue;
+    if ('_' == c)
+      continue;
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   if (NULL == json_object_get (json,
                                field))
   {
+    /* field must exist */
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
@@ -335,7 +416,7 @@ int
 TALER_JSON_contract_part_forget (json_t *json,
                                  const char *field)
 {
-  const json_t *fg;
+  json_t *fg;
   const json_t *part;
   json_t *fp;
   json_t *rx;
@@ -391,6 +472,15 @@ TALER_JSON_contract_part_forget (json_t *json,
     return GNUNET_SYSERR;
   }
   json_decref (fp);
+  /* drop salt */
+  if (0 !=
+      json_object_del (fg,
+                       field))
+  {
+    json_decref (fp);
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
 
   rx = json_object_get (json,
                         "_forgotten");

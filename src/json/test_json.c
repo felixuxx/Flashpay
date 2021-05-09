@@ -105,11 +105,48 @@ test_contract (void)
                  TALER_JSON_contract_mark_forgettable (c1,
                                                        "k1"));
   GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_contract_mark_forgettable (c1,
+                                                       "k2"));
+  GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_hash (c1,
                                            &h1));
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_part_forget (c1,
                                                   "k1"));
+  /* check salt was forgotten */
+  GNUNET_assert (NULL ==
+                 json_object_get (json_object_get (c1,
+                                                   "_forgettable"),
+                                  "k1"));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_contract_hash (c1,
+                                           &h2));
+  if (0 !=
+      GNUNET_memcmp (&h1,
+                     &h2))
+  {
+    GNUNET_break (0);
+    json_decref (c1);
+    return 1;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_contract_part_forget (json_object_get (c1,
+                                                                   "k2"),
+                                                  "n1"));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_contract_hash (c1,
+                                           &h2));
+  if (0 !=
+      GNUNET_memcmp (&h1,
+                     &h2))
+  {
+    GNUNET_break (0);
+    json_decref (c1);
+    return 1;
+  }
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_contract_part_forget (c1,
+                                                  "k2"));
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_hash (c1,
                                            &h2));
@@ -121,6 +158,38 @@ test_contract (void)
     GNUNET_break (0);
     return 1;
   }
+
+
+  c1 = json_pack ("{s:I, s:{s:s}, s:{s:b, s:{s:s}}, s:{s:s}}",
+                  "k1", 1,
+                  "_forgettable", "k1", "SALT",
+                  "k2", "n1", true,
+                  /***/ "_forgettable", "n1", "salt",
+                  "k3", "n1", "string");
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_contract_hash (c1,
+                                           &h1));
+  json_dumpf (c1, stderr, JSON_INDENT (2));
+  json_decref (c1);
+  {
+    char *s;
+
+    s = GNUNET_STRINGS_data_to_string_alloc (&h1,
+                                             sizeof (h1));
+    if (0 !=
+        strcmp (s,
+                "287VXK8T6PXKD05W8Y94QJNEFCMRXBC9S7KNKTWGH2G2J2D7RYKPSHNH1HG9NT1K2HRHGC67W6QM6GEC4BSN1DPNEBCS0AVDT2DBP5G"))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid reference hash: %s\n",
+                  s);
+      GNUNET_free (s);
+      return 1;
+    }
+    GNUNET_free (s);
+  }
+
+
   c2 = json_pack ("{s:s}",
                   "n1", "n2");
   GNUNET_assert (NULL != c2);
