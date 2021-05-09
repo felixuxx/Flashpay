@@ -51,13 +51,15 @@ PREFIX=
 # Uncomment this line to run with valgrind...
 # PREFIX="valgrind --trace-children=yes --leak-check=yes --track-fds=yes --error-exitcode=1 --log-file=valgrind.%p"
 
+CONFIG=test_taler_exchange_unix.conf
+
 # Setup database
-taler-exchange-dbinit -c test_taler_exchange_unix.conf &> /dev/null
+taler-exchange-dbinit -c $CONFIG &> /dev/null
 # Run Exchange HTTPD (in background)
-$PREFIX taler-exchange-httpd -c test_taler_exchange_unix.conf 2> test-exchange.log &
+$PREFIX taler-exchange-httpd -c $CONFIG 2> test-exchange.log &
 
 # Where should we be bound to?
-UNIXPATH=`taler-config -s exchange -f -o UNIXPATH`
+UNIXPATH=`taler-config -c $CONFIG -s exchange -f -o UNIXPATH`
 
 # Give HTTP time to start
 
