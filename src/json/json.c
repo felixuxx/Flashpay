@@ -445,6 +445,37 @@ TALER_JSON_contract_part_forget (json_t *json,
                 field);
     return GNUNET_SYSERR;
   }
+  rx = json_object_get (json,
+                        "_forgotten");
+  if (NULL == rx)
+  {
+    rx = json_object ();
+    if (0 !=
+        json_object_set_new (json,
+                             "_forgotten",
+                             rx))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  if (NULL !=
+      json_object_get (rx,
+                       field))
+  {
+    if (! json_is_null (json_object_get (json,
+                                         field)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Field `%s' market as forgotten, but still exists!\n",
+                  field);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Already forgot field `%s'\n",
+                field);
+    return GNUNET_NO;
+  }
   salt = json_string_value (json_object_get (fg,
                                              field));
   if (NULL == salt)
@@ -482,20 +513,6 @@ TALER_JSON_contract_part_forget (json_t *json,
     return GNUNET_SYSERR;
   }
 
-  rx = json_object_get (json,
-                        "_forgotten");
-  if (NULL == rx)
-  {
-    rx = json_object ();
-    if (0 !=
-        json_object_set_new (json,
-                             "_forgotten",
-                             rx))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-  }
   /* remember field as 'forgotten' */
   if (0 !=
       json_object_set_new (rx,

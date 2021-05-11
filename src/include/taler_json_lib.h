@@ -215,7 +215,9 @@ TALER_JSON_contract_mark_forgettable (json_t *json,
  *
  * @param[in,out] json some JSON object to modify
  * @param field name of the field to forget
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if the field was already forgotten before
+ *         #GNUNET_SYSERR on error
  */
 int
 TALER_JSON_contract_part_forget (json_t *json,
