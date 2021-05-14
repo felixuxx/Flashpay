@@ -485,7 +485,7 @@ TALER_CRYPTO_helper_esign_sign_ (
                   buf,
                   sizeof (buf),
                   0,
-                  &esh->sa,
+                  (const struct sockaddr *) &esh->sa,
                   sizeof (esh->sa));
     if (ret < 0)
     {

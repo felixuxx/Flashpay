@@ -535,7 +535,7 @@ TALER_CRYPTO_helper_denom_sign (
                   buf,
                   sizeof (buf),
                   0,
-                  &dh->sa,
+                  (const struct sockaddr *) &dh->sa,
                   sizeof (dh->sa));
     if (ret < 0)
     {
