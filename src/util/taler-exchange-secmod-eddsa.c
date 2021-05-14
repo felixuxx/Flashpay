@@ -32,9 +32,6 @@
  *   private key. This is done by reference counting (as work is always
  *   assigned and collected by the main thread).
  */
-#include "taler_config.h"
-#define HAVE_USED_CONFIG_H
-#undef ENABLE_NLS
 #include "platform.h"
 #include "taler_util.h"
 #include "taler-exchange-secmod-eddsa.h"

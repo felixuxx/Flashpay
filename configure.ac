@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 #
 #  This file is part of TALER
-#  Copyright (C) 2014, 2015, 2016, 2017, 2018 Taler Systems SA
+#  Copyright (C) 2014-2021 Taler Systems SA
 #
 #  TALER is free software; you can redistribute it and/or modify it under the
 #  terms of the GNU General Public License as published by the Free Software

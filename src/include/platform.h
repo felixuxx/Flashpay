@@ -31,6 +31,9 @@
 #  include "taler_config.h"
 # endif
 #endif
+/* For the exchange build, we do NOT want gettext, even
+   if it is available! */
+#undef ENABLE_NLS
 
 
 #if (GNUNET_EXTRA_LOGGING >= 1)
