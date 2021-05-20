@@ -148,6 +148,11 @@ struct AdminAddIncomingState
    * enable retries? If so, how often should we still retry?
    */
   unsigned int do_retry;
+
+  /**
+   * Expected HTTP status code.
+   */
+  unsigned int expected_http_status;
 };
 
 
@@ -215,6 +220,13 @@ confirmation_cb (void *cls,
   switch (http_status)
   {
   case MHD_HTTP_OK:
+    if (fts->expected_http_status !=
+        MHD_HTTP_OK)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
     fts->serial_id = serial_id;
     fts->timestamp = timestamp;
     TALER_TESTING_interpreter_next (is);
@@ -233,6 +245,16 @@ confirmation_cb (void *cls,
       break;
     }
     break;
+  case MHD_HTTP_CONFLICT:
+    if (fts->expected_http_status !=
+        MHD_HTTP_CONFLICT)
+    {
+      GNUNET_break (0);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
+    TALER_TESTING_interpreter_next (is);
+    return;
   default:
     if (0 != fts->do_retry)
     {
@@ -405,6 +427,10 @@ admin_add_incoming_traits (void *cls,
                            unsigned int index)
 {
   struct AdminAddIncomingState *fts = cls;
+
+  if (MHD_HTTP_OK !=
+      fts->expected_http_status)
+    return GNUNET_NO; /* requests that failed generate no history */
   if (fts->reserve_priv_known)
   {
     struct TALER_TESTING_Trait traits[] = {
@@ -479,6 +505,7 @@ make_fts (const char *amount,
   fts->exchange_credit_url = auth->wire_gateway_url;
   fts->payto_debit_account = payto_debit_account;
   fts->auth = *auth;
+  fts->expected_http_status = MHD_HTTP_OK;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
                               &fts->amount))
@@ -515,15 +542,6 @@ make_command (const char *label,
 }
 
 
-/**
- * Create admin/add-incoming command.
- *
- * @param label command label.
- * @param amount amount to transfer.
- * @param payto_debit_account which account sends money.
- * @param auth authentication data
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming (const char *label,
                                       const char *amount,
@@ -538,20 +556,6 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
 }
 
 
-/**
- * Create "/admin/add-incoming" CMD, letting the caller specify
- * a reference to a command that can offer a reserve private key.
- * This private key will then be used to construct the subject line
- * of the wire transfer.
- *
- * @param label command label.
- * @param amount the amount to transfer.
- * @param payto_debit_account which account sends money
- * @param auth authentication data
- * @param ref reference to a command that can offer a reserve
- *        private key or public key.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_admin_add_incoming_with_ref
   (const char *label,
@@ -566,6 +570,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
                   auth,
                   payto_debit_account);
   fts->reserve_reference = ref;
+  fts->expected_http_status = MHD_HTTP_CONFLICT;
   return make_command (label,
                        fts);
 }

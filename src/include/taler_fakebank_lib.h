@@ -99,7 +99,7 @@ TALER_FAKEBANK_make_transfer (
  * @param credit_account account to credit
  * @param amount amount to transfer
  * @param reserve_pub reserve public key to use in subject
- * @return serial_id of the transfer
+ * @return serial_id of the transfer, 0 on error
  */
 uint64_t
 TALER_FAKEBANK_make_admin_transfer (

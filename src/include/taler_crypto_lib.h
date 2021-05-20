@@ -592,6 +592,19 @@ struct TALER_WireTransferIdentifierRawP
 
 
 /**
+ * Raw value of a wire transfer subject for a wad.
+ */
+struct TALER_WadIdentifierP
+{
+
+  /**
+   * Wad identifier, in binary encoding.
+   */
+  uint8_t raw[24];
+};
+
+
+/**
  * Binary information encoded in Crockford's Base32 in wire transfer
  * subjects of transfers from Taler to a merchant.  The actual value
  * is chosen by the exchange and has no particular semantics, other than

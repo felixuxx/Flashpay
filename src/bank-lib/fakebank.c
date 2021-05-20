@@ -81,7 +81,12 @@ struct Transaction
     /**
      * Transfer FROM the exchange.
      */
-    T_DEBIT
+    T_DEBIT,
+
+    /**
+     * Exchange-to-exchange WAD transfer.
+     */
+    T_WAD,
   } type;
 
   /**
@@ -120,6 +125,24 @@ struct Transaction
       struct TALER_ReservePublicKeyP reserve_pub;
 
     } credit;
+
+    /**
+     * Used if @e type is T_WAD.
+     */
+    struct
+    {
+
+      /**
+       * Subject of the transfer.
+       */
+      struct TALER_WadIdentifierP wad;
+
+      /**
+       * Base URL of the originating exchange.
+       */
+      char *origin_base_url;
+
+    } wad;
 
   } subject;
 
@@ -169,6 +192,13 @@ struct TALER_FAKEBANK_Handle
   struct GNUNET_SCHEDULER_Task *mhd_task;
 
   /**
+   * Hashmap of reserve public keys to
+   * `struct Transaction` with that reserve public
+   * key. Used to prevent public-key re-use.
+   */
+  struct GNUNET_CONTAINER_MultiPeerMap *rpubs;
+
+  /**
    * Number of transactions.
    */
   uint64_t serial_counter;
@@ -210,19 +240,43 @@ struct TALER_FAKEBANK_Handle
 static void
 check_log (struct TALER_FAKEBANK_Handle *h)
 {
-  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+  for (struct Transaction *t = h->transactions_head;
+       NULL != t;
+       t = t->next)
   {
     if (GNUNET_YES == t->checked)
       continue;
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "%s -> %s (%s) %s (%s)\n",
-                t->debit_account,
-                t->credit_account,
-                TALER_amount2s (&t->amount),
-                (T_DEBIT == t->type)
-                ? t->subject.debit.exchange_base_url
-                : TALER_B2S (&t->subject.credit.reserve_pub),
-                (T_DEBIT == t->type) ? "DEBIT" : "CREDIT");
+    switch (t->type)
+    {
+    case T_DEBIT:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "%s -> %s (%s) %s (%s)\n",
+                  t->debit_account,
+                  t->credit_account,
+                  TALER_amount2s (&t->amount),
+                  t->subject.debit.exchange_base_url,
+                  "DEBIT");
+      break;
+    case T_CREDIT:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "%s -> %s (%s) %s (%s)\n",
+                  t->debit_account,
+                  t->credit_account,
+                  TALER_amount2s (&t->amount),
+                  TALER_B2S (&t->subject.credit.reserve_pub),
+                  "CREDIT");
+      break;
+    case T_WAD:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "%s -> %s (%s) %s[%s] (%s)\n",
+                  t->debit_account,
+                  t->credit_account,
+                  TALER_amount2s (&t->amount),
+                  t->subject.wad.origin_base_url,
+                  TALER_B2S (&t->subject.wad),
+                  "WAD");
+      break;
+    }
   }
 }
 
@@ -252,7 +306,9 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
 {
   GNUNET_assert (0 == strcasecmp (want_amount->currency,
                                   h->currency));
-  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+  for (struct Transaction *t = h->transactions_head;
+       NULL != t;
+       t = t->next)
   {
     if ( (0 == strcasecmp (want_debit,
                            t->debit_account)) &&
@@ -304,7 +360,9 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
 {
   GNUNET_assert (0 == strcasecmp (want_amount->currency,
                                   h->currency));
-  for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+  for (struct Transaction *t = h->transactions_head;
+       NULL != t;
+       t = t->next)
   {
     if ( (0 == strcasecmp (want_debit,
                            t->debit_account)) &&
@@ -371,9 +429,12 @@ TALER_FAKEBANK_make_transfer (
                                   strlen ("payto://")));
   if (NULL != request_uid)
   {
-    for (struct Transaction *t = h->transactions_head; NULL != t; t = t->next)
+    for (struct Transaction *t = h->transactions_head;
+         NULL != t;
+         t = t->next)
     {
-      if (0 != GNUNET_memcmp (request_uid, &t->request_uid))
+      if (0 != GNUNET_memcmp (request_uid,
+                              &t->request_uid))
         continue;
       if ( (0 != strcasecmp (debit_account,
                              t->debit_account)) ||
@@ -442,7 +503,18 @@ TALER_FAKEBANK_make_admin_transfer (
   const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct Transaction *t;
+  const struct GNUNET_PeerIdentity *pid;
 
+  GNUNET_assert (sizeof (*pid) ==
+                 sizeof (*reserve_pub));
+  pid = (const struct GNUNET_PeerIdentity *) reserve_pub;
+  t = GNUNET_CONTAINER_multipeermap_get (h->rpubs,
+                                         pid);
+  if (NULL != t)
+  {
+    GNUNET_break (0);
+    return 0;
+  }
   GNUNET_assert (0 == strcasecmp (amount->currency,
                                   h->currency));
   GNUNET_assert (NULL != debit_account);
@@ -465,6 +537,12 @@ TALER_FAKEBANK_make_admin_transfer (
   GNUNET_CONTAINER_DLL_insert_tail (h->transactions_head,
                                     h->transactions_tail,
                                     t);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CONTAINER_multipeermap_put (
+                   h->rpubs,
+                   pid,
+                   t,
+                   GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Making transfer from %s to %s over %s and subject %s at row %llu\n",
               debit_account,
@@ -523,8 +601,18 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
                                  t);
     GNUNET_free (t->debit_account);
     GNUNET_free (t->credit_account);
-    if (T_DEBIT == t->type)
+    switch (t->type)
+    {
+    case T_CREDIT:
+      /* nothing to free */
+      break;
+    case T_DEBIT:
       GNUNET_free (t->subject.debit.exchange_base_url);
+      break;
+    case T_WAD:
+      GNUNET_free (t->subject.wad.origin_base_url);
+      break;
+    }
     GNUNET_free (t);
   }
   if (NULL != h->mhd_task)
@@ -541,6 +629,7 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     h->mhd_bank = NULL;
   }
   GNUNET_free (h->my_baseurl);
+  GNUNET_CONTAINER_multipeermap_destroy (h->rpubs);
   GNUNET_free (h->currency);
   GNUNET_free (h);
 }
@@ -626,9 +715,12 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     struct TALER_ReservePublicKeyP reserve_pub;
     char *debit;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_fixed_auto ("reserve_pub", &reserve_pub),
-      GNUNET_JSON_spec_string ("debit_account", &debit_account),
-      TALER_JSON_spec_amount ("amount", &amount),
+      GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                   &reserve_pub),
+      GNUNET_JSON_spec_string ("debit_account",
+                               &debit_account),
+      TALER_JSON_spec_amount ("amount",
+                              &amount),
       GNUNET_JSON_spec_end ()
     };
 
@@ -641,6 +733,15 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       json_decref (json);
       /* We're fakebank, no need for nice error handling */
       return MHD_NO;
+    }
+    if (0 != strcasecmp (amount.currency,
+                         h->currency))
+    {
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_CONFLICT,
+        TALER_EC_GENERIC_CURRENCY_MISMATCH,
+        NULL);
     }
     debit = TALER_xtalerbank_account_from_payto (debit_account);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -655,6 +756,14 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                                  &amount,
                                                  &reserve_pub);
     GNUNET_free (debit);
+    if (0 == row_id)
+    {
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_CONFLICT,
+        TALER_EC_BANK_DUPLICATE_RESERVE_PUB_SUBJECT,
+        NULL);
+    }
   }
   json_decref (json);
 
@@ -821,11 +930,9 @@ handle_home_page (struct TALER_FAKEBANK_Handle *h,
            (strlen (HELLOMSG),
            HELLOMSG,
            MHD_RESPMEM_MUST_COPY);
-
   ret = MHD_queue_response (connection,
                             MHD_HTTP_OK,
                             resp);
-
   MHD_destroy_response (resp);
   return ret;
 }
@@ -1389,12 +1496,17 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   FD_ZERO (&ws);
   FD_ZERO (&es);
   max = -1;
-  if (MHD_YES != MHD_get_fdset (h->mhd_bank, &rs, &ws, &es, &max))
+  if (MHD_YES != MHD_get_fdset (h->mhd_bank,
+                                &rs,
+                                &ws,
+                                &es,
+                                &max))
   {
     GNUNET_assert (0);
     return;
   }
-  haveto = MHD_get_timeout (h->mhd_bank, &timeout);
+  haveto = MHD_get_timeout (h->mhd_bank,
+                            &timeout);
   if (MHD_YES == haveto)
     tv.rel_value_us = (uint64_t) timeout * 1000LL;
   else
@@ -1403,8 +1515,12 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   {
     wrs = GNUNET_NETWORK_fdset_create ();
     wws = GNUNET_NETWORK_fdset_create ();
-    GNUNET_NETWORK_fdset_copy_native (wrs, &rs, max + 1);
-    GNUNET_NETWORK_fdset_copy_native (wws, &ws, max + 1);
+    GNUNET_NETWORK_fdset_copy_native (wrs,
+                                      &rs,
+                                      max + 1);
+    GNUNET_NETWORK_fdset_copy_native (wws,
+                                      &ws,
+                                      max + 1);
   }
   else
   {
@@ -1418,7 +1534,8 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
                                  tv,
                                  wrs,
                                  wws,
-                                 &run_mhd, h);
+                                 &run_mhd,
+                                 h);
   if (NULL != wrs)
     GNUNET_NETWORK_fdset_destroy (wrs);
   if (NULL != wws)
@@ -1468,6 +1585,8 @@ TALER_FAKEBANK_start (uint16_t port,
   GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->port = port;
+  h->rpubs = GNUNET_CONTAINER_multipeermap_create (128,
+                                                   GNUNET_NO);
   h->currency = GNUNET_strdup (currency);
   GNUNET_asprintf (&h->my_baseurl,
                    "http://localhost:%u/",
