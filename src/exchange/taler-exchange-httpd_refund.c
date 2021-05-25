@@ -461,17 +461,6 @@ verify_and_execute_refund (struct MHD_Connection *connection,
       GNUNET_break (0);
       return mret;
     }
-
-    if (GNUNET_TIME_absolute_get ().abs_value_us >=
-        dk->meta.expire_deposit.abs_value_us)
-    {
-      /* This denomination is past the expiration time for deposits, and thus refunds */
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_GONE,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-        NULL);
-    }
     refund->details.refund_fee = dk->meta.fee_refund;
   }
 

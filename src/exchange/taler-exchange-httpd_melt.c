@@ -476,23 +476,26 @@ check_for_denomination_key (struct MHD_Connection *connection,
   if (NULL == dk)
     return mret;
   now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   if (now.abs_value_us >= dk->meta.expire_legal.abs_value_us)
   {
     /* Way too late now, even zombies have expired */
-    return TALER_MHD_reply_with_error (
+    return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
-      MHD_HTTP_GONE,
+      &rmc->refresh_session.coin.denom_pub_hash,
+      now,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-      NULL);
+      "MELT");
   }
   if (now.abs_value_us < dk->meta.start.abs_value_us)
   {
     /* This denomination is not yet valid */
-    return TALER_MHD_reply_with_error (
+    return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
-      MHD_HTTP_PRECONDITION_FAILED,
+      &rmc->refresh_session.coin.denom_pub_hash,
+      now,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-      NULL);
+      "MELT");
   }
   if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
   {
@@ -524,11 +527,12 @@ check_for_denomination_key (struct MHD_Connection *connection,
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       /* We never saw this coin before, so _this_ justification is not OK */
-      return TALER_MHD_reply_with_error (
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        MHD_HTTP_GONE,
+        &rmc->refresh_session.coin.denom_pub_hash,
+        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-        NULL);
+        "MELT");
     }
     else
     {

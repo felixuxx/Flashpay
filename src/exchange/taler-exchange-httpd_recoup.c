@@ -373,32 +373,36 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   if (NULL == dk)
     return mret;
   now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
   {
     /* This denomination is past the expiration time for recoup */
-    return TALER_MHD_reply_with_error (
+    return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
-      MHD_HTTP_GONE,
+      &coin->denom_pub_hash,
+      now,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-      NULL);
+      "RECOUP");
   }
   if (now.abs_value_us < dk->meta.start.abs_value_us)
   {
     /* This denomination is not yet valid */
-    return TALER_MHD_reply_with_error (
+    return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
-      MHD_HTTP_PRECONDITION_FAILED,
+      &coin->denom_pub_hash,
+      now,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-      NULL);
+      "RECOUP");
   }
   if (! dk->recoup_possible)
   {
     /* This denomination is not eligible for recoup */
-    return TALER_MHD_reply_with_error (
+    return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
-      MHD_HTTP_NOT_FOUND,
+      &coin->denom_pub_hash,
+      now,
       TALER_EC_EXCHANGE_RECOUP_NOT_ELIGIBLE,
-      NULL);
+      "RECOUP");
   }
 
   pc.value = dk->meta.value;

@@ -161,6 +161,13 @@
 #define TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN 1042
 
 
+/**
+ * Signature where the Exchange confirms that it does not consider a denomination valid for the given operation
+ * at this time.
+ */
+#define TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_EXPIRED 1043
+
+
 /**********************/
 /* Auditor signatures */
 /**********************/
@@ -1540,6 +1547,37 @@ struct TALER_DenominationUnknownAffirmationPS
    * Hash of the public denomination key we do not know.
    */
   struct GNUNET_HashCode h_denom_pub;
+};
+
+
+/**
+ * Response by which the exchange affirms that it does not
+ * currently consider the given denomination to be valid
+ * for the requested operation.
+ */
+struct TALER_DenominationExpiredAffirmationPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_EXPIRED
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When did the exchange sign this message.
+   */
+  struct GNUNET_TIME_AbsoluteNBO timestamp;
+
+  /**
+   * Name of the operation that is not allowed at this time.  Might NOT be 0-terminated, but is padded with 0s.
+   */
+  char operation[8];
+
+  /**
+   * Hash of the public denomination key we do not know.
+   */
+  struct GNUNET_HashCode h_denom_pub;
+
 };
 
 

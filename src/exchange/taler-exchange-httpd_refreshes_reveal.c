@@ -558,6 +558,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   }
   /* Parse denomination key hashes */
   now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
     struct GNUNET_JSON_Specification spec[] = {
@@ -586,20 +587,22 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (now.abs_value_us >= dks[i]->meta.expire_withdraw.abs_value_us)
     {
       /* This denomination is past the expiration time for withdraws */
-      return TALER_MHD_reply_with_error (
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        MHD_HTTP_GONE,
+        &dk_h[i],
+        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-        NULL);
+        "REVEAL");
     }
     if (now.abs_value_us < dks[i]->meta.start.abs_value_us)
     {
       /* This denomination is not yet valid */
-      return TALER_MHD_reply_with_error (
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        MHD_HTTP_PRECONDITION_FAILED,
+        &dk_h[i],
+        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-        NULL);
+        "REVEAL");
     }
     if (dks[i]->recoup_possible)
     {

@@ -391,35 +391,39 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       return mret;
     }
     now = GNUNET_TIME_absolute_get ();
+    (void) GNUNET_TIME_round_abs (&now);
     if (now.abs_value_us >= dk->meta.expire_withdraw.abs_value_us)
     {
       /* This denomination is past the expiration time for withdraws */
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        MHD_HTTP_GONE,
+        &wc.denom_pub_hash,
+        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-        NULL);
+        "WITHDRAW");
     }
     if (now.abs_value_us < dk->meta.start.abs_value_us)
     {
       /* This denomination is not yet valid */
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        MHD_HTTP_PRECONDITION_FAILED,
+        &wc.denom_pub_hash,
+        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-        NULL);
+        "WITHDRAW");
     }
     if (dk->recoup_possible)
     {
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (
+      return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        MHD_HTTP_GONE,
+        &wc.denom_pub_hash,
+        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
-        NULL);
+        "WITHDRAW");
     }
   }
 

@@ -466,6 +466,58 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 }
 
 
+MHD_RESULT
+TEH_RESPONSE_reply_expired_denom_pub_hash (
+  struct MHD_Connection *connection,
+  const struct GNUNET_HashCode *dph,
+  struct GNUNET_TIME_Absolute now,
+  enum TALER_ErrorCode ec,
+  const char *oper)
+{
+  struct TALER_ExchangePublicKeyP epub;
+  struct TALER_ExchangeSignatureP esig;
+  enum TALER_ErrorCode ecr;
+  struct TALER_DenominationExpiredAffirmationPS dua = {
+    .purpose.size = htonl (sizeof (dua)),
+    .purpose.purpose = htonl (
+      TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_EXPIRED),
+    .timestamp = GNUNET_TIME_absolute_hton (now),
+    .h_denom_pub = *dph,
+  };
+
+  strncpy (dua.operation,
+           oper,
+           sizeof (dua.operation));
+  ecr = TEH_keys_exchange_sign (&dua,
+                                &epub,
+                                &esig);
+  if (TALER_EC_NONE != ecr)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       ec,
+                                       NULL);
+  }
+  return TALER_MHD_reply_json_pack (
+    connection,
+    MHD_HTTP_GONE,
+    "{s:I,s:s,s:o,s:o,s:o,s:o}",
+    "code",
+    ec,
+    "oper",
+    oper,
+    "timestamp",
+    GNUNET_JSON_from_time_abs (now),
+    "exchange_pub",
+    GNUNET_JSON_from_data_auto (&epub),
+    "exchange_sig",
+    GNUNET_JSON_from_data_auto (&esig),
+    "h_denom_pub",
+    GNUNET_JSON_from_data_auto (dph));
+}
+
+
 /**
  * Send proof that a request is invalid to client because of
  * insufficient funds.  This function will create a message with all

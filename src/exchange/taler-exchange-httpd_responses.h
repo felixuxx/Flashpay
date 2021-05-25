@@ -63,6 +63,26 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 
 
 /**
+ * Send assertion that the given denomination key hash
+ * is not usable (typically expired) at this time.
+ *
+ * @param connection connection to the client
+ * @param dph denomination public key hash
+ * @param now timestamp to use
+ * @param ec error code to use
+ * @param name of the operation that is not allowed at this time
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_expired_denom_pub_hash (
+  struct MHD_Connection *connection,
+  const struct GNUNET_HashCode *dph,
+  struct GNUNET_TIME_Absolute now,
+  enum TALER_ErrorCode ec,
+  const char *oper);
+
+
+/**
  * Send proof that a request is invalid to client because of
  * insufficient funds.  This function will create a message with all
  * of the operations affecting the coin that demonstrate that the coin
