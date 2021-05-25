@@ -1147,6 +1147,7 @@ TALER_TESTING_cmd_admin_add_incoming (
  * @param auth authentication data
  * @param ref reference to a command that can offer a reserve
  *        private key or public key.
+ * @param http_status expected HTTP status
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1155,7 +1156,8 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref (
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account,
-  const char *ref);
+  const char *ref,
+  unsigned int http_status);
 
 
 /**

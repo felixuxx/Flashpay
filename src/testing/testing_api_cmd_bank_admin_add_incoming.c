@@ -557,12 +557,13 @@ TALER_TESTING_cmd_admin_add_incoming (const char *label,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming_with_ref
-  (const char *label,
+TALER_TESTING_cmd_admin_add_incoming_with_ref (
+  const char *label,
   const char *amount,
   const struct TALER_BANK_AuthenticationData *auth,
   const char *payto_debit_account,
-  const char *ref)
+  const char *ref,
+  unsigned int http_status)
 {
   struct AdminAddIncomingState *fts;
 
@@ -570,7 +571,7 @@ TALER_TESTING_cmd_admin_add_incoming_with_ref
                   auth,
                   payto_debit_account);
   fts->reserve_reference = ref;
-  fts->expected_http_status = MHD_HTTP_CONFLICT;
+  fts->expected_http_status = http_status;
   return make_command (label,
                        fts);
 }
