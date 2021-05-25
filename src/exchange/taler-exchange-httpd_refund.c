@@ -449,21 +449,17 @@ verify_and_execute_refund (struct MHD_Connection *connection,
   {
     /* Obtain information about the coin's denomination! */
     struct TEH_DenominationKey *dk;
-    unsigned int hc;
-    enum TALER_ErrorCode ec;
+    MHD_RESULT mret;
 
     dk = TEH_keys_denomination_by_hash (&denom_hash,
-                                        &ec,
-                                        &hc);
+                                        connection,
+                                        &mret);
     if (NULL == dk)
     {
       /* DKI not found, but we do have a coin with this DK in our database;
          not good... */
       GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         hc,
-                                         ec,
-                                         NULL);
+      return mret;
     }
 
     if (GNUNET_TIME_absolute_get ().abs_value_us >=

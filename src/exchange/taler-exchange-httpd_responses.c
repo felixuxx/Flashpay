@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -414,6 +414,55 @@ TEH_RESPONSE_compile_transaction_history (
     }
   }
   return history;
+}
+
+
+MHD_RESULT
+TEH_RESPONSE_reply_unknown_denom_pub_hash (
+  struct MHD_Connection *connection,
+  const struct GNUNET_HashCode *dph)
+{
+  struct TALER_ExchangePublicKeyP epub;
+  struct TALER_ExchangeSignatureP esig;
+  struct GNUNET_TIME_Absolute now;
+  enum TALER_ErrorCode ec;
+
+  now = GNUNET_TIME_absolute_get ();
+  GNUNET_TIME_round_abs (&now);
+  {
+    struct TALER_DenominationUnknownAffirmationPS dua = {
+      .purpose.size = htonl (sizeof (dua)),
+      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN),
+      .timestamp = GNUNET_TIME_absolute_hton (now),
+      .h_denom_pub = *dph,
+    };
+
+    ec = TEH_keys_exchange_sign (&dua,
+                                 &epub,
+                                 &esig);
+  }
+  if (TALER_EC_NONE != ec)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       ec,
+                                       NULL);
+  }
+  return TALER_MHD_reply_json_pack (
+    connection,
+    MHD_HTTP_NOT_FOUND,
+    "{s:I,s:o,s:o,s:o,s:o}",
+    "code",
+    TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
+    "timestamp",
+    GNUNET_JSON_from_time_abs (now),
+    "exchange_pub",
+    GNUNET_JSON_from_data_auto (&epub),
+    "exchange_sig",
+    GNUNET_JSON_from_data_auto (&esig),
+    "h_denom_pub",
+    GNUNET_JSON_from_data_auto (dph));
 }
 
 

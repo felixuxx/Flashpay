@@ -155,6 +155,11 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH 1041
 
+/**
+ * Signature where the Exchange confirms that it does not know a denomination (hash).
+ */
+#define TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN 1042
+
 
 /**********************/
 /* Auditor signatures */
@@ -1511,6 +1516,30 @@ struct TALER_RecoupRefreshConfirmationPS
    * Public key of the old coin that will receive the recoup.
    */
   struct TALER_CoinSpendPublicKeyP old_coin_pub;
+};
+
+
+/**
+ * Response by which the exchange affirms that it does not
+ * currently know a denomination by the given hash.
+ */
+struct TALER_DenominationUnknownAffirmationPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * When did the exchange sign this message.
+   */
+  struct GNUNET_TIME_AbsoluteNBO timestamp;
+
+  /**
+   * Hash of the public denomination key we do not know.
+   */
+  struct GNUNET_HashCode h_denom_pub;
 };
 
 

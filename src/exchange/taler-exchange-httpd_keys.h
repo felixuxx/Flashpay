@@ -129,15 +129,15 @@ TEH_keys_update_states (void);
  * key state is resolved.
  *
  * @param h_denom_pub hash of denomination public key
- * @param[out] ec set to the error code, in case the operation failed
- * @param[out] hc set to the HTTP status code to use
+ * @param[in,out] connection used to return status message if NULL is returned
+ * @param[out] mret set to the MHD status if NULL is returned
  * @return the denomination key issue,
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
-                               enum TALER_ErrorCode *ec,
-                               unsigned int *hc);
+                               struct MHD_Connection *conn,
+                               MHD_RESULT *mret);
 
 
 /**
@@ -148,16 +148,16 @@ TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
  *
  * @param ksh key state state to look in
  * @param h_denom_pub hash of denomination public key
- * @param[out] ec set to the error code, in case the operation failed
- * @param[out] hc set to the HTTP status code to use
+ * @param[in,out] connection used to return status message if NULL is returned
+ * @param[out] mret set to the MHD status if NULL is returned
  * @return the denomination key issue,
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
                                 const struct GNUNET_HashCode *h_denom_pub,
-                                enum TALER_ErrorCode *ec,
-                                unsigned int *hc);
+                                struct MHD_Connection *conn,
+                                MHD_RESULT *mret);
 
 /**
  * Request to sign @a msg using the public key corresponding to

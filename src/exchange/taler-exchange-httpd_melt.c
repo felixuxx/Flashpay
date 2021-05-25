@@ -466,22 +466,15 @@ check_for_denomination_key (struct MHD_Connection *connection,
   /* Baseline: check if deposits/refreshs are generally
      simply still allowed for this denomination */
   struct TEH_DenominationKey *dk;
-  unsigned int hc;
-  enum TALER_ErrorCode ec;
   struct GNUNET_TIME_Absolute now;
+  MHD_RESULT mret;
 
   dk = TEH_keys_denomination_by_hash (
     &rmc->refresh_session.coin.denom_pub_hash,
-    &ec,
-    &hc);
+    connection,
+    &mret);
   if (NULL == dk)
-  {
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_NOT_FOUND,
-      TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-      NULL);
-  }
+    return mret;
   now = GNUNET_TIME_absolute_get ();
   if (now.abs_value_us >= dk->meta.expire_legal.abs_value_us)
   {

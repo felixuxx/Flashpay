@@ -1801,30 +1801,32 @@ TEH_keys_get_state (void)
 
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
-                               enum TALER_ErrorCode *ec,
-                               unsigned int *hc)
+                               struct MHD_Connection *conn,
+                               MHD_RESULT *mret)
 {
   struct TEH_KeyStateHandle *ksh;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
-    *hc = MHD_HTTP_INTERNAL_SERVER_ERROR;
-    *ec = TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
+    *mret = TALER_MHD_reply_with_error (conn,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                        NULL);
     return NULL;
   }
   return TEH_keys_denomination_by_hash2 (ksh,
                                          h_denom_pub,
-                                         ec,
-                                         hc);
+                                         conn,
+                                         mret);
 }
 
 
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
                                 const struct GNUNET_HashCode *h_denom_pub,
-                                enum TALER_ErrorCode *ec,
-                                unsigned int *hc)
+                                struct MHD_Connection *conn,
+                                MHD_RESULT *mret)
 {
   struct TEH_DenominationKey *dk;
 
@@ -1832,8 +1834,8 @@ TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
                                           h_denom_pub);
   if (NULL == dk)
   {
-    *hc = MHD_HTTP_NOT_FOUND;
-    *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+    *mret = TEH_RESPONSE_reply_unknown_denom_pub_hash (conn,
+                                                       h_denom_pub);
     return NULL;
   }
   return dk;

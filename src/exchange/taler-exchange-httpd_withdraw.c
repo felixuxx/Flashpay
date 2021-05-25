@@ -379,20 +379,16 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   {
-    unsigned int hc;
-    enum TALER_ErrorCode ec;
+    MHD_RESULT mret;
     struct GNUNET_TIME_Absolute now;
 
     dk = TEH_keys_denomination_by_hash (&wc.denom_pub_hash,
-                                        &ec,
-                                        &hc);
+                                        connection,
+                                        &mret);
     if (NULL == dk)
     {
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         hc,
-                                         ec,
-                                         NULL);
+      return mret;
     }
     now = GNUNET_TIME_absolute_get ();
     if (now.abs_value_us >= dk->meta.expire_withdraw.abs_value_us)

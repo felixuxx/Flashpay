@@ -49,6 +49,20 @@ TEH_RESPONSE_compile_reserve_history (
 
 
 /**
+ * Send assertion that the given denomination key hash
+ * is unknown to us at this time.
+ *
+ * @param connection connection to the client
+ * @param dph denomination public key hash
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_RESPONSE_reply_unknown_denom_pub_hash (
+  struct MHD_Connection *connection,
+  const struct GNUNET_HashCode *dph);
+
+
+/**
  * Send proof that a request is invalid to client because of
  * insufficient funds.  This function will create a message with all
  * of the operations affecting the coin that demonstrate that the coin

@@ -363,24 +363,15 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   struct GNUNET_HashCode c_hash;
   void *coin_ev;
   size_t coin_ev_size;
-  enum TALER_ErrorCode ec;
-  unsigned int hc;
+  MHD_RESULT mret;
   struct GNUNET_TIME_Absolute now;
 
   /* check denomination exists and is in recoup mode */
   dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
-                                      &ec,
-                                      &hc);
+                                      connection,
+                                      &mret);
   if (NULL == dk)
-  {
-    TALER_LOG_WARNING (
-      "Denomination key in recoup request not in recoup mode\n");
-    return TALER_MHD_reply_with_error (connection,
-                                       hc,
-                                       ec,
-                                       NULL);
-  }
-
+    return mret;
   now = GNUNET_TIME_absolute_get ();
   if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
   {

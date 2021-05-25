@@ -431,21 +431,16 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   /* check denomination exists and is valid */
   {
     struct TEH_DenominationKey *dk;
-    enum TALER_ErrorCode ec;
-    unsigned int hc;
     struct GNUNET_TIME_Absolute now;
+    MHD_RESULT mret;
 
     dk = TEH_keys_denomination_by_hash (&deposit.coin.denom_pub_hash,
-                                        &ec,
-                                        &hc);
+                                        connection,
+                                        &mret);
     if (NULL == dk)
     {
-      TALER_LOG_DEBUG ("Unknown denomination key in /deposit request\n");
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         hc,
-                                         ec,
-                                         NULL);
+      return mret;
     }
     now = GNUNET_TIME_absolute_get ();
     if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)

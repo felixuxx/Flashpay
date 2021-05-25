@@ -565,8 +565,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                    &dk_h[i]),
       GNUNET_JSON_spec_end ()
     };
-    unsigned int hc;
-    enum TALER_ErrorCode ec;
+    MHD_RESULT mret;
 
     res = TALER_MHD_parse_json_array (connection,
                                       new_denoms_h_json,
@@ -579,15 +578,10 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     }
     dks[i] = TEH_keys_denomination_by_hash2 (ksh,
                                              &dk_h[i],
-                                             &ec,
-                                             &hc);
+                                             connection,
+                                             &mret);
     if (NULL == dks[i])
-    {
-      return TALER_MHD_reply_with_error (connection,
-                                         hc,
-                                         ec,
-                                         NULL);
-    }
+      return mret;
 
     if (now.abs_value_us >= dks[i]->meta.expire_withdraw.abs_value_us)
     {
