@@ -135,7 +135,7 @@ run (void *cls,
                                       MHD_HTTP_OK),
     /* Try to recoup before it's allowed */
     TALER_TESTING_cmd_recoup ("recoup-not-allowed",
-                              MHD_HTTP_NOT_FOUND,
+                              MHD_HTTP_GONE,
                               "refresh-reveal-1#0",
                               "refresh-melt-1",
                               NULL),
