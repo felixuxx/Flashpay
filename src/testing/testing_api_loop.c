@@ -279,7 +279,7 @@ interpreter_run (void *cls)
     return;
   }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Running command `%s'\n",
               cmd->label);
   cmd->start_time
