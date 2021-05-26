@@ -129,7 +129,7 @@ TEH_keys_update_states (void);
  * key state is resolved.
  *
  * @param h_denom_pub hash of denomination public key
- * @param[in,out] connection used to return status message if NULL is returned
+ * @param[in,out] conn used to return status message if NULL is returned
  * @param[out] mret set to the MHD status if NULL is returned
  * @return the denomination key issue,
  *         or NULL if @a h_denom_pub could not be found

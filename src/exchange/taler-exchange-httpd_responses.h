@@ -70,7 +70,7 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
  * @param dph denomination public key hash
  * @param now timestamp to use
  * @param ec error code to use
- * @param name of the operation that is not allowed at this time
+ * @param oper name of the operation that is not allowed at this time
  * @return MHD result code
  */
 MHD_RESULT
