@@ -1214,11 +1214,34 @@ keys_completed_cb (void *cls,
     exchange->key_data_raw = json_deep_copy (j);
     exchange->retry_delay = GNUNET_TIME_UNIT_ZERO;
     break;
+  case MHD_HTTP_BAD_REQUEST:
+  case MHD_HTTP_UNAUTHORIZED:
+  case MHD_HTTP_FORBIDDEN:
+  case MHD_HTTP_NOT_FOUND:
+    if (NULL == j)
+    {
+      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      hr.hint = TALER_ErrorCode_get_hint (hr.ec);
+    }
+    else
+    {
+      hr.ec = TALER_JSON_get_error_code (j);
+      hr.hint = TALER_JSON_get_error_hint (j);
+    }
+    break;
   default:
     if (MHD_HTTP_GATEWAY_TIMEOUT == response_code)
       exchange->keys_error_count++;
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    if (NULL == j)
+    {
+      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      hr.hint = TALER_ErrorCode_get_hint (hr.ec);
+    }
+    else
+    {
+      hr.ec = TALER_JSON_get_error_code (j);
+      hr.hint = TALER_JSON_get_error_hint (j);
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d\n",
                 (unsigned int) response_code,
