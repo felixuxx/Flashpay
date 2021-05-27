@@ -1541,8 +1541,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           json_decref (recoup);
           return GNUNET_SYSERR;
         }
-        last_cpd = dk->meta.start;
       }
+      last_cpd = dk->meta.start;
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        &dk->h_denom_pub,
                                        sizeof (struct GNUNET_HashCode));
@@ -1602,7 +1602,6 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       json_decref (recoup);
       return GNUNET_SYSERR;
     }
-
   }
   json_decref (sctx.signkeys);
   json_decref (recoup);
