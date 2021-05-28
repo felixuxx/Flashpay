@@ -478,7 +478,9 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     }
     if (NULL == dk)
     {
-      GNUNET_break_op (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Auditor signed denomination %s, which we do not know. Ignoring signature.\n",
+                  GNUNET_h2s (&denom_h));
       continue;
     }
     if (check_sigs)
