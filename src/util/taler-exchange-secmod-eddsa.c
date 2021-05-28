@@ -1108,6 +1108,7 @@ update_keys (void *cls)
                                            duration),
                  lookahead_sign),
                overlap_duration)).rel_value_us) )
+  {
     if (GNUNET_OK !=
         create_key ())
     {
@@ -1115,6 +1116,7 @@ update_keys (void *cls)
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
+  }
   /* remove expired keys */
   while ( (NULL != keys_head) &&
           (0 ==
