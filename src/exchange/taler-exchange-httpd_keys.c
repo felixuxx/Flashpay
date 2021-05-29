@@ -1491,7 +1491,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                          &sctx);
   recoup = json_array ();
   GNUNET_assert (NULL != recoup);
-  heap = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MIN);
+  heap = GNUNET_CONTAINER_heap_create (GNUNET_CONTAINER_HEAP_ORDER_MAX);
   {
     struct DenomKeyCtx dkc = {
       .recoup = recoup,
@@ -1513,6 +1513,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   {
     struct TEH_DenominationKey *dk;
 
+    /* heap = min heap, sorted by start time */
     while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
     {
       if ( (last_cpd.abs_value_us != dk->meta.start.abs_value_us) &&
@@ -1755,7 +1756,7 @@ get_key_state (bool management_only)
   }
   if (old_ksh->key_generation < key_generation)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Rebuilding /keys, generation upgrade from %llu to %llu\n",
                 (unsigned long long) old_ksh->key_generation,
                 (unsigned long long) key_generation);
@@ -1980,9 +1981,9 @@ krd_search_comparator (const void *key,
   const struct KeysResponseData *krd = value;
 
   if (kd->abs_value_us > krd->cherry_pick_date.abs_value_us)
-    return 1;
-  if (kd->abs_value_us < krd->cherry_pick_date.abs_value_us)
     return -1;
+  if (kd->abs_value_us < krd->cherry_pick_date.abs_value_us)
+    return 1;
   return 0;
 }
 
@@ -2051,7 +2052,7 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
     if ( (NULL == krd) &&
          (ksh->krd_array_length > 0) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Client provided invalid cherry picking timestamp %s, returning full response\n",
                   GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
       krd = &ksh->krd_array[ksh->krd_array_length - 1];
