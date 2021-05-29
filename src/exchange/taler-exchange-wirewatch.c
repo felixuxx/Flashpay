@@ -111,6 +111,11 @@ struct WireAccount
    */
   int delay;
 
+  /**
+   * Did we experience a soft failure during the current
+   * transaction?
+   */
+  bool soft_fail;
 };
 
 
@@ -358,10 +363,20 @@ history_cb (void *cls,
                   (unsigned int) ec,
                   http_status);
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "End of list. Committing progress!\n");
-    qs = db_plugin->commit (db_plugin->cls,
-                            session);
+    if (wa->soft_fail)
+    {
+      /* no point to commit, transaction was already rolled
+         back after we encountered a soft failure */
+      wa->soft_fail = false;
+      qs = GNUNET_DB_STATUS_SOFT_ERROR;
+    }
+    else
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "End of list. Committing progress!\n");
+      qs = db_plugin->commit (db_plugin->cls,
+                              session);
+    }
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -459,10 +474,7 @@ history_cb (void *cls,
                 "Got DB soft error for reserves_in_insert. Rolling back.\n");
     db_plugin->rollback (db_plugin->cls,
                          session);
-    /* try again */
-    GNUNET_assert (NULL == task);
-    task = GNUNET_SCHEDULER_add_now (&find_transfers,
-                                     NULL);
+    wa->soft_fail = true;
     return GNUNET_SYSERR;
   }
   wa->delay = GNUNET_NO;
