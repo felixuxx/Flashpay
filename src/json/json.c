@@ -206,16 +206,8 @@ forget (const json_t *in)
             json_object_get (rx,
                              key)) )
       {
-        if (0 !=
-            json_object_set_new (ret,
-                                 key,
-                                 json_null ()))
-        {
-          GNUNET_break (0);
-          json_decref (ret);
-          json_decref (rx);
-          return NULL;
-        }
+        (void) json_object_del (ret,
+                                key);
         continue; /* already forgotten earlier */
       }
       t = forget (value);
@@ -275,16 +267,6 @@ forget (const json_t *in)
             json_object_set_new (rx,
                                  key,
                                  GNUNET_JSON_from_data_auto (&hc)))
-        {
-          GNUNET_break (0);
-          json_decref (ret);
-          json_decref (rx);
-          return NULL;
-        }
-        if (0 !=
-            json_object_set_new (ret,
-                                 key,
-                                 json_null ()))
         {
           GNUNET_break (0);
           json_decref (ret);

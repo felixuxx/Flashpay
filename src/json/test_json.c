@@ -178,7 +178,7 @@ test_contract (void)
                                              sizeof (h1));
     if (0 !=
         strcmp (s,
-                "287VXK8T6PXKD05W8Y94QJNEFCMRXBC9S7KNKTWGH2G2J2D7RYKPSHNH1HG9NT1K2HRHGC67W6QM6GEC4BSN1DPNEBCS0AVDT2DBP5G"))
+                "48YVST0SZJXWNG3KAD14SSK3AD0T5V01W5AE6E76DYKMJSC5BQ19M0FZ7CZP5JY26FC4AFXTXRGEVSQ1NSKPQ1DQ4GS9C4SAECG5RZ8"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid reference hash: %s\n",
