@@ -228,8 +228,13 @@ extract_amount (void *cls,
                                    val_name,
                                    frac_name,
                                    &amount_nbo);
-  TALER_amount_ntoh (r_amount,
-                     &amount_nbo);
+  if (GNUNET_OK == ret)
+    TALER_amount_ntoh (r_amount,
+                       &amount_nbo);
+  else
+    memset (r_amount,
+            0,
+            sizeof (struct TALER_Amount));
   GNUNET_free (val_name);
   GNUNET_free (frac_name);
   return ret;
