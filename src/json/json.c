@@ -321,11 +321,6 @@ TALER_JSON_contract_hash (const json_t *json,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
-  char *enc = json_dumps (cjson,
-                          JSON_ENCODE_ANY
-                          | JSON_COMPACT
-                          | JSON_SORT_KEYS);
   ret = dump_and_hash (cjson,
                        NULL,
                        hc);
