@@ -38,7 +38,7 @@
  *   #GNUNET_NO if at least one result was NULL
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_amount_nbo_helper (PGresult *result,
                            int row,
                            const char *currency,
@@ -87,7 +87,6 @@ extract_amount_nbo_helper (PGresult *result,
                      row,
                      frac_num)) )
   {
-    GNUNET_break (0);
     return GNUNET_NO;
   }
   /* Note that Postgres stores value in NBO internally,
@@ -121,7 +120,7 @@ extract_amount_nbo_helper (PGresult *result,
  *   #GNUNET_NO if at least one result was NULL
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_amount_nbo (void *cls,
                     PGresult *result,
                     int row,
@@ -132,7 +131,7 @@ extract_amount_nbo (void *cls,
   const char *currency = cls;
   char *val_name;
   char *frac_name;
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
 
   if (sizeof (struct TALER_AmountNBO) != *dst_size)
   {
@@ -196,7 +195,7 @@ TALER_PQ_result_spec_amount_nbo (const char *name,
  *   #GNUNET_NO if at least one result was NULL
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_amount (void *cls,
                 PGresult *result,
                 int row,
@@ -209,7 +208,7 @@ extract_amount (void *cls,
   char *val_name;
   char *frac_name;
   struct TALER_AmountNBO amount_nbo;
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
 
   if (sizeof (struct TALER_AmountNBO) != *dst_size)
   {
@@ -280,7 +279,7 @@ TALER_PQ_result_spec_amount (const char *name,
  *   #GNUNET_NO if at least one result was NULL
  *   #GNUNET_SYSERR if a result was invalid (non-existing field)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_json (void *cls,
               PGresult *result,
               int row,
@@ -389,7 +388,7 @@ TALER_PQ_result_spec_json (const char *name,
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_round_time (void *cls,
                     PGresult *result,
                     int row,
@@ -413,10 +412,7 @@ extract_round_time (void *cls,
   if (PQgetisnull (result,
                    row,
                    fnum))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
+    return GNUNET_NO;
   GNUNET_assert (NULL != dst);
   if (sizeof (struct GNUNET_TIME_Absolute) != *dst_size)
   {
@@ -472,7 +468,7 @@ TALER_PQ_result_spec_absolute_time (const char *name,
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_round_time_nbo (void *cls,
                         PGresult *result,
                         int row,
@@ -496,10 +492,7 @@ extract_round_time_nbo (void *cls,
   if (PQgetisnull (result,
                    row,
                    fnum))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
+    return GNUNET_NO;
   GNUNET_assert (NULL != dst);
   if (sizeof (struct GNUNET_TIME_AbsoluteNBO) != *dst_size)
   {
