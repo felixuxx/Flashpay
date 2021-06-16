@@ -99,7 +99,7 @@ test_contract (void)
   c1 = json_pack ("{s:s, s:{s:s, s:{s:s}}}",
                   "k1", "v1",
                   "k2", "n1", "n2",
-                  /***/ "_forgettable", "n1", "salt");
+                  /***/ "$forgettable", "n1", "salt");
   GNUNET_assert (NULL != c1);
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_mark_forgettable (c1,
@@ -116,7 +116,7 @@ test_contract (void)
   /* check salt was forgotten */
   GNUNET_assert (NULL ==
                  json_object_get (json_object_get (c1,
-                                                   "_forgettable"),
+                                                   "$forgettable"),
                                   "k1"));
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_hash (c1,
@@ -162,9 +162,9 @@ test_contract (void)
 
   c1 = json_pack ("{s:I, s:{s:s}, s:{s:b, s:{s:s}}, s:{s:s}}",
                   "k1", 1,
-                  "_forgettable", "k1", "SALT",
+                  "$forgettable", "k1", "SALT",
                   "k2", "n1", true,
-                  /***/ "_forgettable", "n1", "salt",
+                  /***/ "$forgettable", "n1", "salt",
                   "k3", "n1", "string");
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_hash (c1,

@@ -180,9 +180,9 @@ forget (const json_t *in)
     json_t *rx;
 
     fg = json_object_get (in,
-                          "_forgettable");
+                          "$forgettable");
     rx = json_object_get (in,
-                          "_forgotten");
+                          "$forgotten");
     if (NULL != rx)
       rx = json_deep_copy (rx); /* should be shallow
                                    by structure, but
@@ -292,7 +292,7 @@ forget (const json_t *in)
     if ( (NULL != rx) &&
          (0 !=
           json_object_set_new (ret,
-                               "_forgotten",
+                               "$forgotten",
                                rx)) )
     {
       GNUNET_break (0);
@@ -321,6 +321,11 @@ TALER_JSON_contract_hash (const json_t *json,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+
+  char *enc = json_dumps (cjson,
+                          JSON_ENCODE_ANY
+                          | JSON_COMPACT
+                          | JSON_SORT_KEYS);
   ret = dump_and_hash (cjson,
                        NULL,
                        hc);
@@ -365,13 +370,13 @@ TALER_JSON_contract_mark_forgettable (json_t *json,
     return GNUNET_SYSERR;
   }
   fg = json_object_get (json,
-                        "_forgettable");
+                        "$forgettable");
   if (NULL == fg)
   {
     fg = json_object ();
     if (0 !=
         json_object_set_new (json,
-                             "_forgettable",
+                             "$forgettable",
                              fg))
     {
       GNUNET_break (0);
@@ -419,22 +424,22 @@ TALER_JSON_contract_part_forget (json_t *json,
     return GNUNET_SYSERR;
   }
   fg = json_object_get (json,
-                        "_forgettable");
+                        "$forgettable");
   if (NULL == fg)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Did not find _forgettable attribute trying to forget field `%s'\n",
+                "Did not find '$forgettable' attribute trying to forget field `%s'\n",
                 field);
     return GNUNET_SYSERR;
   }
   rx = json_object_get (json,
-                        "_forgotten");
+                        "$forgotten");
   if (NULL == rx)
   {
     rx = json_object ();
     if (0 !=
         json_object_set_new (json,
-                             "_forgotten",
+                             "$forgotten",
                              rx))
     {
       GNUNET_break (0);
