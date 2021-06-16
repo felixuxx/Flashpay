@@ -506,12 +506,104 @@ TALER_JSON_contract_part_forget (json_t *json,
   }
   /* finally, set 'forgotten' field to null */
   if (0 !=
-      json_object_set_new (json,
-                           field,
-                           json_null ()))
+      json_object_del (json,
+                       field))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Look over all of the values of a '$forgettable' object.  Replace 'True'
+ * values with proper random salts.  Fails if any forgettable values are
+ * neither 'True' nor valid salts (strings).
+ *
+ * @param[in,out] f JSON to transform
+ * @return #GNUNET_OK on success
+ */
+static int
+seed_forgettable (json_t *f)
+{
+  const char *key;
+  json_t *val;
+
+  json_object_foreach (f,
+                       key,
+                       val)
+  {
+    if (json_is_string (val))
+      continue;
+    if (json_is_true (val))
+    {
+      struct GNUNET_ShortHashCode sh;
+
+      GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                                  &sh,
+                                  sizeof (sh));
+      json_object_set_new (f,
+                           key,
+                           GNUNET_JSON_from_data_auto (&sh));
+      continue;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Forgettable field `%s' has invalid value\n",
+                key);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
+ * Take a given contract with "forgettable" fields marked
+ * but with 'True' instead of a real salt. Replaces all
+ * 'True' values with proper random salts.  Fails if any
+ * forgettable markers are neither 'True' nor valid salts.
+ *
+ * @param[in,out] json JSON to transform
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_JSON_contract_seed_forgettable (json_t *json)
+{
+  if (json_is_object (json))
+  {
+    const char *key;
+    json_t *val;
+
+    json_object_foreach (json,
+                         key,
+                         val)
+    {
+      if (0 == strcmp ("$forgettable",
+                       key))
+      {
+        if (GNUNET_OK !=
+            seed_forgettable (val))
+          return GNUNET_SYSERR;
+        continue;
+      }
+      if (GNUNET_OK !=
+          TALER_JSON_contract_seed_forgettable (val))
+        return GNUNET_SYSERR;
+    }
+  }
+  if (json_is_array (json))
+  {
+    size_t index;
+    json_t *val;
+
+    json_array_foreach (json,
+                        index,
+                        val)
+    {
+      if (GNUNET_OK !=
+          TALER_JSON_contract_seed_forgettable (val))
+        return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }

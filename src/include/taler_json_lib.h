@@ -199,6 +199,19 @@ TALER_JSON_contract_hash (const json_t *json,
 
 
 /**
+ * Take a given contract with "forgettable" fields marked
+ * but with 'True' instead of a real salt. Replaces all
+ * 'True' values with proper random salts.  Fails if any
+ * forgettable markers are neither 'True' nor valid salts.
+ *
+ * @param[in,out] json JSON to transform
+ * @return #GNUNET_OK on success
+ */
+int
+TALER_JSON_contract_seed_forgettable (json_t *json);
+
+
+/**
  * Mark part of a contract object as 'forgettable'.
  *
  * @param[in,out] json some JSON object to modify
