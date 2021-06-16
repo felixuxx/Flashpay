@@ -1536,6 +1536,9 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                       "Failed to generate key response data for %s\n",
                       GNUNET_STRINGS_absolute_time_to_string (last_cpd));
           GNUNET_CRYPTO_hash_context_abort (hash_context);
+          /* drain heap before destroying it */
+          while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
+            /* intentionally empty */;
           GNUNET_CONTAINER_heap_destroy (heap);
           json_decref (denoms);
           json_decref (sctx.signkeys);
