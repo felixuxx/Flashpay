@@ -2055,9 +2055,10 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
     if ( (NULL == krd) &&
          (ksh->krd_array_length > 0) )
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Client provided invalid cherry picking timestamp %s, returning full response\n",
-                  GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
+      if (0 != last_issue_date.abs_value_us)
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Client provided invalid cherry picking timestamp %s, returning full response\n",
+                    GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
       krd = &ksh->krd_array[ksh->krd_array_length - 1];
     }
     if (NULL == krd)
