@@ -25,7 +25,6 @@
 // TODO:
 // - use more than one 'client' bank account
 // - also add taler-exchange-transfer to simulate outgoing payments
-// - improve reporting logic (currently not working)
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -516,7 +515,7 @@ parallel_benchmark (void)
         return GNUNET_SYSERR;
       }
       /* wait for fakebank to be ready */
-      sleep (1);
+      sleep (1 + history_size / 65536);
     }
     else
     {

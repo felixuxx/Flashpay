@@ -377,31 +377,39 @@ history_cb (void *cls,
       qs = db_plugin->commit (db_plugin->cls,
                               session);
     }
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    {
+      GNUNET_SCHEDULER_shutdown ();
+      return GNUNET_OK;
+    }
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Got DB soft error for commit\n");
       /* reduce transaction size to reduce rollback probability */
-      if (2 > wa->current_batch_size)
-        wa->current_batch_size /= 2;
+      if (2 > wa->batch_size)
+      {
+        wa->batch_size /= 2;
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Reduced batch size to %llu due to serialization issue\n",
+                    (unsigned long long) wa->batch_size);
+      }
       /* try again */
       GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_now (&find_transfers,
                                        NULL);
       return GNUNET_OK; /* will be ignored anyway */
     }
-    if (0 < qs)
-    {
-      /* transaction success, update #last_row_off */
-      wa->last_row_off = wa->latest_row_off;
-      wa->latest_row_off = 0; /* should not be needed */
-      wa->session = NULL; /* should not be needed */
-      /* if successful at limit, try increasing transaction batch size (AIMD) */
-      if ( (wa->current_batch_size == wa->batch_size) &&
-           (UINT_MAX > wa->batch_size) )
-        wa->batch_size++;
-    }
     GNUNET_break (0 <= qs);
+    /* transaction success, update #last_row_off */
+    wa->last_row_off = wa->latest_row_off;
+    wa->latest_row_off = 0;   /* should not be needed */
+    wa->session = NULL;   /* should not be needed */
+    if (wa->batch_size < INITIAL_BATCH_SIZE)
+    {
+      wa->batch_size += 1;
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Increasing batch size to %llu\n",
+                  (unsigned long long) wa->batch_size);
+    }
     if ( (GNUNET_YES == wa->delay) &&
          (test_mode) &&
          (NULL == wa->next) )
@@ -425,7 +433,7 @@ history_cb (void *cls,
                                     NULL);
     return GNUNET_OK; /* will be ignored anyway */
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Adding wire transfer over %s with (hashed) subject `%s'\n",
               TALER_amount2s (&details->amount),
               TALER_B2S (&details->reserve_pub));
@@ -450,8 +458,6 @@ history_cb (void *cls,
   }
 #endif
 
-  if (wa->current_batch_size < UINT_MAX)
-    wa->current_batch_size++;
   qs = db_plugin->reserves_in_insert (db_plugin->cls,
                                       session,
                                       &details->reserve_pub,
@@ -496,8 +502,6 @@ find_transfers (void *cls)
 
   (void) cls;
   task = NULL;
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Checking for incoming wire transfers\n");
   if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -548,10 +552,6 @@ find_transfers (void *cls)
   }
   wa_pos->delay = GNUNET_YES;
   wa_pos->current_batch_size = 0; /* reset counter */
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "wirewatch: requesting incoming history from %s\n",
-              wa_pos->auth.wire_gateway_url);
   wa_pos->session = session;
   wa_pos->hh = TALER_BANK_credit_history (ctx,
                                           &wa_pos->auth,

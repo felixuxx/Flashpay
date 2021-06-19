@@ -3411,7 +3411,7 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == reserve_exists);
     return reserve_exists;
   }
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating reserve %s with expiration in %s\n",
               TALER_B2S (reserve_pub),
               GNUNET_STRINGS_relative_time_to_string (
