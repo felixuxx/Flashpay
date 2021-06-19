@@ -210,24 +210,6 @@ handle_credit_history_finished (void *cls,
 }
 
 
-/**
- * Request the credit history of the exchange's bank account.
- *
- * @param ctx curl context for the event loop
- * @param auth authentication data to use
- * @param start_row from which row on do we want to get results,
- *        use UINT64_MAX for the latest; exclusive
- * @param num_results how many results do we want;
- *        negative numbers to go into the past, positive numbers
- *        to go into the future starting at @a start_row;
- *        must not be zero.
- * @param hres_cb the callback to call with the transaction
- *        history
- * @param hres_cb_cls closure for the above callback
- * @return NULL if the inputs are invalid (i.e. zero value for
- *         @e num_results). In this case, the callback is not
- *         called.
- */
 struct TALER_BANK_CreditHistoryHandle *
 TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
                            const struct TALER_BANK_AuthenticationData *auth,
@@ -300,13 +282,6 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
 }
 
 
-/**
- * Cancel a history request.  This function cannot be
- * used on a request handle if a response is already
- * served for it.
- *
- * @param hh the history request handle
- */
 void
 TALER_BANK_credit_history_cancel (struct TALER_BANK_CreditHistoryHandle *hh)
 {
