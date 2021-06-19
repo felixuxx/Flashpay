@@ -21,7 +21,6 @@
  * @brief library that fakes being a Taler bank for testcases
  * @author Christian Grothoff <christian@grothoff.org>
  */
-// TOOD: pass test suite...
 // TODO: support long polling
 // TODO: support adding WAD transfers
 // TODO: adapt taler-exchange-benchmark to profile bank API

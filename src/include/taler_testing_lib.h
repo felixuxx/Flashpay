@@ -714,12 +714,12 @@ typedef void
  * @param exchanged exchange process handle: will be put in the
  *        state as some commands - e.g. revoke - need to send
  *        signal to it, for example to let it know to reload the
- *        key state.. if NULL, the interpreter will run without
+ *        key state. If NULL, the interpreter will run without
  *        trying to connect to the exchange first.
- * @param exchange_connect GNUNET_YES if the test should connect
- *        to the exchange, GNUNET_NO otherwise
+ * @param exchange_connect #GNUNET_YES if the test should connect
+ *        to the exchange, #GNUNET_NO otherwise
  * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
- *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
+ *         non-#GNUNET_OK codes are #GNUNET_SYSERR most of the
  *         times.
  */
 int
