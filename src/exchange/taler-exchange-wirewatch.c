@@ -458,6 +458,11 @@ history_cb (void *cls,
   }
 #endif
 
+  /* FIXME-PERFORMANCE: Consider using Postgres multi-valued insert here,
+     for up to 15x speed-up according to
+     https://dba.stackexchange.com/questions/224989/multi-row-insert-vs-transactional-single-row-inserts#225006
+     (Note: this may require changing both the
+     plugin API as well as modifying how this function is called.) */
   qs = db_plugin->reserves_in_insert (db_plugin->cls,
                                       session,
                                       &details->reserve_pub,
