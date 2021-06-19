@@ -24,6 +24,7 @@
 // TODO: support long polling
 // TODO: support adding WAD transfers
 // TODO: adapt taler-exchange-benchmark to profile bank API
+// FIXME: support 'close_connections' option
 
 #include "platform.h"
 #include <pthread.h>
@@ -945,7 +946,11 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     h->mhd_task = NULL;
   }
 #if EPOLL_SUPPORT
-  GNUNET_NETWORK_socket_free_memory_only_ (h->mhd_rfd);
+  if (NULL != h->mhd_rfd)
+  {
+    GNUNET_NETWORK_socket_free_memory_only_ (h->mhd_rfd);
+    h->mhd_rfd = NULL;
+  }
 #endif
   if (NULL != h->mhd_bank)
   {
@@ -1890,7 +1895,7 @@ TALER_FAKEBANK_start (uint16_t port,
   return TALER_FAKEBANK_start2 (port,
                                 currency,
                                 65536, /* RAM limit */
-                                0,
+                                1, /* number of threads */
                                 false);
 }
 
@@ -1972,7 +1977,8 @@ TALER_FAKEBANK_start2 (uint16_t port,
 #if EPOLL_SUPPORT
                                     | MHD_USE_EPOLL
 #endif
-                                    | MHD_USE_DUAL_STACK,
+                                    | MHD_USE_DUAL_STACK
+                                    | MHD_ALLOW_SUSPEND_RESUME,
                                     port,
                                     NULL, NULL,
                                     &handle_mhd_request, h,
