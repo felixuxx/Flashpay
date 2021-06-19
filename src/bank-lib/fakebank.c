@@ -576,14 +576,17 @@ clean_transaction (struct TALER_FAKEBANK_Handle *h,
                                 t);
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&ca->lock));
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&h->uuid_map_lock));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONTAINER_multihashmap_remove (h->uuid_map,
-                                                       &t->request_uid,
-                                                       t));
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&h->uuid_map_lock));
+  if (T_DEBIT == t->type)
+  {
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->uuid_map_lock));
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CONTAINER_multihashmap_remove (h->uuid_map,
+                                                         &t->request_uid,
+                                                         t));
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->uuid_map_lock));
+  }
   t->debit_account = NULL;
   t->credit_account = NULL;
 }
@@ -671,8 +674,22 @@ post_transaction (struct Transaction *t)
 }
 
 
-int
-TALER_FAKEBANK_make_transfer (
+/**
+ * Tell the fakebank to create another wire transfer *from* an exchange.
+ *
+ * @param h fake bank handle
+ * @param debit_account account to debit
+ * @param credit_account account to credit
+ * @param amount amount to transfer
+ * @param subject wire transfer subject to use
+ * @param exchange_base_url exchange URL
+ * @param request_uid unique number to make the request unique, or NULL to create one
+ * @param[out] ret_row_id pointer to store the row ID of this transaction
+ * @return #GNUNET_YES if the transfer was successful,
+ *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
+ */
+static int
+make_transfer (
   struct TALER_FAKEBANK_Handle *h,
   const char *debit_account,
   const char *credit_account,
@@ -782,13 +799,27 @@ TALER_FAKEBANK_make_transfer (
 }
 
 
-uint64_t
-TALER_FAKEBANK_make_admin_transfer (
+/**
+ * Tell the fakebank to create another wire transfer *to* an exchange.
+ *
+ * @param h fake bank handle
+ * @param debit_account account to debit
+ * @param credit_account account to credit
+ * @param amount amount to transfer
+ * @param reserve_pub reserve public key to use in subject
+ * @param[out] serial_id of the transfer
+ * @param[out] timestamp when was the transfer made
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+make_admin_transfer (
   struct TALER_FAKEBANK_Handle *h,
   const char *debit_account,
   const char *credit_account,
   const struct TALER_Amount *amount,
-  const struct TALER_ReservePublicKeyP *reserve_pub)
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  uint64_t *row_id,
+  struct GNUNET_TIME_Absolute *timestamp)
 {
   struct Transaction *t;
   const struct GNUNET_PeerIdentity *pid;
@@ -824,11 +855,13 @@ TALER_FAKEBANK_make_admin_transfer (
   {
     /* duplicate reserve public key not allowed */
     GNUNET_break (0);
-    return 0;
+    return GNUNET_NO;
   }
 
   ret = __sync_fetch_and_add (&h->serial_counter,
                               1);
+  if (NULL != row_id)
+    *row_id = ret;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Making transfer from %s to %s over %s and subject %s at row %llu\n",
               debit_account,
@@ -847,7 +880,9 @@ TALER_FAKEBANK_make_admin_transfer (
   t->amount = *amount;
   t->row_id = ret;
   t->date = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&t->date);
+  (void) GNUNET_TIME_round_abs (&t->date);
+  if (NULL != timestamp)
+    *timestamp = t->date;
   t->type = T_CREDIT;
   t->subject.credit.reserve_pub = *reserve_pub;
   post_transaction (t);
@@ -863,7 +898,7 @@ TALER_FAKEBANK_make_admin_transfer (
                  pthread_mutex_unlock (&h->rpubs_lock));
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&t->lock));
-  return ret;
+  return GNUNET_OK;
 }
 
 
@@ -992,6 +1027,8 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   uint64_t row_id;
+  struct GNUNET_TIME_Absolute timestamp;
+  enum GNUNET_GenericReturnValue ret;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
@@ -1059,13 +1096,15 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                 account,
                 TALER_B2S (&reserve_pub),
                 TALER_amount2s (&amount));
-    row_id = TALER_FAKEBANK_make_admin_transfer (h,
-                                                 debit,
-                                                 account,
-                                                 &amount,
-                                                 &reserve_pub);
+    ret = make_admin_transfer (h,
+                               debit,
+                               account,
+                               &amount,
+                               &reserve_pub,
+                               &row_id,
+                               &timestamp);
     GNUNET_free (debit);
-    if (0 == row_id)
+    if (GNUNET_OK != ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Reserve public key not unique\n");
@@ -1078,8 +1117,6 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   }
   json_decref (json);
 
-  // FIXME: timestamp without lock is unclean,
-  // return as part of TALER_FAKEBANK_make_admin_transfer instead!
   /* Finally build response object */
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
@@ -1087,8 +1124,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                     "row_id",
                                     (json_int_t) row_id,
                                     "timestamp",
-                                    GNUNET_JSON_from_time_abs (
-                                      h->transactions[row_id].date));
+                                    GNUNET_JSON_from_time_abs (timestamp));
 }
 
 
@@ -1172,14 +1208,14 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
       int ret;
 
       credit = TALER_xtalerbank_account_from_payto (credit_account);
-      ret = TALER_FAKEBANK_make_transfer (h,
-                                          account,
-                                          credit,
-                                          &amount,
-                                          &wtid,
-                                          base_url,
-                                          &uuid,
-                                          &row_id);
+      ret = make_transfer (h,
+                           account,
+                           credit,
+                           &amount,
+                           &wtid,
+                           base_url,
+                           &uuid,
+                           &row_id);
       if (GNUNET_OK != ret)
       {
         MHD_RESULT res;
@@ -1393,7 +1429,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   }
   else
   {
-    struct Transaction *t = &h->transactions[ha.start_idx];
+    struct Transaction *t = &h->transactions[ha.start_idx % h->ram_limit];
 
     GNUNET_assert (0 ==
                    pthread_mutex_lock (&t->lock));
@@ -1508,7 +1544,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   }
   else
   {
-    struct Transaction *t = &h->transactions[ha.start_idx];
+    struct Transaction *t = &h->transactions[ha.start_idx % h->ram_limit];
 
     GNUNET_assert (0 ==
                    pthread_mutex_lock (&t->lock));

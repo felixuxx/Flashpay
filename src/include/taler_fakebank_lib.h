@@ -94,51 +94,6 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
 
 
 /**
- * Tell the fakebank to create another wire transfer *from* an exchange.
- *
- * @param h fake bank handle
- * @param debit_account account to debit
- * @param credit_account account to credit
- * @param amount amount to transfer
- * @param subject wire transfer subject to use
- * @param exchange_base_url exchange URL
- * @param request_uid unique number to make the request unique, or NULL to create one
- * @param[out] ret_row_id pointer to store the row ID of this transaction
- * @return #GNUNET_YES if the transfer was successful,
- *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
- */
-int
-TALER_FAKEBANK_make_transfer (
-  struct TALER_FAKEBANK_Handle *h,
-  const char *debit_account,
-  const char *credit_account,
-  const struct TALER_Amount *amount,
-  const struct TALER_WireTransferIdentifierRawP *subject,
-  const char *exchange_base_url,
-  const struct GNUNET_HashCode *request_uid,
-  uint64_t *ret_row_id);
-
-
-/**
- * Tell the fakebank to create another wire transfer *to* an exchange.
- *
- * @param h fake bank handle
- * @param debit_account account to debit
- * @param credit_account account to credit
- * @param amount amount to transfer
- * @param reserve_pub reserve public key to use in subject
- * @return serial_id of the transfer, 0 on error
- */
-uint64_t
-TALER_FAKEBANK_make_admin_transfer (
-  struct TALER_FAKEBANK_Handle *h,
-  const char *debit_account,
-  const char *credit_account,
-  const struct TALER_Amount *amount,
-  const struct TALER_ReservePublicKeyP *reserve_pub);
-
-
-/**
  * Check that the @a want_amount was transferred from the @a
  * want_debit to the @a want_credit account.  If so, set the @a subject
  * to the transfer identifier and remove the transaction from the

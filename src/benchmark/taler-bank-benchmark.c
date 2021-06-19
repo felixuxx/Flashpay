@@ -22,6 +22,10 @@
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
+// TODO:
+// - use more than one 'client' bank account
+// - also add taler-exchange-transfer to simulate outgoing payments
+// - improve reporting logic (currently not working)
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
 #include <microhttpd.h>
@@ -250,42 +254,39 @@ static void
 run (void *cls,
      struct TALER_TESTING_Interpreter *is)
 {
-  struct TALER_Amount total_reserve_amount;
-  char *user_payto_uri;
+  char *total_reserve_amount;
 
   (void) cls;
   // FIXME: vary user accounts more...
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CONFIGURATION_get_value_string (cfg,
-                                                        "benchmark",
-                                                        "USER_PAYTO_URI",
-                                                        &user_payto_uri));
   all_commands = GNUNET_new_array (howmany_reserves
                                    + 1 /* stat CMD */
                                    + 1 /* End CMD */,
                                    struct TALER_TESTING_Command);
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
-                                        &total_reserve_amount));
-  total_reserve_amount.value = 5;
+  GNUNET_asprintf (&total_reserve_amount,
+                   "%s:5",
+                   currency);
   for (unsigned int j = 0; j < howmany_reserves; j++)
   {
-    char create_reserve_label[32];
+    char *create_reserve_label;
+    char *user_payto_uri;
 
-    GNUNET_snprintf (create_reserve_label,
-                     sizeof (create_reserve_label),
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CONFIGURATION_get_value_string (cfg,
+                                                          "benchmark",
+                                                          "USER_PAYTO_URI",
+                                                          &user_payto_uri));
+    GNUNET_asprintf (&create_reserve_label,
                      "createreserve-%u",
                      j);
     all_commands[j]
       = TALER_TESTING_cmd_admin_add_incoming_retry (
           TALER_TESTING_cmd_admin_add_incoming (add_label (
                                                   create_reserve_label),
-                                                TALER_amount2s (
-                                                  &total_reserve_amount),
+                                                total_reserve_amount,
                                                 &exchange_bank_account,
-                                                user_payto_uri));
+                                                add_label (user_payto_uri)));
   }
-  GNUNET_free (user_payto_uri);
+  GNUNET_free (total_reserve_amount);
   all_commands[howmany_reserves]
     = TALER_TESTING_cmd_stat (timings);
   all_commands[howmany_reserves + 1]
@@ -454,6 +455,20 @@ parallel_benchmark (void)
       return GNUNET_SYSERR;
     }
 
+    {
+      struct GNUNET_OS_Process *dbinit;
+
+      dbinit = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                        NULL, NULL, NULL,
+                                        "taler-exchange-dbinit",
+                                        "taler-exchange-dbinit",
+                                        "-c", cfg_filename,
+                                        "-r",
+                                        NULL);
+      GNUNET_break (GNUNET_OK ==
+                    GNUNET_OS_process_wait (dbinit));
+      GNUNET_OS_process_destroy (dbinit);
+    }
     /* start exchange wirewatch */
     wirewatch = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                          NULL, NULL, NULL,
@@ -461,21 +476,27 @@ parallel_benchmark (void)
                                          "taler-exchange-wirewatch",
                                          "-c", cfg_filename,
                                          NULL);
-    if (-1 != fakebank)
+    if (NULL == wirewatch)
     {
-      int wstatus;
+      if (-1 != fakebank)
+      {
+        int wstatus;
 
-      kill (fakebank,
-            SIGTERM);
-      waitpid (fakebank,
-               &wstatus,
-               0);
-    }
-    if (NULL != bankd)
-    {
-      GNUNET_OS_process_kill (bankd,
-                              SIGTERM);
-      GNUNET_OS_process_destroy (bankd);
+        kill (fakebank,
+              SIGTERM);
+        waitpid (fakebank,
+                 &wstatus,
+                 0);
+        fakebank = -1;
+      }
+      if (NULL != bankd)
+      {
+        GNUNET_OS_process_kill (bankd,
+                                SIGTERM);
+        GNUNET_OS_process_destroy (bankd);
+        bankd = NULL;
+      }
+      return GNUNET_SYSERR;
     }
   }
 
@@ -694,7 +715,7 @@ main (int argc,
              howmany_reserves,
              howmany_clients,
              GNUNET_STRINGS_relative_time_to_string (duration,
-                                                     GNUNET_NO));
+                                                     GNUNET_YES));
     fprintf (stdout,
              "RAW: %04u %04u %16llu\n",
              howmany_reserves,
