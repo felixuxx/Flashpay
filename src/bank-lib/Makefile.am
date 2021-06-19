@@ -67,4 +67,5 @@ libtalerfakebank_la_LIBADD = \
   -ljansson \
   $(LIBGNURLCURL_LIBS) \
   -lmicrohttpd \
+  -lpthread \
   $(XLIB)

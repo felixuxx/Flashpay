@@ -64,6 +64,7 @@ TALER_FAKEBANK_start (uint16_t port,
  *
  * @param port port to listen to
  * @param currency which currency should the bank offer
+ * @param ram_limit how much memory do we use at most
  * @param num_threads size of the thread pool, 0 to use the GNUnet scheduler
  * @param close_connections true to force closing a connection after each request (no HTTP keep-alive)
  * @return NULL on error
@@ -71,6 +72,7 @@ TALER_FAKEBANK_start (uint16_t port,
 struct TALER_FAKEBANK_Handle *
 TALER_FAKEBANK_start2 (uint16_t port,
                        const char *currency,
+                       uint64_t ram_limit,
                        unsigned int num_threads,
                        bool close_connections);
 
@@ -80,6 +82,9 @@ TALER_FAKEBANK_start2 (uint16_t port,
  * that have not been taken care of via #TALER_FAKEBANK_check_debit()
  * or #TALER_FAKEBANK_check_credit()).
  * If any transactions are onrecord, return #GNUNET_SYSERR.
+ *
+ * Note that this function only works in
+ * single-threaded mode while nothing else is happening.
  *
  * @param h bank instance
  * @return #GNUNET_OK on success
@@ -139,6 +144,9 @@ TALER_FAKEBANK_make_admin_transfer (
  * to the transfer identifier and remove the transaction from the
  * list.  If the transaction was not recorded, return #GNUNET_SYSERR.
  *
+ * Note that this function only works in
+ * single-threaded mode while nothing else is happening.
+ *
  * @param h bank instance
  * @param want_amount transfer amount desired
  * @param want_debit account that should have been debited
@@ -161,6 +169,9 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
  * Check that the @a want_amount was transferred from the @a want_debit to the
  * @a want_credit account with the @a subject.  If so, remove the transaction
  * from the list.  If the transaction was not recorded, return #GNUNET_SYSERR.
+ *
+ * Note that this function only works in
+ * single-threaded mode while nothing else is happening.
  *
  * @param h bank instance
  * @param want_amount transfer amount desired

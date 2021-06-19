@@ -59,6 +59,7 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   unsigned long long port = 8082;
+  unsigned long long ram = 1024 * 1024 * 128; /* 128 M entries */
   char *currency_string;
 
   (void) cls;
@@ -81,9 +82,20 @@ run (void *cls,
                 "Listening on default port %llu\n",
                 port);
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "bank",
+                                             "RAM_LIMIT",
+                                             &ram))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Maximum transaction history in RAM set to default of %llu\n",
+                ram);
+  }
   if (NULL ==
       TALER_FAKEBANK_start2 ((uint16_t) port,
                              currency_string,
+                             ram,
                              num_threads,
                              (0 != connection_close) ))
     ret = 1;
