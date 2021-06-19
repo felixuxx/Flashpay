@@ -1,5 +1,6 @@
 usr/bin/taler-exchange-benchmark
 usr/include/taler/*
+usr/share/info/taler-developer-manual*
 usr/lib/*/libtalertesting.so.*
 usr/lib/*/libtalerfakebank.so.*
 usr/lib/*/libtalertesting.so

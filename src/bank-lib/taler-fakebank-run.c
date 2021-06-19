@@ -21,12 +21,27 @@
  * @file bank-lib/taler-fakebank-run.c
  * @brief Launch the fakebank, for testing the fakebank itself.
  * @author Marcello Stanisci
+ * @author Christian Grothoff
  */
 
 #include "platform.h"
 #include "taler_fakebank_lib.h"
 
-int ret;
+/**
+ * Number of threads to use (-n)
+ */
+static unsigned int num_threads;
+
+/**
+ * Force connection close after each request (-C)
+ */
+static int connection_close;
+
+/**
+ * Global return value.
+ */
+static int ret;
+
 
 /**
  * Main function that will be run.
@@ -43,6 +58,7 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  unsigned long long port = 8082;
   char *currency_string;
 
   (void) cls;
@@ -55,8 +71,21 @@ run (void *cls,
     ret = 1;
     return;
   }
-  if (NULL == TALER_FAKEBANK_start (8082,
-                                    currency_string))
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_number (cfg,
+                                             "bank",
+                                             "HTTP_PORT",
+                                             &port))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Listening on default port %llu\n",
+                port);
+  }
+  if (NULL ==
+      TALER_FAKEBANK_start2 ((uint16_t) port,
+                             currency_string,
+                             num_threads,
+                             (0 != connection_close) ))
     ret = 1;
   GNUNET_free (currency_string);
   ret = 0;
@@ -75,6 +104,15 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_flag ('C',
+                               "connection-close",
+                               "force HTTP connections to be closed after each request",
+                               &connection_close),
+    GNUNET_GETOPT_option_uint ('n',
+                               "num-threads",
+                               "NUM_THREADS",
+                               "size of the thread pool",
+                               &num_threads),
     GNUNET_GETOPT_OPTION_END
   };
 

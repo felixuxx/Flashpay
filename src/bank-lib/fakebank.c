@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2016-2020 Taler Systems SA
+  (C) 2016-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -218,6 +218,11 @@ struct TALER_FAKEBANK_Handle
    */
   uint16_t port;
 
+  /**
+   * Force closing connections after each request.
+   */
+  bool force_close;
+
 #if EPOLL_SUPPORT
   /**
    * Boxed @e mhd_fd.
@@ -281,21 +286,6 @@ check_log (struct TALER_FAKEBANK_Handle *h)
 }
 
 
-/**
- * Check that the @a want_amount was transferred from the @a
- * want_debit to the @a want_credit account.  If so, set the @a subject
- * to the transfer identifier and remove the transaction from the
- * list.  If the transaction was not recorded, return #GNUNET_SYSERR.
- *
- * @param h bank instance
- * @param want_amount transfer amount desired
- * @param want_debit account that should have been debited
- * @param want_credit account that should have been credited
- * @param exchange_base_url expected base URL of the exchange,
- *        i.e. "https://example.com/"; may include a port
- * @param[out] wtid set to the wire transfer identifier
- * @return #GNUNET_OK on success
- */
 int
 TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
                             const struct TALER_Amount *want_amount,
@@ -339,18 +329,6 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
 }
 
 
-/**
- * Check that the @a want_amount was transferred from the @a want_debit to the
- * @a want_credit account with the @a subject.  If so, remove the transaction
- * from the list.  If the transaction was not recorded, return #GNUNET_SYSERR.
- *
- * @param h bank instance
- * @param want_amount transfer amount desired
- * @param want_debit account that should have been debited
- * @param want_credit account that should have been credited
- * @param reserve_pub reserve public key expected in wire subject
- * @return #GNUNET_OK on success
- */
 int
 TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
                              const struct TALER_Amount *want_amount,
@@ -392,20 +370,6 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
 }
 
 
-/**
- * Tell the fakebank to create another wire transfer *from* an exchange.
- *
- * @param h fake bank handle
- * @param debit_account account to debit
- * @param credit_account account to credit
- * @param amount amount to transfer
- * @param subject wire transfer subject to use
- * @param exchange_base_url exchange URL
- * @param request_uid unique number to make the request unique, or NULL to create one
- * @param[out] ret_row_id pointer to store the row ID of this transaction
- * @return #GNUNET_YES if the transfer was successful,
- *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
- */
 int
 TALER_FAKEBANK_make_transfer (
   struct TALER_FAKEBANK_Handle *h,
@@ -484,16 +448,6 @@ TALER_FAKEBANK_make_transfer (
 }
 
 
-/**
- * Tell the fakebank to create another wire transfer *to* an exchange.
- *
- * @param h fake bank handle
- * @param debit_account account to debit
- * @param credit_account account to credit
- * @param amount amount to transfer
- * @param reserve_pub reserve public key to use in subject
- * @return serial_id of the transfer
- */
 uint64_t
 TALER_FAKEBANK_make_admin_transfer (
   struct TALER_FAKEBANK_Handle *h,
@@ -554,15 +508,6 @@ TALER_FAKEBANK_make_admin_transfer (
 }
 
 
-/**
- * Check that no wire transfers were ordered (or at least none
- * that have not been taken care of via #TALER_FAKEBANK_check_credit()
- * or #TALER_FAKEBANK_check_debit()).
- * If any transactions are onrecord, return #GNUNET_SYSERR.
- *
- * @param h bank instance
- * @return #GNUNET_OK on success
- */
 int
 TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 {
@@ -584,11 +529,6 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 }
 
 
-/**
- * Stop running the fake bank.
- *
- * @param h bank to stop
- */
 void
 TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
 {
@@ -1371,8 +1311,9 @@ serve (struct TALER_FAKEBANK_Handle *h,
                                  account);
 
   /* Unexpected URL path, just close the connection. */
-  /* we're rather impolite here, but it's a testcase. */
-  TALER_LOG_ERROR ("Breaking URL: %s\n",
+  /* We're rather impolite here, but it's a testcase. */
+  TALER_LOG_ERROR ("Breaking URL: %s %s\n",
+                   method,
                    url);
   GNUNET_break_op (0);
   return MHD_NO;
@@ -1562,60 +1503,88 @@ run_mhd (void *cls)
 }
 
 
-/**
- * Start the fake bank.  The fake bank will, like the normal bank, listen for
- * requests for /admin/add/incoming and /transfer. However, instead of
- * executing or storing those requests, it will simply allow querying whether
- * such a request has been made via #TALER_FAKEBANK_check_debit() and
- * #TALER_FAKEBANK_check_credit() as well as the history API.
- *
- * This is useful for writing testcases to check whether the exchange
- * would have issued the correct wire transfer orders.
- *
- * @param port port to listen to
- * @param currency currency the bank uses
- * @return NULL on error
- */
 struct TALER_FAKEBANK_Handle *
 TALER_FAKEBANK_start (uint16_t port,
                       const char *currency)
+{
+  return TALER_FAKEBANK_start2 (port,
+                                currency,
+                                0,
+                                false);
+}
+
+
+struct TALER_FAKEBANK_Handle *
+TALER_FAKEBANK_start2 (uint16_t port,
+                       const char *currency,
+                       unsigned int num_threads,
+                       bool close_connections)
 {
   struct TALER_FAKEBANK_Handle *h;
 
   GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->port = port;
+  h->force_close = close_connections;
   h->rpubs = GNUNET_CONTAINER_multipeermap_create (128,
                                                    GNUNET_NO);
   h->currency = GNUNET_strdup (currency);
   GNUNET_asprintf (&h->my_baseurl,
                    "http://localhost:%u/",
                    (unsigned int) port);
-  h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
-#if EPOLL_SUPPORT
-                                  | MHD_USE_EPOLL
-#endif
-                                  | MHD_USE_DUAL_STACK,
-                                  port,
-                                  NULL, NULL,
-                                  &handle_mhd_request, h,
-                                  MHD_OPTION_NOTIFY_COMPLETED,
-                                  &handle_mhd_completion_callback, h,
-                                  MHD_OPTION_LISTEN_BACKLOG_SIZE,
-                                  (unsigned int) 1024,
-                                  MHD_OPTION_END);
-  if (NULL == h->mhd_bank)
+  if (0 == num_threads)
   {
-    GNUNET_free (h->currency);
-    GNUNET_free (h);
-    return NULL;
-  }
+    h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
 #if EPOLL_SUPPORT
-  h->mhd_fd = MHD_get_daemon_info (h->mhd_bank,
-                                   MHD_DAEMON_INFO_EPOLL_FD)->epoll_fd;
-  h->mhd_rfd = GNUNET_NETWORK_socket_box_native (h->mhd_fd);
+                                    | MHD_USE_EPOLL
 #endif
-  schedule_httpd (h);
+                                    | MHD_USE_DUAL_STACK,
+                                    port,
+                                    NULL, NULL,
+                                    &handle_mhd_request, h,
+                                    MHD_OPTION_NOTIFY_COMPLETED,
+                                    &handle_mhd_completion_callback, h,
+                                    MHD_OPTION_LISTEN_BACKLOG_SIZE,
+                                    (unsigned int) 1024,
+                                    MHD_OPTION_END);
+    if (NULL == h->mhd_bank)
+    {
+      GNUNET_free (h->currency);
+      GNUNET_free (h);
+      return NULL;
+    }
+#if EPOLL_SUPPORT
+    h->mhd_fd = MHD_get_daemon_info (h->mhd_bank,
+                                     MHD_DAEMON_INFO_EPOLL_FD)->epoll_fd;
+    h->mhd_rfd = GNUNET_NETWORK_socket_box_native (h->mhd_fd);
+#endif
+    schedule_httpd (h);
+  }
+  else
+  {
+    h->mhd_bank = MHD_start_daemon (MHD_USE_DEBUG
+                                    | MHD_USE_AUTO_INTERNAL_THREAD
+                                    | MHD_ALLOW_SUSPEND_RESUME
+                                    | MHD_USE_TURBO
+                                    | MHD_USE_TCP_FASTOPEN
+                                    | MHD_USE_DUAL_STACK,
+                                    port,
+                                    NULL, NULL,
+                                    &handle_mhd_request, h,
+                                    MHD_OPTION_NOTIFY_COMPLETED,
+                                    &handle_mhd_completion_callback, h,
+                                    MHD_OPTION_LISTEN_BACKLOG_SIZE,
+                                    (unsigned int) 1024,
+                                    MHD_OPTION_THREAD_POOL_SIZE,
+                                    num_threads,
+                                    MHD_OPTION_END);
+    if (NULL == h->mhd_bank)
+    {
+      GNUNET_free (h->currency);
+      GNUNET_free (h);
+      return NULL;
+    }
+  }
   return h;
 }
 

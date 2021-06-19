@@ -7,9 +7,7 @@ if USE_COVERAGE
 endif
 
 bin_PROGRAMS = \
-  taler-wire-gateway-client
-
-noinst_PROGRAMS = \
+  taler-wire-gateway-client \
   taler-fakebank-run
 
 taler_fakebank_run_SOURCES = \
