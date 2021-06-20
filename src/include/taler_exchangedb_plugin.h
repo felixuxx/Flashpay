@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -3819,6 +3819,45 @@ struct TALER_EXCHANGEDB_Plugin
   (*insert_records_by_table)(void *cls,
                              struct TALER_EXCHANGEDB_Session *session,
                              const struct TALER_EXCHANGEDB_TableData *td);
+
+
+  /**
+   * Function called to grab a work shard on an operation @a op. Runs in its
+   * own transaction (hence no session provided).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param job_name name of the operation to grab a word shard for
+   * @param delay minimum age of a shard to grab
+   * @param size desired shard size
+   * @param[out] start_row inclusive start row of the shard (returned)
+   * @param[out] end_row exclusive end row of the shard (returned)
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*begin_shard)(void *cls,
+                 const char *job_name,
+                 struct GNUNET_TIME_Relative delay,
+                 uint64_t shard_size,
+                 uint64_t *start_row,
+                 uint64_t *end_row);
+
+
+  /**
+   * Function called to persist that work on a shard was completed.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param session a session
+   * @param job_name name of the operation to grab a word shard for
+   * @param start_row inclusive start row of the shard
+   * @param end_row exclusive end row of the shard
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*complete_shard)(void *cls,
+                    struct TALER_EXCHANGEDB_Session *session,
+                    const char *job_name,
+                    uint64_t start_row,
+                    uint64_t end_row);
 
 };
 

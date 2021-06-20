@@ -1,6 +1,6 @@
 --
 -- This file is part of TALER
--- Copyright (C) 2020 Taler Systems SA
+-- Copyright (C) 2020-2021 Taler Systems SA
 --
 -- TALER is free software; you can redistribute it and/or modify it under the
 -- terms of the GNU General Public License as published by the Free Software
@@ -372,6 +372,38 @@ CREATE TABLE IF NOT EXISTS signkey_revocations
   );
 COMMENT ON TABLE signkey_revocations
   IS 'remembering which online signing keys have been revoked';
+
+
+
+CREATE TABLE IF NOT EXISTS work_shards
+  (shard_serial_id BIGSERIAL UNIQUE
+  ,last_attempt INT8 NOT NULL
+  ,start_row INT8 NOT NULL
+  ,end_row INT8 NOT NULL
+  ,completed BOOLEAN NOT NULL
+  ,job_name VARCHAR NOT NULL
+  ,PRIMARY KEY (job_name, start_row)
+  );
+CREATE INDEX IF NOT EXISTS work_shards_index
+  ON work_shards
+  (job_name
+  ,completed
+  ,last_attempt
+  );
+COMMENT ON TABLE work_shards
+  IS 'coordinates work between multiple processes working on the same job';
+COMMENT ON COLUMN work_shards.shard_serial_id
+  IS 'unique serial number identifying the shard';
+COMMENT ON COLUMN work_shards.last_attempt
+  IS 'last time a worker attempted to work on the shard';
+COMMENT ON COLUMN work_shards.completed
+  IS 'set to TRUE once the shard is finished by a worker';
+COMMENT ON COLUMN work_shards.start_row
+  IS 'row at which the shard scope starts, inclusive';
+COMMENT ON COLUMN work_shards.end_row
+  IS 'row at which the shard scope ends, exclusive';
+COMMENT ON COLUMN work_shards.job_name
+  IS 'unique name of the job the workers on this shard are performing';
 
 
 -- Complete transaction

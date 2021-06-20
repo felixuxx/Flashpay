@@ -528,8 +528,20 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  wa_pos->delay = true;
+  wa_pos->current_batch_size = 0; /* reset counter */
+  wa_pos->session = session;
+  if (wa_pos->shard_end == wa_pos->last_row_off)
+  {
+    /* advance to next shard */
+    // FIXME: if other processes are running in parallel,
+    // update 'last_row_off' to next free shard!
+    wa_pos->shard_end = wa_pos->last_row_off + shard_size;
+  }
   if (! wa_pos->reset_mode)
   {
+    // FIXME: need good way to fetch
+    // shard data here!
     qs = db_plugin->get_latest_reserve_in_reference (db_plugin->cls,
                                                      session,
                                                      wa_pos->section_name,
@@ -553,16 +565,8 @@ find_transfers (void *cls)
                                        NULL);
       return;
     }
-    wa_pos->reset_mode = GNUNET_NO;
   }
-  wa_pos->delay = true;
-  wa_pos->current_batch_size = 0; /* reset counter */
-  wa_pos->session = session;
-  if (wa_pos->shard_end == wa_pos->last_row_off)
-  {
-    /* advance to next shard */
-    wa_pos->shard_end += shard_size;
-  }
+  wa_pos->reset_mode = true;
   limit = GNUNET_MIN (wa_pos->batch_size,
                       wa_pos->shard_end - wa_pos->last_row_off);
   GNUNET_assert (NULL == wa_pos->hh);
