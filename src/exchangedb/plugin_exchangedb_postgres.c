@@ -424,8 +424,7 @@ postgres_get_session (void *cls)
                               ",gc_date"
                               " FROM reserves"
                               " WHERE reserve_pub=$1"
-                              " LIMIT 1"
-                              ";", // FOR UPDATE;", // FIXME: helpful?
+                              " LIMIT 1;",
                               1),
       /* Used in #postgres_reserves_in_insert() when the reserve is new */
       GNUNET_PQ_make_prepare ("reserve_create",
