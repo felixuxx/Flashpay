@@ -82,13 +82,6 @@ struct Account
   char *account_name;
 
   /**
-   * Lock for modifying transaction list of this account.
-   * Note that per-transaction locks MUST be acquired before
-   * per-account locks (if both are acquired).
-   */
-  pthread_mutex_t lock;
-
-  /**
    * Current account balance.
    */
   struct TALER_Amount balance;
@@ -156,11 +149,6 @@ struct Transaction
    * Number of this transaction.
    */
   uint64_t row_id;
-
-  /**
-   * Lock for accessing this transaction array entry.
-   */
-  pthread_mutex_t lock;
 
   /**
    * What does the @e subject contain?
@@ -257,7 +245,7 @@ struct TALER_FAKEBANK_Handle
   /**
    * We store transactions in a revolving array.
    */
-  struct Transaction *transactions;
+  struct Transaction **transactions;
 
   /**
    * HTTP server we run to pretend to be the "test" bank.
@@ -301,6 +289,12 @@ struct TALER_FAKEBANK_Handle
    * Lock for accessing @a uuid_map.
    */
   pthread_mutex_t uuid_map_lock;
+
+  /**
+   * Lock for accessing the internals of
+   * accounts and transaction array entries.
+   */
+  pthread_mutex_t big_lock;
 
   /**
    * Current transaction counter.
@@ -380,9 +374,6 @@ lookup_account (struct TALER_FAKEBANK_Handle *h,
   if (NULL == account)
   {
     account = GNUNET_new (struct Account);
-    GNUNET_assert (0 ==
-                   pthread_mutex_init (&account->lock,
-                                       NULL));
     account->account_name = GNUNET_strdup (name);
     GNUNET_assert (GNUNET_OK ==
                    TALER_amount_get_zero (h->currency,
@@ -409,7 +400,7 @@ check_log (struct TALER_FAKEBANK_Handle *h)
 {
   for (uint64_t i = 0; i<h->ram_limit; i++)
   {
-    struct Transaction *t = &h->transactions[i];
+    struct Transaction *t = h->transactions[i];
 
     if (t->unchecked)
       continue;
@@ -542,61 +533,9 @@ TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
 
 
 /**
- * Clean up space used by old transaction @a t.
- * The transaction @a t must already be locked
- * when calling this function!
- *
- * @param[in,out] h bank handle
- * @param[in] t transaction to clean up
- */
-static void
-clean_transaction (struct TALER_FAKEBANK_Handle *h,
-                   struct Transaction *t)
-{
-  struct Account *da = t->debit_account;
-  struct Account *ca = t->credit_account;
-
-  if (NULL == da)
-    return; /* nothing to be cleaned */
-
-  /* slot was already in use, must clean out old
-     entry first! */
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&da->lock));
-  GNUNET_CONTAINER_MDLL_remove (out,
-                                da->out_head,
-                                da->out_tail,
-                                t);
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&da->lock));
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&ca->lock));
-  GNUNET_CONTAINER_MDLL_remove (in,
-                                ca->in_head,
-                                ca->in_tail,
-                                t);
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&ca->lock));
-  if (T_DEBIT == t->type)
-  {
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&h->uuid_map_lock));
-    GNUNET_assert (GNUNET_OK ==
-                   GNUNET_CONTAINER_multihashmap_remove (h->uuid_map,
-                                                         &t->request_uid,
-                                                         t));
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->uuid_map_lock));
-  }
-  t->debit_account = NULL;
-  t->credit_account = NULL;
-}
-
-
-/**
  * Update @a account balance by @a amount.
  *
- * The @a account must already be locked when calling
+ * The @a big_lock must already be locked when calling
  * this function.
  *
  * @param[in,out] account account to update
@@ -642,16 +581,24 @@ update_balance (struct Account *account,
  * The transaction @a t must already be locked
  * when calling this function!
  *
- * @param[in] t transaction to clean up
+ * @param[in,out] h bank handle
+ * @param[in,out] t transaction to add to account lists
  */
 static void
-post_transaction (struct Transaction *t)
+post_transaction (struct TALER_FAKEBANK_Handle *h,
+                  struct Transaction *t)
 {
   struct Account *debit_acc = t->debit_account;
   struct Account *credit_acc = t->credit_account;
+  uint64_t row_id;
+  struct Transaction *old;
 
   GNUNET_assert (0 ==
-                 pthread_mutex_lock (&debit_acc->lock));
+                 pthread_mutex_lock (&h->big_lock));
+  row_id = ++h->serial_counter;
+  old = h->transactions[row_id % h->ram_limit];
+  h->transactions[row_id % h->ram_limit] = t;
+  t->row_id = row_id;
   GNUNET_CONTAINER_MDLL_insert_tail (out,
                                      debit_acc->out_head,
                                      debit_acc->out_tail,
@@ -659,10 +606,6 @@ post_transaction (struct Transaction *t)
   update_balance (debit_acc,
                   &t->amount,
                   true);
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&debit_acc->lock));
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&credit_acc->lock));
   GNUNET_CONTAINER_MDLL_insert_tail (in,
                                      credit_acc->in_head,
                                      credit_acc->in_tail,
@@ -670,8 +613,39 @@ post_transaction (struct Transaction *t)
   update_balance (credit_acc,
                   &t->amount,
                   false);
+  if (NULL != old)
+  {
+    struct Account *da;
+    struct Account *ca;
+
+    da = old->debit_account;
+    ca = old->credit_account;
+    /* slot was already in use, must clean out old
+       entry first! */
+    GNUNET_CONTAINER_MDLL_remove (out,
+                                  da->out_head,
+                                  da->out_tail,
+                                  old);
+    GNUNET_CONTAINER_MDLL_remove (in,
+                                  ca->in_head,
+                                  ca->in_tail,
+                                  old);
+  }
   GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&credit_acc->lock));
+                 pthread_mutex_unlock (&h->big_lock));
+  if ( (NULL != old) &&
+       (T_DEBIT == old->type) )
+  {
+    GNUNET_assert (0 ==
+                   pthread_mutex_lock (&h->uuid_map_lock));
+    GNUNET_assert (GNUNET_OK ==
+                   GNUNET_CONTAINER_multihashmap_remove (h->uuid_map,
+                                                         &old->request_uid,
+                                                         old));
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->uuid_map_lock));
+  }
+  GNUNET_free (old);
 }
 
 
@@ -725,12 +699,8 @@ make_transfer (
                    pthread_mutex_lock (&h->uuid_map_lock));
     t = GNUNET_CONTAINER_multihashmap_get (h->uuid_map,
                                            request_uid);
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&h->uuid_map_lock));
     if (NULL != t)
     {
-      GNUNET_assert (0 ==
-                     pthread_mutex_lock (&t->lock));
       if ( (debit_acc != t->debit_account) ||
            (credit_acc != t->credit_account) ||
            (0 != TALER_amount_cmp (amount,
@@ -742,30 +712,18 @@ make_transfer (
         /* Transaction exists, but with different details. */
         GNUNET_break (0);
         GNUNET_assert (0 ==
-                       pthread_mutex_unlock (&t->lock));
+                       pthread_mutex_unlock (&h->uuid_map_lock));
         return GNUNET_SYSERR;
       }
       *ret_row_id = t->row_id;
       GNUNET_assert (0 ==
-                     pthread_mutex_unlock (&t->lock));
+                     pthread_mutex_unlock (&h->uuid_map_lock));
       return GNUNET_OK;
     }
+    GNUNET_assert (0 ==
+                   pthread_mutex_unlock (&h->uuid_map_lock));
   }
-  *ret_row_id = __sync_fetch_and_add (&h->serial_counter,
-                                      1);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Making transfer %llu from %s to %s over %s and subject %s; for exchange: %s\n",
-              (unsigned long long) *ret_row_id,
-              debit_account,
-              credit_account,
-              TALER_amount2s (amount),
-              TALER_B2S (subject),
-              exchange_base_url);
-  t = &h->transactions[*ret_row_id % h->ram_limit];
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&t->lock));
-  clean_transaction (h,
-                     t);
+  t = GNUNET_new (struct Transaction);
   t->unchecked = true;
   t->debit_account = debit_acc;
   t->credit_account = credit_acc;
@@ -783,7 +741,8 @@ make_transfer (
                                       &t->request_uid);
   else
     t->request_uid = *request_uid;
-  post_transaction (t);
+  post_transaction (h,
+                    t);
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->uuid_map_lock));
   GNUNET_assert (GNUNET_OK ==
@@ -794,8 +753,15 @@ make_transfer (
                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->uuid_map_lock));
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&t->lock));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Making transfer %llu from %s to %s over %s and subject %s; for exchange: %s\n",
+              (unsigned long long) t->row_id,
+              debit_account,
+              credit_account,
+              TALER_amount2s (amount),
+              TALER_B2S (subject),
+              exchange_base_url);
+  *ret_row_id = t->row_id;
   return GNUNET_OK;
 }
 
@@ -826,7 +792,6 @@ make_admin_transfer (
   const struct GNUNET_PeerIdentity *pid;
   struct Account *debit_acc;
   struct Account *credit_acc;
-  uint64_t ret;
 
   GNUNET_static_assert (sizeof (*pid) ==
                         sizeof (*reserve_pub));
@@ -859,34 +824,21 @@ make_admin_transfer (
     return GNUNET_NO;
   }
 
-  ret = __sync_fetch_and_add (&h->serial_counter,
-                              1);
-  if (NULL != row_id)
-    *row_id = ret;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Making transfer from %s to %s over %s and subject %s at row %llu\n",
-              debit_account,
-              credit_account,
-              TALER_amount2s (amount),
-              TALER_B2S (reserve_pub),
-              (unsigned long long) ret);
-  t = &h->transactions[ret % h->ram_limit];
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&t->lock));
-  clean_transaction (h,
-                     t);
+  t = GNUNET_new (struct Transaction);
   t->unchecked = true;
   t->debit_account = debit_acc;
   t->credit_account = credit_acc;
   t->amount = *amount;
-  t->row_id = ret;
   t->date = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&t->date);
   if (NULL != timestamp)
     *timestamp = t->date;
   t->type = T_CREDIT;
   t->subject.credit.reserve_pub = *reserve_pub;
-  post_transaction (t);
+  post_transaction (h,
+                    t);
+  if (NULL != row_id)
+    *row_id = t->row_id;
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->rpubs_lock));
   GNUNET_assert (GNUNET_OK ==
@@ -897,8 +849,13 @@ make_admin_transfer (
                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->rpubs_lock));
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&t->lock));
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Making transfer from %s to %s over %s and subject %s at row %llu\n",
+              debit_account,
+              credit_account,
+              TALER_amount2s (amount),
+              TALER_B2S (reserve_pub),
+              (unsigned long long) t->row_id);
   return GNUNET_OK;
 }
 
@@ -908,7 +865,7 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 {
   for (uint64_t i = 0; i<h->ram_limit; i++)
   {
-    struct Transaction *t = &h->transactions[i];
+    struct Transaction *t = h->transactions[i];
 
     if (t->unchecked)
     {
@@ -929,8 +886,6 @@ free_account (void *cls,
 {
   struct Account *account = val;
 
-  GNUNET_assert (0 ==
-                 pthread_mutex_destroy (&account->lock));
   GNUNET_free (account->account_name);
   GNUNET_free (account);
   return GNUNET_OK;
@@ -966,14 +921,16 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
   }
   GNUNET_CONTAINER_multihashmap_destroy (h->uuid_map);
   GNUNET_CONTAINER_multipeermap_destroy (h->rpubs);
-  for (uint64_t i = 0; i<h->ram_limit; i++)
-    pthread_mutex_destroy (&h->transactions[i].lock);
+  GNUNET_assert (0 ==
+                 pthread_mutex_destroy (&h->big_lock));
   GNUNET_assert (0 ==
                  pthread_mutex_destroy (&h->uuid_map_lock));
   GNUNET_assert (0 ==
                  pthread_mutex_destroy (&h->accounts_lock));
   GNUNET_assert (0 ==
                  pthread_mutex_destroy (&h->rpubs_lock));
+  for (uint64_t i = 0; i<h->ram_limit; i++)
+    GNUNET_free (h->transactions[i]);
   GNUNET_free (h->transactions);
   GNUNET_free (h->my_baseurl);
   GNUNET_free (h->currency);
@@ -1424,20 +1381,40 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
 
   acc = lookup_account (h,
                         account);
+  GNUNET_asprintf (&debit_payto,
+                   "payto://x-taler-bank/localhost/%s",
+                   account);
+  history = json_array ();
+  if (NULL == history)
+  {
+    GNUNET_break (0);
+    GNUNET_free (debit_payto);
+    return MHD_NO;
+  }
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   if (! ha.have_start)
   {
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&acc->lock));
     pos = (0 > ha.delta)
           ? acc->out_tail
           : acc->out_head;
   }
   else
   {
-    struct Transaction *t = &h->transactions[ha.start_idx % h->ram_limit];
+    struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
 
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&t->lock));
+    if (NULL == t)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      GNUNET_free (debit_payto);
+      /* FIXME: suspend for long-polling instead */
+      return TALER_MHD_reply_json_pack (connection,
+                                        MHD_HTTP_OK,
+                                        "{s:o}",
+                                        "outgoing_transactions",
+                                        history);
+    }
     if (t->debit_account != acc)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1445,23 +1422,17 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                   (unsigned long long) ha.start_idx,
                   account);
       GNUNET_assert (0 ==
-                     pthread_mutex_unlock (&t->lock));
+                     pthread_mutex_unlock (&h->big_lock));
+      GNUNET_free (debit_payto);
+      json_decref (history);
       return MHD_NO;
     }
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&acc->lock));
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&t->lock));
     /* range is exclusive, skip the matching entry */
     if (0 > ha.delta)
       pos = t->prev_out;
     else
       pos = t->next_out;
   }
-  GNUNET_asprintf (&debit_payto,
-                   "payto://x-taler-bank/localhost/%s",
-                   account);
-  history = json_array ();
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {
@@ -1472,10 +1443,6 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_asprintf (&credit_payto,
                      "payto://x-taler-bank/localhost/%s",
                      pos->credit_account->account_name);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Appending credit_payto (%s) from credit_account (%s) within fakebank\n",
-                credit_payto,
-                pos->credit_account->account_name);
     trans = json_pack (
       "{s:I, s:o, s:o, s:s, s:s, s:s, s:o}",
       "row_id", (json_int_t) pos->row_id,
@@ -1487,6 +1454,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       pos->subject.debit.exchange_base_url,
       "wtid", GNUNET_JSON_from_data_auto (
         &pos->subject.debit.wtid));
+    GNUNET_assert (NULL != trans);
     GNUNET_free (credit_payto);
     GNUNET_assert (0 ==
                    json_array_append_new (history,
@@ -1501,7 +1469,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       pos = pos->next_out;
   }
   GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&acc->lock));
+                 pthread_mutex_unlock (&h->big_lock));
   GNUNET_free (debit_payto);
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
@@ -1539,20 +1507,35 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   }
   acc = lookup_account (h,
                         account);
+  history = json_array ();
+  GNUNET_assert (NULL != history);
+  GNUNET_asprintf (&credit_payto,
+                   "payto://x-taler-bank/localhost/%s",
+                   account);
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
   if (! ha.have_start)
   {
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&acc->lock));
     pos = (0 > ha.delta)
           ? acc->in_tail
           : acc->in_head;
   }
   else
   {
-    struct Transaction *t = &h->transactions[ha.start_idx % h->ram_limit];
+    struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
 
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&t->lock));
+    if (NULL == t)
+    {
+      GNUNET_assert (0 ==
+                     pthread_mutex_unlock (&h->big_lock));
+      GNUNET_free (credit_payto);
+      /* FIXME: suspend for long-polling instead */
+      return TALER_MHD_reply_json_pack (connection,
+                                        MHD_HTTP_OK,
+                                        "{s:o}",
+                                        "incoming_transactions",
+                                        history);
+    }
     if (t->credit_account != acc)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1560,23 +1543,17 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                   (unsigned long long) ha.start_idx,
                   account);
       GNUNET_assert (0 ==
-                     pthread_mutex_unlock (&t->lock));
+                     pthread_mutex_unlock (&h->big_lock));
+      json_decref (history);
+      GNUNET_free (credit_payto);
       return MHD_NO;
     }
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&acc->lock));
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&t->lock));
     /* range is exclusive, skip the matching entry */
     if (0 > ha.delta)
       pos = t->prev_in;
     else
       pos = t->next_in;
   }
-  GNUNET_asprintf (&credit_payto,
-                   "payto://x-taler-bank/localhost/%s",
-                   account);
-  history = json_array ();
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {
@@ -1587,12 +1564,6 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_asprintf (&debit_payto,
                      "payto://x-taler-bank/localhost/%s",
                      pos->debit_account->account_name);
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Returning transaction %s->%s (%s) at %llu\n",
-                pos->debit_account->account_name,
-                pos->credit_account->account_name,
-                TALER_B2S (&pos->subject.credit.reserve_pub),
-                (unsigned long long) pos->row_id);
     trans = json_pack (
       "{s:I, s:o, s:o, s:s, s:s, s:o}",
       "row_id", (json_int_t) pos->row_id,
@@ -1602,6 +1573,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       "debit_account", debit_payto,
       "reserve_pub", GNUNET_JSON_from_data_auto (
         &pos->subject.credit.reserve_pub));
+    GNUNET_assert (NULL != trans);
     GNUNET_free (debit_payto);
     GNUNET_assert (0 ==
                    json_array_append_new (history,
@@ -1616,7 +1588,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
       pos = pos->next_in;
   }
   GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&acc->lock));
+                 pthread_mutex_unlock (&h->big_lock));
   GNUNET_free (credit_payto);
   return TALER_MHD_reply_json_pack (connection,
                                     MHD_HTTP_OK,
@@ -1909,7 +1881,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
 {
   struct TALER_FAKEBANK_Handle *h;
 
-  if (SIZE_MAX / sizeof (struct Transaction) < ram_limit)
+  if (SIZE_MAX / sizeof (struct Transaction *) < ram_limit)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "This CPU architecture does not support keeping %llu transactions in RAM\n",
@@ -1921,7 +1893,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
   h->port = port;
   h->force_close = close_connections;
   h->ram_limit = ram_limit;
-  h->serial_counter = 1;
+  h->serial_counter = 0;
   GNUNET_assert (0 ==
                  pthread_mutex_init (&h->accounts_lock,
                                      NULL));
@@ -1931,8 +1903,11 @@ TALER_FAKEBANK_start2 (uint16_t port,
   GNUNET_assert (0 ==
                  pthread_mutex_init (&h->uuid_map_lock,
                                      NULL));
+  GNUNET_assert (0 ==
+                 pthread_mutex_init (&h->big_lock,
+                                     NULL));
   h->transactions
-    = GNUNET_malloc_large (sizeof (struct Transaction)
+    = GNUNET_malloc_large (sizeof (struct Transaction *)
                            * ram_limit);
   if (NULL == h->transactions)
   {
@@ -1960,12 +1935,6 @@ TALER_FAKEBANK_start2 (uint16_t port,
                          "malloc");
     TALER_FAKEBANK_stop (h);
     return NULL;
-  }
-  for (uint64_t i = 0; i<ram_limit; i++)
-  {
-    GNUNET_assert (0 ==
-                   pthread_mutex_init (&h->transactions[i].lock,
-                                       NULL));
   }
   h->currency = GNUNET_strdup (currency);
   GNUNET_asprintf (&h->my_baseurl,

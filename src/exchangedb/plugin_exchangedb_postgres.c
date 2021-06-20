@@ -424,7 +424,8 @@ postgres_get_session (void *cls)
                               ",gc_date"
                               " FROM reserves"
                               " WHERE reserve_pub=$1"
-                              " LIMIT 1;",
+                              " LIMIT 1"
+                              ";", // FOR UPDATE;", // FIXME: helpful?
                               1),
       /* Used in #postgres_reserves_in_insert() when the reserve is new */
       GNUNET_PQ_make_prepare ("reserve_create",
@@ -2463,7 +2464,6 @@ postgres_get_session (void *cls)
                               " end_row"
                               " FROM work_shards"
                               " WHERE job_name=$1"
-                              "   AND completed=FALSE"
                               " ORDER BY end_row DESC"
                               " LIMIT 1;",
                               1),
@@ -3529,7 +3529,8 @@ postgres_reserves_in_insert (void *cls,
        balance; we do this after checking for duplication, as
        otherwise we might have to actually pay the cost to roll this
        back for duplicate transactions; like this, we should virtually
-       never actually have to rollback anything. */struct TALER_EXCHANGEDB_Reserve updated_reserve;
+       never actually have to rollback anything. */
+    struct TALER_EXCHANGEDB_Reserve updated_reserve;
 
     updated_reserve.pub = reserve.pub;
     if (0 >
@@ -10356,6 +10357,10 @@ postgres_begin_shard (void *cls,
       };
 
       now = GNUNET_TIME_absolute_get ();
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Trying to claim shard %llu-%llu\n",
+                  (unsigned long long) *start_row,
+                  (unsigned long long) *end_row);
       qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
                                                "claim_next_shard",
                                                params);
@@ -10374,7 +10379,8 @@ postgres_begin_shard (void *cls,
         /* continued below */
         break;
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-        GNUNET_break (0);
+        /* someone else got this shard already,
+           try again */
         postgres_rollback (cls,
                            session);
         continue;
@@ -10434,6 +10440,10 @@ postgres_complete_shard (void *cls,
   };
 
   (void) cls;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Completing shard %llu-%llu\n",
+              (unsigned long long) start_row,
+              (unsigned long long) end_row);
   return GNUNET_PQ_eval_prepared_non_select (session->conn,
                                              "complete_shard",
                                              params);

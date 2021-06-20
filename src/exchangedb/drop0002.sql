@@ -27,6 +27,7 @@ DROP TABLE IF EXISTS auditor_denom_sigs CASCADE;
 DROP TABLE IF EXISTS exchange_sign_keys CASCADE;
 DROP TABLE IF EXISTS wire_accounts CASCADE;
 DROP TABLE IF EXISTS signkey_revocations CASCADE;
+DROP TABLE IF EXISTS work_shards CASCADE;
 
 -- And we're out of here...
 COMMIT;

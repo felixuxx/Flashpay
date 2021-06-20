@@ -389,6 +389,9 @@ COMMENT ON TABLE recoup
 COMMENT ON COLUMN recoup.coin_pub
   IS 'Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!';
 
+-- Note: this first index is redundant;
+-- It is implicitly removed by the exchange-0002.sql
+-- schema changes.
 CREATE INDEX IF NOT EXISTS recoup_by_coin_index
   ON recoup
   (coin_pub);
@@ -415,6 +418,8 @@ CREATE TABLE IF NOT EXISTS recoup_refresh
 COMMENT ON COLUMN recoup_refresh.coin_pub
   IS 'Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!';
 
+-- Note: this index is redundant; implicitly removed
+-- by the exchange-0002.sql update!
 CREATE INDEX IF NOT EXISTS recoup_refresh_by_coin_index
   ON recoup_refresh
   (coin_pub);

@@ -173,6 +173,18 @@ TALER_TESTING_wait_exchange_ready (const char *base_url);
 
 
 /**
+ * Wait for an HTTPD service to have started. Waits for at
+ * most 10s, after that returns 77 to indicate an error.
+ *
+ * @param base_url what URL should we expect the exchange
+ *        to be running at
+ * @return 0 on success
+ */
+int
+TALER_TESTING_wait_httpd_ready (const char *base_url);
+
+
+/**
  * Wait for the auditor to have started. Waits for at
  * most 10s, after that returns 77 to indicate an error.
  *

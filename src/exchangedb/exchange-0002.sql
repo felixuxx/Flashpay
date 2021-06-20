@@ -80,7 +80,9 @@ UPDATE reserves_in
 ALTER TABLE reserves_in
   ALTER COLUMN reserve_uuid SET NOT NULL;
 ALTER TABLE reserves_in
-  DROP COLUMN reserve_pub;
+  DROP COLUMN reserve_pub,
+  ADD CONSTRAINT unique_in PRIMARY KEY (reserve_uuid, wire_reference);
+
 ALTER TABLE reserves_out
   ADD COLUMN reserve_uuid INT8 REFERENCES reserves (reserve_uuid) ON DELETE CASCADE;
 UPDATE reserves_out
@@ -93,6 +95,12 @@ ALTER TABLE reserves_out
   DROP COLUMN reserve_pub;
 ALTER TABLE reserves_close
   ADD COLUMN reserve_uuid INT8 REFERENCES reserves (reserve_uuid) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS reserves_out_reserve_uuid_index
+  ON reserves_out
+  (reserve_uuid);
+COMMENT ON INDEX reserves_out_reserve_uuid_index
+  IS 'for get_reserves_out';
+
 UPDATE reserves_close
   SET reserve_uuid=r.reserve_uuid
   FROM reserves_close rclose
@@ -101,6 +109,11 @@ ALTER TABLE reserves_close
   ALTER COLUMN reserve_uuid SET NOT NULL;
 ALTER TABLE reserves_close
   DROP COLUMN reserve_pub;
+CREATE INDEX IF NOT EXISTS reserves_close_by_uuid
+  ON reserves_close
+  (reserve_uuid);
+
+
 
 -- change all foreign keys using 'denom_pub_hash' to using 'denominations_serial' instead
 ALTER TABLE reserves_out
@@ -113,6 +126,11 @@ ALTER TABLE reserves_out
   ALTER COLUMN denominations_serial SET NOT NULL;
 ALTER TABLE reserves_out
   DROP COLUMN denom_pub_hash;
+CREATE INDEX IF NOT EXISTS reserves_out_for_get_withdraw_info
+  ON reserves_out
+  (denominations_serial
+  ,h_blind_ev
+  );
 
 ALTER TABLE known_coins
   ADD COLUMN denominations_serial INT8 REFERENCES denominations (denominations_serial) ON DELETE CASCADE;
@@ -124,6 +142,9 @@ ALTER TABLE known_coins
   ALTER COLUMN denominations_serial SET NOT NULL;
 ALTER TABLE known_coins
   DROP COLUMN denom_pub_hash;
+CREATE INDEX IF NOT EXISTS known_coins_by_denomination
+  ON known_coins
+  (denominations_serial);
 
 ALTER TABLE denomination_revocations
   ADD COLUMN denominations_serial INT8 REFERENCES denominations (denominations_serial) ON DELETE CASCADE;
@@ -137,6 +158,9 @@ ALTER TABLE denomination_revocations
   DROP COLUMN denom_pub_hash;
 ALTER TABLE denomination_revocations
   ADD CONSTRAINT denominations_serial_pk PRIMARY KEY (denominations_serial);
+CREATE INDEX IF NOT EXISTS denomination_revocations_by_denomination
+  ON denomination_revocations
+  (denominations_serial);
 
 ALTER TABLE refresh_revealed_coins
   ADD COLUMN denominations_serial INT8 REFERENCES denominations (denominations_serial) ON DELETE CASCADE;
@@ -148,6 +172,9 @@ ALTER TABLE refresh_revealed_coins
   ALTER COLUMN denominations_serial SET NOT NULL;
 ALTER TABLE refresh_revealed_coins
   DROP COLUMN denom_pub_hash;
+CREATE INDEX IF NOT EXISTS refresh_revealed_coins_denominations_index
+  ON refresh_revealed_coins
+  (denominations_serial);
 
 -- Change all foreign keys involving 'coin_pub' to use known_coin_id instead.
 ALTER TABLE recoup_refresh
@@ -161,6 +188,7 @@ ALTER TABLE recoup_refresh
 ALTER TABLE recoup_refresh
   DROP COLUMN coin_pub;
 
+
 ALTER TABLE recoup
   ADD COLUMN known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
 UPDATE recoup
@@ -172,6 +200,7 @@ ALTER TABLE recoup
 ALTER TABLE recoup
   DROP COLUMN coin_pub;
 
+
 ALTER TABLE refresh_commitments
   ADD COLUMN old_known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
 UPDATE refresh_commitments
@@ -182,6 +211,10 @@ ALTER TABLE refresh_commitments
   ALTER COLUMN old_known_coin_id SET NOT NULL;
 ALTER TABLE refresh_commitments
   DROP COLUMN old_coin_pub;
+CREATE INDEX IF NOT EXISTS refresh_commitments_old_coin_pub_index
+  ON refresh_commitments
+  (old_known_coin_id);
+
 
 ALTER TABLE deposits
   ADD COLUMN known_coin_id INT8 REFERENCES known_coins (known_coin_id) ON DELETE CASCADE;
@@ -190,7 +223,8 @@ UPDATE deposits
   FROM deposits o
   INNER JOIN known_coins d USING(coin_pub);
 ALTER TABLE deposits
-  ALTER COLUMN known_coin_id SET NOT NULL;
+  ALTER COLUMN known_coin_id SET NOT NULL,
+  ADD CONSTRAINT deposit_unique UNIQUE (known_coin_id, merchant_pub, h_contract_terms);
 ALTER TABLE deposits
   DROP COLUMN coin_pub;
 
@@ -216,6 +250,16 @@ ALTER TABLE recoup
   ALTER COLUMN reserve_out_serial_id SET NOT NULL;
 ALTER TABLE recoup
   DROP COLUMN h_blind_ev;
+CREATE INDEX IF NOT EXISTS recoup_by_h_blind_ev
+  ON recoup
+  (reserve_out_serial_id);
+CREATE INDEX IF NOT EXISTS recoup_for_by_reserve
+  ON recoup
+  (known_coin_id
+  ,reserve_out_serial_id
+  );
+
+
 COMMENT ON COLUMN recoup.reserve_out_serial_id
   IS 'Identifies the h_blind_ev of the recouped coin.';
 
@@ -228,11 +272,20 @@ UPDATE recoup_refresh
   FROM recoup_refresh o
   INNER JOIN refresh_revealed_coins d ON (d.h_coin_ev = o.h_blind_ev);
 ALTER TABLE recoup_refresh
-  ALTER COLUMN rrc_serial SET NOT NULL;
+  ALTER COLUMN rrc_serial SET NOT NULL,
+  ADD CONSTRAINT recoup_unique UNIQUE (rrc_serial);
 ALTER TABLE recoup_refresh
   DROP COLUMN h_blind_ev;
 COMMENT ON COLUMN recoup_refresh.rrc_serial
   IS 'Identifies the h_blind_ev of the recouped coin (as h_coin_ev).';
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_h_blind_ev
+  ON recoup_refresh
+  (rrc_serial);
+CREATE INDEX IF NOT EXISTS recoup_refresh_for_by_reserve
+  ON recoup_refresh
+  (known_coin_id
+  ,rrc_serial
+  );
 
 
 -- Change 'rc' in refresh_transfer_keys and refresh_revealed_coins tables to 'melt_serial_id'
@@ -248,6 +301,14 @@ ALTER TABLE refresh_transfer_keys
   DROP COLUMN rc;
 COMMENT ON COLUMN refresh_transfer_keys.melt_serial_id
   IS 'Identifies the refresh commitment (rc) of the operation.';
+CREATE INDEX IF NOT EXISTS refresh_transfer_keys_coin_tpub
+  ON refresh_transfer_keys
+  (melt_serial_id
+  ,transfer_pub
+  );
+COMMENT ON INDEX refresh_transfer_keys_coin_tpub
+  IS 'for get_link (unsure if this helps or hurts for performance as there should be very few transfer public keys per rc, but at least in theory this helps the ORDER BY clause)';
+
 
 ALTER TABLE refresh_revealed_coins
   ADD COLUMN melt_serial_id INT8 REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE;
@@ -280,6 +341,8 @@ ALTER TABLE refunds
   DROP COLUMN merchant_pub,
   DROP COLUMN h_contract_terms,
   DROP COLUMN known_coin_id;
+ALTER TABLE refunds
+  ADD CONSTRAINT refunds_primary_key PRIMARY KEY (deposit_serial_id, rtransaction_id);
 COMMENT ON COLUMN refunds.deposit_serial_id
   IS 'Identifies ONLY the merchant_pub, h_contract_terms and known_coin_id. Multiple deposits may match a refund, this only identifies one of them.';
 
@@ -380,7 +443,7 @@ CREATE TABLE IF NOT EXISTS work_shards
   ,last_attempt INT8 NOT NULL
   ,start_row INT8 NOT NULL
   ,end_row INT8 NOT NULL
-  ,completed BOOLEAN NOT NULL
+  ,completed BOOLEAN NOT NULL DEFAULT FALSE
   ,job_name VARCHAR NOT NULL
   ,PRIMARY KEY (job_name, start_row)
   );

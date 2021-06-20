@@ -497,6 +497,20 @@ parallel_benchmark (void)
   {
     if (use_fakebank)
     {
+      unsigned long long pnum;
+
+      if (GNUNET_OK !=
+          GNUNET_CONFIGURATION_get_value_number (cfg,
+                                                 "bank",
+                                                 "HTTP_PORT",
+                                                 &pnum))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "bank",
+                                   "HTTP_PORT",
+                                   "must be valid port number");
+        return GNUNET_SYSERR;
+      }
       /* start fakebank */
       fakebank = fork ();
       if (0 == fakebank)
@@ -515,7 +529,33 @@ parallel_benchmark (void)
         return GNUNET_SYSERR;
       }
       /* wait for fakebank to be ready */
-      sleep (1 + history_size / 65536);
+      {
+        char *bank_url;
+        int ret;
+
+        GNUNET_asprintf (&bank_url,
+                         "http://localhost:%u/",
+                         (unsigned int) (uint16_t) pnum);
+        ret = TALER_TESTING_wait_httpd_ready (bank_url);
+        GNUNET_free (bank_url);
+        if (0 != ret)
+        {
+          int wstatus;
+
+          kill (fakebank,
+                SIGTERM);
+          if (fakebank !=
+              waitpid (fakebank,
+                       &wstatus,
+                       0))
+          {
+            GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                                 "waitpid");
+          }
+          fakebank = -1;
+          exit (ret);
+        }
+      }
     }
     else
     {
@@ -587,7 +627,11 @@ parallel_benchmark (void)
        (MODE_BANK == mode) )
   {
     printf ("Press ENTER to stop!\n");
+    if (MODE_BANK != mode)
+      duration = GNUNET_TIME_absolute_get_duration (start_time);
     (void) getchar ();
+    if (MODE_BANK == mode)
+      duration = GNUNET_TIME_absolute_get_duration (start_time);
   }
 
   if ( (MODE_BANK == mode) ||
@@ -817,7 +861,7 @@ main (int argc,
     /* If we're the bank, we're done now.  No need to print results. */
     return (GNUNET_OK == result) ? 0 : result;
   }
-  duration = GNUNET_TIME_absolute_get_duration (start_time);
+
   if (GNUNET_OK == result)
   {
     struct rusage usage;

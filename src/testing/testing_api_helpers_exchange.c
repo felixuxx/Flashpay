@@ -446,14 +446,6 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
 }
 
 
-/**
- * Wait for the exchange to have started. Waits for at
- * most 10s, after that returns 77 to indicate an error.
- *
- * @param base_url what URL should we expect the exchange
- *        to be running at
- * @return 0 on success
- */
 int
 TALER_TESTING_wait_exchange_ready (const char *base_url)
 {
@@ -464,20 +456,51 @@ TALER_TESTING_wait_exchange_ready (const char *base_url)
                    "wget -q -t 1 -T 1 %sseed -o /dev/null -O /dev/null",
                    base_url); // make sure ends with '/'
   /* give child time to start and bind against the socket */
-  fprintf (stderr,
-           "Waiting for `taler-exchange-httpd' to be ready (check with: %s)\n",
-           wget_cmd);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Waiting for `taler-exchange-httpd` service to be ready (check with: %s)\n",
+              wget_cmd);
   iter = 0;
   do
   {
     if (10 == iter)
     {
-      fprintf (stderr,
-               "Failed to launch `taler-exchange-httpd' (or `wget')\n");
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to launch `taler-exchange-httpd` service (or `wget')\n");
       GNUNET_free (wget_cmd);
       return 77;
     }
-    fprintf (stderr, ".\n");
+    sleep (1);
+    iter++;
+  }
+  while (0 != system (wget_cmd));
+  GNUNET_free (wget_cmd);
+  return 0;
+}
+
+
+int
+TALER_TESTING_wait_httpd_ready (const char *base_url)
+{
+  char *wget_cmd;
+  unsigned int iter;
+
+  GNUNET_asprintf (&wget_cmd,
+                   "wget -q -t 1 -T 1 %s -o /dev/null -O /dev/null",
+                   base_url); // make sure ends with '/'
+  /* give child time to start and bind against the socket */
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Waiting for HTTP service to be ready (check with: %s)\n",
+              wget_cmd);
+  iter = 0;
+  do
+  {
+    if (10 == iter)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Failed to launch HTTP service (or `wget')\n");
+      GNUNET_free (wget_cmd);
+      return 77;
+    }
     sleep (1);
     iter++;
   }
