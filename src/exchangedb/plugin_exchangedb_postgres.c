@@ -436,7 +436,8 @@ postgres_get_session (void *cls)
                               ",expiration_date"
                               ",gc_date"
                               ") VALUES "
-                              "($1, $2, $3, $4, $5, $6);",
+                              "($1, $2, $3, $4, $5, $6)"
+                              " ON CONFLICT DO NOTHING;",
                               6),
       /* Used in #postgres_insert_reserve_closed() */
       GNUNET_PQ_make_prepare ("reserves_close_insert",
@@ -3442,36 +3443,25 @@ postgres_reserves_in_insert (void *cls,
                              uint64_t wire_ref)
 {
   struct PostgresClosure *pg = cls;
-  enum GNUNET_DB_QueryStatus reserve_exists;
-  enum GNUNET_DB_QueryStatus qs;
+  enum GNUNET_DB_QueryStatus qs1;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_TIME_Absolute expiry;
 
   reserve.pub = *reserve_pub;
-  reserve_exists = postgres_reserves_get (cls,
-                                          session,
-                                          &reserve);
-  if (0 > reserve_exists)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == reserve_exists);
-    return reserve_exists;
-  }
+  expiry = GNUNET_TIME_absolute_add (execution_time,
+                                     pg->idle_reserve_expiration_time);
+  (void) GNUNET_TIME_round_abs (&expiry);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating reserve %s with expiration in %s\n",
               TALER_B2S (reserve_pub),
               GNUNET_STRINGS_relative_time_to_string (
                 pg->idle_reserve_expiration_time,
                 GNUNET_NO));
-  expiry = GNUNET_TIME_absolute_add (execution_time,
-                                     pg->idle_reserve_expiration_time);
-  (void) GNUNET_TIME_round_abs (&expiry);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == reserve_exists)
+  /* Optimistically assume this is a new reserve, create balance for the first
+     time; we do this before adding the actual transaction to "reserves_in",
+     as for a new reserve it can't be a duplicate 'add' operation, and as
+     the 'add' operation may need the reserve entry as a foreign key. */
   {
-    /* New reserve, create balance for the first time; we do this
-       before adding the actual transaction to "reserves_in", as
-       for a new reserve it can't be a duplicate 'add' operation,
-       and as the 'add' operation may need the reserve entry
-       as a foreign key. */
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
       GNUNET_PQ_query_param_string (sender_account_details),
@@ -3483,24 +3473,16 @@ postgres_reserves_in_insert (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
-    qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "reserve_create",
-                                             params);
-    if (0 > qs)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
-      return qs;
-    }
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      /* Maybe DB did not detect serializiability error already,
-         but clearly there must be one. Still odd. */
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_SOFT_ERROR;
-    }
+    /* Note: query uses 'on conflict do nothing' */
+    qs1 = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                              "reserve_create",
+                                              params);
+    if (qs1 < 0)
+      return qs1;
   }
+
   /* Create new incoming transaction, "ON CONFLICT DO NOTHING"
-     is used to guard against duplicates. */
+     is again used to guard against duplicates. */
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
@@ -3511,26 +3493,59 @@ postgres_reserves_in_insert (void *cls,
       TALER_PQ_query_param_absolute_time (&execution_time),
       GNUNET_PQ_query_param_end
     };
+    enum GNUNET_DB_QueryStatus qs2;
 
-    qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                             "reserves_in_add_transaction",
-                                             params);
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
+    qs2 = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                              "reserves_in_add_transaction",
+                                              params);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs2)
     {
-      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
-      return qs;
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs2);
+      return qs2;
+    }
+    if (0 >= qs2)
+    {
+      /* Transaction was already known or error. We are finished. */
+      return qs2;
+    }
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs1)
+    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* new reserve, we are finished */
+
+  /* we were wrong with our optimistic assumption:
+     reserve does exist, need to do an update instead */
+  {
+    enum GNUNET_DB_QueryStatus reserve_exists;
+
+    reserve_exists = postgres_reserves_get (cls,
+                                            session,
+                                            &reserve);
+    switch (reserve_exists)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      return reserve_exists;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      return reserve_exists;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      /* First we got a conflict, but then we cannot select? Very strange. */
+      GNUNET_break (0);
+      return GNUNET_DB_STATUS_SOFT_ERROR;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      /* continued below */
+      break;
     }
   }
 
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == reserve_exists)
   {
+    struct TALER_EXCHANGEDB_Reserve updated_reserve;
+    enum GNUNET_DB_QueryStatus qs3;
+
     /* If the reserve already existed, we need to still update the
        balance; we do this after checking for duplication, as
        otherwise we might have to actually pay the cost to roll this
        back for duplicate transactions; like this, we should virtually
        never actually have to rollback anything. */
-    struct TALER_EXCHANGEDB_Reserve updated_reserve;
-
     updated_reserve.pub = reserve.pub;
     if (0 >
         TALER_amount_add (&updated_reserve.balance,
@@ -3548,11 +3563,26 @@ postgres_reserves_in_insert (void *cls,
     updated_reserve.gc = GNUNET_TIME_absolute_max (updated_reserve.expiry,
                                                    reserve.gc);
     (void) GNUNET_TIME_round_abs (&updated_reserve.gc);
-    return reserves_update (cls,
-                            session,
-                            &updated_reserve);
+    qs3 = reserves_update (cls,
+                           session,
+                           &updated_reserve);
+    switch (qs3)
+    {
+    case GNUNET_DB_STATUS_HARD_ERROR:
+      GNUNET_break (0);
+      return qs3;
+    case GNUNET_DB_STATUS_SOFT_ERROR:
+      return qs3;
+    case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+      /* How can the UPDATE not work here? Very strange. */
+      GNUNET_break (0);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+      /* continued below */
+      break;
+    }
+    return qs3;
   }
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
