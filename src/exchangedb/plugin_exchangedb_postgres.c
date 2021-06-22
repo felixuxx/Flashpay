@@ -436,7 +436,8 @@ postgres_get_session (void *cls)
                               ",gc_date"
                               ") VALUES "
                               "($1, $2, $3, $4, $5, $6)"
-                              " ON CONFLICT DO NOTHING;",
+                              " ON CONFLICT DO NOTHING"
+                              " RETURNING reserve_uuid;",
                               6),
       /* Used in #postgres_insert_reserve_closed() */
       GNUNET_PQ_make_prepare ("reserves_close_insert",
@@ -476,6 +477,19 @@ postgres_get_session (void *cls)
                               ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7"
                               "  FROM reserves"
                               "  WHERE reserve_pub=$1"
+                              " ON CONFLICT DO NOTHING;",
+                              7),
+      /* Used in #postgres_reserves_in_insert() to store transaction details */
+      GNUNET_PQ_make_prepare ("reserves_in_add_by_uuid",
+                              "INSERT INTO reserves_in "
+                              "(reserve_uuid"
+                              ",wire_reference"
+                              ",credit_val"
+                              ",credit_frac"
+                              ",exchange_account_section"
+                              ",sender_account_details"
+                              ",execution_date"
+                              ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
                               " ON CONFLICT DO NOTHING;",
                               7),
       /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
@@ -3488,6 +3502,7 @@ postgres_reserves_in_insert (void *cls,
   struct GNUNET_TIME_Absolute expiry;
   struct GNUNET_TIME_Absolute gc;
   struct GNUNET_TIME_Absolute now;
+  uint64_t reserve_uuid;
 
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
@@ -3517,34 +3532,61 @@ postgres_reserves_in_insert (void *cls,
       TALER_PQ_query_param_absolute_time (&gc),
       GNUNET_PQ_query_param_end
     };
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
+                                    &reserve_uuid),
+      GNUNET_PQ_result_spec_end
+    };
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     /* Note: query uses 'on conflict do nothing' */
-    qs1 = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                              "reserve_create",
-                                              params);
+    qs1 = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+                                                    "reserve_create",
+                                                    params,
+                                                    rs);
     if (qs1 < 0)
       return qs1;
   }
 
   /* Create new incoming transaction, "ON CONFLICT DO NOTHING"
      is again used to guard against duplicates. */
+
   {
-    struct GNUNET_PQ_QueryParam params[] = {
-      GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
-      GNUNET_PQ_query_param_uint64 (&wire_ref),
-      TALER_PQ_query_param_amount (balance),
-      GNUNET_PQ_query_param_string (exchange_account_section),
-      GNUNET_PQ_query_param_string (sender_account_details),
-      TALER_PQ_query_param_absolute_time (&execution_time),
-      GNUNET_PQ_query_param_end
-    };
     enum GNUNET_DB_QueryStatus qs2;
 
-    qs2 = GNUNET_PQ_eval_prepared_non_select (session->conn,
-                                              "reserves_in_add_transaction",
-                                              params);
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs1)
+    {
+      struct GNUNET_PQ_QueryParam params[] = {
+        GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
+        GNUNET_PQ_query_param_uint64 (&wire_ref),
+        TALER_PQ_query_param_amount (balance),
+        GNUNET_PQ_query_param_string (exchange_account_section),
+        GNUNET_PQ_query_param_string (sender_account_details),
+        TALER_PQ_query_param_absolute_time (&execution_time),
+        GNUNET_PQ_query_param_end
+      };
+
+      qs2 = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                                "reserves_in_add_transaction",
+                                                params);
+    }
+    else
+    {
+      struct GNUNET_PQ_QueryParam params[] = {
+        GNUNET_PQ_query_param_uint64 (&reserve_uuid),
+        GNUNET_PQ_query_param_uint64 (&wire_ref),
+        TALER_PQ_query_param_amount (balance),
+        GNUNET_PQ_query_param_string (exchange_account_section),
+        GNUNET_PQ_query_param_string (sender_account_details),
+        TALER_PQ_query_param_absolute_time (&execution_time),
+        GNUNET_PQ_query_param_end
+      };
+
+      qs2 = GNUNET_PQ_eval_prepared_non_select (session->conn,
+                                                "reserves_in_add_by_uuid",
+                                                params);
+    }
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs2)
     {
       GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs2);

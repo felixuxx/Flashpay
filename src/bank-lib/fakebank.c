@@ -1403,7 +1403,8 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   {
     struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
 
-    if (NULL == t)
+    if ( (NULL == t) ||
+         (t->row_id != ha.start_idx) )
     {
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
@@ -1524,7 +1525,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   {
     struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
 
-    if (NULL == t)
+    if ( (NULL == t) ||
+         (t->row_id != ha.start_idx) )
     {
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));

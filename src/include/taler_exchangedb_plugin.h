@@ -2095,6 +2095,21 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Start a READ COMMITTED transaction.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param session the database connection
+   * @param name unique name identifying the transaction (for debugging)
+   *             must point to a constant
+   * @return #GNUNET_OK on success
+   */
+  int
+  (*start_read_committed)(void *cls,
+                          struct TALER_EXCHANGEDB_Session *session,
+                          const char *name);
+
+
+  /**
    * Commit a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
