@@ -116,7 +116,7 @@ struct WireAccount
   /**
    * How much do we incremnt @e batch_size on success?
    */
-  unsigned int batch_increment;
+  unsigned int batch_thresh;
 
   /**
    * How many transactions did we see in the current batch?
@@ -375,8 +375,8 @@ handle_soft_error (struct WireAccount *wa)
                        wa->session);
   if (1 < wa->batch_size)
   {
+    wa->batch_thresh = wa->batch_size;
     wa->batch_size /= 2;
-    wa->batch_increment = 0;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reduced batch size to %llu due to serialization issue\n",
                 (unsigned long long) wa->batch_size);
@@ -451,9 +451,13 @@ do_commit (struct WireAccount *wa)
   wa->session = NULL;     /* should not be needed */
   if (wa->batch_size < MAXIMUM_BATCH_SIZE)
   {
-    wa->batch_increment++;
+    int delta;
+
+    delta = ((int) wa->batch_thresh - (int) wa->batch_size) / 4;
+    if (delta < 0)
+      delta = -delta;
     wa->batch_size = GNUNET_MIN (MAXIMUM_BATCH_SIZE,
-                                 wa->batch_size + wa->batch_increment);
+                                 wa->batch_size + delta + 1);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Increasing batch size to %llu\n",
                 (unsigned long long) wa->batch_size);
@@ -669,9 +673,9 @@ find_transfers (void *cls)
     }
   }
   if (GNUNET_OK !=
-      db_plugin->start (db_plugin->cls,
-                        session,
-                        "wirewatch check for incoming wire transfers"))
+      db_plugin->start_read_committed (db_plugin->cls,
+                                       session,
+                                       "wirewatch check for incoming wire transfers"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
@@ -679,6 +683,7 @@ find_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+
   limit = GNUNET_MIN (wa_pos->batch_size,
                       wa_pos->shard_end - wa_pos->batch_start);
   GNUNET_assert (NULL == wa_pos->hh);
