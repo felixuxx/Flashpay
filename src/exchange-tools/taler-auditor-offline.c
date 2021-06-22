@@ -884,9 +884,9 @@ parse_keys (const char *command_name)
   {
     json_error_t err;
 
-    out = json_loadf (stdin,
-                      JSON_REJECT_DUPLICATES,
-                      &err);
+    in = json_loadf (stdin,
+                     JSON_REJECT_DUPLICATES,
+                     &err);
     if (NULL == in)
     {
       fprintf (stderr,
@@ -958,7 +958,11 @@ do_show (char *const *args)
 
   keys = parse_keys ("show");
   if (NULL == keys)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Showing failed: no valid input\n");
     return;
+  }
   if (GNUNET_OK !=
       GNUNET_JSON_parse (keys,
                          spec,
@@ -1155,7 +1159,11 @@ do_sign (char *const *args)
 
   keys = parse_keys ("sign");
   if (NULL == keys)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Signing failed: no valid input\n");
     return;
+  }
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
   {

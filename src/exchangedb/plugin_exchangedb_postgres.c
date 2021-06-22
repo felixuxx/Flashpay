@@ -3551,7 +3551,6 @@ postgres_reserves_in_insert (void *cls,
 
   /* Create new incoming transaction, "ON CONFLICT DO NOTHING"
      is again used to guard against duplicates. */
-
   {
     enum GNUNET_DB_QueryStatus qs2;
 
