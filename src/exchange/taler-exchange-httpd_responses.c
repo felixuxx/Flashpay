@@ -485,9 +485,11 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
     .h_denom_pub = *dph,
   };
 
-  strncpy (dua.operation,
-           oper,
-           sizeof (dua.operation));
+  /* strncpy would create a compiler warning */
+  memcpy (dua.operation,
+          oper,
+          GNUNET_MIN (sizeof (dua.operation),
+                      strlen (oper)));
   ecr = TEH_keys_exchange_sign (&dua,
                                 &epub,
                                 &esig);
