@@ -395,11 +395,13 @@ denomination_add_cb (
   if (MHD_HTTP_NO_CONTENT != hr->http_status)
   {
     fprintf (stderr,
-             "Upload failed for command %u with status %u: %s (%s)\n",
+             "Upload failed for command #%u with status %u: %s (%s)\n",
              (unsigned int) dar->idx,
              hr->http_status,
              TALER_ErrorCode_get_hint (hr->ec),
-             hr->hint);
+             NULL != hr->hint
+             ? hr->hint
+             : "no hint provided");
     global_ret = 42;
   }
   GNUNET_CONTAINER_DLL_remove (dar_head,

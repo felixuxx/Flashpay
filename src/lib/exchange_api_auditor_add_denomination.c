@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -106,13 +106,25 @@ handle_auditor_add_denomination_finished (void *cls,
     break;
   default:
     /* unexpected response code */
-    GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (json);
-    hr.hint = TALER_JSON_get_error_hint (json);
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d for exchange auditor-add-denomination\n",
-                (unsigned int) response_code,
-                (int) hr.ec);
+    if (NULL != json)
+    {
+      hr.ec = TALER_JSON_get_error_code (json);
+      hr.hint = TALER_JSON_get_error_hint (json);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected response code %u/%d for exchange auditor-add-denomination at URL `%s'\n",
+                  (unsigned int) response_code,
+                  (int) hr.ec,
+                  ah->url);
+    }
+    else
+    {
+      hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+      hr.hint = NULL;
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected HTTP response code %u (no JSON returned) at URL `%s'\n",
+                  (unsigned int) response_code,
+                  ah->url);
+    }
     break;
   }
   if (NULL != ah->cb)
