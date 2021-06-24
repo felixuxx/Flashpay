@@ -1,0 +1,6 @@
+usr/bin/taler-exchange-dbinit
+usr/lib/*/taler/libtaler_plugin_exchange*.so
+usr/share/man/man1/taler-exchange-dbinit
+usr/share/taler/sql/exchange/*
+usr/share/taler/config.d/exchangedb.conf
+usr/share/taler/config.d/exchangedb-postgres.conf

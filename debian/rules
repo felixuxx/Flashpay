@@ -40,4 +40,5 @@ override_dh_install:
 	cd debian/taler-auditor; find . -type f,l -exec rm -f ../libtalerauditor/{} \;
 	cd debian/taler-auditor; find . -type f,l -exec rm -f ../libtalerexchange/{} \;
 	cd debian/taler-auditor; find . -type f,l -exec rm -f ../taler-exchange/{} \;
+	cd debian/taler-exchange-database; find . -type f,l -exec rm -f ../taler-exchange/{} \;
 	cd debian/libtalerexchange; find . -type f,l -exec rm -f ../taler-exchange/{} \;

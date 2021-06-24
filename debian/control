@@ -45,12 +45,24 @@ Depends:
  ${shlibs:Depends}
 Description: libraries to talk to a GNU Taler exchange.
 
+Package: taler-exchange-database
+Architecture: any
+Pre-Depends:
+ ${misc:Pre-Depends}
+Depends:
+ lsb-base,
+ netbase,
+ ${misc:Depends},
+ ${shlibs:Depends}
+Description: programs and libraries to manage a GNU Taler exchange database.
+
 Package: taler-exchange
 Architecture: any
 Pre-Depends:
  ${misc:Pre-Depends}
 Depends:
  libtalerexchange (= ${binary:Version}),
+ taler-exchange-database (= ${binary:Version}),
  adduser,
  lsb-base,
  netbase,
@@ -65,6 +77,7 @@ Pre-Depends:
  ${misc:Pre-Depends}
 Depends:
  libtalerexchange (= ${binary:Version}),
+ taler-exchange-database (= ${binary:Version}),
  adduser,
  lsb-base,
  netbase,

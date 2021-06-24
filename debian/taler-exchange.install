@@ -1,12 +1,10 @@
 usr/bin/
-usr/lib/*/taler/libtaler_plugin_exchange*.so
 usr/share/man/man1/taler-exchange*
 usr/share/man/man1/taler-bank*
 usr/share/man/man1/taler-config*
 usr/share/man/man1/taler-wire*
 usr/share/info/taler-bank*
 usr/share/info/taler-exchange*
-usr/share/taler/sql/exchange/*
 usr/share/taler/config.d/*
 debian/etc/* etc/
 debian/exchange-conf/* etc/taler-exchange/
