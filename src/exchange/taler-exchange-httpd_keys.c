@@ -294,6 +294,12 @@ struct TEH_KeyStateHandle
   struct GNUNET_TIME_Absolute next_reload;
 
   /**
+   * When does our online signing key expire and we
+   * thus need to re-generate this response?
+   */
+  struct GNUNET_TIME_Absolute signature_expires;
+
+  /**
    * True if #finish_keys_response() was not yet run and this key state
    * is only suitable for the /management/keys API.
    */
@@ -1392,6 +1398,15 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       return GNUNET_SYSERR;
     }
   }
+  {
+    const struct SigningKey *sk;
+
+    sk = GNUNET_CONTAINER_multipeermap_get (
+      ksh->signkey_map,
+      (const struct GNUNET_PeerIdentity *) &exchange_pub);
+    ksh->signature_expires = GNUNET_TIME_absolute_min (sk->meta.expire_sign,
+                                                       ksh->signature_expires);
+  }
 
   keys = json_pack (
     "{s:s, s:s, s:o, s:o, s:O, s:O,"
@@ -1631,6 +1646,7 @@ build_key_state (struct HelperState *hs,
   enum GNUNET_DB_QueryStatus qs;
 
   ksh = GNUNET_new (struct TEH_KeyStateHandle);
+  ksh->signature_expires = GNUNET_TIME_UNIT_FOREVER_ABS;
   ksh->reload_time = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&ksh->reload_time);
   /* We must use the key_generation from when we STARTED the process! */
@@ -1757,7 +1773,9 @@ get_key_state (bool management_only)
     }
     return ksh;
   }
-  if (old_ksh->key_generation < key_generation)
+  if ( (old_ksh->key_generation < key_generation) ||
+       (0 == GNUNET_TIME_absolute_get_remaining (
+          old_ksh->signature_expires).rel_value_us) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Rebuilding /keys, generation upgrade from %llu to %llu\n",
