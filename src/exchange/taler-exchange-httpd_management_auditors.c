@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,6 +28,7 @@
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_keys.h"
 
 
 /**
@@ -139,6 +140,7 @@ add_auditor (void *cls,
                                            "add auditor");
     return qs;
   }
+  TEH_keys_update_states ();
   return qs;
 }
 
