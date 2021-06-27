@@ -956,6 +956,8 @@ lrbt_cb_table_wire_out (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
       TALER_PQ_result_spec_absolute_time ("execution_date",
                                           &td.details.wire_out.execution_date),
       GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",

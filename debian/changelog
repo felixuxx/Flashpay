@@ -1,3 +1,9 @@
+taler-exchange (0.9.0-11) unstable; urgency=low
+
+  * Fix typo in taler-auditor-sync.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Sun, 27 Jun 2021 14:02:10 +0100
+
 taler-exchange (0.9.0-10) unstable; urgency=low
 
   * Improve database performance for taler-exchange-wirewatch.
