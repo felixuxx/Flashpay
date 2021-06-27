@@ -963,7 +963,7 @@ lrbt_cb_table_wire_out (void *cls,
       TALER_PQ_result_spec_json ("wire_target",
                                  &td.details.wire_out.wire_target),
       GNUNET_PQ_result_spec_string (
-        "exchnage_account_section",
+        "exchange_account_section",
         &td.details.wire_out.exchange_account_section),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &td.details.wire_out.amount),
