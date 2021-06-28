@@ -12,7 +12,7 @@ pkgcfg_DATA = \
   auditor.conf
 
 clean-local:
-	rm -rf revocation-tmp-*
+	rm -rf revocation-tmp-* taler-auditor
 
 bin_PROGRAMS = \
   taler-auditor-dbinit \
