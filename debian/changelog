@@ -1,3 +1,9 @@
+taler-exchange (0.9.0-12) unstable; urgency=low
+
+  * Fix typo in taler-auditor shell script: clean before building.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Mon, 28 Jun 2021 14:02:10 +0100
+
 taler-exchange (0.9.0-11) unstable; urgency=low
 
   * Fix typo in taler-auditor-sync.

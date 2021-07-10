@@ -64,6 +64,11 @@ extern "C"
  */
 #define TALER_AMOUNT_FRAC_LEN 8
 
+/**
+ * Maximum legal 'value' for an amount, based on IEEE double (for JavaScript compatibility).
+ */
+#define TALER_AMOUNT_MAX_VALUE (1LLU << 52)
+
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
@@ -331,6 +336,32 @@ void
 TALER_amount_divide (struct TALER_Amount *result,
                      const struct TALER_Amount *dividend,
                      uint32_t divisor);
+
+/**
+ * Divide one amount by another.  Note that this function
+ * may introduce a rounding error. It rounds down.
+ *
+ * @param dividend amount to divide
+ * @param divisor by what to divide, must be positive
+ * @return @a dividend / @a divisor, rounded down. -1 on currency missmatch,
+ *         INT_MAX for division by zero
+ */
+int
+TALER_amount_divide2 (const struct TALER_Amount *dividend,
+                      const struct TALER_Amount *divisor);
+
+
+/**
+ * Multiply an @a amount by a @ factor.
+ *
+ * @param[out] result where to store @a amount * @a factor
+ * @param amount amount to multiply
+ * @param factor factor by which to multiply
+ */
+enum TALER_AmountArithmeticResult
+TALER_amount_multiply (struct TALER_Amount *result,
+                       const struct TALER_Amount *amount,
+                       uint32_t factor);
 
 
 /**

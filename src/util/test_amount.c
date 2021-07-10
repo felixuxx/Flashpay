@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015 Taler Systems SA
+  (C) 2015, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -186,21 +186,27 @@ main (int argc,
 
   /* test addition with overflow */
   a1.fraction = TALER_AMOUNT_FRAC_BASE - 1;
-  a1.value = UINT64_MAX - 5;
+  a1.value = TALER_AMOUNT_MAX_VALUE - 5;
   a2.fraction = 2;
   a2.value = 5;
   GNUNET_assert (TALER_AAR_INVALID_RESULT_OVERFLOW ==
-                 TALER_amount_add (&a3, &a1, &a2));
+                 TALER_amount_add (&a3,
+                                   &a1,
+                                   &a2));
 
   /* test addition with underflow on fraction */
   a1.fraction = 1;
-  a1.value = UINT64_MAX;
+  a1.value = TALER_AMOUNT_MAX_VALUE;
   a2.fraction = 2;
   a2.value = 0;
   GNUNET_assert (TALER_AAR_RESULT_POSITIVE ==
-                 TALER_amount_subtract (&a3, &a1, &a2));
-  GNUNET_assert (UINT64_MAX - 1 == a3.value);
-  GNUNET_assert (TALER_AMOUNT_FRAC_BASE - 1 == a3.fraction);
+                 TALER_amount_subtract (&a3,
+                                        &a1,
+                                        &a2));
+  GNUNET_assert (TALER_AMOUNT_MAX_VALUE - 1 ==
+                 a3.value);
+  GNUNET_assert (TALER_AMOUNT_FRAC_BASE - 1 ==
+                 a3.fraction);
 
   /* test division */
   GNUNET_assert (GNUNET_OK ==
@@ -288,6 +294,53 @@ main (int argc,
                                           &r));
   GNUNET_assert (0 == TALER_amount_cmp (&a1,
                                         &a2));
+
+  /* test multiplication */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:0",
+                                         &a1));
+  GNUNET_assert (TALER_AAR_RESULT_ZERO ==
+                 TALER_amount_multiply (&a2,
+                                        &a1,
+                                        42));
+  GNUNET_assert (0 == TALER_amount_cmp (&a1,
+                                        &a2));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:5.001",
+                                         &a1));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:5001",
+                                         &r));
+  GNUNET_assert (TALER_AAR_RESULT_POSITIVE ==
+                 TALER_amount_multiply (&a2,
+                                        &a1,
+                                        1000));
+  GNUNET_assert (0 == TALER_amount_cmp (&r,
+                                        &a2));
+  GNUNET_assert (1000 ==
+                 TALER_amount_divide2 (&a2,
+                                       &a1));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:5006.00099999",
+                                         &r));
+  GNUNET_assert (1000 ==
+                 TALER_amount_divide2 (&r,
+                                       &a1));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:5000.99999999",
+                                         &r));
+  GNUNET_assert (999 ==
+                 TALER_amount_divide2 (&r,
+                                       &a1));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_string_to_amount ("BTC:0",
+                                         &a1));
+  GNUNET_assert (INT_MAX ==
+                 TALER_amount_divide2 (&a2,
+                                       &a1));
+  GNUNET_assert (0 ==
+                 TALER_amount_divide2 (&a1,
+                                       &a2));
   return 0;
 }
 
