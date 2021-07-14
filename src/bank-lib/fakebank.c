@@ -343,7 +343,7 @@ struct TALER_FAKEBANK_Handle
 /**
  * Lookup account with @a name, and if it does not exist, create it.
  *
- * @param[in,out] bank to lookup account at
+ * @param[in,out] h bank to lookup account at
  * @param name account name to resolve
  * @return account handle (never NULL)
  */
@@ -773,7 +773,7 @@ make_transfer (
  * @param credit_account account to credit
  * @param amount amount to transfer
  * @param reserve_pub reserve public key to use in subject
- * @param[out] serial_id of the transfer
+ * @param[out] row_id serial_id of the transfer
  * @param[out] timestamp when was the transfer made
  * @return #GNUNET_OK on success
  */

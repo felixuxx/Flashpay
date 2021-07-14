@@ -131,7 +131,7 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
  * @param h bank instance
  * @param want_amount transfer amount desired
  * @param want_debit account that should have been debited
- * @param want_debit account that should have been credited
+ * @param want_credit account that should have been credited
  * @param reserve_pub reserve public key expected in wire subject
  * @return #GNUNET_OK on success
  */
