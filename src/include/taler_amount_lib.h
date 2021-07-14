@@ -343,7 +343,7 @@ TALER_amount_divide (struct TALER_Amount *result,
  *
  * @param dividend amount to divide
  * @param divisor by what to divide, must be positive
- * @return @a dividend / @a divisor, rounded down. -1 on currency missmatch,
+ * @return @a dividend / @a divisor, rounded down. -1 on currency mismatch,
  *         INT_MAX for division by zero
  */
 int
