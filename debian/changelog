@@ -1,3 +1,9 @@
+taler-exchange (0.9.0-13) unstable; urgency=low
+
+  * New Taler amount operations (multiply and divide) added.
+
+ -- Christian Grothoff <grothoff@gnu.org>  Wed, 14 Jul 2021 14:02:10 +0100
+
 taler-exchange (0.9.0-12) unstable; urgency=low
 
   * Fix typo in taler-auditor shell script: clean before building.

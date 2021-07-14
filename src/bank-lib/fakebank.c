@@ -728,7 +728,6 @@ make_transfer (
   t->debit_account = debit_acc;
   t->credit_account = credit_acc;
   t->amount = *amount;
-  t->row_id = *ret_row_id;
   t->date = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&t->date);
   t->type = T_DEBIT;
