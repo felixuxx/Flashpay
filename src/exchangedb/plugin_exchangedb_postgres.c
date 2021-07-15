@@ -10362,7 +10362,7 @@ postgres_insert_records_by_table (void *cls,
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param job_name name of the operation to grab a word shard for
  * @param delay minimum age of a shard to grab
- * @param size desired shard size
+ * @param shard_size desired shard size
  * @param[out] start_row inclusive start row of the shard (returned)
  * @param[out] end_row exclusive end row of the shard (returned)
  * @return transaction status code
