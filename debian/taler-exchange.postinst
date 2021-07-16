@@ -4,17 +4,19 @@ set -e
 
 . /usr/share/debconf/confmodule
 
+TALER_HOME="/var/lib/taler-exchange"
+
 # usage: fixperm user:group perms file
 function fixperm() {
   chown "$1" "$3"
   chmod "$2" "$3"
 }
 
-# usage: lncfg user target
+# usage: lncfg user home target
 function lncfg() {
-  mkdir ~$1/.config
-  chown $1:$1 ~$1/.config
-  ln -sf $1/.config/taler.conf $2
+  mkdir $TALER_HOME/$2/.config
+  chown $1:$1 $TALER_HOME/$2/.config
+  ln -sf $TALER_HOME/$2/.config/taler.conf $3
 }
 
 case "${1}" in
@@ -45,7 +47,6 @@ configure)
   db_stop
 
   CONFIG_FILE="/etc/default/taler-exchange"
-  TALER_HOME="/var/lib/taler-exchange"
 
   # Creating taler groups as needed
   if ! getent group ${_GROUPNAME} >/dev/null; then
@@ -244,11 +245,11 @@ EOF
   echo "done."
 
   echo -n "Linking config files"
-  lncfg ${_EUSERNAME} /etc/taler/exchange-service-default.conf
-  lncfg ${_RSECUSERNAME} /etc/taler/exchange-service-default.conf
-  lncfg ${_ESECUSERNAME} /etc/taler/exchange-service-default.conf
-  lncfg ${_AGGRUSERNAME} /etc/taler/exchange-service-default.conf
-  lncfg ${_WIREUSERNAME} /etc/taler/exchange-service-wire.conf
+  lncfg ${_EUSERNAME} httpd /etc/taler/exchange-service-default.conf
+  lncfg ${_RSECUSERNAME} secmod-rsa /etc/taler/exchange-service-default.conf
+  lncfg ${_ESECUSERNAME} secmod-eddsa /etc/taler/exchange-service-default.conf
+  lncfg ${_AGGRUSERNAME} aggregator /etc/taler/exchange-service-default.conf
+  lncfg ${_WIREUSERNAME} wire /etc/taler/exchange-service-wire.conf
   echo " done"
 
   # Cleaning
