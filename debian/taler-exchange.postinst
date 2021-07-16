@@ -19,7 +19,7 @@ function lncfg() {
     mkdir $cf
     chown $(stat -L -c %u $TALER_HOME/$2):$(stat -L -c %g $TALER_HOME/$2) $cf
   fi
-  ln -sf $cf/taler.conf $3
+  ln -sf $3 $cf/taler.conf
 }
 
 case "${1}" in
