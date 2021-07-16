@@ -1,4 +1,9 @@
 usr/bin/taler-exchange-*
+usr/bin/taler-bank-benchmark
+usr/bin/taler-bank-manage-testing
+usr/bin/taler-fakebank-run
+usr/bin/taler-nexus-prepare
+usr/bin/taler-wire-gateway-client
 usr/share/man/man1/taler-exchange*
 usr/share/man/man1/taler-bank*
 usr/share/man/man1/taler-config*
