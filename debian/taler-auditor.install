@@ -13,6 +13,6 @@ usr/share/man/man1/taler-helper-auditor*
 usr/share/info/taler-auditor*
 usr/share/taler/config.d/auditor*
 usr/share/taler/sql/auditor/*
-debian/etc/taler-auditor.conf etc/
+debian/etc/taler/auditor* etc/
 debian/auditor-conf/* etc/taler-auditor/
 usr/share/taler-exchange/auditor-report.tex.j2

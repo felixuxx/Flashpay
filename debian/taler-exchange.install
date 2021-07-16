@@ -6,7 +6,7 @@ usr/share/man/man1/taler-wire*
 usr/share/info/taler-bank*
 usr/share/info/taler-exchange*
 usr/share/taler/config.d/*
-debian/etc/* etc/
-debian/exchange-conf/* etc/taler-exchange/
+debian/etc/exchange* etc/
+debian/exchange-conf/* usr/share/taler/sample-configs/
 usr/share/taler-exchange/pp/*/*
 usr/share/taler-exchange/tos/*/*
