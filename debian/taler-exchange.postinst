@@ -17,7 +17,7 @@ function lncfg() {
   local cf=$TALER_HOME/$2/.config
   if [ ! -e $cf ]; then
     mkdir $cf
-    chown $1:$1 $cf
+    chown $(stat -L -c %u $TALER_HOME/$2):$(stat -L -c %g $TALER_HOME/$2) $cf
   fi
   ln -sf $cf/taler.conf $3
 }
