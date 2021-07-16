@@ -66,6 +66,7 @@ Depends:
  adduser,
  lsb-base,
  netbase,
+ ucf,
  dbconfig-pgsql | dbconfig-no-thanks,
  ${misc:Depends},
  ${shlibs:Depends}
