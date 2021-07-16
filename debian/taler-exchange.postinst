@@ -14,9 +14,12 @@ function fixperm() {
 
 # usage: lncfg user home target
 function lncfg() {
-  mkdir $TALER_HOME/$2/.config
-  chown $1:$1 $TALER_HOME/$2/.config
-  ln -sf $TALER_HOME/$2/.config/taler.conf $3
+  local cf=$TALER_HOME/$2/.config
+  if [ ! -e $cf ]; then
+    mkdir $cf
+    chown $1:$1 $cf
+  fi
+  ln -sf $cf/taler.conf $3
 }
 
 case "${1}" in

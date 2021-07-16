@@ -6,6 +6,7 @@ Build-Depends:
  autoconf (>=2.59),
  automake (>=1.11.1),
  autopoint,
+ bash,
  debhelper-compat (= 13),
  gettext,
  libgnunet-dev,
