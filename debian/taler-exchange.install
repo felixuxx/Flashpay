@@ -1,4 +1,4 @@
-usr/bin/
+usr/bin/taler-exchange-*
 usr/share/man/man1/taler-exchange*
 usr/share/man/man1/taler-bank*
 usr/share/man/man1/taler-config*
