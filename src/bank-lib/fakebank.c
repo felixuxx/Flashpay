@@ -402,6 +402,8 @@ check_log (struct TALER_FAKEBANK_Handle *h)
   {
     struct Transaction *t = h->transactions[i];
 
+    if (NULL == t)
+      continue;
     if (t->unchecked)
       continue;
     switch (t->type)
