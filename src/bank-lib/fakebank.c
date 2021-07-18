@@ -754,7 +754,7 @@ make_transfer (
                    GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->uuid_map_lock));
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Making transfer %llu from %s to %s over %s and subject %s; for exchange: %s\n",
               (unsigned long long) t->row_id,
               debit_account,
@@ -1296,7 +1296,8 @@ struct HistoryArgs
  * @return #GNUNET_OK only if the parsing succeeds.
  */
 static int
-parse_history_common_args (struct MHD_Connection *connection,
+parse_history_common_args (struct TALER_FAKEBANK_Handle *h,
+                           struct MHD_Connection *connection,
                            struct HistoryArgs *ha)
 {
   const char *start;
@@ -1338,7 +1339,7 @@ parse_history_common_args (struct MHD_Connection *connection,
     return GNUNET_NO;
   }
   if (NULL == start)
-    ha->start_idx = (d > 0) ? 0 : UINT64_MAX;
+    ha->start_idx = (d > 0) ? 0 : h->serial_counter;
   else
     ha->start_idx = (uint64_t) sval;
   ha->delta = (int64_t) d;
@@ -1350,6 +1351,10 @@ parse_history_common_args (struct MHD_Connection *connection,
   ha->lp_timeout
     = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
                                      lp_timeout);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Request for %lld records from %llu\n",
+              (long long) ha->delta,
+              (unsigned long long) ha->start_idx);
   return GNUNET_OK;
 }
 
@@ -1374,7 +1379,8 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   char *debit_payto;
 
   if (GNUNET_OK !=
-      parse_history_common_args (connection,
+      parse_history_common_args (h,
+                                 connection,
                                  &ha))
   {
     GNUNET_break (0);
@@ -1404,9 +1410,26 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   else
   {
     struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
+    bool overflow;
+    uint64_t dir;
+    bool skip = true;
 
+    dir = (0 > ha.delta) ? (h->ram_limit - 1) : 1;
+    overflow = (t->row_id != ha.start_idx);
+    /* If account does not match, linear scan for
+       first matching account. */
+    while ( (! overflow) &&
+            (NULL != t) &&
+            (t->debit_account != acc) )
+    {
+      skip = false;
+      t = h->transactions[(t->row_id + dir) % h->ram_limit];
+      if ( (NULL != t) &&
+           (t->row_id == ha.start_idx) )
+        overflow = true; /* full circle, give up! */
+    }
     if ( (NULL == t) ||
-         (t->row_id != ha.start_idx) )
+         overflow)
     {
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
@@ -1430,12 +1453,27 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
       json_decref (history);
       return MHD_NO;
     }
-    /* range is exclusive, skip the matching entry */
-    if (0 > ha.delta)
-      pos = t->prev_out;
+    if (skip)
+    {
+      /* range is exclusive, skip the matching entry */
+      if (0 > ha.delta)
+        pos = t->prev_out;
+      else
+        pos = t->next_out;
+    }
     else
-      pos = t->next_out;
+    {
+      pos = t;
+    }
   }
+  if (NULL != pos)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning %lld debit transactions starting (inclusive) from %llu\n",
+                (long long) ha.delta,
+                (unsigned long long) pos->row_id);
+  else
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No debit transactions exist after given starting point\n");
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {
@@ -1502,7 +1540,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   char *credit_payto;
 
   if (GNUNET_OK !=
-      parse_history_common_args (connection,
+      parse_history_common_args (h,
+                                 connection,
                                  &ha))
   {
     GNUNET_break (0);
@@ -1526,9 +1565,26 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   else
   {
     struct Transaction *t = h->transactions[ha.start_idx % h->ram_limit];
+    bool overflow;
+    uint64_t dir;
+    bool skip = true;
 
+    overflow = (t->row_id != ha.start_idx);
+    dir = (0 > ha.delta) ? (h->ram_limit - 1) : 1;
+    /* If account does not match, linear scan for
+       first matching account. */
+    while ( (! overflow) &&
+            (NULL != t) &&
+            (t->credit_account != acc) )
+    {
+      skip = false;
+      t = h->transactions[(t->row_id + dir) % h->ram_limit];
+      if ( (NULL != t) &&
+           (t->row_id == ha.start_idx) )
+        overflow = true; /* full circle, give up! */
+    }
     if ( (NULL == t) ||
-         (t->row_id != ha.start_idx) )
+         overflow)
     {
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->big_lock));
@@ -1540,24 +1596,28 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                                         "incoming_transactions",
                                         history);
     }
-    if (t->credit_account != acc)
+    if (skip)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid start specified, transaction %llu not with account %s!\n",
-                  (unsigned long long) ha.start_idx,
-                  account);
-      GNUNET_assert (0 ==
-                     pthread_mutex_unlock (&h->big_lock));
-      json_decref (history);
-      GNUNET_free (credit_payto);
-      return MHD_NO;
+      /* range from application is exclusive, skip the
+  matching entry */
+      if (0 > ha.delta)
+        pos = t->prev_in;
+      else
+        pos = t->next_in;
     }
-    /* range is exclusive, skip the matching entry */
-    if (0 > ha.delta)
-      pos = t->prev_in;
     else
-      pos = t->next_in;
+    {
+      pos = t;
+    }
   }
+  if (NULL != pos)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Returning %lld credit transactions starting (inclusive) from %llu\n",
+                (long long) ha.delta,
+                (unsigned long long) pos->row_id);
+  else
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "No credit transactions exist after given starting point\n");
   while ( (0 != ha.delta) &&
           (NULL != pos) )
   {

@@ -196,9 +196,10 @@ main (int argc,
   }
 
   TALER_TESTING_cleanup_files (config_filename);
-  if (GNUNET_OK != TALER_TESTING_prepare_exchange (config_filename,
-                                                   GNUNET_YES,
-                                                   &ec))
+  if (GNUNET_OK !=
+      TALER_TESTING_prepare_exchange (config_filename,
+                                      GNUNET_YES,
+                                      &ec))
   {
     TALER_LOG_INFO ("Could not prepare the exchange\n");
     return 77;
@@ -210,10 +211,10 @@ main (int argc,
                                       &bc))
     return 77;
 
-  return
-    (GNUNET_OK == TALER_TESTING_setup_with_exchange (&run,
-                                                     NULL,
-                                                     config_filename)) ? 0 : 1;
+  return (GNUNET_OK ==
+          TALER_TESTING_setup_with_exchange (&run,
+                                             NULL,
+                                             config_filename)) ? 0 : 1;
 }
 
 

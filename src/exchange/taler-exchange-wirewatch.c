@@ -548,6 +548,7 @@ history_cb (void *cls,
                 (unsigned long long) serial_id,
                 (unsigned long long) wa->shard_end);
     wa->latest_row_off = serial_id - 1;
+    wa->delay = false;
     do_commit (wa);
     wa->hh = NULL;
     return GNUNET_SYSERR;
@@ -629,12 +630,15 @@ find_transfers (void *cls)
     struct GNUNET_TIME_Relative delay;
     /* advance to next shard */
 
-    delay.rel_value_us = GNUNET_CRYPTO_random_u64 (
-      GNUNET_CRYPTO_QUALITY_WEAK,
-      4 * GNUNET_TIME_relative_max (
-        wirewatch_idle_sleep_interval,
-        GNUNET_TIME_relative_multiply (shard_delay,
-                                       max_workers)).rel_value_us);
+    if (0 == max_workers)
+      delay = GNUNET_TIME_UNIT_ZERO;
+    else
+      delay.rel_value_us = GNUNET_CRYPTO_random_u64 (
+        GNUNET_CRYPTO_QUALITY_WEAK,
+        4 * GNUNET_TIME_relative_max (
+          wirewatch_idle_sleep_interval,
+          GNUNET_TIME_relative_multiply (shard_delay,
+                                         max_workers)).rel_value_us);
     qs = db_plugin->begin_shard (db_plugin->cls,
                                  wa_pos->job_name,
                                  delay,
