@@ -1291,7 +1291,7 @@ struct HistoryArgs
  * Parse URL history arguments, of _both_ APIs:
  * /history/incoming and /history/outgoing.
  *
- * @param in h bank handle to work on
+ * @param h bank handle to work on
  * @param connection MHD connection.
  * @param[out] ha will contain the parsed values.
  * @return #GNUNET_OK only if the parsing succeeds.
