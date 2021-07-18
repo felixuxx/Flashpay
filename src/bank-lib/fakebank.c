@@ -866,7 +866,8 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
   {
     struct Transaction *t = h->transactions[i];
 
-    if (t->unchecked)
+    if ( (NULL != t) &&
+         (t->unchecked) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Expected empty transaction set, but I have:\n");

@@ -115,6 +115,7 @@ parse_amount_nbo (void *cls,
                   struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_AmountNBO *r_amount = spec->ptr;
+  const char *sv;
 
   (void) cls;
   if (! json_is_string (root))
@@ -122,10 +123,14 @@ parse_amount_nbo (void *cls,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+  sv = json_string_value (root);
   if (GNUNET_OK !=
-      TALER_string_to_amount_nbo (json_string_value (root),
+      TALER_string_to_amount_nbo (sv,
                                   r_amount))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "`%s' is not a valid amount\n",
+                sv);
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
@@ -172,7 +177,8 @@ parse_abs_time (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  json_t_ms = json_object_get (root, "t_ms");
+  json_t_ms = json_object_get (root,
+                               "t_ms");
   if (json_is_integer (json_t_ms))
   {
     tval = json_integer_value (json_t_ms);
@@ -196,16 +202,18 @@ parse_abs_time (void *cls,
   if (json_is_string (json_t_ms))
   {
     const char *val;
+
     val = json_string_value (json_t_ms);
     if ((0 == strcasecmp (val, "never")))
     {
       *abs = GNUNET_TIME_UNIT_FOREVER_ABS;
       return GNUNET_OK;
     }
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "`%s' is not a valid absolute time\n",
+                json_string_value (json_t_ms));
     return GNUNET_SYSERR;
   }
-  GNUNET_break_op (0);
   return GNUNET_SYSERR;
 }
 
@@ -252,7 +260,10 @@ parse_abs_time_nbo (void *cls,
       parse_abs_time (NULL,
                       root,
                       &ispec))
+  {
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
+  }
   *abs = GNUNET_TIME_absolute_hton (a);
   return GNUNET_OK;
 }
