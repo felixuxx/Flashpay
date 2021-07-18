@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.5 (Debian 10.5-1)
--- Dumped by pg_dump version 10.5 (Debian 10.5-1)
+-- Dumped from database version 13.3 (Debian 13.3-1)
+-- Dumped by pg_dump version 13.3 (Debian 13.3-1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12,6 +12,7 @@ SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
+SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
@@ -27,20 +28,6 @@ CREATE SCHEMA _v;
 --
 
 COMMENT ON SCHEMA _v IS 'Schema for versioning data and functionality.';
-
-
---
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-
-
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 --
@@ -271,7 +258,7 @@ COMMENT ON FUNCTION _v.unregister_patch(in_patch_name text, OUT versioning integ
 
 SET default_tablespace = '';
 
-SET default_with_oids = false;
+SET default_table_access_method = heap;
 
 --
 -- Name: patches; Type: TABLE; Schema: _v; Owner: -
@@ -3507,6 +3494,88 @@ ALTER SEQUENCE public.wire_out_wireout_uuid_seq OWNED BY public.wire_out.wireout
 
 
 --
+-- Name: work_shards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.work_shards (
+    shard_serial_id bigint NOT NULL,
+    last_attempt bigint NOT NULL,
+    start_row bigint NOT NULL,
+    end_row bigint NOT NULL,
+    completed boolean DEFAULT false NOT NULL,
+    job_name character varying NOT NULL
+);
+
+
+--
+-- Name: TABLE work_shards; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.work_shards IS 'coordinates work between multiple processes working on the same job';
+
+
+--
+-- Name: COLUMN work_shards.shard_serial_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.work_shards.shard_serial_id IS 'unique serial number identifying the shard';
+
+
+--
+-- Name: COLUMN work_shards.last_attempt; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.work_shards.last_attempt IS 'last time a worker attempted to work on the shard';
+
+
+--
+-- Name: COLUMN work_shards.start_row; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.work_shards.start_row IS 'row at which the shard scope starts, inclusive';
+
+
+--
+-- Name: COLUMN work_shards.end_row; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.work_shards.end_row IS 'row at which the shard scope ends, exclusive';
+
+
+--
+-- Name: COLUMN work_shards.completed; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.work_shards.completed IS 'set to TRUE once the shard is finished by a worker';
+
+
+--
+-- Name: COLUMN work_shards.job_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.work_shards.job_name IS 'unique name of the job the workers on this shard are performing';
+
+
+--
+-- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.work_shards_shard_serial_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.work_shards_shard_serial_id_seq OWNED BY public.work_shards.shard_serial_id;
+
+
+--
 -- Name: aggregation_tracking aggregation_serial_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3826,6 +3895,13 @@ ALTER TABLE ONLY public.wire_fee ALTER COLUMN wire_fee_serial SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY public.wire_out ALTER COLUMN wireout_uuid SET DEFAULT nextval('public.wire_out_wireout_uuid_seq'::regclass);
+
+
+--
+-- Name: work_shards shard_serial_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_shards ALTER COLUMN shard_serial_id SET DEFAULT nextval('public.work_shards_shard_serial_id_seq'::regclass);
 
 
 --
@@ -5490,6 +5566,14 @@ COPY public.wire_out (wireout_uuid, execution_date, wtid_raw, wire_target, excha
 
 
 --
+-- Data for Name: work_shards; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.work_shards (shard_serial_id, last_attempt, start_row, end_row, completed, job_name) FROM stdin;
+\.
+
+
+--
 -- Name: aggregation_tracking_aggregation_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -5809,6 +5893,13 @@ SELECT pg_catalog.setval('public.wire_fee_wire_fee_serial_seq', 1, true);
 --
 
 SELECT pg_catalog.setval('public.wire_out_wireout_uuid_seq', 1, false);
+
+
+--
+-- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.work_shards_shard_serial_id_seq', 1, false);
 
 
 --
@@ -6692,6 +6783,22 @@ ALTER TABLE ONLY public.wire_out
 
 
 --
+-- Name: work_shards work_shards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_shards
+    ADD CONSTRAINT work_shards_pkey PRIMARY KEY (job_name, start_row);
+
+
+--
+-- Name: work_shards work_shards_shard_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.work_shards
+    ADD CONSTRAINT work_shards_shard_serial_id_key UNIQUE (shard_serial_id);
+
+
+--
 -- Name: aggregation_tracking_wtid_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7046,6 +7153,13 @@ CREATE INDEX reserves_out_execution_date ON public.reserves_out USING btree (exe
 --
 
 CREATE INDEX wire_fee_gc_index ON public.wire_fee USING btree (end_date);
+
+
+--
+-- Name: work_shards_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX work_shards_index ON public.work_shards USING btree (job_name, completed, last_attempt);
 
 
 --
