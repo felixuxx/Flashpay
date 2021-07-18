@@ -1291,12 +1291,13 @@ struct HistoryArgs
  * Parse URL history arguments, of _both_ APIs:
  * /history/incoming and /history/outgoing.
  *
+ * @param in h bank handle to work on
  * @param connection MHD connection.
  * @param[out] ha will contain the parsed values.
  * @return #GNUNET_OK only if the parsing succeeds.
  */
 static int
-parse_history_common_args (struct TALER_FAKEBANK_Handle *h,
+parse_history_common_args (const struct TALER_FAKEBANK_Handle *h,
                            struct MHD_Connection *connection,
                            struct HistoryArgs *ha)
 {
