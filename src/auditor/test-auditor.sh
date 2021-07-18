@@ -119,7 +119,7 @@ function audit_only () {
 
 # Cleanup to run after the auditor
 function post_audit () {
-    taler-exchange-dbinit -g || exit_fail "exchange DB GC failed"
+    taler-exchange-dbinit -c $CONF -g || exit_fail "exchange DB GC failed"
 
     cleanup
     echo -n "TeXing ."
