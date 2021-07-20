@@ -368,27 +368,25 @@ validate_payto_iban (const char *account_url)
 }
 
 
-/**
- * Validate payto:// account URL (only account information,
- * wire subject and amount are ignored).
- *
- * @param account_url URL to parse
- * @return #GNUNET_YES if @a account_url is a valid payto://iban URI
- *         #GNUNET_NO if @a account_url  is a payto URI of an unsupported type (but may be valid)
- *         #GNUNET_SYSERR if the account incorrect or this is not a payto://-URI at all
- */
-static int
-validate_payto (const char *account_url)
+enum GNUNET_GenericReturnValue
+TALER_JSON_validate_payto (const char *payto_uri)
 {
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
+  const char *start;
+  const char *end;
 
 #define PAYTO_PREFIX "payto://"
-  if (0 != strncasecmp (account_url,
+  if (0 != strncasecmp (payto_uri,
                         PAYTO_PREFIX,
                         strlen (PAYTO_PREFIX)))
     return GNUNET_SYSERR; /* not payto */
+  start = &payto_uri[strlen (PAYTO_PREFIX)];
 #undef PAYTO_PREFIX
-  if (GNUNET_NO != (ret = validate_payto_iban (account_url)))
+  end = strchr (start,
+                (unsigned char) '/');
+  if (NULL == end)
+    return GNUNET_SYSERR;
+  if (GNUNET_NO != (ret = validate_payto_iban (payto_uri)))
   {
     GNUNET_break_op (GNUNET_SYSERR != ret);
     return ret; /* got a definitive answer */
@@ -431,7 +429,8 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Validating `%s'\n",
               payto_uri);
-  if (GNUNET_SYSERR == validate_payto (payto_uri))
+  if (GNUNET_SYSERR ==
+      TALER_JSON_validate_payto (payto_uri))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -473,7 +472,8 @@ TALER_JSON_exchange_wire_signature_check (
     return GNUNET_SYSERR;
   }
 
-  if (GNUNET_SYSERR == validate_payto (payto_uri))
+  if (GNUNET_SYSERR ==
+      TALER_JSON_validate_payto (payto_uri))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -499,7 +499,8 @@ TALER_JSON_exchange_wire_signature_make (
 {
   struct TALER_MasterSignatureP master_sig;
 
-  if (GNUNET_SYSERR == validate_payto (payto_uri))
+  if (GNUNET_SYSERR ==
+      TALER_JSON_validate_payto (payto_uri))
   {
     GNUNET_break_op (0);
     return NULL;
@@ -536,7 +537,8 @@ TALER_JSON_wire_to_payto (const json_t *wire_s)
                 "Malformed wire record encountered: lacks payto://-url\n");
     return NULL;
   }
-  if (GNUNET_SYSERR == validate_payto (payto_str))
+  if (GNUNET_SYSERR ==
+      TALER_JSON_validate_payto (payto_str))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Malformed wire record encountered: payto URI `%s' invalid\n",
