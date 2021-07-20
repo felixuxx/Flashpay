@@ -222,7 +222,7 @@ cmp_country_code (const void *ptr1,
  * @param iban the IBAN number to validate
  * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 validate_iban (const char *iban)
 {
   char cc[2];
@@ -331,7 +331,7 @@ validate_iban (const char *iban)
  *         #GNUNET_NO if @a account_url is a payto URI of a different type,
  *         #GNUNET_SYSERR if the IBAN (checksum) is incorrect or this is not a payto://-URI
  */
-static int
+static enum GNUNET_GenericReturnValue
 validate_payto_iban (const char *account_url)
 {
   const char *iban;
