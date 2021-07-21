@@ -29,6 +29,13 @@
 
 
 /**
+ * How many /keys request do we hold in suspension at
+ * most at any time?
+ */
+#define SKR_LIMIT 32
+
+
+/**
  * Taler protocol version in the format CURRENT:REVISION:AGE
  * as used by GNU libtool.  See
  * https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
@@ -357,6 +364,18 @@ static struct SuspendedKeysRequests *skr_head;
 static struct SuspendedKeysRequests *skr_tail;
 
 /**
+ * Number of entries in the @e skr_head DLL.
+ */
+static unsigned int skr_size;
+
+/**
+ * Handle to a connection that should be force-resumed
+ * with a hard error due to @a skr_size hitting
+ * #SKR_LIMIT.
+ */
+static struct MHD_Connection *skr_connection;
+
+/**
  * For how long should a signing key be legally retained?
  * Configuration value.
  */
@@ -423,6 +442,18 @@ suspend_request (struct MHD_Connection *connection)
   GNUNET_CONTAINER_DLL_insert (skr_head,
                                skr_tail,
                                skr);
+  skr_size++;
+  if (skr_size > SKR_LIMIT)
+  {
+    skr = skr_tail;
+    GNUNET_CONTAINER_DLL_remove (skr_head,
+                                 skr_tail,
+                                 skr);
+    skr_size--;
+    skr_connection = skr->connection;
+    MHD_resume_connection (skr->connection);
+    GNUNET_free (skr);
+  }
   GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
   return MHD_YES;
 }
@@ -441,6 +472,7 @@ TEH_resume_keys_requests (bool do_shutdown)
     GNUNET_CONTAINER_DLL_remove (skr_head,
                                  skr_tail,
                                  skr);
+    skr_size--;
     MHD_resume_connection (skr->connection);
     GNUNET_free (skr);
   }
@@ -2058,6 +2090,17 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
     ksh = TEH_keys_get_state ();
     if (NULL == ksh)
     {
+      GNUNET_assert (0 == pthread_mutex_lock (&skr_mutex));
+      if ( (SKR_LIMIT == skr_size) &&
+           (connection == skr_connection) )
+      {
+        GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
+        return TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                           "too many connections suspended on /keys");
+      }
+      GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
       return suspend_request (connection);
     }
     krd = bsearch (&last_issue_date,
