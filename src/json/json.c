@@ -67,9 +67,11 @@ contains_real (const json_t *json)
  * @param salt salt value to include when using HKDF,
  *        NULL to not use any salt and to use SHA512
  * @param[out] hc where to store the hash
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if @a json was not hash-able
+ *         #GNUNET_SYSERR on failure
  */
-static int
+static enum GNUNET_GenericReturnValue
 dump_and_hash (const json_t *json,
                const char *salt,
                struct GNUNET_HashCode *hc)
@@ -79,13 +81,13 @@ dump_and_hash (const json_t *json,
 
   if (NULL == json)
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_break_op (0);
+    return GNUNET_NO;
   }
   if (contains_real (json))
   {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
+    GNUNET_break_op (0);
+    return GNUNET_NO;
   }
   if (NULL == (wire_enc = json_dumps (json,
                                       JSON_ENCODE_ANY
@@ -114,6 +116,7 @@ dump_and_hash (const json_t *json,
                            NULL,
                            0))
     {
+      GNUNET_break (0);
       free (wire_enc);
       return GNUNET_SYSERR;
     }
@@ -127,16 +130,20 @@ dump_and_hash (const json_t *json,
  * Replace "forgettable" parts of a JSON object with their salted hash.
  *
  * @param[in] in some JSON value
- * @return NULL on error
+ * @param[out] out resulting JSON value
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if @a json was not hash-able
+ *         #GNUNET_SYSERR on failure
  */
-static json_t *
-forget (const json_t *in)
+static enum GNUNET_GenericReturnValue
+forget (const json_t *in,
+        json_t **out)
 {
   if (json_is_real (in))
   {
     /* floating point is not allowed! */
-    GNUNET_break (0);
-    return NULL;
+    GNUNET_break_op (0);
+    return GNUNET_NO;
   }
   if (json_is_array (in))
   {
@@ -149,27 +156,29 @@ forget (const json_t *in)
     if (NULL == ret)
     {
       GNUNET_break (0);
-      return NULL;
+      return GNUNET_SYSERR;
     }
     json_array_foreach (in, index, value) {
+      enum GNUNET_GenericReturnValue iret;
       json_t *t;
 
-      t = forget (value);
-      if (NULL == t)
+      iret = forget (value,
+                     &t);
+      if (GNUNET_OK != iret)
       {
-        GNUNET_break (0);
         json_decref (ret);
-        return NULL;
+        return iret;
       }
       if (0 != json_array_append_new (ret,
                                       t))
       {
         GNUNET_break (0);
         json_decref (ret);
-        return NULL;
+        return GNUNET_SYSERR;
       }
     }
-    return ret;
+    *out = ret;
+    return GNUNET_OK;
   }
   if (json_is_object (in))
   {
@@ -184,18 +193,26 @@ forget (const json_t *in)
     rx = json_object_get (in,
                           "$forgotten");
     if (NULL != rx)
+    {
       rx = json_deep_copy (rx); /* should be shallow
                                    by structure, but
                                    deep copy is safer */
+      if (NULL == rx)
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+    }
     ret = json_object ();
     if (NULL == ret)
     {
       GNUNET_break (0);
-      return NULL;
+      return GNUNET_SYSERR;
     }
     json_object_foreach ((json_t*) in, key, value) {
       json_t *t;
       json_t *salt;
+      enum GNUNET_GenericReturnValue iret;
 
       if (fg == value)
         continue; /* skip! */
@@ -210,13 +227,13 @@ forget (const json_t *in)
                                 key);
         continue; /* already forgotten earlier */
       }
-      t = forget (value);
-      if (NULL == t)
+      iret = forget (value,
+                     &t);
+      if (GNUNET_OK != iret)
       {
-        GNUNET_break (0);
         json_decref (ret);
         json_decref (rx);
-        return NULL;
+        return iret;
       }
       if ( (NULL != fg) &&
            (NULL != (salt = json_object_get (fg,
@@ -227,22 +244,21 @@ forget (const json_t *in)
 
         if (! json_is_string (salt))
         {
-          GNUNET_break (0);
+          GNUNET_break_op (0);
           json_decref (ret);
           json_decref (rx);
           json_decref (t);
-          return NULL;
+          return GNUNET_NO;
         }
-        if (GNUNET_OK !=
-            dump_and_hash (t,
-                           json_string_value (salt),
-                           &hc))
+        iret = dump_and_hash (t,
+                              json_string_value (salt),
+                              &hc);
+        if (GNUNET_OK != iret)
         {
-          GNUNET_break (0);
           json_decref (ret);
           json_decref (rx);
           json_decref (t);
-          return NULL;
+          return iret;
         }
         json_decref (t);
         /* scrub salt */
@@ -250,10 +266,10 @@ forget (const json_t *in)
             json_object_del (fg,
                              key))
         {
-          GNUNET_break (0);
+          GNUNET_break_op (0);
           json_decref (ret);
           json_decref (rx);
-          return NULL;
+          return GNUNET_NO;
         }
         if (NULL == rx)
           rx = json_object ();
@@ -261,7 +277,7 @@ forget (const json_t *in)
         {
           GNUNET_break (0);
           json_decref (ret);
-          return NULL;
+          return GNUNET_SYSERR;
         }
         if (0 !=
             json_object_set_new (rx,
@@ -271,7 +287,7 @@ forget (const json_t *in)
           GNUNET_break (0);
           json_decref (ret);
           json_decref (rx);
-          return NULL;
+          return GNUNET_SYSERR;
         }
       }
       else
@@ -285,7 +301,7 @@ forget (const json_t *in)
           GNUNET_break (0);
           json_decref (ret);
           json_decref (rx);
-          return NULL;
+          return GNUNET_SYSERR;
         }
       }
     } /* json_object_foreach */
@@ -297,30 +313,30 @@ forget (const json_t *in)
     {
       GNUNET_break (0);
       json_decref (ret);
-      return NULL;
+      return GNUNET_SYSERR;
     }
-    return ret;
+    *out = ret;
+    return GNUNET_OK;
   }
-  return json_incref ((json_t *) in);
+  *out = json_incref ((json_t *) in);
+  return GNUNET_OK;
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_hash (const json_t *json,
                           struct GNUNET_HashCode *hc)
 {
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
   json_t *cjson;
   json_t *dc;
 
   dc = json_deep_copy (json);
-  cjson = forget (dc);
+  ret = forget (dc,
+                &cjson);
   json_decref (dc);
-  if (NULL == cjson)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
+  if (GNUNET_OK != ret)
+    return ret;
   ret = dump_and_hash (cjson,
                        NULL,
                        hc);
@@ -329,7 +345,7 @@ TALER_JSON_contract_hash (const json_t *json,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_mark_forgettable (json_t *json,
                                       const char *field)
 {
@@ -394,7 +410,7 @@ TALER_JSON_contract_mark_forgettable (json_t *json,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_part_forget (json_t *json,
                                  const char *field)
 {
@@ -404,6 +420,7 @@ TALER_JSON_contract_part_forget (json_t *json,
   json_t *rx;
   struct GNUNET_HashCode hc;
   const char *salt;
+  enum GNUNET_GenericReturnValue ret;
 
   if (! json_is_object (json))
   {
@@ -469,12 +486,10 @@ TALER_JSON_contract_part_forget (json_t *json,
   }
 
   /* need to recursively forget to compute 'hc' */
-  fp = forget (part);
-  if (NULL == fp)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
+  ret = forget (part,
+                &fp);
+  if (GNUNET_OK != ret)
+    return ret;
   if (GNUNET_OK !=
       dump_and_hash (fp,
                      salt,
@@ -524,7 +539,7 @@ TALER_JSON_contract_part_forget (json_t *json,
  * @param[in,out] f JSON to transform
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 seed_forgettable (json_t *f)
 {
   const char *key;
@@ -566,7 +581,7 @@ seed_forgettable (json_t *f)
  * @param[in,out] json JSON to transform
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_seed_forgettable (json_t *json)
 {
   if (json_is_object (json))
@@ -619,7 +634,7 @@ TALER_JSON_contract_seed_forgettable (json_t *json)
  * @param cb_cls the closure for the callback.
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @e path is malformed.
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_path (json_t *obj,
             json_t *prev,
             const char *path,
@@ -703,10 +718,12 @@ parse_path (json_t *obj,
     else
     {
       unsigned int index;
+      char dummy;
 
       if (1 != sscanf (bracket,
-                       "%u",
-                       &index))
+                       "%u%c",
+                       &index,
+                       &dummy))
       {
         GNUNET_free (id);
         GNUNET_free (next_path);
@@ -740,7 +757,7 @@ parse_path (json_t *obj,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_expand_path (json_t *json,
                         const char *path,
                         TALER_JSON_ExpandPathCallback cb,

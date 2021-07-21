@@ -191,9 +191,11 @@ TALER_JSON_spec_i18n_str (const char *name,
  *
  * @param[in] json some JSON value to hash
  * @param[out] hc resulting hash code
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if @a json was malformed
+ *         #GNUNET_SYSERR on internal error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_hash (const json_t *json,
                           struct GNUNET_HashCode *hc);
 
@@ -207,7 +209,7 @@ TALER_JSON_contract_hash (const json_t *json,
  * @param[in,out] json JSON to transform
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_seed_forgettable (json_t *json);
 
 
@@ -218,7 +220,7 @@ TALER_JSON_contract_seed_forgettable (json_t *json);
  * @param field name of the field to mark as forgettable
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_mark_forgettable (json_t *json,
                                       const char *field);
 
@@ -232,7 +234,7 @@ TALER_JSON_contract_mark_forgettable (json_t *json,
  *         #GNUNET_NO if the field was already forgotten before
  *         #GNUNET_SYSERR on error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_contract_part_forget (json_t *json,
                                  const char *field);
 
@@ -262,7 +264,7 @@ typedef void
  * @param cb_cls closure for the callback.
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @e path is invalid.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_expand_path (json_t *json,
                         const char *path,
                         TALER_JSON_ExpandPathCallback cb,
