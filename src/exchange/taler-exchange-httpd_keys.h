@@ -356,9 +356,11 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
  *        to use to derive the section name of the configuration to use
  * @param[out] denom_pub set to the denomination public key (to be freed by caller!)
  * @param[out] meta denomination type data to complete
- * @return #GNUNET_OK on success
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if @a h_denom_pub is not known
+ *         #GNUNET_SYSERR on hard errors
  */
-int
+enum GNUNET_GenericReturnValue
 TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);

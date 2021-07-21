@@ -147,17 +147,29 @@ add_keys (void *cls,
     }
     if (0 == qs)
     {
-      if (GNUNET_OK !=
-          TEH_keys_load_fees (&akc->d_sigs[i].h_denom_pub,
-                              &denom_pub,
-                              &meta))
+      enum GNUNET_GenericReturnValue rv;
+
+      rv = TEH_keys_load_fees (&akc->d_sigs[i].h_denom_pub,
+                               &denom_pub,
+                               &meta);
+      switch (rv)
       {
+      case GNUNET_SYSERR:
+        *mhd_ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
+          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+        return GNUNET_DB_STATUS_HARD_ERROR;
+      case GNUNET_NO:
         *mhd_ret = TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_NOT_FOUND,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
           GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
         return GNUNET_DB_STATUS_HARD_ERROR;
+      case GNUNET_OK:
+        break;
       }
     }
     else

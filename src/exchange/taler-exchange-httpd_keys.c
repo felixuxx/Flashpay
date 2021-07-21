@@ -2152,7 +2152,7 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
  * @param[in,out] meta denomination type data to complete
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 load_fees (const char *section_name,
            struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
@@ -2271,14 +2271,14 @@ load_fees (const char *section_name,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
-  int ok;
+  enum GNUNET_GenericReturnValue ok;
 
   ksh = get_key_state (true);
   if (NULL == ksh)
@@ -2289,6 +2289,13 @@ TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
 
   hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
                                           h_denom_pub);
+  if (NULL == hd)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Denomination %s not known\n",
+                GNUNET_h2s (h_denom_pub));
+    return GNUNET_NO;
+  }
   meta->start = hd->start_time;
   meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
                                                     hd->validity_duration);
@@ -2298,8 +2305,7 @@ TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
     denom_pub->rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_dup (hd->denom_pub.rsa_public_key);
   else
-    denom_pub->rsa_public_key
-      = NULL;
+    denom_pub->rsa_public_key = NULL;
   return ok;
 }
 
