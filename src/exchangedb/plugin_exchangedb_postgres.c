@@ -243,7 +243,8 @@ postgres_get_session (void *cls)
     session = pthread_getspecific (pc->db_conn_threadlocal);
   if (NULL != session)
   {
-    GNUNET_PQ_reconnect_if_down (session->conn);
+    if (NULL == session->transaction_name)
+      GNUNET_PQ_reconnect_if_down (session->conn);
     return session;
   }
   {
