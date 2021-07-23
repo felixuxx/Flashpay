@@ -364,7 +364,6 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   void *coin_ev;
   size_t coin_ev_size;
   MHD_RESULT mret;
-  struct GNUNET_TIME_Absolute now;
 
   /* check denomination exists and is in recoup mode */
   dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
@@ -372,10 +371,12 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                                       &mret);
   if (NULL == dk)
     return mret;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-  if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
+  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
   {
+    struct GNUNET_TIME_Absolute now;
+
+    now = GNUNET_TIME_absolute_get ();
+    (void) GNUNET_TIME_round_abs (&now);
     /* This denomination is past the expiration time for recoup */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
@@ -384,8 +385,12 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
       "RECOUP");
   }
-  if (now.abs_value_us < dk->meta.start.abs_value_us)
+  if (GNUNET_TIME_absolute_is_future (dk->meta.start))
   {
+    struct GNUNET_TIME_Absolute now;
+
+    now = GNUNET_TIME_absolute_get ();
+    (void) GNUNET_TIME_round_abs (&now);
     /* This denomination is not yet valid */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
@@ -396,6 +401,10 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   }
   if (! dk->recoup_possible)
   {
+    struct GNUNET_TIME_Absolute now;
+
+    now = GNUNET_TIME_absolute_get ();
+    (void) GNUNET_TIME_round_abs (&now);
     /* This denomination is not eligible for recoup */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,

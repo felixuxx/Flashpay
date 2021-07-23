@@ -392,8 +392,12 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     }
     now = GNUNET_TIME_absolute_get ();
     (void) GNUNET_TIME_round_abs (&now);
-    if (now.abs_value_us >= dk->meta.expire_withdraw.abs_value_us)
+    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw))
     {
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is past the expiration time for withdraws */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
@@ -403,8 +407,12 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "WITHDRAW");
     }
-    if (now.abs_value_us < dk->meta.start.abs_value_us)
+    if (GNUNET_TIME_absolute_is_future (dk->meta.start))
     {
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is not yet valid */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
@@ -416,6 +424,10 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     }
     if (dk->recoup_possible)
     {
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (

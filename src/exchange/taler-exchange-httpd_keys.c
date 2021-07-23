@@ -1806,8 +1806,7 @@ get_key_state (bool management_only)
     return ksh;
   }
   if ( (old_ksh->key_generation < key_generation) ||
-       (0 == GNUNET_TIME_absolute_get_remaining (
-          old_ksh->signature_expires).rel_value_us) )
+       (GNUNET_TIME_absolute_is_past (old_ksh->signature_expires)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Rebuilding /keys, generation upgrade from %llu to %llu\n",
@@ -2075,7 +2074,7 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
          be a problem, as giving back 'older' data than what the client asks for
          (given that the client asks for data in the distant future) is not
          problematic */
-      last_issue_date.abs_value_us = (uint64_t) cherrypickn * 1000000LLU;
+      last_issue_date = GNUNET_TIME_absolute_from_s (cherrypickn);
     }
     else
     {
@@ -2385,7 +2384,7 @@ add_future_denomkey_cb (void *cls,
                                           h_denom_pub);
   if (NULL != dk)
     return GNUNET_OK; /* skip: this key is already active! */
-  if (0 == hd->validity_duration.rel_value_us)
+  if (GNUNET_TIME_relative_is_zero (hd->validity_duration))
     return GNUNET_OK; /* this key already expired! */
   meta.start = hd->start_time;
   meta.expire_withdraw = GNUNET_TIME_absolute_add (meta.start,
@@ -2461,7 +2460,7 @@ add_future_signkey_cb (void *cls,
                                           pid);
   if (NULL != sk)
     return GNUNET_OK; /* skip: this key is already active */
-  if (0 == hsk->validity_duration.rel_value_us)
+  if (GNUNET_TIME_relative_is_zero (hsk->validity_duration))
     return GNUNET_OK; /* this key already expired! */
   stamp_expire = GNUNET_TIME_absolute_add (hsk->start_time,
                                            hsk->validity_duration);

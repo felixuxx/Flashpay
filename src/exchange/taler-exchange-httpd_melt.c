@@ -466,7 +466,6 @@ check_for_denomination_key (struct MHD_Connection *connection,
   /* Baseline: check if deposits/refreshs are generally
      simply still allowed for this denomination */
   struct TEH_DenominationKey *dk;
-  struct GNUNET_TIME_Absolute now;
   MHD_RESULT mret;
 
   dk = TEH_keys_denomination_by_hash (
@@ -475,10 +474,12 @@ check_for_denomination_key (struct MHD_Connection *connection,
     &mret);
   if (NULL == dk)
     return mret;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-  if (now.abs_value_us >= dk->meta.expire_legal.abs_value_us)
+  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_legal))
   {
+    struct GNUNET_TIME_Absolute now;
+
+    now = GNUNET_TIME_absolute_get ();
+    (void) GNUNET_TIME_round_abs (&now);
     /* Way too late now, even zombies have expired */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
@@ -487,8 +488,12 @@ check_for_denomination_key (struct MHD_Connection *connection,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
       "MELT");
   }
-  if (now.abs_value_us < dk->meta.start.abs_value_us)
+  if (GNUNET_TIME_absolute_is_future (dk->meta.start))
   {
+    struct GNUNET_TIME_Absolute now;
+
+    now = GNUNET_TIME_absolute_get ();
+    (void) GNUNET_TIME_round_abs (&now);
     /* This denomination is not yet valid */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
@@ -497,7 +502,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
       "MELT");
   }
-  if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
+  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
   {
     /* We are past deposit expiration time, but maybe this is a zombie? */
     struct GNUNET_HashCode denom_hash;
@@ -526,6 +531,10 @@ check_for_denomination_key (struct MHD_Connection *connection,
                                  &rmc->refresh_session.coin.denom_pub_hash));
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       /* We never saw this coin before, so _this_ justification is not OK */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,

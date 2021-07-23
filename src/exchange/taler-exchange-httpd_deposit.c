@@ -431,7 +431,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   /* check denomination exists and is valid */
   {
     struct TEH_DenominationKey *dk;
-    struct GNUNET_TIME_Absolute now;
     MHD_RESULT mret;
 
     dk = TEH_keys_denomination_by_hash (&deposit.coin.denom_pub_hash,
@@ -442,11 +441,13 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       GNUNET_JSON_parse_free (spec);
       return mret;
     }
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
-    if (now.abs_value_us >= dk->meta.expire_deposit.abs_value_us)
+    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
     {
       /* This denomination is past the expiration time for deposits */
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
@@ -455,9 +456,13 @@ TEH_handler_deposit (struct MHD_Connection *connection,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "DEPOSIT");
     }
-    if (now.abs_value_us < dk->meta.start.abs_value_us)
+    if (GNUNET_TIME_absolute_is_future (dk->meta.start))
     {
       /* This denomination is not yet valid */
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
@@ -468,6 +473,10 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     }
     if (dk->recoup_possible)
     {
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (

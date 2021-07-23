@@ -546,7 +546,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   enum GNUNET_GenericReturnValue res;
   MHD_RESULT ret;
   struct TEH_KeyStateHandle *ksh;
-  struct GNUNET_TIME_Absolute now;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
@@ -557,8 +556,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                        NULL);
   }
   /* Parse denomination key hashes */
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
     struct GNUNET_JSON_Specification spec[] = {
@@ -584,8 +581,12 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (NULL == dks[i])
       return mret;
 
-    if (now.abs_value_us >= dks[i]->meta.expire_withdraw.abs_value_us)
+    if (GNUNET_TIME_absolute_is_past (dks[i]->meta.expire_withdraw))
     {
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is past the expiration time for withdraws */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
@@ -594,8 +595,12 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "REVEAL");
     }
-    if (now.abs_value_us < dks[i]->meta.start.abs_value_us)
+    if (GNUNET_TIME_absolute_is_future (dks[i]->meta.start))
     {
+      struct GNUNET_TIME_Absolute now;
+
+      now = GNUNET_TIME_absolute_get ();
+      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is not yet valid */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
