@@ -1356,7 +1356,7 @@ struct TALER_ProposalDataPS
  * Used by merchants to return signed responses to /pay requests.
  * Currently only used to return 200 OK signed responses.
  */
-struct PaymentResponsePS
+struct TALER_PaymentResponsePS
 {
   /**
    * Set to #TALER_SIGNATURE_MERCHANT_PAYMENT_OK. Note that
