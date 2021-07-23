@@ -58,10 +58,10 @@ TALER_EXCHANGE_parse_reserve_history (
   struct TALER_Amount total_out;
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_set_zero (currency,
                                         &total_in));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_set_zero (currency,
                                         &total_out));
   uuid_off = 0;
   for (unsigned int off = 0; off<history_length; off++)
@@ -470,10 +470,10 @@ TALER_EXCHANGE_verify_coin_history (
     return GNUNET_SYSERR;
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_set_zero (currency,
                                         total));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (currency,
+                 TALER_amount_set_zero (currency,
                                         &rtotal));
   for (size_t off = 0; off<len; off++)
   {

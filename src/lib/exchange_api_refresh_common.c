@@ -521,7 +521,7 @@ TALER_EXCHANGE_refresh_prepare (
   md.melted_coin.expire_deposit
     = melt_pk->expire_deposit;
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (melt_amount->currency,
+                 TALER_amount_set_zero (melt_amount->currency,
                                         &total));
   md.melted_coin.pub_key.rsa_public_key
     = GNUNET_CRYPTO_rsa_public_key_dup (melt_pk->key.rsa_public_key);

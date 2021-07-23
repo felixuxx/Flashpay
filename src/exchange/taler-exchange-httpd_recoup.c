@@ -212,10 +212,10 @@ recoup_transaction (void *cls,
   }
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (pc->value.currency,
+                 TALER_amount_set_zero (pc->value.currency,
                                         &spent));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (pc->value.currency,
+                 TALER_amount_set_zero (pc->value.currency,
                                         &recouped));
   /* Check if this coin has been recouped already at least once */
   existing_recoup_found = GNUNET_NO;

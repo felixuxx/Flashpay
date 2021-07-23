@@ -212,7 +212,7 @@ analyze_deposit_confirmations (void *cls)
 
   /* setup 'cc' */
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &dcc.missed_amount));
   dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   dcc.missed_count = 0LLU;

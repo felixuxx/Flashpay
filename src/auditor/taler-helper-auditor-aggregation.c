@@ -399,16 +399,16 @@ check_transaction_history_for_deposit (
               "Checking transaction history of coin %s\n",
               TALER_B2S (coin_pub));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &expenditures));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &refunds));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         merchant_gain));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &merchant_loss));
   /* Go over transaction history to compute totals; note that we do not bother
      to reconstruct the order of the events, so instead of subtracting we
@@ -625,7 +625,7 @@ check_transaction_history_for_deposit (
          as a NEGATIVE contribution as that is not allowed; so
          let's count it as zero as that's the best we can do. */
       GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_get_zero (TALER_ARL_currency,
+                     TALER_amount_set_zero (TALER_ARL_currency,
                                             merchant_gain));
     }
     else
@@ -1055,7 +1055,7 @@ check_wire_out_cb (void *cls,
   wcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   wcc.date = date;
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (amount->currency,
+                 TALER_amount_set_zero (amount->currency,
                                         &wcc.total_deposits));
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (wire,
@@ -1339,28 +1339,28 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_aggregation_fee_income));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_wire_out_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_wire_out_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_coin_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_coin_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_sig_loss));
   GNUNET_assert (NULL !=
                  (report_row_inconsistencies

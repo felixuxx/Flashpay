@@ -376,7 +376,7 @@ lookup_account (struct TALER_FAKEBANK_Handle *h,
     account = GNUNET_new (struct Account);
     account->account_name = GNUNET_strdup (name);
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (h->currency,
+                   TALER_amount_set_zero (h->currency,
                                           &account->balance));
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_CONTAINER_multihashmap_put (h->accounts,

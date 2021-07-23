@@ -480,13 +480,13 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     return qs;
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (value->currency,
+                 TALER_amount_set_zero (value->currency,
                                         &refunded));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (value->currency,
+                 TALER_amount_set_zero (value->currency,
                                         &spent));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (value->currency,
+                 TALER_amount_set_zero (value->currency,
                                         &deposit_fee));
   have_refund = GNUNET_NO;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
@@ -695,16 +695,16 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   else
   {
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (TALER_ARL_currency,
+                   TALER_amount_set_zero (TALER_ARL_currency,
                                           &ds->denom_balance));
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (TALER_ARL_currency,
+                   TALER_amount_set_zero (TALER_ARL_currency,
                                           &ds->denom_loss));
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (TALER_ARL_currency,
+                   TALER_amount_set_zero (TALER_ARL_currency,
                                           &ds->denom_risk));
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (TALER_ARL_currency,
+                   TALER_amount_set_zero (TALER_ARL_currency,
                                           &ds->denom_recoup));
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -1374,7 +1374,7 @@ refresh_session_cb (void *cls,
     /* Check that the resulting amounts are consistent with the value being
      refreshed by calculating the total refresh cost */
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (amount_with_fee->currency,
+                   TALER_amount_set_zero (amount_with_fee->currency,
                                           &refresh_cost));
     for (unsigned int i = 0; i<reveal_ctx.num_freshcoins; i++)
     {
@@ -1415,7 +1415,7 @@ refresh_session_cb (void *cls,
         /* To continue, best assumption is the melted coin contributed
            nothing (=> all withdrawal amounts will be counted as losses) */
         GNUNET_assert (GNUNET_OK ==
-                       TALER_amount_get_zero (TALER_ARL_currency,
+                       TALER_amount_set_zero (TALER_ARL_currency,
                                               &amount_without_fee));
       }
     }
@@ -2549,49 +2549,49 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &reported_emergency_loss));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &reported_emergency_risk_by_amount));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &reported_emergency_risk_by_count));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &reported_emergency_loss_by_count));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_escrow_balance));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_risk));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_recoup_loss));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_irregular_recoups));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_deposit_fee_income));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_melt_fee_income));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_refund_fee_income));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_sig_loss));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_refresh_hanging));
   GNUNET_assert (NULL !=
                  (report_emergencies = json_array ()));

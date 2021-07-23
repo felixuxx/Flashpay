@@ -328,7 +328,7 @@ run (void *cls,
   GNUNET_asprintf (&amount_5, "%s:5", currency);
   GNUNET_asprintf (&amount_4, "%s:4", currency);
   GNUNET_asprintf (&amount_1, "%s:1", currency);
-  GNUNET_assert (GNUNET_OK == TALER_amount_get_zero (currency,
+  GNUNET_assert (GNUNET_OK == TALER_amount_set_zero (currency,
                                                      &total_reserve_amount));
   total_reserve_amount.value = 5 * howmany_coins;
   GNUNET_asprintf (&withdraw_fee_str,

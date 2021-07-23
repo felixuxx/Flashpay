@@ -156,7 +156,7 @@ TALER_string_to_amount_nbo (const char *str,
  *         #GNUNET_SYSERR if it is invalid.
  */
 enum GNUNET_GenericReturnValue
-TALER_amount_get_zero (const char *cur,
+TALER_amount_set_zero (const char *cur,
                        struct TALER_Amount *amount);
 
 

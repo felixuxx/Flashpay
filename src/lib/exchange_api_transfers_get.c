@@ -113,7 +113,7 @@ check_transfers_get_response_ok (
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_amount_get_zero (td.total_amount.currency,
+      TALER_amount_set_zero (td.total_amount.currency,
                              &total_expected))
   {
     GNUNET_break_op (0);

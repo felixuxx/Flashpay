@@ -326,10 +326,10 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
   {
     rs->had_ri = GNUNET_NO;
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (rs->total_in.currency,
+                   TALER_amount_set_zero (rs->total_in.currency,
                                           &rs->balance_at_previous_audit));
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (rs->total_in.currency,
+                   TALER_amount_set_zero (rs->total_in.currency,
                                           &rs->a_withdraw_fee_balance));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Creating fresh reserve `%s' with starting balance %s\n",
@@ -426,10 +426,10 @@ handle_reserve_in (void *cls,
     rs->reserve_pub = *reserve_pub;
     rs->total_in = *credit;
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (credit->currency,
+                   TALER_amount_set_zero (credit->currency,
                                           &rs->total_out));
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (credit->currency,
+                   TALER_amount_set_zero (credit->currency,
                                           &rs->total_fee));
     if (0 > (qs = load_auditor_reserve_summary (rs)))
     {
@@ -612,10 +612,10 @@ handle_reserve_out (void *cls,
     rs->reserve_pub = *reserve_pub;
     rs->total_out = auditor_amount_with_fee;
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (amount_with_fee->currency,
+                   TALER_amount_set_zero (amount_with_fee->currency,
                                           &rs->total_in));
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (amount_with_fee->currency,
+                   TALER_amount_set_zero (amount_with_fee->currency,
                                           &rs->total_fee));
     qs = load_auditor_reserve_summary (rs);
     if (0 > qs)
@@ -800,10 +800,10 @@ handle_recoup_by_reserve (
     rs->reserve_pub = *reserve_pub;
     rs->total_in = *amount;
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (amount->currency,
+                   TALER_amount_set_zero (amount->currency,
                                           &rs->total_out));
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (amount->currency,
+                   TALER_amount_set_zero (amount->currency,
                                           &rs->total_fee));
     qs = load_auditor_reserve_summary (rs);
     if (0 > qs)
@@ -939,7 +939,7 @@ handle_reserve_closed (
     rs->total_out = *amount_with_fee;
     rs->total_fee = *closing_fee;
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (amount_with_fee->currency,
+                   TALER_amount_set_zero (amount_with_fee->currency,
                                           &rs->total_in));
     qs = load_auditor_reserve_summary (rs);
     if (0 > qs)
@@ -1058,7 +1058,7 @@ verify_reserve_balance (void *cls,
                                  TALER_JSON_from_amount (&loss)));
     /* Continue with a reserve balance of zero */
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (balance.currency,
+                   TALER_amount_set_zero (balance.currency,
                                           &nbalance));
   }
 
@@ -1226,7 +1226,7 @@ verify_reserve_balance (void *cls,
       /* We unexpectedly went negative, so a sane value to continue from
          would be zero. */
       GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_get_zero (TALER_ARL_currency,
+                     TALER_amount_set_zero (TALER_ARL_currency,
                                             &total_escrow_balance));
     }
     else
@@ -1507,34 +1507,34 @@ run (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting audit\n");
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_escrow_balance));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_irregular_recoups));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_withdraw_fee_income));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_balance_insufficient_loss));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_balance_summary_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_balance_summary_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_arithmetic_delta_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_balance_reserve_not_closed));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_sig_loss));
   GNUNET_assert (NULL !=
                  (report_row_inconsistencies = json_array ()));

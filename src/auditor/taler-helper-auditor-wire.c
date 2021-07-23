@@ -2143,31 +2143,31 @@ run (void *cls,
   GNUNET_assert (NULL !=
                  (report_account_progress = json_array ()));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_amount_out_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_amount_out_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_amount_in_plus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_bad_amount_in_minus));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_missattribution_in));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_amount_lag));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_closure_amount_lag));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &total_wire_format_amount));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (TALER_ARL_currency,
+                 TALER_amount_set_zero (TALER_ARL_currency,
                                         &zero));
   TALER_EXCHANGEDB_find_accounts (TALER_ARL_cfg,
                                   &process_account_cb,

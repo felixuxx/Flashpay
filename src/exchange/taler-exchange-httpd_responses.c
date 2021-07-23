@@ -841,7 +841,7 @@ TEH_RESPONSE_compile_reserve_history (
   {
     /* did not encounter any withdraw operations, set withdraw_total to zero */
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (credit_total.currency,
+                   TALER_amount_set_zero (credit_total.currency,
                                           &withdraw_total));
   }
   if (0 >

@@ -44,7 +44,7 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
   bool have_refund;
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (spent.currency,
+                 TALER_amount_set_zero (spent.currency,
                                         &refunded));
   have_refund = false;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;

@@ -214,7 +214,7 @@ TALER_amount_ntoh (struct TALER_Amount *res,
 
 
 enum GNUNET_GenericReturnValue
-TALER_amount_get_zero (const char *cur,
+TALER_amount_set_zero (const char *cur,
                        struct TALER_Amount *amount)
 {
   size_t slen;
@@ -371,7 +371,7 @@ TALER_amount_subtract (struct TALER_Amount *diff,
     return TALER_AAR_INVALID_NEGATIVE_RESULT;
   }
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (n1.currency,
+                 TALER_amount_set_zero (n1.currency,
                                         diff));
   GNUNET_assert (n1.fraction >= n2.fraction);
   diff->fraction = n1.fraction - n2.fraction;
@@ -414,7 +414,7 @@ TALER_amount_add (struct TALER_Amount *sum,
   }
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (a1->currency,
+                 TALER_amount_set_zero (a1->currency,
                                         &res));
   res.value = n1.value + n2.value;
   if (res.value < n1.value)

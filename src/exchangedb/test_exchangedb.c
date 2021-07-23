@@ -1704,7 +1704,7 @@ run (void *cls)
   cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_get_zero (CURRENCY, &cbc.withdraw_fee));
+                 TALER_amount_set_zero (CURRENCY, &cbc.withdraw_fee));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_withdraw_info (plugin->cls,
                                         session,

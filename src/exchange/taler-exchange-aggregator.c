@@ -398,7 +398,7 @@ deposit_cb (void *cls,
                   (unsigned long long) row_id,
                   TALER_amount2s (amount_with_fee));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_get_zero (au->total_amount.currency,
+                     TALER_amount_set_zero (au->total_amount.currency,
                                             &au->total_amount));
     }
     else
@@ -576,7 +576,7 @@ aggregate_cb (void *cls,
                   (unsigned long long) row_id,
                   TALER_amount2s (&au->total_amount));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_amount_get_zero (old.currency,
+                     TALER_amount_set_zero (old.currency,
                                             &au->total_amount));
     }
     else

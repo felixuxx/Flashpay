@@ -312,7 +312,7 @@ expired_reserve_cb (void *cls,
        without wire transfer. */
     closing_fee = *left;
     GNUNET_assert (GNUNET_OK ==
-                   TALER_amount_get_zero (left->currency,
+                   TALER_amount_set_zero (left->currency,
                                           &amount_without_fee));
   }
   /* round down to enable transfer */
