@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014, 2015, 2016, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -59,25 +59,61 @@ TALER_JSON_from_amount_nbo (const struct TALER_AmountNBO *amount);
 
 /**
  * Provide specification to parse given JSON object to an amount.
+ * The @a currency must be a valid pointer while the
+ * parsing is done, a copy is not made.
  *
  * @param name name of the amount field in the JSON
+ * @param currency the currency the amount must be in
  * @param[out] r_amount where the amount has to be written
+ * @return spec for parsing an amount
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount (const char *name,
+                        const char *currency,
                         struct TALER_Amount *r_amount);
 
 
 /**
  * Provide specification to parse given JSON object to an amount
  * in network byte order.
+ * The @a currency must be a valid pointer while the
+ * parsing is done, a copy is not made.
  *
  * @param name name of the amount field in the JSON
+ * @param currency the currency the amount must be in
  * @param[out] r_amount where the amount has to be written
+ * @return spec for parsing an amount
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount_nbo (const char *name,
+                            const char *currency,
                             struct TALER_AmountNBO *r_amount);
+
+
+/**
+ * Provide specification to parse given JSON object to an amount
+ * in any currency.
+ *
+ * @param name name of the amount field in the JSON
+ * @param[out] r_amount where the amount has to be written
+ * @return spec for parsing an amount
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_amount_any (const char *name,
+                            struct TALER_Amount *r_amount);
+
+
+/**
+ * Provide specification to parse given JSON object to an amount
+ * in any currency in network byte order.
+ *
+ * @param name name of the amount field in the JSON
+ * @param[out] r_amount where the amount has to be written
+ * @return spec for parsing an amount
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_amount_any_nbo (const char *name,
+                                struct TALER_AmountNBO *r_amount);
 
 
 /**
@@ -86,6 +122,7 @@ TALER_JSON_spec_amount_nbo (const char *name,
  *
  * @param name name of the time field in the JSON
  * @param[out] r_time where the time has to be written
+ * @return spec for parsing an absolute time
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_absolute_time (const char *name,
@@ -99,6 +136,7 @@ TALER_JSON_spec_absolute_time (const char *name,
  *
  * @param name name of the time field in the JSON
  * @param[out] r_time where the time has to be written
+ * @return spec for parsing an absolute time
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_absolute_time_nbo (const char *name,
@@ -111,6 +149,7 @@ TALER_JSON_spec_absolute_time_nbo (const char *name,
  *
  * @param name name of the time field in the JSON
  * @param[out] r_time where the time has to be written
+ * @return spec for parsing a relative time
  */
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_relative_time (const char *name,

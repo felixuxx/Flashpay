@@ -108,7 +108,7 @@ static mode_t unixpath_mode;
 /**
  * Our currency.
  */
-static char *currency;
+char *TAH_currency;
 
 /**
  * Pipe used for signaling reloading of our key state.
@@ -325,7 +325,7 @@ handle_version (struct TAH_RequestHandler *rh,
   {
     ver = json_pack ("{s:s, s:s, s:o}",
                      "version", AUDITOR_PROTOCOL_VERSION,
-                     "currency", currency,
+                     "currency", TAH_currency,
                      "auditor_public_key", GNUNET_JSON_from_data_auto (
                        &auditor_pub));
   }
@@ -461,7 +461,7 @@ auditor_serve_process_config (void)
   }
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
-                                 &currency))
+                                 &TAH_currency))
   {
     return GNUNET_SYSERR;
   }

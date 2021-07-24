@@ -88,8 +88,8 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
     struct TALER_BANK_DebitDetails td;
     uint64_t row_id;
     struct GNUNET_JSON_Specification hist_spec[] = {
-      TALER_JSON_spec_amount ("amount",
-                              &td.amount),
+      TALER_JSON_spec_amount_any ("amount",
+                                  &td.amount),
       TALER_JSON_spec_absolute_time ("date",
                                      &td.execution_date),
       GNUNET_JSON_spec_uint64 ("row_id",

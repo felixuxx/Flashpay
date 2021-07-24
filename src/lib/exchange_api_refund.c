@@ -176,8 +176,8 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     struct TALER_Amount amount;
     const char *type;
     struct GNUNET_JSON_Specification spec_glob[] = {
-      TALER_JSON_spec_amount ("amount",
-                              &amount),
+      TALER_JSON_spec_amount_any ("amount",
+                                  &amount),
       GNUNET_JSON_spec_string ("type",
                                &type),
       GNUNET_JSON_spec_end ()
@@ -215,8 +215,8 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                            &dr.wallet_timestamp),
         TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
                                            &dr.refund_deadline),
-        TALER_JSON_spec_amount_nbo ("deposit_fee",
-                                    &dr.deposit_fee),
+        TALER_JSON_spec_amount_any_nbo ("deposit_fee",
+                                        &dr.deposit_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &dr.merchant),
         GNUNET_JSON_spec_end ()
@@ -283,8 +283,8 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         .coin_pub = rh->depconf.coin_pub
       };
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount ("refund_fee",
-                                &refund_fee),
+        TALER_JSON_spec_amount_any ("refund_fee",
+                                    &refund_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
@@ -452,12 +452,12 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     };
     uint64_t rtransaction_id;
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_amount ("amount",
-                              &amount),
+      TALER_JSON_spec_amount_any ("amount",
+                                  &amount),
       GNUNET_JSON_spec_string ("type",
                                &type),
-      TALER_JSON_spec_amount ("refund_fee",
-                              &refund_fee),
+      TALER_JSON_spec_amount_any ("refund_fee",
+                                  &refund_fee),
       GNUNET_JSON_spec_fixed_auto ("merchant_sig",
                                    &sig),
       GNUNET_JSON_spec_fixed_auto ("h_contract_terms",

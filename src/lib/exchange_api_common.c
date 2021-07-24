@@ -73,8 +73,8 @@ TALER_EXCHANGE_parse_reserve_history (
     struct GNUNET_JSON_Specification hist_spec[] = {
       GNUNET_JSON_spec_string ("type",
                                &type),
-      TALER_JSON_spec_amount ("amount",
-                              &amount),
+      TALER_JSON_spec_amount_any ("amount",
+                                  &amount),
       /* 'wire' and 'signature' are optional depending on 'type'! */
       GNUNET_JSON_spec_end ()
     };
@@ -145,8 +145,8 @@ TALER_EXCHANGE_parse_reserve_history (
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                      &sig),
-        TALER_JSON_spec_amount ("withdraw_fee",
-                                &withdraw_fee),
+        TALER_JSON_spec_amount_any ("withdraw_fee",
+                                    &withdraw_fee),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      &withdraw_purpose.h_denomination_pub),
         GNUNET_JSON_spec_fixed_auto ("h_coin_envelope",
@@ -321,8 +321,8 @@ TALER_EXCHANGE_parse_reserve_history (
                                      &rh->details.close_details.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &rh->details.close_details.exchange_pub),
-        TALER_JSON_spec_amount_nbo ("closing_fee",
-                                    &rcc.closing_fee),
+        TALER_JSON_spec_amount_any_nbo ("closing_fee",
+                                        &rcc.closing_fee),
         TALER_JSON_spec_absolute_time_nbo ("timestamp",
                                            &rcc.timestamp),
         GNUNET_JSON_spec_end ()
@@ -482,8 +482,8 @@ TALER_EXCHANGE_verify_coin_history (
     struct TALER_Amount amount;
     const char *type;
     struct GNUNET_JSON_Specification spec_glob[] = {
-      TALER_JSON_spec_amount ("amount",
-                              &amount),
+      TALER_JSON_spec_amount_any ("amount",
+                                  &amount),
       GNUNET_JSON_spec_string ("type",
                                &type),
       GNUNET_JSON_spec_end ()
@@ -529,8 +529,8 @@ TALER_EXCHANGE_verify_coin_history (
                                            &dr.wallet_timestamp),
         TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
                                            &dr.refund_deadline),
-        TALER_JSON_spec_amount_nbo ("deposit_fee",
-                                    &dr.deposit_fee),
+        TALER_JSON_spec_amount_any_nbo ("deposit_fee",
+                                        &dr.deposit_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
                                      &dr.merchant),
         GNUNET_JSON_spec_end ()
@@ -586,8 +586,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      &rm.rc),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      &rm.h_denom_pub),
-        TALER_JSON_spec_amount_nbo ("melt_fee",
-                                    &rm.melt_fee),
+        TALER_JSON_spec_amount_any_nbo ("melt_fee",
+                                        &rm.melt_fee),
         GNUNET_JSON_spec_end ()
       };
 
@@ -644,8 +644,8 @@ TALER_EXCHANGE_verify_coin_history (
         .coin_pub = *coin_pub
       };
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount ("refund_fee",
-                                &refund_fee),
+        TALER_JSON_spec_amount_any ("refund_fee",
+                                    &refund_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
@@ -728,8 +728,8 @@ TALER_EXCHANGE_verify_coin_history (
       struct TALER_ExchangeSignatureP exchange_sig;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount_nbo ("amount",
-                                    &pc.recoup_amount),
+        TALER_JSON_spec_amount_any_nbo ("amount",
+                                        &pc.recoup_amount),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
@@ -796,8 +796,8 @@ TALER_EXCHANGE_verify_coin_history (
       struct TALER_ExchangeSignatureP exchange_sig;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount_nbo ("amount",
-                                    &pc.recoup_amount),
+        TALER_JSON_spec_amount_any_nbo ("amount",
+                                        &pc.recoup_amount),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
@@ -859,8 +859,8 @@ TALER_EXCHANGE_verify_coin_history (
       struct TALER_ExchangePublicKeyP exchange_pub;
       struct TALER_ExchangeSignatureP exchange_sig;
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_amount_nbo ("amount",
-                                    &pc.recoup_amount),
+        TALER_JSON_spec_amount_any_nbo ("amount",
+                                        &pc.recoup_amount),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
                                      &exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",

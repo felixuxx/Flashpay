@@ -312,21 +312,6 @@ refund_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* check currency is compatible */
-  if (GNUNET_YES !=
-      TALER_amount_cmp_currency (&refund->details.refund_amount,
-                                 &deposit_total))
-  {
-    GNUNET_break_op (0); /* currency mismatch */
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tlx);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_BAD_REQUEST,
-                                           TALER_EC_GENERIC_CURRENCY_MISMATCH,
-                                           deposit_total.currency);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
   /* check total refund amount is sufficiently low */
   if (refund_found)
     GNUNET_break (0 <=
@@ -505,6 +490,7 @@ TEH_handler_refund (struct MHD_Connection *connection,
   };
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_amount ("refund_amount",
+                            TEH_currency,
                             &refund.details.refund_amount),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &refund.details.h_contract_terms),

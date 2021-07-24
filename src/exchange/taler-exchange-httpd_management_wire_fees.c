@@ -180,8 +180,10 @@ TEH_handler_management_post_wire_fees (
     TALER_JSON_spec_absolute_time ("fee_end",
                                    &afc.end_time),
     TALER_JSON_spec_amount ("closing_fee",
+                            TEH_currency,
                             &afc.closing_fee),
     TALER_JSON_spec_amount ("wire_fee",
+                            TEH_currency,
                             &afc.wire_fee),
     GNUNET_JSON_spec_end ()
   };
@@ -198,28 +200,6 @@ TEH_handler_management_post_wire_fees (
       return MHD_NO; /* hard failure */
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
-  }
-
-  if (GNUNET_OK !=
-      TALER_amount_cmp_currency (&afc.closing_fee,
-                                 &afc.wire_fee))
-  {
-    /* currencies of the two fees must be identical */
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_GENERIC_CURRENCY_MISMATCH,
-                                       NULL);
-  }
-  if (0 !=
-      strcasecmp (afc.wire_fee.currency,
-                  TEH_currency))
-  {
-    /* currency does not match exchange's currency */
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_PRECONDITION_FAILED,
-                                       TALER_EC_GENERIC_CURRENCY_MISMATCH,
-                                       TEH_currency);
   }
 
   if (GNUNET_OK !=

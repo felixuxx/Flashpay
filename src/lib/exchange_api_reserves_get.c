@@ -88,7 +88,7 @@ handle_reserves_get_ok (struct TALER_EXCHANGE_ReservesGetHandle *rgh,
   struct TALER_Amount balance;
   struct TALER_Amount balance_from_history;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("balance", &balance),
+    TALER_JSON_spec_amount_any ("balance", &balance),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_HttpResponse hr = {

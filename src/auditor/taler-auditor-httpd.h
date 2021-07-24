@@ -38,6 +38,10 @@ extern struct TALER_AUDITORDB_Plugin *TAH_plugin;
  */
 extern struct TALER_EXCHANGEDB_Plugin *TAH_eplugin;
 
+/**
+ * Our currency.
+ */
+extern char *TAH_currency;
 
 /**
  * @brief Struct describing an URL and the handler for it.

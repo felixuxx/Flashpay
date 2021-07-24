@@ -152,7 +152,7 @@ reserve_withdraw_payment_required (
   json_t *history;
   size_t len;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("balance", &balance),
+    TALER_JSON_spec_amount_any ("balance", &balance),
     GNUNET_JSON_spec_end ()
   };
 

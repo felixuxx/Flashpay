@@ -332,6 +332,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("wire", &wire),
     TALER_JSON_spec_amount ("contribution",
+                            TEH_currency,
                             &deposit.amount_with_fee),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &deposit.coin.denom_pub_hash),
@@ -488,17 +489,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     }
 
     deposit.deposit_fee = dk->meta.fee_deposit;
-    if (GNUNET_YES !=
-        TALER_amount_cmp_currency (&deposit.amount_with_fee,
-                                   &deposit.deposit_fee) )
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_CURRENCY_MISMATCH,
-                                         deposit.deposit_fee.currency);
-    }
     /* check coin signature */
     if (GNUNET_YES !=
         TALER_test_coin_valid (&deposit.coin,

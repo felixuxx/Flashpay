@@ -554,18 +554,6 @@ check_for_denomination_key (struct MHD_Connection *connection,
 
   rmc->coin_refresh_fee = dk->meta.fee_refresh;
   rmc->coin_value = dk->meta.value;
-  /* check client used sane currency */
-  if (GNUNET_YES !=
-      TALER_amount_cmp_currency (&rmc->refresh_session.amount_with_fee,
-                                 &rmc->coin_value) )
-  {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_BAD_REQUEST,
-      TALER_EC_GENERIC_CURRENCY_MISMATCH,
-      rmc->refresh_session.amount_with_fee.currency);
-  }
   /* check coin is actually properly signed */
   if (GNUNET_OK !=
       TALER_test_coin_valid (&rmc->refresh_session.coin,
@@ -621,6 +609,7 @@ TEH_handler_melt (struct MHD_Connection *connection,
     GNUNET_JSON_spec_fixed_auto ("confirm_sig",
                                  &rmc.refresh_session.coin_sig),
     TALER_JSON_spec_amount ("value_with_fee",
+                            TEH_currency,
                             &rmc.refresh_session.amount_with_fee),
     GNUNET_JSON_spec_fixed_auto ("rc",
                                  &rmc.refresh_session.rc),

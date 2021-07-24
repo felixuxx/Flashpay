@@ -36,7 +36,9 @@ test_amount (void)
   struct TALER_Amount a1;
   struct TALER_Amount a2;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("amount", &a2),
+    TALER_JSON_spec_amount ("amount",
+                            "EUR",
+                            &a2),
     GNUNET_JSON_spec_end ()
   };
 

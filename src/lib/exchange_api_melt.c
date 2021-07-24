@@ -220,8 +220,8 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("history", &history),
     GNUNET_JSON_spec_fixed_auto ("coin_pub", &coin_pub),
-    TALER_JSON_spec_amount ("original_value", &original_value),
-    TALER_JSON_spec_amount ("requested_value", &melt_value_with_fee),
+    TALER_JSON_spec_amount_any ("original_value", &original_value),
+    TALER_JSON_spec_amount_any ("requested_value", &melt_value_with_fee),
     GNUNET_JSON_spec_end ()
   };
   const struct MeltedCoin *mc;

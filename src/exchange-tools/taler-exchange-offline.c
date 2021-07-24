@@ -134,6 +134,11 @@ static json_t *in;
  */
 static json_t *out;
 
+/**
+ * Currency we have configured.
+ */
+static char *currency;
+
 
 /**
  * A subcommand supported by this program.
@@ -1424,8 +1429,10 @@ upload_wire_fee (const char *exchange_url,
     GNUNET_JSON_spec_string ("wire_method",
                              &wire_method),
     TALER_JSON_spec_amount ("wire_fee",
+                            currency,
                             &wire_fee),
     TALER_JSON_spec_amount ("closing_fee",
+                            currency,
                             &closing_fee),
     GNUNET_JSON_spec_absolute_time ("start_time",
                                     &start_time),
@@ -2590,14 +2597,19 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_JSON_spec_rsa_public_key ("denom_pub",
                                        &denom_pub.rsa_public_key),
       TALER_JSON_spec_amount ("value",
+                              currency,
                               &coin_value),
       TALER_JSON_spec_amount ("fee_withdraw",
+                              currency,
                               &fee_withdraw),
       TALER_JSON_spec_amount ("fee_deposit",
+                              currency,
                               &fee_deposit),
       TALER_JSON_spec_amount ("fee_refresh",
+                              currency,
                               &fee_refresh),
       TALER_JSON_spec_amount ("fee_refund",
+                              currency,
                               &fee_refund),
       GNUNET_JSON_spec_absolute_time ("stamp_start",
                                       &stamp_start),
@@ -3004,14 +3016,19 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_JSON_spec_rsa_public_key ("denom_pub",
                                        &denom_pub.rsa_public_key),
       TALER_JSON_spec_amount ("value",
+                              currency,
                               &coin_value),
       TALER_JSON_spec_amount ("fee_withdraw",
+                              currency,
                               &fee_withdraw),
       TALER_JSON_spec_amount ("fee_deposit",
+                              currency,
                               &fee_deposit),
       TALER_JSON_spec_amount ("fee_refresh",
+                              currency,
                               &fee_refresh),
       TALER_JSON_spec_amount ("fee_refund",
+                              currency,
                               &fee_refund),
       GNUNET_JSON_spec_absolute_time ("stamp_start",
                                       &stamp_start),
@@ -3385,6 +3402,13 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   kcfg = cfg;
+  if (GNUNET_OK !=
+      TALER_config_get_currency (kcfg,
+                                 &currency))
+  {
+    global_ret = 1;
+    return;
+  }
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
                           &rc);
   rc = GNUNET_CURL_gnunet_rc_create (ctx);

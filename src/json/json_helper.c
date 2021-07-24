@@ -55,7 +55,7 @@ TALER_JSON_from_amount_nbo (const struct TALER_AmountNBO *amount)
 /**
  * Parse given JSON object to Amount
  *
- * @param cls closure, NULL
+ * @param cls closure, expected currency, or NULL
  * @param root the json object representing data
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
@@ -65,6 +65,7 @@ parse_amount (void *cls,
               json_t *root,
               struct GNUNET_JSON_Specification *spec)
 {
+  const char *currency = cls;
   struct TALER_Amount *r_amount = spec->ptr;
 
   (void) cls;
@@ -80,13 +81,41 @@ parse_amount (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if ( (NULL != currency) &&
+       (0 !=
+        strcasecmp (currency,
+                    r_amount->currency)) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount (const char *name,
+                        const char *currency,
                         struct TALER_Amount *r_amount)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_amount,
+    .cleaner = NULL,
+    .cls = (void *) currency,
+    .field = name,
+    .ptr = r_amount,
+    .ptr_size = 0,
+    .size_ptr = NULL
+  };
+
+  GNUNET_assert (NULL != currency);
+  return ret;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_amount_any (const char *name,
+                            struct TALER_Amount *r_amount)
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_amount,
@@ -97,6 +126,7 @@ TALER_JSON_spec_amount (const char *name,
     .ptr_size = 0,
     .size_ptr = NULL
   };
+
   return ret;
 }
 
@@ -114,6 +144,7 @@ parse_amount_nbo (void *cls,
                   json_t *root,
                   struct GNUNET_JSON_Specification *spec)
 {
+  const char *currency = cls;
   struct TALER_AmountNBO *r_amount = spec->ptr;
   const char *sv;
 
@@ -134,13 +165,41 @@ parse_amount_nbo (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
+  if ( (NULL != currency) &&
+       (0 !=
+        strcasecmp (currency,
+                    r_amount->currency)) )
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
 
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount_nbo (const char *name,
+                            const char *currency,
                             struct TALER_AmountNBO *r_amount)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_amount_nbo,
+    .cleaner = NULL,
+    .cls = (void *) currency,
+    .field = name,
+    .ptr = r_amount,
+    .ptr_size = 0,
+    .size_ptr = NULL
+  };
+
+  GNUNET_assert (NULL != currency);
+  return ret;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_amount_any_nbo (const char *name,
+                                struct TALER_AmountNBO *r_amount)
 {
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_amount_nbo,
@@ -151,6 +210,7 @@ TALER_JSON_spec_amount_nbo (const char *name,
     .ptr_size = 0,
     .size_ptr = NULL
   };
+
   return ret;
 }
 

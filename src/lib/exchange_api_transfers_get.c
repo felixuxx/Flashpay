@@ -89,8 +89,8 @@ check_transfers_get_response_ok (
   struct TALER_Amount total_expected;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount ("total", &td.total_amount),
-    TALER_JSON_spec_amount ("wire_fee", &td.wire_fee),
+    TALER_JSON_spec_amount_any ("total", &td.total_amount),
+    TALER_JSON_spec_amount_any ("wire_fee", &td.wire_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_wire", &td.h_wire),
     TALER_JSON_spec_absolute_time ("execution_time", &td.execution_time),
@@ -146,8 +146,8 @@ check_transfers_get_response_ok (
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                      &detail->h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("coin_pub", &detail->coin_pub),
-        TALER_JSON_spec_amount ("deposit_value", &detail->coin_value),
-        TALER_JSON_spec_amount ("deposit_fee", &detail->coin_fee),
+        TALER_JSON_spec_amount_any ("deposit_value", &detail->coin_value),
+        TALER_JSON_spec_amount_any ("deposit_fee", &detail->coin_fee),
         GNUNET_JSON_spec_end ()
       };
 

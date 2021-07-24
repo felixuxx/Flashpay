@@ -98,6 +98,11 @@ static json_t *in;
  */
 static json_t *out;
 
+/**
+ * Currency supported by this auditor.
+ */
+static char *currency;
+
 
 /**
  * A subcommand supported by this program.
@@ -749,14 +754,19 @@ show_denomkeys (const json_t *denomkeys)
       GNUNET_JSON_spec_rsa_public_key ("denom_pub",
                                        &denom_pub.rsa_public_key),
       TALER_JSON_spec_amount ("value",
+                              currency,
                               &coin_value),
       TALER_JSON_spec_amount ("fee_withdraw",
+                              currency,
                               &fee_withdraw),
       TALER_JSON_spec_amount ("fee_deposit",
+                              currency,
                               &fee_deposit),
       TALER_JSON_spec_amount ("fee_refresh",
+                              currency,
                               &fee_refresh),
       TALER_JSON_spec_amount ("fee_refund",
+                              currency,
                               &fee_refund),
       GNUNET_JSON_spec_absolute_time ("stamp_start",
                                       &stamp_start),
@@ -1044,14 +1054,19 @@ sign_denomkeys (const json_t *denomkeys)
       GNUNET_JSON_spec_rsa_public_key ("denom_pub",
                                        &denom_pub.rsa_public_key),
       TALER_JSON_spec_amount ("value",
+                              currency,
                               &coin_value),
       TALER_JSON_spec_amount ("fee_withdraw",
+                              currency,
                               &fee_withdraw),
       TALER_JSON_spec_amount ("fee_deposit",
+                              currency,
                               &fee_deposit),
       TALER_JSON_spec_amount ("fee_refresh",
+                              currency,
                               &fee_refresh),
       TALER_JSON_spec_amount ("fee_refund",
+                              currency,
                               &fee_refund),
       GNUNET_JSON_spec_absolute_time ("stamp_start",
                                       &stamp_start),
@@ -1346,6 +1361,13 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   kcfg = cfg;
+  if (GNUNET_OK !=
+      TALER_config_get_currency (kcfg,
+                                 &currency))
+  {
+    global_ret = 1;
+    return;
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (kcfg,
                                              "auditor",
