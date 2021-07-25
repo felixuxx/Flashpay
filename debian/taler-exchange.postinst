@@ -248,8 +248,7 @@ EOF
   echo -n "Setting up system services "
 
   mkdir -p /var/lib/taler-exchange/tmp
-  chown root:${_GROUPNAME} /var/lib/taler-exchange/tmp
-  chmod 770 /var/lib/taler-exchange/tmp
+  fixperm root:${_GROUPNAME} 770 /var/lib/taler-exchange/tmp
   chmod +s /var/lib/taler-exchange/tmp
 
   fixperm ${_WIREUSERNAME}:root 460 /etc/taler/exchange-wire-gateway.conf
