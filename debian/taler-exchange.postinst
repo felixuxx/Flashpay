@@ -10,7 +10,7 @@ _GROUPNAME=taler-exchange-secmod
 _DBGROUPNAME=taler-exchange-db
 _EUSERNAME=taler-exchange-httpd
 _RSECUSERNAME=taler-exchange-secmod-rsa
-_ESECUSERNAME=taler-exchange-secmod-rsa
+_ESECUSERNAME=taler-exchange-secmod-eddsa
 _AGGRUSERNAME=taler-exchange-aggregator
 _WIREUSERNAME=taler-exchange-wire
 
@@ -35,59 +35,40 @@ configure)
 
   # Create taler groups as needed
   if ! getent group ${_GROUPNAME} >/dev/null; then
-    echo -n "Creating new Taler group ${_GROUPNAME} ..."
     addgroup --quiet --system ${_GROUPNAME}
-    echo " done."
   fi
   if ! getent group ${_DBGROUPNAME} >/dev/null; then
-    echo -n "Creating new Taler group ${_DBGROUPNAME} ..."
     addgroup --quiet --system ${_DBGROUPNAME}
-    echo " done."
   fi
 
   # Create taler users if needed
   if ! getent passwd ${_EUSERNAME} >/dev/null; then
-    echo -n "Creating new Taler user ${_EUSERNAME} ..."
     adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/httpd ${_EUSERNAME}
-    adduser ${_EUSERNAME} ${_DBGROUPNAME}
-    echo " done."
+    adduser --quiet ${_EUSERNAME} ${_DBGROUPNAME}
   fi
   if ! getent passwd ${_RSECUSERNAME} >/dev/null; then
-    echo -n "Creating new Taler user ${_RSECUSERNAME} ..."
     adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/secmod-rsa ${_RSECUSERNAME}
-    echo " done."
   fi
   if ! getent passwd ${_ESECUSERNAME} >/dev/null; then
-    echo -n "Creating new Taler user ${_ESECUSERNAME} ..."
     adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/secmod-eddsa ${_ESECUSERNAME}
-    echo " done."
   fi
   if ! getent passwd ${_WIREUSERNAME} >/dev/null; then
-    echo -n "Creating new Taler user ${_WIREUSERNAME} ..."
     adduser --quiet --system --home ${TALER_HOME}/wire ${_WIREUSERNAME}
     adduser --quiet ${_WIREUSERNAME} ${_DBGROUPNAME}
-    echo " done."
   fi
   if ! getent passwd ${_AGGRUSERNAME} >/dev/null; then
-    echo -n "Creating new Taler user ${_AGGRUSERNAME} ..."
     adduser --quiet --system --home ${TALER_HOME}/aggregator ${_AGGRUSERNAME}
     adduser --quiet ${_AGGRUSERNAME} ${_DBGROUPNAME}
-    echo " done."
   fi
 
   fixperm ${_WIREUSERNAME}:root 460 /etc/taler/exchange-wire-gateway.conf
   fixperm root:${_DBGROUPNAME} 640 /etc/taler/exchange-db.conf
 
-  echo -n "Linking config files"
   lncfg ${_EUSERNAME} httpd /etc/taler/exchange-service-default.conf
   lncfg ${_RSECUSERNAME} secmod-rsa /etc/taler/exchange-service-default.conf
   lncfg ${_ESECUSERNAME} secmod-eddsa /etc/taler/exchange-service-default.conf
   lncfg ${_AGGRUSERNAME} aggregator /etc/taler/exchange-service-default.conf
   lncfg ${_WIREUSERNAME} wire /etc/taler/exchange-service-wire.conf
-  echo " done"
-
-  # Cleaning
-  echo "All done."
   ;;
 
 abort-upgrade | abort-remove | abort-deconfigure) ;;
