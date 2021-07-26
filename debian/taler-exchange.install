@@ -38,5 +38,5 @@ debian/etc/taler/exchange-wire-gateway.conf etc/taler/
 # sample config files
 debian/exchange-conf/* usr/share/taler/sample-configs/
 
-usr/share/taler-exchange/pp/*/*
-usr/share/taler-exchange/tos/*/*
+usr/share/taler/exchange/pp/*/*
+usr/share/taler/exchange/tos/*/*
