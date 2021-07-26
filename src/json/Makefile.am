@@ -13,6 +13,7 @@ libtalerjson_la_SOURCES = \
   i18n.c \
   json.c \
   json_helper.c \
+  json_pack.c \
   json_wire.c
 libtalerjson_la_LDFLAGS = \
   -version-info 1:0:1 \

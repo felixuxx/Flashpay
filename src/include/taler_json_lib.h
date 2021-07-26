@@ -37,6 +37,117 @@
               "JSON parsing failed at %s:%u: %s (%s)\n",                  \
               __FILE__, __LINE__, error.text, error.source)
 
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * absolute time.
+ * The absolute time value is expected to be already rounded.
+ *
+ * @param name name of the field to add to the object
+ * @param at absolute time to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_time_abs (const char *name,
+                          struct GNUNET_TIME_Absolute at);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * absolute time in network byte order.
+ * The absolute time value is expected to be already rounded.
+ *
+ * @param name name of the field to add to the object
+ * @param at absolute time to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_time_abs_nbo (const char *name,
+                              struct GNUNET_TIME_AbsoluteNBO at);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * relative time.
+ * The relative time value is expected to be already rounded.
+ *
+ * @param name name of the field to add to the object
+ * @param rt relative time to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_time_rel (const char *name,
+                          struct GNUNET_TIME_Relative rt);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * relative time in network byte order.
+ * The relative time value is expected to be already rounded.
+ *
+ * @param name name of the field to add to the object
+ * @param rt relative time to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_time_rel_nbo (const char *name,
+                              struct GNUNET_TIME_RelativeNBO rt);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * denomination public key.
+ *
+ * @param name name of the field to add to the object
+ * @param pk public key
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_denomination_public_key (const char *name,
+                                         const struct
+                                         TALER_DenominationPublicKey *pk);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * denomination signature.
+ *
+ * @param name name of the field to add to the object
+ * @param sig signature
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_denomination_signature (const char *name,
+                                        const struct
+                                        TALER_DenominationSignature *sig);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * amount.
+ *
+ * @param name name of the field to add to the object
+ * @param amount valid amount to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_amount (const char *name,
+                        const struct TALER_Amount *amount);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * amount.
+ *
+ * @param name name of the field to add to the object
+ * @param amount valid amount to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_amount_nbo (const char *name,
+                            const struct TALER_AmountNBO *amount);
+
+
 /**
  * Convert a TALER amount to a JSON object.
  *
