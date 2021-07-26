@@ -41,6 +41,8 @@ override_dh_installsystemd:
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-secmod-eddsa --no-start --no-enable
 	dh_installsystemd -ptaler-exchange --name=taler-exchange-secmod-rsa --no-start --no-enable
 	dh_installsystemd -ptaler-auditor --name=taler-auditor-httpd --no-start --no-enable
+	# final invocation to generate daemon reload
+	dh_installsystemd
 
 # Remove files already present in libtalerexchange from main taler-exchange package
 override_dh_install:
