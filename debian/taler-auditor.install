@@ -15,4 +15,4 @@ usr/share/taler/config.d/auditor*
 usr/share/taler/sql/auditor/*
 debian/etc/taler/auditor* etc/taler/
 debian/auditor-conf/* etc/taler-auditor/
-usr/share/taler-exchange/auditor-report.tex.j2
+usr/share/taler/exchange/auditor-report.tex.j2
