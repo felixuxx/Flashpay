@@ -71,6 +71,8 @@ Depends:
  dbconfig-pgsql | dbconfig-no-thanks,
  ${misc:Depends},
  ${shlibs:Depends}
+Recommends:
+  taler-exchange-offline (= ${binary:Version})
 Description: GNU's payment system operator
 
 Package: taler-exchange-offline
