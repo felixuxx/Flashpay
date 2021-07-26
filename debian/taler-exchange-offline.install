@@ -1,5 +1,5 @@
 usr/bin/taler-exchange-offline
-usr/share/man/man1/taler-exchange-offline
+usr/share/man/man1/taler-exchange-offline*
 
 # configuration files in /etc/taler
 debian/etc/taler/exchange-offline.conf etc/taler/
