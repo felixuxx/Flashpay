@@ -19,13 +19,18 @@ function lncfg() {
 case "${1}" in
 configure)
 
-  addgroup --quiet --system taler-exchange-offline
+  if ! getent group taler-exchange-offline >/dev/null; then
+    addgroup --quiet --system taler-exchange-offline
+  fi
 
-  adduser --quiet --system --ingroup taler-exchange-offline --home ${TALEROFF_HOME}/httpd taler-exchange-offline
+  if ! getent passwd taler-exchange-offline >/dev/null; then
+    adduser --quiet --system \
+      --ingroup taler-exchange-offline \
+      --home ${TALEROFF_HOME}/httpd taler-exchange-offline
+  fi
 
   lncfg taler-exchange-offline taler-exchange-offline /etc/taler/exchange-offline.conf
 
-  # Cleaning
   echo "All done."
   ;;
 
