@@ -1,12 +1,12 @@
 [Unit]
-Description=Private runtime directory for the GNU Taler exchange
+Description=Shared private runtime directory for the GNU Taler exchange
 
 [Service]
-# We just want to create the run directory
 Type=oneshot
 RuntimeDirectory=taler-exchange-private
+RuntimeDirectoryMode=2660
 User=root
-Group=taler-exchange-private
+Group=taler-exchange-secmod
 ExecStart=/bin/true
 RemainAfterExit=yes
 
