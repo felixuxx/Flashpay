@@ -1,0 +1,14 @@
+[Unit]
+Description=Private runtime directory for the GNU Taler exchange
+
+[Service]
+# We just want to create the run directory
+Type=oneshot
+RuntimeDirectory=taler-exchange-private
+User=root
+Group=taler-exchange-private
+ExecStart=/bin/true
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

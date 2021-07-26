@@ -1,5 +1,6 @@
 [Unit]
 Description=GNU Taler payment system exchange EdDSA security module
+Requires=taler-exchange-rundir.service
 
 [Service]
 User=taler-exchange-secmod-eddsa
