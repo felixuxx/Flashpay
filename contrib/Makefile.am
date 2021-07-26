@@ -1,12 +1,12 @@
 SUBDIRS = .
 
 # English (en)
-tosendir=$(pkgdatadir)/tos/en
+tosendir=$(datadir)/taler/exchange/tos/en
 
 # English (en)
-ppendir=$(pkgdatadir)/pp/en
+ppendir=$(datadir)/taler/exchange/pp/en
 
-rdatadir=$(pkgdatadir)
+rdatadir=$(datadir)/taler/exchange
 
 tosen_DATA = \
   tos/en/0.txt \

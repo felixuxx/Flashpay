@@ -4,7 +4,7 @@ set -e
 
 . /usr/share/debconf/confmodule
 
-TALEROFF_HOME="/var/lib/taler-exchange-offline"
+TALER_HOME="/var/lib/taler-exchange"
 
 # usage: lncfg user home target
 function lncfg() {
@@ -26,7 +26,7 @@ configure)
   if ! getent passwd taler-exchange-offline >/dev/null; then
     adduser --quiet --system \
       --ingroup taler-exchange-offline \
-      --home ${TALEROFF_HOME}/httpd taler-exchange-offline
+      --home ${TALER_HOME}/offline taler-exchange-offline
   fi
 
   lncfg taler-exchange-offline taler-exchange-offline /etc/taler/exchange-offline.conf

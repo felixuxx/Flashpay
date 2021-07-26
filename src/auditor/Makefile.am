@@ -29,7 +29,7 @@ bin_SCRIPTS = \
   taler-auditor \
   taler-helper-auditor-render.py
 
-edit_script = $(SED) -e 's,%pkgdatadir%,$(pkgdatadir),'g $(NULL)
+edit_script = $(SED) -e 's,%datadir%,$(datadir),'g $(NULL)
 
 taler-auditor: taler-auditor.in
 	rm -f $@ $@.tmp && \
