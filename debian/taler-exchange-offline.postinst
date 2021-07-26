@@ -29,7 +29,7 @@ configure)
       --home ${TALER_HOME}/offline taler-exchange-offline
   fi
 
-  lncfg taler-exchange-offline taler-exchange-offline /etc/taler/exchange-offline.conf
+  lncfg taler-exchange-offline offline /etc/taler/exchange-offline.conf
 
   echo "All done."
   ;;
