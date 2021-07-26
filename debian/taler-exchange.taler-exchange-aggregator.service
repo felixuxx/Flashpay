@@ -2,7 +2,6 @@
 Description=GNU Taler payment system exchange aggregator service
 
 [Service]
-EnvironmentFile=/etc/default/taler-exchange
 User=taler-exchange-aggregator
 Type=simple
 Restart=on-failure

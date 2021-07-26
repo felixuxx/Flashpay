@@ -3,7 +3,6 @@ Description=GNU Taler payment system auditor REST API
 After=postgres.service network.target
 
 [Service]
-EnvironmentFile=/etc/default/taler-auditor
 User=taler-auditor-httpd
 Type=simple
 Restart=on-failure

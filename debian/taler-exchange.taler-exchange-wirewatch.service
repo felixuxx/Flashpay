@@ -3,7 +3,6 @@ Description=GNU Taler payment system exchange wirewatch service
 After=network.target
 
 [Service]
-EnvironmentFile=/etc/default/taler-exchange
 User=taler-exchange-wire
 Type=simple
 Restart=on-failure

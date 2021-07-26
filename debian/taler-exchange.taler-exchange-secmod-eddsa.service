@@ -2,7 +2,6 @@
 Description=GNU Taler payment system exchange EdDSA security module
 
 [Service]
-EnvironmentFile=/etc/default/taler-exchange
 User=taler-exchange-secmod-eddsa
 Type=simple
 Restart=on-failure

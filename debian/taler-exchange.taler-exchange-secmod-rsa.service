@@ -2,7 +2,6 @@
 Description=GNU Taler payment system exchange RSA security module
 
 [Service]
-EnvironmentFile=/etc/default/taler-exchange
 User=taler-exchange-secmod-rsa
 Type=simple
 Restart=on-failure

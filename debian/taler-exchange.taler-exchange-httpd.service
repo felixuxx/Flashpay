@@ -6,7 +6,6 @@ Wants=taler-exchange-wirewatch.service taler-exchange-aggregator.service taler-e
 After=postgres.service network.target
 
 [Service]
-EnvironmentFile=/etc/default/taler-exchange
 User=taler-exchange-httpd
 Type=simple
 Restart=on-failure
