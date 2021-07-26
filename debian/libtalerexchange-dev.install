@@ -1,11 +1,22 @@
 # Benchmarks, only install them for the dev package.
 usr/bin/taler-exchange-benchmark
 usr/bin/taler-fakebank-run
-# Only used in test cases.
+usr/bin/taler-bank-benchmark
+
+# Only used in test cases.  Maybe these
+# shouldn't even be installed?
 usr/bin/taler-nexus-prepare
+usr/bin/taler-bank-manage-testing
+
+# Headers
 usr/include/taler/*
-usr/share/info/taler-developer-manual*
+
+# Testing libraries
 usr/lib/*/libtalertesting.so.*
 usr/lib/*/libtalerfakebank.so.*
 usr/lib/*/libtalertesting.so
 usr/lib/*/libtalerfakebank.so
+
+# Documentation
+usr/share/man/man1/taler-exchange-benchmark*
+usr/share/info/taler-developer-manual*

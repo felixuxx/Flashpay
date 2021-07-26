@@ -1,5 +1,4 @@
 usr/bin/taler-exchange-aggregator
-usr/bin/taler-exchange-benchmark
 usr/bin/taler-exchange-closer
 usr/bin/taler-exchange-dbinit
 usr/bin/taler-exchange-httpd
@@ -7,11 +6,8 @@ usr/bin/taler-exchange-secmod-eddsa
 usr/bin/taler-exchange-secmod-rsa
 usr/bin/taler-exchange-transfer
 usr/bin/taler-exchange-wirewatch
-usr/bin/taler-bank-benchmark
-usr/bin/taler-bank-manage-testing
 usr/bin/taler-wire-gateway-client
 usr/share/man/man1/taler-exchange-aggregator*
-usr/share/man/man1/taler-exchange-benchmark*
 usr/share/man/man1/taler-exchange-closer*
 usr/share/man/man1/taler-exchange-dbinit*
 usr/share/man/man1/taler-exchange-httpd*
