@@ -3,3 +3,4 @@ usr/lib/*/libtaler*
 usr/share/taler/config.d/paths.conf
 usr/share/taler/config.d/taler.conf
 usr/share/man/man5/taler.conf.5
+usr/share/man/man1/taler-config*

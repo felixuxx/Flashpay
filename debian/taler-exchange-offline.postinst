@@ -1,0 +1,42 @@
+#!/bin/bash
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+TALEROFF_HOME="/var/lib/taler-exchange-offline"
+
+# usage: lncfg user home target
+function lncfg() {
+  local cf=$TALER_HOME/$2/.config
+  if [ ! -e $cf ]; then
+    mkdir $cf
+    chown $(stat -L -c %u $TALER_HOME/$2):$(stat -L -c %g $TALER_HOME/$2) $cf
+  fi
+  ln -sf $3 $cf/taler.conf
+}
+
+case "${1}" in
+configure)
+
+  addgroup --quiet --system taler-exchange-offline
+
+  adduser --quiet --system --ingroup taler-exchange-offline --home ${TALEROFF_HOME}/httpd taler-exchange-offline
+
+  lncfg taler-exchange-offline taler-exchange-offline /etc/taler/exchange-offline.conf
+
+  # Cleaning
+  echo "All done."
+  ;;
+
+abort-upgrade | abort-remove | abort-deconfigure) ;;
+
+*)
+  echo "postinst called with unknown argument \`${1}'" >&2
+  exit 1
+  ;;
+esac
+
+#DEBHELPER#
+
+exit 0

@@ -44,7 +44,7 @@ Depends:
  netbase,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: libraries to talk to a GNU Taler exchange.
+Description: libraries to talk to a GNU Taler exchange
 
 Package: taler-exchange-database
 Architecture: any
@@ -55,7 +55,7 @@ Depends:
  netbase,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: programs and libraries to manage a GNU Taler exchange database.
+Description: programs and libraries to manage a GNU Taler exchange database
 
 Package: taler-exchange
 Architecture: any
@@ -71,7 +71,20 @@ Depends:
  dbconfig-pgsql | dbconfig-no-thanks,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: GNU's payment system operator.
+Description: GNU's payment system operator
+
+Package: taler-exchange-offline
+Architecture: any
+Pre-Depends:
+ ${misc:Pre-Depends}
+Depends:
+ libtalerexchange (= ${binary:Version}),
+ adduser,
+ lsb-base,
+ netbase,
+ ${misc:Depends},
+ ${shlibs:Depends}
+Description: tools for managing the GNU Taler exchange offline keys
 
 Package: taler-auditor
 Architecture: any
@@ -87,7 +100,7 @@ Depends:
  python3-jinja2,
  ${misc:Depends},
  ${shlibs:Depends}
-Description: GNU's payment system auditor.
+Description: GNU's payment system auditor
 
 Package: libtalerexchange-dev
 Section: libdevel

@@ -2,72 +2,22 @@
 
 set -e
 
-pathfind() {
-	OLDIFS="$IFS"
-	IFS=:
-	for p in $PATH; do
-		if [ -x "$p/$*" ]; then
-			IFS="$OLDIFS"
-			return 0
-		fi
-	done
-	IFS="$OLDIFS"
-	return 1
-}
-
-if [ -f /usr/share/debconf/confmodule ];
-then
-    . /usr/share/debconf/confmodule
+if [ -f /usr/share/debconf/confmodule ]; then
+  . /usr/share/debconf/confmodule
 fi
 
 case "${1}" in
-	purge)
-		db_version 2.0
+purge)
+  rm -rf /var/log/taler-exchange/ /var/lib/taler-exchange /etc/default/taler-exchange
+  rm -f /etc/taler-wire.conf /etc/taler-exchange-db.conf /etc/taler-exchange.conf
+  ;;
 
-		db_get taler-exchange/eusername
-		_EUSERNAME="${RET:-taler-exchange-httpd}"
+remove | upgrade | failed-upgrade | abort-install | abort-upgrade | disappear) ;;
 
-		db_get taler-exchange/rsecusername
-		_RSECUSERNAME="${RET:-taler-exchange-secmod-rsa}"
-
-		db_get taler-exchange/esecusername
-		_ESECUSERNAME="${RET:-taler-exchange-secmod-eddsa}"
-
-		db_get taler-exchange/wireusername
-		_WIREUSERNAME="${RET:-taler-exchange-wire}"
-
-		db_get taler-exchange/aggrusername
-		_AGGRUSERNAME="${RET:-taler-exchange-aggregator}"
-
-		db_get taler-exchange/groupname
-		_GROUPNAME="${RET:-taler-private}"
-
-		if pathfind deluser
-		then
-			deluser --quiet --system ${_EUSERNAME} || true
-			deluser --quiet --system ${_RSECUSERNAME} || true
-			deluser --quiet --system ${_ESECUSERNAME} || true
-			deluser --quiet --system ${_WIREUSERNAME} || true
-			deluser --quiet --system ${_AGGRUSERNAME} || true
-		fi
-
-		if pathfind delgroup
-		then
-			delgroup --quiet --system --only-if-empty ${_GROUPNAME} || true
-		fi
-
-		rm -rf /var/log/taler-exchange/ /var/lib/taler-exchange /etc/default/taler-exchange
-        rm -f /etc/taler-wire.conf /etc/taler-exchange-db.conf /etc/taler-exchange.conf
-		;;
-
-	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
-
-		;;
-
-	*)
-		echo "postrm called with unknown argument \`${1}'" >&2
-		exit 1
-		;;
+*)
+  echo "postrm called with unknown argument \`${1}'" >&2
+  exit 1
+  ;;
 esac
 
 #DEBHELPER#

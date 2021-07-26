@@ -1,0 +1,21 @@
+[Unit]
+Description=GNU Taler payment system exchange REST API
+AssertPathExists=/var/lib/taler-exchange/
+Requires=taler-exchange-httpd.socket taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
+Wants=taler-exchange-wirewatch.service taler-exchange-aggregator.service taler-exchange-transfer.service
+After=postgres.service network.target
+
+[Service]
+EnvironmentFile=/etc/default/taler-exchange
+User=taler-exchange-httpd
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler/exchange-service-default.conf
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=no
+PrivateDevices=yes
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

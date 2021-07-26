@@ -1,17 +1,42 @@
-usr/bin/taler-exchange-*
+usr/bin/taler-exchange-aggregator
+usr/bin/taler-exchange-benchmark
+usr/bin/taler-exchange-closer
+usr/bin/taler-exchange-dbinit
+usr/bin/taler-exchange-httpd
+usr/bin/taler-exchange-secmod-eddsa
+usr/bin/taler-exchange-secmod-rsa
+usr/bin/taler-exchange-transfer
+usr/bin/taler-exchange-wirewatch
 usr/bin/taler-bank-benchmark
 usr/bin/taler-bank-manage-testing
 usr/bin/taler-fakebank-run
 usr/bin/taler-nexus-prepare
 usr/bin/taler-wire-gateway-client
-usr/share/man/man1/taler-exchange*
+usr/share/man/man1/taler-exchange-aggregator
+usr/share/man/man1/taler-exchange-benchmark
+usr/share/man/man1/taler-exchange-closer
+usr/share/man/man1/taler-exchange-dbinit
+usr/share/man/man1/taler-exchange-httpd
+usr/share/man/man1/taler-exchange-secmod-eddsa
+usr/share/man/man1/taler-exchange-secmod-rsa
+usr/share/man/man1/taler-exchange-transfer
+usr/share/man/man1/taler-exchange-wirewatch
 usr/share/man/man1/taler-bank*
-usr/share/man/man1/taler-config*
 usr/share/man/man1/taler-wire*
 usr/share/info/taler-bank*
 usr/share/info/taler-exchange*
 usr/share/taler/config.d/*
-debian/etc/taler/exchange* etc/taler/
+
+# configuration files in /etc/taler
+debian/etc/taler/exchange-business.conf etc/taler/
+debian/etc/taler/exchange-db.conf etc/taler/
+debian/etc/taler/exchange-service-default.conf etc/taler/
+debian/etc/taler/exchange-service-wire.conf etc/taler/
+debian/etc/taler/exchange-system.conf etc/taler
+debian/etc/taler/exchange-wire-gateway.conf etc/taler/
+
+# sample config files
 debian/exchange-conf/* usr/share/taler/sample-configs/
+
 usr/share/taler-exchange/pp/*/*
 usr/share/taler-exchange/tos/*/*

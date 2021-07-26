@@ -2,55 +2,20 @@
 
 set -e
 
-pathfind() {
-	OLDIFS="$IFS"
-	IFS=:
-	for p in $PATH; do
-		if [ -x "$p/$*" ]; then
-			IFS="$OLDIFS"
-			return 0
-		fi
-	done
-	IFS="$OLDIFS"
-	return 1
-}
-
-if [ -f /usr/share/debconf/confmodule ];
-then
-    . /usr/share/debconf/confmodule
+if [ -f /usr/share/debconf/confmodule ]; then
+  . /usr/share/debconf/confmodule
 fi
 
 case "${1}" in
-	purge)
-		db_version 2.0
+purge)
+  rm -rf /var/log/taler-auditor/ /var/lib/taler-auditor /etc/default/taler-auditor
+  ;;
 
-		db_get taler-auditor/username
-		_USERNAME="${RET:-taler-auditor-httpd}"
-
-		db_get taler-auditor/groupname
-		_GROUPNAME="${RET:-taler-auditor-httpd}"
-
-		if pathfind deluser
-		then
-			deluser --quiet --system ${_USERNAME} || true
-		fi
-
-		if pathfind delgroup
-		then
-			delgroup --quiet --system --only-if-empty ${_GROUPNAME} || true
-		fi
-
-		rm -rf /var/log/taler-auditor/ /var/lib/taler-auditor /etc/default/taler-auditor
-		;;
-
-	remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
-
-		;;
-
-	*)
-		echo "postrm called with unknown argument \`${1}'" >&2
-		exit 1
-		;;
+remove | upgrade | failed-upgrade | abort-install | abort-upgrade | disappear) ;;
+*)
+  echo "postrm called with unknown argument \`${1}'" >&2
+  exit 1
+  ;;
 esac
 
 #DEBHELPER#
