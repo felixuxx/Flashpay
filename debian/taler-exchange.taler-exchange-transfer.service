@@ -1,6 +1,7 @@
 [Unit]
 Description=GNU Taler payment system exchange transfer service
 After=network.target
+PartOf=taler-exchange.service
 
 [Service]
 User=taler-exchange-wire
