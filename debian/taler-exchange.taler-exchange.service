@@ -4,3 +4,8 @@ After=postgres.service network.target
 
 [Install]
 WantedBy=multi-user.target
+
+[Unit]
+Type=oneshot
+ExecStart=/bin/true
+RemainAfterExit=yes
