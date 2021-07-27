@@ -1,6 +1,10 @@
 [Unit]
 Description=GNU Taler exchange
 After=postgres.service network.target
+Wants=taler-exchange-httpd.service
+Wants=taler-exchange-wirewatch.service
+Wants=taler-exchange-aggregator.service
+Wants=taler-exchange-closer.service
 
 [Install]
 WantedBy=multi-user.target
