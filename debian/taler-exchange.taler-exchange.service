@@ -1,0 +1,6 @@
+[Unit]
+Description=GNU Taler exchange
+After=postgres.service network.target
+
+[Install]
+WantedBy=multi-user.target
