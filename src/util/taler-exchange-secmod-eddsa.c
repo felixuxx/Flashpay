@@ -1521,69 +1521,27 @@ run (void *cls,
     return;
   }
 
-  /* open socket */
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                               "taler-exchange-secmod-eddsa",
+                                               "UNIXPATH",
+                                               &unixpath))
   {
-    int sock;
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "taler-exchange-secmod-eddsa",
+                               "UNIXPATH");
+    global_ret = 3;
+    return;
+  }
 
-    sock = socket (PF_UNIX,
-                   SOCK_DGRAM,
-                   0);
-    if (-1 == sock)
-    {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "socket");
-      global_ret = 2;
-      return;
-    }
-    {
-      struct sockaddr_un un;
+  GNUNET_assert (NULL != unixpath);
+  unix_sock = TES_open_socket (unixpath);
 
-      if (GNUNET_OK !=
-          GNUNET_CONFIGURATION_get_value_filename (kcfg,
-                                                   "taler-exchange-secmod-eddsa",
-                                                   "UNIXPATH",
-                                                   &unixpath))
-      {
-        GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                   "taler-exchange-secmod-eddsa",
-                                   "UNIXPATH");
-        global_ret = 3;
-        return;
-      }
-      if (GNUNET_OK !=
-          GNUNET_DISK_directory_create_for_file (unixpath))
-      {
-        GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                  "mkdir(dirname)",
-                                  unixpath);
-      }
-      if (0 != unlink (unixpath))
-      {
-        if (ENOENT != errno)
-          GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                    "unlink",
-                                    unixpath);
-      }
-      memset (&un,
-              0,
-              sizeof (un));
-      un.sun_family = AF_UNIX;
-      strncpy (un.sun_path,
-               unixpath,
-               sizeof (un.sun_path) - 1);
-      if (0 != bind (sock,
-                     (const struct sockaddr *) &un,
-                     sizeof (un)))
-      {
-        GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
-                                  "bind",
-                                  unixpath);
-        global_ret = 3;
-        GNUNET_break (0 == close (sock));
-        return;
-      }
-    }
-    unix_sock = GNUNET_NETWORK_socket_box_native (sock);
+  if (NULL == unix_sock)
+  {
+    GNUNET_free (unixpath);
+    global_ret = 2;
+    return;
   }
 
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
@@ -1675,7 +1633,6 @@ main (int argc,
   };
   int ret;
 
-  (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
