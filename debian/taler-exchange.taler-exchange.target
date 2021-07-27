@@ -14,8 +14,3 @@ BindsTo=taler-exchange-closer.service
 
 [Install]
 WantedBy=multi-user.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/true
-RemainAfterExit=yes
