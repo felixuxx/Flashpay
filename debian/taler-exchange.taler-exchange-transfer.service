@@ -1,5 +1,5 @@
 [Unit]
-Description=GNU Taler payment system exchange transfer service
+Description=Taler Exchange Transfer Service
 After=network.target
 PartOf=taler-exchange.service
 
@@ -7,7 +7,7 @@ PartOf=taler-exchange.service
 User=taler-exchange-wire
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-exchange-wirewatch -c /etc/taler/exchange-service-wire.conf
+ExecStart=/usr/bin/taler-exchange-transfer -c /etc/taler/exchange-service-wire.conf
 StandardOutput=journal
 StandardError=journal
 PrivateTmp=yes
