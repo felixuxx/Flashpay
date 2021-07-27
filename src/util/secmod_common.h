@@ -28,6 +28,9 @@
 /**
  * Create the listen socket for a secmod daemon.
  *
+ * This function is not thread-safe, as it changes and
+ * restores the process umask.
+ *
  * @param unixpath socket path
  */
 struct GNUNET_NETWORK_Handle *

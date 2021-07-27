@@ -40,6 +40,7 @@
 #include <sys/eventfd.h>
 #include "taler_error_codes.h"
 #include "taler_signatures.h"
+#include "secmod_common.h"
 
 
 /**
@@ -1632,6 +1633,9 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
   int ret;
+
+  /* Restrict permissions for the key files that we create. */
+  (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
 
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil

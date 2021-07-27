@@ -26,6 +26,15 @@ struct GNUNET_NETWORK_Handle *
 TES_open_socket (const char *unixpath)
 {
   int sock;
+  mode_t old_umask;
+  struct GNUNET_NETWORK_Handle *ret = NULL;
+
+  /* Change permissions so that group read/writes are allowed.
+   * We need this for multi-user exchange deployment with privilege
+   * separation, where taler-exchange-httpd is part of a group
+   * that allows it to talk to secmod.
+   */
+  old_umask = umask (S_IROTH | S_IWOTH | S_IXOTH);
 
   sock = socket (PF_UNIX,
                  SOCK_DGRAM,
@@ -34,16 +43,8 @@ TES_open_socket (const char *unixpath)
   {
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                          "socket");
-    return NULL;
+    goto cleanup;
   }
-  /* Change permissions so that group read/writes are allowed.
-   * We need this for multi-user exchange deployment with privilege
-   * separation, where taler-exchange-httpd is part of a group
-   * that allows it to talk to secmod.
-   *
-   * Importantly, we do this before binding the socket.
-   */
-  GNUNET_assert (0 == fchmod (sock, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP));
   {
     struct sockaddr_un un;
 
@@ -76,8 +77,11 @@ TES_open_socket (const char *unixpath)
                                 "bind",
                                 unixpath);
       GNUNET_break (0 == close (sock));
-      return NULL;
+      goto cleanup;
     }
+    ret = GNUNET_NETWORK_socket_box_native (sock);
   }
-  return GNUNET_NETWORK_socket_box_native (sock);
+cleanup:
+  (void) umask (old_umask);
+  return ret;
 }

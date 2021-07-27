@@ -2031,7 +2031,9 @@ main (int argc,
   };
   int ret;
 
+  /* Restrict permissions for the key files that we create. */
   (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
+
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
