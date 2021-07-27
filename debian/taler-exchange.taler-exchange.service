@@ -1,6 +1,12 @@
 [Unit]
 Description=GNU Taler exchange
 After=postgres.service network.target
+After=taler-exchange-httpd.service
+After=taler-exchange-wirewatch.service
+After=taler-exchange-aggregator.service
+After=taler-exchange-closer.service
+# This unit shall fail if any exchange
+# service fails.
 BindsTo=taler-exchange-httpd.service
 BindsTo=taler-exchange-wirewatch.service
 BindsTo=taler-exchange-aggregator.service
