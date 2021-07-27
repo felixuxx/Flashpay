@@ -1,0 +1,14 @@
+[Unit]
+Description=GNU Taler payment system exchange closer service
+PartOf=taler-exchange.service
+
+[Service]
+User=taler-exchange-closer
+Type=simple
+Restart=on-failure
+ExecStart=/usr/bin/taler-exchange-closer -c /etc/taler/exchange-service-default.conf
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=full
