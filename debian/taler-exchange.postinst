@@ -15,22 +15,6 @@ _ESECUSERNAME=taler-exchange-secmod-eddsa
 _AGGRUSERNAME=taler-exchange-aggregator
 _WIREUSERNAME=taler-exchange-wire
 
-# usage: fixperm user:group perms file
-function fixperm() {
-  chown "$1" "$3"
-  chmod "$2" "$3"
-}
-
-# usage: lncfg user home target
-function lncfg() {
-  local cf=$TALER_HOME/$2/.config
-  if [ ! -e $cf ]; then
-    mkdir $cf
-    chown $(stat -L -c %u $TALER_HOME/$2):$(stat -L -c %g $TALER_HOME/$2) $cf
-  fi
-  ln -sf $3 $cf/taler.conf
-}
-
 case "${1}" in
 configure)
 
@@ -69,12 +53,6 @@ configure)
   fixperm ${_WIREUSERNAME}:root 460 /etc/taler/exchange-wire-gateway.conf
   fixperm root:${_DBGROUPNAME} 640 /etc/taler/exchange-db.conf
 
-  lncfg ${_EUSERNAME} httpd /etc/taler/exchange-service-default.conf
-  lncfg ${_RSECUSERNAME} secmod-rsa /etc/taler/exchange-service-default.conf
-  lncfg ${_ESECUSERNAME} secmod-eddsa /etc/taler/exchange-service-default.conf
-  lncfg ${_AGGRUSERNAME} aggregator /etc/taler/exchange-service-default.conf
-  lncfg ${_CLOSERUSERNAME} closer /etc/taler/exchange-service-default.conf
-  lncfg ${_WIREUSERNAME} wire /etc/taler/exchange-service-wire.conf
   ;;
 
 abort-upgrade | abort-remove | abort-deconfigure) ;;
