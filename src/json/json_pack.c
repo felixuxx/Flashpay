@@ -88,12 +88,12 @@ struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_amount (const char *name,
                         const struct TALER_Amount *amount)
 {
-  json_t *json;
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+    .object = TALER_JSON_from_amount (amount)
+  };
 
-  json = TALER_JSON_from_amount (amount);
-  GNUNET_assert (NULL != json);
-  return GNUNET_JSON_pack_object_steal (name,
-                                        json);
+  return ps;
 }
 
 
@@ -101,12 +101,12 @@ struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_amount_nbo (const char *name,
                             const struct TALER_AmountNBO *amount)
 {
-  json_t *json;
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+    .object = TALER_JSON_from_amount_nbo (amount)
+  };
 
-  json = TALER_JSON_from_amount_nbo (amount);
-  GNUNET_assert (NULL != json);
-  return GNUNET_JSON_pack_object_steal (name,
-                                        json);
+  return ps;
 }
 
 
