@@ -142,6 +142,20 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
 
 
 /**
+ * Function to call to handle the request by building a JSON
+ * reply from varargs.
+ *
+ * @param connection the MHD connection to handle
+ * @param response_code HTTP response code to use
+ * @param ... varargs of JSON pack specification
+ * @return MHD result code
+ */
+#define TALER_MHD_REPLY_JSON_PACK(connection,response_code,...) \
+  TALER_MHD_reply_json (connection, GNUNET_JSON_PACK (__VA_ARGS__), \
+                        response_code)
+
+
+/**
  * Send a response indicating an error.
  *
  * @param connection the MHD connection to use
@@ -192,6 +206,16 @@ TALER_MHD_make_json (const json_t *json);
 struct MHD_Response *
 TALER_MHD_make_json_pack (const char *fmt,
                           ...);
+
+
+/**
+ * Make JSON response object.
+ *
+ * @param ... varargs
+ * @return MHD response object
+ */
+#define TALER_MHD_MAKE_JSON_PACK(...) \
+  TALER_MHD_make_json (GNUNET_JSON_PACK (__VA_ARGS__))
 
 
 /**
