@@ -340,7 +340,7 @@ struct MHD_Response *
 TALER_MHD_make_error (enum TALER_ErrorCode ec,
                       const char *detail)
 {
-  return TALER_MHD_make_JSON_PACK (
+  return TALER_MHD_MAKE_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("code", ec),
     GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec)),
     GNUNET_JSON_pack_allow_null (
@@ -354,7 +354,7 @@ TALER_MHD_reply_with_error (struct MHD_Connection *connection,
                             enum TALER_ErrorCode ec,
                             const char *detail)
 {
-  return TALER_MHD_reply_JSON_PACK (
+  return TALER_MHD_REPLY_JSON_PACK (
     connection,
     http_status,
     GNUNET_JSON_pack_uint64 ("code", ec),
