@@ -1747,7 +1747,7 @@ main (int argc,
   }
   TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
   TEH_WIRE_done ();
-  return (GNUNET_SYSERR == ret) ? 1 : 0;
+  return (GNUNET_SYSERR == ret) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 
