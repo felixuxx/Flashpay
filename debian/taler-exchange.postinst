@@ -4,8 +4,7 @@ set -e
 
 . /usr/share/debconf/confmodule
 
-TALER_HOME="/var/lib/taler-exchange"
-CONFIG_FILE="/etc/default/taler-exchange"
+TALER_HOME="/var/lib/taler"
 _GROUPNAME=taler-exchange-secmod
 _DBGROUPNAME=taler-exchange-db
 _EUSERNAME=taler-exchange-httpd
@@ -28,25 +27,25 @@ configure)
 
   # Create taler users if needed
   if ! getent passwd ${_EUSERNAME} >/dev/null; then
-    adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/httpd ${_EUSERNAME}
+    adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_EUSERNAME}
     adduser --quiet ${_EUSERNAME} ${_DBGROUPNAME}
   fi
   if ! getent passwd ${_RSECUSERNAME} >/dev/null; then
-    adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/secmod-rsa ${_RSECUSERNAME}
+    adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_RSECUSERNAME}
   fi
   if ! getent passwd ${_ESECUSERNAME} >/dev/null; then
-    adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/secmod-eddsa ${_ESECUSERNAME}
+    adduser --quiet --system --no-create-home --ingroup ${_GROUPNAME} --home ${TALER_HOME} ${_ESECUSERNAME}
   fi
   if ! getent passwd ${_WIREUSERNAME} >/dev/null; then
-    adduser --quiet --system --home ${TALER_HOME}/wire ${_WIREUSERNAME}
+    adduser --quiet --system --no-create-home --home ${TALER_HOME} ${_WIREUSERNAME}
     adduser --quiet ${_WIREUSERNAME} ${_DBGROUPNAME}
   fi
   if ! getent passwd ${_CLOSERUSERNAME} >/dev/null; then
-    adduser --quiet --system --home ${TALER_HOME}/closer ${_CLOSERUSERNAME}
+    adduser --quiet --system --no-create-home --home ${TALER_HOME} ${_CLOSERUSERNAME}
     adduser --quiet ${_CLOSERUSERNAME} ${_DBGROUPNAME}
   fi
   if ! getent passwd ${_AGGRUSERNAME} >/dev/null; then
-    adduser --quiet --system --home ${TALER_HOME}/aggregator ${_AGGRUSERNAME}
+    adduser --quiet --system --no-create-home --home ${TALER_HOME} ${_AGGRUSERNAME}
     adduser --quiet ${_AGGRUSERNAME} ${_DBGROUPNAME}
   fi
 

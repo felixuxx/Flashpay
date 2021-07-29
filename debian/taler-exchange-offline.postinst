@@ -1,9 +1,10 @@
+#!/bin/bash
 
 set -e
 
 . /usr/share/debconf/confmodule
 
-TALER_HOME="/var/lib/taler-exchange"
+TALER_HOME="/var/lib/taler"
 
 case "${1}" in
 configure)
@@ -15,7 +16,8 @@ configure)
   if ! getent passwd taler-exchange-offline >/dev/null; then
     adduser --quiet --system \
       --ingroup taler-exchange-offline \
-      --home ${TALER_HOME}/offline taler-exchange-offline
+      --no-create-home \
+      --home ${TALER_HOME} taler-exchange-offline
   fi
 
   ;;
