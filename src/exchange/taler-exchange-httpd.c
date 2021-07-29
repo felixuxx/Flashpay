@@ -79,11 +79,6 @@ struct ExchangeHttpRequestClosure
 
 
 /**
- * Base directory of the exchange (global)
- */
-char *TEH_exchange_directory;
-
-/**
  * Directory where revocations are stored (global)
  */
 char *TEH_revocation_directory;
@@ -1149,17 +1144,6 @@ exchange_serve_process_config (void)
                                "exchange",
                                "MAX_KEYS_CACHING",
                                "valid relative time expected");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (TEH_cfg,
-                                               "exchange",
-                                               "KEYDIR",
-                                               &TEH_exchange_directory))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "KEYDIR");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
