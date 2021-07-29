@@ -24,8 +24,8 @@ configure)
     echo " done."
   fi
 
-  # Cleaning
-  echo "All done."
+  dpkg-statoverride --add --update ${_USERNAME} ${_GROUPNAME} 660 /etc/taler/secrets/auditor-db.secret.conf
+
   ;;
 
 abort-upgrade | abort-remove | abort-deconfigure) ;;
