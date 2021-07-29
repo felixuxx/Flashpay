@@ -1549,7 +1549,8 @@ run (void *cls,
     }
     /* Set sticky group bit, so that clients will be writeable by the current service. */
     if (0 != chmod (client_dir,
-                    S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_ISGID))
+                    S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP
+                    | S_ISGID))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Can't set permissions for client directory (%s)\n",
