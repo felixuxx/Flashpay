@@ -5,4 +5,3 @@ d /run/taler/exchange-secmod-eddsa 0755 taler-exchange-secmod-eddsa taler-exchan
 d /var/lib/taler/exchange-offline 0700 taler-exchange-offline taler-exchange-offline  - -
 d /var/lib/taler/exchange-secmod-rsa 0700 taler-exchange-secmod-rsa taler-exchange-secmod  - -
 d /var/lib/taler/exchange-secmod-eddsa 0700 taler-exchange-secmod-eddsa taler-exchange-secmod  - -
-d /var/lib/taler/exchange-secmod-eddsa 0700 taler-exchange-httpd root  - -
