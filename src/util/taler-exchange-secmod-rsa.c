@@ -1896,6 +1896,45 @@ run (void *cls,
     return;
   }
 
+  /* Create client directory and set permissions. */
+  {
+    char *client_dir;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_filename (kcfg,
+                                                 "taler-exchange-secmod-rsa",
+                                                 "CLIENT_DIR",
+                                                 &client_dir))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "taler-exchange-secmod-rsa",
+                                 "CLIENT_DIR");
+      global_ret = 3;
+      return;
+    }
+
+    if (GNUNET_OK != GNUNET_DISK_directory_create (client_dir))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Can't create client directory (%s)\n",
+                  client_dir);
+      global_ret = 3;
+      return;
+    }
+    /* Set sticky group bit, so that clients will be writeable by the current service. */
+    if (0 != chmod (client_dir,
+                    S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_ISGID))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Can't set permissions for client directory (%s)\n",
+                  client_dir);
+      global_ret = 3;
+      return;
+    }
+
+    GNUNET_free (client_dir);
+  }
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (kcfg,
                                                "taler-exchange-secmod-rsa",

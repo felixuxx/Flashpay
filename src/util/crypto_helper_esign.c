@@ -229,26 +229,33 @@ TALER_CRYPTO_helper_esign_connect (
 
     if (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                 "PATHS",
-                                                 "TALER_RUNTIME_DIR",
+                                                 "taler-exchange-secmod-eddsa",
+                                                 "CLIENT_DIR",
                                                  &tmpdir))
     {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_WARNING,
-                                 "PATHS",
-                                 "TALER_RUNTIME_DIR");
-      tmpdir = GNUNET_strdup ("/tmp");
-    }
-    GNUNET_asprintf (&template,
-                     "%s/crypto-eddsa-client/cli",
-                     tmpdir);
-    GNUNET_free (tmpdir);
-    if (GNUNET_OK !=
-        GNUNET_DISK_directory_create_for_file (template))
-    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "taler-exchange-secmod-eddsa",
+                                 "CLIENT_DIR");
       GNUNET_free (esh);
-      GNUNET_free (template);
       return NULL;
     }
+    GNUNET_asprintf (&template,
+                     "%s/cli",
+                     tmpdir);
+    /* We expect the service to create the client directory */
+    if (GNUNET_OK !=
+        GNUNET_DISK_directory_test (tmpdir,
+                                    GNUNET_YES))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unable to read secmod client directory (%s)\n",
+                  tmpdir);
+      GNUNET_free (esh);
+      GNUNET_free (template);
+      GNUNET_free (tmpdir);
+      return NULL;
+    }
+    GNUNET_free (tmpdir);
     esh->template = template;
     if (strlen (template) >= sizeof (esh->sa.sun_path))
     {
