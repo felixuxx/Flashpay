@@ -79,11 +79,6 @@ struct ExchangeHttpRequestClosure
 
 
 /**
- * Directory where revocations are stored (global)
- */
-char *TEH_revocation_directory;
-
-/**
  * Are clients allowed to request /keys for times other than the
  * current time? Allowing this could be abused in a DoS-attack
  * as building new /keys responses is expensive. Should only be
@@ -1144,17 +1139,6 @@ exchange_serve_process_config (void)
                                "exchange",
                                "MAX_KEYS_CACHING",
                                "valid relative time expected");
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (TEH_cfg,
-                                               "exchange",
-                                               "REVOCATION_DIR",
-                                               &TEH_revocation_directory))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "REVOCATION_DIR");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
