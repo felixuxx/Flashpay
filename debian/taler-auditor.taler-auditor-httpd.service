@@ -6,7 +6,7 @@ After=postgres.service network.target
 User=taler-auditor-httpd
 Type=simple
 Restart=on-failure
-ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler-auditor.conf
+ExecStart=/usr/bin/taler-auditor-httpd -c /etc/taler/taler.conf
 
 [Install]
 WantedBy=multi-user.target

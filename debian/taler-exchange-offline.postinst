@@ -1,20 +1,9 @@
-#!/bin/bash
 
 set -e
 
 . /usr/share/debconf/confmodule
 
 TALER_HOME="/var/lib/taler-exchange"
-
-# usage: lncfg user home target
-function lncfg() {
-  local cf=$TALER_HOME/$2/.config
-  if [ ! -e $cf ]; then
-    mkdir $cf
-    chown $(stat -L -c %u $TALER_HOME/$2):$(stat -L -c %g $TALER_HOME/$2) $cf
-  fi
-  ln -sf $3 $cf/taler.conf
-}
 
 case "${1}" in
 configure)
@@ -28,11 +17,6 @@ configure)
       --ingroup taler-exchange-offline \
       --home ${TALER_HOME}/offline taler-exchange-offline
   fi
-
-  lncfg taler-exchange-offline offline /etc/taler/exchange-offline.conf
-
-  echo "All done."
-  ;;
 
 abort-upgrade | abort-remove | abort-deconfigure) ;;
 

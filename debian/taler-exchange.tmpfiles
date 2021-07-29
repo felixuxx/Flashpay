@@ -1,4 +1,0 @@
-# Type  Path Mode User Group Age Argument
-
-# Directory for secmod server and client sockets
-d /var/taler-exchange 2660 root taler-exchange-secmod - -

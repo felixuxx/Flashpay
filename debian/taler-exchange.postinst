@@ -15,6 +15,12 @@ _ESECUSERNAME=taler-exchange-secmod-eddsa
 _AGGRUSERNAME=taler-exchange-aggregator
 _WIREUSERNAME=taler-exchange-wire
 
+# usage: fixperm user:group perms file
+function fixperm() {
+  chown "$1" "$3"
+  chmod "$2" "$3"
+}
+
 case "${1}" in
 configure)
 
@@ -50,8 +56,8 @@ configure)
     adduser --quiet ${_AGGRUSERNAME} ${_DBGROUPNAME}
   fi
 
-  fixperm ${_WIREUSERNAME}:root 460 /etc/taler/exchange-wire-gateway.conf
-  fixperm root:${_DBGROUPNAME} 640 /etc/taler/exchange-db.conf
+  fixperm ${_WIREUSERNAME}:root 460 /etc/taler/secrets/exchange-accounts.secret.conf
+  fixperm root:${_DBGROUPNAME} 640 /etc/taler/secrets/exchange-db.secret.conf
 
   ;;
 
