@@ -66,6 +66,33 @@
    is needed for performance reasons. */
 #define ENABLE_SANITY_CHECKS 1
 
+
+/* LSB-style exit status codes */
+#ifndef EXIT_INVALIDARGUMENT
+#define EXIT_INVALIDARGUMENT 2
+#endif
+
+#ifndef EXIT_NOTIMPLEMENTED
+#define EXIT_NOTIMPLEMENTED 3
+#endif
+
+#ifndef EXIT_NOPERMISSION
+#define EXIT_NOPERMISSION 4
+#endif
+
+#ifndef EXIT_NOTINSTALLED
+#define EXIT_NOTINSTALLED 5
+#endif
+
+#ifndef EXIT_NOTCONFIGURED
+#define EXIT_NOTCONFIGURED 6
+#endif
+
+#ifndef EXIT_NOTRUNNING
+#define EXIT_NOTRUNNING 7
+#endif
+
+
 #endif  /* PLATFORM_H_ */
 
 /* end of platform.h */

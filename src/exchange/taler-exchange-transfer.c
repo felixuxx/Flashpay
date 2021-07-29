@@ -99,21 +99,7 @@ static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
 /**
  * Value to return from main(). 0 on success, non-zero on errors.
  */
-static enum
-{
-  GR_SUCCESS = 0,
-  GR_WIRE_TRANSFER_FAILED = 1,
-  GR_DATABASE_COMMIT_HARD_FAIL = 2,
-  GR_INVARIANT_FAILURE = 3,
-  GR_WIRE_ACCOUNT_NOT_CONFIGURED = 4,
-  GR_WIRE_TRANSFER_BEGIN_FAIL = 5,
-  GR_DATABASE_TRANSACTION_BEGIN_FAIL = 6,
-  GR_DATABASE_SESSION_START_FAIL = 7,
-  GR_CONFIGURATION_INVALID = 8,
-  GR_CMD_LINE_UTF8_ERROR = 9,
-  GR_CMD_LINE_OPTIONS_WRONG = 10,
-  GR_DATABASE_FETCH_FAILURE = 11,
-} global_ret;
+static int global_ret;
 
 /**
  * #GNUNET_YES if we are in test mode and should exit when idle.
@@ -290,7 +276,7 @@ wire_confirm_cb (void *cls,
                 ec);
     db_plugin->rollback (db_plugin->cls,
                          session);
-    global_ret = GR_WIRE_TRANSFER_FAILED;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     GNUNET_free (wpd);
     wpd = NULL;
@@ -310,7 +296,7 @@ wire_confirm_cb (void *cls,
     }
     else
     {
-      global_ret = GR_DATABASE_COMMIT_HARD_FAIL;
+      global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
     }
     GNUNET_free (wpd);
@@ -329,7 +315,7 @@ wire_confirm_cb (void *cls,
     return;
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    global_ret = GR_DATABASE_COMMIT_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
@@ -343,7 +329,7 @@ wire_confirm_cb (void *cls,
     return;
   default:
     GNUNET_break (0);
-    global_ret = GR_INVARIANT_FAILURE;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -376,7 +362,7 @@ wire_prepare_cb (void *cls,
     GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
-    global_ret = GR_DATABASE_FETCH_FAILURE;
+    global_ret = EXIT_FAILURE;
     goto cleanup;
   }
   wpd->row_id = rowid;
@@ -391,7 +377,7 @@ wire_prepare_cb (void *cls,
     GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
-    global_ret = GR_WIRE_ACCOUNT_NOT_CONFIGURED;
+    global_ret = EXIT_NOTCONFIGURED;
     goto cleanup;
   }
   wa = wpd->wa;
@@ -406,7 +392,7 @@ wire_prepare_cb (void *cls,
     GNUNET_break (0); /* Irrecoverable */
     db_plugin->rollback (db_plugin->cls,
                          wpd->session);
-    global_ret = GR_WIRE_TRANSFER_BEGIN_FAIL;
+    global_ret = EXIT_FAILURE;
     goto cleanup;
   }
   return;
@@ -437,7 +423,7 @@ run_transfers (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
-    global_ret = GR_DATABASE_SESSION_START_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -448,7 +434,7 @@ run_transfers (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
-    global_ret = GR_DATABASE_TRANSACTION_BEGIN_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -468,7 +454,7 @@ run_transfers (void *cls)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    global_ret = GR_DATABASE_COMMIT_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
@@ -524,7 +510,7 @@ run (void *cls,
   if (GNUNET_OK != parse_wirewatch_config ())
   {
     cfg = NULL;
-    global_ret = GR_CONFIGURATION_INVALID;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   ctx = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
@@ -570,7 +556,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return GR_CMD_LINE_UTF8_ERROR;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-exchange-transfer",
@@ -580,9 +566,9 @@ main (int argc,
     &run, NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return GR_CMD_LINE_OPTIONS_WRONG;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

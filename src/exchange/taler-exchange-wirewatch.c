@@ -198,17 +198,7 @@ static unsigned int max_workers = 16;
  * Value to return from main(). 0 on success, non-zero on
  * on serious errors.
  */
-static enum
-{
-  GR_SUCCESS = 0,
-  GR_DATABASE_SESSION_FAIL = 1,
-  GR_DATABASE_TRANSACTION_BEGIN_FAIL = 2,
-  GR_DATABASE_SELECT_LATEST_HARD_FAIL = 3,
-  GR_BANK_REQUEST_HISTORY_FAIL = 4,
-  GR_CONFIGURATION_INVALID = 5,
-  GR_CMD_LINE_UTF8_ERROR = 6,
-  GR_CMD_LINE_OPTIONS_WRONG = 7,
-} global_ret;
+static int global_ret;
 
 /**
  * Are we run in testing mode and should only do one pass?
@@ -616,7 +606,7 @@ find_transfers (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
-    global_ret = GR_DATABASE_SESSION_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -650,7 +640,7 @@ find_transfers (void *cls)
     case GNUNET_DB_STATUS_HARD_ERROR:
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to obtain starting point for montoring from database!\n");
-      global_ret = GR_DATABASE_SELECT_LATEST_HARD_FAIL;
+      global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       return;
     case GNUNET_DB_STATUS_SOFT_ERROR:
@@ -683,7 +673,7 @@ find_transfers (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
-    global_ret = GR_DATABASE_TRANSACTION_BEGIN_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -704,7 +694,7 @@ find_transfers (void *cls)
                 "Failed to start request for account history!\n");
     db_plugin->rollback (db_plugin->cls,
                          session);
-    global_ret = GR_BANK_REQUEST_HISTORY_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -733,7 +723,7 @@ run (void *cls,
   if (GNUNET_OK !=
       exchange_serve_process_config ())
   {
-    global_ret = GR_CONFIGURATION_INVALID;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   wa_pos = wa_head;
@@ -789,7 +779,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return GR_CMD_LINE_UTF8_ERROR;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-exchange-wirewatch",
@@ -799,9 +789,9 @@ main (int argc,
     &run, NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return GR_CMD_LINE_OPTIONS_WRONG;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

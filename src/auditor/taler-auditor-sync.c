@@ -269,7 +269,7 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Failed to lookup records from table %d: hard error\n",
                     i);
-        global_ret = 3;
+        global_ret = EXIT_FAILURE;
         return GNUNET_SYSERR;
       }
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -285,7 +285,7 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
                     "Failed to lookup records from table %d: no results\n",
                     i);
         GNUNET_break (0); /* should be impossible */
-        global_ret = 4;
+        global_ret = EXIT_FAILURE;
         return GNUNET_SYSERR;
       }
       if (0 == ctx.qs)
@@ -306,7 +306,7 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Hard error committing transaction on table %d\n",
                     i);
-        global_ret = 5;
+        global_ret = EXIT_FAILURE;
         return GNUNET_SYSERR;
       }
     }
@@ -530,13 +530,13 @@ setup (struct GNUNET_CONFIGURATION_Handle *src_cfg,
   src = TALER_EXCHANGEDB_plugin_load (src_cfg);
   if (NULL == src)
   {
-    global_ret = 3;
+    global_ret = EXIT_NOTINSTALLED;
     return;
   }
   dst = TALER_EXCHANGEDB_plugin_load (dst_cfg);
   if (NULL == dst)
   {
-    global_ret = 3;
+    global_ret = EXIT_NOTINSTALLED;
     TALER_EXCHANGEDB_plugin_unload (src);
     src = NULL;
     return;
@@ -601,9 +601,9 @@ main (int argc,
                              options,
                              argc, argv);
     if (GNUNET_NO == ret)
-      return 0;
+      return EXIT_SUCCESS;
     if (GNUNET_SYSERR == ret)
-      return 1;
+      return EXIT_INVALIDARGUMENT;
   }
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_log_setup ("taler-auditor-sync",
@@ -615,14 +615,14 @@ main (int argc,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Source and destination configuration files must differ!\n");
-    return 1;
+    return EXIT_INVALIDARGUMENT;
   }
   src_cfg = load_config (src_cfgfile);
   if (NULL == src_cfg)
   {
     GNUNET_free (src_cfgfile);
     GNUNET_free (dst_cfgfile);
-    return 1;
+    return EXIT_NOTCONFIGURED;
   }
   dst_cfg = load_config (dst_cfgfile);
   if (NULL == dst_cfg)
@@ -630,7 +630,7 @@ main (int argc,
     GNUNET_CONFIGURATION_destroy (src_cfg);
     GNUNET_free (src_cfgfile);
     GNUNET_free (dst_cfgfile);
-    return 1;
+    return EXIT_NOTCONFIGURED;
   }
   setup (src_cfg,
          dst_cfg);

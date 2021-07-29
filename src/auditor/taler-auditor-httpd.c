@@ -576,9 +576,9 @@ main (int argc,
                              options,
                              argc, argv);
     if (GNUNET_NO == ret)
-      return 0;
+      return EXIT_SUCCESS;
     if (GNUNET_SYSERR == ret)
-      return 3;
+      return EXIT_FAILURE;
   }
   go = TALER_MHD_GO_NONE;
   if (auditor_connection_close)
@@ -599,13 +599,13 @@ main (int argc,
                 "Malformed configuration file `%s', exiting ...\n",
                 cfgfile);
     GNUNET_free (cfgfile);
-    return 1;
+    return EXIT_NOTCONFIGURED;
   }
   GNUNET_free (cfgfile);
 
   if (GNUNET_OK !=
       auditor_serve_process_config ())
-    return 1;
+    return EXIT_NOTCONFIGURED;
   TEAH_DEPOSIT_CONFIRMATION_init ();
   /* check for systemd-style FD passing */
   listen_pid = getenv ("LISTEN_PID");
@@ -649,7 +649,7 @@ main (int argc,
     if (-1 == fh)
     {
       TEAH_DEPOSIT_CONFIRMATION_done ();
-      return 1;
+      return EXIT_NOPERMISSION; /* most likely at least */
     }
   }
 
@@ -674,7 +674,7 @@ main (int argc,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start HTTP server.\n");
     TEAH_DEPOSIT_CONFIRMATION_done ();
-    return 1;
+    return EXIT_FAILURE;
   }
 
   /* normal behavior */
@@ -751,7 +751,7 @@ main (int argc,
   TALER_EXCHANGEDB_plugin_unload (TAH_eplugin);
   TAH_eplugin = NULL;
   TEAH_DEPOSIT_CONFIRMATION_done ();
-  return (GNUNET_SYSERR == ret) ? 1 : 0;
+  return (GNUNET_SYSERR == ret) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 

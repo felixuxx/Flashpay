@@ -153,21 +153,7 @@ static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
 /**
  * Value to return from main(). 0 on success, non-zero on errors.
  */
-static enum
-{
-  GR_SUCCESS = 0,
-  GR_DATABASE_SESSION_FAIL = 1,
-  GR_DATABASE_TRANSACTION_BEGIN_FAIL = 2,
-  GR_DATABASE_READY_DEPOSIT_HARD_FAIL = 3,
-  GR_DATABASE_ITERATE_DEPOSIT_HARD_FAIL = 4,
-  GR_DATABASE_TINY_MARK_HARD_FAIL = 5,
-  GR_DATABASE_PREPARE_HARD_FAIL = 6,
-  GR_DATABASE_PREPARE_COMMIT_HARD_FAIL = 7,
-  GR_INVARIANT_FAILURE = 8,
-  GR_CONFIGURATION_INVALID = 9,
-  GR_CMD_LINE_UTF8_ERROR = 9,
-  GR_CMD_LINE_OPTIONS_WRONG = 10,
-} global_ret;
+static int global_ret;
 
 /**
  * #GNUNET_YES if we are in test mode and should exit when idle.
@@ -676,7 +662,7 @@ run_aggregation (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
-    global_ret = GR_DATABASE_SESSION_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -686,7 +672,7 @@ run_aggregation (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
-    global_ret = GR_DATABASE_TRANSACTION_BEGIN_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -707,7 +693,7 @@ run_aggregation (void *cls)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to execute deposit iteration!\n");
-      global_ret = GR_DATABASE_READY_DEPOSIT_HARD_FAIL;
+      global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
@@ -756,7 +742,7 @@ run_aggregation (void *cls)
     cleanup_au (&au_active);
     db_plugin->rollback (db_plugin->cls,
                          session);
-    global_ret = GR_DATABASE_ITERATE_DEPOSIT_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -805,7 +791,7 @@ run_aggregation (void *cls)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to start database transaction!\n");
-      global_ret = GR_DATABASE_TRANSACTION_BEGIN_FAIL;
+      global_ret = EXIT_FAILURE;
       cleanup_au (&au_active);
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -843,7 +829,7 @@ run_aggregation (void *cls)
       db_plugin->rollback (db_plugin->cls,
                            session);
       cleanup_au (&au_active);
-      global_ret = GR_DATABASE_TINY_MARK_HARD_FAIL;
+      global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
@@ -926,7 +912,7 @@ run_aggregation (void *cls)
     db_plugin->rollback (db_plugin->cls,
                          session);
     /* die hard */
-    global_ret = GR_DATABASE_PREPARE_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -948,7 +934,7 @@ run_aggregation (void *cls)
     return;
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    global_ret = GR_DATABASE_PREPARE_COMMIT_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
@@ -960,7 +946,7 @@ run_aggregation (void *cls)
     return;
   default:
     GNUNET_break (0);
-    global_ret = GR_INVARIANT_FAILURE;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -989,7 +975,7 @@ run (void *cls,
   if (GNUNET_OK != parse_wirewatch_config ())
   {
     cfg = NULL;
-    global_ret = GR_CONFIGURATION_INVALID;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   GNUNET_assert (NULL == task);
@@ -1025,7 +1011,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return GR_CMD_LINE_UTF8_ERROR;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-exchange-aggregator",
@@ -1035,9 +1021,9 @@ main (int argc,
     &run, NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return GR_CMD_LINE_OPTIONS_WRONG;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

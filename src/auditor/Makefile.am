@@ -130,8 +130,8 @@ taler_helper_auditor_wire_SOURCES = \
   taler-helper-auditor-wire.c
 taler_helper_auditor_wire_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
@@ -174,11 +174,13 @@ taler_auditor_exchange_LDADD = \
 taler_auditor_sync_SOURCES = \
   taler-auditor-sync.c
 taler_auditor_sync_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
   -lgnunetutil \
+  $(LIBGCRYPT_LIBS) \
   $(XLIB)
 taler_auditor_sync_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS)

@@ -20,7 +20,7 @@ libtalersq_la_LIBADD = \
 libtalersq_la_LDFLAGS = \
   $(SQLITE_LDFLAGS) \
   -version-info 0:0:0 \
-  -export-dynamic -no-undefined
+  -no-undefined
 
 check_PROGRAMS= \
  test_sq

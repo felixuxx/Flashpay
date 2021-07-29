@@ -66,22 +66,7 @@ static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
  * Value to return from main(). 0 on success, non-zero
  * on serious errors.
  */
-static enum
-{
-  GR_SUCCESS = 0,
-  GR_WIRE_ACCOUNT_NOT_CONFIGURED = 1,
-  GR_WIRE_TRANSFER_FEES_NOT_CONFIGURED = 2,
-  GR_FAILURE_TO_ROUND_AMOUNT = 3,
-  GR_DATABASE_INSERT_HARD_FAIL = 4,
-  GR_DATABASE_SELECT_HARD_FAIL = 5,
-  GR_DATABASE_COMMIT_HARD_FAIL = 6,
-  GR_DATABASE_SESSION_START_FAIL = 7,
-  GR_DATABASE_TRANSACTION_BEGIN_FAIL = 8,
-  GR_CONFIGURATION_INVALID = 9,
-  GR_CMD_LINE_UTF8_ERROR = 10,
-  GR_CMD_LINE_OPTIONS_WRONG = 11,
-  GR_INVALID_PAYTO_ENCOUNTERED = 12,
-} global_ret;
+static int global_ret;
 
 /**
  * #GNUNET_YES if we are in test mode and should exit when idle.
@@ -268,7 +253,7 @@ expired_reserve_cb (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No wire account configured to deal with target URI `%s'\n",
                 account_payto_uri);
-    global_ret = GR_WIRE_ACCOUNT_NOT_CONFIGURED;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -321,7 +306,7 @@ expired_reserve_cb (void *cls,
                                &currency_round_unit))
   {
     GNUNET_break (0);
-    global_ret = GR_FAILURE_TO_ROUND_AMOUNT;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -360,7 +345,7 @@ expired_reserve_cb (void *cls,
        (GNUNET_DB_STATUS_HARD_ERROR == qs) )
   {
     GNUNET_break (0);
-    global_ret = GR_DATABASE_INSERT_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -396,7 +381,7 @@ expired_reserve_cb (void *cls,
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_break (0);
-    global_ret = GR_DATABASE_INSERT_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
@@ -429,7 +414,7 @@ run_reserve_closures (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain database session!\n");
-    global_ret = GR_DATABASE_SESSION_START_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -441,7 +426,7 @@ run_reserve_closures (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start database transaction!\n");
-    global_ret = GR_DATABASE_TRANSACTION_BEGIN_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -463,7 +448,7 @@ run_reserve_closures (void *cls)
     GNUNET_break (0);
     db_plugin->rollback (db_plugin->cls,
                          session);
-    global_ret = GR_DATABASE_SELECT_HARD_FAIL;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
@@ -524,7 +509,7 @@ run (void *cls,
   if (GNUNET_OK != parse_wirewatch_config ())
   {
     cfg = NULL;
-    global_ret = GR_CONFIGURATION_INVALID;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   GNUNET_assert (NULL == task);
@@ -560,7 +545,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return GR_CMD_LINE_UTF8_ERROR;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-exchange-closer",
@@ -569,9 +554,9 @@ main (int argc,
     &run, NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return GR_CMD_LINE_OPTIONS_WRONG;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

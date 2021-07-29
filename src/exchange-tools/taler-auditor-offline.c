@@ -407,7 +407,7 @@ denomination_add_cb (
              NULL != hr->hint
              ? hr->hint
              : "no hint provided");
-    global_ret = 42;
+    global_ret = EXIT_FAILURE;
   }
   GNUNET_CONTAINER_DLL_remove (dar_head,
                                dar_tail,
@@ -453,7 +453,7 @@ upload_denomination_add (const char *exchange_url,
              err_name,
              err_line,
              (unsigned int) idx);
-    global_ret = 7;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     return;
   }
@@ -505,7 +505,7 @@ trigger_upload (const char *exchange_url)
     {
       fprintf (stderr,
                "Malformed JSON input\n");
-      global_ret = 3;
+      global_ret = EXIT_FAILURE;
       test_shutdown ();
       return;
     }
@@ -527,7 +527,7 @@ trigger_upload (const char *exchange_url)
       fprintf (stderr,
                "Upload does not know how to handle `%s'\n",
                key);
-      global_ret = 3;
+      global_ret = EXIT_FAILURE;
       test_shutdown ();
       return;
     }
@@ -561,7 +561,7 @@ do_upload (char *const *args)
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "auditor",
                                  "PUBLIC_KEY");
-      global_ret = 4;
+      global_ret = EXIT_NOTCONFIGURED;
       test_shutdown ();
       return;
     }
@@ -576,7 +576,7 @@ do_upload (char *const *args)
                                  "PUBLIC_KEY",
                                  "invalid key");
       GNUNET_free (auditor_public_key_str);
-      global_ret = 4;
+      global_ret = EXIT_NOTCONFIGURED;
       test_shutdown ();
       return;
     }
@@ -587,7 +587,7 @@ do_upload (char *const *args)
     fprintf (stderr,
              "Downloaded data was not consumed, refusing upload\n");
     test_shutdown ();
-    global_ret = 4;
+    global_ret = EXIT_FAILURE;
     return;
   }
   if (NULL == out)
@@ -606,7 +606,7 @@ do_upload (char *const *args)
                err.source,
                err.position);
       test_shutdown ();
-      global_ret = 2;
+      global_ret = EXIT_FAILURE;
       return;
     }
   }
@@ -615,7 +615,7 @@ do_upload (char *const *args)
     fprintf (stderr,
              "Error: expected JSON array for `upload` command\n");
     test_shutdown ();
-    global_ret = 2;
+    global_ret = EXIT_FAILURE;
     return;
   }
   if (GNUNET_OK !=
@@ -627,7 +627,7 @@ do_upload (char *const *args)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
                                "BASE_URL");
-    global_ret = 1;
+    global_ret = EXIT_NOTCONFIGURED;
     test_shutdown ();
     return;
   }
@@ -670,7 +670,7 @@ keys_cb (
     TALER_EXCHANGE_disconnect (exchange);
     exchange = NULL;
     test_shutdown ();
-    global_ret = 4;
+    global_ret = EXIT_FAILURE;
     return;
   }
   in = json_pack ("{s:s,s:O}",
@@ -712,7 +712,7 @@ do_download (char *const *args)
                                "exchange",
                                "BASE_URL");
     test_shutdown ();
-    global_ret = 1;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   exchange = TALER_EXCHANGE_connect (ctx,
@@ -795,7 +795,7 @@ show_denomkeys (const json_t *denomkeys)
                err_line,
                (unsigned int) index);
       GNUNET_JSON_parse_free (spec);
-      global_ret = 7;
+      global_ret = EXIT_FAILURE;
       test_shutdown ();
       return GNUNET_SYSERR;
     }
@@ -821,7 +821,7 @@ show_denomkeys (const json_t *denomkeys)
       fprintf (stderr,
                "Invalid master signature for key %s (aborting)\n",
                TALER_B2S (&h_denom_pub));
-      global_ret = 9;
+      global_ret = EXIT_FAILURE;
       test_shutdown ();
       return GNUNET_SYSERR;
     }
@@ -907,7 +907,7 @@ parse_keys (const char *command_name)
                err.line,
                err.source,
                err.position);
-      global_ret = 2;
+      global_ret = EXIT_FAILURE;
       test_shutdown ();
       return NULL;
     }
@@ -926,7 +926,7 @@ parse_keys (const char *command_name)
     json_dumpf (in,
                 stderr,
                 JSON_INDENT (2));
-    global_ret = 7;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     return NULL;
   }
@@ -985,7 +985,7 @@ do_show (char *const *args)
              "Invalid input to 'show': %s#%u (skipping)\n",
              err_name,
              err_line);
-    global_ret = 7;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     json_decref (keys);
     return;
@@ -996,7 +996,7 @@ do_show (char *const *args)
   {
     fprintf (stderr,
              "Exchange master public key does not match key we have configured (aborting)\n");
-    global_ret = 7;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     json_decref (keys);
     return;
@@ -1004,7 +1004,7 @@ do_show (char *const *args)
   if (GNUNET_OK !=
       show_denomkeys (denomkeys))
   {
-    global_ret = 8;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     GNUNET_JSON_parse_free (spec);
     json_decref (keys);
@@ -1094,7 +1094,7 @@ sign_denomkeys (const json_t *denomkeys)
                err_line,
                (unsigned int) index);
       GNUNET_JSON_parse_free (spec);
-      global_ret = 7;
+      global_ret = EXIT_FAILURE;
       test_shutdown ();
       return GNUNET_SYSERR;
     }
@@ -1118,7 +1118,7 @@ sign_denomkeys (const json_t *denomkeys)
       fprintf (stderr,
                "Invalid master signature for key %s (aborting)\n",
                TALER_B2S (&h_denom_pub));
-      global_ret = 9;
+      global_ret = EXIT_FAILURE;
       test_shutdown ();
       return GNUNET_SYSERR;
     }
@@ -1197,7 +1197,7 @@ do_sign (char *const *args)
              "Invalid input to 'sign': %s#%u (skipping)\n",
              err_name,
              err_line);
-    global_ret = 7;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     json_decref (keys);
     return;
@@ -1208,7 +1208,7 @@ do_sign (char *const *args)
   {
     fprintf (stderr,
              "Exchange master public key does not match key we have configured (aborting)\n");
-    global_ret = 7;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     json_decref (keys);
     return;
@@ -1218,7 +1218,7 @@ do_sign (char *const *args)
   if (GNUNET_OK !=
       sign_denomkeys (denomkeys))
   {
-    global_ret = 8;
+    global_ret = EXIT_FAILURE;
     test_shutdown ();
     GNUNET_JSON_parse_free (spec);
     json_decref (keys);
@@ -1241,7 +1241,7 @@ do_setup (char *const *args)
   if (GNUNET_OK !=
       load_offline_key (GNUNET_YES))
   {
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     return;
   }
   if (NULL != *args)
@@ -1332,7 +1332,7 @@ work (void *cls)
     fprintf (stderr,
              "Unexpected command `%s'\n",
              args[0]);
-    global_ret = 3;
+    global_ret = EXIT_INVALIDARGUMENT;
   }
   fprintf (stderr,
            "Supported subcommands:\n");
@@ -1365,7 +1365,7 @@ run (void *cls,
       TALER_config_get_currency (kcfg,
                                  &currency))
   {
-    global_ret = 1;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   if (GNUNET_OK !=
@@ -1377,7 +1377,7 @@ run (void *cls,
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "auditor",
                                "BASE_URL");
-    global_ret = 1;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   {
@@ -1392,7 +1392,7 @@ run (void *cls,
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
                                  "MASTER_PUBLIC_KEY");
-      global_ret = 1;
+      global_ret = EXIT_NOTCONFIGURED;
       return;
     }
     if (GNUNET_OK !=
@@ -1404,7 +1404,7 @@ run (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid master public key given in exchange configuration.");
       GNUNET_free (master_public_key_str);
-      global_ret = 1;
+      global_ret = EXIT_NOTCONFIGURED;
       return;
     }
     GNUNET_free (master_public_key_str);
@@ -1446,7 +1446,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return 4;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-auditor-offline",
@@ -1455,9 +1455,9 @@ main (int argc,
     &run, NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return 3;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

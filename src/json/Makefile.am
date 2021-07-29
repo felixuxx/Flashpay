@@ -17,10 +17,10 @@ libtalerjson_la_SOURCES = \
   json_wire.c
 libtalerjson_la_LDFLAGS = \
   -version-info 1:0:1 \
-  -export-dynamic -no-undefined
+  -no-undefined
 libtalerjson_la_LIBADD = \
-  -lgnunetjson \
   $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
   -lgnunetutil \
   -ljansson \
   -lm \

@@ -20,7 +20,7 @@ libtalerpq_la_LIBADD = \
 libtalerpq_la_LDFLAGS = \
   $(POSTGRESQL_LDFLAGS) \
   -version-info 0:0:0 \
-  -export-dynamic -no-undefined
+  -no-undefined
 
 check_PROGRAMS= \
  test_pq

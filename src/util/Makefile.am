@@ -89,7 +89,7 @@ libtalerutil_la_LIBADD = \
 
 libtalerutil_la_LDFLAGS = \
   -version-info 0:0:0 \
-  -export-dynamic -no-undefined
+  -no-undefined
 
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;

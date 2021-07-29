@@ -1635,10 +1635,10 @@ main (int argc,
   ret = GNUNET_GETOPT_run ("taler-exchange-httpd",
                            options,
                            argc, argv);
-  if (ret < 0)
-    return 1;
-  if (0 == ret)
-    return 0;
+  if (GNUNET_SYSERR == ret)
+    return EXIT_INVALIDARGUMENT;
+  if (GNUNET_NO == ret)
+    return EXIT_SUCCESS;
   if (0 == num_threads)
   {
     cpu_set_t mask;
@@ -1669,12 +1669,12 @@ main (int argc,
                 "Malformed configuration file `%s', exit ...\n",
                 cfgfile);
     GNUNET_free (cfgfile);
-    return 1;
+    return EXIT_NOTCONFIGURED;
   }
   GNUNET_free (cfgfile);
   if (GNUNET_OK !=
       exchange_serve_process_config ())
-    return 1;
+    return EXIT_NOTCONFIGURED;
   TEH_load_terms (TEH_cfg);
 
   /* check for systemd-style FD passing */
@@ -1715,10 +1715,10 @@ main (int argc,
   /* initialize #internal_key_state with an RC of 1 */
   if (GNUNET_OK !=
       TEH_WIRE_init ())
-    return 42;
+    return EXIT_FAILURE;
   if (GNUNET_OK !=
       TEH_keys_init ())
-    return 43;
+    return EXIT_FAILURE;
   ret = TEH_loop_init ();
   if (GNUNET_OK == ret)
   {
@@ -1737,7 +1737,7 @@ main (int argc,
         fh = TALER_MHD_open_unix_path (serve_unixpath,
                                        unixpath_mode);
         if (-1 == fh)
-          return 1;
+          return EXIT_NOPERMISSION; /* at least most likely */
       }
       ret = run_main_loop (fh,
                            argv);

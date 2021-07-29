@@ -99,9 +99,9 @@ main (int argc,
                              options,
                              argc, argv);
     if (GNUNET_NO == ret)
-      return 0;
+      return EXIT_SUCCESS;
     if (GNUNET_SYSERR == ret)
-      return 1;
+      return EXIT_INVALIDARGUMENT;
   }
   if (NULL == cfgfile)
     cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
@@ -119,7 +119,7 @@ main (int argc,
                 "Malformed configuration file `%s', exit ...\n",
                 cfgfile);
     GNUNET_free (cfgfile);
-    return 1;
+    return EXIT_NOTCONFIGURED;
   }
   GNUNET_free (cfgfile);
 
@@ -131,7 +131,7 @@ main (int argc,
                _ ("Missing either `%s' or `%s'.\n"),
                "-u URL",
                "--remove");
-      return 1;
+      return EXIT_INVALIDARGUMENT;
     }
     if ( (0 == strlen (exchange_url)) ||
          ( (0 != strncasecmp ("http://",
@@ -144,7 +144,7 @@ main (int argc,
     {
       fprintf (stderr,
                "Exchange URL must begin with `http://` or `https://` and end with `/'\n");
-      return 1;
+      return EXIT_INVALIDARGUMENT;
     }
   }
 
@@ -154,7 +154,7 @@ main (int argc,
   {
     fprintf (stderr,
              "Failed to initialize auditor database plugin.\n");
-    return 3;
+    return EXIT_NOTINSTALLED;
   }
 
   /* Create required tables */
@@ -164,7 +164,7 @@ main (int argc,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to create tables in auditor's database\n");
     TALER_AUDITORDB_plugin_unload (adb);
-    return 3;
+    return EXIT_NOPERMISSION;
   }
 
   /* Update DB */
@@ -178,7 +178,7 @@ main (int argc,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to initialize database session\n");
       TALER_AUDITORDB_plugin_unload (adb);
-      return 3;
+      return EXIT_FAILURE;
     }
 
     if (remove_flag)
@@ -200,7 +200,7 @@ main (int argc,
                   "Failed to update auditor database (status code: %d)\n",
                   qs);
       TALER_AUDITORDB_plugin_unload (adb);
-      return 3;
+      return EXIT_FAILURE;
     }
     if (0 == qs)
     {
@@ -210,11 +210,11 @@ main (int argc,
         ? "Could not remove exchange from database: entry already absent\n"
         : "Could not add exchange to database: entry already exists\n");
       TALER_AUDITORDB_plugin_unload (adb);
-      return 4;
+      return EXIT_FAILURE;
     }
   }
   TALER_AUDITORDB_plugin_unload (adb);
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 

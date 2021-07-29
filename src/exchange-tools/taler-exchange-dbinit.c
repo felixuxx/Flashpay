@@ -38,6 +38,7 @@ static int reset_db;
  */
 static int gc_db;
 
+
 /**
  * Main function that will be run.
  *
@@ -62,7 +63,7 @@ run (void *cls,
   {
     fprintf (stderr,
              "Failed to initialize database plugin.\n");
-    global_ret = 1;
+    global_ret = EXIT_NOTINSTALLED;
     return;
   }
   if (reset_db)
@@ -79,7 +80,7 @@ run (void *cls,
     fprintf (stderr,
              "Failed to initialize database.\n");
     TALER_EXCHANGEDB_plugin_unload (plugin);
-    global_ret = 1;
+    global_ret = EXIT_NOPERMISSION;
     return;
   }
   if (gc_db)
@@ -126,7 +127,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return 4;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-exchange-dbinit",
@@ -135,9 +136,9 @@ main (int argc,
     &run, NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return 3;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 
