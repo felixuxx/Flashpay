@@ -24,7 +24,11 @@ configure)
     echo " done."
   fi
 
-  dpkg-statoverride --add --update ${_USERNAME} ${_GROUPNAME} 660 /etc/taler/secrets/auditor-db.secret.conf
+  if ! dpkg-statoverride --list /etc/taler/secrets/auditor-db.secret.conf >/dev/null 2>&1; then
+    dpkg-statoverride --add --update \
+      ${_USERNAME} ${_GROUPNAME} 660 \
+      /etc/taler/secrets/auditor-db.secret.conf
+  fi
 
   ;;
 
