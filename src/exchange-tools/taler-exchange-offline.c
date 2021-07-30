@@ -139,6 +139,12 @@ static json_t *out;
  */
 static char *currency;
 
+/**
+ * URL of the exchange we are interacting with
+ * as per our configuration.
+ */
+static char *CFG_exchange_url;
+
 
 /**
  * A subcommand supported by this program.
@@ -1789,11 +1795,12 @@ do_upload (char *const *args)
     global_ret = EXIT_FAILURE;
     return;
   }
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (kcfg,
-                                             "exchange",
-                                             "BASE_URL",
-                                             &exchange_url))
+  if ( (NULL == CFG_exchange_url) &&
+       (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                               "exchange",
+                                               "BASE_URL",
+                                               &CFG_exchange_url)) )
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
@@ -1802,10 +1809,9 @@ do_upload (char *const *args)
     test_shutdown ();
     return;
   }
-  trigger_upload (exchange_url);
+  trigger_upload (CFG_exchange_url);
   json_decref (out);
   out = NULL;
-  GNUNET_free (exchange_url);
 }
 
 
@@ -2264,11 +2270,17 @@ download_cb (void *cls,
   case MHD_HTTP_OK:
     break;
   default:
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to download keys: %s (HTTP status: %u/%u)\n",
-                hr->hint,
-                hr->http_status,
-                (unsigned int) hr->ec);
+    if (0 != hr->http_status)
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to download keys from `%s': %s (HTTP status: %u/%u)\n",
+                  CFG_exchange_url,
+                  hr->hint,
+                  hr->http_status,
+                  (unsigned int) hr->ec);
+    else
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to download keys from `%s' (no HTTP response)\n",
+                  CFG_exchange_url);
     test_shutdown ();
     global_ret = EXIT_FAILURE;
     return;
@@ -2298,13 +2310,12 @@ download_cb (void *cls,
 static void
 do_download (char *const *args)
 {
-  char *exchange_url;
-
-  if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_string (kcfg,
-                                             "exchange",
-                                             "BASE_URL",
-                                             &exchange_url))
+  if ( (NULL == CFG_exchange_url) &&
+       (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                               "exchange",
+                                               "BASE_URL",
+                                               &CFG_exchange_url)) )
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
@@ -2314,10 +2325,9 @@ do_download (char *const *args)
     return;
   }
   mgkh = TALER_EXCHANGE_get_management_keys (ctx,
-                                             exchange_url,
+                                             CFG_exchange_url,
                                              &download_cb,
                                              (void *) args);
-  GNUNET_free (exchange_url);
 }
 
 
