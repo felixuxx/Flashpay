@@ -3,7 +3,7 @@ Description=Taler Exchange Socket
 PartOf=taler-exchange-httpd.service
 
 [Socket]
-ListenStream=/run/taler/exchange/exchange-http.sock
+ListenStream=/run/taler/exchange-httpd/exchange-http.sock
 Accept=no
 Service=taler-exchange-httpd.service
 SocketUser=taler-exchange-httpd
