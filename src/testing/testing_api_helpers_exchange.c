@@ -78,6 +78,29 @@ int
 TALER_TESTING_cleanup_files_cfg (void *cls,
                                  const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  char *dir;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_filename (cfg,
+                                               "exchange-offline",
+                                               "SECM_TOFU_FILE",
+                                               &dir))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-offline",
+                               "SECM_TOFU_FILE");
+    return GNUNET_SYSERR;
+  }
+  if ( (0 != unlink (dir)) &&
+       (ENOENT != errno) )
+  {
+    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
+                              "unlink",
+                              dir);
+    GNUNET_free (dir);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (dir);
   if (GNUNET_OK !=
       remove_dir (cfg,
                   "taler-exchange-secmod-eddsa",
