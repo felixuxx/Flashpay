@@ -22,8 +22,7 @@ usr/share/info/taler-exchange*
 usr/share/taler/config.d/*
 
 # configuration files in /etc/taler
-debian/etc/taler/conf.d/exchange* etc/taler/conf.d/
-debian/etc/taler/secrets/exchange* etc/taler/secrets/
+debian/etc-taler-exchange etc/
 
 usr/share/taler/exchange/pp/*/*
 usr/share/taler/exchange/tos/*/*

@@ -15,7 +15,6 @@ usr/share/taler/config.d/auditor*
 usr/share/taler/sql/auditor/*
 
 # Configuration
-debian/etc/taler/conf.d/auditor* etc/taler/conf.d/
-debian/etc/taler/secrets/auditor* etc/taler/secrets/
+debian/etc-taler-auditor/* etc/
 
 usr/share/taler/exchange/auditor-report.tex.j2
