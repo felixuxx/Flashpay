@@ -41,21 +41,27 @@ TALER_TESTING_cleanup_files (const char *config_name)
 }
 
 
-int
-TALER_TESTING_cleanup_files_cfg (void *cls,
-                                 const struct GNUNET_CONFIGURATION_Handle *cfg)
+/**
+ * Remove @a option directory from @a section in @a cfg.
+ *
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+remove_dir (const struct GNUNET_CONFIGURATION_Handle *cfg,
+            const char *section,
+            const char *option)
 {
   char *dir;
 
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "exchange",
-                                               "KEYDIR",
+                                               section,
+                                               option,
                                                &dir))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "KEYDIR");
+                               section,
+                               option);
     return GNUNET_SYSERR;
   }
   if (GNUNET_YES ==
@@ -64,23 +70,24 @@ TALER_TESTING_cleanup_files_cfg (void *cls,
     GNUNET_break (GNUNET_OK ==
                   GNUNET_DISK_directory_remove (dir));
   GNUNET_free (dir);
+  return GNUNET_OK;
+}
+
+
+int
+TALER_TESTING_cleanup_files_cfg (void *cls,
+                                 const struct GNUNET_CONFIGURATION_Handle *cfg)
+{
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                               "exchange",
-                                               "REVOCATION_DIR",
-                                               &dir))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               "exchange",
-                               "REVOCATION_DIR");
+      remove_dir (cfg,
+                  "taler-exchange-secmod-eddsa",
+                  "KEY_DIR"))
     return GNUNET_SYSERR;
-  }
-  if (GNUNET_YES ==
-      GNUNET_DISK_directory_test (dir,
-                                  GNUNET_NO))
-    GNUNET_break (GNUNET_OK ==
-                  GNUNET_DISK_directory_remove (dir));
-  GNUNET_free (dir);
+  if (GNUNET_OK !=
+      remove_dir (cfg,
+                  "taler-exchange-secmod-rsa",
+                  "KEY_DIR"))
+    return GNUNET_SYSERR;
   return GNUNET_OK;
 }
 
