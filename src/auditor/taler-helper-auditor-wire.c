@@ -1942,14 +1942,14 @@ begin_transaction (void)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize exchange database session.\n");
-    return GNUNET_SYSERR;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
   if (NULL == TALER_ARL_asession)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize auditor database session.\n");
-    return GNUNET_SYSERR;
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_OK !=
       TALER_ARL_adb->start (TALER_ARL_adb->cls,

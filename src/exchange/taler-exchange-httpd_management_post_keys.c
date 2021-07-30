@@ -336,7 +336,6 @@ TEH_handler_management_post_keys (
                            &signkey_sigs),
     GNUNET_JSON_spec_end ()
   };
-  enum GNUNET_DB_QueryStatus qs;
   bool ok;
   MHD_RESULT ret;
 
@@ -444,16 +443,20 @@ TEH_handler_management_post_keys (
               "Received %u denomination and %u signing key signatures\n",
               akc.nd_sigs,
               akc.ns_sigs);
-  qs = TEH_DB_run_transaction (connection,
-                               "add keys",
-                               &ret,
-                               &add_keys,
-                               &akc);
-  GNUNET_free (akc.d_sigs);
-  GNUNET_free (akc.s_sigs);
-  GNUNET_JSON_parse_free (spec);
-  if (qs < 0)
-    return ret;
+  {
+    enum GNUNET_GenericReturnValue res;
+
+    res = TEH_DB_run_transaction (connection,
+                                  "add keys",
+                                  &ret,
+                                  &add_keys,
+                                  &akc);
+    GNUNET_free (akc.d_sigs);
+    GNUNET_free (akc.s_sigs);
+    GNUNET_JSON_parse_free (spec);
+    if (GNUNET_SYSERR == res)
+      return ret;
+  }
   TEH_keys_update_states ();
   return TALER_MHD_reply_static (
     connection,

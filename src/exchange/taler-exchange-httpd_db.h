@@ -73,7 +73,7 @@ typedef enum GNUNET_DB_QueryStatus
  *
  * @param connection MHD connection to run @a cb for, can be NULL
  * @param name name of the transaction (for debugging)
- * @param[out] mhd_ret set to MHD response code, if transaction failed;
+ * @param[out] mhd_ret set to MHD response code, if transaction failed (returned #GNUNET_SYSERR);
  *             NULL if we are not running with a @a connection and thus
  *             must not queue MHD replies
  * @param cb callback implementing transaction logic

@@ -297,7 +297,7 @@ eval_probability (float probability)
 
   random = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
                                      UINT64_MAX);
-  random_01 = (double) random / UINT64_MAX;
+  random_01 = (double) random / (double) UINT64_MAX;
   return (random_01 <= probability) ? GNUNET_OK : GNUNET_NO;
 }
 

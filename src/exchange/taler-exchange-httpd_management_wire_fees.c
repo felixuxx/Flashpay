@@ -187,8 +187,6 @@ TEH_handler_management_post_wire_fees (
                             &afc.wire_fee),
     GNUNET_JSON_spec_end ()
   };
-  enum GNUNET_DB_QueryStatus qs;
-  MHD_RESULT ret;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -221,13 +219,18 @@ TEH_handler_management_post_wire_fees (
       NULL);
   }
 
-  qs = TEH_DB_run_transaction (connection,
-                               "add wire fee",
-                               &ret,
-                               &add_fee,
-                               &afc);
-  if (qs < 0)
-    return ret;
+  {
+    enum GNUNET_GenericReturnValue res;
+    MHD_RESULT ret;
+
+    res = TEH_DB_run_transaction (connection,
+                                  "add wire fee",
+                                  &ret,
+                                  &add_fee,
+                                  &afc);
+    if (GNUNET_SYSERR == res)
+      return ret;
+  }
   TEH_wire_update_state ();
   return TALER_MHD_reply_static (
     connection,

@@ -148,8 +148,6 @@ TEH_handler_management_denominations_wire_disable (
                                    &awc.validity_end),
     GNUNET_JSON_spec_end ()
   };
-  enum GNUNET_DB_QueryStatus qs;
-  MHD_RESULT ret;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -176,13 +174,19 @@ TEH_handler_management_denominations_wire_disable (
       TALER_EC_EXCHANGE_MANAGEMENT_WIRE_DEL_SIGNATURE_INVALID,
       NULL);
   }
-  qs = TEH_DB_run_transaction (connection,
-                               "del wire",
-                               &ret,
-                               &del_wire,
-                               &awc);
-  if (qs < 0)
-    return ret;
+
+  {
+    enum GNUNET_GenericReturnValue res;
+    MHD_RESULT ret;
+
+    res = TEH_DB_run_transaction (connection,
+                                  "del wire",
+                                  &ret,
+                                  &del_wire,
+                                  &awc);
+    if (GNUNET_SYSERR == res)
+      return ret;
+  }
   TEH_wire_update_state ();
   return TALER_MHD_reply_static (
     connection,

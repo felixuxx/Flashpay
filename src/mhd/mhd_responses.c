@@ -323,7 +323,7 @@ TALER_MHD_make_json_pack (const char *fmt,
                 fmt,
                 jerror.text);
     GNUNET_break (0);
-    return MHD_NO;
+    return NULL;
   }
 
   {

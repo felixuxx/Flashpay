@@ -156,8 +156,6 @@ TEH_handler_management_denominations_wire (
                                    &awc.validity_start),
     GNUNET_JSON_spec_end ()
   };
-  enum GNUNET_DB_QueryStatus qs;
-  MHD_RESULT ret;
 
   {
     enum GNUNET_GenericReturnValue res;
@@ -213,13 +211,18 @@ TEH_handler_management_denominations_wire (
     GNUNET_free (wire_method);
   }
 
-  qs = TEH_DB_run_transaction (connection,
-                               "add wire",
-                               &ret,
-                               &add_wire,
-                               &awc);
-  if (qs < 0)
-    return ret;
+  {
+    enum GNUNET_GenericReturnValue res;
+    MHD_RESULT ret;
+
+    res = TEH_DB_run_transaction (connection,
+                                  "add wire",
+                                  &ret,
+                                  &add_wire,
+                                  &awc);
+    if (GNUNET_SYSERR == res)
+      return ret;
+  }
   TEH_wire_update_state ();
   return TALER_MHD_reply_static (
     connection,

@@ -327,7 +327,7 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
 static void
 do_sync (void *cls)
 {
-  struct GNUNET_TIME_Relative delay;
+  static struct GNUNET_TIME_Relative delay;
   struct TALER_EXCHANGEDB_Session *ss;
   struct TALER_EXCHANGEDB_Session *ds;
 

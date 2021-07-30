@@ -153,20 +153,16 @@ TEH_handler_management_auditors_AP_disable (
                                    &dac.validity_end),
     GNUNET_JSON_spec_end ()
   };
-  enum GNUNET_DB_QueryStatus qs;
   MHD_RESULT res;
+  enum GNUNET_GenericReturnValue ret;
 
-  {
-    enum GNUNET_GenericReturnValue res;
-
-    res = TALER_MHD_parse_json_data (connection,
-                                     root,
-                                     spec);
-    if (GNUNET_SYSERR == res)
-      return MHD_NO; /* hard failure */
-    if (GNUNET_NO == res)
-      return MHD_YES; /* failure */
-  }
+  ret = TALER_MHD_parse_json_data (connection,
+                                   root,
+                                   spec);
+  if (GNUNET_SYSERR == ret)
+    return MHD_NO;   /* hard failure */
+  if (GNUNET_NO == ret)
+    return MHD_YES;   /* failure */
   if (GNUNET_OK !=
       TALER_exchange_offline_auditor_del_verify (
         auditor_pub,
@@ -182,12 +178,12 @@ TEH_handler_management_auditors_AP_disable (
       NULL);
   }
 
-  qs = TEH_DB_run_transaction (connection,
-                               "del auditor",
-                               &res,
-                               &del_auditor,
-                               &dac);
-  if (qs < 0)
+  ret = TEH_DB_run_transaction (connection,
+                                "del auditor",
+                                &res,
+                                &del_auditor,
+                                &dac);
+  if (GNUNET_SYSERR == ret)
     return res;
   return TALER_MHD_reply_static (
     connection,
