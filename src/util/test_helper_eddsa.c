@@ -332,15 +332,27 @@ run_test (void)
     GNUNET_break (0);
     return 77;
   }
-  esh = TALER_CRYPTO_helper_esign_connect (cfg,
-                                           &key_cb,
-                                           NULL);
+
+  /* wait for helper to start and give us keys */
+  fprintf (stderr, "Waiting for helper client directory to become available ");
+  for (unsigned int i = 0; i<1000; i++)
+  {
+    esh = TALER_CRYPTO_helper_esign_connect (cfg,
+                                             &key_cb,
+                                             NULL);
+    if (NULL != esh)
+      break;
+    nanosleep (&req, NULL);
+    fprintf (stderr, ".");
+  }
   GNUNET_CONFIGURATION_destroy (cfg);
   if (NULL == esh)
   {
     GNUNET_break (0);
     return 1;
   }
+  fprintf (stderr, " done.\n");
+
   /* wait for helper to start and give us keys */
   fprintf (stderr, "Waiting for helper to start ");
   for (unsigned int i = 0; i<1000; i++)
