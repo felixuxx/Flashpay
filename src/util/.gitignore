@@ -3,5 +3,6 @@ test_payto
 taler-exchange-secmod-rsa
 taler-exchange-secmod-eddsa
 test_helper_rsa
+test_helper_rsa_home/
 test_helper_eddsa
 test_helper_eddsa_home/
