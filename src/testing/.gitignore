@@ -23,3 +23,12 @@ test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/secm_tof
 test_taler_exchange_httpd_home/.local/share/taler/taler-exchange-secmod-eddsa/
 test_taler_exchange_httpd_home/.local/share/taler/taler-exchange-secmod-rsa/
 test_exchange_api_keys_cherry_picking_home/.local/share/taler/crypto-rsa/
+test_exchange_api_home/.local/share/taler/exchange-offline/secm_tofus.pub
+test_exchange_api_home/.local/share/taler/exchange-secmod-eddsa/
+test_exchange_api_home/.local/share/taler/exchange-secmod-rsa/
+test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange-offline/secm_tofus.pub
+test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange-secmod-eddsa/
+test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange-secmod-rsa/
+test_taler_exchange_httpd_home/.local/share/taler/exchange-offline/secm_tofus.pub
+test_taler_exchange_httpd_home/.local/share/taler/exchange-secmod-eddsa/
+test_taler_exchange_httpd_home/.local/share/taler/exchange-secmod-rsa/
