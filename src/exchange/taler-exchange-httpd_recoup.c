@@ -490,20 +490,20 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   }
   /* Recoup succeeded, return result */
   return (refreshed)
-         ? TALER_MHD_reply_json_pack (connection,
+         ? TALER_MHD_REPLY_JSON_PACK (connection,
                                       MHD_HTTP_OK,
-                                      "{s:o, s:b}",
-                                      "old_coin_pub",
-                                      GNUNET_JSON_from_data_auto (
+                                      GNUNET_JSON_pack_data_auto (
+                                        "old_coin_pub",
                                         &pc.target.old_coin_pub),
-                                      "refreshed", 1)
-         : TALER_MHD_reply_json_pack (connection,
+                                      GNUNET_JSON_pack_bool ("refreshed",
+                                                             true))
+         : TALER_MHD_REPLY_JSON_PACK (connection,
                                       MHD_HTTP_OK,
-                                      "{s:o, s:b}",
-                                      "reserve_pub",
-                                      GNUNET_JSON_from_data_auto (
+                                      GNUNET_JSON_pack_data_auto (
+                                        "reserve_pub",
                                         &pc.target.reserve_pub),
-                                      "refreshed", 0);
+                                      GNUNET_JSON_pack_bool ("refreshed",
+                                                             false));
 }
 
 

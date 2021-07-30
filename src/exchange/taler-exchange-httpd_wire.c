@@ -134,11 +134,11 @@ add_wire_account (void *cls,
   if (0 !=
       json_array_append_new (
         a,
-        json_pack ("{s:s, s:o}",
-                   "payto_uri",
-                   payto_uri,
-                   "master_sig",
-                   GNUNET_JSON_from_data_auto (master_sig))))
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("payto_uri",
+                                   payto_uri),
+          GNUNET_JSON_pack_data_auto ("master_sig",
+                                      master_sig))))
   {
     GNUNET_break (0);   /* out of memory!? */
     return;
@@ -170,17 +170,17 @@ add_wire_fee (void *cls,
   if (0 !=
       json_array_append_new (
         a,
-        json_pack ("{s:o, s:o, s:o, s:o, s:o}",
-                   "wire_fee",
-                   TALER_JSON_from_amount (wire_fee),
-                   "closing_fee",
-                   TALER_JSON_from_amount (closing_fee),
-                   "start_date",
-                   GNUNET_JSON_from_time_abs (start_date),
-                   "end_date",
-                   GNUNET_JSON_from_time_abs (end_date),
-                   "sig",
-                   GNUNET_JSON_from_data_auto (master_sig))))
+        GNUNET_JSON_PACK (
+          TALER_JSON_pack_amount ("wire_fee",
+                                  wire_fee),
+          TALER_JSON_pack_amount ("closing_fee",
+                                  closing_fee),
+          GNUNET_JSON_pack_time_abs ("start_date",
+                                     start_date),
+          GNUNET_JSON_pack_time_abs ("end_date",
+                                     end_date),
+          GNUNET_JSON_pack_data_auto ("sig",
+                                      master_sig))))
   {
     GNUNET_break (0);   /* out of memory!? */
     return;
@@ -283,14 +283,13 @@ build_wire_state (void)
     json_t *wire_reply;
     struct WireStateHandle *wsh;
 
-    wire_reply = json_pack (
-      "{s:o, s:o, s:o}",
-      "accounts",
-      wire_accounts_array,
-      "fees",
-      wire_fee_object,
-      "master_public_key",
-      GNUNET_JSON_from_data_auto (&TEH_master_public_key));
+    wire_reply = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("accounts",
+                                    wire_accounts_array),
+      GNUNET_JSON_pack_object_steal ("fees",
+                                     wire_fee_object),
+      GNUNET_JSON_pack_data_auto ("master_public_key",
+                                  &TEH_master_public_key));
     if (NULL == wire_reply)
     {
       GNUNET_break (0);

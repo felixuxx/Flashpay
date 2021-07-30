@@ -60,51 +60,26 @@ reply_refreshes_reveal_success (struct MHD_Connection *connection,
   json_t *list;
 
   list = json_array ();
-  if (NULL == list)
-  {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                       "json_array() call failed");
-  }
+  GNUNET_assert (NULL != list);
   for (unsigned int freshcoin_index = 0;
        freshcoin_index < num_freshcoins;
        freshcoin_index++)
   {
     json_t *obj;
 
-    obj = json_pack ("{s:o}",
-                     "ev_sig",
-                     GNUNET_JSON_from_rsa_signature (
-                       sigs[freshcoin_index].rsa_signature));
-    if (NULL == obj)
-    {
-      json_decref (list);
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                         "json_pack() failed");
-    }
-    if (0 !=
-        json_array_append_new (list,
-                               obj))
-    {
-      json_decref (list);
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                         "json_array_append_new() failed");
-    }
+    obj = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_rsa_signature ("ev_sig",
+                                      sigs[freshcoin_index].rsa_signature));
+    GNUNET_assert (0 ==
+                   json_array_append_new (list,
+                                          obj));
   }
 
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "ev_sigs",
-                                    list);
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_array_steal ("ev_sigs",
+                                  list));
 }
 
 
@@ -409,18 +384,16 @@ refreshes_reveal_transaction (void *cls,
                             &rc_expected))
     {
       GNUNET_break_op (0);
-      *mhd_ret = TALER_MHD_reply_json_pack (
+      *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
         connection,
         MHD_HTTP_CONFLICT,
-        "{s:s, s:I, s:o}",
-        "hint",
-        TALER_ErrorCode_get_hint (
-          TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION),
-        "code",
-        (json_int_t) TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION,
-        "rc_expected",
-        GNUNET_JSON_from_data_auto (
-          &rc_expected));
+        GNUNET_JSON_pack_string ("hint",
+                                 TALER_ErrorCode_get_hint (
+                                   TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION)),
+        GNUNET_JSON_pack_uint64 ("code",
+                                 TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION),
+        GNUNET_JSON_pack_data_auto ("rc_expected",
+                                    &rc_expected));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   } /* end of checking "rc_expected" */

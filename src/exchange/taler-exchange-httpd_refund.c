@@ -71,12 +71,13 @@ reply_refund_success (struct MHD_Connection *connection,
                                     ec,
                                     NULL);
   }
-  return TALER_MHD_reply_json_pack (
+  return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    "{s:o, s:o}",
-    "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
-    "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub));
 }
 
 
@@ -227,18 +228,20 @@ refund_transaction (void *cls,
           TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                                   tln);
           tli->next = NULL;
-          *mhd_ret = TALER_MHD_reply_json_pack (
+          *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
             connection,
             MHD_HTTP_PRECONDITION_FAILED,
-            "{s:o, s:s, s:I, s:o}",
-            "detail",
-            TALER_JSON_from_amount (&ref->refund_amount),
-            "hint", TALER_ErrorCode_get_hint (
-              TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT),
-            "code", (json_int_t) TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT,
-            "history", TEH_RESPONSE_compile_transaction_history (
-              &refund->coin.coin_pub,
-              tli));
+            TALER_JSON_pack_amount ("detail",
+                                    &ref->refund_amount),
+            GNUNET_JSON_pack_string ("hint",
+                                     TALER_ErrorCode_get_hint (
+                                       TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT)),
+            GNUNET_JSON_pack_uint64 ("code",
+                                     TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT),
+            GNUNET_JSON_pack_array_steal ("history",
+                                          TEH_RESPONSE_compile_transaction_history (
+                                            &refund->coin.coin_pub,
+                                            tli)));
           TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                                   tli);
           return GNUNET_DB_STATUS_HARD_ERROR;
@@ -324,20 +327,20 @@ refund_transaction (void *cls,
   if (1 == TALER_amount_cmp (&refund_total,
                              &deposit_total) )
   {
-    *mhd_ret = TALER_MHD_reply_json_pack (
+    *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_CONFLICT,
-      "{s:s, s:s, s:I, s:o}",
-      "detail",
-      "total amount refunded exceeds total amount deposited for this coin",
-      "hint",
-      TALER_ErrorCode_get_hint (
-        TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT),
-      "code",
-      (json_int_t) TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT,
-      "history",
-      TEH_RESPONSE_compile_transaction_history (&refund->coin.coin_pub,
-                                                tlx));
+      GNUNET_JSON_pack_string ("detail",
+                               "total amount refunded exceeds total amount deposited for this coin"),
+      GNUNET_JSON_pack_string ("hint",
+                               TALER_ErrorCode_get_hint (
+                                 TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT)),
+      GNUNET_JSON_pack_uint64 ("code",
+                               TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT),
+      GNUNET_JSON_pack_array_steal ("history",
+                                    TEH_RESPONSE_compile_transaction_history (
+                                      &refund->coin.coin_pub,
+                                      tlx)));
     TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                             tlx);
     return GNUNET_DB_STATUS_HARD_ERROR;

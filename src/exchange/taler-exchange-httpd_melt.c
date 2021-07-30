@@ -66,24 +66,24 @@ reply_melt_insufficient_funds (
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
                                        NULL);
-  return TALER_MHD_reply_json_pack (
+  return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
-    "{s:s, s:I, s:o, s:o, s:o, s:o, s:o}",
-    "hint",
-    TALER_ErrorCode_get_hint (TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS),
-    "code",
-    (json_int_t) TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS,
-    "coin_pub",
-    GNUNET_JSON_from_data_auto (coin_pub),
-    "original_value",
-    TALER_JSON_from_amount (coin_value),
-    "residual_value",
-    TALER_JSON_from_amount (residual),
-    "requested_value",
-    TALER_JSON_from_amount (requested),
-    "history",
-    history);
+    GNUNET_JSON_pack_string ("hint",
+                             TALER_ErrorCode_get_hint (
+                               TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS)),
+    GNUNET_JSON_pack_uint64 ("code",
+                             TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS),
+    GNUNET_JSON_pack_data_auto ("coin_pub",
+                                coin_pub),
+    TALER_JSON_pack_amount ("original_value",
+                            coin_value),
+    TALER_JSON_pack_amount ("residual_value",
+                            residual),
+    TALER_JSON_pack_amount ("requested_value",
+                            requested),
+    GNUNET_JSON_pack_array_steal ("history",
+                                  history));
 }
 
 
@@ -119,13 +119,15 @@ reply_melt_success (struct MHD_Connection *connection,
                                     ec,
                                     NULL);
   }
-  return TALER_MHD_reply_json_pack (
+  return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    "{s:i, s:o, s:o}",
-    "noreveal_index", (int) noreveal_index,
-    "exchange_sig", GNUNET_JSON_from_data_auto (&sig),
-    "exchange_pub", GNUNET_JSON_from_data_auto (&pub));
+    GNUNET_JSON_pack_uint64 ("noreveal_index",
+                             noreveal_index),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub));
 }
 
 

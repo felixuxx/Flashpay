@@ -81,15 +81,13 @@ handle_link_data (void *cls,
   {
     json_t *obj;
 
-    obj = json_pack ("{s:o, s:o, s:o}",
-                     "denom_pub",
-                     GNUNET_JSON_from_rsa_public_key (
-                       pos->denom_pub.rsa_public_key),
-                     "ev_sig",
-                     GNUNET_JSON_from_rsa_signature
-                       (pos->ev_sig.rsa_signature),
-                     "link_sig",
-                     GNUNET_JSON_from_data_auto (&pos->orig_coin_link_sig));
+    obj = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_rsa_public_key ("denom_pub",
+                                       pos->denom_pub.rsa_public_key),
+      GNUNET_JSON_pack_rsa_signature ("ev_sig",
+                                      pos->ev_sig.rsa_signature),
+      GNUNET_JSON_pack_data_auto ("link_sig",
+                                  &pos->orig_coin_link_sig));
     if ( (NULL == obj) ||
          (0 !=
           json_array_append_new (list,
@@ -102,11 +100,11 @@ handle_link_data (void *cls,
   {
     json_t *root;
 
-    root = json_pack ("{s:o, s:o}",
-                      "new_coins",
-                      list,
-                      "transfer_pub",
-                      GNUNET_JSON_from_data_auto (transfer_pub));
+    root = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("new_coins",
+                                    list),
+      GNUNET_JSON_pack_data_auto ("transfer_pub",
+                                  transfer_pub));
     if ( (NULL == root) ||
          (0 !=
           json_array_append_new (ctx->mlist,

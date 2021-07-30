@@ -89,16 +89,15 @@ reply_deposit_success (struct MHD_Connection *connection,
                                     ec,
                                     NULL);
   }
-  return TALER_MHD_reply_json_pack (
+  return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    "{s:o, s:o, s:o}",
-    "exchange_timestamp",
-    GNUNET_JSON_from_time_abs (exchange_timestamp),
-    "exchange_sig",
-    GNUNET_JSON_from_data_auto (&sig),
-    "exchange_pub",
-    GNUNET_JSON_from_data_auto (&pub));
+    GNUNET_JSON_pack_time_abs ("exchange_timestamp",
+                               exchange_timestamp),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub));
 }
 
 

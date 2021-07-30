@@ -78,18 +78,18 @@ reply_withdraw_insufficient_funds (
                                        TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
                                        "reserve balance corrupt");
   }
-  return TALER_MHD_reply_json_pack (
+  return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
-    "{s:s, s:I, s:o, s:o}",
-    "hint",
-    TALER_ErrorCode_get_hint (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
-    "code",
-    (json_int_t) TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS,
-    "balance",
-    TALER_JSON_from_amount (&balance),
-    "history",
-    json_history);
+    GNUNET_JSON_pack_string ("hint",
+                             TALER_ErrorCode_get_hint (
+                               TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS)),
+    GNUNET_JSON_pack_uint64 ("code",
+                             TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
+    TALER_JSON_pack_amount ("balance",
+                            &balance),
+    GNUNET_JSON_pack_array_steal ("history",
+                                  json_history));
 }
 
 
@@ -523,12 +523,11 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   {
     MHD_RESULT ret;
 
-    ret = TALER_MHD_reply_json_pack (
+    ret = TALER_MHD_REPLY_JSON_PACK (
       connection,
       MHD_HTTP_OK,
-      "{s:o}",
-      "ev_sig", GNUNET_JSON_from_rsa_signature (
-        wc.collectable.sig.rsa_signature));
+      GNUNET_JSON_pack_rsa_signature ("ev_sig",
+                                      wc.collectable.sig.rsa_signature));
     GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
     return ret;
   }

@@ -78,20 +78,19 @@ reply_deposit_details (struct MHD_Connection *connection,
                                     ec,
                                     NULL);
   }
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:o, s:o, s:o, s:o}",
-                                    "wtid", GNUNET_JSON_from_data_auto (
-                                      wtid),
-                                    "execution_time",
-                                    GNUNET_JSON_from_time_abs (exec_time),
-                                    "coin_contribution",
-                                    TALER_JSON_from_amount (
-                                      coin_contribution),
-                                    "exchange_sig",
-                                    GNUNET_JSON_from_data_auto (&sig),
-                                    "exchange_pub",
-                                    GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_data_auto ("wtid",
+                                wtid),
+    GNUNET_JSON_pack_time_abs ("execution_time",
+                               exec_time),
+    TALER_JSON_pack_amount ("coin_contribution",
+                            coin_contribution),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub));
 }
 
 
@@ -279,12 +278,11 @@ handle_track_transaction_request (
                               &ctx))
     return mhd_ret;
   if (GNUNET_YES == ctx.pending)
-    return TALER_MHD_reply_json_pack (connection,
-                                      MHD_HTTP_ACCEPTED,
-                                      "{s:o}",
-                                      "execution_time",
-                                      GNUNET_JSON_from_time_abs (
-                                        ctx.execution_time));
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_time_abs ("execution_time",
+                                 ctx.execution_time));
   if (GNUNET_SYSERR == ctx.pending)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,

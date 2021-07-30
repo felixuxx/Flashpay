@@ -1074,12 +1074,11 @@ get_auditor_sigs (void *cls,
     GNUNET_break (0 ==
                   json_array_append_new (
                     ctx->denom_keys,
-                    json_pack (
-                      "{s:o, s:o}",
-                      "denom_pub_h",
-                      GNUNET_JSON_from_data_auto (h_denom_pub),
-                      "auditor_sig",
-                      GNUNET_JSON_from_data_auto (&as->asig))));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_data_auto ("denom_pub_h",
+                                                  h_denom_pub),
+                      GNUNET_JSON_pack_data_auto ("auditor_sig",
+                                                  &as->asig))));
   }
   return GNUNET_OK;
 }
@@ -1104,6 +1103,7 @@ auditor_info_cb (
   struct GetAuditorSigsContext ctx;
 
   ctx.denom_keys = json_array ();
+  GNUNET_assert (NULL != ctx.denom_keys);
   ctx.auditor_pub = auditor_pub;
   GNUNET_CONTAINER_multihashmap_iterate (ksh->denomkey_map,
                                          &get_auditor_sigs,
@@ -1111,15 +1111,15 @@ auditor_info_cb (
   GNUNET_break (0 ==
                 json_array_append_new (
                   ksh->auditors,
-                  json_pack ("{s:s, s:o, s:s, s:o}",
-                             "auditor_name",
-                             auditor_name,
-                             "auditor_pub",
-                             GNUNET_JSON_from_data_auto (auditor_pub),
-                             "auditor_url",
-                             auditor_url,
-                             "denomination_keys",
-                             ctx.denom_keys)));
+                  GNUNET_JSON_PACK (
+                    GNUNET_JSON_pack_string ("auditor_name",
+                                             auditor_name),
+                    GNUNET_JSON_pack_data_auto ("auditor_pub",
+                                                auditor_pub),
+                    GNUNET_JSON_pack_string ("auditor_url",
+                                             auditor_url),
+                    GNUNET_JSON_pack_array_steal ("denomination_keys",
+                                                  ctx.denom_keys))));
 }
 
 
@@ -1204,17 +1204,17 @@ add_sign_key_cb (void *cls,
     0 ==
     json_array_append_new (
       ctx->signkeys,
-      json_pack ("{s:o, s:o, s:o, s:o, s:o}",
-                 "stamp_start",
-                 GNUNET_JSON_from_time_abs (sk->meta.start),
-                 "stamp_expire",
-                 GNUNET_JSON_from_time_abs (sk->meta.expire_sign),
-                 "stamp_end",
-                 GNUNET_JSON_from_time_abs (sk->meta.expire_legal),
-                 "master_sig",
-                 GNUNET_JSON_from_data_auto (&sk->master_sig),
-                 "key",
-                 GNUNET_JSON_from_data_auto (&sk->exchange_pub))));
+      GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_time_abs ("stamp_start",
+                                   sk->meta.start),
+        GNUNET_JSON_pack_time_abs ("stamp_expire",
+                                   sk->meta.expire_sign),
+        GNUNET_JSON_pack_time_abs ("stamp_end",
+                                   sk->meta.expire_legal),
+        GNUNET_JSON_pack_data_auto ("master_sig",
+                                    &sk->master_sig),
+        GNUNET_JSON_pack_data_auto ("key",
+                                    &sk->exchange_pub))));
   return GNUNET_OK;
 }
 
@@ -1266,9 +1266,9 @@ add_denom_key_cb (void *cls,
       0 ==
       json_array_append_new (
         dkc->recoup,
-        json_pack ("{s:o}",
-                   "h_denom_pub",
-                   GNUNET_JSON_from_data_auto (h_denom_pub))));
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                      h_denom_pub))));
   }
   else
   {
@@ -1440,23 +1440,29 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                                        ksh->signature_expires);
   }
 
-  keys = json_pack (
-    "{s:s, s:s, s:o, s:o, s:O, s:O,"
-    " s:O, s:O, s:o, s:o, s:o}",
-    /* 1-6 */
-    "version", EXCHANGE_PROTOCOL_VERSION,
-    "currency", TEH_currency,
-    "master_public_key", GNUNET_JSON_from_data_auto (&TEH_master_public_key),
-    "reserve_closing_delay", GNUNET_JSON_from_time_rel (
-      TEH_reserve_closing_delay),
-    "signkeys", signkeys,
-    "recoup", recoup,
-    /* 7-11 */
-    "denoms", denoms,
-    "auditors", ksh->auditors,
-    "list_issue_date", GNUNET_JSON_from_time_abs (last_cpd),
-    "eddsa_pub", GNUNET_JSON_from_data_auto (&exchange_pub),
-    "eddsa_sig", GNUNET_JSON_from_data_auto (&exchange_sig));
+  keys = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("version",
+                             EXCHANGE_PROTOCOL_VERSION),
+    GNUNET_JSON_pack_string ("currency",
+                             TEH_currency),
+    GNUNET_JSON_pack_data_auto ("master_public_key",
+                                &TEH_master_public_key),
+    GNUNET_JSON_pack_time_rel ("reserve_closing_delay",
+                               TEH_reserve_closing_delay),
+    GNUNET_JSON_pack_array_incref ("signkeys",
+                                   signkeys),
+    GNUNET_JSON_pack_array_incref ("recoup",
+                                   recoup),
+    GNUNET_JSON_pack_array_incref ("denoms",
+                                   denoms),
+    GNUNET_JSON_pack_array_incref ("auditors",
+                                   ksh->auditors),
+    GNUNET_JSON_pack_time_abs ("list_issue_date",
+                               last_cpd),
+    GNUNET_JSON_pack_data_auto ("eddsa_pub",
+                                &exchange_pub),
+    GNUNET_JSON_pack_data_auto ("eddsa_sig",
+                                &exchange_sig));
   GNUNET_assert (NULL != keys);
 
   {
@@ -1601,34 +1607,29 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         0 ==
         json_array_append_new (
           denoms,
-          json_pack ("{s:o, s:o, s:o, s:o, s:o,"
-                     " s:o, s:o, s:o, s:o, s:o,"
-                     " s:o}",
-                     "master_sig",
-                     GNUNET_JSON_from_data_auto (&dk->master_sig),
-                     "stamp_start",
-                     GNUNET_JSON_from_time_abs (dk->meta.start),
-                     "stamp_expire_withdraw",
-                     GNUNET_JSON_from_time_abs (dk->meta.expire_withdraw),
-                     "stamp_expire_deposit",
-                     GNUNET_JSON_from_time_abs (dk->meta.expire_deposit),
-                     "stamp_expire_legal",
-                     GNUNET_JSON_from_time_abs (dk->meta.expire_legal),
-                     /* 5 entries until here */
-                     "denom_pub",
-                     GNUNET_JSON_from_rsa_public_key (
-                       dk->denom_pub.rsa_public_key),
-                     "value",
-                     TALER_JSON_from_amount (&dk->meta.value),
-                     "fee_withdraw",
-                     TALER_JSON_from_amount (&dk->meta.fee_withdraw),
-                     "fee_deposit",
-                     TALER_JSON_from_amount (&dk->meta.fee_deposit),
-                     "fee_refresh",
-                     TALER_JSON_from_amount (&dk->meta.fee_refresh),
-                     /* 10 entries until here */
-                     "fee_refund",
-                     TALER_JSON_from_amount (&dk->meta.fee_refund))));
+          GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_data_auto ("master_sig",
+                                        &dk->master_sig),
+            GNUNET_JSON_pack_time_abs ("stamp_start",
+                                       dk->meta.start),
+            GNUNET_JSON_pack_time_abs ("stamp_expire_withdraw",
+                                       dk->meta.expire_withdraw),
+            GNUNET_JSON_pack_time_abs ("stamp_expire_deposit",
+                                       dk->meta.expire_deposit),
+            GNUNET_JSON_pack_time_abs ("stamp_expire_legal",
+                                       dk->meta.expire_legal),
+            GNUNET_JSON_pack_rsa_public_key ("denom_pub",
+                                             dk->denom_pub.rsa_public_key),
+            TALER_JSON_pack_amount ("value",
+                                    &dk->meta.value),
+            TALER_JSON_pack_amount ("fee_withdraw",
+                                    &dk->meta.fee_withdraw),
+            TALER_JSON_pack_amount ("fee_deposit",
+                                    &dk->meta.fee_deposit),
+            TALER_JSON_pack_amount ("fee_refresh",
+                                    &dk->meta.fee_refresh),
+            TALER_JSON_pack_amount ("fee_refund",
+                                    &dk->meta.fee_refund))));
     }
   }
   GNUNET_CONTAINER_heap_destroy (heap);
@@ -2400,36 +2401,31 @@ add_future_denomkey_cb (void *cls,
     0 ==
     json_array_append_new (
       fbc->denoms,
-      json_pack ("{s:o, s:o, s:o, s:o, s:o,"
-                 " s:o, s:o, s:o, s:o, s:o,"
-                 " s:o, s:s}",
-                 /* 1-5 */
-                 "value",
-                 TALER_JSON_from_amount (&meta.value),
-                 "stamp_start",
-                 GNUNET_JSON_from_time_abs (meta.start),
-                 "stamp_expire_withdraw",
-                 GNUNET_JSON_from_time_abs (meta.expire_withdraw),
-                 "stamp_expire_deposit",
-                 GNUNET_JSON_from_time_abs (meta.expire_deposit),
-                 "stamp_expire_legal",
-                 GNUNET_JSON_from_time_abs (meta.expire_legal),
-                 /* 6-10 */
-                 "denom_pub",
-                 GNUNET_JSON_from_rsa_public_key (hd->denom_pub.rsa_public_key),
-                 "fee_withdraw",
-                 TALER_JSON_from_amount (&meta.fee_withdraw),
-                 "fee_deposit",
-                 TALER_JSON_from_amount (&meta.fee_deposit),
-                 "fee_refresh",
-                 TALER_JSON_from_amount (&meta.fee_refresh),
-                 "fee_refund",
-                 TALER_JSON_from_amount (&meta.fee_refund),
-                 /* 11- */
-                 "denom_secmod_sig",
-                 GNUNET_JSON_from_data_auto (&hd->sm_sig),
-                 "section_name",
-                 hd->section_name)));
+      GNUNET_JSON_PACK (
+        TALER_JSON_pack_amount ("value",
+                                &meta.value),
+        GNUNET_JSON_pack_time_abs ("stamp_start",
+                                   meta.start),
+        GNUNET_JSON_pack_time_abs ("stamp_expire_withdraw",
+                                   meta.expire_withdraw),
+        GNUNET_JSON_pack_time_abs ("stamp_expire_deposit",
+                                   meta.expire_deposit),
+        GNUNET_JSON_pack_time_abs ("stamp_expire_legal",
+                                   meta.expire_legal),
+        GNUNET_JSON_pack_rsa_public_key ("denom_pub",
+                                         hd->denom_pub.rsa_public_key),
+        TALER_JSON_pack_amount ("fee_withdraw",
+                                &meta.fee_withdraw),
+        TALER_JSON_pack_amount ("fee_deposit",
+                                &meta.fee_deposit),
+        TALER_JSON_pack_amount ("fee_refresh",
+                                &meta.fee_refresh),
+        TALER_JSON_pack_amount ("fee_refund",
+                                &meta.fee_refund),
+        GNUNET_JSON_pack_data_auto ("denom_secmod_sig",
+                                    &hd->sm_sig),
+        GNUNET_JSON_pack_string ("section_name",
+                                 hd->section_name))));
   return GNUNET_OK;
 }
 
@@ -2469,17 +2465,17 @@ add_future_signkey_cb (void *cls,
   GNUNET_assert (0 ==
                  json_array_append_new (
                    fbc->signkeys,
-                   json_pack ("{s:o, s:o, s:o, s:o, s:o}",
-                              "key",
-                              GNUNET_JSON_from_data_auto (&hsk->exchange_pub),
-                              "stamp_start",
-                              GNUNET_JSON_from_time_abs (hsk->start_time),
-                              "stamp_expire",
-                              GNUNET_JSON_from_time_abs (stamp_expire),
-                              "stamp_end",
-                              GNUNET_JSON_from_time_abs (legal_end),
-                              "signkey_secmod_sig",
-                              GNUNET_JSON_from_data_auto (&hsk->sm_sig))));
+                   GNUNET_JSON_PACK (
+                     GNUNET_JSON_pack_data_auto ("key",
+                                                 &hsk->exchange_pub),
+                     GNUNET_JSON_pack_time_abs ("stamp_start",
+                                                hsk->start_time),
+                     GNUNET_JSON_pack_time_abs ("stamp_expire",
+                                                stamp_expire),
+                     GNUNET_JSON_pack_time_abs ("stamp_end",
+                                                legal_end),
+                     GNUNET_JSON_pack_data_auto ("signkey_secmod_sig",
+                                                 &hsk->sm_sig))));
   return GNUNET_OK;
 }
 
@@ -2516,18 +2512,17 @@ TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
     GNUNET_CONTAINER_multipeermap_iterate (ksh->helpers->esign_keys,
                                            &add_future_signkey_cb,
                                            &fbc);
-    reply = json_pack (
-      "{s:o, s:o, s:o, s:o, s:o}",
-      "future_denoms",
-      fbc.denoms,
-      "future_signkeys",
-      fbc.signkeys,
-      "master_pub",
-      GNUNET_JSON_from_data_auto (&TEH_master_public_key),
-      "denom_secmod_public_key",
-      GNUNET_JSON_from_data_auto (&denom_sm_pub),
-      "signkey_secmod_public_key",
-      GNUNET_JSON_from_data_auto (&esign_sm_pub));
+    reply = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("future_denoms",
+                                    fbc.denoms),
+      GNUNET_JSON_pack_array_steal ("future_signkeys",
+                                    fbc.signkeys),
+      GNUNET_JSON_pack_data_auto ("master_pub",
+                                  &TEH_master_public_key),
+      GNUNET_JSON_pack_data_auto ("denom_secmod_public_key",
+                                  &denom_sm_pub),
+      GNUNET_JSON_pack_data_auto ("signkey_secmod_public_key",
+                                  &esign_sm_pub));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Returning GET /management/keys response:\n");
     if (NULL == reply)

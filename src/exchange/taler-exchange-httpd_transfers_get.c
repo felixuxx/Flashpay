@@ -99,17 +99,9 @@ reply_transfer_details (struct MHD_Connection *connection,
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
 
-
   GNUNET_TIME_round_abs (&exec_time);
   deposits = json_array ();
-  if (NULL == deposits)
-  {
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                       "json_array() failed");
-
-  }
+  GNUNET_assert (NULL != deposits);
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   for (const struct AggregatedDepositDetail *wdd_pos = wdd_head;
        NULL != wdd_pos;
@@ -126,20 +118,17 @@ reply_transfer_details (struct MHD_Connection *connection,
                                      &dd,
                                      sizeof (struct TALER_WireDepositDetailP));
     if (0 !=
-        json_array_append_new (deposits,
-                               json_pack ("{s:o, s:o, s:o, s:o}",
-                                          "h_contract_terms",
-                                          GNUNET_JSON_from_data_auto (
-                                            &wdd_pos->h_contract_terms),
-                                          "coin_pub",
-                                          GNUNET_JSON_from_data_auto (
-                                            &wdd_pos->coin_pub),
-                                          "deposit_value",
-                                          TALER_JSON_from_amount (
-                                            &wdd_pos->deposit_value),
-                                          "deposit_fee",
-                                          TALER_JSON_from_amount (
-                                            &wdd_pos->deposit_fee))))
+        json_array_append_new (
+          deposits,
+          GNUNET_JSON_PACK (
+            GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                        &wdd_pos->h_contract_terms),
+            GNUNET_JSON_pack_data_auto ("coin_pub",
+                                        &wdd_pos->coin_pub),
+            TALER_JSON_pack_amount ("deposit_value",
+                                    &wdd_pos->deposit_value),
+            TALER_JSON_pack_amount ("deposit_fee",
+                                    &wdd_pos->deposit_fee))))
     {
       json_decref (deposits);
       GNUNET_CRYPTO_hash_context_abort (hash_context);
@@ -174,24 +163,25 @@ reply_transfer_details (struct MHD_Connection *connection,
     }
   }
 
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
-                                    "total", TALER_JSON_from_amount (total),
-                                    "wire_fee", TALER_JSON_from_amount (
-                                      wire_fee),
-                                    "merchant_pub",
-                                    GNUNET_JSON_from_data_auto (
-                                      merchant_pub),
-                                    "h_wire", GNUNET_JSON_from_data_auto (
-                                      h_wire),
-                                    "execution_time",
-                                    GNUNET_JSON_from_time_abs (exec_time),
-                                    "deposits", deposits,
-                                    "exchange_sig",
-                                    GNUNET_JSON_from_data_auto (&sig),
-                                    "exchange_pub",
-                                    GNUNET_JSON_from_data_auto (&pub));
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    TALER_JSON_pack_amount ("total",
+                            total),
+    TALER_JSON_pack_amount ("wire_fee",
+                            wire_fee),
+    GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                merchant_pub),
+    GNUNET_JSON_pack_data_auto ("h_wire",
+                                h_wire),
+    GNUNET_JSON_pack_time_abs ("execution_time",
+                               exec_time),
+    GNUNET_JSON_pack_array_steal ("deposits",
+                                  deposits),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &sig),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &pub));
 }
 
 

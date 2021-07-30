@@ -40,7 +40,6 @@ static MHD_RESULT
 reply_reserve_history_success (struct MHD_Connection *connection,
                                const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
-  json_t *json_balance;
   json_t *json_history;
   struct TALER_Amount balance;
 
@@ -51,12 +50,13 @@ reply_reserve_history_success (struct MHD_Connection *connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
                                        NULL);
-  json_balance = TALER_JSON_from_amount (&balance);
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o, s:o}",
-                                    "balance", json_balance,
-                                    "history", json_history);
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    TALER_JSON_pack_amount ("balance",
+                            &balance),
+    GNUNET_JSON_pack_array_steal ("history",
+                                  json_history));
 }
 
 

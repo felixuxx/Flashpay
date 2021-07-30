@@ -1161,7 +1161,7 @@ exchange_serve_process_config (void)
     {
       GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                  "exchange",
-                                 "master_public_key");
+                                 "MASTER_PUBLIC_KEY");
       return GNUNET_SYSERR;
     }
     if (GNUNET_OK !=
