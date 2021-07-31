@@ -1083,13 +1083,12 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   json_decref (json);
 
   /* Finally build response object */
-  return TALER_MHD_reply_json_pack (connection,
+  return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
-                                    "{s:I, s:o}",
-                                    "row_id",
-                                    (json_int_t) row_id,
-                                    "timestamp",
-                                    GNUNET_JSON_from_time_abs (timestamp));
+                                    GNUNET_JSON_pack_uint64 ("row_id",
+                                                             row_id),
+                                    GNUNET_JSON_pack_time_abs ("timestamp",
+                                                               timestamp));
 }
 
 
@@ -1211,14 +1210,14 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
   json_decref (json);
 
   /* Finally build response object */
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:I, s:o}",
-                                    "row_id",
-                                    (json_int_t) row_id,
-                                    /* dummy timestamp */
-                                    "timestamp", GNUNET_JSON_from_time_abs (
-                                      GNUNET_TIME_UNIT_ZERO_ABS));
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_uint64 ("row_id",
+                             row_id),
+    /* dummy timestamp */
+    GNUNET_JSON_pack_time_abs ("timestamp",
+                               GNUNET_TIME_UNIT_ZERO_ABS));
 }
 
 
@@ -1438,11 +1437,12 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                      pthread_mutex_unlock (&h->big_lock));
       GNUNET_free (debit_payto);
       /* FIXME: suspend for long-polling instead */
-      return TALER_MHD_reply_json_pack (connection,
-                                        MHD_HTTP_OK,
-                                        "{s:o}",
-                                        "outgoing_transactions",
-                                        history);
+      return TALER_MHD_REPLY_JSON_PACK (
+        connection,
+        MHD_HTTP_OK,
+        GNUNET_JSON_pack_array_steal (
+          "outgoing_transactions",
+          history));
     }
     if (t->debit_account != acc)
     {
@@ -1487,17 +1487,21 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_asprintf (&credit_payto,
                      "payto://x-taler-bank/localhost/%s",
                      pos->credit_account->account_name);
-    trans = json_pack (
-      "{s:I, s:o, s:o, s:s, s:s, s:s, s:o}",
-      "row_id", (json_int_t) pos->row_id,
-      "date", GNUNET_JSON_from_time_abs (pos->date),
-      "amount", TALER_JSON_from_amount (&pos->amount),
-      "credit_account", credit_payto,
-      "debit_account", debit_payto,          // FIXME: inefficient to return this here always!
-      "exchange_base_url",
-      pos->subject.debit.exchange_base_url,
-      "wtid", GNUNET_JSON_from_data_auto (
-        &pos->subject.debit.wtid));
+    trans = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("row_id",
+                               pos->row_id),
+      GNUNET_JSON_pack_time_abs ("date",
+                                 pos->date),
+      TALER_JSON_pack_amount ("amount",
+                              &pos->amount),
+      GNUNET_JSON_pack_string ("credit_account",
+                               credit_payto),
+      GNUNET_JSON_pack_string ("debit_account",
+                               debit_payto),          // FIXME: inefficient to return this here always!
+      GNUNET_JSON_pack_string ("exchange_base_url",
+                               pos->subject.debit.exchange_base_url),
+      GNUNET_JSON_pack_data_auto ("wtid",
+                                  &pos->subject.debit.wtid));
     GNUNET_assert (NULL != trans);
     GNUNET_free (credit_payto);
     GNUNET_assert (0 ==
@@ -1515,11 +1519,11 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
   GNUNET_free (debit_payto);
-  return TALER_MHD_reply_json_pack (connection,
+  return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "outgoing_transactions",
-                                    history);
+                                    GNUNET_JSON_pack_array_steal (
+                                      "outgoing_transactions",
+                                      history));
 }
 
 
@@ -1593,11 +1597,11 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
                      pthread_mutex_unlock (&h->big_lock));
       GNUNET_free (credit_payto);
       /* FIXME: suspend for long-polling instead */
-      return TALER_MHD_reply_json_pack (connection,
+      return TALER_MHD_REPLY_JSON_PACK (connection,
                                         MHD_HTTP_OK,
-                                        "{s:o}",
-                                        "incoming_transactions",
-                                        history);
+                                        GNUNET_JSON_pack_array_steal (
+                                          "incoming_transactions",
+                                          history));
     }
     if (skip)
     {
@@ -1631,15 +1635,19 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     GNUNET_asprintf (&debit_payto,
                      "payto://x-taler-bank/localhost/%s",
                      pos->debit_account->account_name);
-    trans = json_pack (
-      "{s:I, s:o, s:o, s:s, s:s, s:o}",
-      "row_id", (json_int_t) pos->row_id,
-      "date", GNUNET_JSON_from_time_abs (pos->date),
-      "amount", TALER_JSON_from_amount (&pos->amount),
-      "credit_account", credit_payto,            // FIXME: inefficient to repeat this always here!
-      "debit_account", debit_payto,
-      "reserve_pub", GNUNET_JSON_from_data_auto (
-        &pos->subject.credit.reserve_pub));
+    trans = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("row_id",
+                               pos->row_id),
+      GNUNET_JSON_pack_time_abs ("date",
+                                 pos->date),
+      TALER_JSON_pack_amount ("amount",
+                              &pos->amount),
+      GNUNET_JSON_pack_string ("credit_account",
+                               credit_payto),   // FIXME: inefficient to repeat this always here!
+      GNUNET_JSON_pack_string ("debit_account",
+                               debit_payto),
+      GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                  &pos->subject.credit.reserve_pub));
     GNUNET_assert (NULL != trans);
     GNUNET_free (debit_payto);
     GNUNET_assert (0 ==
@@ -1657,11 +1665,11 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
   GNUNET_free (credit_payto);
-  return TALER_MHD_reply_json_pack (connection,
+  return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "incoming_transactions",
-                                    history);
+                                    GNUNET_JSON_pack_array_steal (
+                                      "incoming_transactions",
+                                      history));
 }
 
 

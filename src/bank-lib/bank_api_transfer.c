@@ -319,13 +319,17 @@ TALER_BANK_transfer (
     GNUNET_break (0);
     return NULL;
   }
-  transfer_obj = json_pack ("{s:o, s:o, s:s, s:o, s:s}",
-                            "request_uid", GNUNET_JSON_from_data_auto (
-                              &wp->request_uid),
-                            "amount", TALER_JSON_from_amount (&amount),
-                            "exchange_base_url", exchange_base_url,
-                            "wtid", GNUNET_JSON_from_data_auto (&wp->wtid),
-                            "credit_account", destination_account_uri);
+  transfer_obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("request_uid",
+                                &wp->request_uid),
+    TALER_JSON_pack_amount ("amount",
+                            &amount),
+    GNUNET_JSON_pack_string ("exchange_base_url",
+                             exchange_base_url),
+    GNUNET_JSON_pack_data_auto ("wtid",
+                                &wp->wtid),
+    GNUNET_JSON_pack_string ("credit_account",
+                             destination_account_uri));
   if (NULL == transfer_obj)
   {
     GNUNET_break (0);

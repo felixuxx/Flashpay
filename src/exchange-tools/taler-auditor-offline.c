@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -295,11 +295,11 @@ output_operation (const char *op_name,
   json_t *action;
 
   GNUNET_assert (NULL != out);
-  action = json_pack ("{ s:s, s:o }",
-                      "operation",
-                      op_name,
-                      "arguments",
-                      op_value);
+  action = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("operation",
+                             op_name),
+    GNUNET_JSON_pack_object_steal ("arguments",
+                                   op_value));
   GNUNET_break (0 ==
                 json_array_append_new (out,
                                        action));
@@ -660,6 +660,15 @@ keys_cb (
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
+    if (! json_is_object (hr->reply))
+    {
+      GNUNET_break (0);
+      TALER_EXCHANGE_disconnect (exchange);
+      exchange = NULL;
+      test_shutdown ();
+      global_ret = EXIT_FAILURE;
+      return;
+    }
     break;
   default:
     fprintf (stderr,
@@ -673,11 +682,11 @@ keys_cb (
     global_ret = EXIT_FAILURE;
     return;
   }
-  in = json_pack ("{s:s,s:O}",
-                  "operation",
-                  OP_INPUT_KEYS,
-                  "arguments",
-                  hr->reply);
+  in = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("operation",
+                             OP_INPUT_KEYS),
+    GNUNET_JSON_pack_object_incref ("arguments",
+                                    (json_t *) hr->reply));
   if (NULL == args[0])
   {
     json_dumpf (in,
@@ -1141,11 +1150,11 @@ sign_denomkeys (const json_t *denomkeys)
                                          &auditor_priv,
                                          &auditor_sig);
       output_operation (OP_SIGN_DENOMINATION,
-                        json_pack ("{s:o, s:o}",
-                                   "h_denom_pub",
-                                   GNUNET_JSON_from_data_auto (&h_denom_pub),
-                                   "auditor_sig",
-                                   GNUNET_JSON_from_data_auto (&auditor_sig)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                                      &h_denom_pub),
+                          GNUNET_JSON_pack_data_auto ("auditor_sig",
+                                                      &auditor_sig)));
     }
     GNUNET_JSON_parse_free (spec);
   }
@@ -1214,7 +1223,10 @@ do_sign (char *const *args)
     return;
   }
   if (NULL == out)
+  {
     out = json_array ();
+    GNUNET_assert (NULL != out);
+  }
   if (GNUNET_OK !=
       sign_denomkeys (denomkeys))
   {
@@ -1247,11 +1259,14 @@ do_setup (char *const *args)
   if (NULL != *args)
   {
     if (NULL == out)
+    {
       out = json_array ();
+      GNUNET_assert (NULL != out);
+    }
     output_operation (OP_SETUP,
-                      json_pack ("{s:o}",
-                                 "auditor_pub",
-                                 GNUNET_JSON_from_data_auto (&auditor_pub)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_data_auto ("auditor_pub",
+                                                    &auditor_pub)));
   }
 
   else
