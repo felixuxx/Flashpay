@@ -113,7 +113,9 @@ TALER_JSON_pack_amount (const char *name,
 {
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
-    .object = TALER_JSON_from_amount (amount)
+    .object = (NULL != amount)
+    ? TALER_JSON_from_amount (amount)
+    : NULL
   };
 
   return ps;
@@ -126,7 +128,9 @@ TALER_JSON_pack_amount_nbo (const char *name,
 {
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
-    .object = TALER_JSON_from_amount_nbo (amount)
+    .object = (NULL != amount)
+    ? TALER_JSON_from_amount_nbo (amount)
+    : NULL
   };
 
   return ps;
