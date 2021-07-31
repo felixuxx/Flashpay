@@ -716,16 +716,18 @@ output_operation (const char *op_name,
 
   GNUNET_break (NULL != op_value);
   if (NULL == out)
+  {
     out = json_array ();
-  action = json_pack ("{ s:s, s:o }",
-                      "operation",
-                      op_name,
-                      "arguments",
-                      op_value);
-  GNUNET_break (NULL != action);
-  GNUNET_break (0 ==
-                json_array_append_new (out,
-                                       action));
+    GNUNET_assert (NULL != out);
+  }
+  action = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("operation",
+                             op_name),
+    GNUNET_JSON_pack_object_steal ("arguments",
+                                   op_value));
+  GNUNET_assert (0 ==
+                 json_array_append_new (out,
+                                        action));
 }
 
 
@@ -1757,8 +1759,6 @@ trigger_upload (const char *exchange_url)
 static void
 do_upload (char *const *args)
 {
-  char *exchange_url;
-
   if (NULL != in)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1855,11 +1855,11 @@ do_revoke_denomination_key (char *const *args)
                                                    &master_priv,
                                                    &master_sig);
   output_operation (OP_REVOKE_DENOMINATION,
-                    json_pack ("{s:o, s:o}",
-                               "h_denom_pub",
-                               GNUNET_JSON_from_data_auto (&h_denom_pub),
-                               "master_sig",
-                               GNUNET_JSON_from_data_auto (&master_sig)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                                  &h_denom_pub),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
   next (args + 1);
 }
 
@@ -1904,11 +1904,11 @@ do_revoke_signkey (char *const *args)
                                               &master_priv,
                                               &master_sig);
   output_operation (OP_REVOKE_SIGNKEY,
-                    json_pack ("{s:o, s:o}",
-                               "exchange_pub",
-                               GNUNET_JSON_from_data_auto (&exchange_pub),
-                               "master_sig",
-                               GNUNET_JSON_from_data_auto (&master_sig)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                                  &exchange_pub),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
   next (args + 1);
 }
 
@@ -1972,17 +1972,17 @@ do_add_auditor (char *const *args)
                                            &master_priv,
                                            &master_sig);
   output_operation (OP_ENABLE_AUDITOR,
-                    json_pack ("{s:s, s:s, s:o, s:o, s:o}",
-                               "auditor_url",
-                               args[1],
-                               "auditor_name",
-                               args[2],
-                               "validity_start",
-                               GNUNET_JSON_from_time_abs (now),
-                               "auditor_pub",
-                               GNUNET_JSON_from_data_auto (&auditor_pub),
-                               "master_sig",
-                               GNUNET_JSON_from_data_auto (&master_sig)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("auditor_url",
+                                               args[1]),
+                      GNUNET_JSON_pack_string ("auditor_name",
+                                               args[2]),
+                      GNUNET_JSON_pack_time_abs ("validity_start",
+                                                 now),
+                      GNUNET_JSON_pack_data_auto ("auditor_pub",
+                                                  &auditor_pub),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
   next (args + 3);
 }
 
@@ -2032,13 +2032,13 @@ do_del_auditor (char *const *args)
                                            &master_priv,
                                            &master_sig);
   output_operation (OP_DISABLE_AUDITOR,
-                    json_pack ("{s:o, s:o, s:o}",
-                               "auditor_pub",
-                               GNUNET_JSON_from_data_auto (&auditor_pub),
-                               "validity_end",
-                               GNUNET_JSON_from_time_abs (now),
-                               "master_sig",
-                               GNUNET_JSON_from_data_auto (&master_sig)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_data_auto ("auditor_pub",
+                                                  &auditor_pub),
+                      GNUNET_JSON_pack_time_abs ("validity_end",
+                                                 now),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
   next (args + 1);
 }
 
@@ -2101,15 +2101,15 @@ do_add_wire (char *const *args)
                                       &master_priv,
                                       &master_sig_wire);
   output_operation (OP_ENABLE_WIRE,
-                    json_pack ("{s:s, s:o, s:o, s:o}",
-                               "payto_uri",
-                               args[0],
-                               "validity_start",
-                               GNUNET_JSON_from_time_abs (now),
-                               "master_sig_add",
-                               GNUNET_JSON_from_data_auto (&master_sig_add),
-                               "master_sig_wire",
-                               GNUNET_JSON_from_data_auto (&master_sig_wire)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("payto_uri",
+                                               args[0]),
+                      GNUNET_JSON_pack_time_abs ("validity_start",
+                                                 now),
+                      GNUNET_JSON_pack_data_auto ("master_sig_add",
+                                                  &master_sig_add),
+                      GNUNET_JSON_pack_data_auto ("master_sig_wire",
+                                                  &master_sig_wire)));
   next (args + 1);
 }
 
@@ -2153,13 +2153,13 @@ do_del_wire (char *const *args)
                                         &master_priv,
                                         &master_sig);
   output_operation (OP_DISABLE_WIRE,
-                    json_pack ("{s:s, s:o, s:o}",
-                               "payto_uri",
-                               args[0],
-                               "validity_end",
-                               GNUNET_JSON_from_time_abs (now),
-                               "master_sig",
-                               GNUNET_JSON_from_data_auto (&master_sig)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("payto_uri",
+                                               args[0]),
+                      GNUNET_JSON_pack_time_abs ("validity_end",
+                                                 now),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
   next (args + 1);
 }
 
@@ -2230,19 +2230,19 @@ do_set_wire_fee (char *const *args)
                                         &master_priv,
                                         &master_sig);
   output_operation (OP_SET_WIRE_FEE,
-                    json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                               "wire_method",
-                               args[1],
-                               "start_time",
-                               GNUNET_JSON_from_time_abs (start_time),
-                               "end_time",
-                               GNUNET_JSON_from_time_abs (end_time),
-                               "wire_fee",
-                               TALER_JSON_from_amount (&wire_fee),
-                               "closing_fee",
-                               TALER_JSON_from_amount (&closing_fee),
-                               "master_sig",
-                               GNUNET_JSON_from_data_auto (&master_sig)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("wire_method",
+                                               args[1]),
+                      GNUNET_JSON_pack_time_abs ("start_time",
+                                                 start_time),
+                      GNUNET_JSON_pack_time_abs ("end_time",
+                                                 end_time),
+                      TALER_JSON_pack_amount ("wire_fee",
+                                              &wire_fee),
+                      TALER_JSON_pack_amount ("closing_fee",
+                                              &closing_fee),
+                      GNUNET_JSON_pack_data_auto ("master_sig",
+                                                  &master_sig)));
   next (args + 4);
 }
 
@@ -2285,11 +2285,11 @@ download_cb (void *cls,
     global_ret = EXIT_FAILURE;
     return;
   }
-  in = json_pack ("{s:s,s:O}",
-                  "operation",
-                  OP_INPUT_KEYS,
-                  "arguments",
-                  hr->reply);
+  in = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("operation",
+                             OP_INPUT_KEYS),
+    GNUNET_JSON_pack_object_incref ("arguments",
+                                    (json_t *) hr->reply));
   if (NULL == args[0])
   {
     json_dumpf (in,
@@ -2977,11 +2977,11 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_assert (0 ==
                      json_array_append_new (
                        result,
-                       json_pack ("{s:o,s:o}",
-                                  "exchange_pub",
-                                  GNUNET_JSON_from_data_auto (&exchange_pub),
-                                  "master_sig",
-                                  GNUNET_JSON_from_data_auto (&master_sig))));
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                                     &exchange_pub),
+                         GNUNET_JSON_pack_data_auto ("master_sig",
+                                                     &master_sig))));
     }
     GNUNET_JSON_parse_free (spec);
   }
@@ -3113,12 +3113,11 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_assert (0 ==
                      json_array_append_new (
                        result,
-                       json_pack (
-                         "{s:o,s:o}",
-                         "h_denom_pub",
-                         GNUNET_JSON_from_data_auto (&h_denom_pub),
-                         "master_sig",
-                         GNUNET_JSON_from_data_auto (&master_sig))));
+                       GNUNET_JSON_PACK (
+                         GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                                     &h_denom_pub),
+                         GNUNET_JSON_pack_data_auto ("master_sig",
+                                                     &master_sig))));
     }
     GNUNET_JSON_parse_free (spec);
   }
@@ -3230,11 +3229,11 @@ do_sign (char *const *args)
     }
 
     output_operation (OP_UPLOAD_SIGS,
-                      json_pack ("{s:o,s:o}",
-                                 "denom_sigs",
-                                 denomkey_sig_array,
-                                 "signkey_sigs",
-                                 signkey_sig_array));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_array_steal ("denom_sigs",
+                                                      denomkey_sig_array),
+                        GNUNET_JSON_pack_array_steal ("signkey_sigs",
+                                                      signkey_sig_array)));
   }
   GNUNET_JSON_parse_free (spec);
   json_decref (keys);
@@ -3259,9 +3258,9 @@ do_setup (char *const *args)
   if (NULL != *args)
   {
     output_operation (OP_SETUP,
-                      json_pack ("{s:o}",
-                                 "exchange_offline_pub",
-                                 GNUNET_JSON_from_data_auto (&master_pub)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_data_auto ("exchange_offline_pub",
+                                                    &master_pub)));
   }
 
   else
