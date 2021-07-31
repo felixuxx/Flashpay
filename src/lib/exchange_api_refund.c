@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -635,35 +635,6 @@ handle_refund_finished (void *cls,
 }
 
 
-/**
- * Submit a refund request to the exchange and get the exchange's
- * response.  This API is used by a merchant.  Note that
- * while we return the response verbatim to the caller for further
- * processing, we do already verify that the response is well-formed
- * (i.e. that signatures included in the response are all valid).  If
- * the exchange's reply is not well-formed, we return an HTTP status code
- * of zero to @a cb.
- *
- * The @a exchange must be ready to operate (i.e.  have
- * finished processing the /keys reply).  If this check fails, we do
- * NOT initiate the transaction with the exchange and instead return NULL.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param amount the amount to be refunded; must be larger than the refund fee
- *        (as that fee is still being subtracted), and smaller than the amount
- *        (with deposit fee) of the original deposit contribution of this coin
- * @param h_contract_terms hash of the contact of the merchant with the customer that is being refunded
- * @param coin_pub coin’s public key of the coin from the original deposit operation
- * @param rtransaction_id transaction id for the transaction between merchant and customer (of refunding operation);
- *                        this is needed as we may first do a partial refund and later a full refund.  If both
- *                        refunds are also over the same amount, we need the @a rtransaction_id to make the disjoint
- *                        refund requests different (as requests are idempotent and otherwise the 2nd refund might not work).
- * @param merchant_priv the private key of the merchant, used to generate signature for refund request
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @return a handle for this request; NULL if the inputs are invalid (i.e.
- *         signatures fail to verify).  In this case, the callback is not called.
- */
 struct TALER_EXCHANGE_RefundHandle *
 TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_Amount *amount,
@@ -714,25 +685,17 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
                      "/coins/%s/refund",
                      pub_str);
   }
-  refund_obj = json_pack ("{s:o," /* amount */
-                          " s:o," /* h_contract_terms */
-                          " s:I," /* rtransaction id */
-                          " s:o, s:o}", /* merchant_pub, merchant_sig */
-                          "refund_amount", TALER_JSON_from_amount (amount),
-                          "h_contract_terms", GNUNET_JSON_from_data_auto (
-                            h_contract_terms),
-                          "rtransaction_id", (json_int_t) rtransaction_id,
-                          "merchant_pub", GNUNET_JSON_from_data_auto (
-                            &rr.merchant),
-                          "merchant_sig", GNUNET_JSON_from_data_auto (
-                            &merchant_sig)
-                          );
-  if (NULL == refund_obj)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
+  refund_obj = GNUNET_JSON_PACK (
+    TALER_JSON_pack_amount ("refund_amount",
+                            amount),
+    GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                h_contract_terms),
+    GNUNET_JSON_pack_uint64 ("rtransaction_id",
+                             rtransaction_id),
+    GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                &rr.merchant),
+    GNUNET_JSON_pack_data_auto ("merchant_sig",
+                                &merchant_sig));
   rh = GNUNET_new (struct TALER_EXCHANGE_RefundHandle);
   rh->exchange = exchange;
   rh->cb = cb;
@@ -783,12 +746,6 @@ TALER_EXCHANGE_refund (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Cancel a refund permission request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param refund the refund permission request handle
- */
 void
 TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund)
 {

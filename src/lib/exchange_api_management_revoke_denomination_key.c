@@ -163,9 +163,9 @@ TALER_EXCHANGE_management_revoke_denomination_key (
     GNUNET_free (rh);
     return NULL;
   }
-  body = json_pack ("{s:o}",
-                    "master_sig",
-                    GNUNET_JSON_from_data_auto (master_sig));
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("master_sig",
+                                master_sig));
   if (NULL == body)
   {
     GNUNET_break (0);

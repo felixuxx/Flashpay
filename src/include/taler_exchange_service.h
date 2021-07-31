@@ -155,10 +155,10 @@ struct TALER_EXCHANGE_DenomPublicKey
   struct TALER_Amount fee_refund;
 
   /**
-   * Set to #GNUNET_YES if this denomination key has been
+   * Set to true if this denomination key has been
    * revoked by the exchange.
    */
-  int revoked;
+  bool revoked;
 };
 
 
@@ -1869,7 +1869,7 @@ typedef void
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param ps secret internals of the original planchet
- * @param was_refreshed #GNUNET_YES if the coin in @a ps was refreshed
+ * @param was_refreshed true if the coin in @a ps was refreshed
  * @param recoup_cb the callback to call when the final result for this request is available
  * @param recoup_cb_cls closure for @a recoup_cb
  * @return NULL
@@ -1881,7 +1881,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
                        const struct TALER_DenominationSignature *denom_sig,
                        const struct TALER_PlanchetSecretsP *ps,
-                       int was_refreshed,
+                       bool was_refreshed,
                        TALER_EXCHANGE_RecoupResultCallback recoup_cb,
                        void *recoup_cb_cls);
 

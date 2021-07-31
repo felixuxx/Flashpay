@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -663,38 +663,29 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
 
-  deposit_obj = json_pack ("{s:o, s:O," /* f/wire */
-                           " s:o, s:o," /* h_wire, h_contract_terms */
-                           " s:o," /* denom_pub */
-                           " s:o, s:o," /* ub_sig, timestamp */
-                           " s:o," /* merchant_pub */
-                           " s:o, s:o," /* refund_deadline, wire_deadline */
-                           " s:o}",     /* coin_sig */
-                           "contribution", TALER_JSON_from_amount (amount),
-                           "wire", wire_details,
-                           "h_wire", GNUNET_JSON_from_data_auto (&h_wire),
-                           "h_contract_terms", GNUNET_JSON_from_data_auto (
-                             h_contract_terms),
-                           "denom_pub_hash", GNUNET_JSON_from_data_auto (
-                             &denom_pub_hash),
-                           "ub_sig", GNUNET_JSON_from_rsa_signature (
-                             denom_sig->rsa_signature),
-                           "timestamp", GNUNET_JSON_from_time_abs (timestamp),
-                           "merchant_pub", GNUNET_JSON_from_data_auto (
-                             merchant_pub),
-                           "refund_deadline", GNUNET_JSON_from_time_abs (
-                             refund_deadline),
-                           "wire_transfer_deadline", GNUNET_JSON_from_time_abs (
-                             wire_deadline),
-                           "coin_sig", GNUNET_JSON_from_data_auto (coin_sig)
-                           );
-  if (NULL == deposit_obj)
-  {
-    *ec = TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE;
-    GNUNET_break (0);
-    return NULL;
-  }
-
+  deposit_obj = GNUNET_JSON_PACK (
+    TALER_JSON_pack_amount ("contribution",
+                            amount),
+    GNUNET_JSON_pack_object_incref ("wire",
+                                    wire_details),
+    GNUNET_JSON_pack_data_auto ("h_wire",
+                                &h_wire),
+    GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                h_contract_terms),
+    GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                &denom_pub_hash),
+    TALER_JSON_pack_denomination_signature ("ub_sig",
+                                            denom_sig),
+    GNUNET_JSON_pack_time_abs ("timestamp",
+                               timestamp),
+    GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                merchant_pub),
+    GNUNET_JSON_pack_time_abs ("refund_deadline",
+                               refund_deadline),
+    GNUNET_JSON_pack_time_abs ("wire_transfer_deadline",
+                               wire_deadline),
+    GNUNET_JSON_pack_data_auto ("coin_sig",
+                                coin_sig));
   dh = GNUNET_new (struct TALER_EXCHANGE_DepositHandle);
   dh->auditor_chance = AUDITOR_CHANCE;
   dh->exchange = exchange;

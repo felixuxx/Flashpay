@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -160,17 +160,11 @@ TALER_EXCHANGE_management_revoke_signing_key (
     GNUNET_free (rh);
     return NULL;
   }
-  body = json_pack ("{s:o}",
-                    "master_sig",
-                    GNUNET_JSON_from_data_auto (master_sig));
-  if (NULL == body)
-  {
-    GNUNET_break (0);
-    GNUNET_free (rh->url);
-    GNUNET_free (rh);
-    return NULL;
-  }
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("master_sig",
+                                master_sig));
   eh = curl_easy_init ();
+  GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&rh->post_ctx,
                             eh,

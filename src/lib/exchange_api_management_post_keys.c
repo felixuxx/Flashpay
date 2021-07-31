@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -149,72 +149,44 @@ TALER_EXCHANGE_post_management_keys (
     return NULL;
   }
   denom_sigs = json_array ();
-  if (NULL == denom_sigs)
-  {
-    GNUNET_free (ph->url);
-    GNUNET_free (ph);
-    return NULL;
-  }
+  GNUNET_assert (NULL != denom_sigs);
   for (unsigned int i = 0; i<pkd->num_denom_sigs; i++)
   {
-    if (0 !=
-        json_array_append_new (
-          denom_sigs,
-          json_pack ("{s:o, s:o}",
-                     "h_denom_pub",
-                     GNUNET_JSON_from_data_auto (
-                       &pkd->denom_sigs[i].h_denom_pub),
-                     "master_sig",
-                     GNUNET_JSON_from_data_auto (
-                       &pkd->denom_sigs[i].master_sig))))
-    {
-      json_decref (denom_sigs);
-      GNUNET_free (ph->url);
-      GNUNET_free (ph);
-      return NULL;
-    }
+    const struct TALER_EXCHANGE_DenominationKeySignature *dks
+      = &pkd->denom_sigs[i];
+
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     denom_sigs,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                                   &dks->h_denom_pub),
+                       GNUNET_JSON_pack_data_auto ("master_sig",
+                                                   &dks->master_sig))));
   }
   signkey_sigs = json_array ();
-  if (NULL == signkey_sigs)
-  {
-    json_decref (denom_sigs);
-    GNUNET_free (ph->url);
-    GNUNET_free (ph);
-    return NULL;
-  }
+  GNUNET_assert (NULL != signkey_sigs);
   for (unsigned int i = 0; i<pkd->num_sign_sigs; i++)
   {
-    if (0 !=
-        json_array_append_new (
-          signkey_sigs,
-          json_pack ("{s:o, s:o}",
-                     "exchange_pub",
-                     GNUNET_JSON_from_data_auto (
-                       &pkd->sign_sigs[i].exchange_pub),
-                     "master_sig",
-                     GNUNET_JSON_from_data_auto (
-                       &pkd->sign_sigs[i].master_sig))))
-    {
-      json_decref (signkey_sigs);
-      json_decref (denom_sigs);
-      GNUNET_free (ph->url);
-      GNUNET_free (ph);
-      return NULL;
-    }
+    const struct TALER_EXCHANGE_SigningKeySignature *sks
+      = &pkd->sign_sigs[i];
+
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     signkey_sigs,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                                   &sks->exchange_pub),
+                       GNUNET_JSON_pack_data_auto ("master_sig",
+                                                   &sks->master_sig))));
   }
-  body = json_pack ("{s:o, s:o}",
-                    "denom_sigs",
-                    denom_sigs,
-                    "signkey_sigs",
-                    signkey_sigs);
-  if (NULL == body)
-  {
-    GNUNET_break (0);
-    GNUNET_free (ph->url);
-    GNUNET_free (ph);
-    return NULL;
-  }
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("denom_sigs",
+                                  denom_sigs),
+    GNUNET_JSON_pack_array_steal ("signkey_sigs",
+                                  signkey_sigs));
   eh = curl_easy_init ();
+  GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ph->post_ctx,
                             eh,

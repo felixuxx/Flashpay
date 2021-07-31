@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2020 Taler Systems SA
+  Copyright (C) 2017-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -300,28 +300,12 @@ handle_recoup_finished (void *cls,
 }
 
 
-/**
- * Ask the exchange to pay back a coin due to the exchange triggering
- * the emergency recoup protocol for a given denomination.  The value
- * of the coin will be refunded to the original customer (without fees).
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param pk kind of coin to pay back
- * @param denom_sig signature over the coin by the exchange using @a pk
- * @param ps secret internals of the original planchet
- * @param was_refreshed #GNUNET_YES if the coin in @a ps was refreshed
- * @param recoup_cb the callback to call when the final result for this request is available
- * @param recoup_cb_cls closure for @a recoup_cb
- * @return NULL
- *         if the inputs are invalid (i.e. denomination key not with this exchange).
- *         In this case, the callback is not called.
- */
 struct TALER_EXCHANGE_RecoupHandle *
 TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
                        const struct TALER_DenominationSignature *denom_sig,
                        const struct TALER_PlanchetSecretsP *ps,
-                       int was_refreshed,
+                       bool was_refreshed,
                        TALER_EXCHANGE_RecoupResultCallback recoup_cb,
                        void *recoup_cb_cls)
 {
@@ -347,24 +331,17 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_sign (&ps->coin_priv.eddsa_priv,
                             &pr,
                             &coin_sig.eddsa_signature);
-  recoup_obj = json_pack ("{s:o, s:o," /* denom pub/sig */
-                          " s:o,"  /* sig */
-                          " s:o, s:o}",  /* coin_bks */
-                          "denom_pub_hash", GNUNET_JSON_from_data_auto (
-                            &h_denom_pub),
-                          "denom_sig", GNUNET_JSON_from_rsa_signature (
-                            denom_sig->rsa_signature),
-                          "coin_sig", GNUNET_JSON_from_data_auto (&coin_sig),
-                          "coin_blind_key_secret", GNUNET_JSON_from_data_auto (
-                            &ps->blinding_key),
-                          "refreshed", json_boolean (was_refreshed)
-                          );
-  if (NULL == recoup_obj)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
+  recoup_obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                &h_denom_pub),
+    TALER_JSON_pack_denomination_signature ("denom_sig",
+                                            denom_sig),
+    GNUNET_JSON_pack_data_auto ("coin_sig",
+                                &coin_sig),
+    GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",
+                                &ps->blinding_key),
+    GNUNET_JSON_pack_bool ("refreshed",
+                           was_refreshed));
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
@@ -426,12 +403,6 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Cancel a recoup request.  This function cannot be used on a
- * request handle if the callback was already invoked.
- *
- * @param ph the recoup handle
- */
 void
 TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph)
 {

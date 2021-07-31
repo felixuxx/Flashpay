@@ -187,17 +187,11 @@ TALER_EXCHANGE_add_auditor_denomination (
     GNUNET_free (ah);
     return NULL;
   }
-  body = json_pack ("{s:o}",
-                    "auditor_sig",
-                    GNUNET_JSON_from_data_auto (auditor_sig));
-  if (NULL == body)
-  {
-    GNUNET_break (0);
-    GNUNET_free (ah->url);
-    GNUNET_free (ah);
-    return NULL;
-  }
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("auditor_sig",
+                                auditor_sig));
   eh = curl_easy_init ();
+  GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ah->post_ctx,
                             eh,

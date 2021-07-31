@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -323,37 +323,35 @@ TALER_AUDITOR_deposit_confirmation (
   }
 
   deposit_confirmation_obj
-    = json_pack ("{s:o, s:o," /* h_wire, h_contract_terms */
-                 " s:o, s:o," /* timestamp, refund_deadline */
-                 " s:o, s:o," /* amount_without_fees, coin_pub */
-                 " s:o, s:o," /* merchant_pub, exchange_sig */
-                 " s:o, s:o," /* master_pub, ep_start */
-                 " s:o, s:o," /* ep_expire, ep_end */
-                 " s:o, s:o}", /* master_sig, exchange_pub */
-                 "h_wire", GNUNET_JSON_from_data_auto (h_wire),
-                 "h_contract_terms", GNUNET_JSON_from_data_auto (
-                   h_contract_terms),
-                 "exchange_timestamp", GNUNET_JSON_from_time_abs (
-                   exchange_timestamp),
-                 "refund_deadline", GNUNET_JSON_from_time_abs (refund_deadline),
-                 "amount_without_fee", TALER_JSON_from_amount (
-                   amount_without_fee),
-                 "coin_pub", GNUNET_JSON_from_data_auto (coin_pub),
-                 "merchant_pub", GNUNET_JSON_from_data_auto (merchant_pub),
-                 "exchange_sig", GNUNET_JSON_from_data_auto (exchange_sig),
-                 "master_pub", GNUNET_JSON_from_data_auto (master_pub),
-                 "ep_start", GNUNET_JSON_from_time_abs (ep_start),
-                 "ep_expire", GNUNET_JSON_from_time_abs (ep_expire),
-                 "ep_end", GNUNET_JSON_from_time_abs (ep_end),
-                 "master_sig", GNUNET_JSON_from_data_auto (master_sig),
-                 "exchange_pub", GNUNET_JSON_from_data_auto (exchange_pub));
-
-  if (NULL == deposit_confirmation_obj)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
+    = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("h_wire",
+                                    h_wire),
+        GNUNET_JSON_pack_data_auto ("h_contract_terms",
+                                    h_contract_terms),
+        GNUNET_JSON_pack_time_abs ("exchange_timestamp",
+                                   exchange_timestamp),
+        GNUNET_JSON_pack_time_abs ("refund_deadline",
+                                   refund_deadline),
+        TALER_JSON_pack_amount ("amount_without_fee",
+                                amount_without_fee),
+        GNUNET_JSON_pack_data_auto ("coin_pub",
+                                    coin_pub),
+        GNUNET_JSON_pack_data_auto ("merchant_pub",
+                                    merchant_pub),
+        GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                    exchange_sig),
+        GNUNET_JSON_pack_data_auto ("master_pub",
+                                    master_pub),
+        GNUNET_JSON_pack_time_abs ("ep_start",
+                                   ep_start),
+        GNUNET_JSON_pack_time_abs ("ep_expire",
+                                   ep_expire),
+        GNUNET_JSON_pack_time_abs ("ep_end",
+                                   ep_end),
+        GNUNET_JSON_pack_data_auto ("master_sig",
+                                    master_sig),
+        GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                    exchange_pub));
   dh = GNUNET_new (struct TALER_AUDITOR_DepositConfirmationHandle);
   dh->auditor = auditor;
   dh->cb = cb;

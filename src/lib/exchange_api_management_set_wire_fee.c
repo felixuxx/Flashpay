@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -152,27 +152,21 @@ TALER_EXCHANGE_management_set_wire_fees (
     GNUNET_free (swfh);
     return NULL;
   }
-  body = json_pack ("{s:s, s:o, s:o, s:o, s:o, s:o}",
-                    "wire_method",
-                    wire_method,
-                    "master_sig",
-                    GNUNET_JSON_from_data_auto (master_sig),
-                    "fee_start",
-                    GNUNET_JSON_from_time_abs (validity_start),
-                    "fee_end",
-                    GNUNET_JSON_from_time_abs (validity_end),
-                    "closing_fee",
-                    TALER_JSON_from_amount (closing_fee),
-                    "wire_fee",
-                    TALER_JSON_from_amount (wire_fee));
-  if (NULL == body)
-  {
-    GNUNET_break (0);
-    GNUNET_free (swfh->url);
-    GNUNET_free (swfh);
-    return NULL;
-  }
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("wire_method",
+                             wire_method),
+    GNUNET_JSON_pack_data_auto ("master_sig",
+                                master_sig),
+    GNUNET_JSON_pack_time_abs ("fee_start",
+                               validity_start),
+    GNUNET_JSON_pack_time_abs ("fee_end",
+                               validity_end),
+    TALER_JSON_pack_amount ("closing_fee",
+                            closing_fee),
+    TALER_JSON_pack_amount ("wire_fee",
+                            wire_fee));
   eh = curl_easy_init ();
+  GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&swfh->post_ctx,
                             eh,

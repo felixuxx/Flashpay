@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -151,23 +151,17 @@ TALER_EXCHANGE_management_enable_wire (
     GNUNET_free (wh);
     return NULL;
   }
-  body = json_pack ("{s:s, s:o, s:o, s:o}",
-                    "payto_uri",
-                    payto_uri,
-                    "master_sig_add",
-                    GNUNET_JSON_from_data_auto (master_sig1),
-                    "master_sig_wire",
-                    GNUNET_JSON_from_data_auto (master_sig2),
-                    "validity_start",
-                    GNUNET_JSON_from_time_abs (validity_start));
-  if (NULL == body)
-  {
-    GNUNET_break (0);
-    GNUNET_free (wh->url);
-    GNUNET_free (wh);
-    return NULL;
-  }
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("payto_uri",
+                             payto_uri),
+    GNUNET_JSON_pack_data_auto ("master_sig_add",
+                                master_sig1),
+    GNUNET_JSON_pack_data_auto ("master_sig_wire",
+                                master_sig2),
+    GNUNET_JSON_pack_time_abs ("validity_start",
+                               validity_start));
   eh = curl_easy_init ();
+  GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&wh->post_ctx,
                             eh,

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -344,25 +344,6 @@ handle_reserve_withdraw_finished (void *cls,
 }
 
 
-/**
- * Withdraw a coin from the exchange using a /reserve/withdraw
- * request.  This API is typically used by a wallet to withdraw a tip
- * where the reserve's signature was created by the merchant already.
- *
- * Note that to ensure that no money is lost in case of hardware
- * failures, the caller must have committed (most of) the arguments to
- * disk before calling, and be ready to repeat the request with the
- * same arguments in case of failures.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param pd planchet details of the planchet to withdraw
- * @param reserve_priv private key of the reserve to withdraw from
- * @param res_cb the callback to call when the final result for this request is available
- * @param res_cb_cls closure for @a res_cb
- * @return NULL
- *         if the inputs are invalid (i.e. denomination key not with this exchange).
- *         In this case, the callback is not called.
- */
 struct TALER_EXCHANGE_Withdraw2Handle *
 TALER_EXCHANGE_withdraw2 (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -445,20 +426,14 @@ TALER_EXCHANGE_withdraw2 (
   {
     json_t *withdraw_obj;
 
-    withdraw_obj = json_pack ("{s:o, s:o, s:o}",
-                              "denom_pub_hash",
-                              GNUNET_JSON_from_data_auto (&pd->denom_pub_hash),
-                              "coin_ev",
-                              GNUNET_JSON_from_data (pd->coin_ev,
-                                                     pd->coin_ev_size),
-                              "reserve_sig",
-                              GNUNET_JSON_from_data_auto (&reserve_sig));
-    if (NULL == withdraw_obj)
-    {
-      GNUNET_break (0);
-      GNUNET_free (wh);
-      return NULL;
-    }
+    withdraw_obj = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                  &pd->denom_pub_hash),
+      GNUNET_JSON_pack_data_varsize ("coin_ev",
+                                     pd->coin_ev,
+                                     pd->coin_ev_size),
+      GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                  &reserve_sig));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Attempting to withdraw from reserve %s\n",
                 TALER_B2S (&wh->reserve_pub));
@@ -502,12 +477,6 @@ TALER_EXCHANGE_withdraw2 (
 }
 
 
-/**
- * Cancel a withdraw status request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param wh the withdraw sign request handle
- */
 void
 TALER_EXCHANGE_withdraw2_cancel (struct TALER_EXCHANGE_Withdraw2Handle *wh)
 {

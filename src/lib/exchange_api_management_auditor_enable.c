@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -150,25 +150,19 @@ TALER_EXCHANGE_management_enable_auditor (
     GNUNET_free (ah);
     return NULL;
   }
-  body = json_pack ("{s:s, s:s, s:o, s:o, s:o}",
-                    "auditor_url",
-                    auditor_url,
-                    "auditor_name",
-                    auditor_name,
-                    "auditor_pub",
-                    GNUNET_JSON_from_data_auto (auditor_pub),
-                    "master_sig",
-                    GNUNET_JSON_from_data_auto (master_sig),
-                    "validity_start",
-                    GNUNET_JSON_from_time_abs (validity_start));
-  if (NULL == body)
-  {
-    GNUNET_break (0);
-    GNUNET_free (ah->url);
-    GNUNET_free (ah);
-    return NULL;
-  }
+  body = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("auditor_url",
+                             auditor_url),
+    GNUNET_JSON_pack_string ("auditor_name",
+                             auditor_name),
+    GNUNET_JSON_pack_data_auto ("auditor_pub",
+                                auditor_pub),
+    GNUNET_JSON_pack_data_auto ("master_sig",
+                                master_sig),
+    GNUNET_JSON_pack_time_abs ("validity_start",
+                               validity_start));
   eh = curl_easy_init ();
+  GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ah->post_ctx,
                             eh,

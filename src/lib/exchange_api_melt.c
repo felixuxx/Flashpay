@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -449,26 +449,6 @@ handle_melt_finished (void *cls,
 }
 
 
-/**
- * Submit a melt request to the exchange and get the exchange's
- * response.
- *
- * This API is typically used by a wallet.  Note that to ensure that
- * no money is lost in case of hardware failures, the provided
- * argument should have been constructed using
- * #TALER_EXCHANGE_refresh_prepare and committed to persistent storage
- * prior to calling this function.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param refresh_data_length size of the @a refresh_data (returned
- *        in the `res_size` argument from #TALER_EXCHANGE_refresh_prepare())
- * @param refresh_data the refresh data as returned from
-          #TALER_EXCHANGE_refresh_prepare())
- * @param melt_cb the callback to call with the result
- * @param melt_cb_cls closure for @a melt_cb
- * @return a handle for this request; NULL if the argument was invalid.
- *         In this case, neither callback will be called.
- */
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                      size_t refresh_data_length,
@@ -511,27 +491,19 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
                             &melt,
                             &confirm_sig.eddsa_signature);
-  melt_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
-                        "coin_pub",
-                        GNUNET_JSON_from_data_auto (&melt.coin_pub),
-                        "denom_pub_hash",
-                        GNUNET_JSON_from_data_auto (&melt.h_denom_pub),
-                        "denom_sig",
-                        GNUNET_JSON_from_rsa_signature (
-                          md->melted_coin.sig.rsa_signature),
-                        "confirm_sig",
-                        GNUNET_JSON_from_data_auto (&confirm_sig),
-                        "value_with_fee",
-                        TALER_JSON_from_amount (
-                          &md->melted_coin.melt_amount_with_fee),
-                        "rc",
-                        GNUNET_JSON_from_data_auto (&melt.rc));
-  if (NULL == melt_obj)
-  {
-    GNUNET_break (0);
-    TALER_EXCHANGE_free_melt_data_ (md);
-    return NULL;
-  }
+  melt_obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("coin_pub",
+                                &melt.coin_pub),
+    GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                &melt.h_denom_pub),
+    TALER_JSON_pack_denomination_signature ("denom_sig",
+                                            &md->melted_coin.sig),
+    GNUNET_JSON_pack_data_auto ("confirm_sig",
+                                &confirm_sig),
+    TALER_JSON_pack_amount ("value_with_fee",
+                            &md->melted_coin.melt_amount_with_fee),
+    GNUNET_JSON_pack_data_auto ("rc",
+                                &melt.rc));
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
@@ -596,12 +568,6 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Cancel a melt request.  This function cannot be used
- * on a request handle if either callback was already invoked.
- *
- * @param mh the refresh melt handle
- */
 void
 TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh)
 {

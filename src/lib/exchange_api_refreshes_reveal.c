@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -287,28 +287,6 @@ handle_refresh_reveal_finished (void *cls,
 }
 
 
-/**
- * Submit a /refresh/reval request to the exchange and get the exchange's
- * response.
- *
- * This API is typically used by a wallet.  Note that to ensure that
- * no money is lost in case of hardware failures, the provided
- * arguments should have been committed to persistent storage
- * prior to calling this function.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param refresh_data_length size of the @a refresh_data (returned
- *        in the `res_size` argument from #TALER_EXCHANGE_refresh_prepare())
- * @param refresh_data the refresh data as returned from
-          #TALER_EXCHANGE_refresh_prepare())
- * @param noreveal_index response from the exchange to the
- *        #TALER_EXCHANGE_melt() invocation
- * @param reveal_cb the callback to call with the final result of the
- *        refresh operation
- * @param reveal_cb_cls closure for the above callback
- * @return a handle for this request; NULL if the argument was invalid.
- *         In this case, neither callback will be called.
- */
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -425,23 +403,17 @@ TALER_EXCHANGE_refreshes_reveal (
   }
 
   /* build main JSON request */
-  reveal_obj = json_pack ("{s:o, s:o, s:o, s:o, s:o}",
-                          "transfer_pub",
-                          GNUNET_JSON_from_data_auto (&transfer_pub),
-                          "transfer_privs",
-                          transfer_privs,
-                          "link_sigs",
-                          link_sigs,
-                          "new_denoms_h",
-                          new_denoms_h,
-                          "coin_evs",
-                          coin_evs);
-  if (NULL == reveal_obj)
-  {
-    GNUNET_break (0);
-    return NULL;
-  }
-
+  reveal_obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("transfer_pub",
+                                &transfer_pub),
+    GNUNET_JSON_pack_array_steal ("transfer_privs",
+                                  transfer_privs),
+    GNUNET_JSON_pack_array_steal ("link_sigs",
+                                  link_sigs),
+    GNUNET_JSON_pack_array_steal ("new_denoms_h",
+                                  new_denoms_h),
+    GNUNET_JSON_pack_array_steal ("coin_evs",
+                                  coin_evs));
   {
     char pub_str[sizeof (struct TALER_RefreshCommitmentP) * 2];
     char *end;
@@ -498,12 +470,6 @@ TALER_EXCHANGE_refreshes_reveal (
 }
 
 
-/**
- * Cancel a refresh reveal request.  This function cannot be used
- * on a request handle if the callback was already invoked.
- *
- * @param rrh the refresh reval handle
- */
 void
 TALER_EXCHANGE_refreshes_reveal_cancel (
   struct TALER_EXCHANGE_RefreshesRevealHandle *rrh)
