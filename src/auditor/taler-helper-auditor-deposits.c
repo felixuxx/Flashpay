@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2020 Taler Systems SA
+  Copyright (C) 2016-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -146,16 +146,15 @@ test_dc (void *cls,
   }
   /* deposit confirmation missing! report! */
   TALER_ARL_report (report_deposit_confirmation_inconsistencies,
-                    json_pack ("{s:o, s:o, s:I, s:o}",
-                               "timestamp",
-                               TALER_ARL_json_from_time_abs (
-                                 dc->exchange_timestamp),
-                               "amount",
-                               TALER_JSON_from_amount (&dc->amount_without_fee),
-                               "rowid",
-                               (json_int_t) serial_id,
-                               "account",
-                               GNUNET_JSON_from_data_auto (&dc->h_wire)));
+                    GNUNET_JSON_PACK (
+                      TALER_JSON_pack_time_abs_human ("timestamp",
+                                                      dc->exchange_timestamp),
+                      TALER_JSON_pack_amount ("amount",
+                                              &dc->amount_without_fee),
+                      GNUNET_JSON_pack_uint64 ("rowid",
+                                               serial_id),
+                      GNUNET_JSON_pack_data_auto ("account",
+                                                  &dc->h_wire)));
   dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial,
                                               serial_id);
   dcc->missed_count++;
@@ -295,7 +294,7 @@ run (void *cls,
   if (GNUNET_OK !=
       TALER_ARL_init (c))
   {
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -306,32 +305,23 @@ run (void *cls,
       TALER_ARL_setup_sessions_and_run (&analyze_deposit_confirmations,
                                         NULL))
   {
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Deposit audit complete\n");
-  {
-    json_t *report;
-
-    report = json_pack ("{s:o, s:I, s:o, s:o, s:o}",
-                        "deposit_confirmation_inconsistencies",
-                        report_deposit_confirmation_inconsistencies,
-                        "missing_deposit_confirmation_count",
-                        (json_int_t) number_missed_deposit_confirmations,
-                        "missing_deposit_confirmation_total",
-                        TALER_JSON_from_amount (
-                          &total_missed_deposit_confirmations),
-                        "auditor_start_time",
-                        TALER_ARL_json_from_time_abs (
-                          start_time),
-                        "auditor_end_time",
-                        TALER_ARL_json_from_time_abs (
-                          GNUNET_TIME_absolute_get ())
-                        );
-    GNUNET_break (NULL != report);
-    TALER_ARL_done (report);
-  }
+  TALER_ARL_done (
+    GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_array_steal ("deposit_confirmation_inconsistencies",
+                                    report_deposit_confirmation_inconsistencies),
+      GNUNET_JSON_pack_uint64 ("missing_deposit_confirmation_count",
+                               number_missed_deposit_confirmations),
+      TALER_JSON_pack_amount ("missing_deposit_confirmation_total",
+                              &total_missed_deposit_confirmations),
+      TALER_JSON_pack_time_abs_human ("auditor_start_time",
+                                      start_time),
+      TALER_JSON_pack_time_abs_human ("auditor_end_time",
+                                      GNUNET_TIME_absolute_get ())));
 }
 
 
@@ -369,7 +359,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return 4;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc,
     argv,
@@ -381,9 +371,9 @@ main (int argc,
     NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return 3;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

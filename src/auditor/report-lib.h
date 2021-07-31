@@ -91,26 +91,6 @@ extern struct GNUNET_TIME_Absolute start_time;
 
 
 /**
- * Convert absolute time to human-readable JSON string.
- *
- * @param at time to convert
- * @return human-readable string representing the time
- */
-json_t *
-TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at);
-
-
-/**
- * Convert absolute time to human-readable JSON string.
- *
- * @param at time to convert
- * @return human-readable string representing the time
- */
-json_t *
-TALER_ARL_json_from_time_abs (struct GNUNET_TIME_Absolute at);
-
-
-/**
  * Add @a object to the report @a array.  Fail hard if this fails.
  *
  * @param array report array to append @a object to

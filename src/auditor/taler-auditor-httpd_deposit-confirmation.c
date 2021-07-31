@@ -228,10 +228,10 @@ verify_and_execute_deposit_confirmation (
                                        TALER_EC_GENERIC_DB_STORE_FAILED,
                                        "deposit confirmation");
   }
-  return TALER_MHD_reply_json_pack (connection,
+  return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
-                                    "{s:s}",
-                                    "status", "DEPOSIT_CONFIRMATION_OK");
+                                    GNUNET_JSON_pack_string ("status",
+                                                             "DEPOSIT_CONFIRMATION_OK"));
 }
 
 

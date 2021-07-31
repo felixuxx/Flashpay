@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2020 Taler Systems SA
+  Copyright (C) 2016-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -285,21 +285,19 @@ report_emergency_by_amount (
               GNUNET_h2s (&issue->denom_hash),
               TALER_amount2s (loss));
   TALER_ARL_report (report_emergencies,
-                    json_pack ("{s:o, s:o, s:o, s:o, s:o, s:o}",
-                               "denompub_hash",
-                               GNUNET_JSON_from_data_auto (&issue->denom_hash),
-                               "denom_risk",
-                               TALER_JSON_from_amount (risk),
-                               "denom_loss",
-                               TALER_JSON_from_amount (loss),
-                               "start",
-                               TALER_ARL_json_from_time_abs_nbo (
-                                 issue->start),
-                               "deposit_end",
-                               TALER_ARL_json_from_time_abs_nbo (
-                                 issue->expire_deposit),
-                               "value",
-                               TALER_JSON_from_amount_nbo (&issue->value)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_data_auto ("denompub_hash",
+                                                  &issue->denom_hash),
+                      TALER_JSON_pack_amount ("denom_risk",
+                                              risk),
+                      TALER_JSON_pack_amount ("denom_loss",
+                                              loss),
+                      TALER_JSON_pack_time_abs_nbo_human ("start",
+                                                          issue->start),
+                      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
+                                                          issue->expire_deposit),
+                      TALER_JSON_pack_amount_nbo ("value",
+                                                  &issue->value)));
   TALER_ARL_amount_add (&reported_emergency_risk_by_amount,
                         &reported_emergency_risk_by_amount,
                         risk);
@@ -333,23 +331,21 @@ report_emergency_by_count (
   struct TALER_Amount denom_value;
 
   TALER_ARL_report (report_emergencies_by_count,
-                    json_pack ("{s:o, s:I, s:I, s:o, s:o, s:o, s:o}",
-                               "denompub_hash",
-                               GNUNET_JSON_from_data_auto (&issue->denom_hash),
-                               "num_issued",
-                               (json_int_t) num_issued,
-                               "num_known",
-                               (json_int_t) num_known,
-                               "denom_risk",
-                               TALER_JSON_from_amount (risk),
-                               "start",
-                               TALER_ARL_json_from_time_abs_nbo (
-                                 issue->start),
-                               "deposit_end",
-                               TALER_ARL_json_from_time_abs_nbo (
-                                 issue->expire_deposit),
-                               "value",
-                               TALER_JSON_from_amount_nbo (&issue->value)));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_data_auto ("denompub_hash",
+                                                  &issue->denom_hash),
+                      GNUNET_JSON_pack_uint64 ("num_issued",
+                                               num_issued),
+                      GNUNET_JSON_pack_uint64 ("num_known",
+                                               num_known),
+                      TALER_JSON_pack_amount ("denom_risk",
+                                              risk),
+                      TALER_JSON_pack_time_abs_nbo_human ("start",
+                                                          issue->start),
+                      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
+                                                          issue->expire_deposit),
+                      TALER_JSON_pack_amount_nbo ("value",
+                                                  &issue->value)));
   TALER_ARL_amount_add (&reported_emergency_risk_by_count,
                         &reported_emergency_risk_by_count,
                         risk);
@@ -406,12 +402,17 @@ report_amount_arithmetic_inconsistency (
                                exchange);
   }
   TALER_ARL_report (report_amount_arithmetic_inconsistencies,
-                    json_pack ("{s:s, s:I, s:o, s:o, s:I}",
-                               "operation", operation,
-                               "rowid", (json_int_t) rowid,
-                               "exchange", TALER_JSON_from_amount (exchange),
-                               "auditor", TALER_JSON_from_amount (auditor),
-                               "profitable", (json_int_t) profitable));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("operation",
+                                               operation),
+                      GNUNET_JSON_pack_uint64 ("rowid",
+                                               rowid),
+                      TALER_JSON_pack_amount ("exchange",
+                                              exchange),
+                      TALER_JSON_pack_amount ("auditor",
+                                              auditor),
+                      GNUNET_JSON_pack_int64 ("profitable",
+                                              profitable)));
   if (0 != profitable)
   {
     target = (1 == profitable)
@@ -437,10 +438,13 @@ report_row_inconsistency (const char *table,
                           const char *diagnostic)
 {
   TALER_ARL_report (report_row_inconsistencies,
-                    json_pack ("{s:s, s:I, s:s}",
-                               "table", table,
-                               "row", (json_int_t) rowid,
-                               "diagnostic", diagnostic));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("table",
+                                               table),
+                      GNUNET_JSON_pack_uint64 ("row",
+                                               rowid),
+                      GNUNET_JSON_pack_string ("diagnostic",
+                                               diagnostic)));
 }
 
 
@@ -1196,13 +1200,15 @@ check_known_coin (const char *operation,
                              denom_pub))
   {
     TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", operation,
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (
-                                   loss_potential),
-                                 "coin_pub", GNUNET_JSON_from_data_auto (
-                                   coin_pub)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 operation),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                loss_potential),
+                        GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                    coin_pub)));
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           loss_potential);
@@ -1302,13 +1308,15 @@ refresh_session_cb (void *cls,
                                     &coin_pub->eddsa_pub))
     {
       TALER_ARL_report (report_bad_sig_losses,
-                        json_pack ("{s:s, s:I, s:o, s:o}",
-                                   "operation", "melt",
-                                   "row", (json_int_t) rowid,
-                                   "loss", TALER_JSON_from_amount (
-                                     amount_with_fee),
-                                   "coin_pub", GNUNET_JSON_from_data_auto (
-                                     coin_pub)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_string ("operation",
+                                                   "melt"),
+                          GNUNET_JSON_pack_uint64 ("row",
+                                                   rowid),
+                          TALER_JSON_pack_amount ("loss",
+                                                  amount_with_fee),
+                          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                      coin_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount_with_fee);
@@ -1345,12 +1353,13 @@ refresh_session_cb (void *cls,
          with invalid data, even if the exchange is correctly operating. We
          still report it. */
       TALER_ARL_report (report_refreshs_hanging,
-                        json_pack ("{s:I, s:o, s:o}",
-                                   "row", (json_int_t) rowid,
-                                   "amount", TALER_JSON_from_amount (
-                                     amount_with_fee),
-                                   "coin_pub", GNUNET_JSON_from_data_auto (
-                                     coin_pub)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_uint64 ("row",
+                                                   rowid),
+                          TALER_JSON_pack_amount ("amount",
+                                                  amount_with_fee),
+                          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                      coin_pub)));
       TALER_ARL_amount_add (&total_refresh_hanging,
                             &total_refresh_hanging,
                             amount_with_fee);
@@ -1653,13 +1662,15 @@ deposit_cb (void *cls,
                                                  &dr.h_wire))
     {
       TALER_ARL_report (report_bad_sig_losses,
-                        json_pack ("{s:s, s:I, s:o, s:o}",
-                                   "operation", "deposit",
-                                   "row", (json_int_t) rowid,
-                                   "loss", TALER_JSON_from_amount (
-                                     amount_with_fee),
-                                   "coin_pub", GNUNET_JSON_from_data_auto (
-                                     coin_pub)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_string ("operation",
+                                                   "deposit"),
+                          GNUNET_JSON_pack_uint64 ("row",
+                                                   rowid),
+                          TALER_JSON_pack_amount ("loss",
+                                                  amount_with_fee),
+                          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                      coin_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount_with_fee);
@@ -1679,13 +1690,15 @@ deposit_cb (void *cls,
                                     &coin_pub->eddsa_pub))
     {
       TALER_ARL_report (report_bad_sig_losses,
-                        json_pack ("{s:s, s:I, s:o, s:o}",
-                                   "operation", "deposit",
-                                   "row", (json_int_t) rowid,
-                                   "loss", TALER_JSON_from_amount (
-                                     amount_with_fee),
-                                   "coin_pub", GNUNET_JSON_from_data_auto (
-                                     coin_pub)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_string ("operation",
+                                                   "deposit"),
+                          GNUNET_JSON_pack_uint64 ("row",
+                                                   rowid),
+                          TALER_JSON_pack_amount ("loss",
+                                                  amount_with_fee),
+                          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                      coin_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount_with_fee);
@@ -1850,13 +1863,15 @@ refund_cb (void *cls,
                                     &merchant_pub->eddsa_pub))
     {
       TALER_ARL_report (report_bad_sig_losses,
-                        json_pack ("{s:s, s:I, s:o, s:o}",
-                                   "operation", "refund",
-                                   "row", (json_int_t) rowid,
-                                   "loss", TALER_JSON_from_amount (
-                                     amount_with_fee),
-                                   "coin_pub", GNUNET_JSON_from_data_auto (
-                                     coin_pub)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_string ("operation",
+                                                   "refund"),
+                          GNUNET_JSON_pack_uint64 ("row",
+                                                   rowid),
+                          TALER_JSON_pack_amount ("loss",
+                                                  amount_with_fee),
+                          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                      coin_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount_with_fee);
@@ -1961,12 +1976,15 @@ check_recoup (struct CoinContext *cc,
                              denom_pub))
   {
     TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", operation,
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (amount),
-                                 "coin_pub", GNUNET_JSON_from_data_auto (
-                                   &coin->denom_pub_hash)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 operation),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                amount),
+                        GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                    &coin->denom_pub_hash)));
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           amount);
@@ -2018,12 +2036,15 @@ check_recoup (struct CoinContext *cc,
                                     &coin->coin_pub.eddsa_pub))
     {
       TALER_ARL_report (report_bad_sig_losses,
-                        json_pack ("{s:s, s:I, s:o, s:o}",
-                                   "operation", operation,
-                                   "row", (json_int_t) rowid,
-                                   "loss", TALER_JSON_from_amount (amount),
-                                   "coin_pub", GNUNET_JSON_from_data_auto (
-                                     &coin->coin_pub)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_string ("operation",
+                                                   operation),
+                          GNUNET_JSON_pack_uint64 ("row",
+                                                   rowid),
+                          TALER_JSON_pack_amount ("loss",
+                                                  amount),
+                          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                      &coin->coin_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount);
@@ -2047,15 +2068,17 @@ check_recoup (struct CoinContext *cc,
     {
       /* Woopsie, we allowed recoup on non-revoked denomination!? */
       TALER_ARL_report (report_bad_sig_losses,
-                        json_pack ("{s:s, s:s, s:I, s:o, s:o}",
-                                   "operation",
-                                   operation,
-                                   "hint",
-                                   "denomination not revoked",
-                                   "row", (json_int_t) rowid,
-                                   "loss", TALER_JSON_from_amount (amount),
-                                   "coin_pub", GNUNET_JSON_from_data_auto (
-                                     &coin->coin_pub)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_string ("operation",
+                                                   operation),
+                          GNUNET_JSON_pack_string ("hint",
+                                                   "denomination not revoked"),
+                          GNUNET_JSON_pack_uint64 ("row",
+                                                   rowid),
+                          TALER_JSON_pack_amount ("loss",
+                                                  amount),
+                          GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                      &coin->coin_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
                             amount);
@@ -2273,18 +2296,16 @@ check_denomination (
           &auditor_sig))
     {
       TALER_ARL_report (report_denominations_without_sigs,
-                        json_pack ("{s:o, s:o, s:o, s:o}",
-                                   "denomination",
-                                   GNUNET_JSON_from_data_auto (
-                                     &issue->denom_hash),
-                                   "value",
-                                   TALER_JSON_from_amount (&coin_value),
-                                   "start_time",
-                                   TALER_ARL_json_from_time_abs_nbo (
-                                     issue->start),
-                                   "end_time",
-                                   TALER_ARL_json_from_time_abs_nbo (
-                                     issue->expire_legal)));
+                        GNUNET_JSON_PACK (
+                          GNUNET_JSON_pack_data_auto ("denomination",
+                                                      &issue->denom_hash),
+                          TALER_JSON_pack_amount ("value",
+                                                  &coin_value),
+                          TALER_JSON_pack_time_abs_nbo_human ("start_time",
+                                                              issue->start),
+                          TALER_JSON_pack_time_abs_nbo_human ("end_time",
+                                                              issue->
+                                                              expire_legal)));
     }
   }
 }
@@ -2533,8 +2554,6 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
-  json_t *report;
-
   (void) cls;
   (void) args;
   (void) cfgfile;
@@ -2543,7 +2562,7 @@ run (void *cls,
   if (GNUNET_OK !=
       TALER_ARL_init (c))
   {
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -2617,121 +2636,92 @@ run (void *cls,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
-  report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o,"
-                      " s:I, s:I, s:I, s:I, s:I,"
-                      " s:I, s:I, s:I, s:I, s:I,"
-                      " s:I, s:I, s:o, s:o, s:o,"
-                      " s:o}",
-                      /* Block #1 */
-                      "total_escrow_balance",
-                      TALER_JSON_from_amount (&total_escrow_balance),
-                      "total_active_risk",
-                      TALER_JSON_from_amount (&total_risk),
-                      "total_deposit_fee_income",
-                      TALER_JSON_from_amount (
-                        &total_deposit_fee_income),
-                      "total_melt_fee_income",
-                      TALER_JSON_from_amount (&total_melt_fee_income),
-                      "total_refund_fee_income",
-                      TALER_JSON_from_amount (
-                        &total_refund_fee_income),
-                      /* Block #2 */
-                      /* Tested in test-auditor.sh #18 */
-                      "emergencies",
-                      report_emergencies,
-                      /* Tested in test-auditor.sh #18 */
-                      "emergencies_risk_by_amount",
-                      TALER_JSON_from_amount (
-                        &reported_emergency_risk_by_amount),
-                      /* Tested in test-auditor.sh #4/#5/#6/#13/#26 */
-                      "bad_sig_losses",
-                      report_bad_sig_losses,
-                      /* Tested in test-auditor.sh #4/#5/#6/#13/#26 */
-                      "total_bad_sig_loss",
-                      TALER_JSON_from_amount (&total_bad_sig_loss),
-                      /* Tested in test-auditor.sh #31 */
-                      "row_inconsistencies",
-                      report_row_inconsistencies,
-                      /* Block #3 */
-                      /* Tested in test-auditor.sh #18 */
-                      "amount_arithmetic_inconsistencies",
-                      report_amount_arithmetic_inconsistencies,
-                      "total_arithmetic_delta_plus",
-                      TALER_JSON_from_amount (
-                        &total_arithmetic_delta_plus),
-                      "total_arithmetic_delta_minus",
-                      TALER_JSON_from_amount (
-                        &total_arithmetic_delta_minus),
-                      /* Tested in test-auditor.sh #12 */
-                      "total_refresh_hanging",
-                      TALER_JSON_from_amount (&total_refresh_hanging),
-                      /* Tested in test-auditor.sh #12 */
-                      "refresh_hanging",
-                      report_refreshs_hanging,
-                      /* Block #4 */
-                      "total_recoup_loss",
-                      TALER_JSON_from_amount (&total_recoup_loss),
-                      /* Tested in test-auditor.sh #18 */
-                      "emergencies_by_count",
-                      report_emergencies_by_count,
-                      /* Tested in test-auditor.sh #18 */
-                      "emergencies_risk_by_count",
-                      TALER_JSON_from_amount (
-                        &reported_emergency_risk_by_count),
-                      /* Tested in test-auditor.sh #18 */
-                      "emergencies_loss",
-                      TALER_JSON_from_amount (
-                        &reported_emergency_loss),
-                      /* Tested in test-auditor.sh #18 */
-                      "emergencies_loss_by_count",
-                      TALER_JSON_from_amount (
-                        &reported_emergency_loss_by_count),
-                      /* Block #5 */
-                      "start_ppc_withdraw_serial_id",
-                      (json_int_t) ppc_start.last_withdraw_serial_id,
-                      "start_ppc_deposit_serial_id",
-                      (json_int_t) ppc_start.last_deposit_serial_id,
-                      "start_ppc_melt_serial_id",
-                      (json_int_t) ppc_start.last_melt_serial_id,
-                      "start_ppc_refund_serial_id",
-                      (json_int_t) ppc_start.last_refund_serial_id,
-                      "start_ppc_recoup_serial_id",
-                      (json_int_t) ppc_start.last_recoup_serial_id,
-                      /* Block #6 */
-                      "start_ppc_recoup_refresh_serial_id",
-                      (json_int_t) ppc_start.
-                      last_recoup_refresh_serial_id,
-                      "end_ppc_withdraw_serial_id",
-                      (json_int_t) ppc.last_withdraw_serial_id,
-                      "end_ppc_deposit_serial_id",
-                      (json_int_t) ppc.last_deposit_serial_id,
-                      "end_ppc_melt_serial_id",
-                      (json_int_t) ppc.last_melt_serial_id,
-                      "end_ppc_refund_serial_id",
-                      (json_int_t) ppc.last_refund_serial_id,
-                      /* Block #7 */
-                      "end_ppc_recoup_serial_id",
-                      (json_int_t) ppc.last_recoup_serial_id,
-                      "end_ppc_recoup_refresh_serial_id",
-                      (json_int_t) ppc.last_recoup_refresh_serial_id,
-                      "auditor_start_time",
-                      TALER_ARL_json_from_time_abs (
-                        start_time),
-                      "auditor_end_time",
-                      TALER_ARL_json_from_time_abs (
-                        GNUNET_TIME_absolute_get ()),
-                      "total_irregular_recoups",
-                      TALER_JSON_from_amount (
-                        &total_irregular_recoups),
-                      /* Block #8 */
-                      "unsigned_denominations",
-                      report_denominations_without_sigs
-                      );
-  GNUNET_break (NULL != report);
-  TALER_ARL_done (report);
+  TALER_ARL_done (
+    GNUNET_JSON_PACK (
+      TALER_JSON_pack_amount ("total_escrow_balance",
+                              &total_escrow_balance),
+      TALER_JSON_pack_amount ("total_active_risk",
+                              &total_risk),
+      TALER_JSON_pack_amount ("total_deposit_fee_income",
+                              &total_deposit_fee_income),
+      TALER_JSON_pack_amount ("total_melt_fee_income",
+                              &total_melt_fee_income),
+      TALER_JSON_pack_amount ("total_refund_fee_income",
+                              &total_refund_fee_income),
+      /* Tested in test-auditor.sh #18 */
+      GNUNET_JSON_pack_array_steal ("emergencies",
+                                    report_emergencies),
+      /* Tested in test-auditor.sh #18 */
+      TALER_JSON_pack_amount ("emergencies_risk_by_amount",
+                              &reported_emergency_risk_by_amount),
+      /* Tested in test-auditor.sh #4/#5/#6/#13/#26 */
+      GNUNET_JSON_pack_array_steal ("bad_sig_losses",
+                                    report_bad_sig_losses),
+      /* Tested in test-auditor.sh #4/#5/#6/#13/#26 */
+      TALER_JSON_pack_amount ("total_bad_sig_loss",
+                              &total_bad_sig_loss),
+      /* Tested in test-auditor.sh #31 */
+      GNUNET_JSON_pack_array_steal ("row_inconsistencies",
+                                    report_row_inconsistencies),
+      /* Tested in test-auditor.sh #18 */
+      GNUNET_JSON_pack_array_steal ("amount_arithmetic_inconsistencies",
+                                    report_amount_arithmetic_inconsistencies),
+      TALER_JSON_pack_amount ("total_arithmetic_delta_plus",
+                              &total_arithmetic_delta_plus),
+      TALER_JSON_pack_amount ("total_arithmetic_delta_minus",
+                              &total_arithmetic_delta_minus),
+      TALER_JSON_pack_amount ("total_refresh_hanging",
+                              &total_refresh_hanging),
+      /* Tested in test-auditor.sh #12 */
+      GNUNET_JSON_pack_array_steal ("refresh_hanging",
+                                    report_refreshs_hanging),
+      TALER_JSON_pack_amount ("total_recoup_loss",
+                              &total_recoup_loss),
+      /* Tested in test-auditor.sh #18 */
+      GNUNET_JSON_pack_array_steal ("emergencies_by_count",
+                                    report_emergencies_by_count),
+      /* Tested in test-auditor.sh #18 */
+      TALER_JSON_pack_amount ("emergencies_risk_by_count",
+                              &reported_emergency_risk_by_count),
+      /* Tested in test-auditor.sh #18 */
+      TALER_JSON_pack_amount ("emergencies_loss",
+                              &reported_emergency_loss),
+      /* Tested in test-auditor.sh #18 */
+      TALER_JSON_pack_amount ("emergencies_loss_by_count",
+                              &reported_emergency_loss_by_count),
+      GNUNET_JSON_pack_uint64 ("start_ppc_withdraw_serial_id",
+                               ppc_start.last_withdraw_serial_id),
+      GNUNET_JSON_pack_uint64 ("start_ppc_deposit_serial_id",
+                               ppc_start.last_deposit_serial_id),
+      GNUNET_JSON_pack_uint64 ("start_ppc_melt_serial_id",
+                               ppc_start.last_melt_serial_id),
+      GNUNET_JSON_pack_uint64 ("start_ppc_refund_serial_id",
+                               ppc_start.last_refund_serial_id),
+      GNUNET_JSON_pack_uint64 ("start_ppc_recoup_serial_id",
+                               ppc_start.last_recoup_serial_id),
+      GNUNET_JSON_pack_uint64 ("start_ppc_recoup_refresh_serial_id",
+                               ppc_start.
+                               last_recoup_refresh_serial_id),
+      GNUNET_JSON_pack_uint64 ("end_ppc_withdraw_serial_id",
+                               ppc.last_withdraw_serial_id),
+      GNUNET_JSON_pack_uint64 ("end_ppc_deposit_serial_id",
+                               ppc.last_deposit_serial_id),
+      GNUNET_JSON_pack_uint64 ("end_ppc_melt_serial_id",
+                               ppc.last_melt_serial_id),
+      GNUNET_JSON_pack_uint64 ("end_ppc_refund_serial_id",
+                               ppc.last_refund_serial_id),
+      GNUNET_JSON_pack_uint64 ("end_ppc_recoup_serial_id",
+                               ppc.last_recoup_serial_id),
+      GNUNET_JSON_pack_uint64 ("end_ppc_recoup_refresh_serial_id",
+                               ppc.last_recoup_refresh_serial_id),
+      TALER_JSON_pack_time_abs_human ("auditor_start_time",
+                                      start_time),
+      TALER_JSON_pack_time_abs_human ("auditor_end_time",
+                                      GNUNET_TIME_absolute_get ()),
+      TALER_JSON_pack_amount ("total_irregular_recoups",
+                              &total_irregular_recoups),
+      GNUNET_JSON_pack_array_steal ("unsigned_denominations",
+                                    report_denominations_without_sigs)));
 }
 
 
@@ -2769,7 +2759,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return 4;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc,
     argv,
@@ -2780,9 +2770,9 @@ main (int argc,
     NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return 3;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

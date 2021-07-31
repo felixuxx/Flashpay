@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -323,11 +323,13 @@ handle_version (struct TAH_RequestHandler *rh,
   (void) connection_cls;
   if (NULL == ver)
   {
-    ver = json_pack ("{s:s, s:s, s:o}",
-                     "version", AUDITOR_PROTOCOL_VERSION,
-                     "currency", TAH_currency,
-                     "auditor_public_key", GNUNET_JSON_from_data_auto (
-                       &auditor_pub));
+    ver = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("version",
+                               AUDITOR_PROTOCOL_VERSION),
+      GNUNET_JSON_pack_string ("currency",
+                               TAH_currency),
+      GNUNET_JSON_pack_data_auto ("auditor_public_key",
+                                  &auditor_pub));
   }
   if (NULL == ver)
   {

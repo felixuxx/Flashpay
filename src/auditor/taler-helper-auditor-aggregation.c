@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2020 Taler Systems SA
+  Copyright (C) 2016-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero Public License as published by the Free Software
@@ -163,12 +163,17 @@ report_amount_arithmetic_inconsistency (
                                exchange);
   }
   TALER_ARL_report (report_amount_arithmetic_inconsistencies,
-                    json_pack ("{s:s, s:I, s:o, s:o, s:I}",
-                               "operation", operation,
-                               "rowid", (json_int_t) rowid,
-                               "exchange", TALER_JSON_from_amount (exchange),
-                               "auditor", TALER_JSON_from_amount (auditor),
-                               "profitable", (json_int_t) profitable));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("operation",
+                                               operation),
+                      GNUNET_JSON_pack_uint64 ("rowid",
+                                               rowid),
+                      TALER_JSON_pack_amount ("exchange",
+                                              exchange),
+                      TALER_JSON_pack_amount ("auditor",
+                                              auditor),
+                      GNUNET_JSON_pack_int64 ("profitable",
+                                              profitable)));
   if (0 != profitable)
   {
     target = (1 == profitable)
@@ -222,13 +227,17 @@ report_coin_arithmetic_inconsistency (
                                exchange);
   }
   TALER_ARL_report (report_coin_inconsistencies,
-                    json_pack ("{s:s, s:o, s:o, s:o, s:I}",
-                               "operation", operation,
-                               "coin_pub", GNUNET_JSON_from_data_auto (
-                                 coin_pub),
-                               "exchange", TALER_JSON_from_amount (exchange),
-                               "auditor", TALER_JSON_from_amount (auditor),
-                               "profitable", (json_int_t) profitable));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("operation",
+                                               operation),
+                      GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                  coin_pub),
+                      TALER_JSON_pack_amount ("exchange",
+                                              exchange),
+                      TALER_JSON_pack_amount ("auditor",
+                                              auditor),
+                      GNUNET_JSON_pack_int64 ("profitable",
+                                              profitable)));
   if (0 != profitable)
   {
     target = (1 == profitable)
@@ -254,10 +263,13 @@ report_row_inconsistency (const char *table,
                           const char *diagnostic)
 {
   TALER_ARL_report (report_row_inconsistencies,
-                    json_pack ("{s:s, s:I, s:s}",
-                               "table", table,
-                               "row", (json_int_t) rowid,
-                               "diagnostic", diagnostic));
+                    GNUNET_JSON_PACK (
+                      GNUNET_JSON_pack_string ("table",
+                                               table),
+                      GNUNET_JSON_pack_uint64 ("row",
+                                               rowid),
+                      GNUNET_JSON_pack_string ("diagnostic",
+                                               diagnostic)));
 }
 
 
@@ -797,12 +809,15 @@ wire_transfer_information_cb (
                              denom_pub))
   {
     TALER_ARL_report (report_bad_sig_losses,
-                      json_pack ("{s:s, s:I, s:o, s:o}",
-                                 "operation", "wire",
-                                 "row", (json_int_t) rowid,
-                                 "loss", TALER_JSON_from_amount (coin_value),
-                                 "coin_pub", GNUNET_JSON_from_data_auto (
-                                   &coin.coin_pub)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "wire"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                coin_value),
+                        GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                    &coin.coin_pub)));
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           coin_value);
@@ -985,23 +1000,25 @@ get_wire_fee (struct AggregationContext *ac,
        (wfi->prev->end_date.abs_value_us > wfi->start_date.abs_value_us) )
   {
     TALER_ARL_report (report_fee_time_inconsistencies,
-                      json_pack ("{s:s, s:s, s:o}",
-                                 "type", method,
-                                 "diagnostic",
-                                 "start date before previous end date",
-                                 "time", TALER_ARL_json_from_time_abs (
-                                   wfi->start_date)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("type",
+                                                 method),
+                        GNUNET_JSON_pack_string ("diagnostic",
+                                                 "start date before previous end date"),
+                        TALER_JSON_pack_time_abs_human ("time",
+                                                        wfi->start_date)));
   }
   if ( (NULL != wfi->next) &&
        (wfi->next->start_date.abs_value_us >= wfi->end_date.abs_value_us) )
   {
     TALER_ARL_report (report_fee_time_inconsistencies,
-                      json_pack ("{s:s, s:s, s:o}",
-                                 "type", method,
-                                 "diagnostic",
-                                 "end date date after next start date",
-                                 "time", TALER_ARL_json_from_time_abs (
-                                   wfi->end_date)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("type",
+                                                 method),
+                        GNUNET_JSON_pack_string ("diagnostic",
+                                                 "end date date after next start date"),
+                        TALER_JSON_pack_time_abs_human ("time",
+                                                        wfi->end_date)));
   }
   return &wfi->wire_fee;
 }
@@ -1164,13 +1181,15 @@ check_wire_out_cb (void *cls,
     }
 
     TALER_ARL_report (report_wire_out_inconsistencies,
-                      json_pack ("{s:O, s:I, s:o, s:o}",
-                                 "destination_account", wire,
-                                 "rowid", (json_int_t) rowid,
-                                 "expected",
-                                 TALER_JSON_from_amount (&final_amount),
-                                 "claimed",
-                                 TALER_JSON_from_amount (amount)));
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_object_incref ("destination_account",
+                                                        (json_t *) wire),
+                        GNUNET_JSON_pack_uint64 ("rowid",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("expected",
+                                                &final_amount),
+                        TALER_JSON_pack_amount ("claimed",
+                                                amount)));
     if (TALER_ARL_do_abort ())
       return GNUNET_SYSERR;
     return GNUNET_OK;
@@ -1323,8 +1342,6 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *c)
 {
-  json_t *report;
-
   (void) cls;
   (void) args;
   (void) cfgfile;
@@ -1333,7 +1350,7 @@ run (void *cls,
   if (GNUNET_OK !=
       TALER_ARL_init (c))
   {
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -1387,71 +1404,71 @@ run (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Audit failed\n");
     TALER_ARL_done (NULL);
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     return;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Audit complete\n");
-  report = json_pack ("{s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:o, s:o,"
-                      " s:o, s:o, s:o, s:I, s:I,"
-                      " s:o, s:o, s:o }",
-                      /* blocks #1 */
+  TALER_ARL_done (GNUNET_JSON_PACK (
+                    /* blocks #1 */
+                    GNUNET_JSON_pack_array_steal (
                       "wire_out_inconsistencies",
-                      report_wire_out_inconsistencies,
-                      /* Tested in test-auditor.sh #23 */
+                      report_wire_out_inconsistencies),
+                    /* Tested in test-auditor.sh #23 */
+                    TALER_JSON_pack_amount (
                       "total_wire_out_delta_plus",
-                      TALER_JSON_from_amount (
-                        &total_wire_out_delta_plus),
-                      /* Tested in test-auditor.sh #23 */
+                      &total_wire_out_delta_plus),
+                    /* Tested in test-auditor.sh #23 */
+                    TALER_JSON_pack_amount (
                       "total_wire_out_delta_minus",
-                      TALER_JSON_from_amount (
-                        &total_wire_out_delta_minus),
-                      /* Tested in test-auditor.sh #28/32 */
-                      "bad_sig_losses",
-                      report_bad_sig_losses,
-                      /* Tested in test-auditor.sh #28/32 */
-                      "total_bad_sig_loss",
-                      TALER_JSON_from_amount (&total_bad_sig_loss),
-                      /* block #2 */
-                      /* Tested in test-auditor.sh #15 */
+                      &total_wire_out_delta_minus),
+                    /* Tested in test-auditor.sh #28/32 */
+                    GNUNET_JSON_pack_array_steal ("bad_sig_losses",
+                                                  report_bad_sig_losses),
+                    /* Tested in test-auditor.sh #28/32 */
+                    TALER_JSON_pack_amount ("total_bad_sig_loss",
+                                            &total_bad_sig_loss),
+                    /* block #2 */
+                    /* Tested in test-auditor.sh #15 */
+                    GNUNET_JSON_pack_array_steal (
                       "row_inconsistencies",
-                      report_row_inconsistencies,
+                      report_row_inconsistencies),
+                    GNUNET_JSON_pack_array_steal (
                       "coin_inconsistencies",
-                      report_coin_inconsistencies,
-                      "total_coin_delta_plus",
-                      TALER_JSON_from_amount (&total_coin_delta_plus),
-                      "total_coin_delta_minus",
-                      TALER_JSON_from_amount (
-                        &total_coin_delta_minus),
+                      report_coin_inconsistencies),
+                    TALER_JSON_pack_amount ("total_coin_delta_plus",
+                                            &total_coin_delta_plus),
+                    TALER_JSON_pack_amount ("total_coin_delta_minus",
+                                            &total_coin_delta_minus),
+                    GNUNET_JSON_pack_array_steal (
                       "amount_arithmetic_inconsistencies",
-                      report_amount_arithmetic_inconsistencies,
-                      /* block #3 */
+                      report_amount_arithmetic_inconsistencies),
+                    /* block #3 */
+                    TALER_JSON_pack_amount (
                       "total_arithmetic_delta_plus",
-                      TALER_JSON_from_amount (
-                        &total_arithmetic_delta_plus),
+                      &total_arithmetic_delta_plus),
+                    TALER_JSON_pack_amount (
                       "total_arithmetic_delta_minus",
-                      TALER_JSON_from_amount (
-                        &total_arithmetic_delta_minus),
+                      &total_arithmetic_delta_minus),
+                    TALER_JSON_pack_amount (
                       "total_aggregation_fee_income",
-                      TALER_JSON_from_amount (
-                        &total_aggregation_fee_income),
+                      &total_aggregation_fee_income),
+                    GNUNET_JSON_pack_uint64 (
                       "start_ppa_wire_out_serial_id",
-                      (json_int_t) ppa_start.last_wire_out_serial_id,
+                      ppa_start.last_wire_out_serial_id),
+                    GNUNET_JSON_pack_uint64 (
                       "end_ppa_wire_out_serial_id",
-                      (json_int_t) ppa.last_wire_out_serial_id,
-                      /* block #4 */
+                      ppa.last_wire_out_serial_id),
+                    /* block #4 */
+                    TALER_JSON_pack_time_abs_human (
                       "auditor_start_time",
-                      TALER_ARL_json_from_time_abs (
-                        start_time),
+                      start_time),
+                    TALER_JSON_pack_time_abs_human (
                       "auditor_end_time",
-                      TALER_ARL_json_from_time_abs (
-                        GNUNET_TIME_absolute_get ()),
+                      GNUNET_TIME_absolute_get ()),
+                    GNUNET_JSON_pack_array_steal (
                       "wire_fee_time_inconsistencies",
-                      report_fee_time_inconsistencies
-                      );
-  GNUNET_break (NULL != report);
-  TALER_ARL_done (report);
+                      report_fee_time_inconsistencies)));
 }
 
 
@@ -1489,7 +1506,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return 4;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc,
     argv,
@@ -1500,9 +1517,9 @@ main (int argc,
     NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return 3;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

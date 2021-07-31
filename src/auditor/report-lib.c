@@ -114,35 +114,6 @@ TALER_ARL_do_abort (void)
 
 
 /**
- * Convert absolute time to human-readable JSON string.
- *
- * @param at time to convert
- * @return human-readable string representing the time
- */
-json_t *
-TALER_ARL_json_from_time_abs_nbo (struct GNUNET_TIME_AbsoluteNBO at)
-{
-  return json_string
-           (GNUNET_STRINGS_absolute_time_to_string
-             (GNUNET_TIME_absolute_ntoh (at)));
-}
-
-
-/**
- * Convert absolute time to human-readable JSON string.
- *
- * @param at time to convert
- * @return human-readable string representing the time
- */
-json_t *
-TALER_ARL_json_from_time_abs (struct GNUNET_TIME_Absolute at)
-{
-  return json_string
-           (GNUNET_STRINGS_absolute_time_to_string (at));
-}
-
-
-/**
  * Add @a object to the report @a array.  Fail hard if this fails.
  *
  * @param array report array to append @a object to

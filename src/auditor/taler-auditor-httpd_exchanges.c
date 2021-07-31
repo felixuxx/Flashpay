@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -45,12 +45,11 @@ add_exchange (void *cls,
   json_t *list = cls;
   json_t *obj;
 
-  obj = json_pack ("{s:o, s:s}",
-                   "master_pub",
-                   GNUNET_JSON_from_data_auto (master_pub),
-                   "exchange_url",
-                   exchange_url);
-  GNUNET_break (NULL != obj);
+  obj = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("master_pub",
+                                master_pub),
+    GNUNET_JSON_pack_string ("exchange_url",
+                             exchange_url));
   GNUNET_break (0 ==
                 json_array_append_new (list,
                                        obj));
@@ -108,10 +107,11 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
                                        TALER_EC_GENERIC_DB_FETCH_FAILED,
                                        "exchanges");
   }
-  return TALER_MHD_reply_json_pack (connection,
-                                    MHD_HTTP_OK,
-                                    "{s:o}",
-                                    "exchanges", ja);
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_array_steal ("exchanges",
+                                  ja));
 }
 
 

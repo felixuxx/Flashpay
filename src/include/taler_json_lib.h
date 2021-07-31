@@ -54,6 +54,19 @@ TALER_JSON_pack_time_abs (const char *name,
 
 /**
  * Generate packer instruction for a JSON field of type
+ * absolute time creating a human-readable timestamp.
+ *
+ * @param name name of the field to add to the object
+ * @param at absolute time to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_time_abs_human (const char *name,
+                                struct GNUNET_TIME_Absolute at);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
  * absolute time in network byte order.
  * The absolute time value is expected to be already rounded.
  *
@@ -64,6 +77,19 @@ TALER_JSON_pack_time_abs (const char *name,
 struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_time_abs_nbo (const char *name,
                               struct GNUNET_TIME_AbsoluteNBO at);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
+ * absolute time creating a human-readable timestamp.
+ *
+ * @param name name of the field to add to the object
+ * @param at absolute time to pack
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_time_abs_nbo_human (const char *name,
+                                    struct GNUNET_TIME_AbsoluteNBO at);
 
 
 /**
