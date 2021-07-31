@@ -204,14 +204,18 @@ TALER_MHD_parse_json_data (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (
+           TALER_MHD_REPLY_JSON_PACK (
              connection,
              MHD_HTTP_BAD_REQUEST,
-             "{s:s, s:I, s:s, s:I}",
-             "hint", TALER_ErrorCode_get_hint (TALER_EC_GENERIC_JSON_INVALID),
-             "code", (json_int_t) TALER_EC_GENERIC_JSON_INVALID,
-             "field", error_json_name,
-             "line", (json_int_t) error_line))
+             GNUNET_JSON_pack_string ("hint",
+                                      TALER_ErrorCode_get_hint (
+                                        TALER_EC_GENERIC_JSON_INVALID)),
+             GNUNET_JSON_pack_uint64 ("code",
+                                      TALER_EC_GENERIC_JSON_INVALID),
+             GNUNET_JSON_pack_string ("field",
+                                      error_json_name),
+             GNUNET_JSON_pack_uint64 ("line",
+                                      error_line)))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -255,15 +259,18 @@ TALER_MHD_parse_internal_json_data (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (
+           TALER_MHD_REPLY_JSON_PACK (
              connection,
              MHD_HTTP_INTERNAL_SERVER_ERROR,
-             "{s:s, s:I, s:s, s:I}",
-             "hint", TALER_ErrorCode_get_hint (
-               TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE),
-             "code", (json_int_t) TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-             "field", error_json_name,
-             "line", (json_int_t) error_line))
+             GNUNET_JSON_pack_string ("hint",
+                                      TALER_ErrorCode_get_hint (
+                                        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE)),
+             GNUNET_JSON_pack_uint64 ("code",
+                                      TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE),
+             GNUNET_JSON_pack_string ("field",
+                                      error_json_name),
+             GNUNET_JSON_pack_uint64 ("line",
+                                      error_line)))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -310,14 +317,18 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
   if (NULL == root)
   {
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (
+           TALER_MHD_REPLY_JSON_PACK (
              connection,
              MHD_HTTP_BAD_REQUEST,
-             "{s:s, s:I, s:s, s:I}",
-             "hint", TALER_ErrorCode_get_hint (TALER_EC_GENERIC_JSON_INVALID),
-             "code", (json_int_t) TALER_EC_GENERIC_JSON_INVALID,
-             "detail", "expected array",
-             "dimension", dim))
+             GNUNET_JSON_pack_string ("hint",
+                                      TALER_ErrorCode_get_hint (
+                                        TALER_EC_GENERIC_JSON_INVALID)),
+             GNUNET_JSON_pack_uint64 ("code",
+                                      TALER_EC_GENERIC_JSON_INVALID),
+             GNUNET_JSON_pack_string ("detail",
+                                      "expected array"),
+             GNUNET_JSON_pack_uint64 ("dimension",
+                                      dim)))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
@@ -330,14 +341,18 @@ TALER_MHD_parse_json_array (struct MHD_Connection *connection,
     if (NULL == error_json_name)
       error_json_name = "<no field>";
     ret = (MHD_YES ==
-           TALER_MHD_reply_json_pack (
+           TALER_MHD_REPLY_JSON_PACK (
              connection,
              MHD_HTTP_BAD_REQUEST,
-             "{s:s, s:s, s:I, s:I}",
-             "detail", error_json_name,
-             "hint", TALER_ErrorCode_get_hint (TALER_EC_GENERIC_JSON_INVALID),
-             "code", (json_int_t) TALER_EC_GENERIC_JSON_INVALID,
-             "line", (json_int_t) error_line))
+             GNUNET_JSON_pack_string ("detail",
+                                      error_json_name),
+             GNUNET_JSON_pack_string ("hint",
+                                      TALER_ErrorCode_get_hint (
+                                        TALER_EC_GENERIC_JSON_INVALID)),
+             GNUNET_JSON_pack_uint64 ("code",
+                                      TALER_EC_GENERIC_JSON_INVALID),
+             GNUNET_JSON_pack_uint64 ("line",
+                                      error_line)))
           ? GNUNET_NO : GNUNET_SYSERR;
     return ret;
   }
