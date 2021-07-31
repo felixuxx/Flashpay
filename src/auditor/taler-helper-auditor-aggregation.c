@@ -127,7 +127,7 @@ static int internal_checks;
  * respect to calculations involving amounts.
  *
  * @param operation what operation had the inconsistency
- * @param rowid affected row, UINT64_MAX if row is missing
+ * @param rowid affected row, 0 if row is missing
  * @param exchange amount calculated by exchange
  * @param auditor amount calculated by auditor
  * @param profitable 1 if @a exchange being larger than @a auditor is
@@ -254,7 +254,7 @@ report_coin_arithmetic_inconsistency (
  * Report a (serious) inconsistency in the exchange's database.
  *
  * @param table affected table
- * @param rowid affected row, UINT64_MAX if row is missing
+ * @param rowid affected row, 0 if row is missing
  * @param diagnostic message explaining the problem
  */
 static void
@@ -499,7 +499,7 @@ check_transaction_history_for_deposit (
         {
           /* Disagreement in fee structure between auditor and exchange DB! */
           report_amount_arithmetic_inconsistency ("deposit fee",
-                                                  UINT64_MAX,
+                                                  0,
                                                   fee_claimed,
                                                   &fee_expected,
                                                   1);
@@ -524,7 +524,7 @@ check_transaction_history_for_deposit (
         {
           /* Disagreement in fee structure between exchange and auditor */
           report_amount_arithmetic_inconsistency ("melt fee",
-                                                  UINT64_MAX,
+                                                  0,
                                                   fee_claimed,
                                                   &fee_expected,
                                                   1);
@@ -568,7 +568,7 @@ check_transaction_history_for_deposit (
         {
           /* Disagreement in fee structure between exchange and auditor! */
           report_amount_arithmetic_inconsistency ("refund fee",
-                                                  UINT64_MAX,
+                                                  0,
                                                   fee_claimed,
                                                   &fee_expected,
                                                   1);

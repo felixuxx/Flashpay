@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -31,15 +31,6 @@
   do {GNUNET_break (0); return NULL; } while (0)
 
 
-/**
- * Runs the Fakebank by guessing / extracting the portnumber
- * from the base URL.
- *
- * @param bank_url bank's base URL.
- * @param currency currency the bank uses
- * @return the fakebank process handle, or NULL if any
- *         error occurs.
- */
 struct TALER_FAKEBANK_Handle *
 TALER_TESTING_run_fakebank (const char *bank_url,
                             const char *currency)
@@ -69,13 +60,6 @@ TALER_TESTING_run_fakebank (const char *bank_url,
 }
 
 
-/**
- * Look for substring in a programs' name.
- *
- * @param prog program's name to look into
- * @param marker chunk to find in @a prog
- * @return #GNUNET_YES if @a marker is present, otherwise #GNUNET_NO
- */
 int
 TALER_TESTING_has_in_name (const char *prog,
                            const char *marker)
@@ -100,16 +84,6 @@ TALER_TESTING_has_in_name (const char *prog,
 }
 
 
-/**
- * Start the (nexus) bank process.  Assume the port
- * is available and the database is clean.  Use the "prepare
- * bank" function to do such tasks.  This function is also
- * responsible to create the exchange user at Nexus.
- *
- * @param bc bank configuration of the bank
- * @return the pair of both service handles.  In case of
- *         errors, each element of the pair will be set to NULL.
- */
 struct TALER_TESTING_LibeufinServices
 TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
 {
@@ -224,17 +198,6 @@ TALER_TESTING_run_libeufin (const struct TALER_TESTING_BankConfiguration *bc)
 }
 
 
-/**
- * Start the (Python) bank process.  Assume the port
- * is available and the database is clean.  Use the "prepare
- * bank" function to do such tasks.
- *
- * @param config_filename configuration filename.
- * @param bank_url base URL of the bank, used by `wget' to check
- *        that the bank was started right.
- * @return the process, or NULL if the process could not
- *         be started.
- */
 struct GNUNET_OS_Process *
 TALER_TESTING_run_bank (const char *config_filename,
                         const char *bank_url)
@@ -318,17 +281,6 @@ TALER_TESTING_run_bank (const char *config_filename,
 }
 
 
-/**
- * Prepare the Nexus execution.  Check if the port is available
- * and delete old database.
- *
- * @param config_filename configuration file name.
- * @param reset_db should we reset the bank's database
- * @param config_section section of the configuration with the exchange's account
- * @param[out] bc set to the bank's configuration data
- * @return the base url, or NULL upon errors.  Must be freed
- *         by the caller.
- */
 int
 TALER_TESTING_prepare_nexus (const char *config_filename,
                              int reset_db,
@@ -434,17 +386,6 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
 }
 
 
-/**
- * Prepare the bank execution.  Check if the port is available
- * and reset database.
- *
- * @param config_filename configuration file name.
- * @param reset_db should we reset the bank's database
- * @param config_section section of the configuration with the exchange's account
- * @param[out] bc set to the bank's configuration data
- * @return the base url, or NULL upon errors.  Must be freed
- *         by the caller.
- */
 int
 TALER_TESTING_prepare_bank (const char *config_filename,
                             int reset_db,
@@ -611,16 +552,6 @@ TALER_TESTING_prepare_bank (const char *config_filename,
 }
 
 
-/**
- * Prepare launching a fakebank.  Check that the configuration
- * file has the right option, and that the port is available.
- * If everything is OK, return the configuration data of the fakebank.
- *
- * @param config_filename configuration file to use
- * @param config_section which account to use (must match x-taler-bank)
- * @param[out] bc set to the bank's configuration data
- * @return #GNUNET_OK on success
- */
 int
 TALER_TESTING_prepare_fakebank (const char *config_filename,
                                 const char *config_section,
@@ -706,21 +637,14 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
 }
 
 
-/**
- * Allocate and return a piece of wire-details.  Combines
- * a @a payto -URL and adds some salt to create the JSON.
- *
- * @param payto payto://-URL to encapsulate
- * @return JSON describing the account, including the
- *         payto://-URL of the account, must be manually decref'd
- */
 json_t *
 TALER_TESTING_make_wire_details (const char *payto)
 {
-  return json_pack ("{s:s, s:s}",
-                    "payto_uri", payto,
-                    "salt",
-                    "test-salt (must be constant for aggregation tests)");
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("payto_uri",
+                             payto),
+    GNUNET_JSON_pack_string ("salt",
+                             "test-salt (must be constant for aggregation tests)"));
 }
 
 

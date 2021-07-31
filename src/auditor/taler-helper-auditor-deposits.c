@@ -216,13 +216,13 @@ analyze_deposit_confirmations (void *cls)
   dcc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   dcc.missed_count = 0LLU;
   dcc.first_missed_coin_serial = UINT64_MAX;
-  qsx = TALER_ARL_adb->get_deposit_confirmations (TALER_ARL_adb->cls,
-                                                  TALER_ARL_asession,
-                                                  &TALER_ARL_master_pub,
-                                                  ppdc.
-                                                  last_deposit_confirmation_serial_id,
-                                                  &test_dc,
-                                                  &dcc);
+  qsx = TALER_ARL_adb->get_deposit_confirmations (
+    TALER_ARL_adb->cls,
+    TALER_ARL_asession,
+    &TALER_ARL_master_pub,
+    ppdc.last_deposit_confirmation_serial_id,
+    &test_dc,
+    &dcc);
   if (0 > qsx)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qsx);

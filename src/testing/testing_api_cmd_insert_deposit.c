@@ -189,9 +189,11 @@ insert_deposit_run (void *cls,
                      "payto://x-taler-bank/localhost/%s",
                      ids->merchant_account);
     deposit.receiver_wire_account
-      = json_pack ("{s:s, s:s}",
-                   "salt", "this-is-a-salt-value",
-                   "payto_uri", str);
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("salt",
+                                   "this-is-a-salt-value"),
+          GNUNET_JSON_pack_string ("payto_uri",
+                                   str));
     GNUNET_free (str);
   }
 

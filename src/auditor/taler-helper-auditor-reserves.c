@@ -155,7 +155,7 @@ static int internal_checks;
  * respect to calculations involving amounts.
  *
  * @param operation what operation had the inconsistency
- * @param rowid affected row, UINT64_MAX if row is missing
+ * @param rowid affected row, 0 if row is missing
  * @param exchange amount calculated by exchange
  * @param auditor amount calculated by auditor
  * @param profitable 1 if @a exchange being larger than @a auditor is
@@ -218,7 +218,7 @@ report_amount_arithmetic_inconsistency (
  * Report a (serious) inconsistency in the exchange's database.
  *
  * @param table affected table
- * @param rowid affected row, UINT64_MAX if row is missing
+ * @param rowid affected row, 0 if row is missing
  * @param diagnostic message explaining the problem
  */
 static void
@@ -1231,7 +1231,7 @@ verify_reserve_balance (void *cls,
          to be withdrawn more than it was IN TOTAL ever given (exchange balance
          went negative!).  Woopsie. Calculate how badly it went and log. */
       report_amount_arithmetic_inconsistency ("global escrow balance",
-                                              UINT64_MAX,
+                                              0,
                                               &total_escrow_balance, /* what we had */
                                               &rs->total_out, /* what we needed */
                                               0 /* specific profit/loss does not apply to the total summary */);

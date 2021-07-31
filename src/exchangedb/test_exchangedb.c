@@ -1348,10 +1348,11 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
   {
     json_t *wire_out_account;
 
-    wire_out_account = json_pack ("{s:s,s:s}",
-                                  "payto_uri",
-                                  "payto://x-taler-bank/localhost:8080/1",
-                                  "salt", "this-is-my-salt");
+    wire_out_account = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string ("payto_uri",
+                               "payto://x-taler-bank/localhost:8080/1"),
+      GNUNET_JSON_pack_string ("salt",
+                               "this-is-my-salt"));
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         plugin->store_wire_transfer_out (plugin->cls,
                                          session,
@@ -1567,9 +1568,11 @@ run (void *cls)
   rh = NULL;
   session = NULL;
   deposit.coin.denom_sig.rsa_signature = NULL;
-  wire = json_pack ("{s:s, s:s}",
-                    "payto_uri", "payto://sepa/DE67830654080004822650",
-                    "salt", "this-is-a-salt-value");
+  wire = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("payto_uri",
+                             "payto://sepa/DE67830654080004822650"),
+    GNUNET_JSON_pack_string ("salt",
+                             "this-is-a-salt-value"));
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (NULL ==
