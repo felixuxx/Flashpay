@@ -1,3 +1,10 @@
+taler-exchange (0.9.0-16) unstable; urgency=low
+
+  * Improved default configuration.
+  * Various packaging tweaks.
+
+ -- Florian Dold <dold@taler.net> Sat, 31 Jul 2021 13:17:47 +0200
+
 taler-exchange (0.9.0-15) unstable; urgency=low
 
   * New Taler amount operations (set zero, ...) added.

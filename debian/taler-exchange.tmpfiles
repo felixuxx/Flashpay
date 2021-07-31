@@ -1,5 +1,4 @@
 #Type Path        Mode UID  GID  Age Argument
-d /run/taler 0755 root root  - -
 d /run/taler/exchange-secmod-rsa 0755 taler-exchange-secmod-rsa taler-exchange-secmod  - -
 d /run/taler/exchange-secmod-eddsa 0755 taler-exchange-secmod-eddsa taler-exchange-secmod  - -
 d /run/taler/exchange-httpd 0700 taler-exchange-httpd root  - -

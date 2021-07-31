@@ -13,15 +13,11 @@ case "${1}" in
 configure)
   # Creating taler groups as needed
   if ! getent group ${_GROUPNAME} >/dev/null; then
-    echo -n "Creating new Taler group ${_GROUPNAME} ..."
     addgroup --quiet --system ${_GROUPNAME}
-    echo " done."
   fi
   # Creating taler users if needed
   if ! getent passwd ${_USERNAME} >/dev/null; then
-    echo -n "Creating new Taler user ${_USERNAME} ..."
-    adduser --quiet --system --ingroup ${_GROUPNAME} --home ${TALER_HOME}/httpd ${_USERNAME}
-    echo " done."
+    adduser --quiet --system --ingroup ${_GROUPNAME} --no-create-home --home ${TALER_HOME} ${_USERNAME}
   fi
 
   if ! dpkg-statoverride --list /etc/taler/secrets/auditor-db.secret.conf >/dev/null 2>&1; then
