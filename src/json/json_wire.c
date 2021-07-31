@@ -505,13 +505,14 @@ TALER_JSON_exchange_wire_signature_make (
     GNUNET_break_op (0);
     return NULL;
   }
-
   TALER_exchange_wire_signature_make (payto_uri,
                                       master_priv,
                                       &master_sig);
-  return json_pack ("{s:s, s:o}",
-                    "payto_uri", payto_uri,
-                    "master_sig", GNUNET_JSON_from_data_auto (&master_sig));
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("payto_uri",
+                             payto_uri),
+    GNUNET_JSON_pack_data_auto ("master_sig",
+                                &master_sig));
 }
 
 
