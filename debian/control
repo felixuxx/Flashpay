@@ -7,7 +7,7 @@ Build-Depends:
  automake (>=1.11.1),
  autopoint,
  bash,
- debhelper-compat (= 13),
+ debhelper-compat (= 12),
  gettext,
  libgnunet-dev,
  libcurl4-gnutls-dev (>=7.35.0) | libcurl4-openssl-dev (>= 7.35.0),

@@ -45,9 +45,11 @@ override_dh_installsystemd:
 	# final invocation to generate daemon reload
 	dh_installsystemd
 
-# Remove files already present in libtalerexchange from main taler-exchange package
 override_dh_install:
 	dh_install
+# With debhelper-compat=12, we still need to call this manually
+	dh_installtmpfiles
+# Remove files already present in libtalerexchange from main taler-exchange package
 	cd debian/libtalerexchange-dev; find . -type f,l -exec rm -f ../libtalerauditor/{} \;
 	cd debian/libtalerexchange-dev; find . -type f,l -exec rm -f ../taler-exchange/{} \;
 	cd debian/libtalerexchange-dev; find . -type f,l -exec rm -f ../libtalerexchange/{} \;
