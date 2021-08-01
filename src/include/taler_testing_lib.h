@@ -904,6 +904,7 @@ TALER_TESTING_run_fakebank (const char *bank_url,
  *
  * @param config_filename configuration file name.
  * @param reset_db should we reset the bank's database
+ * @param config_section which configuration section should be used
  * @param[out] bc set to the bank's configuration data
  * @return #GNUNET_OK on success
  */
