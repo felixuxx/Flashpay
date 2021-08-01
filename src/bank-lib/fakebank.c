@@ -662,6 +662,7 @@ post_transaction (struct TALER_FAKEBANK_Handle *h,
  * @param exchange_base_url exchange URL
  * @param request_uid unique number to make the request unique, or NULL to create one
  * @param[out] ret_row_id pointer to store the row ID of this transaction
+ * @param[out] timestamp set to the time of the transfer
  * @return #GNUNET_YES if the transfer was successful,
  *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
  */
@@ -674,7 +675,8 @@ make_transfer (
   const struct TALER_WireTransferIdentifierRawP *subject,
   const char *exchange_base_url,
   const struct GNUNET_HashCode *request_uid,
-  uint64_t *ret_row_id)
+  uint64_t *ret_row_id,
+  struct GNUNET_TIME_Absolute *timestamp)
 {
   struct Transaction *t;
   struct Account *debit_acc;
@@ -732,6 +734,7 @@ make_transfer (
   t->amount = *amount;
   t->date = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&t->date);
+  *timestamp = t->date;
   t->type = T_DEBIT;
   memcpy (t->subject.debit.exchange_base_url,
           exchange_base_url,
@@ -1114,6 +1117,7 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   uint64_t row_id;
+  struct GNUNET_TIME_Absolute ts;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
@@ -1180,7 +1184,8 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
                            &wtid,
                            base_url,
                            &uuid,
-                           &row_id);
+                           &row_id,
+                           &ts);
       if (GNUNET_OK != ret)
       {
         MHD_RESULT res;
@@ -1215,9 +1220,8 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_uint64 ("row_id",
                              row_id),
-    /* dummy timestamp */
     GNUNET_JSON_pack_time_abs ("timestamp",
-                               GNUNET_TIME_UNIT_ZERO_ABS));
+                               ts));
 }
 
 
