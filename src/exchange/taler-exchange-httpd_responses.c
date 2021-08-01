@@ -103,8 +103,9 @@ TEH_RESPONSE_compile_transaction_history (
                                         &deposit->deposit_fee),
                 GNUNET_JSON_pack_time_abs ("timestamp",
                                            deposit->timestamp),
-                GNUNET_JSON_pack_time_abs ("refund_deadline",
-                                           deposit->refund_deadline),
+                GNUNET_JSON_pack_allow_null (
+                  GNUNET_JSON_pack_time_abs ("refund_deadline",
+                                             deposit->refund_deadline)),
                 GNUNET_JSON_pack_data_auto ("merchant_pub",
                                             &deposit->merchant_pub),
                 GNUNET_JSON_pack_data_auto ("h_contract_terms",

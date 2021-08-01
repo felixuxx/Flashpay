@@ -527,8 +527,9 @@ TALER_EXCHANGE_verify_coin_history (
                                      &dr.h_denom_pub),
         TALER_JSON_spec_absolute_time_nbo ("timestamp",
                                            &dr.wallet_timestamp),
-        TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
-                                           &dr.refund_deadline),
+        GNUNET_JSON_spec_mark_optional (
+          TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
+                                             &dr.refund_deadline)),
         TALER_JSON_spec_amount_any_nbo ("deposit_fee",
                                         &dr.deposit_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",

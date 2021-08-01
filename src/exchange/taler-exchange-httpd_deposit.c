@@ -347,8 +347,9 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                  &deposit.csig),
     TALER_JSON_spec_absolute_time ("timestamp",
                                    &deposit.timestamp),
-    TALER_JSON_spec_absolute_time ("refund_deadline",
-                                   &deposit.refund_deadline),
+    GNUNET_JSON_spec_mark_optional (
+      TALER_JSON_spec_absolute_time ("refund_deadline",
+                                     &deposit.refund_deadline)),
     TALER_JSON_spec_absolute_time ("wire_transfer_deadline",
                                    &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()
