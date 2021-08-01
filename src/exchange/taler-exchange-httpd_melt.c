@@ -69,11 +69,7 @@ reply_melt_insufficient_funds (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
-    GNUNET_JSON_pack_string ("hint",
-                             TALER_ErrorCode_get_hint (
-                               TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS)),
-    GNUNET_JSON_pack_uint64 ("code",
-                             TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS),
+    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS),
     GNUNET_JSON_pack_data_auto ("coin_pub",
                                 coin_pub),
     TALER_JSON_pack_amount ("original_value",

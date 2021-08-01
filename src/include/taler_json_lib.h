@@ -80,6 +80,16 @@ TALER_JSON_pack_time_abs_nbo (const char *name,
 
 
 /**
+ * Put an error code into a JSON reply, including
+ * both the numeric value and the hint.
+ *
+ * @param ec error code to encode using canonical field names
+ */
+#define TALER_JSON_pack_ec(ec) \
+  GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec)), \
+  GNUNET_JSON_pack_uint64 ("code", ec)
+
+/**
  * Generate packer instruction for a JSON field of type
  * absolute time creating a human-readable timestamp.
  *

@@ -233,11 +233,7 @@ refund_transaction (void *cls,
             MHD_HTTP_PRECONDITION_FAILED,
             TALER_JSON_pack_amount ("detail",
                                     &ref->refund_amount),
-            GNUNET_JSON_pack_string ("hint",
-                                     TALER_ErrorCode_get_hint (
-                                       TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT)),
-            GNUNET_JSON_pack_uint64 ("code",
-                                     TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT),
+            TALER_JSON_pack_ec (TALER_EC_EXCHANGE_REFUND_INCONSISTENT_AMOUNT),
             GNUNET_JSON_pack_array_steal ("history",
                                           TEH_RESPONSE_compile_transaction_history (
                                             &refund->coin.coin_pub,
@@ -332,11 +328,8 @@ refund_transaction (void *cls,
       MHD_HTTP_CONFLICT,
       GNUNET_JSON_pack_string ("detail",
                                "total amount refunded exceeds total amount deposited for this coin"),
-      GNUNET_JSON_pack_string ("hint",
-                               TALER_ErrorCode_get_hint (
-                                 TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT)),
-      GNUNET_JSON_pack_uint64 ("code",
-                               TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT),
+      TALER_JSON_pack_ec (
+        TALER_EC_EXCHANGE_REFUND_CONFLICT_DEPOSIT_INSUFFICIENT),
       GNUNET_JSON_pack_array_steal ("history",
                                     TEH_RESPONSE_compile_transaction_history (
                                       &refund->coin.coin_pub,

@@ -450,8 +450,7 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_NOT_FOUND,
-    GNUNET_JSON_pack_uint64 ("code",
-                             TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN),
+    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN),
     GNUNET_JSON_pack_time_abs ("timestamp",
                                now),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
@@ -501,8 +500,7 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_GONE,
-    GNUNET_JSON_pack_uint64 ("code",
-                             ec),
+    TALER_JSON_pack_ec (ec),
     GNUNET_JSON_pack_string ("oper",
                              oper),
     GNUNET_JSON_pack_time_abs ("timestamp",
@@ -550,10 +548,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_CONFLICT,
-    GNUNET_JSON_pack_string ("hint",
-                             TALER_ErrorCode_get_hint (ec)),
-    GNUNET_JSON_pack_uint64 ("code",
-                             ec),
+    TALER_JSON_pack_ec (ec),
     GNUNET_JSON_pack_array_steal ("history",
                                   history));
 }

@@ -387,11 +387,8 @@ refreshes_reveal_transaction (void *cls,
       *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
         connection,
         MHD_HTTP_CONFLICT,
-        GNUNET_JSON_pack_string ("hint",
-                                 TALER_ErrorCode_get_hint (
-                                   TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION)),
-        GNUNET_JSON_pack_uint64 ("code",
-                                 TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION),
+        TALER_JSON_pack_ec (
+          TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION),
         GNUNET_JSON_pack_data_auto ("rc_expected",
                                     &rc_expected));
       return GNUNET_DB_STATUS_HARD_ERROR;
