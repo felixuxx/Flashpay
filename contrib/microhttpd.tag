@@ -112,6 +112,66 @@
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
     </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_BAD_GATEWAY</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_GATEWAY_TIMEOUT</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_METHOD_NOT_ALLOWED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_UNAUTHORIZED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_PAYMENT_REQUIRED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_NOT_IMPLEMENTED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_NOT_ACCEPTABLE</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_ALREADY_REPORTED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_EXPECTATION_FAILED</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_TOO_MANY_REQUESTS</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
     <member kind="typedef">
       <type>int</type>
       <name>MHD_AccessHandlerCallback</name>
