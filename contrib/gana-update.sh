@@ -8,11 +8,20 @@ set -eu
 cd contrib/gana/gnu-taler-error-codes
 make
 cd ../../..
-if ! diff contrib/gana/gnu-taler-error-codes/taler_error_codes.h src/include/taler_error_codes.h > /dev/null
-then
-  cp contrib/gana/gnu-taler-error-codes/taler_error_codes.h src/include/taler_error_codes.h
-fi
-if ! diff contrib/gana/gnu-taler-error-codes/taler_error_codes.c src/util/taler_error_codes.c > /dev/null
-then
-  cp contrib/gana/gnu-taler-error-codes/taler_error_codes.c src/util/taler_error_codes.c
-fi
+for n in taler_error_codes.h taler_error_codes.c
+do
+    if ! diff contrib/gana/gnu-taler-error-codes/${n} src/include/${n} > /dev/null
+    then
+        cp contrib/gana/gnu-taler-error-codes/$n src/include/$n
+    fi
+done
+cd contrib/gana/gnu-taler-db-events
+make
+cd ../../..
+for n in taler_dbevents.h
+do
+    if ! diff contrib/gana/gnu-taler-db-events/${n} src/include/${n} > /dev/null
+    then
+        cp contrib/gana/gnu-taler-db-events/$n src/include/$n
+    fi
+done

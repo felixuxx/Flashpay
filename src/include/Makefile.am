@@ -10,6 +10,7 @@ talerinclude_HEADERS = \
   taler_bank_service.h \
   taler_crypto_lib.h \
   taler_curl_lib.h \
+  taler_dbevents.h \
   taler_error_codes.h \
   taler_exchange_service.h \
   taler_exchangedb_lib.h \
