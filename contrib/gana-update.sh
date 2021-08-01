@@ -8,7 +8,14 @@ set -eu
 cd contrib/gana/gnu-taler-error-codes
 make
 cd ../../..
-for n in taler_error_codes.h taler_error_codes.c
+for n in taler_error_codes.c
+do
+    if ! diff contrib/gana/gnu-taler-error-codes/${n} src/util/${n} > /dev/null
+    then
+        cp contrib/gana/gnu-taler-error-codes/$n src/util/$n
+    fi
+done
+for n in taler_error_codes.h
 do
     if ! diff contrib/gana/gnu-taler-error-codes/${n} src/include/${n} > /dev/null
     then
