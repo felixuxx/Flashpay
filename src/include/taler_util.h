@@ -183,6 +183,15 @@ TALER_project_data_default (void);
 char *
 TALER_urlencode (const char *s);
 
+/**
+ * Test if all characters in @a url are valid for
+ * a URL.
+ *
+ * @param url URL to sanity-check
+ * @return true if @a url only contains valid characters
+ */
+bool
+TALER_url_valid_charset (const char *url);
 
 /**
  * Check if @a lang matches the @a language_pattern, and if so with
