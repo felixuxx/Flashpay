@@ -313,6 +313,7 @@ TALER_payto_get_method (const char *payto_uri);
 char *
 TALER_xtalerbank_account_from_payto (const char *payto);
 
+
 /**
  * Extract the subject value from the URI parameters.
  *
@@ -322,6 +323,18 @@ TALER_xtalerbank_account_from_payto (const char *payto);
  */
 char *
 TALER_payto_get_subject (const char *payto_uri);
+
+
+/**
+ * Check that a payto:// URI is well-formed.
+ *
+ * @param payto_uri the URL to check
+ * @return NULL on success, otherwise an error
+ *         message to be freed by the caller!
+ */
+char *
+TALER_payto_validate (const char *payto_uri);
+
 
 /**
  * Possible values for a binary filter.

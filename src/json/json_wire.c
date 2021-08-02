@@ -24,378 +24,6 @@
 #include "taler_json_lib.h"
 
 
-/* Taken from GNU gettext */
-
-/**
- * Entry in the country table.
- */
-struct CountryTableEntry
-{
-  /**
-   * 2-Character international country code.
-   */
-  const char *code;
-
-  /**
-   * Long English name of the country.
-   */
-  const char *english;
-};
-
-
-/* Keep the following table in sync with gettext.
-   WARNING: the entries should stay sorted according to the code */
-/**
- * List of country codes.
- */
-static const struct CountryTableEntry country_table[] = {
-  { "AE", "U.A.E." },
-  { "AF", "Afghanistan" },
-  { "AL", "Albania" },
-  { "AM", "Armenia" },
-  { "AN", "Netherlands Antilles" },
-  { "AR", "Argentina" },
-  { "AT", "Austria" },
-  { "AU", "Australia" },
-  { "AZ", "Azerbaijan" },
-  { "BA", "Bosnia and Herzegovina" },
-  { "BD", "Bangladesh" },
-  { "BE", "Belgium" },
-  { "BG", "Bulgaria" },
-  { "BH", "Bahrain" },
-  { "BN", "Brunei Darussalam" },
-  { "BO", "Bolivia" },
-  { "BR", "Brazil" },
-  { "BT", "Bhutan" },
-  { "BY", "Belarus" },
-  { "BZ", "Belize" },
-  { "CA", "Canada" },
-  { "CG", "Congo" },
-  { "CH", "Switzerland" },
-  { "CI", "Cote d'Ivoire" },
-  { "CL", "Chile" },
-  { "CM", "Cameroon" },
-  { "CN", "People's Republic of China" },
-  { "CO", "Colombia" },
-  { "CR", "Costa Rica" },
-  { "CS", "Serbia and Montenegro" },
-  { "CZ", "Czech Republic" },
-  { "DE", "Germany" },
-  { "DK", "Denmark" },
-  { "DO", "Dominican Republic" },
-  { "DZ", "Algeria" },
-  { "EC", "Ecuador" },
-  { "EE", "Estonia" },
-  { "EG", "Egypt" },
-  { "ER", "Eritrea" },
-  { "ES", "Spain" },
-  { "ET", "Ethiopia" },
-  { "FI", "Finland" },
-  { "FO", "Faroe Islands" },
-  { "FR", "France" },
-  { "GB", "United Kingdom" },
-  { "GD", "Caribbean" },
-  { "GE", "Georgia" },
-  { "GL", "Greenland" },
-  { "GR", "Greece" },
-  { "GT", "Guatemala" },
-  { "HK", "Hong Kong" },
-  { "HK", "Hong Kong S.A.R." },
-  { "HN", "Honduras" },
-  { "HR", "Croatia" },
-  { "HT", "Haiti" },
-  { "HU", "Hungary" },
-  { "ID", "Indonesia" },
-  { "IE", "Ireland" },
-  { "IL", "Israel" },
-  { "IN", "India" },
-  { "IQ", "Iraq" },
-  { "IR", "Iran" },
-  { "IS", "Iceland" },
-  { "IT", "Italy" },
-  { "JM", "Jamaica" },
-  { "JO", "Jordan" },
-  { "JP", "Japan" },
-  { "KE", "Kenya" },
-  { "KG", "Kyrgyzstan" },
-  { "KH", "Cambodia" },
-  { "KR", "South Korea" },
-  { "KW", "Kuwait" },
-  { "KZ", "Kazakhstan" },
-  { "LA", "Laos" },
-  { "LB", "Lebanon" },
-  { "LI", "Liechtenstein" },
-  { "LK", "Sri Lanka" },
-  { "LT", "Lithuania" },
-  { "LU", "Luxembourg" },
-  { "LV", "Latvia" },
-  { "LY", "Libya" },
-  { "MA", "Morocco" },
-  { "MC", "Principality of Monaco" },
-  { "MD", "Moldava" },
-  { "MD", "Moldova" },
-  { "ME", "Montenegro" },
-  { "MK", "Former Yugoslav Republic of Macedonia" },
-  { "ML", "Mali" },
-  { "MM", "Myanmar" },
-  { "MN", "Mongolia" },
-  { "MO", "Macau S.A.R." },
-  { "MT", "Malta" },
-  { "MV", "Maldives" },
-  { "MX", "Mexico" },
-  { "MY", "Malaysia" },
-  { "NG", "Nigeria" },
-  { "NI", "Nicaragua" },
-  { "NL", "Netherlands" },
-  { "NO", "Norway" },
-  { "NP", "Nepal" },
-  { "NZ", "New Zealand" },
-  { "OM", "Oman" },
-  { "PA", "Panama" },
-  { "PE", "Peru" },
-  { "PH", "Philippines" },
-  { "PK", "Islamic Republic of Pakistan" },
-  { "PL", "Poland" },
-  { "PR", "Puerto Rico" },
-  { "PT", "Portugal" },
-  { "PY", "Paraguay" },
-  { "QA", "Qatar" },
-  { "RE", "Reunion" },
-  { "RO", "Romania" },
-  { "RS", "Serbia" },
-  { "RU", "Russia" },
-  { "RW", "Rwanda" },
-  { "SA", "Saudi Arabia" },
-  { "SE", "Sweden" },
-  { "SG", "Singapore" },
-  { "SI", "Slovenia" },
-  { "SK", "Slovak" },
-  { "SN", "Senegal" },
-  { "SO", "Somalia" },
-  { "SR", "Suriname" },
-  { "SV", "El Salvador" },
-  { "SY", "Syria" },
-  { "TH", "Thailand" },
-  { "TJ", "Tajikistan" },
-  { "TM", "Turkmenistan" },
-  { "TN", "Tunisia" },
-  { "TR", "Turkey" },
-  { "TT", "Trinidad and Tobago" },
-  { "TW", "Taiwan" },
-  { "TZ", "Tanzania" },
-  { "UA", "Ukraine" },
-  { "US", "United States" },
-  { "UY", "Uruguay" },
-  { "VA", "Vatican" },
-  { "VE", "Venezuela" },
-  { "VN", "Viet Nam" },
-  { "YE", "Yemen" },
-  { "ZA", "South Africa" },
-  { "ZW", "Zimbabwe" }
-};
-
-
-/**
- * Country code comparator function, for binary search with bsearch().
- *
- * @param ptr1 pointer to a `struct table_entry`
- * @param ptr2 pointer to a `struct table_entry`
- * @return result of memcmp()'ing the 2-digit country codes of the entries
- */
-static int
-cmp_country_code (const void *ptr1,
-                  const void *ptr2)
-{
-  const struct CountryTableEntry *cc1 = ptr1;
-  const struct CountryTableEntry *cc2 = ptr2;
-
-  return memcmp (cc1->code,
-                 cc2->code,
-                 2);
-}
-
-
-/**
- * Validates given IBAN according to the European Banking Standards.  See:
- * http://www.europeanpaymentscouncil.eu/documents/ECBS%20IBAN%20standard%20EBS204_V3.2.pdf
- *
- * @param iban the IBAN number to validate
- * @return #GNUNET_YES if correctly formatted; #GNUNET_NO if not
- */
-static enum GNUNET_GenericReturnValue
-validate_iban (const char *iban)
-{
-  char cc[2];
-  char ibancpy[35];
-  struct CountryTableEntry cc_entry;
-  unsigned int len;
-  char *nbuf;
-  unsigned long long dividend;
-  unsigned long long remainder;
-  unsigned int i;
-  unsigned int j;
-
-  len = strlen (iban);
-  if (len > 34)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "IBAN number too long to be valid\n");
-    return GNUNET_NO;
-  }
-  memcpy (cc, iban, 2);
-  memcpy (ibancpy, iban + 4, len - 4);
-  memcpy (ibancpy + len - 4, iban, 4);
-  ibancpy[len] = '\0';
-  cc_entry.code = cc;
-  cc_entry.english = NULL;
-  if (NULL ==
-      bsearch (&cc_entry,
-               country_table,
-               sizeof (country_table) / sizeof (struct CountryTableEntry),
-               sizeof (struct CountryTableEntry),
-               &cmp_country_code))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Country code `%c%c' not supported\n",
-                cc[0],
-                cc[1]);
-    return GNUNET_NO;
-  }
-  nbuf = GNUNET_malloc ((len * 2) + 1);
-  for (i = 0, j = 0; i < len; i++)
-  {
-    if (isalpha ((unsigned char) ibancpy[i]))
-    {
-      if (2 != snprintf (&nbuf[j],
-                         3,
-                         "%2u",
-                         (ibancpy[i] - 'A' + 10)))
-      {
-        GNUNET_free (nbuf);
-        return GNUNET_NO;
-      }
-      j += 2;
-      continue;
-    }
-    nbuf[j] = ibancpy[i];
-    j++;
-  }
-  for (j = 0; '\0' != nbuf[j]; j++)
-  {
-    if (! isdigit ( (unsigned char) nbuf[j]))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "IBAN `%s' didn't convert to numeric format\n",
-                  iban);
-      return GNUNET_NO;
-    }
-  }
-  GNUNET_assert (sizeof(dividend) >= 8);
-  remainder = 0;
-  for (unsigned int i = 0; i<j; i += 16)
-  {
-    int nread;
-
-    if (1 !=
-        sscanf (&nbuf[i],
-                "%16llu %n",
-                &dividend,
-                &nread))
-    {
-      GNUNET_free (nbuf);
-      GNUNET_break_op (0);
-      return GNUNET_NO;
-    }
-    if (0 != remainder)
-      dividend += remainder * (pow (10, nread));
-    remainder = dividend % 97;
-  }
-  GNUNET_free (nbuf);
-  if (1 != remainder)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "IBAN `%s' has the wrong checksum\n",
-                iban);
-    return GNUNET_NO;
-  }
-  return GNUNET_YES;
-}
-
-
-/**
- * Validate payto://iban/ account URL (only account information,
- * wire subject and amount are ignored).
- *
- * @param account_url URL to parse
- * @return #GNUNET_YES if @a account_url is a valid payto://iban URI,
- *         #GNUNET_NO if @a account_url is a payto URI of a different type,
- *         #GNUNET_SYSERR if the IBAN (checksum) is incorrect or this is not a payto://-URI
- */
-static enum GNUNET_GenericReturnValue
-validate_payto_iban (const char *account_url)
-{
-  const char *iban;
-  const char *q;
-  char *result;
-
-#define IBAN_PREFIX "payto://iban/"
-  if (0 != strncasecmp (account_url,
-                        IBAN_PREFIX,
-                        strlen (IBAN_PREFIX)))
-    return GNUNET_NO;
-
-  iban = strrchr (account_url, '/') + 1;
-#undef IBAN_PREFIX
-  q = strchr (iban,
-              '?');
-  if (NULL != q)
-  {
-    result = GNUNET_strndup (iban,
-                             q - iban);
-  }
-  else
-  {
-    result = GNUNET_strdup (iban);
-  }
-  if (GNUNET_OK !=
-      validate_iban (result))
-  {
-    GNUNET_free (result);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (result);
-  return GNUNET_YES;
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_JSON_validate_payto (const char *payto_uri)
-{
-  enum GNUNET_GenericReturnValue ret;
-  const char *start;
-  const char *end;
-
-#define PAYTO_PREFIX "payto://"
-  if (0 != strncasecmp (payto_uri,
-                        PAYTO_PREFIX,
-                        strlen (PAYTO_PREFIX)))
-    return GNUNET_SYSERR; /* not payto */
-  start = &payto_uri[strlen (PAYTO_PREFIX)];
-#undef PAYTO_PREFIX
-  end = strchr (start,
-                (unsigned char) '/');
-  if (NULL == end)
-    return GNUNET_SYSERR;
-  if (GNUNET_NO != (ret = validate_payto_iban (payto_uri)))
-  {
-    GNUNET_break_op (GNUNET_SYSERR != ret);
-    return ret; /* got a definitive answer */
-  }
-  /* Insert other bank account validation methods here later! */
-  return GNUNET_NO;
-}
-
-
 /**
  * Compute the hash of the given wire details.   The resulting
  * hash is what is put into the contract.
@@ -429,11 +57,19 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Validating `%s'\n",
               payto_uri);
-  if (GNUNET_SYSERR ==
-      TALER_JSON_validate_payto (payto_uri))
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    char *err;
+
+    err = TALER_payto_validate (payto_uri);
+    if (NULL != err)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "URI `%s' ill-formed: %s\n",
+                  payto_uri,
+                  err);
+      GNUNET_free (err);
+      return GNUNET_SYSERR;
+    }
   }
   TALER_merchant_wire_signature_hash (payto_uri,
                                       salt,
@@ -472,11 +108,19 @@ TALER_JSON_exchange_wire_signature_check (
     return GNUNET_SYSERR;
   }
 
-  if (GNUNET_SYSERR ==
-      TALER_JSON_validate_payto (payto_uri))
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    char *err;
+
+    err = TALER_payto_validate (payto_uri);
+    if (NULL != err)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "URI `%s' ill-formed: %s\n",
+                  payto_uri,
+                  err);
+      GNUNET_free (err);
+      return GNUNET_SYSERR;
+    }
   }
 
   return TALER_exchange_wire_signature_check (payto_uri,
@@ -498,11 +142,16 @@ TALER_JSON_exchange_wire_signature_make (
   const struct TALER_MasterPrivateKeyP *master_priv)
 {
   struct TALER_MasterSignatureP master_sig;
+  char *err;
 
-  if (GNUNET_SYSERR ==
-      TALER_JSON_validate_payto (payto_uri))
+  if (NULL !=
+      (err = TALER_payto_validate (payto_uri)))
   {
-    GNUNET_break_op (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid payto URI `%s': %s\n",
+                payto_uri,
+                err);
+    GNUNET_free (err);
     return NULL;
   }
   TALER_exchange_wire_signature_make (payto_uri,
@@ -528,6 +177,7 @@ TALER_JSON_wire_to_payto (const json_t *wire_s)
 {
   json_t *payto_o;
   const char *payto_str;
+  char *err;
 
   payto_o = json_object_get (wire_s,
                              "payto_uri");
@@ -538,12 +188,14 @@ TALER_JSON_wire_to_payto (const json_t *wire_s)
                 "Malformed wire record encountered: lacks payto://-url\n");
     return NULL;
   }
-  if (GNUNET_SYSERR ==
-      TALER_JSON_validate_payto (payto_str))
+  if (NULL !=
+      (err = TALER_payto_validate (payto_str)))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Malformed wire record encountered: payto URI `%s' invalid\n",
-                payto_str);
+                "Malformed wire record encountered: payto URI `%s' invalid: %s\n",
+                payto_str,
+                err);
+    GNUNET_free (err);
     return NULL;
   }
   return GNUNET_strdup (payto_str);

@@ -523,19 +523,6 @@ TALER_JSON_exchange_wire_signature_check (
 
 
 /**
- * Validate payto:// account URL (only account information,
- * wire subject and amount are ignored).
- *
- * @param payto_uri URL to parse
- * @return #GNUNET_YES if @a payto_uri is a valid payto://iban URI
- *         #GNUNET_NO if @a payto_uri  is a payto URI of an unsupported type (but may be valid)
- *         #GNUNET_SYSERR if the account incorrect or this is not a payto://-URI at all
- */
-enum GNUNET_GenericReturnValue
-TALER_JSON_validate_payto (const char *payto_uri);
-
-
-/**
  * Create a signed wire statement for the given account.
  *
  * @param payto_uri account specification
