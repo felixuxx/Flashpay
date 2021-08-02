@@ -143,3 +143,4 @@ po/POTFILES
 po/stamp-po
 po/taler-exchange.pot
 po/remove-potcdate.sed
+src/include/taler_dbevents.h
