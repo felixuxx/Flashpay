@@ -567,6 +567,16 @@ TALER_JSON_extract_i18n (const json_t *object,
 
 
 /**
+ * Check whether a given @a i18n object is wellformed.
+ *
+ * @param i18n object with internationalized content
+ * @return true if @a i18n is well-formed
+ */
+bool
+TALER_JSON_check_i18n (const json_t *i18n);
+
+
+/**
  * Obtain the wire method associated with the given
  * wire account details.  @a wire_s must contain a payto://-URL
  * under 'url'.

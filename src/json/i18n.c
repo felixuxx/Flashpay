@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -24,31 +24,6 @@
 #include "taler_json_lib.h"
 
 
-/**
- * Extract a string from @a object under the field @a field, but respecting
- * the Taler i18n rules and the language preferences expressed in @a
- * language_pattern.
- *
- * Basically, the @a object may optionally contain a sub-object
- * "${field}_i18n" with a map from IETF BCP 47 language tags to a localized
- * version of the string. If this map exists and contains an entry that
- * matches the @a language pattern, that object (usually a string) is
- * returned. If the @a language_pattern does not match any entry, or if the
- * i18n sub-object does not exist, we simply return @a field of @a object
- * (also usually a string).
- *
- * If @a object does not have a member @a field we return NULL (error).
- *
- * @param object the object to extract internationalized
- *        content from
- * @param language_pattern a language preferences string
- *        like "fr-CH, fr;q=0.9, en;q=0.8, *;q=0.1", following
- *        https://tools.ietf.org/html/rfc7231#section-5.3.1
- * @param field name of the field to extract
- * @return NULL on error, otherwise the member from
- *        @a object. Note that the reference counter is
- *        NOT incremented.
- */
 const json_t *
 TALER_JSON_extract_i18n (const json_t *object,
                          const char *language_pattern,
@@ -89,6 +64,54 @@ TALER_JSON_extract_i18n (const json_t *object,
     }
   }
   return ret;
+}
+
+
+bool
+TALER_JSON_check_i18n (const json_t *i18n)
+{
+  const char *field;
+  json_t *member;
+
+  if (! json_is_object (i18n))
+    return false;
+  json_object_foreach ((json_t *) i18n, field, member)
+  {
+    if (! json_is_string (member))
+      return false;
+    /* Field name must be either of format "en_UK"
+       or just "en"; we do not care about capitalization */
+    switch (strlen (field))
+    {
+    case 0:
+    case 1:
+      return false;
+    case 2:
+      if (! isalpha (field[0]))
+        return false;
+      if (! isalpha (field[1]))
+        return false;
+      break;
+    case 3:
+    case 4:
+      return false;
+    case 5:
+      if (! isalpha (field[0]))
+        return false;
+      if (! isalpha (field[1]))
+        return false;
+      if ('_' != field[2])
+        return false;
+      if (! isalpha (field[3]))
+        return false;
+      if (! isalpha (field[4]))
+        return false;
+      break;
+    default:
+      return false;
+    }
+  }
+  return true;
 }
 
 
