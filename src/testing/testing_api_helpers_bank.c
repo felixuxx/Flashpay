@@ -292,10 +292,14 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
   char *database = NULL; // silence compiler
   char *exchange_payto_uri;
 
+  GNUNET_assert (0 ==
+                 strncasecmp (config_section,
+                              "exchange-account-",
+                              strlen ("exchange-account-")));
   cfg = GNUNET_CONFIGURATION_create ();
-
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_load (cfg, config_filename))
+      GNUNET_CONFIGURATION_load (cfg,
+                                 config_filename))
   {
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_break (0);
@@ -357,14 +361,25 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
     }
   }
 
-  if (GNUNET_OK !=
-      TALER_BANK_auth_parse_cfg (cfg,
-                                 config_section,
-                                 &bc->exchange_auth))
   {
-    GNUNET_break (0);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return GNUNET_SYSERR;
+    char *csn;
+
+    GNUNET_asprintf (&csn,
+                     "exchange-accountcredentials-%s",
+                     &config_section[strlen ("exchange-account-")]);
+
+
+    if (GNUNET_OK !=
+        TALER_BANK_auth_parse_cfg (cfg,
+                                   csn,
+                                   &bc->exchange_auth))
+    {
+      GNUNET_break (0);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      GNUNET_free (csn);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (csn);
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   bc->exchange_payto = exchange_payto_uri;
@@ -400,10 +415,15 @@ TALER_TESTING_prepare_bank (const char *config_filename,
   char *database;
   char *exchange_payto_uri;
 
+  GNUNET_assert (0 ==
+                 strncasecmp (config_section,
+                              "exchange-account-",
+                              strlen ("exchange-account-")));
   cfg = GNUNET_CONFIGURATION_create ();
 
   if (GNUNET_OK !=
-      GNUNET_CONFIGURATION_load (cfg, config_filename))
+      GNUNET_CONFIGURATION_load (cfg,
+                                 config_filename))
   {
     GNUNET_CONFIGURATION_destroy (cfg);
     GNUNET_break (0);
@@ -522,14 +542,24 @@ TALER_TESTING_prepare_bank (const char *config_filename,
     }
     GNUNET_OS_process_destroy (dbreset_proc);
   }
-  if (GNUNET_OK !=
-      TALER_BANK_auth_parse_cfg (cfg,
-                                 config_section,
-                                 &bc->exchange_auth))
   {
-    GNUNET_break (0);
-    GNUNET_CONFIGURATION_destroy (cfg);
-    return GNUNET_SYSERR;
+    char *csn;
+
+    GNUNET_asprintf (&csn,
+                     "exchange-accountcredentials-%s",
+                     &config_section[strlen ("exchange-account-")]);
+
+    if (GNUNET_OK !=
+        TALER_BANK_auth_parse_cfg (cfg,
+                                   csn,
+                                   &bc->exchange_auth))
+    {
+      GNUNET_break (0);
+      GNUNET_free (csn);
+      GNUNET_CONFIGURATION_destroy (cfg);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (csn);
   }
   GNUNET_CONFIGURATION_destroy (cfg);
   bc->exchange_payto = exchange_payto_uri;

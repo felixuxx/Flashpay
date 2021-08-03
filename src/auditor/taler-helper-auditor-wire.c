@@ -68,14 +68,9 @@ struct WireAccount
   struct WireAccount *prev;
 
   /**
-   * Authentication data for the account.
+   * Account details.
    */
-  struct TALER_BANK_AuthenticationData auth;
-
-  /**
-   * Name of the section that configures this account.
-   */
-  char *section_name;
+  const struct TALER_EXCHANGEDB_AccountInfo *ai;
 
   /**
    * Active wire request for the transaction history.
@@ -106,16 +101,6 @@ struct WireAccount
    * Where we are in the inbound (DEBIT) transaction history.
    */
   uint64_t out_wire_off;
-
-  /**
-   * We should check for inbound transactions to this account.
-   */
-  int watch_credit;
-
-  /**
-   * We should check for outbound transactions from this account.
-   */
-  int watch_debit;
 
   /**
    * Return value when we got this account's progress point.
@@ -573,8 +558,6 @@ do_shutdown (void *cls)
     GNUNET_CONTAINER_DLL_remove (wa_head,
                                  wa_tail,
                                  wa);
-    TALER_BANK_auth_free (&wa->auth);
-    GNUNET_free (wa->section_name);
     GNUNET_free (wa);
   }
   if (NULL != ctx)
@@ -587,6 +570,8 @@ do_shutdown (void *cls)
     GNUNET_CURL_gnunet_rc_destroy (rc);
     rc = NULL;
   }
+  TALER_EXCHANGEDB_unload_accounts ();
+  TALER_ARL_cfg = NULL;
 }
 
 
@@ -688,28 +673,28 @@ commit (enum GNUNET_DB_QueryStatus qs)
        NULL != wa;
        wa = wa->next)
   {
-    GNUNET_assert (0 ==
-                   json_array_append_new (
-                     report_account_progress,
-                     GNUNET_JSON_PACK (
-                       GNUNET_JSON_pack_string ("account",
-                                                wa->section_name),
-                       GNUNET_JSON_pack_uint64 ("start_reserve_in",
-                                                wa->start_pp.
-                                                last_reserve_in_serial_id),
-                       GNUNET_JSON_pack_uint64 ("end_reserve_in",
-                                                wa->pp.last_reserve_in_serial_id),
-                       GNUNET_JSON_pack_uint64 ("start_wire_out",
-                                                wa->start_pp.
-                                                last_wire_out_serial_id),
-                       GNUNET_JSON_pack_uint64 ("end_wire_out",
-                                                wa->pp.last_wire_out_serial_id))));
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        report_account_progress,
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("account",
+                                   wa->ai->section_name),
+          GNUNET_JSON_pack_uint64 ("start_reserve_in",
+                                   wa->start_pp.last_reserve_in_serial_id),
+          GNUNET_JSON_pack_uint64 ("end_reserve_in",
+                                   wa->pp.last_reserve_in_serial_id),
+          GNUNET_JSON_pack_uint64 ("start_wire_out",
+                                   wa->start_pp.
+                                   last_wire_out_serial_id),
+          GNUNET_JSON_pack_uint64 ("end_wire_out",
+                                   wa->pp.last_wire_out_serial_id))));
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == wa->qsx)
       qs = TALER_ARL_adb->update_wire_auditor_account_progress (
         TALER_ARL_adb->cls,
         TALER_ARL_asession,
         &TALER_ARL_master_pub,
-        wa->section_name,
+        wa->ai->section_name,
         &wa->pp,
         wa->in_wire_off,
         wa->out_wire_off);
@@ -718,7 +703,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
         TALER_ARL_adb->cls,
         TALER_ARL_asession,
         &TALER_ARL_master_pub,
-        wa->section_name,
+        wa->ai->section_name,
         &wa->pp,
         wa->in_wire_off,
         wa->out_wire_off);
@@ -893,7 +878,7 @@ check_for_required_transfers (void)
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -1016,7 +1001,7 @@ wire_out_cb (void *cls,
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  "wire transfer not made (yet?)"),
                         GNUNET_JSON_pack_string ("account_section",
-                                                 wa->section_name)));
+                                                 wa->ai->section_name)));
     TALER_ARL_amount_add (&total_bad_amount_out_minus,
                           &total_bad_amount_out_minus,
                           amount);
@@ -1050,7 +1035,7 @@ wire_out_cb (void *cls,
                           GNUNET_JSON_pack_string ("target",
                                                    payto_uri),
                           GNUNET_JSON_pack_string ("account_section",
-                                                   wa->section_name)));
+                                                   wa->ai->section_name)));
       TALER_ARL_amount_add (&total_bad_amount_out_plus,
                             &total_bad_amount_out_plus,
                             &roi->details.amount);
@@ -1072,7 +1057,7 @@ wire_out_cb (void *cls,
                                                    roi->details.
                                                    credit_account_url),
                           GNUNET_JSON_pack_string ("account_section",
-                                                   wa->section_name)));
+                                                   wa->ai->section_name)));
       TALER_ARL_amount_add (&total_bad_amount_out_minus,
                             &total_bad_amount_out_minus,
                             amount);
@@ -1099,7 +1084,7 @@ wire_out_cb (void *cls,
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  "wire amount does not match"),
                         GNUNET_JSON_pack_string ("account_section",
-                                                 wa->section_name)));
+                                                 wa->ai->section_name)));
     if (0 < TALER_amount_cmp (amount,
                               &roi->details.amount))
     {
@@ -1156,9 +1141,9 @@ struct CheckMatchContext
   const struct ReserveOutInfo *roi;
 
   /**
-   * Set to #GNUNET_YES if we found a match.
+   * Set to true if we found a match.
    */
-  int found;
+  bool found;
 };
 
 
@@ -1188,7 +1173,7 @@ check_rc_matches (void *cls,
                            rc->rowid,
                            rc->execution_date,
                            ctx->roi->details.execution_date);
-    ctx->found = GNUNET_YES;
+    ctx->found = true;
     free_rc (NULL,
              key,
              rc);
@@ -1218,7 +1203,7 @@ complain_out_not_found (void *cls,
   struct GNUNET_HashCode rkey;
   struct CheckMatchContext ctx = {
     .roi = roi,
-    .found = GNUNET_NO
+    .found = false
   };
 
   (void) key;
@@ -1229,7 +1214,7 @@ complain_out_not_found (void *cls,
                                               &rkey,
                                               &check_rc_matches,
                                               &ctx);
-  if (GNUNET_YES == ctx.found)
+  if (ctx.found)
     return GNUNET_OK;
   TALER_ARL_report (report_wire_out_inconsistencies,
                     GNUNET_JSON_PACK (
@@ -1245,7 +1230,7 @@ complain_out_not_found (void *cls,
                                                       roi->details.
                                                       execution_date),
                       GNUNET_JSON_pack_string ("account_section",
-                                               wa->section_name),
+                                               wa->ai->section_name),
                       GNUNET_JSON_pack_string ("diagnostic",
                                                "justification for wire transfer not found")));
   TALER_ARL_amount_add (&total_bad_amount_out_plus,
@@ -1279,18 +1264,18 @@ check_exchange_wire_out (struct WireAccount *wa)
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange's wire OUT table for account `%s'\n",
-              wa->section_name);
+              wa->ai->section_name);
   qs = TALER_ARL_edb->select_wire_out_above_serial_id_by_account (
     TALER_ARL_edb->cls,
     TALER_ARL_esession,
-    wa->section_name,
+    wa->ai->section_name,
     wa->pp.last_wire_out_serial_id,
     &wire_out_cb,
     wa);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -1338,11 +1323,11 @@ history_debit_cb (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Error fetching debit history of account %s: %u/%u!\n",
-                  wa->section_name,
+                  wa->ai->section_name,
                   http_status_code,
                   (unsigned int) ec);
       commit (GNUNET_DB_STATUS_HARD_ERROR);
-      global_ret = 1;
+      global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
@@ -1412,7 +1397,7 @@ process_debits (void *cls)
 
   /* skip accounts where DEBIT is not enabled */
   while ( (NULL != wa) &&
-          (GNUNET_NO == wa->watch_debit) )
+          (GNUNET_NO == wa->ai->debit_enabled) )
     wa = wa->next;
   if (NULL == wa)
   {
@@ -1423,10 +1408,10 @@ process_debits (void *cls)
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking bank DEBIT records of account `%s'\n",
-              wa->section_name);
+              wa->ai->section_name);
   GNUNET_assert (NULL == wa->dhh);
   wa->dhh = TALER_BANK_debit_history (ctx,
-                                      &wa->auth,
+                                      wa->ai->auth,
                                       wa->out_wire_off,
                                       INT64_MAX,
                                       &history_debit_cb,
@@ -1435,9 +1420,9 @@ process_debits (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain bank transaction history for `%s'\n",
-                wa->section_name);
+                wa->ai->section_name);
     commit (GNUNET_DB_STATUS_HARD_ERROR);
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -1577,7 +1562,7 @@ complain_in_not_found (void *cls,
                                                       rii->details.
                                                       execution_date),
                       GNUNET_JSON_pack_string ("account",
-                                               wa->section_name),
+                                               wa->ai->section_name),
                       GNUNET_JSON_pack_string ("diagnostic",
                                                "incoming wire transfer claimed by exchange not found")));
   TALER_ARL_amount_add (&total_bad_amount_in_minus,
@@ -1629,19 +1614,19 @@ history_credit_cb (void *cls,
     if (TALER_EC_NONE != ec)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Error fetching credit history of account %s: %u/%u!\n",
-                  wa->section_name,
+                  "Error fetching credit history of account %s: %u/%s!\n",
+                  wa->ai->section_name,
                   http_status,
-                  (unsigned int) ec);
+                  TALER_ErrorCode_get_hint (ec));
       commit (GNUNET_DB_STATUS_HARD_ERROR);
-      global_ret = 1;
+      global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
       return GNUNET_SYSERR;
     }
     /* end of operation */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reconciling CREDIT processing of account `%s'\n",
-                wa->section_name);
+                wa->ai->section_name);
     GNUNET_CONTAINER_multihashmap_iterate (in_map,
                                            &complain_in_not_found,
                                            wa);
@@ -1825,7 +1810,7 @@ process_credits (void *cls)
 
   /* skip accounts where CREDIT is not enabled */
   while ( (NULL != wa) &&
-          (GNUNET_NO == wa->watch_credit) )
+          (GNUNET_NO == wa->ai->credit_enabled) )
     wa = wa->next;
   if (NULL == wa)
   {
@@ -1835,27 +1820,27 @@ process_credits (void *cls)
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Analyzing exchange's wire IN table for account `%s'\n",
-              wa->section_name);
+              wa->ai->section_name);
   qs = TALER_ARL_edb->select_reserves_in_above_serial_id_by_account (
     TALER_ARL_edb->cls,
     TALER_ARL_esession,
-    wa->section_name,
+    wa->ai->section_name,
     wa->pp.last_reserve_in_serial_id,
     &reserve_in_cb,
     wa);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting bank CREDIT history of account `%s'\n",
-              wa->section_name);
+              wa->ai->section_name);
   wa->chh = TALER_BANK_credit_history (ctx,
-                                       &wa->auth,
+                                       wa->ai->auth,
                                        wa->in_wire_off,
                                        INT64_MAX,
                                        &history_credit_cb,
@@ -1865,7 +1850,7 @@ process_credits (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to obtain bank transaction history\n");
     commit (GNUNET_DB_STATUS_HARD_ERROR);
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -2005,7 +1990,7 @@ begin_transaction (void)
       TALER_ARL_adb->cls,
       TALER_ARL_asession,
       &TALER_ARL_master_pub,
-      wa->section_name,
+      wa->ai->section_name,
       &wa->pp,
       &wa->in_wire_off,
       &wa->out_wire_off);
@@ -2074,31 +2059,14 @@ process_account_cb (void *cls,
   struct WireAccount *wa;
 
   (void) cls;
-  if ( (GNUNET_NO == ai->debit_enabled) &&
-       (GNUNET_NO == ai->credit_enabled) )
+  if ( (! ai->debit_enabled) &&
+       (! ai->credit_enabled) )
     return; /* not an active exchange account */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Found exchange account `%s'\n",
               ai->section_name);
   wa = GNUNET_new (struct WireAccount);
-  wa->section_name = GNUNET_strdup (ai->section_name);
-  wa->watch_debit = ai->debit_enabled;
-  wa->watch_credit = ai->credit_enabled;
-  if (GNUNET_OK !=
-      TALER_BANK_auth_parse_cfg (TALER_ARL_cfg,
-                                 ai->section_name,
-                                 &wa->auth))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to access bank account `%s'\n",
-                wa->section_name);
-    GNUNET_break (0);
-    GNUNET_free (wa->section_name);
-    GNUNET_free (wa);
-    global_ret = 1;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
+  wa->ai = ai;
   GNUNET_CONTAINER_DLL_insert (wa_head,
                                wa_tail,
                                wa);
@@ -2127,7 +2095,7 @@ run (void *cls,
   if (GNUNET_OK !=
       TALER_ARL_init (c))
   {
-    global_ret = 1;
+    global_ret = EXIT_FAILURE;
     return;
   }
   if (GNUNET_OK !=
@@ -2136,7 +2104,7 @@ run (void *cls,
                                "TINY_AMOUNT",
                                &tiny_amount))
   {
-    global_ret = 1;
+    global_ret = EXIT_NOTCONFIGURED;
     return;
   }
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
@@ -2147,6 +2115,7 @@ run (void *cls,
   if (NULL == ctx)
   {
     GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
     return;
   }
   reserve_closures = GNUNET_CONTAINER_multihashmap_create (1024,
@@ -2198,13 +2167,24 @@ run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (TALER_ARL_currency,
                                         &zero));
-  TALER_EXCHANGEDB_find_accounts (TALER_ARL_cfg,
-                                  &process_account_cb,
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_load_accounts (TALER_ARL_cfg,
+                                      TALER_EXCHANGEDB_ALO_DEBIT
+                                      | TALER_EXCHANGEDB_ALO_CREDIT
+                                      | TALER_EXCHANGEDB_ALO_AUTHDATA))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "No bank accounts configured\n");
+    global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_SCHEDULER_shutdown ();
+  }
+  TALER_EXCHANGEDB_find_accounts (&process_account_cb,
                                   NULL);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       begin_transaction ())
   {
-    global_ret = 1;
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
   }
 }
@@ -2246,7 +2226,7 @@ main (int argc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
-    return 4;
+    return EXIT_INVALIDARGUMENT;
   ret = GNUNET_PROGRAM_run (
     argc,
     argv,
@@ -2258,9 +2238,9 @@ main (int argc,
     NULL);
   GNUNET_free_nz ((void *) argv);
   if (GNUNET_SYSERR == ret)
-    return 3;
+    return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
-    return 0;
+    return EXIT_SUCCESS;
   return global_ret;
 }
 

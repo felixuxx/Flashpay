@@ -216,10 +216,11 @@ main (int argc,
     TALER_LOG_DEBUG ("Running with Nexus.\n");
     with_libeufin = GNUNET_YES;
     cfgfile = CONFIG_FILE_NEXUS;
-    if (GNUNET_OK != TALER_TESTING_prepare_nexus (CONFIG_FILE_NEXUS,
-                                                  GNUNET_YES,
-                                                  "exchange-account-2",
-                                                  &bc))
+    if (GNUNET_OK !=
+        TALER_TESTING_prepare_nexus (CONFIG_FILE_NEXUS,
+                                     GNUNET_YES,
+                                     "exchange-account-2",
+                                     &bc))
     {
       GNUNET_break (0);
       return 77;

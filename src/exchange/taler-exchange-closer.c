@@ -158,7 +158,8 @@ parse_wirewatch_config (void)
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_EXCHANGEDB_load_accounts (cfg))
+      TALER_EXCHANGEDB_load_accounts (cfg,
+                                      TALER_EXCHANGEDB_ALO_DEBIT))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No wire accounts configured for debit!\n");
@@ -236,7 +237,7 @@ expired_reserve_cb (void *cls,
   struct TALER_Amount closing_fee;
   int ret;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_EXCHANGEDB_WireAccount *wa;
+  const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
   /* NOTE: potential optimization: use custom SQL API to not
      fetch this: */

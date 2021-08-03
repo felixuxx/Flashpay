@@ -53,6 +53,12 @@ TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin);
 struct TALER_EXCHANGEDB_AccountInfo
 {
   /**
+   * Authentication data. Only parsed if
+   * #TALER_EXCHANGEDB_ALO_AUTHDATA was set.
+   */
+  const struct TALER_BANK_AuthenticationData *auth;
+
+  /**
    * Section in the configuration file that specifies the
    * account. Must start with "exchange-account-".
    */
@@ -64,44 +70,19 @@ struct TALER_EXCHANGEDB_AccountInfo
   const char *method;
 
   /**
-   * #GNUNET_YES if this account is enabed to be debited
+   * true if this account is enabed to be debited
    * by the taler-exchange-aggregator.
    */
-  int debit_enabled;
+  bool debit_enabled;
 
   /**
-   * #GNUNET_YES if this account is enabed to be credited by wallets
+   * true if this account is enabed to be credited by wallets
    * and needs to be watched by the taler-exchange-wirewatch.
    * Also, the account will only be included in /wire if credit
    * is enabled.
    */
-  int credit_enabled;
+  bool credit_enabled;
 };
-
-
-/**
- * Function called with information about a wire account.
- *
- * @param cls closure
- * @param ai account information
- */
-typedef void
-(*TALER_EXCHANGEDB_AccountCallback)(
-  void *cls,
-  const struct TALER_EXCHANGEDB_AccountInfo *ai);
-
-/**
- * Parse the configuration to find account information.
- *
- * @param cfg configuration to use
- * @param cb callback to invoke
- * @param cb_cls closure for @a cb
- * @return #GNUNET_OK if the configuration seems valid, #GNUNET_SYSERR if not
- */
-int
-TALER_EXCHANGEDB_find_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                                TALER_EXCHANGEDB_AccountCallback cb,
-                                void *cb_cls);
 
 
 /**
@@ -121,39 +102,28 @@ TALER_EXCHANGEDB_calculate_transaction_list_totals (
   struct TALER_Amount *ret);
 
 
-/* ***************** convenience functions ******** */
+/**
+ * Function called with information about a wire account.
+ *
+ * @param cls closure
+ * @param ai account information
+ */
+typedef void
+(*TALER_EXCHANGEDB_AccountCallback)(
+  void *cls,
+  const struct TALER_EXCHANGEDB_AccountInfo *ai);
+
 
 /**
- * Information we keep for each supported account of the exchange.
+ * Return information about all accounts that
+ * were loaded by #TALER_EXCHANGEDB_load_accounts().
+ *
+ * @param cb callback to invoke
+ * @param cb_cls closure for @a cb
  */
-struct TALER_EXCHANGEDB_WireAccount
-{
-  /**
-   * Accounts are kept in a DLL.
-   */
-  struct TALER_EXCHANGEDB_WireAccount *next;
-
-  /**
-   * Plugins are kept in a DLL.
-   */
-  struct TALER_EXCHANGEDB_WireAccount *prev;
-
-  /**
-   * Authentication data.
-   */
-  struct TALER_BANK_AuthenticationData auth;
-
-  /**
-   * Name of the section that configures this account.
-   */
-  char *section_name;
-
-  /**
-   * Name of the wire method underlying the account.
-   */
-  char *method;
-
-};
+void
+TALER_EXCHANGEDB_find_accounts (TALER_EXCHANGEDB_AccountCallback cb,
+                                void *cb_cls);
 
 
 /**
@@ -164,7 +134,7 @@ struct TALER_EXCHANGEDB_WireAccount
  * @param method wire method we need an account for
  * @return NULL on error
  */
-struct TALER_EXCHANGEDB_WireAccount *
+const struct TALER_EXCHANGEDB_AccountInfo *
 TALER_EXCHANGEDB_find_account_by_method (const char *method);
 
 
@@ -176,8 +146,34 @@ TALER_EXCHANGEDB_find_account_by_method (const char *method);
  * @param url wire address we need an account for
  * @return NULL on error
  */
-struct TALER_EXCHANGEDB_WireAccount *
+const struct TALER_EXCHANGEDB_AccountInfo *
 TALER_EXCHANGEDB_find_account_by_payto_uri (const char *url);
+
+
+/**
+ * Options for #TALER_EXCHANGEDB_load_accounts()
+ */
+enum TALER_EXCHANGEDB_AccountLoaderOptions
+{
+  TALER_EXCHANGEDB_ALO_NONE = 0,
+
+  /**
+   * Load accounts enabled for DEBITs.
+   */
+  TALER_EXCHANGEDB_ALO_DEBIT = 1,
+
+  /**
+   * Load accounts enabled for CREDITs.
+   */
+  TALER_EXCHANGEDB_ALO_CREDIT = 2,
+
+  /**
+   * Load authentication data from the
+   * "taler-accountcredentials-" section
+   * to access the account at the bank.
+   */
+  TALER_EXCHANGEDB_ALO_AUTHDATA = 4
+};
 
 
 /**
@@ -185,10 +181,13 @@ TALER_EXCHANGEDB_find_account_by_payto_uri (const char *url);
  * @a cfg.
  *
  * @param cfg configuration to load from
+ * @param options loader options
  * @return #GNUNET_OK on success, #GNUNET_NO if no accounts are configured
  */
-int
-TALER_EXCHANGEDB_load_accounts (const struct GNUNET_CONFIGURATION_Handle *cfg);
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGEDB_load_accounts (
+  const struct GNUNET_CONFIGURATION_Handle *cfg,
+  enum TALER_EXCHANGEDB_AccountLoaderOptions options);
 
 
 /**

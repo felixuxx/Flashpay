@@ -50,7 +50,7 @@ struct WirePrepareData
   /**
    * Wire account used for this preparation.
    */
-  struct TALER_EXCHANGEDB_WireAccount *wa;
+  const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
   /**
    * Row ID of the transfer.
@@ -179,7 +179,9 @@ parse_wirewatch_config (void)
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_EXCHANGEDB_load_accounts (cfg))
+      TALER_EXCHANGEDB_load_accounts (cfg,
+                                      TALER_EXCHANGEDB_ALO_DEBIT
+                                      | TALER_EXCHANGEDB_ALO_AUTHDATA))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No wire accounts configured for debit!\n");
@@ -353,7 +355,7 @@ wire_prepare_cb (void *cls,
                  const char *buf,
                  size_t buf_size)
 {
-  struct TALER_EXCHANGEDB_WireAccount *wa;
+  const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
   (void) cls;
   if ( (NULL == wire_method) ||
@@ -382,7 +384,7 @@ wire_prepare_cb (void *cls,
   }
   wa = wpd->wa;
   wpd->eh = TALER_BANK_transfer (ctx,
-                                 &wa->auth,
+                                 wa->auth,
                                  buf,
                                  buf_size,
                                  &wire_confirm_cb,

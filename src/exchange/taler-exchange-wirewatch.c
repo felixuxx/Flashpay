@@ -52,9 +52,9 @@ struct WireAccount
   struct WireAccount *prev;
 
   /**
-   * Name of the section that configures this account.
+   * Information about this account.
    */
-  char *section_name;
+  const struct TALER_EXCHANGEDB_AccountInfo *ai;
 
   /**
    * Database session we are using for the current transaction.
@@ -65,11 +65,6 @@ struct WireAccount
    * Active request for history.
    */
   struct TALER_BANK_CreditHistoryHandle *hh;
-
-  /**
-   * Authentication data.
-   */
-  struct TALER_BANK_AuthenticationData auth;
 
   /**
    * Until when is processing this wire plugin delayed?
@@ -233,8 +228,6 @@ shutdown_task (void *cls)
       GNUNET_CONTAINER_DLL_remove (wa_head,
                                    wa_tail,
                                    wa);
-      TALER_BANK_auth_free (&wa->auth);
-      GNUNET_free (wa->section_name);
       GNUNET_free (wa->job_name);
       GNUNET_free (wa);
     }
@@ -258,6 +251,8 @@ shutdown_task (void *cls)
   }
   TALER_EXCHANGEDB_plugin_unload (db_plugin);
   db_plugin = NULL;
+  TALER_EXCHANGEDB_unload_accounts ();
+  cfg = NULL;
 }
 
 
@@ -275,21 +270,10 @@ add_account_cb (void *cls,
   struct WireAccount *wa;
 
   (void) cls;
-  if (GNUNET_YES != ai->credit_enabled)
+  if (! ai->credit_enabled)
     return; /* not enabled for us, skip */
   wa = GNUNET_new (struct WireAccount);
-  if (GNUNET_OK !=
-      TALER_BANK_auth_parse_cfg (cfg,
-                                 ai->section_name,
-                                 &wa->auth))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "Failed to load account `%s'\n",
-                ai->section_name);
-    GNUNET_free (wa);
-    return;
-  }
-  wa->section_name = GNUNET_strdup (ai->section_name);
+  wa->ai = ai;
   GNUNET_asprintf (&wa->job_name,
                    "wirewatch-%s",
                    ai->section_name);
@@ -325,20 +309,24 @@ exchange_serve_process_config (void)
   if (NULL ==
       (db_plugin = TALER_EXCHANGEDB_plugin_load (cfg)))
   {
-    fprintf (stderr,
-             "Failed to initialize DB subsystem\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
-  TALER_EXCHANGEDB_find_accounts (cfg,
-                                  &add_account_cb,
-                                  NULL);
-  if (NULL == wa_head)
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_load_accounts (cfg,
+                                      TALER_EXCHANGEDB_ALO_CREDIT
+                                      | TALER_EXCHANGEDB_ALO_AUTHDATA))
   {
-    fprintf (stderr,
-             "No wire accounts configured for credit!\n");
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "No wire accounts configured for credit!\n");
     TALER_EXCHANGEDB_plugin_unload (db_plugin);
+    db_plugin = NULL;
     return GNUNET_SYSERR;
   }
+  TALER_EXCHANGEDB_find_accounts (&add_account_cb,
+                                  NULL);
+  GNUNET_assert (NULL != wa_head);
   return GNUNET_OK;
 }
 
@@ -558,7 +546,7 @@ history_cb (void *cls,
                                       &details->amount,
                                       details->execution_date,
                                       details->debit_account_url,
-                                      wa->section_name,
+                                      wa->ai->section_name,
                                       serial_id);
   switch (qs)
   {
@@ -683,7 +671,7 @@ find_transfers (void *cls)
   GNUNET_assert (NULL == wa_pos->hh);
   wa_pos->latest_row_off = wa_pos->batch_start;
   wa_pos->hh = TALER_BANK_credit_history (ctx,
-                                          &wa_pos->auth,
+                                          wa_pos->ai->auth,
                                           wa_pos->batch_start,
                                           limit,
                                           &history_cb,

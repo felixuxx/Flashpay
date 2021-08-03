@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2020 Taler Systems SA
+  Copyright (C) 2016-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -87,7 +87,7 @@ struct AggregationUnit
    * Exchange wire account to be used for the preparation and
    * eventual execution of the aggregate wire transfer.
    */
-  struct TALER_EXCHANGEDB_WireAccount *wa;
+  const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
   /**
    * Database session for all of our transactions.
@@ -262,7 +262,8 @@ parse_wirewatch_config (void)
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
-      TALER_EXCHANGEDB_load_accounts (cfg))
+      TALER_EXCHANGEDB_load_accounts (cfg,
+                                      TALER_EXCHANGEDB_ALO_DEBIT))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "No wire accounts configured for debit!\n");
