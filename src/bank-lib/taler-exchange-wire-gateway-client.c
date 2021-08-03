@@ -181,10 +181,20 @@ credit_history_cb (void *cls,
          (TALER_EC_NONE != ec) ||
          (NULL == details) )
     {
-      fprintf (stderr,
-               "Failed to obtain credit history: %u/%d\n",
-               http_status,
-               ec);
+      if (0 == http_status)
+      {
+        fprintf (stderr,
+                 "Failed to obtain HTTP reply from `%s'\n",
+                 auth.wire_gateway_url);
+      }
+      else
+      {
+        fprintf (stderr,
+                 "Failed to obtain credit history from `%s': HTTP status %u (%s)\n",
+                 auth.wire_gateway_url,
+                 http_status,
+                 TALER_ErrorCode_get_hint (ec));
+      }
       if (NULL != json)
         json_dumpf (json,
                     stderr,
@@ -277,16 +287,27 @@ debit_history_cb (void *cls,
 {
   (void) cls;
 
+  dhh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
     if ( (MHD_HTTP_NO_CONTENT != http_status) ||
          (TALER_EC_NONE != ec) ||
          (NULL == details) )
     {
-      fprintf (stderr,
-               "Failed to obtain debit history: %u/%d\n",
-               http_status,
-               ec);
+      if (0 == http_status)
+      {
+        fprintf (stderr,
+                 "Failed to obtain HTTP reply from `%s'\n",
+                 auth.wire_gateway_url);
+      }
+      else
+      {
+        fprintf (stderr,
+                 "Failed to obtain debit history from `%s': HTTP status %u (%s)\n",
+                 auth.wire_gateway_url,
+                 http_status,
+                 TALER_ErrorCode_get_hint (ec));
+      }
       if (NULL != json)
         json_dumpf (json,
                     stderr,

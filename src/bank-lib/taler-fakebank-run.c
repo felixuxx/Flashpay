@@ -42,6 +42,25 @@ static int connection_close;
  */
 static int ret;
 
+/**
+ * Handle for the service.
+ */
+static struct TALER_FAKEBANK_Handle *fb;
+
+
+/**
+ * Stop the process.
+ *
+ * @param cls NULL
+ */
+static void
+do_shutdown (void *cls)
+{
+  (void) cls;
+  TALER_FAKEBANK_stop (fb);
+  fb = NULL;
+}
+
 
 /**
  * Main function that will be run.
@@ -69,7 +88,7 @@ run (void *cls,
       TALER_config_get_currency (cfg,
                                  &currency_string))
   {
-    ret = 1;
+    ret = EXIT_NOTCONFIGURED;
     return;
   }
   if (GNUNET_OK !=
@@ -92,15 +111,20 @@ run (void *cls,
                 "Maximum transaction history in RAM set to default of %llu\n",
                 ram);
   }
-  if (NULL ==
-      TALER_FAKEBANK_start2 ((uint16_t) port,
-                             currency_string,
-                             ram,
-                             num_threads,
-                             (0 != connection_close) ))
-    ret = 1;
+  fb = TALER_FAKEBANK_start2 ((uint16_t) port,
+                              currency_string,
+                              ram,
+                              num_threads,
+                              (0 != connection_close));
+  if (NULL == fb)
+  {
+    ret = EXIT_FAILURE;
+    return;
+  }
   GNUNET_free (currency_string);
-  ret = 0;
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
+  ret = EXIT_SUCCESS;
 }
 
 
@@ -135,6 +159,6 @@ main (int argc,
                           options,
                           &run,
                           NULL))
-    return 1;
+    return EXIT_INVALIDARGUMENT;
   return ret;
 }
