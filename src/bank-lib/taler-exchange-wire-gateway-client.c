@@ -606,7 +606,7 @@ run (void *cls,
          (NULL != auth.details.basic.password) )
     {
       fprintf (stderr,
-               "Conflicting authentication options provided. Please only use one method.\n");
+               "Error: Conflicting authentication options provided. Please only use one method.\n");
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
@@ -616,7 +616,7 @@ run (void *cls,
                                    &auth))
     {
       fprintf (stderr,
-               "Authentication information not found in configuration section `%s'\n",
+               "Error: Authentication information not found in configuration section `%s'\n",
                account_section);
       GNUNET_SCHEDULER_shutdown ();
       return;
@@ -633,16 +633,27 @@ run (void *cls,
     else if (NULL == auth.wire_gateway_url)
     {
       fprintf (stderr,
-               "No account specified (use -b or -s options).\n");
+               "Error: No account specified (use -b or -s options).\n");
       GNUNET_SCHEDULER_shutdown ();
       return;
     }
+  }
+  if ( (NULL == auth.wire_gateway_url) ||
+       (0 == strlen (auth.wire_gateway_url)) ||
+       (0 != strcasecmp ("http",
+                         auth.wire_gateway_url)) )
+  {
+    fprintf (stderr,
+             "Error: Invalid wire gateway URL `%s' configured.\n",
+             auth.wire_gateway_url);
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
   if ( (GNUNET_YES == incoming_history) &&
        (GNUNET_YES == outgoing_history) )
   {
     fprintf (stderr,
-             "Please specify only -i or -o, but not both.\n");
+             "Error: Please specify only -i or -o, but not both.\n");
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -675,7 +686,7 @@ run (void *cls,
 
 
 /**
- * The main function of the taler-bank-transfer tool
+ * The main function of the taler-exchange-wire-gateway-client
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments

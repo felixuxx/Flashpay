@@ -240,7 +240,8 @@ TALER_url_join (const char *base_url,
   if (0 == strlen (base_url))
   {
     /* base URL can't be empty */
-    GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Empty base URL specified\n");
     return NULL;
   }
   if ('/' != base_url[strlen (base_url) - 1])
