@@ -195,7 +195,6 @@ handle_credit_history_finished (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u\n",
                 (unsigned int) response_code);
-    GNUNET_break_op (0);
     ec = TALER_JSON_get_error_code (j);
     break;
   }
