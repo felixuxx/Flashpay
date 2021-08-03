@@ -7,7 +7,7 @@ if USE_COVERAGE
 endif
 
 bin_PROGRAMS = \
-  taler-wire-gateway-client \
+  taler-exchange-wire-gateway-client \
   taler-fakebank-run
 
 taler_fakebank_run_SOURCES = \
@@ -17,9 +17,9 @@ taler_fakebank_run_LDADD = \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil
 
-taler_wire_gateway_client_SOURCES = \
-  taler-wire-gateway-client.c
-taler_wire_gateway_client_LDADD = \
+taler_exchange_wire_gateway_client_SOURCES = \
+  taler-exchange-wire-gateway-client.c
+taler_exchange_wire_gateway_client_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/json/libtalerjson.la \
