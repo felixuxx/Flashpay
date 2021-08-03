@@ -175,6 +175,7 @@ credit_history_cb (void *cls,
 {
   (void) cls;
 
+  chh = NULL;
   if (MHD_HTTP_OK != http_status)
   {
     if ( (MHD_HTTP_NO_CONTENT != http_status) ||
