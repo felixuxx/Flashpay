@@ -27,8 +27,8 @@
  * be urlencoded.
  *
  * @param c character to look at
- * @return #GNUNET_YES if @a c needs to be urlencoded,
- *         #GNUNET_NO otherwise
+ * @return true if @a c needs to be urlencoded,
+ *         false otherwise
  */
 static bool
 is_reserved (char c)
@@ -48,11 +48,11 @@ is_reserved (char c)
   case 'P': case 'Q': case 'R': case 'S': case 'T':
   case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
   case '-': case '.': case '_': case '~':
-    return GNUNET_NO;
+    return false;
   default:
     break;
   }
-  return GNUNET_YES;
+  return true;
 }
 
 
@@ -68,7 +68,7 @@ urlencode_len (const char *s)
 {
   size_t len = 0;
   for (; *s != '\0'; len++, s++)
-    if (GNUNET_YES == is_reserved (*s))
+    if (is_reserved (*s))
       len += 2;
   return len;
 }
@@ -372,7 +372,7 @@ TALER_url_valid_charset (const char *url)
   for (unsigned int i = 0; '\0' != url[i]; i++)
   {
 #define ALLOWED_CHARACTERS \
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:&?-.,=_~%"
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:;&?-.,=_~%"
     if (NULL == strchr (ALLOWED_CHARACTERS,
                         (int) url[i]))
       return false;
