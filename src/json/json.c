@@ -777,10 +777,7 @@ TALER_JSON_get_error_code (const json_t *json)
   const json_t *jc;
 
   if (NULL == json)
-  {
-    GNUNET_break_op (0);
     return TALER_EC_GENERIC_INVALID_RESPONSE;
-  }
   jc = json_object_get (json, "code");
   /* The caller already knows that the JSON represents an error,
      so we are dealing with a missing error code here.  */
@@ -803,10 +800,7 @@ TALER_JSON_get_error_hint (const json_t *json)
   const json_t *jc;
 
   if (NULL == json)
-  {
-    GNUNET_break_op (0);
     return NULL;
-  }
   jc = json_object_get (json,
                         "hint");
   if (NULL == jc)
