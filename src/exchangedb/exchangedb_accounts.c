@@ -158,7 +158,7 @@ struct LoaderContext
  * the account to our list.
  *
  * @param cls closure, a `struct LoaderContext`
- * @param ai account information
+ * @param section section to parse account information from
  */
 static void
 add_account_cb (void *cls,
