@@ -6,7 +6,7 @@ usr/bin/taler-exchange-secmod-eddsa
 usr/bin/taler-exchange-secmod-rsa
 usr/bin/taler-exchange-transfer
 usr/bin/taler-exchange-wirewatch
-usr/bin/taler-wire-gateway-client
+usr/bin/taler-exchange-wire-gateway-client
 usr/share/man/man1/taler-exchange-aggregator*
 usr/share/man/man1/taler-exchange-closer*
 usr/share/man/man1/taler-exchange-dbinit*
