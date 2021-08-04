@@ -601,6 +601,16 @@ run (void *cls,
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
   if (NULL != account_section)
   {
+    if (0 != strncasecmp ("exchange-accountcredentials-"
+                          account_section,
+                          strlen ("exchange-accountcredentials-")))
+    {
+      fprintf (stderr,
+               "Error: invalid section specified, must begin with `%s`\n",
+               "exchange-accountcredentials-");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
     if ( (NULL != auth.wire_gateway_url) ||
          (NULL != auth.details.basic.username) ||
          (NULL != auth.details.basic.password) )
