@@ -1,6 +1,6 @@
 [Unit]
 Description=GNU Taler payment system exchange RSA security module
-AssertPathExists=/run/taler-exchange
+AssertPathExists=/run/taler/exchange-secmod-rsa
 PartOf=taler-exchange.service
 
 [Service]

@@ -1,6 +1,6 @@
 [Unit]
 Description=GNU Taler payment system exchange EdDSA security module
-AssertPathExists=/run/taler-exchange
+AssertPathExists=/run/taler/exchange-secmod-eddsa
 PartOf=taler-exchange.service
 
 [Service]

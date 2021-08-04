@@ -1,6 +1,6 @@
 [Unit]
 Description=GNU Taler payment system exchange REST API
-AssertPathExists=/run/taler-exchange
+AssertPathExists=/run/taler/exchange-httpd
 Wants=taler-exchange-wirewatch.service taler-exchange-aggregator.service taler-exchange-transfer.service
 After=postgres.service network.target
 PartOf=taler-exchange.service
