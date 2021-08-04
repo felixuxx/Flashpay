@@ -143,15 +143,25 @@ try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
     GNUNET_free (tmpdir);
     return;
   }
-  /* Fix permissions on UNIX domain socket, just
-     in case umask() is not set to enable group write */
-  if (0 != chmod (tmpdir,
-                  S_IRUSR | S_IWUSR | S_IWGRP))
+  /* Fix permissions on client UNIX domain socket,
+     just in case umask() is not set to enable group write */
   {
-    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                              "chmod",
-                              tmpdir);
+    char path[sizeof (esh->my_sa) + 1];
+
+    strncpy (path,
+             (const char *) &esh->my_sa,
+             sizeof (esh->my_sa));
+    path[sizeof (esh->my_sa)] = '\0';
+
+    if (0 != chmod (path,
+                    S_IRUSR | S_IWUSR | S_IWGRP))
+    {
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "chmod",
+                                path);
+    }
   }
+
   GNUNET_free (tmpdir);
   {
     struct GNUNET_MessageHeader hdr = {
