@@ -146,12 +146,12 @@ try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
   /* Fix permissions on client UNIX domain socket,
      just in case umask() is not set to enable group write */
   {
-    char path[sizeof (esh->my_sa) + 1];
+    char path[sizeof (esh->sa.sun_path) + 1];
 
     strncpy (path,
-             (const char *) &esh->my_sa,
-             sizeof (esh->my_sa));
-    path[sizeof (esh->my_sa)] = '\0';
+             esh->my_sa.sun_path,
+             sizeof (esh->my_sa.sun_path));
+    path[sizeof (esh->my_sa.sun_path)] = '\0';
 
     if (0 != chmod (path,
                     S_IRUSR | S_IWUSR | S_IWGRP))

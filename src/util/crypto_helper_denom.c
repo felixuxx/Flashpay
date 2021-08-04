@@ -152,12 +152,21 @@ try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
              sizeof (dh->my_sa));
     path[sizeof (dh->my_sa)] = '\0';
 
-    if (0 != chmod (path,
-                    S_IRUSR | S_IWUSR | S_IWGRP))
     {
-      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                "chmod",
-                                path);
+      char path[sizeof (dh->sa.sun_path) + 1];
+
+      strncpy (path,
+               dh->my_sa.sun_path,
+               sizeof (dh->my_sa.sun_path));
+      path[sizeof (dh->my_sa.sun_path)] = '\0';
+
+      if (0 != chmod (path,
+                      S_IRUSR | S_IWUSR | S_IWGRP))
+      {
+        GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                  "chmod",
+                                  path);
+      }
     }
   }
   GNUNET_free (tmpdir);

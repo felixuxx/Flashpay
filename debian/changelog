@@ -1,3 +1,9 @@
+taler-exchange (0.9.0-25) unstable; urgency=low
+
+  * Socket permissions
+
+ -- Florian Dold <dold@taler.net>  Wed, 04 Aug 2021 20:54:31 +0200
+
 taler-exchange (0.9.0-24) unstable; urgency=low
 
   * Service dependencies.
