@@ -601,7 +601,7 @@ run (void *cls,
   rc = GNUNET_CURL_gnunet_rc_create (ctx);
   if (NULL != account_section)
   {
-    if (0 != strncasecmp ("exchange-accountcredentials-"
+    if (0 != strncasecmp ("exchange-accountcredentials-",
                           account_section,
                           strlen ("exchange-accountcredentials-")))
     {
