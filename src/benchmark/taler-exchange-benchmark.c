@@ -29,6 +29,7 @@
 #include <sys/resource.h>
 #include "taler_util.h"
 #include "taler_signatures.h"
+#include "taler_exchangedb_lib.h"
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include "taler_bank_service.h"
@@ -82,7 +83,7 @@ enum BenchmarkMode
 /**
  * Hold information regarding which bank has the exchange account.
  */
-static struct TALER_BANK_AuthenticationData exchange_bank_account;
+static const struct TALER_EXCHANGEDB_AccountInfo *exchange_bank_account;
 
 /**
  * Configuration of our exchange.
@@ -252,34 +253,11 @@ static struct TALER_TESTING_Command
 cmd_transfer_to_exchange (const char *label,
                           const char *amount)
 {
-  return TALER_TESTING_cmd_admin_add_incoming_retry
-           (TALER_TESTING_cmd_admin_add_incoming (label,
-                                                  amount,
-                                                  &exchange_bank_account,
-                                                  user_payto_uri));
-}
-
-
-/**
- * Decide which exchange account is going to be
- * used to address a wire transfer to.  Used at
- * withdrawal time.
- *
- * @param cls closure
- * @param section section name.
- */
-static void
-pick_exchange_account_cb (void *cls,
-                          const char *section)
-{
-  if (0 == strncasecmp ("exchange-account-",
-                        section,
-                        strlen ("exchange-account-")))
-  {
-    const char **s = cls;
-
-    *s = section;
-  }
+  return TALER_TESTING_cmd_admin_add_incoming_retry (
+    TALER_TESTING_cmd_admin_add_incoming (label,
+                                          amount,
+                                          exchange_bank_account->auth,
+                                          user_payto_uri));
 }
 
 
@@ -520,8 +498,9 @@ launch_fakebank (void *cls)
 
   (void) cls;
   fakebank
-    = TALER_TESTING_run_fakebank (exchange_bank_account.wire_gateway_url,
-                                  currency);
+    = TALER_TESTING_run_fakebank (
+        exchange_bank_account->auth->wire_gateway_url,
+        currency);
   if (NULL == fakebank)
   {
     GNUNET_break (0);
@@ -1054,30 +1033,25 @@ main (int argc,
     return BAD_CONFIG_FILE;
   }
 
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_load_accounts (cfg,
+                                      TALER_EXCHANGEDB_ALO_AUTHDATA
+                                      | TALER_EXCHANGEDB_ALO_CREDIT))
   {
-    const char *bank_details_section;
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Configuration fails to provide exchange bank details\n");
+    GNUNET_free (cfg_filename);
+    return BAD_CONFIG_FILE;
+  }
 
-    GNUNET_CONFIGURATION_iterate_sections (cfg,
-                                           &pick_exchange_account_cb,
-                                           &bank_details_section);
-    if (NULL == bank_details_section)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Missing specification of bank account in configuration\n");
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
-    if (GNUNET_OK !=
-        TALER_BANK_auth_parse_cfg (cfg,
-                                   bank_details_section,
-                                   &exchange_bank_account))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Configuration fails to provide exchange bank details in section `%s'\n",
-                  bank_details_section);
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
+  exchange_bank_account
+    = TALER_EXCHANGEDB_find_account_by_method ("x-taler-bank");
+  if (NULL == exchange_bank_account)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "No bank account for `x-taler-bank` given in configuration\n");
+    GNUNET_free (cfg_filename);
+    return BAD_CONFIG_FILE;
   }
   if ( (MODE_EXCHANGE == mode) || (MODE_BOTH == mode) )
   {
@@ -1156,6 +1130,7 @@ main (int argc,
   result = parallel_benchmark (&run,
                                NULL,
                                cfg_filename);
+  TALER_EXCHANGEDB_unload_accounts ();
   GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_free (cfg_filename);
 

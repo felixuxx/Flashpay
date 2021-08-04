@@ -33,6 +33,7 @@
 #include "taler_signatures.h"
 #include "taler_json_lib.h"
 #include "taler_bank_service.h"
+#include "taler_exchangedb_lib.h"
 #include "taler_fakebank_lib.h"
 #include "taler_testing_lib.h"
 #include "taler_error_codes.h"
@@ -74,7 +75,7 @@ enum BenchmarkMode
 /**
  * Hold information regarding which bank has the exchange account.
  */
-static struct TALER_BANK_AuthenticationData exchange_bank_account;
+static const struct TALER_EXCHANGEDB_AccountInfo *exchange_bank_account;
 
 /**
  * Time snapshot taken right before executing the CMDs.
@@ -250,26 +251,6 @@ print_stats (void)
 
 
 /**
- * Decide which exchange account is going to be used to address a wire
- * transfer to.  Used at withdrawal time.
- *
- * @param cls closure
- * @param section section name.
- */
-static void
-pick_exchange_account_cb (void *cls,
-                          const char *section)
-{
-  const char **s = cls;
-
-  if (0 == strncasecmp ("exchange-account-",
-                        section,
-                        strlen ("exchange-account-")))
-    *s = section;
-}
-
-
-/**
  * Actual commands construction and execution.
  *
  * @param cls unused
@@ -308,7 +289,7 @@ run (void *cls,
           TALER_TESTING_cmd_admin_add_incoming (add_label (
                                                   create_reserve_label),
                                                 total_reserve_amount,
-                                                &exchange_bank_account,
+                                                exchange_bank_account->auth,
                                                 add_label (user_payto_uri)));
   }
   GNUNET_free (total_reserve_amount);
@@ -827,32 +808,29 @@ main (int argc,
       return BAD_CLI_ARG;
     }
   }
-  {
-    const char *bank_details_section;
 
-    GNUNET_CONFIGURATION_iterate_sections (cfg,
-                                           &pick_exchange_account_cb,
-                                           &bank_details_section);
-    if (NULL == bank_details_section)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Missing specification of bank account in configuration\n");
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
-    if (GNUNET_OK !=
-        TALER_BANK_auth_parse_cfg (cfg,
-                                   bank_details_section,
-                                   &exchange_bank_account))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Configuration fails to provide exchange bank details in section `%s'\n",
-                  bank_details_section);
-      GNUNET_free (cfg_filename);
-      return BAD_CONFIG_FILE;
-    }
+  if (GNUNET_OK !=
+      TALER_EXCHANGEDB_load_accounts (cfg,
+                                      TALER_EXCHANGEDB_ALO_AUTHDATA
+                                      | TALER_EXCHANGEDB_ALO_CREDIT))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Configuration fails to provide exchange bank details\n");
+    GNUNET_free (cfg_filename);
+    return BAD_CONFIG_FILE;
+  }
+
+  exchange_bank_account
+    = TALER_EXCHANGEDB_find_account_by_method ("x-taler-bank");
+  if (NULL == exchange_bank_account)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "No bank account for `x-taler-bank` given in configuration\n");
+    GNUNET_free (cfg_filename);
+    return BAD_CONFIG_FILE;
   }
   result = parallel_benchmark ();
+  TALER_EXCHANGEDB_unload_accounts ();
   GNUNET_CONFIGURATION_destroy (cfg);
   GNUNET_free (cfg_filename);
 

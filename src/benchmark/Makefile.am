@@ -18,11 +18,12 @@ taler_bank_benchmark_SOURCES = \
   taler-bank-benchmark.c
 taler_bank_benchmark_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/testing/libtalertesting.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
@@ -33,12 +34,13 @@ taler_exchange_benchmark_SOURCES = \
   taler-exchange-benchmark.c
 taler_exchange_benchmark_LDADD = \
   $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/json/libtalerjson.la \
-  $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   $(top_builddir)/src/testing/libtalertesting.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -lgnunetcurl \
   -lgnunetutil \
