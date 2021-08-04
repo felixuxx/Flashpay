@@ -471,6 +471,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
           if (-1 == dh->sock)
             return; /* give up */
         }
+        /* FIXME: We should not retry infinitely */
         continue; /* try again */
       }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
