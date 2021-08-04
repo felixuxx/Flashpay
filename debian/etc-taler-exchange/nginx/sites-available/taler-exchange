@@ -5,7 +5,7 @@ server {
   #server_name example.com
 
   location /taler-exchange/ {
-     proxy_pass http://unix:/run/taler/exchange/exchange-http.sock;
+     proxy_pass http://unix:/run/taler/exchange-httpd/exchange-http.sock;
      proxy_redirect off;
      proxy_set_header Host $host;
      #proxy_set_header X-Forwarded-Host "example.com";
