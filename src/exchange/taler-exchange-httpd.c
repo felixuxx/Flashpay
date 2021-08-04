@@ -1688,7 +1688,14 @@ main (int argc,
   GNUNET_free (loglev);
   GNUNET_free (logfile);
   if (NULL == cfgfile)
-    cfgfile = GNUNET_strdup (GNUNET_OS_project_data_get ()->user_config_file);
+    cfgfile = GNUNET_CONFIGURATION_default_filename ();
+  if (NULL == cfgfile)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Can't find default configuration file.\n");
+    return EXIT_NOTCONFIGURED;
+  }
+
   TEH_cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_SYSERR ==
       GNUNET_CONFIGURATION_load (TEH_cfg,

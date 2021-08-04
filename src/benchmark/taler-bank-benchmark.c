@@ -775,8 +775,13 @@ main (int argc,
     return BAD_CONFIG_FILE;
   }
   if (NULL == cfg_filename)
-    cfg_filename = GNUNET_strdup (
-      GNUNET_OS_project_data_get ()->user_config_file);
+    cfg_filename = GNUNET_CONFIGURATION_default_filename ();
+  if (NULL == cfg_filename)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Can't find default configuration file.\n");
+    return EXIT_NOTCONFIGURED;
+  }
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_load (cfg,
