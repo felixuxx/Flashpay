@@ -75,6 +75,11 @@ struct ExchangeHttpRequestClosure
    * Cached request handler for this request (once we have found one).
    */
   struct TEH_RequestHandler *rh;
+
+  /**
+   * Request URL (for logging).
+   */
+  const char *url;
 };
 
 
@@ -292,23 +297,46 @@ handle_mhd_completion_callback (void *cls,
                                 enum MHD_RequestTerminationCode toe)
 {
   struct ExchangeHttpRequestClosure *ecls = *con_cls;
+  struct GNUNET_AsyncScopeSave old_scope;
 
-  (void) cls;
-  (void) connection;
-  (void) toe;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Request completed\n");
   if (NULL == ecls)
     return;
+  GNUNET_async_scope_enter (&ecls->async_scope_id,
+                            &old_scope);
+  {
+#ifdef MHD_CONNECTION_INFO_HTTP_STATUS
+    const union MHD_ConnectionInfo *ci;
+    unsigned int http_status = 0;
+
+    ci = MHD_get_connection_info (connection,
+                                  MHD_CONNECTION_INFO_HTTP_STATUS);
+    if (NULL != ci)
+      http_status = ci->http_status;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Request for `%s' completed with HTTP status %u (%d)\n",
+                ecls->url,
+                http_status,
+                toe);
+#else
+    (void) connection;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Request for `%s' completed (%d)\n",
+                ecls->url,
+                toe);
+#endif
+  }
+  (void) cls;
+
   TALER_MHD_parse_post_cleanup_callback (ecls->opaque_post_parsing_context);
-  GNUNET_free (ecls);
-  *con_cls = NULL;
   /* Sanity-check that we didn't leave any transactions hanging */
   /* NOTE: In high-performance production, we could consider
      removing this as it should not be needed and might be costly
      (to be benchmarked). */
   TEH_plugin->preflight (TEH_plugin->cls,
                          TEH_plugin->get_session (TEH_plugin->cls));
+  GNUNET_free (ecls);
+  *con_cls = NULL;
+  GNUNET_async_scope_restore (&old_scope);
 }
 
 
@@ -907,6 +935,7 @@ handle_mhd_request (void *cls,
     /* We're in a new async scope! */
     ecls = *con_cls = GNUNET_new (struct ExchangeHttpRequestClosure);
     GNUNET_async_scope_fresh (&ecls->async_scope_id);
+    ecls->url = url;
     /* We only read the correlation ID on the first callback for every client */
     correlation_id = MHD_lookup_connection_value (connection,
                                                   MHD_HEADER_KIND,
