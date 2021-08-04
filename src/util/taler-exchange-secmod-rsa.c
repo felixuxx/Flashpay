@@ -1682,9 +1682,12 @@ load_denominations (void *cls,
   struct LoadContext *ctx = cls;
   struct Denomination *denom;
 
-  if (0 != strncasecmp (denomination_alias,
-                        "coin_",
-                        strlen ("coin_")))
+  if ( (0 != strncasecmp (denomination_alias,
+                          "coin_",
+                          strlen ("coin_"))) &&
+       (0 != strncasecmp (denomination_alias,
+                          "coin-",
+                          strlen ("coin-"))) )
     return; /* not a denomination type definition */
   denom = GNUNET_new (struct Denomination);
   if (GNUNET_OK !=
