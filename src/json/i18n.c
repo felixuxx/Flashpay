@@ -80,7 +80,9 @@ TALER_JSON_check_i18n (const json_t *i18n)
     if (! json_is_string (member))
       return false;
     /* Field name must be either of format "en_UK"
-       or just "en"; we do not care about capitalization */
+       or just "en"; we do not care about capitalization;
+       for syntax, see GNU Gettext manual, including
+       appendix A for rare language codes. */
     switch (strlen (field))
     {
     case 0:
@@ -105,6 +107,20 @@ TALER_JSON_check_i18n (const json_t *i18n)
       if (! isalpha (field[3]))
         return false;
       if (! isalpha (field[4]))
+        return false;
+      break;
+    case 6:
+      if (! isalpha (field[0]))
+        return false;
+      if (! isalpha (field[1]))
+        return false;
+      if ('_' != field[2])
+        return false;
+      if (! isalpha (field[3]))
+        return false;
+      if (! isalpha (field[4]))
+        return false;
+      if (! isalpha (field[5]))
         return false;
       break;
     default:
