@@ -434,6 +434,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
 {
   char buf[UINT16_MAX];
   ssize_t ret;
+  unsigned int retry_limit = 10;
   const struct GNUNET_MessageHeader *hdr
     = (const struct GNUNET_MessageHeader *) buf;
   int flag = MSG_DONTWAIT;
@@ -462,11 +463,18 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
           GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                       "Restarting connection to RSA helper, did not come up properly\n");
           do_disconnect (dh);
+          if (0 == retry_limit)
+            return; /* give up */
           try_connect (dh);
           if (-1 == dh->sock)
             return; /* give up */
+          retry_limit--;
+          flag = MSG_DONTWAIT;
         }
-        flag = 0; /* syscall must be non-blocking this time */
+        else
+        {
+          flag = 0; /* syscall must be non-blocking this time */
+        }
         continue; /* try again */
       }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
@@ -474,7 +482,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
       do_disconnect (dh);
       return;
     }
-
+    retry_limit = 10;
     flag = MSG_DONTWAIT;
     if ( (ret < sizeof (struct GNUNET_MessageHeader)) ||
          (ret != ntohs (hdr->size)) )
