@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2020 Taler Systems SA
+  Copyright (C) 2017-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -650,8 +650,9 @@ run (void *cls,
   }
   if ( (NULL == auth.wire_gateway_url) ||
        (0 == strlen (auth.wire_gateway_url)) ||
-       (0 != strcasecmp ("http",
-                         auth.wire_gateway_url)) )
+       (0 != strncasecmp ("http",
+                          auth.wire_gateway_url,
+                          strlen ("http"))) )
   {
     fprintf (stderr,
              "Error: Invalid wire gateway URL `%s' configured.\n",
