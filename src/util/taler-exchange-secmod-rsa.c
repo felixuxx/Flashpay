@@ -883,8 +883,9 @@ setup_key (struct DenominationKey *dk,
   }
   GNUNET_free (buf);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Setup fresh private key %s in `%s'\n",
+              "Setup fresh private key %s at %s in `%s'\n",
               GNUNET_h2s (&dk->h_denom_pub),
+              GNUNET_STRINGS_absolute_time_to_string (dk->anchor),
               dk->filename);
   dk->denom_priv.rsa_private_key = priv;
   dk->denom_pub.rsa_public_key = pub;

@@ -145,28 +145,19 @@ try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
   /* Fix permissions on client UNIX domain socket,
      just in case umask() is not set to enable group write */
   {
-    char path[sizeof (dh->my_sa) + 1];
+    char path[sizeof (dh->my_sa.sun_path) + 1];
 
     strncpy (path,
-             (const char *) &dh->my_sa,
-             sizeof (dh->my_sa));
-    path[sizeof (dh->my_sa)] = '\0';
+             dh->my_sa.sun_path,
+             sizeof (path) - 1);
+    path[sizeof (dh->my_sa.sun_path)] = '\0';
 
+    if (0 != chmod (path,
+                    S_IRUSR | S_IWUSR | S_IWGRP))
     {
-      char path[sizeof (dh->sa.sun_path) + 1];
-
-      strncpy (path,
-               dh->my_sa.sun_path,
-               sizeof (dh->my_sa.sun_path));
-      path[sizeof (dh->my_sa.sun_path)] = '\0';
-
-      if (0 != chmod (path,
-                      S_IRUSR | S_IWUSR | S_IWGRP))
-      {
-        GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                  "chmod",
-                                  path);
-      }
+      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
+                                "chmod",
+                                path);
     }
   }
   GNUNET_free (tmpdir);
@@ -445,6 +436,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
   ssize_t ret;
   const struct GNUNET_MessageHeader *hdr
     = (const struct GNUNET_MessageHeader *) buf;
+  int flag = MSG_DONTWAIT;
 
   try_connect (dh);
   if (-1 == dh->sock)
@@ -454,11 +446,14 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
     ret = recv (dh->sock,
                 buf,
                 sizeof (buf),
-                MSG_DONTWAIT);
+                flag);
     if (ret < 0)
     {
       if (EAGAIN == errno)
       {
+        /* EAGAIN should only happen if we did not
+           already go through this loop */
+        GNUNET_assert (0 != flag);
         if (dh->synced)
           break;
         if (! await_read_ready (dh))
@@ -471,7 +466,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
           if (-1 == dh->sock)
             return; /* give up */
         }
-        /* FIXME: We should not retry infinitely */
+        flag = 0; /* syscall must be non-blocking this time */
         continue; /* try again */
       }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
@@ -480,6 +475,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
       return;
     }
 
+    flag = MSG_DONTWAIT;
     if ( (ret < sizeof (struct GNUNET_MessageHeader)) ||
          (ret != ntohs (hdr->size)) )
     {

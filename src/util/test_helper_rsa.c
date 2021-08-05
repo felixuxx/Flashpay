@@ -146,6 +146,7 @@ key_cb (void *cls,
 
     return;
   }
+
   GNUNET_break (NULL != denom_pub);
   for (unsigned int i = 0; i<MAX_KEYS; i++)
     if (! keys[i].valid)
@@ -253,6 +254,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
     {
       void *buf;
       size_t buf_size;
+
       GNUNET_assert (GNUNET_YES ==
                      TALER_rsa_blind (&m_hash,
                                       &bks,

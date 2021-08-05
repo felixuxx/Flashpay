@@ -146,11 +146,11 @@ try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
   /* Fix permissions on client UNIX domain socket,
      just in case umask() is not set to enable group write */
   {
-    char path[sizeof (esh->sa.sun_path) + 1];
+    char path[sizeof (esh->my_sa.sun_path) + 1];
 
     strncpy (path,
              esh->my_sa.sun_path,
-             sizeof (esh->my_sa.sun_path));
+             sizeof (path) - 1);
     path[sizeof (esh->my_sa.sun_path)] = '\0';
 
     if (0 != chmod (path,
@@ -393,6 +393,7 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
   ssize_t ret;
   const struct GNUNET_MessageHeader *hdr
     = (const struct GNUNET_MessageHeader *) buf;
+  int flag = MSG_DONTWAIT;
 
   try_connect (esh);
   if (-1 == esh->sock)
@@ -402,11 +403,12 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
     ret = recv (esh->sock,
                 buf,
                 sizeof (buf),
-                MSG_DONTWAIT);
+                flag);
     if (ret < 0)
     {
       if (EAGAIN == errno)
       {
+        GNUNET_assert (0 != flag);
         if (esh->synced)
           break;
         if (! await_read_ready (esh))
@@ -419,6 +421,7 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
           if (-1 == esh->sock)
             return; /* give up */
         }
+        flag = 0; /* syscall must be non-blocking this time */
         continue; /* try again */
       }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
@@ -427,6 +430,7 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
       return;
     }
 
+    flag = MSG_DONTWAIT;
     if ( (ret < sizeof (struct GNUNET_MessageHeader)) ||
          (ret != ntohs (hdr->size)) )
     {
