@@ -49,10 +49,10 @@ configure)
     adduser --quiet ${_AGGRUSERNAME} ${_DBGROUPNAME}
   fi
 
-  if ! dpkg-statoverride --list /etc/taler/secrets/exchange-accounts.secret.conf >/dev/null 2>&1; then
+  if ! dpkg-statoverride --list /etc/taler/secrets/exchange-accountcredentials.secret.conf >/dev/null 2>&1; then
     dpkg-statoverride --add --update \
       ${_WIREUSERNAME} root 460 \
-      /etc/taler/secrets/exchange-accounts.secret.conf
+      /etc/taler/secrets/exchange-accountcredentials.secret.conf
   fi
 
   if ! dpkg-statoverride --list /etc/taler/secrets/exchange-db.secret.conf >/dev/null 2>&1; then
