@@ -681,16 +681,24 @@ handle_get_management (const struct TEH_RequestHandler *rh,
                        struct MHD_Connection *connection,
                        const char *const args[1])
 {
-  if ( (NULL == args[0]) ||
-       (0 != strcmp (args[0],
-                     "keys")) ||
-       (NULL != args[1]) )
+  if ( (NULL != args[0]) &&
+       (0 == strcmp (args[0],
+                     "keys")) &&
+       (NULL == args[1]) )
   {
-    GNUNET_break_op (0);
-    return r404 (connection, "/management/*");
+    return TEH_keys_management_get_keys_handler (rh,
+                                                 connection);
   }
-  return TEH_keys_management_get_handler (rh,
-                                          connection);
+  if ( (NULL != args[0]) &&
+       (0 == strcmp (args[0],
+                     "wire")) &&
+       (NULL == args[1]) )
+  {
+    return TEH_wire_management_get_wire_handler (rh,
+                                                 connection);
+  }
+  GNUNET_break_op (0);
+  return r404 (connection, "/management/*");
 }
 
 

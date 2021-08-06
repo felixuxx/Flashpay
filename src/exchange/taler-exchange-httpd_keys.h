@@ -344,8 +344,8 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
  * @return MHD result code
  */
 MHD_RESULT
-TEH_keys_management_get_handler (const struct TEH_RequestHandler *rh,
-                                 struct MHD_Connection *connection);
+TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
+                                      struct MHD_Connection *connection);
 
 
 /**

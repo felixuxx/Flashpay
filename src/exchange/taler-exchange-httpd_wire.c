@@ -376,4 +376,16 @@ TEH_handler_wire (const struct TEH_RequestHandler *rh,
 }
 
 
+MHD_RESULT
+TEH_wire_management_get_wire_handler (const struct TEH_RequestHandler *rh,
+                                      struct MHD_Connection *connection)
+{
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_string ("foo",
+                             "bar"));
+}
+
+
 /* end of taler-exchange-httpd_wire.c */

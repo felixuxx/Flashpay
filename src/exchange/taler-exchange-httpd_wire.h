@@ -43,6 +43,19 @@ TEH_WIRE_done (void);
 
 
 /**
+ * Function to call to handle requests to GET "/management/wire" by sending
+ * back our current wire status.
+ *
+ * @param rh context of the handler
+ * @param connection the MHD connection to handle
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_wire_management_get_wire_handler (const struct TEH_RequestHandler *rh,
+                                      struct MHD_Connection *connection);
+
+
+/**
  * Something changed in the database. Rebuild the wire replies.  This function
  * should be called if the exchange learns about a new signature from our
  * master key.
