@@ -140,7 +140,7 @@ add_wire (void *cls,
 
 
 MHD_RESULT
-TEH_handler_management_denominations_wire (
+TEH_handler_management_post_wire (
   struct MHD_Connection *connection,
   const json_t *root)
 {

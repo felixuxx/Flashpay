@@ -97,27 +97,27 @@ TEH_handler_management_post_keys (
 
 
 /**
- * Handle a "/management/wire" request.
+ * Handle a POST "/management/wire" request.
  *
  * @param connection the MHD connection to handle
  * @param root uploaded JSON data
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_management_denominations_wire (
+TEH_handler_management_post_wire (
   struct MHD_Connection *connection,
   const json_t *root);
 
 
 /**
- * Handle a "/management/wire/disable" request.
+ * Handle a POST "/management/wire/disable" request.
  *
  * @param connection the MHD connection to handle
  * @param root uploaded JSON data
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_management_denominations_wire_disable (
+TEH_handler_management_post_wire_disable (
   struct MHD_Connection *connection,
   const json_t *root);
 

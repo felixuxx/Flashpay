@@ -640,8 +640,8 @@ handle_post_management (const struct TEH_RequestHandler *rh,
                    "wire"))
   {
     if (NULL == args[1])
-      return TEH_handler_management_denominations_wire (connection,
-                                                        root);
+      return TEH_handler_management_post_wire (connection,
+                                               root);
     if ( (0 != strcmp (args[1],
                        "disable")) ||
          (NULL != args[2]) )
@@ -649,8 +649,8 @@ handle_post_management (const struct TEH_RequestHandler *rh,
       GNUNET_break_op (0);
       return r404 (connection, "/management/wire/disable");
     }
-    return TEH_handler_management_denominations_wire_disable (connection,
-                                                              root);
+    return TEH_handler_management_post_wire_disable (connection,
+                                                     root);
   }
   if (0 == strcmp (args[0],
                    "wire-fee"))

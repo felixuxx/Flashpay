@@ -134,7 +134,7 @@ del_wire (void *cls,
 
 
 MHD_RESULT
-TEH_handler_management_denominations_wire_disable (
+TEH_handler_management_post_wire_disable (
   struct MHD_Connection *connection,
   const json_t *root)
 {
