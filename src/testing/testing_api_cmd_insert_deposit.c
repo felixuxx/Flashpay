@@ -81,8 +81,27 @@ struct InsertDepositState
 static void
 fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
-  memset (issue, 0, sizeof (struct
-                            TALER_EXCHANGEDB_DenominationKeyInformationP));
+  struct GNUNET_TIME_Absolute now;
+
+  memset (issue,
+          0,
+          sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
+  issue->properties.start
+    = GNUNET_TIME_absolute_hton (now);
+  issue->properties.expire_withdraw
+    = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_absolute_add (now,
+                                  GNUNET_TIME_UNIT_MINUTES));
+  issue->properties.expire_deposit
+    = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_absolute_add (now,
+                                  GNUNET_TIME_UNIT_HOURS));
+  issue->properties.expire_legal
+    = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_absolute_add (now,
+                                  GNUNET_TIME_UNIT_DAYS));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:1",
                                              &issue->properties.value));

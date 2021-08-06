@@ -2753,6 +2753,14 @@ postgres_insert_denomination_info (
   };
 
   (void) cls;
+  GNUNET_assert (0 != GNUNET_TIME_absolute_ntoh (
+                   issue->properties.start).abs_value_us);
+  GNUNET_assert (0 != GNUNET_TIME_absolute_ntoh (
+                   issue->properties.expire_withdraw).abs_value_us);
+  GNUNET_assert (0 != GNUNET_TIME_absolute_ntoh (
+                   issue->properties.expire_deposit).abs_value_us);
+  GNUNET_assert (0 != GNUNET_TIME_absolute_ntoh (
+                   issue->properties.expire_legal).abs_value_us);
   /* check fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,

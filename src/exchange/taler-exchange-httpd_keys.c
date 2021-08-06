@@ -980,6 +980,16 @@ denomination_info_cb (
   struct TEH_KeyStateHandle *ksh = cls;
   struct TEH_DenominationKey *dk;
 
+  if ( (0 == meta->start.abs_value_us) ||
+       (0 == meta->expire_withdraw.abs_value_us) ||
+       (0 == meta->expire_deposit.abs_value_us) ||
+       (0 == meta->expire_legal.abs_value_us) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Database contains invalid denomination key %s\n",
+                GNUNET_h2s (h_denom_pub));
+    return;
+  }
   dk = GNUNET_new (struct TEH_DenominationKey);
   dk->denom_pub.rsa_public_key
     = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->rsa_public_key);
