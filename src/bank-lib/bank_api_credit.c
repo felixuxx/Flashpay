@@ -167,6 +167,9 @@ handle_credit_history_finished (void *cls,
     response_code = MHD_HTTP_NO_CONTENT; /* signal end of list */
     ec = TALER_EC_NONE;
     break;
+  case MHD_HTTP_NO_CONTENT:
+    ec = TALER_EC_NONE;
+    break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the bank is buggy
        (or API version conflict); just pass JSON reply to the application */
