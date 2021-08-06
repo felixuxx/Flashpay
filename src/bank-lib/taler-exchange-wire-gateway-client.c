@@ -180,7 +180,8 @@ credit_history_cb (void *cls,
   {
     if ( (MHD_HTTP_NO_CONTENT != http_status) ||
          (TALER_EC_NONE != ec) ||
-         (NULL == details) )
+         ( (MHD_HTTP_NO_CONTENT != http_status) &&
+           (NULL == details) ) )
     {
       if (0 == http_status)
       {
@@ -293,7 +294,8 @@ debit_history_cb (void *cls,
   {
     if ( (MHD_HTTP_NO_CONTENT != http_status) ||
          (TALER_EC_NONE != ec) ||
-         (NULL == details) )
+         ( (MHD_HTTP_NO_CONTENT != http_status) &&
+           (NULL == details) ) )
     {
       if (0 == http_status)
       {
