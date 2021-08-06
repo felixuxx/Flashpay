@@ -1,3 +1,9 @@
+taler-exchange (0.9.0-29) unstable; urgency=low
+
+  * Minor fix in gateway client.
+
+ -- Florian Dold <dold@taler.net>  Fri, 06 Aug 2021 17:17:46 +0200
+
 taler-exchange (0.9.0-28) unstable; urgency=low
 
   * Service and configuration fixes.
