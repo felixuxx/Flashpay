@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_management_wire.c
+ * @file taler-exchange-httpd_management_wire_enable.c
  * @brief Handle request to add wire account.
  * @author Christian Grothoff
  */
