@@ -1,3 +1,9 @@
+taler-exchange (0.9.0-31) unstable; urgency=low
+
+  * Fix dependencies in service definition.
+
+ -- Florian Dold <dold@taler.net>  Sat, 07 Aug 2021 23:23:21 +0200
+
 taler-exchange (0.9.0-30) unstable; urgency=low
 
   * Fix dependencies in service definition.
