@@ -1079,9 +1079,7 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
     exchange->state = MHS_INIT;
   }
   if ( (! force_download) &&
-       (! GNUNET_TIME_relative_is_zero (
-          GNUNET_TIME_absolute_get_remaining (
-            exchange->key_data_expiration)) ) )
+       (GNUNET_TIME_absolute_is_future (exchange->key_data_expiration)) )
     return exchange->key_data_expiration;
   if (NULL == exchange->retry_task)
     exchange->retry_task = GNUNET_SCHEDULER_add_now (&request_keys,
