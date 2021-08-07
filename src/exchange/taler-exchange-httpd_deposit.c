@@ -376,6 +376,37 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       return MHD_YES; /* failure */
     }
   }
+  /* validate merchant's wire details (as far as we can) */
+  {
+    char *payto;
+    char *emsg;
+
+    payto = TALER_JSON_wire_to_payto (wire);
+    if (NULL == payto)
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "wire");
+    }
+    emsg = TALER_payto_validate (payto);
+    GNUNET_free (payto);
+    if (NULL != emsg)
+    {
+      MHD_RESULT ret;
+
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_BAD_REQUEST,
+                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                        emsg);
+      GNUNET_free (emsg);
+      return ret;
+    }
+  }
   deposit.receiver_wire_account = wire;
   if (deposit.refund_deadline.abs_value_us > deposit.wire_deadline.abs_value_us)
   {
