@@ -304,8 +304,8 @@ struct TALER_BANK_CreditDetails
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-typedef int
-(*TALER_BANK_CreditHistoryCallback) (
+typedef enum GNUNET_GenericReturnValue
+(*TALER_BANK_CreditHistoryCallback)(
   void *cls,
   unsigned int http_status,
   enum TALER_ErrorCode ec,
@@ -414,8 +414,8 @@ struct TALER_BANK_DebitDetails
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-typedef int
-(*TALER_BANK_DebitHistoryCallback) (
+typedef enum GNUNET_GenericReturnValue
+(*TALER_BANK_DebitHistoryCallback)(
   void *cls,
   unsigned int http_status,
   enum TALER_ErrorCode ec,

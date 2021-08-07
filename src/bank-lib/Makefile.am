@@ -69,3 +69,13 @@ libtalerfakebank_la_LIBADD = \
   -lmicrohttpd \
   -lpthread \
   $(XLIB)
+
+check_SCRIPTS = \
+  test_bank.sh
+
+TESTS = \
+  $(check_SCRIPTS)
+
+EXTRA_DIST = \
+  $(check_SCRIPTS) \
+  test_bank.conf

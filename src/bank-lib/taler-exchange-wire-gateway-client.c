@@ -64,7 +64,7 @@ static char *account_section;
 /**
  * Starting row.
  */
-static unsigned long long start_row;
+static unsigned long long start_row = UINT64_MAX;
 
 /**
  * Authentication data.
@@ -165,7 +165,7 @@ do_shutdown (void *cls)
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to
  *         abort iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 credit_history_cb (void *cls,
                    unsigned int http_status,
                    enum TALER_ErrorCode ec,
@@ -279,7 +279,7 @@ execute_credit_history (void)
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 debit_history_cb (void *cls,
                   unsigned int http_status,
                   enum TALER_ErrorCode ec,
@@ -435,7 +435,7 @@ execute_wire_transfer (void)
     return;
   }
 
-  // See if subject was given as a payto-parameter.
+  /* See if subject was given as a payto-parameter. */
   if (NULL == subject)
     subject = TALER_payto_get_subject (credit_account);
   if (NULL != subject)
@@ -448,10 +448,9 @@ execute_wire_transfer (void)
     {
       fprintf (stderr,
                "Error: wire transfer subject must be a WTID\n");
+      GNUNET_SCHEDULER_shutdown ();
       return;
     }
-    GNUNET_SCHEDULER_shutdown ();
-    return;
   }
   else
   {
@@ -563,7 +562,7 @@ execute_admin_transfer (void)
                                       &auth,
                                       &reserve_pub,
                                       &amount,
-                                      credit_account,
+                                      debit_account,
                                       &res_cb,
                                       NULL);
   if (NULL == op)

@@ -1487,7 +1487,18 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     json_t *trans;
     char *credit_payto;
 
-    GNUNET_assert (T_DEBIT == pos->type);
+    if (T_DEBIT != pos->type)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Unexpected CREDIT transaction #%llu for account `%s'\n",
+                  (unsigned long long) pos->row_id,
+                  account);
+      if (0 > ha.delta)
+        pos = pos->prev_in;
+      if (0 < ha.delta)
+        pos = pos->next_in;
+      continue;
+    }
     GNUNET_asprintf (&credit_payto,
                      "payto://x-taler-bank/localhost/%s",
                      pos->credit_account->account_name);
@@ -1635,7 +1646,18 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     json_t *trans;
     char *debit_payto;
 
-    GNUNET_assert (T_CREDIT == pos->type);
+    if (T_CREDIT != pos->type)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Unexpected DEBIT transaction #%llu for account `%s'\n",
+                  (unsigned long long) pos->row_id,
+                  account);
+      if (0 > ha.delta)
+        pos = pos->prev_in;
+      if (0 < ha.delta)
+        pos = pos->next_in;
+      continue;
+    }
     GNUNET_asprintf (&debit_payto,
                      "payto://x-taler-bank/localhost/%s",
                      pos->debit_account->account_name);

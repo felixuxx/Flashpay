@@ -184,6 +184,21 @@ TALER_BANK_admin_add_incoming (
   json_t *admin_obj;
   CURL *eh;
 
+  if (NULL == debit_account)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (NULL == reserve_pub)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  if (NULL == amount)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
   admin_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("reserve_pub",
                                 reserve_pub),
