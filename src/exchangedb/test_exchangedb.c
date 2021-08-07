@@ -782,7 +782,7 @@ cb_wt_check (void *cls,
                                      &merchant_pub_wt));
   GNUNET_assert (0 == strcmp (json_string_value (json_object_get (wire,
                                                                   "payto_uri")),
-                              "payto://sepa/DE67830654080004822650"));
+                              "payto://iban/DE67830654080004822650?receiver-name=test"));
   GNUNET_assert (0 == GNUNET_memcmp (h_wire,
                                      &h_wire_wt));
   GNUNET_assert (exec_time.abs_value_us == wire_out_date.abs_value_us);
@@ -1570,7 +1570,7 @@ run (void *cls)
   deposit.coin.denom_sig.rsa_signature = NULL;
   wire = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("payto_uri",
-                             "payto://sepa/DE67830654080004822650"),
+                             "payto://iban/DE67830654080004822650?receiver-name=Test"),
     GNUNET_JSON_pack_string ("salt",
                              "this-is-a-salt-value"));
   ZR_BLK (&cbc);
