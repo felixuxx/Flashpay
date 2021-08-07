@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019-2020 Taler Systems SA
+  Copyright (C) 2019-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -29,14 +29,16 @@
 
 
 /**
- * Extract the subject value from the URI parameters.
+ * Extract the value under @a key from the URI parameters.
  *
  * @param payto_uri the URL to parse
- * @return NULL if the subject parameter is not found.
+ * @param search_key key to look for, including "="
+ * @return NULL if the @a key parameter is not found.
  *         The caller should free the returned value.
  */
-char *
-TALER_payto_get_subject (const char *payto_uri)
+static char *
+payto_get_key (const char *payto_uri,
+               const char *search_key)
 {
   const char *key;
   const char *value_start;
@@ -49,8 +51,8 @@ TALER_payto_get_subject (const char *payto_uri)
 
   do {
     if (0 == strncasecmp (++key,
-                          "subject",
-                          strlen ("subject")))
+                          search_key,
+                          strlen (search_key)))
     {
       value_start = strchr (key,
                             (unsigned char) '=');
@@ -65,6 +67,21 @@ TALER_payto_get_subject (const char *payto_uri)
   } while ( (key = strchr (key,
                            (unsigned char) '&')) );
   return NULL;
+}
+
+
+/**
+ * Extract the subject value from the URI parameters.
+ *
+ * @param payto_uri the URL to parse
+ * @return NULL if the subject parameter is not found.
+ *         The caller should free the returned value.
+ */
+char *
+TALER_payto_get_subject (const char *payto_uri)
+{
+  return payto_get_key (payto_uri,
+                        "subject=");
 }
 
 
@@ -432,7 +449,7 @@ validate_iban (const char *iban)
  * Validate payto://iban/ account URL (only account information,
  * wire subject and amount are ignored).
  *
- * @param account_url URL to parse
+ * @param account_url payto URL to parse
  * @return NULL on success, otherwise an error message
  *      to be freed by the caller
  */
@@ -470,6 +487,15 @@ validate_payto_iban (const char *account_url)
     return err;
   }
   GNUNET_free (result);
+  {
+    char *target;
+
+    target = payto_get_key (account_url,
+                            "receiver-name=");
+    if (NULL == target)
+      return GNUNET_strdup ("'receiver-name' parameter missing");
+    GNUNET_free (target);
+  }
   return NULL;
 }
 
