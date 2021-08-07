@@ -1,7 +1,7 @@
 [Unit]
 Description=GNU Taler payment system exchange wirewatch service
 After=network.target
-PartOf=taler-exchange.service
+PartOf=taler-exchange.target
 
 [Service]
 User=taler-exchange-wire

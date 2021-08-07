@@ -1,7 +1,7 @@
 [Unit]
 Description=Taler Exchange Transfer Service
 After=network.target
-PartOf=taler-exchange.service
+PartOf=taler-exchange.target
 
 [Service]
 User=taler-exchange-wire

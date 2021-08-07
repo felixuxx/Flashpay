@@ -1,7 +1,7 @@
 [Unit]
 Description=GNU Taler payment system exchange EdDSA security module
 AssertPathExists=/run/taler/exchange-secmod-eddsa
-PartOf=taler-exchange.service
+PartOf=taler-exchange.target
 
 [Service]
 User=taler-exchange-secmod-eddsa

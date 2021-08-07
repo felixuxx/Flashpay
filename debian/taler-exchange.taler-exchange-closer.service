@@ -1,6 +1,6 @@
 [Unit]
 Description=GNU Taler payment system exchange closer service
-PartOf=taler-exchange.service
+PartOf=taler-exchange.target
 
 [Service]
 User=taler-exchange-closer
