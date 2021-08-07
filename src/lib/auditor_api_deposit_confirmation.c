@@ -227,7 +227,8 @@ verify_signatures (const struct GNUNET_HashCode *h_wire,
     TALER_LOG_WARNING ("Invalid signature on exchange signing key!\n");
     return GNUNET_SYSERR;
   }
-  if (0 == GNUNET_TIME_absolute_get_remaining (ep_end).rel_value_us)
+  if (GNUNET_TIME_relative_is_zero (
+        GNUNET_TIME_absolute_get_remaining (ep_end)))
   {
     GNUNET_break (0);
     TALER_LOG_WARNING ("Exchange signing key is no longer valid!\n");
