@@ -398,19 +398,19 @@ handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
  * Wait until the socket is ready to read.
  *
  * @param dh helper to wait for
- * @return false on timeout (after 5s)
+ * @return false on timeout (after 1s)
  */
 static bool
 await_read_ready (struct TALER_CRYPTO_DenominationHelper *dh)
 {
-  /* wait for reply with 5s timeout */
+  /* wait for reply with 1s timeout */
   struct pollfd pfd = {
     .fd = dh->sock,
     .events = POLLIN
   };
   sigset_t sigmask;
   struct timespec ts = {
-    .tv_sec = 5
+    .tv_sec = 1
   };
   int ret;
 
@@ -434,7 +434,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
 {
   char buf[UINT16_MAX];
   ssize_t ret;
-  unsigned int retry_limit = 10;
+  unsigned int retry_limit = 3;
   const struct GNUNET_MessageHeader *hdr
     = (const struct GNUNET_MessageHeader *) buf;
   int flag = MSG_DONTWAIT;
