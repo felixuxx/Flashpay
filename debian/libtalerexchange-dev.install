@@ -11,6 +11,9 @@ usr/bin/taler-bank-manage-testing
 # Headers
 usr/include/taler/*
 
+# Plain .so symlinks
+usr/lib/*/libtaler*.so
+
 # Testing libraries
 usr/lib/*/libtalertesting.so.*
 usr/lib/*/libtalerfakebank.so.*
