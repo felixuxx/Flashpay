@@ -1,5 +1,5 @@
 usr/bin/taler-config
-usr/lib/*/libtaler*
+usr/lib/*/libtaler*.so.*
 usr/share/taler/config.d/paths.conf
 usr/share/taler/config.d/taler.conf
 debian/etc-libtalerexchange/* etc/
