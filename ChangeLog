@@ -1,3 +1,17 @@
+Sun 08 Aug 2021 08:36:21 PM CEST
+    Improved code to use new GNUNET_JSON_PACK API.
+    Improved code to use new GNUNET_TIME APIs.
+    Improved configuration structure with clearer separation
+    of concerns. Crated proper Debian package.
+    Added various APIs to improve input validation (mostly
+    for the Taler merchant). Renamed taler-wire-gateway-client
+    to taler-exchange-wire-gateway-client for consistency.
+    Strengthened payto:// validation logic.  Fixed bug where
+    suspended /keys requests could eat up all the sockets.
+    Force flushing /keys response if set of auditors changes.
+    Fixed /keys cherry-picking logic.
+    Releasing GNU Taler 0.8.2. -CG
+
 Mon 05 Apr 2021 07:58:09 PM CEST
     Add Gettext support (chiefly for error code hints). -CG
 
