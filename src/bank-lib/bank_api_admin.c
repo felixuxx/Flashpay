@@ -130,7 +130,7 @@ handle_admin_add_incoming_finished (void *cls,
     ec = TALER_JSON_get_error_code (j);
     break;
   case MHD_HTTP_CONFLICT:
-    /* Nothign to verify, we used the same wire subject
+    /* Nothing to verify, we used the same wire subject
        twice? */
     ec = TALER_JSON_get_error_code (j);
     break;
