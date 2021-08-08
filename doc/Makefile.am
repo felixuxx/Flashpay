@@ -4,7 +4,7 @@ SUBDIRS = . doxygen
 
 man_MANS = \
   prebuilt/man/taler.conf.5            \
-  prebuilt/man/taler-config-generate.1     \
+  prebuilt/man/taler-config.1            \
   prebuilt/man/taler-auditor.1             \
   prebuilt/man/taler-auditor-dbinit.1      \
   prebuilt/man/taler-auditor-exchange.1     \
