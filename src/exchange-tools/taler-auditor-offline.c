@@ -1454,14 +1454,14 @@ main (int argc,
   };
   enum GNUNET_GenericReturnValue ret;
 
-  /* force linker to link against libtalerutil; if we do
-     not do this, the linker may "optimize" libtalerutil
-     away and skip #TALER_OS_init(), which we do need */
-  (void) TALER_project_data_default ();
   if (GNUNET_OK !=
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
     return EXIT_INVALIDARGUMENT;
+  /* force linker to link against libtalerutil; if we do
+     not do this, the linker may "optimize" libtalerutil
+     away and skip #TALER_OS_init(), which we do need */
+  TALER_OS_init ();
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-auditor-offline",

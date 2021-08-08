@@ -593,6 +593,7 @@ main (int argc,
     GNUNET_GETOPT_OPTION_END
   };
 
+  TALER_OS_init ();
   TALER_gcrypt_init (); /* must trigger initialization manually at this point! */
   {
     int ret;

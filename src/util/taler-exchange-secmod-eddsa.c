@@ -1680,7 +1680,7 @@ main (int argc,
   /* force linker to link against libtalerutil; if we do
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
-  GNUNET_OS_init (TALER_project_data_default ());
+  TALER_OS_init ();
   now = now_tmp = GNUNET_TIME_absolute_get ();
   ret = GNUNET_PROGRAM_run (argc, argv,
                             "taler-exchange-secmod-eddsa",

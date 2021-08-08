@@ -824,7 +824,7 @@ make_admin_transfer (
   if (NULL != t)
   {
     /* duplicate reserve public key not allowed */
-    GNUNET_break (0);
+    GNUNET_break_op (0);
     return GNUNET_NO;
   }
 
@@ -1074,7 +1074,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     GNUNET_free (debit);
     if (GNUNET_OK != ret)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Reserve public key not unique\n");
       return TALER_MHD_reply_with_error (
         connection,

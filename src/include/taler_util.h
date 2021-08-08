@@ -175,6 +175,13 @@ TALER_project_data_default (void);
 
 
 /**
+ * Initialize libtalerutil.
+ */
+void
+TALER_OS_init (void);
+
+
+/**
  * URL-encode a string according to rfc3986.
  *
  * @param s string to encode

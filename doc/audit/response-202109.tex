@@ -4,7 +4,7 @@
 %\topmargin=-0.2in
 
 \usepackage[ansinew]{inputenc}
-\usepackage{makeidx,amsmath,amssymb,exscale,multicol,epsfig,graphics}
+\usepackage{makeidx,amsmath,amssymb,exscale,multicol,epsfig,graphics,url}
 
 \begin{document}
 \pagestyle{headings}
@@ -138,6 +138,12 @@ use callbacks {\em excessively}.  Rewriting the code in another language
 may indeed make this part easier to understand, alas would have other
 disadvantages as pointed out previously.
 
+{\bf Update:} We introduced additional functions to replace
+variadic calls to functions that cannot be type-checked by
+the compiler (like libjansson's {\tt json\_pack()}) with
+type-safe versions (like the new {\tt GNUNET\_JSON\_PACK()}).
+
+
 \subsection{Initializing structs with memset}
 
 Using {\tt memset()} first prevents compiler (or valgrind) warnings about
@@ -241,6 +247,11 @@ the interaction with offline key signing mechanism.  The remaining disk accesses
 quite fundamental configuration data (which ports to bind to, configuration to
 access the database, etc.), and of course the program logic itself.
 
+{\bf Update:} We have also restructured the configuration such that only
+the {\tt taler-exchange-transfer} and {\tt taler-exchange-wirewatch} programs
+need to have access to the more sensitive bank account configuration data,
+and so that these processes can run as a separate user.
+
 
 \subsection{Avoid dlopen}
 
@@ -269,5 +280,12 @@ database transactions.  As such we believe that transaction logging can only be
 provided on a best-effort basis.  Fortunately, even a best-effort append-only
 transaction log would serve to limit the financial damage incurred by the
 exchange in an active database compromise scenario.
+
+{\bf Update:} We have tightened the installation instructions for the
+Taler exchange to guide users towards a more restricted Postgres setup,
+tightening which components of the Exchange need what level of access
+to the exchange database.
+
+
 
 \end{document}

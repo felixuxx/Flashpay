@@ -1669,6 +1669,7 @@ main (int argc,
   int fh = -1;
   enum TALER_MHD_GlobalOptions go;
 
+  TALER_OS_init ();
   ret = GNUNET_GETOPT_run ("taler-exchange-httpd",
                            options,
                            argc, argv);

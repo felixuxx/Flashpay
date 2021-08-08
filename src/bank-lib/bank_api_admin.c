@@ -129,6 +129,11 @@ handle_admin_add_incoming_finished (void *cls,
        We should pass the JSON reply to the application */
     ec = TALER_JSON_get_error_code (j);
     break;
+  case MHD_HTTP_CONFLICT:
+    /* Nothign to verify, we used the same wire subject
+       twice? */
+    ec = TALER_JSON_get_error_code (j);
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */

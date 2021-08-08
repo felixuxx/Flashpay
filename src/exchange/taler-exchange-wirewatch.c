@@ -768,6 +768,7 @@ main (int argc,
       GNUNET_STRINGS_get_utf8_args (argc, argv,
                                     &argc, &argv))
     return EXIT_INVALIDARGUMENT;
+  TALER_OS_init ();
   ret = GNUNET_PROGRAM_run (
     argc, argv,
     "taler-exchange-wirewatch",

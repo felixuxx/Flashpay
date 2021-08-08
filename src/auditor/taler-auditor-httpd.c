@@ -571,6 +571,7 @@ main (int argc,
   int fh = -1;
   enum TALER_MHD_GlobalOptions go;
 
+  TALER_OS_init ();
   {
     int ret;
 
