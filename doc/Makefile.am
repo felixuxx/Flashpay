@@ -2,6 +2,10 @@
 
 SUBDIRS = . doxygen
 
+AM_MAKEINFOHTMLFLAGS = $(TEXINFO_HTMLFLAGS)
+
+infoimagedir = $(infodir)/images
+
 man_MANS = \
   prebuilt/man/taler.conf.5            \
   prebuilt/man/taler-config.1            \
@@ -11,6 +15,7 @@ man_MANS = \
   prebuilt/man/taler-auditor-httpd.1       \
   prebuilt/man/taler-auditor-offline.1    \
   prebuilt/man/taler-auditor-sign.1       \
+  prebuilt/man/taler-auditor-sync.1       \
   prebuilt/man/taler-bank-transfer.1   \
   prebuilt/man/taler-exchange-aggregator.1 \
   prebuilt/man/taler-exchange-benchmark.1  \
