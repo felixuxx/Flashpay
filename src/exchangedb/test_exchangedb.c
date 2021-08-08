@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -782,7 +782,7 @@ cb_wt_check (void *cls,
                                      &merchant_pub_wt));
   GNUNET_assert (0 == strcmp (json_string_value (json_object_get (wire,
                                                                   "payto_uri")),
-                              "payto://iban/DE67830654080004822650?receiver-name=test"));
+                              "payto://iban/DE67830654080004822650?receiver-name=Test"));
   GNUNET_assert (0 == GNUNET_memcmp (h_wire,
                                      &h_wire_wt));
   GNUNET_assert (exec_time.abs_value_us == wire_out_date.abs_value_us);
