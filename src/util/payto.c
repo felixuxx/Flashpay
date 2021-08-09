@@ -359,6 +359,8 @@ validate_iban (const char *iban)
   unsigned int j;
 
   len = strlen (iban);
+  if (len < 4)
+    return GNUNET_strdup ("IBAN number too short to be valid");
   if (len > 34)
     return GNUNET_strdup ("IBAN number too long to be valid");
   memcpy (cc, iban, 2);
