@@ -689,14 +689,6 @@ handle_get_management (const struct TEH_RequestHandler *rh,
     return TEH_keys_management_get_keys_handler (rh,
                                                  connection);
   }
-  if ( (NULL != args[0]) &&
-       (0 == strcmp (args[0],
-                     "wire")) &&
-       (NULL == args[1]) )
-  {
-    return TEH_wire_management_get_wire_handler (rh,
-                                                 connection);
-  }
   GNUNET_break_op (0);
   return r404 (connection, "/management/*");
 }

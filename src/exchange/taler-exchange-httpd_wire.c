@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -33,6 +33,7 @@
  */
 static pthread_key_t wire_state;
 
+
 /**
  * Counter incremented whenever we have a reason to re-build the #wire_state
  * because something external changed (in another thread).  The counter is
@@ -58,6 +59,11 @@ struct WireStateHandle
    * Used to check when we are outdated and need to be re-generated.
    */
   uint64_t wire_generation;
+
+  /**
+   * HTTP status to return with this response.
+   */
+  unsigned int http_status;
 
 };
 
@@ -89,11 +95,6 @@ destroy_wire_state_cb (void *cls)
 }
 
 
-/**
- * Initialize WIRE submodule.
- *
- * @return #GNUNET_OK on success
- */
 int
 TEH_WIRE_init ()
 {
@@ -105,14 +106,32 @@ TEH_WIRE_init ()
 }
 
 
-/**
- * Fully clean up our state.
- */
 void
 TEH_WIRE_done ()
 {
   GNUNET_assert (0 ==
                  pthread_key_delete (wire_state));
+}
+
+
+/**
+ * Create standard JSON response format using
+ * @param ec and @a detail
+ *
+ * @param ec error code to return
+ * @param detail optional detail text to return, can be NULL
+ * @return JSON response
+ */
+static json_t *
+make_ec_reply (enum TALER_ErrorCode ec,
+               const char *detail)
+{
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_uint64 ("code", ec),
+    GNUNET_JSON_pack_string ("hint",
+                             TALER_ErrorCode_get_hint (ec)),
+    GNUNET_JSON_pack_allow_null (
+      GNUNET_JSON_pack_string ("detail", detail)));
 }
 
 
@@ -200,7 +219,10 @@ build_wire_state (void)
   json_t *wire_fee_object;
   uint64_t wg = wire_generation; /* must be obtained FIRST */
   enum GNUNET_DB_QueryStatus qs;
+  struct WireStateHandle *wsh;
 
+  wsh = GNUNET_new (struct WireStateHandle);
+  wsh->wire_generation = wg;
   wire_accounts_array = json_array ();
   GNUNET_assert (NULL != wire_accounts_array);
   qs = TEH_plugin->get_wire_accounts (TEH_plugin->cls,
@@ -210,14 +232,20 @@ build_wire_state (void)
   {
     GNUNET_break (0);
     json_decref (wire_accounts_array);
-    return NULL;
+    wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    wsh->wire_reply
+      = make_ec_reply (TALER_EC_GENERIC_DB_FETCH_FAILED,
+                       "get_wire_accounts");
+    return wsh;
   }
   if (0 == json_array_size (wire_accounts_array))
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "No bank accounts for the exchange configured. Administrator must `enable-account` with taler-exchange-offline!\n");
     json_decref (wire_accounts_array);
-    return NULL;
+    wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    wsh->wire_reply
+      = make_ec_reply (TALER_EC_EXCHANGE_WIRE_NO_ACCOUNTS_CONFIGURED,
+                       NULL);
+    return wsh;
   }
   wire_fee_object = json_object ();
   GNUNET_assert (NULL != wire_fee_object);
@@ -234,12 +262,13 @@ build_wire_state (void)
       wire_method = TALER_payto_get_method (payto_uri);
       if (NULL == wire_method)
       {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "payto:// URI `%s' stored in our database is malformed\n",
-                    payto_uri);
+        wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+        wsh->wire_reply
+          = make_ec_reply (TALER_EC_EXCHANGE_WIRE_INVALID_PAYTO_CONFIGURED,
+                           payto_uri);
         json_decref (wire_accounts_array);
         json_decref (wire_fee_object);
-        return NULL;
+        return wsh;
       }
       if (NULL == json_object_get (wire_fee_object,
                                    wire_method))
@@ -258,18 +287,23 @@ build_wire_state (void)
           json_decref (wire_fee_object);
           json_decref (wire_accounts_array);
           GNUNET_free (wire_method);
-          return NULL;
+          wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+          wsh->wire_reply
+            = make_ec_reply (TALER_EC_GENERIC_DB_FETCH_FAILED,
+                             "get_wire_fees");
+          return wsh;
         }
         if (0 == json_array_size (a))
         {
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "No wire fees for `%s' configured. Administrator must set `wire-fee` with taler-exchange-offline!\n",
-                      wire_method);
           json_decref (a);
           json_decref (wire_accounts_array);
           json_decref (wire_fee_object);
+          wsh->http_status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+          wsh->wire_reply
+            = make_ec_reply (TALER_EC_EXCHANGE_WIRE_FEES_NOT_CONFIGURED,
+                             wire_method);
           GNUNET_free (wire_method);
-          return NULL;
+          return wsh;
         }
         GNUNET_assert (0 ==
                        json_object_set_new (wire_fee_object,
@@ -279,27 +313,15 @@ build_wire_state (void)
       GNUNET_free (wire_method);
     }
   }
-  {
-    json_t *wire_reply;
-    struct WireStateHandle *wsh;
-
-    wire_reply = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_array_steal ("accounts",
-                                    wire_accounts_array),
-      GNUNET_JSON_pack_object_steal ("fees",
-                                     wire_fee_object),
-      GNUNET_JSON_pack_data_auto ("master_public_key",
-                                  &TEH_master_public_key));
-    if (NULL == wire_reply)
-    {
-      GNUNET_break (0);
-      return NULL;
-    }
-    wsh = GNUNET_new (struct WireStateHandle);
-    wsh->wire_reply = wire_reply;
-    wsh->wire_generation = wg;
-    return wsh;
-  }
+  wsh->wire_reply = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("accounts",
+                                  wire_accounts_array),
+    GNUNET_JSON_pack_object_steal ("fees",
+                                   wire_fee_object),
+    GNUNET_JSON_pack_data_auto ("master_public_key",
+                                &TEH_master_public_key));
+  wsh->http_status = MHD_HTTP_OK;
+  return wsh;
 }
 
 
@@ -330,13 +352,12 @@ get_wire_state (void)
     struct WireStateHandle *wsh;
 
     wsh = build_wire_state ();
-    if (NULL == wsh)
-      return NULL;
     if (0 != pthread_setspecific (wire_state,
                                   wsh))
     {
       GNUNET_break (0);
-      destroy_wire_state (wsh);
+      if (NULL != wsh)
+        destroy_wire_state (wsh);
       return NULL;
     }
     if (NULL != old_wsh)
@@ -347,14 +368,6 @@ get_wire_state (void)
 }
 
 
-/**
- * Handle a "/wire" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
-  */
 MHD_RESULT
 TEH_handler_wire (const struct TEH_RequestHandler *rh,
                   struct MHD_Connection *connection,
@@ -372,19 +385,7 @@ TEH_handler_wire (const struct TEH_RequestHandler *rh,
                                        NULL);
   return TALER_MHD_reply_json (connection,
                                wsh->wire_reply,
-                               MHD_HTTP_OK);
-}
-
-
-MHD_RESULT
-TEH_wire_management_get_wire_handler (const struct TEH_RequestHandler *rh,
-                                      struct MHD_Connection *connection)
-{
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_OK,
-    GNUNET_JSON_pack_string ("foo",
-                             "bar"));
+                               wsh->http_status);
 }
 
 

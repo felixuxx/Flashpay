@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014--2020 Taler Systems SA
+  Copyright (C) 2014--2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -40,19 +40,6 @@ TEH_WIRE_init (void);
  */
 void
 TEH_WIRE_done (void);
-
-
-/**
- * Function to call to handle requests to GET "/management/wire" by sending
- * back our current wire status.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @return MHD result code
- */
-MHD_RESULT
-TEH_wire_management_get_wire_handler (const struct TEH_RequestHandler *rh,
-                                      struct MHD_Connection *connection);
 
 
 /**
