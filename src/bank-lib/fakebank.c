@@ -2043,6 +2043,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
  * @param h the fakebank handle
  * @param connection the connection
  * @param account which account the request is about
+ * @param con_cls closure for request (NULL or &special_ptr)
  * @return MHD result code
  */
 static MHD_RESULT
