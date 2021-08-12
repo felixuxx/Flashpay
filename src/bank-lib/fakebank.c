@@ -24,7 +24,6 @@
 // TODO: support long polling
 // TODO: support adding WAD transfers
 // TODO: adapt taler-exchange-benchmark to profile bank API
-// FIXME: support 'close_connections' option
 
 #include "platform.h"
 #include <pthread.h>
