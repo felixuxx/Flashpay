@@ -23,7 +23,6 @@
  */
 // TODO: support long polling
 // TODO: support adding WAD transfers
-// TODO: adapt taler-exchange-benchmark to profile bank API
 
 #include "platform.h"
 #include <pthread.h>
