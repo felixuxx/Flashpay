@@ -164,7 +164,7 @@ print_expected (struct History *h,
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
                 TALER_B2S (&h[i].details.reserve_pub),
-                h[i].details.debit_account_url);
+                h[i].details.debit_account_uri);
   }
 }
 
@@ -313,11 +313,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
                          total,
                          pos * 2);
     h[pos].url = GNUNET_strdup (debit_account);
-    h[pos].details.debit_account_url = h[pos].url;
+    h[pos].details.debit_account_uri = h[pos].url;
     h[pos].details.amount = *amount;
     h[pos].row_id = *row_id;
     h[pos].details.reserve_pub = *reserve_pub;
-    h[pos].details.credit_account_url = exchange_credit_url;
+    h[pos].details.credit_account_uri = exchange_credit_url;
     pos++;
   }
   GNUNET_assert (GNUNET_YES == ok);
@@ -364,16 +364,16 @@ check_result (struct History *h,
                             &details->reserve_pub)) ||
        (0 != TALER_amount_cmp (&h[off].details.amount,
                                &details->amount)) ||
-       (0 != strcasecmp (h[off].details.debit_account_url,
-                         details->debit_account_url)) )
+       (0 != strcasecmp (h[off].details.debit_account_uri,
+                         details->debit_account_uri)) )
   {
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "expected debit_account_url: %s\n",
-                details->debit_account_url);
+                "expected debit_account_uri: %s\n",
+                details->debit_account_uri);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "actual debit_account_url: %s\n",
-                h[off].details.debit_account_url);
+                "actual debit_account_uri: %s\n",
+                h[off].details.debit_account_uri);
     print_expected (h,
                     total,
                     off);
@@ -521,6 +521,7 @@ history_run (void *cls,
                                       &hs->auth,
                                       row_id,
                                       hs->num_results,
+                                      GNUNET_TIME_UNIT_ZERO,
                                       &history_cb,
                                       is);
   GNUNET_assert (NULL != hs->hh);
@@ -554,23 +555,12 @@ history_cleanup (void *cls,
 }
 
 
-/**
- * Make a "history" CMD.
- *
- * @param label command label.
- * @param auth authentication data to talk with the wire gateway
- * @param start_row_reference reference to a command that can
- *        offer a row identifier, to be used as the starting row
- *        to accept in the result.
- * @param num_results how many rows we want in the result.
- * @return the command.
- */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_bank_credits (const char *label,
-                                const struct
-                                TALER_BANK_AuthenticationData *auth,
-                                const char *start_row_reference,
-                                long long num_results)
+TALER_TESTING_cmd_bank_credits (
+  const char *label,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *start_row_reference,
+  long long num_results)
 {
   struct HistoryState *hs;
 

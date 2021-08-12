@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017--2020 Taler Systems SA
+  Copyright (C) 2017--2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -97,9 +97,9 @@ parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
       GNUNET_JSON_spec_fixed_auto ("reserve_pub",
                                    &td.reserve_pub),
       GNUNET_JSON_spec_string ("debit_account",
-                               &td.debit_account_url),
+                               &td.debit_account_uri),
       GNUNET_JSON_spec_string ("credit_account",
-                               &td.credit_account_url),
+                               &td.credit_account_uri),
       GNUNET_JSON_spec_end ()
     };
     json_t *transaction = json_array_get (history_array,
@@ -217,12 +217,14 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
                            const struct TALER_BANK_AuthenticationData *auth,
                            uint64_t start_row,
                            int64_t num_results,
+                           struct GNUNET_TIME_Relative timeout,
                            TALER_BANK_CreditHistoryCallback hres_cb,
                            void *hres_cb_cls)
 {
   char url[128];
   struct TALER_BANK_CreditHistoryHandle *hh;
   CURL *eh;
+  unsigned long long tms;
 
   if (0 == num_results)
   {
@@ -230,20 +232,43 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
     return NULL;
   }
 
+  tms = (unsigned long long) (timeout.rel_value_us
+                              / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us);
   if ( ( (UINT64_MAX == start_row) &&
          (0 > num_results) ) ||
        ( (0 == start_row) &&
          (0 < num_results) ) )
-    GNUNET_snprintf (url,
-                     sizeof (url),
-                     "history/incoming?delta=%lld",
-                     (long long) num_results);
+  {
+    if ( (0 < num_results) &&
+         (! GNUNET_TIME_relative_is_zero (timeout)) )
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/incoming?delta=%lld&long_poll_ms=%llu",
+                       (long long) num_results,
+                       tms);
+    else
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/incoming?delta=%lld",
+                       (long long) num_results);
+  }
   else
-    GNUNET_snprintf (url,
-                     sizeof (url),
-                     "history/incoming?delta=%lld&start=%llu",
-                     (long long) num_results,
-                     (unsigned long long) start_row);
+  {
+    if ( (0 < num_results) &&
+         (! GNUNET_TIME_relative_is_zero (timeout)) )
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/incoming?delta=%lld&start=%llu&long_poll_ms=%llu",
+                       (long long) num_results,
+                       (unsigned long long) start_row,
+                       tms);
+    else
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/incoming?delta=%lld&start=%llu",
+                       (long long) num_results,
+                       (unsigned long long) start_row);
+  }
   hh = GNUNET_new (struct TALER_BANK_CreditHistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
@@ -274,6 +299,13 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
     if (NULL != eh)
       curl_easy_cleanup (eh);
     return NULL;
+  }
+  if (0 != tms)
+  {
+    GNUNET_break (CURLE_OK ==
+                  curl_easy_setopt (eh,
+                                    CURLOPT_TIMEOUT_MS,
+                                    (long) tms));
   }
   hh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,

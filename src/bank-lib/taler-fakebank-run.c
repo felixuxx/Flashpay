@@ -23,9 +23,9 @@
  * @author Marcello Stanisci
  * @author Christian Grothoff
  */
-
 #include "platform.h"
 #include "taler_fakebank_lib.h"
+#include "taler_mhd_lib.h"
 
 /**
  * Number of threads to use (-n)
@@ -111,11 +111,18 @@ run (void *cls,
                 "Maximum transaction history in RAM set to default of %llu\n",
                 ram);
   }
+  {
+    enum TALER_MHD_GlobalOptions go;
+
+    go = TALER_MHD_GO_NONE;
+    if (0 != connection_close)
+      go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
+    TALER_MHD_setup (go);
+  }
   fb = TALER_FAKEBANK_start2 ((uint16_t) port,
                               currency_string,
                               ram,
-                              num_threads,
-                              (0 != connection_close));
+                              num_threads);
   if (NULL == fb)
   {
     ret = EXIT_FAILURE;

@@ -443,8 +443,7 @@ launch_fakebank (void *cls)
     = TALER_FAKEBANK_start2 ((uint16_t) pnum,
                              currency,
                              history_size,
-                             howmany_threads,
-                             false);
+                             howmany_threads);
   if (NULL == fakebank)
   {
     GNUNET_break (0);

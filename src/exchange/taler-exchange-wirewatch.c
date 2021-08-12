@@ -31,6 +31,12 @@
 
 
 /**
+ * How long to wait for an HTTP reply if there
+ * are no transactions pending at the server?
+ */
+#define LONGPOLL_TIMEOUT GNUNET_TIME_UNIT_MINUTES
+
+/**
  * What is the maximum batch size we use for credit history
  * requests with the bank.  See `batch_size` below.
  */
@@ -545,7 +551,7 @@ history_cb (void *cls,
                                       &details->reserve_pub,
                                       &details->amount,
                                       details->execution_date,
-                                      details->debit_account_url,
+                                      details->debit_account_uri,
                                       wa->ai->section_name,
                                       serial_id);
   switch (qs)
@@ -674,6 +680,9 @@ find_transfers (void *cls)
                                           wa_pos->ai->auth,
                                           wa_pos->batch_start,
                                           limit,
+                                          test_mode
+                                          ? GNUNET_TIME_UNIT_ZERO
+                                          : LONGPOLL_TIMEOUT,
                                           &history_cb,
                                           wa_pos);
   if (NULL == wa_pos->hh)

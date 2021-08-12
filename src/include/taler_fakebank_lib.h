@@ -66,15 +66,13 @@ TALER_FAKEBANK_start (uint16_t port,
  * @param currency which currency should the bank offer
  * @param ram_limit how much memory do we use at most
  * @param num_threads size of the thread pool, 0 to use the GNUnet scheduler
- * @param close_connections true to force closing a connection after each request (no HTTP keep-alive)
  * @return NULL on error
  */
 struct TALER_FAKEBANK_Handle *
 TALER_FAKEBANK_start2 (uint16_t port,
                        const char *currency,
                        uint64_t ram_limit,
-                       unsigned int num_threads,
-                       bool close_connections);
+                       unsigned int num_threads);
 
 
 /**

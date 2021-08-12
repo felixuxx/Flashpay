@@ -14,6 +14,7 @@ taler_fakebank_run_SOURCES = \
   taler-fakebank-run.c
 taler_fakebank_run_LDADD = \
   libtalerfakebank.la \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetutil
 

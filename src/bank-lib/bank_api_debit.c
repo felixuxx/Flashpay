@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017--2020 Taler Systems SA
+  Copyright (C) 2017--2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or
   modify it under the terms of the GNU General Public License
@@ -97,9 +97,9 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
       GNUNET_JSON_spec_fixed_auto ("wtid",
                                    &td.wtid),
       GNUNET_JSON_spec_string ("credit_account",
-                               &td.credit_account_url),
+                               &td.credit_account_uri),
       GNUNET_JSON_spec_string ("debit_account",
-                               &td.debit_account_url),
+                               &td.debit_account_uri),
       GNUNET_JSON_spec_string ("exchange_base_url",
                                &td.exchange_base_url),
       GNUNET_JSON_spec_end ()
@@ -214,35 +214,19 @@ handle_debit_history_finished (void *cls,
 }
 
 
-/**
- * Request the debit history of the exchange's bank account.
- *
- * @param ctx curl context for the event loop
- * @param auth authentication data to use
- * @param start_row from which row on do we want to get results,
- *        use UINT64_MAX for the latest; exclusive
- * @param num_results how many results do we want;
- *        negative numbers to go into the past, positive numbers
- *        to go into the future starting at @a start_row;
- *        must not be zero.
- * @param hres_cb the callback to call with the transaction
- *        history
- * @param hres_cb_cls closure for the above callback
- * @return NULL if the inputs are invalid (i.e. zero value for
- *         @e num_results). In this case, the callback is not
- *         called.
- */
 struct TALER_BANK_DebitHistoryHandle *
 TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
                           const struct TALER_BANK_AuthenticationData *auth,
                           uint64_t start_row,
                           int64_t num_results,
+                          struct GNUNET_TIME_Relative timeout,
                           TALER_BANK_DebitHistoryCallback hres_cb,
                           void *hres_cb_cls)
 {
   char url[128];
   struct TALER_BANK_DebitHistoryHandle *hh;
   CURL *eh;
+  unsigned long long tms;
 
   if (0 == num_results)
   {
@@ -250,20 +234,43 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
     return NULL;
   }
 
+  tms = (unsigned long long) (timeout.rel_value_us
+                              / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us);
   if ( ( (UINT64_MAX == start_row) &&
          (0 > num_results) ) ||
        ( (0 == start_row) &&
          (0 < num_results) ) )
-    GNUNET_snprintf (url,
-                     sizeof (url),
-                     "history/outgoing?delta=%lld",
-                     (long long) num_results);
+  {
+    if ( (0 < num_results) &&
+         (! GNUNET_TIME_relative_is_zero (timeout)) )
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/outgoing?delta=%lld&long_poll_ms=%llu",
+                       (long long) num_results,
+                       tms);
+    else
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/outgoing?delta=%lld",
+                       (long long) num_results);
+  }
   else
-    GNUNET_snprintf (url,
-                     sizeof (url),
-                     "history/outgoing?delta=%lld&start=%llu",
-                     (long long) num_results,
-                     (unsigned long long) start_row);
+  {
+    if ( (0 < num_results) &&
+         (! GNUNET_TIME_relative_is_zero (timeout)) )
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/outgoing?delta=%lld&start=%llu&long_poll_ms=%llu",
+                       (long long) num_results,
+                       (unsigned long long) start_row,
+                       tms);
+    else
+      GNUNET_snprintf (url,
+                       sizeof (url),
+                       "history/outgoing?delta=%lld&start=%llu",
+                       (long long) num_results,
+                       (unsigned long long) start_row);
+  }
   hh = GNUNET_new (struct TALER_BANK_DebitHistoryHandle);
   hh->hcb = hres_cb;
   hh->hcb_cls = hres_cb_cls;
@@ -295,6 +302,13 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
       curl_easy_cleanup (eh);
     return NULL;
   }
+  if (0 != tms)
+  {
+    GNUNET_break (CURLE_OK ==
+                  curl_easy_setopt (eh,
+                                    CURLOPT_TIMEOUT_MS,
+                                    (long) tms));
+  }
   hh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   NULL,
@@ -304,13 +318,6 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
 }
 
 
-/**
- * Cancel a history request.  This function cannot be
- * used on a request handle if a response is already
- * served for it.
- *
- * @param hh the history request handle
- */
 void
 TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh)
 {

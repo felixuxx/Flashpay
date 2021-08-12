@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -278,13 +278,13 @@ struct TALER_BANK_CreditDetails
    * payto://-URL of the source account that
    * send the funds.
    */
-  const char *debit_account_url;
+  const char *debit_account_uri;
 
   /**
    * payto://-URL of the target account that
    * received the funds.
    */
-  const char *credit_account_url;
+  const char *credit_account_uri;
 };
 
 
@@ -323,6 +323,8 @@ typedef enum GNUNET_GenericReturnValue
  * @param num_results how many results do we want; negative numbers to go into the past,
  *                    positive numbers to go into the future starting at @a start_row;
  *                    must not be zero.
+ * @param timeout how long the client is willing to wait for more results
+ *                (only useful if @a num_results is positive)
  * @param hres_cb the callback to call with the transaction history
  * @param hres_cb_cls closure for the above callback
  * @return NULL
@@ -334,6 +336,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
                            const struct TALER_BANK_AuthenticationData *auth,
                            uint64_t start_row,
                            int64_t num_results,
+                           struct GNUNET_TIME_Relative timeout,
                            TALER_BANK_CreditHistoryCallback hres_cb,
                            void *hres_cb_cls);
 
@@ -387,13 +390,13 @@ struct TALER_BANK_DebitDetails
    * payto://-URI of the source account that
    * send the funds.
    */
-  const char *debit_account_url; // FIXME: rename: url->uri
+  const char *debit_account_uri;
 
   /**
    * payto://-URI of the target account that
    * received the funds.
    */
-  const char *credit_account_url; // FIXME: rename: url->uri
+  const char *credit_account_uri;
 
 };
 
@@ -433,6 +436,8 @@ typedef enum GNUNET_GenericReturnValue
  * @param num_results how many results do we want; negative numbers to go into the past,
  *                    positive numbers to go into the future starting at @a start_row;
  *                    must not be zero.
+ * @param timeout how long the client is willing to wait for more results
+ *                (only useful if @a num_results is positive)
  * @param hres_cb the callback to call with the transaction history
  * @param hres_cb_cls closure for the above callback
  * @return NULL
@@ -444,6 +449,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
                           const struct TALER_BANK_AuthenticationData *auth,
                           uint64_t start_row,
                           int64_t num_results,
+                          struct GNUNET_TIME_Relative timeout,
                           TALER_BANK_DebitHistoryCallback hres_cb,
                           void *hres_cb_cls);
 

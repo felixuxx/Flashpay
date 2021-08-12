@@ -215,18 +215,18 @@ credit_history_cb (void *cls,
   /* If credit/debit accounts were specified, use as a filter */
   if ( (NULL != credit_account) &&
        (0 != strcasecmp (credit_account,
-                         details->credit_account_url) ) )
+                         details->credit_account_uri) ) )
     return GNUNET_OK;
   if ( (NULL != debit_account) &&
        (0 != strcasecmp (debit_account,
-                         details->debit_account_url) ) )
+                         details->debit_account_uri) ) )
     return GNUNET_OK;
 
   fprintf (stdout,
            "%llu: %s->%s (%s) over %s at %s\n",
            (unsigned long long) serial_id,
-           details->debit_account_url,
-           details->credit_account_url,
+           details->debit_account_uri,
+           details->credit_account_uri,
            TALER_B2S (&details->reserve_pub),
            TALER_amount2s (&details->amount),
            GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
@@ -252,6 +252,7 @@ execute_credit_history (void)
                                    &auth,
                                    start_row,
                                    -10,
+                                   GNUNET_TIME_UNIT_ZERO,
                                    &credit_history_cb,
                                    NULL);
   if (NULL == chh)
@@ -329,18 +330,18 @@ debit_history_cb (void *cls,
   /* If credit/debit accounts were specified, use as a filter */
   if ( (NULL != credit_account) &&
        (0 != strcasecmp (credit_account,
-                         details->credit_account_url) ) )
+                         details->credit_account_uri) ) )
     return GNUNET_OK;
   if ( (NULL != debit_account) &&
        (0 != strcasecmp (debit_account,
-                         details->debit_account_url) ) )
+                         details->debit_account_uri) ) )
     return GNUNET_OK;
 
   fprintf (stdout,
            "%llu: %s->%s (%s) over %s at %s\n",
            (unsigned long long) serial_id,
-           details->debit_account_url,
-           details->credit_account_url,
+           details->debit_account_uri,
+           details->credit_account_uri,
            TALER_B2S (&details->wtid),
            TALER_amount2s (&details->amount),
            GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
@@ -366,6 +367,7 @@ execute_debit_history (void)
                                   &auth,
                                   start_row,
                                   -10,
+                                  GNUNET_TIME_UNIT_ZERO,
                                   &debit_history_cb,
                                   NULL);
   if (NULL == dhh)

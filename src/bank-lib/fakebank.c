@@ -321,11 +321,6 @@ struct TALER_FAKEBANK_Handle
    */
   uint16_t port;
 
-  /**
-   * Force closing connections after each request.
-   */
-  bool force_close;
-
 #if EPOLL_SUPPORT
   /**
    * Boxed @e mhd_fd.
@@ -1968,8 +1963,7 @@ TALER_FAKEBANK_start (uint16_t port,
   return TALER_FAKEBANK_start2 (port,
                                 currency,
                                 65536, /* RAM limit */
-                                1, /* number of threads */
-                                false);
+                                1);
 }
 
 
@@ -1977,8 +1971,7 @@ struct TALER_FAKEBANK_Handle *
 TALER_FAKEBANK_start2 (uint16_t port,
                        const char *currency,
                        uint64_t ram_limit,
-                       unsigned int num_threads,
-                       bool close_connections)
+                       unsigned int num_threads)
 {
   struct TALER_FAKEBANK_Handle *h;
 
@@ -1992,7 +1985,6 @@ TALER_FAKEBANK_start2 (uint16_t port,
   GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->port = port;
-  h->force_close = close_connections;
   h->ram_limit = ram_limit;
   h->serial_counter = 0;
   GNUNET_assert (0 ==

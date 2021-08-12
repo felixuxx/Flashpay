@@ -167,7 +167,7 @@ print_expected (struct History *h,
                 TALER_amount2s (&h[i].details.amount),
                 (unsigned long long) h[i].row_id,
                 TALER_B2S (&h[i].details.wtid),
-                h[i].details.credit_account_url);
+                h[i].details.credit_account_uri);
   }
 }
 
@@ -320,8 +320,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
                          pos * 2);
     h[pos].c_url = GNUNET_strdup (credit_account);
     h[pos].d_url = GNUNET_strdup (debit_account);
-    h[pos].details.credit_account_url = h[pos].c_url;
-    h[pos].details.debit_account_url = h[pos].d_url;
+    h[pos].details.credit_account_uri = h[pos].c_url;
+    h[pos].details.debit_account_uri = h[pos].d_url;
     h[pos].details.amount = *amount;
     h[pos].row_id = *row_id;
     h[pos].details.wtid = *wtid;
@@ -372,8 +372,8 @@ check_result (struct History *h,
                             &details->wtid)) ||
        (0 != TALER_amount_cmp (&h[off].details.amount,
                                &details->amount)) ||
-       (0 != strcasecmp (h[off].details.credit_account_url,
-                         details->credit_account_url)) )
+       (0 != strcasecmp (h[off].details.credit_account_uri,
+                         details->credit_account_uri)) )
   {
     GNUNET_break (0);
     print_expected (h,
@@ -522,6 +522,7 @@ history_run (void *cls,
                                      &hs->auth,
                                      row_id,
                                      hs->num_results,
+                                     GNUNET_TIME_UNIT_ZERO,
                                      &history_cb,
                                      is);
   GNUNET_assert (NULL != hs->hh);

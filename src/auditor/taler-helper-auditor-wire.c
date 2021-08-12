@@ -1014,7 +1014,7 @@ wire_out_cb (void *cls,
 
     payto_uri = TALER_JSON_wire_to_payto (wire);
     if (0 != strcasecmp (payto_uri,
-                         roi->details.credit_account_url))
+                         roi->details.credit_account_uri))
     {
       /* Destination bank account is wrong in actual wire transfer, so
          we should count the wire transfer as entirely spurious, and
@@ -1055,7 +1055,7 @@ wire_out_cb (void *cls,
                                                    "receiver account mismatch"),
                           GNUNET_JSON_pack_string ("target",
                                                    roi->details.
-                                                   credit_account_url),
+                                                   credit_account_uri),
                           GNUNET_JSON_pack_string ("account_section",
                                                    wa->ai->section_name)));
       TALER_ARL_amount_add (&total_bad_amount_out_minus,
@@ -1165,7 +1165,7 @@ check_rc_matches (void *cls,
   if ( (0 == GNUNET_memcmp (&ctx->roi->details.wtid,
                             &rc->wtid)) &&
        (0 == strcasecmp (rc->receiver_account,
-                         ctx->roi->details.credit_account_url)) &&
+                         ctx->roi->details.credit_account_uri)) &&
        (0 == TALER_amount_cmp (&rc->amount,
                                &ctx->roi->details.amount)) )
   {
@@ -1207,7 +1207,7 @@ complain_out_not_found (void *cls,
   };
 
   (void) key;
-  hash_rc (roi->details.credit_account_url,
+  hash_rc (roi->details.credit_account_uri,
            &roi->details.wtid,
            &rkey);
   GNUNET_CONTAINER_multihashmap_get_multiple (reserve_closures,
@@ -1341,7 +1341,7 @@ history_debit_cb (void *cls,
               TALER_B2S (&details->wtid));
   /* Update offset */
   wa->out_wire_off = row_off;
-  slen = strlen (details->credit_account_url) + 1;
+  slen = strlen (details->credit_account_uri) + 1;
   roi = GNUNET_malloc (sizeof (struct ReserveOutInfo)
                        + slen);
   GNUNET_CRYPTO_hash (&details->wtid,
@@ -1350,9 +1350,9 @@ history_debit_cb (void *cls,
   roi->details.amount = details->amount;
   roi->details.execution_date = details->execution_date;
   roi->details.wtid = details->wtid;
-  roi->details.credit_account_url = (const char *) &roi[1];
+  roi->details.credit_account_uri = (const char *) &roi[1];
   memcpy (&roi[1],
-          details->credit_account_url,
+          details->credit_account_uri,
           slen);
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (out_map,
@@ -1414,6 +1414,7 @@ process_debits (void *cls)
                                       wa->ai->auth,
                                       wa->out_wire_off,
                                       INT64_MAX,
+                                      GNUNET_TIME_UNIT_ZERO,
                                       &history_debit_cb,
                                       wa);
   if (NULL == wa->dhh)
@@ -1496,7 +1497,7 @@ reserve_in_cb (void *cls,
   rii->details.amount = *credit;
   rii->details.execution_date = execution_date;
   rii->details.reserve_pub = *reserve_pub;
-  rii->details.debit_account_url = (const char *) &rii[1];
+  rii->details.debit_account_uri = (const char *) &rii[1];
   memcpy (&rii[1],
           sender_account_details,
           slen);
@@ -1752,8 +1753,8 @@ history_credit_cb (void *cls,
     }
     goto cleanup;
   }
-  if (0 != strcasecmp (details->debit_account_url,
-                       rii->details.debit_account_url))
+  if (0 != strcasecmp (details->debit_account_uri,
+                       rii->details.debit_account_uri))
   {
     TALER_ARL_report (report_missattribution_in_inconsistencies,
                       GNUNET_JSON_PACK (
@@ -1843,6 +1844,7 @@ process_credits (void *cls)
                                        wa->ai->auth,
                                        wa->in_wire_off,
                                        INT64_MAX,
+                                       GNUNET_TIME_UNIT_ZERO,
                                        &history_credit_cb,
                                        wa);
   if (NULL == wa->chh)
