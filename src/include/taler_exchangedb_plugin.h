@@ -2146,6 +2146,52 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Register callback to be invoked on events of type @a es.
+   *
+   * @param cls database context to use
+   * @param session connection to use
+   * @param es specification of the event to listen for
+   * @param cb function to call when the event happens, possibly
+   *         multiple times (until cancel is invoked)
+   * @param cb_cls closure for @a cb
+   * @return handle useful to cancel the listener
+   */
+  struct GNUNET_DB_EventHandler *
+  (*event_listen)(void *cls,
+                  struct TALER_EXCHANGEDB_Session *session,
+                  const struct GNUNET_DB_EventHeaderP *es,
+                  GNUNET_DB_EventCallback cb,
+                  void *cb_cls);
+
+  /**
+   * Stop notifications.
+   *
+   * @param cls database context to use
+   * @param eh handle to unregister.
+   */
+  void
+  (*event_listen_cancel)(void *cls,
+                         struct GNUNET_DB_EventHandler *eh);
+
+
+  /**
+   * Notify all that listen on @a es of an event.
+   *
+   * @param cls database context to use
+   * @param session connection to use
+   * @param es specification of the event to generate
+   * @param extra additional event data provided
+   * @param extra_size number of bytes in @a extra
+   */
+  void
+  (*event_notify)(void *cls,
+                  struct TALER_EXCHANGEDB_Session *session,
+                  const struct GNUNET_DB_EventHeaderP *es,
+                  const void *extra,
+                  size_t extra_size);
+
+
+  /**
    * Insert information about a denomination key and in particular
    * the properties (value, fees, expiration times) the coins signed
    * with this key have.
