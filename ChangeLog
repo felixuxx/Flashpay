@@ -1,3 +1,8 @@
+Fri 13 Aug 2021 10:40:57 PM CEST
+    Add support for long-polling of bank account histories.
+    Add support for event notifications to exchange DB API.
+    Releasing GNU Taler 0.8.3. -CG
+
 Sun 08 Aug 2021 08:36:21 PM CEST
     Improved code to use new GNUNET_JSON_PACK API.
     Improved code to use new GNUNET_TIME APIs.
