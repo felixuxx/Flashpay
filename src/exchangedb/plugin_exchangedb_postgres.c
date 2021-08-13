@@ -2944,6 +2944,7 @@ postgres_event_listen (void *cls,
 /**
  * Stop notifications.
  *
+ * @param cls the plugin's `struct PostgresClosure`
  * @param eh handle to unregister.
  */
 static void
