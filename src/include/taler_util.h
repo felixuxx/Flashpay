@@ -353,6 +353,20 @@ TALER_payto_validate (const char *payto_uri);
 
 
 /**
+ * Check that an IBAN number is well-formed.
+ *
+ * Validates given IBAN according to the European Banking Standards.  See:
+ * http://www.europeanpaymentscouncil.eu/documents/ECBS%20IBAN%20standard%20EBS204_V3.2.pdf
+ *
+ * @param iban the IBAN to check
+ * @return NULL on success, otherwise an error
+ *         message to be freed by the caller!
+ */
+char *
+TALER_iban_validate (const char *iban);
+
+
+/**
  * Possible values for a binary filter.
  */
 enum TALER_EXCHANGE_YesNoAll

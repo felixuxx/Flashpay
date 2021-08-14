@@ -71,6 +71,7 @@ libtalerutil_la_SOURCES = \
   crypto_wire.c \
   getopt.c \
   lang.c \
+  iban.c \
   mhd.c \
   offline_signatures.c \
   payto.c \
