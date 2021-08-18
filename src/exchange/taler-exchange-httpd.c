@@ -304,7 +304,7 @@ handle_mhd_completion_callback (void *cls,
   GNUNET_async_scope_enter (&ecls->async_scope_id,
                             &old_scope);
   {
-#ifdef MHD_CONNECTION_INFO_HTTP_STATUS
+#if MHD_VERSION >= 0x00097304
     const union MHD_ConnectionInfo *ci;
     unsigned int http_status = 0;
 
