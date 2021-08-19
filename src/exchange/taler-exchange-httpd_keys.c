@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -1715,6 +1715,7 @@ build_key_state (struct HelperState *hs,
   ksh->signkey_map = GNUNET_CONTAINER_multipeermap_create (32,
                                                            GNUNET_NO /* MUST be NO! */);
   ksh->auditors = json_array ();
+  GNUNET_assert (NULL != ksh->auditors);
   /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
   qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
                                           &denomination_info_cb,

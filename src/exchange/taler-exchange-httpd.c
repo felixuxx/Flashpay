@@ -299,6 +299,7 @@ handle_mhd_completion_callback (void *cls,
   struct ExchangeHttpRequestClosure *ecls = *con_cls;
   struct GNUNET_AsyncScopeSave old_scope;
 
+  (void) cls;
   if (NULL == ecls)
     return;
   GNUNET_async_scope_enter (&ecls->async_scope_id,
@@ -325,7 +326,6 @@ handle_mhd_completion_callback (void *cls,
                 toe);
 #endif
   }
-  (void) cls;
 
   TALER_MHD_parse_post_cleanup_callback (ecls->opaque_post_parsing_context);
   /* Sanity-check that we didn't leave any transactions hanging */
