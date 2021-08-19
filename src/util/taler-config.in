@@ -8,5 +8,6 @@ if ! type gnunet-config >/dev/null; then
 fi
 
 GC=`which gnunet-config`
-export LD_PRELOAD=${LD_PRELOAD:-}:%libdir%/libtalerutil.so
+SO=`ls %libdir%/libtalerutil.so.* | sort -n | tail -n1`
+export LD_PRELOAD=${LD_PRELOAD:-}:${SO}
 exec gnunet-config "$@"
