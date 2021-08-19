@@ -7483,7 +7483,8 @@ postgres_gc (void *cls)
      recoup and reserves_out tables to known_coins; these
      are NOT using 'ON DROP CASCADE' and might keep denomination
      keys alive for a bit longer, thus causing this statement
-     to fail. */(void) GNUNET_PQ_eval_prepared_non_select (conn,
+     to fail. */
+  (void) GNUNET_PQ_eval_prepared_non_select (conn,
                                              "gc_denominations",
                                              params_time);
   GNUNET_PQ_disconnect (conn);
