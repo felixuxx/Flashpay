@@ -28,6 +28,15 @@
 
 
 /**
+ * Shutdown reserves-get subsystem.  Resumes all
+ * suspended long-polling clients and cleans up
+ * data structures.
+ */
+void
+TEH_reserves_get_cleanup (void);
+
+
+/**
  * Handle a GET "/reserves/" request.  Parses the
  * given "reserve_pub" in @a args (which should contain the
  * EdDSA public key of a reserve) and then respond with the

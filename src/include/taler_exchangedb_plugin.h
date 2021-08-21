@@ -73,7 +73,30 @@ struct TALER_EXCHANGEDB_DenominationKeyInformationP
 };
 
 
+/**
+ * Signature of events signalling a reseve got funding.
+ */
+struct TALER_ReserveEventP
+{
+  /**
+   * Of type #TALER_DBEVENT_EXCHANGE_RESERVE_INCOMING.
+   */
+  struct GNUNET_DB_EventHeaderP header;
+
+  /**
+   * Public key of the reserve the event is about.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
+
+/**
+ * Event registration record.
+ */
+struct TALER_EXCHANGEDB_EventHandler;
+
 
 /**
  * Meta data about an exchange online signing key.
@@ -2149,16 +2172,16 @@ struct TALER_EXCHANGEDB_Plugin
    * Register callback to be invoked on events of type @a es.
    *
    * @param cls database context to use
-   * @param session connection to use
+   * @param timeout how long to wait at most
    * @param es specification of the event to listen for
    * @param cb function to call when the event happens, possibly
    *         multiple times (until cancel is invoked)
    * @param cb_cls closure for @a cb
    * @return handle useful to cancel the listener
    */
-  struct GNUNET_DB_EventHandler *
+  struct TALER_EXCHANGEDB_EventHandler *
   (*event_listen)(void *cls,
-                  struct TALER_EXCHANGEDB_Session *session,
+                  struct GNUNET_TIME_Relative timeout,
                   const struct GNUNET_DB_EventHeaderP *es,
                   GNUNET_DB_EventCallback cb,
                   void *cb_cls);
@@ -2171,7 +2194,7 @@ struct TALER_EXCHANGEDB_Plugin
    */
   void
   (*event_listen_cancel)(void *cls,
-                         struct GNUNET_DB_EventHandler *eh);
+                         struct TALER_EXCHANGEDB_EventHandler *eh);
 
 
   /**

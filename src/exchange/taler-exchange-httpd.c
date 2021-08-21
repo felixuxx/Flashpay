@@ -1430,8 +1430,14 @@ run_single_request (void)
     }
     MHD_run (mhd);
   }
-  TEH_resume_keys_requests (true);
-  MHD_stop_daemon (mhd);
+  {
+    MHD_socket sock = MHD_quiesce_daemon (mhd);
+
+    TEH_resume_keys_requests (true);
+    TEH_reserves_get_cleanup ();
+    MHD_stop_daemon (mhd);
+    GNUNET_break (0 == close (sock));
+  }
   mhd = NULL;
   if (cld != waitpid (cld,
                       &status,
@@ -1494,8 +1500,15 @@ run_main_loop (int fh,
   {
   case GNUNET_OK:
   case GNUNET_SYSERR:
-    TEH_resume_keys_requests (true);
-    MHD_stop_daemon (mhd);
+    {
+      MHD_socket sock = MHD_quiesce_daemon (mhd);
+
+      TEH_resume_keys_requests (true);
+      TEH_reserves_get_cleanup ();
+      MHD_stop_daemon (mhd);
+      GNUNET_break (0 == close (sock));
+    }
+    mhd = NULL;
     break;
   case GNUNET_NO:
     {
@@ -1507,7 +1520,9 @@ run_main_loop (int fh,
       flags = fcntl (sock, F_GETFD);
       GNUNET_assert (-1 != flags);
       flags &= ~FD_CLOEXEC;
-      GNUNET_assert (-1 != fcntl (sock, F_SETFD, flags));
+      GNUNET_assert (-1 != fcntl (sock,
+                                  F_SETFD,
+                                  flags));
       chld = fork ();
       if (-1 == chld)
       {
@@ -1551,6 +1566,7 @@ run_main_loop (int fh,
         sleep (1);
       /* Now we're really done, practice clean shutdown */
       TEH_resume_keys_requests (true);
+      TEH_reserves_get_cleanup ();
       MHD_stop_daemon (mhd);
     }
     break;
