@@ -448,7 +448,6 @@ proceed_with_handler (struct TEH_RequestContext *rc,
  * Handle a "/seed" request.
  *
  * @param rc request context
- * @param connection the MHD connection to handle
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
@@ -640,7 +639,6 @@ handle_post_management (struct TEH_RequestContext *rc,
  * Handle a get "/management" request.
  *
  * @param rc request context
- * @param connection the MHD connection to handle
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
