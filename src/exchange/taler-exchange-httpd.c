@@ -57,33 +57,6 @@
 
 
 /**
- * Type of the closure associated with each HTTP request to the exchange.
- */
-struct ExchangeHttpRequestClosure
-{
-  /**
-   * Async Scope ID associated with this request.
-   */
-  struct GNUNET_AsyncScopeId async_scope_id;
-
-  /**
-   * Opaque parsing context.
-   */
-  void *opaque_post_parsing_context;
-
-  /**
-   * Cached request handler for this request (once we have found one).
-   */
-  struct TEH_RequestHandler *rh;
-
-  /**
-   * Request URL (for logging).
-   */
-  const char *url;
-};
-
-
-/**
  * Are clients allowed to request /keys for times other than the
  * current time? Allowing this could be abused in a DoS-attack
  * as building new /keys responses is expensive. Should only be
@@ -204,16 +177,14 @@ r404 (struct MHD_Connection *connection,
  * Handle a "/coins/$COIN_PUB/$OP" POST request.  Parses the "coin_pub"
  * EdDSA key of the coin and demultiplexes based on $OP.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param root uploaded JSON data
  * @param args array of additional options (first must be the
  *         reserve public key, the second one should be "withdraw")
  * @return MHD result code
  */
 static MHD_RESULT
-handle_post_coins (const struct TEH_RequestHandler *rh,
-                   struct MHD_Connection *connection,
+handle_post_coins (struct TEH_RequestContext *rc,
                    const json_t *root,
                    const char *const args[2])
 {
@@ -253,7 +224,6 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
     },
   };
 
-  (void) rh;
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
@@ -261,7 +231,7 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
                                      sizeof (coin_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_GENERIC_COINS_INVALID_COIN_PUB,
                                        args[0]);
@@ -269,10 +239,11 @@ handle_post_coins (const struct TEH_RequestHandler *rh,
   for (unsigned int i = 0; NULL != h[i].op; i++)
     if (0 == strcmp (h[i].op,
                      args[1]))
-      return h[i].handler (connection,
+      return h[i].handler (rc->connection,
                            &coin_pub,
                            root);
-  return r404 (connection, args[1]);
+  return r404 (rc->connection,
+               args[1]);
 }
 
 
@@ -296,14 +267,16 @@ handle_mhd_completion_callback (void *cls,
                                 void **con_cls,
                                 enum MHD_RequestTerminationCode toe)
 {
-  struct ExchangeHttpRequestClosure *ecls = *con_cls;
+  struct TEH_RequestContext *rc = *con_cls;
   struct GNUNET_AsyncScopeSave old_scope;
 
   (void) cls;
-  if (NULL == ecls)
+  if (NULL == rc)
     return;
-  GNUNET_async_scope_enter (&ecls->async_scope_id,
+  GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
+  if (NULL != rc->rh_cleaner)
+    rc->rh_cleaner (rc);
   {
 #if MHD_VERSION >= 0x00097304
     const union MHD_ConnectionInfo *ci;
@@ -315,52 +288,49 @@ handle_mhd_completion_callback (void *cls,
       http_status = ci->http_status;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Request for `%s' completed with HTTP status %u (%d)\n",
-                ecls->url,
+                rc->url,
                 http_status,
                 toe);
 #else
     (void) connection;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Request for `%s' completed (%d)\n",
-                ecls->url,
+                rc->url,
                 toe);
 #endif
   }
 
-  TALER_MHD_parse_post_cleanup_callback (ecls->opaque_post_parsing_context);
+  TALER_MHD_parse_post_cleanup_callback (rc->opaque_post_parsing_context);
   /* Sanity-check that we didn't leave any transactions hanging */
   /* NOTE: In high-performance production, we could consider
      removing this as it should not be needed and might be costly
      (to be benchmarked). */
   TEH_plugin->preflight (TEH_plugin->cls,
                          TEH_plugin->get_session (TEH_plugin->cls));
-  GNUNET_free (ecls);
+  GNUNET_free (rc);
   *con_cls = NULL;
   GNUNET_async_scope_restore (&old_scope);
 }
 
 
 /**
- * We found @a rh responsible for handling a request. Parse the
+ * We found a request handler responsible for handling a request. Parse the
  * @a upload_data (if applicable) and the @a url and call the
  * handler.
  *
- * @param rh request handler to call
- * @param connection connection being handled
+ * @param rc request context
  * @param url rest of the URL to parse
- * @param inner_cls closure for the handler, if needed
  * @param upload_data upload data to parse (if available)
  * @param[in,out] upload_data_size number of bytes in @a upload_data
  * @return MHD result code
  */
 static MHD_RESULT
-proceed_with_handler (const struct TEH_RequestHandler *rh,
-                      struct MHD_Connection *connection,
+proceed_with_handler (struct TEH_RequestContext *rc,
                       const char *url,
-                      void **inner_cls,
                       const char *upload_data,
                       size_t *upload_data_size)
 {
+  const struct TEH_RequestHandler *rh = rc->rh;
   const char *args[rh->nargs + 1];
   size_t ulen = strlen (url) + 1;
   json_t *root = NULL;
@@ -376,7 +346,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
        /deposits/).  The value should be adjusted if we ever define protocol
        endpoints with plausibly longer inputs.  */
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_URI_TOO_LONG,
                                        TALER_EC_GENERIC_URI_TOO_LONG,
                                        url);
@@ -389,8 +359,8 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
   {
     enum GNUNET_GenericReturnValue res;
 
-    res = TALER_MHD_parse_post_json (connection,
-                                     inner_cls,
+    res = TALER_MHD_parse_post_json (rc->connection,
+                                     &rc->opaque_post_parsing_context,
                                      upload_data,
                                      upload_data_size,
                                      &root);
@@ -447,7 +417,7 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
                          url);
         GNUNET_break_op (0);
         json_decref (root);
-        return TALER_MHD_reply_with_error (connection,
+        return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_EXCHANGE_GENERIC_WRONG_NUMBER_OF_SEGMENTS,
                                            emsg);
@@ -458,18 +428,15 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
       args[i] = NULL;
     }
 
-
     /* Above logic ensures that 'root' is exactly non-NULL for POST operations,
        so we test for 'root' to decide which handler to invoke. */
     if (NULL != root)
-      ret = rh->handler.post (rh,
-                              connection,
+      ret = rh->handler.post (rc,
                               root,
                               args);
     else /* We also only have "POST" or "GET" in the API for at this point
             (OPTIONS/HEAD are taken care of earlier) */
-      ret = rh->handler.get (rh,
-                             connection,
+      ret = rh->handler.get (rc,
                              args);
   }
   json_decref (root);
@@ -480,14 +447,13 @@ proceed_with_handler (const struct TEH_RequestHandler *rh,
 /**
  * Handle a "/seed" request.
  *
- * @param rh context of the handler
+ * @param rc request context
  * @param connection the MHD connection to handle
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 static MHD_RESULT
-handler_seed (const struct TEH_RequestHandler *rh,
-              struct MHD_Connection *connection,
+handler_seed (struct TEH_RequestContext *rc,
               const char *const args[])
 {
 #define SEED_SIZE 32
@@ -495,7 +461,6 @@ handler_seed (const struct TEH_RequestHandler *rh,
   MHD_RESULT ret;
   struct MHD_Response *resp;
 
-  (void) rh;
   body = malloc (SEED_SIZE); /* must use malloc(), because MHD will use free() */
   if (NULL == body)
     return MHD_NO;
@@ -506,7 +471,7 @@ handler_seed (const struct TEH_RequestHandler *rh,
                                           body,
                                           MHD_RESPMEM_MUST_FREE);
   TALER_MHD_add_global_headers (resp);
-  ret = MHD_queue_response (connection,
+  ret = MHD_queue_response (rc->connection,
                             MHD_HTTP_OK,
                             resp);
   GNUNET_break (MHD_YES == ret);
@@ -519,22 +484,21 @@ handler_seed (const struct TEH_RequestHandler *rh,
 /**
  * Handle POST "/management/..." requests.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param root uploaded JSON data
  * @param args array of additional options
  * @return MHD result code
  */
 static MHD_RESULT
-handle_post_management (const struct TEH_RequestHandler *rh,
-                        struct MHD_Connection *connection,
+handle_post_management (struct TEH_RequestContext *rc,
                         const json_t *root,
                         const char *const args[])
 {
   if (NULL == args[0])
   {
     GNUNET_break_op (0);
-    return r404 (connection, "/management");
+    return r404 (rc->connection,
+                 "/management");
   }
   if (0 == strcmp (args[0],
                    "auditors"))
@@ -542,14 +506,14 @@ handle_post_management (const struct TEH_RequestHandler *rh,
     struct TALER_AuditorPublicKeyP auditor_pub;
 
     if (NULL == args[1])
-      return TEH_handler_management_auditors (connection,
+      return TEH_handler_management_auditors (rc->connection,
                                               root);
     if ( (NULL == args[1]) ||
          (NULL == args[2]) ||
          (0 != strcmp (args[2],
                        "disable")) ||
          (NULL != args[3]) )
-      return r404 (connection,
+      return r404 (rc->connection,
                    "/management/auditors/$AUDITOR_PUB/disable");
     if (GNUNET_OK !=
         GNUNET_STRINGS_string_to_data (args[1],
@@ -558,12 +522,12 @@ handle_post_management (const struct TEH_RequestHandler *rh,
                                        sizeof (auditor_pub)))
     {
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (connection,
+      return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          args[1]);
     }
-    return TEH_handler_management_auditors_AP_disable (connection,
+    return TEH_handler_management_auditors_AP_disable (rc->connection,
                                                        &auditor_pub,
                                                        root);
   }
@@ -578,7 +542,7 @@ handle_post_management (const struct TEH_RequestHandler *rh,
          (0 != strcmp (args[2],
                        "revoke")) ||
          (NULL != args[3]) )
-      return r404 (connection,
+      return r404 (rc->connection,
                    "/management/denominations/$HDP/revoke");
     if (GNUNET_OK !=
         GNUNET_STRINGS_string_to_data (args[1],
@@ -587,12 +551,12 @@ handle_post_management (const struct TEH_RequestHandler *rh,
                                        sizeof (h_denom_pub)))
     {
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (connection,
+      return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          args[1]);
     }
-    return TEH_handler_management_denominations_HDP_revoke (connection,
+    return TEH_handler_management_denominations_HDP_revoke (rc->connection,
                                                             &h_denom_pub,
                                                             root);
   }
@@ -607,7 +571,7 @@ handle_post_management (const struct TEH_RequestHandler *rh,
          (0 != strcmp (args[2],
                        "revoke")) ||
          (NULL != args[3]) )
-      return r404 (connection,
+      return r404 (rc->connection,
                    "/management/signkeys/$HDP/revoke");
     if (GNUNET_OK !=
         GNUNET_STRINGS_string_to_data (args[1],
@@ -616,12 +580,12 @@ handle_post_management (const struct TEH_RequestHandler *rh,
                                        sizeof (exchange_pub)))
     {
       GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (connection,
+      return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_BAD_REQUEST,
                                          TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                          args[1]);
     }
-    return TEH_handler_management_signkeys_EP_revoke (connection,
+    return TEH_handler_management_signkeys_EP_revoke (rc->connection,
                                                       &exchange_pub,
                                                       root);
   }
@@ -631,25 +595,27 @@ handle_post_management (const struct TEH_RequestHandler *rh,
     if (NULL != args[1])
     {
       GNUNET_break_op (0);
-      return r404 (connection, "/management/keys/*");
+      return r404 (rc->connection,
+                   "/management/keys/*");
     }
-    return TEH_handler_management_post_keys (connection,
+    return TEH_handler_management_post_keys (rc->connection,
                                              root);
   }
   if (0 == strcmp (args[0],
                    "wire"))
   {
     if (NULL == args[1])
-      return TEH_handler_management_post_wire (connection,
+      return TEH_handler_management_post_wire (rc->connection,
                                                root);
     if ( (0 != strcmp (args[1],
                        "disable")) ||
          (NULL != args[2]) )
     {
       GNUNET_break_op (0);
-      return r404 (connection, "/management/wire/disable");
+      return r404 (rc->connection,
+                   "/management/wire/disable");
     }
-    return TEH_handler_management_post_wire_disable (connection,
+    return TEH_handler_management_post_wire_disable (rc->connection,
                                                      root);
   }
   if (0 == strcmp (args[0],
@@ -658,27 +624,28 @@ handle_post_management (const struct TEH_RequestHandler *rh,
     if (NULL != args[1])
     {
       GNUNET_break_op (0);
-      return r404 (connection, "/management/wire-fee/*");
+      return r404 (rc->connection,
+                   "/management/wire-fee/*");
     }
-    return TEH_handler_management_post_wire_fees (connection,
+    return TEH_handler_management_post_wire_fees (rc->connection,
                                                   root);
   }
   GNUNET_break_op (0);
-  return r404 (connection, "/management/*");
+  return r404 (rc->connection,
+               "/management/*");
 }
 
 
 /**
  * Handle a get "/management" request.
  *
- * @param rh context of the handler
+ * @param rc request context
  * @param connection the MHD connection to handle
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 static MHD_RESULT
-handle_get_management (const struct TEH_RequestHandler *rh,
-                       struct MHD_Connection *connection,
+handle_get_management (struct TEH_RequestContext *rc,
                        const char *const args[1])
 {
   if ( (NULL != args[0]) &&
@@ -686,26 +653,25 @@ handle_get_management (const struct TEH_RequestHandler *rh,
                      "keys")) &&
        (NULL == args[1]) )
   {
-    return TEH_keys_management_get_keys_handler (rh,
-                                                 connection);
+    return TEH_keys_management_get_keys_handler (rc->rh,
+                                                 rc->connection);
   }
   GNUNET_break_op (0);
-  return r404 (connection, "/management/*");
+  return r404 (rc->connection,
+               "/management/*");
 }
 
 
 /**
  * Handle POST "/auditors/..." requests.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param root uploaded JSON data
  * @param args array of additional options
  * @return MHD result code
  */
 static MHD_RESULT
-handle_post_auditors (const struct TEH_RequestHandler *rh,
-                      struct MHD_Connection *connection,
+handle_post_auditors (struct TEH_RequestContext *rc,
                       const json_t *root,
                       const char *const args[])
 {
@@ -717,7 +683,8 @@ handle_post_auditors (const struct TEH_RequestHandler *rh,
        (NULL != args[2]) )
   {
     GNUNET_break_op (0);
-    return r404 (connection, "/auditors/$AUDITOR_PUB/$H_DENOM_PUB");
+    return r404 (rc->connection,
+                 "/auditors/$AUDITOR_PUB/$H_DENOM_PUB");
   }
 
   if (GNUNET_OK !=
@@ -727,7 +694,7 @@ handle_post_auditors (const struct TEH_RequestHandler *rh,
                                      sizeof (auditor_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        args[0]);
@@ -739,12 +706,12 @@ handle_post_auditors (const struct TEH_RequestHandler *rh,
                                      sizeof (h_denom_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        args[1]);
   }
-  return TEH_handler_auditors (connection,
+  return TEH_handler_auditors (rc->connection,
                                &auditor_pub,
                                &h_denom_pub,
                                root);
@@ -761,7 +728,7 @@ handle_post_auditors (const struct TEH_RequestHandler *rh,
  * @param version HTTP version (ignored)
  * @param upload_data request data
  * @param upload_data_size size of @a upload_data in bytes
- * @param con_cls closure for request (a `struct Buffer *`)
+ * @param con_cls closure for request (a `struct TEH_RequestContext *`)
  * @return MHD result code
  */
 static MHD_RESULT
@@ -907,14 +874,13 @@ handle_mhd_request (void *cls,
       .url = NULL
     }
   };
-  struct ExchangeHttpRequestClosure *ecls = *con_cls;
-  void **inner_cls;
+  struct TEH_RequestContext *rc = *con_cls;
   struct GNUNET_AsyncScopeSave old_scope;
   const char *correlation_id = NULL;
 
   (void) cls;
   (void) version;
-  if (NULL == ecls)
+  if (NULL == rc)
   {
     unsigned long long cnt;
 
@@ -933,15 +899,17 @@ handle_mhd_request (void *cls,
     }
 
     /* We're in a new async scope! */
-    ecls = *con_cls = GNUNET_new (struct ExchangeHttpRequestClosure);
-    GNUNET_async_scope_fresh (&ecls->async_scope_id);
-    ecls->url = url;
+    rc = *con_cls = GNUNET_new (struct TEH_RequestContext);
+    GNUNET_async_scope_fresh (&rc->async_scope_id);
+    rc->url = url;
+    rc->connection = connection;
     /* We only read the correlation ID on the first callback for every client */
     correlation_id = MHD_lookup_connection_value (connection,
                                                   MHD_HEADER_KIND,
                                                   "Taler-Correlation-Id");
-    if ((NULL != correlation_id) &&
-        (GNUNET_YES != GNUNET_CURL_is_valid_scope_id (correlation_id)))
+    if ( (NULL != correlation_id) &&
+         (GNUNET_YES !=
+          GNUNET_CURL_is_valid_scope_id (correlation_id)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "illegal incoming correlation ID\n");
@@ -949,8 +917,7 @@ handle_mhd_request (void *cls,
     }
   }
 
-  inner_cls = &ecls->opaque_post_parsing_context;
-  GNUNET_async_scope_enter (&ecls->async_scope_id,
+  GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
   if (NULL != correlation_id)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -964,7 +931,7 @@ handle_mhd_request (void *cls,
                 method,
                 url);
   /* on repeated requests, check our cache first */
-  if (NULL != ecls->rh)
+  if (NULL != rc->rh)
   {
     MHD_RESULT ret;
     const char *start;
@@ -975,10 +942,8 @@ handle_mhd_request (void *cls,
     start = strchr (url + 1, '/');
     if (NULL == start)
       start = "";
-    ret = proceed_with_handler (ecls->rh,
-                                connection,
+    ret = proceed_with_handler (rc,
                                 start,
-                                inner_cls,
                                 upload_data,
                                 upload_data_size);
     GNUNET_async_scope_restore (&old_scope);
@@ -1039,12 +1004,10 @@ handle_mhd_request (void *cls,
         MHD_RESULT ret;
 
         /* cache to avoid the loop next time */
-        ecls->rh = rh;
+        rc->rh = rh;
         /* run handler */
-        ret = proceed_with_handler (rh,
-                                    connection,
+        ret = proceed_with_handler (rc,
                                     url + tok_size + 1,
-                                    inner_cls,
                                     upload_data,
                                     upload_data_size);
         GNUNET_async_scope_restore (&old_scope);

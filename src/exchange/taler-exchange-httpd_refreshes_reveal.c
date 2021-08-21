@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019 Taler Systems SA
+  Copyright (C) 2014-2019, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -805,7 +805,7 @@ cleanup:
  * @param coin_evs envelopes of gamma-selected coins to be signed
  * @return MHD result code
  */
-static int
+static MHD_RESULT
 handle_refreshes_reveal_json (struct MHD_Connection *connection,
                               struct RevealContext *rctx,
                               const json_t *tp_json,
@@ -853,7 +853,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
       GNUNET_JSON_spec_fixed_auto (NULL, &rctx->transfer_privs[i]),
       GNUNET_JSON_spec_end ()
     };
-    int res;
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_array (connection,
                                       tp_json,
@@ -872,24 +872,8 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
 }
 
 
-/**
- * Handle a "/refreshes/$RCH/reveal" request. This time, the client reveals the
- * private transfer keys except for the cut-and-choose value returned from
- * "/coins/$COIN_PUB/melt".  This function parses the revealed keys and secrets and
- * ultimately passes everything to resolve_refreshes_reveal_denominations()
- * which will verify that the revealed information is valid then runs the
- * transaction in refreshes_reveal_transaction() and finally returns the signed
- * refreshed coins.
- *
- * @param rh context of the handler
- * @param connection MHD request handle
- * @param root uploaded JSON data
- * @param args array of additional options (length: 2, session hash and the string "reveal")
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_reveal (const struct TEH_RequestHandler *rh,
-                    struct MHD_Connection *connection,
+TEH_handler_reveal (struct TEH_RequestContext *rc,
                     const json_t *root,
                     const char *const args[2])
 {
@@ -907,7 +891,6 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
     GNUNET_JSON_spec_end ()
   };
 
-  (void) rh;
   memset (&rctx,
           0,
           sizeof (rctx));
@@ -918,7 +901,7 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
                                      sizeof (rctx.rc)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_REFRESHES_REVEAL_INVALID_RCH,
                                        args[0]);
@@ -927,16 +910,16 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
                    "reveal"))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_REFRESHES_REVEAL_OPERATION_INVALID,
                                        args[1]);
   }
 
   {
-    int res;
+    enum GNUNET_GenericReturnValue res;
 
-    res = TALER_MHD_parse_json_data (connection,
+    res = TALER_MHD_parse_json_data (rc->connection,
                                      root,
                                      spec);
     if (GNUNET_OK != res)
@@ -952,16 +935,16 @@ TEH_handler_reveal (const struct TEH_RequestHandler *rh,
   {
     GNUNET_JSON_parse_free (spec);
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_REFRESHES_REVEAL_CNC_TRANSFER_ARRAY_SIZE_INVALID,
                                        NULL);
   }
 
   {
-    int res;
+    MHD_RESULT res;
 
-    res = handle_refreshes_reveal_json (connection,
+    res = handle_refreshes_reveal_json (rc->connection,
                                         &rctx,
                                         transfer_privs,
                                         link_sigs,

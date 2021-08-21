@@ -169,23 +169,13 @@ link_transaction (void *cls,
 }
 
 
-/**
- * Handle a "/coins/$COIN_PUB/link" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (length: 2, first is the coin_pub, second must be "link")
- * @return MHD result code
-  */
 MHD_RESULT
-TEH_handler_link (const struct TEH_RequestHandler *rh,
-                  struct MHD_Connection *connection,
+TEH_handler_link (struct TEH_RequestContext *rc,
                   const char *const args[2])
 {
   struct HTD_Context ctx;
   MHD_RESULT mhd_ret;
 
-  (void) rh;
   memset (&ctx,
           0,
           sizeof (ctx));
@@ -196,22 +186,15 @@ TEH_handler_link (const struct TEH_RequestHandler *rh,
                                      sizeof (ctx.coin_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_GENERIC_COINS_INVALID_COIN_PUB,
                                        args[0]);
   }
   ctx.mlist = json_array ();
-  if (NULL == ctx.mlist)
-  {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_GENERIC_JSON_ALLOCATION_FAILURE,
-                                       "json_array() call failed");
-  }
+  GNUNET_assert (NULL != ctx.mlist);
   if (GNUNET_OK !=
-      TEH_DB_run_transaction (connection,
+      TEH_DB_run_transaction (rc->connection,
                               "run link",
                               &mhd_ret,
                               &link_transaction,
@@ -221,7 +204,7 @@ TEH_handler_link (const struct TEH_RequestHandler *rh,
       json_decref (ctx.mlist);
     return mhd_ret;
   }
-  mhd_ret = TALER_MHD_reply_json (connection,
+  mhd_ret = TALER_MHD_reply_json (rc->connection,
                                   ctx.mlist,
                                   MHD_HTTP_OK);
   json_decref (ctx.mlist);

@@ -31,7 +31,7 @@
  *
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error.
  */
-int
+enum GNUNET_GenericReturnValue
 TEH_WIRE_init (void);
 
 
@@ -58,14 +58,12 @@ TEH_wire_update_state (void);
 /**
  * Handle a "/wire" request.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_wire (const struct TEH_RequestHandler *rh,
-                  struct MHD_Connection *connection,
+TEH_handler_wire (struct TEH_RequestContext *rc,
                   const char *const args[]);
 
 

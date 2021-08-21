@@ -31,14 +31,12 @@
 /**
  * Handle a "/coins/$COIN_PUB/link" request.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param args array of additional options (length: 2, first is the coin_pub, second must be "link")
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_link (const struct TEH_RequestHandler *rh,
-                  struct MHD_Connection *connection,
+TEH_handler_link (struct TEH_RequestContext *rc,
                   const char *const args[2]);
 
 

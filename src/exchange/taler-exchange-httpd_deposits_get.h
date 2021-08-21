@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2017, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -30,15 +30,13 @@
  * Handle a "/deposits/$H_WIRE/$MERCHANT_PUB/$H_CONTRACT_TERMS/$COIN_PUB"
  * request.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param args array of additional options (length: 4, contains:
  *      h_wire, merchant_pub, h_contract_terms and coin_pub)
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
-                          struct MHD_Connection *connection,
+TEH_handler_deposits_get (struct TEH_RequestContext *rc,
                           const char *const args[4]);
 
 

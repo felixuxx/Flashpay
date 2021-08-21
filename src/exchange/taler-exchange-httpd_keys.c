@@ -2053,18 +2053,16 @@ krd_search_comparator (const void *key,
 
 
 MHD_RESULT
-TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
-                      struct MHD_Connection *connection,
+TEH_keys_get_handler (struct TEH_RequestContext *rc,
                       const char *const args[])
 {
   struct GNUNET_TIME_Absolute last_issue_date;
 
-  (void) rh;
   (void) args;
   {
     const char *have_cherrypick;
 
-    have_cherrypick = MHD_lookup_connection_value (connection,
+    have_cherrypick = MHD_lookup_connection_value (rc->connection,
                                                    MHD_GET_ARGUMENT_KIND,
                                                    "last_issue_date");
     if (NULL != have_cherrypick)
@@ -2077,7 +2075,7 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
                   &cherrypickn))
       {
         GNUNET_break_op (0);
-        return TALER_MHD_reply_with_error (connection,
+        return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                            have_cherrypick);
@@ -2103,16 +2101,16 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
     {
       GNUNET_assert (0 == pthread_mutex_lock (&skr_mutex));
       if ( (SKR_LIMIT == skr_size) &&
-           (connection == skr_connection) )
+           (rc->connection == skr_connection) )
       {
         GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
-        return TALER_MHD_reply_with_error (connection,
+        return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                            "too many connections suspended on /keys");
       }
       GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
-      return suspend_request (connection);
+      return suspend_request (rc->connection);
     }
     krd = bsearch (&last_issue_date,
                    ksh->krd_array,
@@ -2140,14 +2138,15 @@ TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
          NOT_FOUND situation. But, OTOH, for 'sane' clients it is more likely
          to be our fault, so let's speculatively assume we are to blame ;-) *///
       GNUNET_break (0);
-      return TALER_MHD_reply_with_error (connection,
+      return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                          "no key data for given timestamp");
     }
-    return MHD_queue_response (connection,
+    return MHD_queue_response (rc->connection,
                                MHD_HTTP_OK,
-                               (MHD_YES == TALER_MHD_can_compress (connection))
+                               (MHD_YES ==
+                                TALER_MHD_can_compress (rc->connection))
                                ? krd->response_compressed
                                : krd->response_uncompressed);
   }

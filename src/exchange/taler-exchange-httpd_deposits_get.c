@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2017, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -298,19 +298,8 @@ handle_track_transaction_request (
 }
 
 
-/**
- * Handle a "/deposits/$H_WIRE/$MERCHANT_PUB/$H_CONTRACT_TERMS/$COIN_PUB"
- * request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (length: 4, contains:
- *      h_wire, merchant_pub, h_contract_terms and coin_pub)
- * @return MHD result code
-  */
 MHD_RESULT
-TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
-                          struct MHD_Connection *connection,
+TEH_handler_deposits_get (struct TEH_RequestContext *rc,
                           const char *const args[4])
 {
   enum GNUNET_GenericReturnValue res;
@@ -320,7 +309,6 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
     .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_TRACK_TRANSACTION)
   };
 
-  (void) rh;
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
@@ -328,7 +316,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                                      sizeof (tps.h_wire)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_H_WIRE,
                                        args[0]);
@@ -340,7 +328,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                                      sizeof (tps.merchant)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_MERCHANT_PUB,
                                        args[1]);
@@ -352,7 +340,7 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                                      sizeof (tps.h_contract_terms)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_H_CONTRACT_TERMS,
                                        args[2]);
@@ -364,12 +352,12 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                                      sizeof (tps.coin_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_COIN_PUB,
                                        args[3]);
   }
-  res = TALER_MHD_parse_request_arg_data (connection,
+  res = TALER_MHD_parse_request_arg_data (rc->connection,
                                           "merchant_sig",
                                           &merchant_sig,
                                           sizeof (merchant_sig));
@@ -384,13 +372,13 @@ TEH_handler_deposits_get (const struct TEH_RequestHandler *rh,
                                   &tps.merchant.eddsa_pub))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_DEPOSITS_GET_MERCHANT_SIGNATURE_INVALID,
                                        NULL);
   }
 
-  return handle_track_transaction_request (connection,
+  return handle_track_transaction_request (rc->connection,
                                            &tps,
                                            &tps.merchant);
 }

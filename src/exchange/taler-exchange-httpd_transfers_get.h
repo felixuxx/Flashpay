@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2017, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -29,14 +29,12 @@
 /**
  * Handle a GET "/transfers/$WTID" request.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context of the handler
  * @param args array of additional options (length: 1, just the wtid)
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
-                           struct MHD_Connection *connection,
+TEH_handler_transfers_get (struct TEH_RequestContext *rc,
                            const char *const args[1]);
 
 

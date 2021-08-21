@@ -83,6 +83,62 @@ extern char *TEH_currency;
  */
 extern volatile bool MHD_terminating;
 
+
+/**
+ * @brief Struct describing an URL and the handler for it.
+ */
+struct TEH_RequestHandler;
+
+
+/**
+ * @brief Context in which the exchange is processing
+ *        all requests
+ */
+struct TEH_RequestContext
+{
+
+  /**
+   * Async Scope ID associated with this request.
+   */
+  struct GNUNET_AsyncScopeId async_scope_id;
+
+  /**
+   * Opaque parsing context.
+   */
+  void *opaque_post_parsing_context;
+
+  /**
+   * Request handler responsible for this request.
+   */
+  const struct TEH_RequestHandler *rh;
+
+  /**
+   * Request URL (for logging).
+   */
+  const char *url;
+
+  /**
+   * Connection we are processing.
+   */
+  struct MHD_Connection *connection;
+
+  /**
+   * @e rh-specific cleanup routine. Function called
+   * upon completion of the request that should
+   * clean up @a rh_ctx. Can be NULL.
+   */
+  void
+  (*rh_cleaner)(struct TEH_RequestContext *rc);
+
+  /**
+   * @e rh-specific context. Place where the request
+   * handler can associate state with this request.
+   * Can be NULL.
+   */
+  void *rh_ctx;
+};
+
+
 /**
  * @brief Struct describing an URL and the handler for it.
  */
@@ -109,31 +165,28 @@ struct TEH_RequestHandler
      * Function to call to handle a GET requests (and those
      * with @e method NULL).
      *
-     * @param rh this struct
+     * @param rc context for the request
      * @param mime_type the @e mime_type for the reply (hint, can be NULL)
-     * @param connection the MHD connection to handle
      * @param args array of arguments, needs to be of length @e args_expected
      * @return MHD result code
      */
-    MHD_RESULT (*get)(const struct TEH_RequestHandler *rh,
-                      struct MHD_Connection *connection,
-                      const char *const args[]);
+    MHD_RESULT
+    (*get)(struct TEH_RequestContext *rc,
+           const char *const args[]);
 
 
     /**
      * Function to call to handle a POST request.
      *
-     * @param rh this struct
-     * @param mime_type the @e mime_type for the reply (hint, can be NULL)
-     * @param connection the MHD connection to handle
+     * @param rc context for the request
      * @param json uploaded JSON data
      * @param args array of arguments, needs to be of length @e args_expected
      * @return MHD result code
      */
-    MHD_RESULT (*post)(const struct TEH_RequestHandler *rh,
-                       struct MHD_Connection *connection,
-                       const json_t *root,
-                       const char *const args[]);
+    MHD_RESULT
+    (*post)(struct TEH_RequestContext *rc,
+            const json_t *root,
+            const char *const args[]);
 
   } handler;
 

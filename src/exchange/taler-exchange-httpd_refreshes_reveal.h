@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2017, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -37,15 +37,13 @@
  * transaction in refresh_reveal_transaction() and finally returns the signed
  * refreshed coins.
  *
- * @param rh context of the handler
- * @param connection MHD request handle
+ * @param rc request context
  * @param root uploaded JSON data
  * @param args array of additional options (length: 2, session hash and the string "reveal")
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_reveal (const struct TEH_RequestHandler *rh,
-                    struct MHD_Connection *connection,
+TEH_handler_reveal (struct TEH_RequestContext *rc,
                     const json_t *root,
                     const char *const args[2]);
 

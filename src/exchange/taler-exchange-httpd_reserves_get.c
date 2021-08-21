@@ -30,6 +30,45 @@
 
 
 /**
+ * Reserve GET request that is long-polling.
+ */
+struct ReservePoller
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct ReservePoller *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct ReservePoller *prev;
+
+  /**
+   * Connection we are handling.
+   */
+  struct MHD_Connection *connection;
+
+  /**
+   * Entry in the timeout heap.
+   */
+  struct GNUNET_CONTAINER_HeapNode *hn;
+
+  /**
+   * Subscription for the database event we are
+   * waiting for.
+   */
+  struct GNUNET_DB_EventHandler *eh;
+
+  /**
+   * When will this request time out?
+   */
+  struct GNUNET_TIME_Absolute timeout;
+
+};
+
+
+/**
  * Send reserve history to client.
  *
  * @param connection connection to the client
@@ -112,26 +151,13 @@ reserve_history_transaction (void *cls,
 }
 
 
-/**
- * Handle a GET "/reserves/" request.  Parses the
- * given "reserve_pub" in @a args (which should contain the
- * EdDSA public key of a reserve) and then respond with the
- * history of the reserve.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (length: 1, just the reserve_pub)
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
-                          struct MHD_Connection *connection,
+TEH_handler_reserves_get (struct TEH_RequestContext *rc,
                           const char *const args[1])
 {
   struct ReserveHistoryContext rsc;
   MHD_RESULT mhd_ret;
 
-  (void) rh;
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
@@ -139,14 +165,14 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
                                      sizeof (rsc.reserve_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_MERCHANT_GENERIC_RESERVE_PUB_MALFORMED,
                                        args[0]);
   }
   rsc.rh = NULL;
   if (GNUNET_OK !=
-      TEH_DB_run_transaction (connection,
+      TEH_DB_run_transaction (rc->connection,
                               "get reserve history",
                               &mhd_ret,
                               &reserve_history_transaction,
@@ -155,11 +181,11 @@ TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
 
   /* generate proper response */
   if (NULL == rsc.rh)
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_NOT_FOUND,
                                        TALER_EC_EXCHANGE_RESERVES_GET_STATUS_UNKNOWN,
                                        args[0]);
-  mhd_ret = reply_reserve_history_success (connection,
+  mhd_ret = reply_reserve_history_success (rc->connection,
                                            rsc.rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                     rsc.rh);

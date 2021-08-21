@@ -95,7 +95,7 @@ destroy_wire_state_cb (void *cls)
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TEH_WIRE_init ()
 {
   if (0 !=
@@ -369,21 +369,19 @@ get_wire_state (void)
 
 
 MHD_RESULT
-TEH_handler_wire (const struct TEH_RequestHandler *rh,
-                  struct MHD_Connection *connection,
+TEH_handler_wire (struct TEH_RequestContext *rc,
                   const char *const args[])
 {
   struct WireStateHandle *wsh;
 
-  (void) rh;
   (void) args;
   wsh = get_wire_state ();
   if (NULL == wsh)
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
                                        NULL);
-  return TALER_MHD_reply_json (connection,
+  return TALER_MHD_reply_json (rc->connection,
                                wsh->wire_reply,
                                wsh->http_status);
 }

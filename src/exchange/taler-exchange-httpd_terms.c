@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2019 Taler Systems SA
+  Copyright (C) 2019, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -38,51 +38,26 @@ static struct TALER_MHD_Legal *tos;
 static struct TALER_MHD_Legal *pp;
 
 
-/**
- * Handle a "/terms" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_terms (const struct TEH_RequestHandler *rh,
-                   struct MHD_Connection *connection,
+TEH_handler_terms (struct TEH_RequestContext *rc,
                    const char *const args[])
 {
-  (void) rh;
   (void) args;
-  return TALER_MHD_reply_legal (connection,
+  return TALER_MHD_reply_legal (rc->connection,
                                 tos);
 }
 
 
-/**
- * Handle a "/privacy" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_privacy (const struct TEH_RequestHandler *rh,
-                     struct MHD_Connection *connection,
+TEH_handler_privacy (struct TEH_RequestContext *rc,
                      const char *const args[])
 {
-  (void) rh;
   (void) args;
-  return TALER_MHD_reply_legal (connection,
+  return TALER_MHD_reply_legal (rc->connection,
                                 pp);
 }
 
 
-/**
- * Load our terms of service as per configuration.
- *
- * @param cfg configuration to process
- */
 void
 TEH_load_terms (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {

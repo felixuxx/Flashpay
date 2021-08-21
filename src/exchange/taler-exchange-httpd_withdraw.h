@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -35,16 +35,14 @@
  * specified reserve.  If so, the envelope with the blinded coin "coin_ev" is
  * passed down to execute the withdrawal operation.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param root uploaded JSON data
  * @param args array of additional options (first must be the
  *         reserve public key, the second one should be "withdraw")
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
-                      struct MHD_Connection *connection,
+TEH_handler_withdraw (struct TEH_RequestContext *rc,
                       const json_t *root,
                       const char *const args[2]);
 

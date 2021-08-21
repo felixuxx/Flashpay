@@ -33,14 +33,12 @@
  * EdDSA public key of a reserve) and then respond with the
  * status of the reserve.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param args array of additional options (length: 1, just the reserve_pub)
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_reserves_get (const struct TEH_RequestHandler *rh,
-                          struct MHD_Connection *connection,
+TEH_handler_reserves_get (struct TEH_RequestContext *rc,
                           const char *const args[1]);
 
 #endif

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2018, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -499,23 +499,13 @@ get_transfer_deposits (void *cls,
 }
 
 
-/**
- * Handle a GET "/transfers/$WTID" request.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (length: 1, just the wtid)
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
-                           struct MHD_Connection *connection,
+TEH_handler_transfers_get (struct TEH_RequestContext *rc,
                            const char *const args[1])
 {
   struct WtidTransactionContext ctx;
   MHD_RESULT mhd_ret;
 
-  (void) rh;
   memset (&ctx,
           0,
           sizeof (ctx));
@@ -526,13 +516,13 @@ TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
                                      sizeof (ctx.wtid)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_TRANSFERS_GET_WTID_MALFORMED,
                                        args[0]);
   }
   if (GNUNET_OK !=
-      TEH_DB_run_transaction (connection,
+      TEH_DB_run_transaction (rc->connection,
                               "run transfers GET",
                               &mhd_ret,
                               &get_transfer_deposits,
@@ -541,7 +531,7 @@ TEH_handler_transfers_get (const struct TEH_RequestHandler *rh,
     free_ctx (&ctx);
     return mhd_ret;
   }
-  mhd_ret = reply_transfer_details (connection,
+  mhd_ret = reply_transfer_details (rc->connection,
                                     &ctx.total,
                                     &ctx.merchant_pub,
                                     &ctx.h_wire,

@@ -30,16 +30,14 @@
 
 /**
  * Function to call to handle the request by sending
- * back static data from the @a rh.
+ * back static data from the request handler.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_static_response (const struct TEH_RequestHandler *rh,
-                             struct MHD_Connection *connection,
+TEH_handler_static_response (struct TEH_RequestContext *rc,
                              const char *const args[]);
 
 
@@ -47,14 +45,12 @@ TEH_handler_static_response (const struct TEH_RequestHandler *rh,
  * Function to call to handle the request by sending
  * back a redirect to the AGPL source code.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 MHD_RESULT
-TEH_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
-                           struct MHD_Connection *connection,
+TEH_handler_agpl_redirect (struct TEH_RequestContext *rc,
                            const char *const args[]);
 
 

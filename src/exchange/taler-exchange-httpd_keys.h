@@ -324,14 +324,12 @@ TEH_keys_exchange_revoke (const struct TALER_ExchangePublicKeyP *exchange_pub);
  * Function to call to handle requests to "/keys" by sending
  * back our current key material.
  *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
+ * @param rc request context
  * @param args array of additional options (must be empty for this function)
  * @return MHD result code
  */
 MHD_RESULT
-TEH_keys_get_handler (const struct TEH_RequestHandler *rh,
-                      struct MHD_Connection *connection,
+TEH_keys_get_handler (struct TEH_RequestContext *rc,
                       const char *const args[]);
 
 

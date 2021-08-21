@@ -316,24 +316,8 @@ withdraw_transaction (void *cls,
 }
 
 
-/**
- * Handle a "/reserves/$RESERVE_PUB/withdraw" request.  Parses the
- * "reserve_pub" EdDSA key of the reserve and the requested "denom_pub" which
- * specifies the key/value of the coin to be withdrawn, and checks that the
- * signature "reserve_sig" makes this a valid withdrawal request from the
- * specified reserve.  If so, the envelope with the blinded coin "coin_ev" is
- * passed down to execute the withdrawal operation.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param root uploaded JSON data
- * @param args array of additional options (first must be the
- *         reserve public key, the second one should be "withdraw")
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
-                      struct MHD_Connection *connection,
+TEH_handler_withdraw (struct TEH_RequestContext *rc,
                       const json_t *root,
                       const char *const args[2])
 {
@@ -351,7 +335,6 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   enum TALER_ErrorCode ec;
   struct TEH_DenominationKey *dk;
 
-  (void) rh;
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
@@ -359,7 +342,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                                      sizeof (wc.wsrd.reserve_pub)))
   {
     GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_MERCHANT_GENERIC_RESERVE_PUB_MALFORMED,
                                        args[0]);
@@ -368,7 +351,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   {
     enum GNUNET_GenericReturnValue res;
 
-    res = TALER_MHD_parse_json_data (connection,
+    res = TALER_MHD_parse_json_data (rc->connection,
                                      root,
                                      spec);
     if (GNUNET_OK != res)
@@ -379,7 +362,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     struct GNUNET_TIME_Absolute now;
 
     dk = TEH_keys_denomination_by_hash (&wc.denom_pub_hash,
-                                        connection,
+                                        rc->connection,
                                         &mret);
     if (NULL == dk)
     {
@@ -397,7 +380,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       /* This denomination is past the expiration time for withdraws */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        connection,
+        rc->connection,
         &wc.denom_pub_hash,
         now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
@@ -412,7 +395,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       /* This denomination is not yet valid */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        connection,
+        rc->connection,
         &wc.denom_pub_hash,
         now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
@@ -427,7 +410,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        connection,
+        rc->connection,
         &wc.denom_pub_hash,
         now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
@@ -442,7 +425,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
                           &dk->meta.fee_withdraw))
     {
       GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
+      return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
                                          NULL);
@@ -470,7 +453,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     TALER_LOG_WARNING (
       "Client supplied invalid signature for withdraw request\n");
     GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (connection,
+    return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
                                        NULL);
@@ -487,7 +470,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_ec (connection,
+    return TALER_MHD_reply_with_ec (rc->connection,
                                     ec,
                                     NULL);
   }
@@ -498,7 +481,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     MHD_RESULT mhd_ret;
 
     if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
+        TEH_DB_run_transaction (rc->connection,
                                 "run withdraw",
                                 &mhd_ret,
                                 &withdraw_transaction,
@@ -520,7 +503,7 @@ TEH_handler_withdraw (const struct TEH_RequestHandler *rh,
     MHD_RESULT ret;
 
     ret = TALER_MHD_REPLY_JSON_PACK (
-      connection,
+      rc->connection,
       MHD_HTTP_OK,
       GNUNET_JSON_pack_rsa_signature ("ev_sig",
                                       wc.collectable.sig.rsa_signature));

@@ -34,27 +34,18 @@
 #include "taler-exchange-httpd_mhd.h"
 
 
-/**
- * Function to call to handle the request by sending
- * back static data from the @a rh.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_static_response (const struct TEH_RequestHandler *rh,
-                             struct MHD_Connection *connection,
+TEH_handler_static_response (struct TEH_RequestContext *rc,
                              const char *const args[])
 {
+  const struct TEH_RequestHandler *rh = rc->rh;
   size_t dlen;
 
   (void) args;
   dlen = (0 == rh->data_size)
          ? strlen ((const char *) rh->data)
          : rh->data_size;
-  return TALER_MHD_reply_static (connection,
+  return TALER_MHD_reply_static (rc->connection,
                                  rh->response_code,
                                  rh->mime_type,
                                  rh->data,
@@ -62,24 +53,13 @@ TEH_handler_static_response (const struct TEH_RequestHandler *rh,
 }
 
 
-/**
- * Function to call to handle the request by sending
- * back a redirect to the AGPL source code.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param args array of additional options (must be empty for this function)
- * @return MHD result code
- */
 MHD_RESULT
-TEH_handler_agpl_redirect (const struct TEH_RequestHandler *rh,
-                           struct MHD_Connection *connection,
+TEH_handler_agpl_redirect (struct TEH_RequestContext *rc,
                            const char *const args[])
 {
-  (void) rh;
   (void) args;
-  return TALER_MHD_reply_agpl (connection,
-                               "http://www.git.taler.net/?p=exchange.git");
+  return TALER_MHD_reply_agpl (rc->connection,
+                               "https://git.taler.net/?p=exchange.git");
 }
 
 
