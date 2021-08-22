@@ -2094,7 +2094,7 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     uint64_t dir;
     bool skip = true;
 
-    overflow = (t->row_id != ha.start_idx);
+    overflow = ( (NULL != t) && (t->row_id != ha.start_idx) );
     dir = (0 > ha.delta) ? (h->ram_limit - 1) : 1;
     /* If account does not match, linear scan for
        first matching account. */
