@@ -93,12 +93,6 @@ struct TALER_ReserveEventP
 GNUNET_NETWORK_STRUCT_END
 
 /**
- * Event registration record.
- */
-struct TALER_EXCHANGEDB_EventHandler;
-
-
-/**
  * Meta data about an exchange online signing key.
  */
 struct TALER_EXCHANGEDB_SignkeyMetaData
@@ -1449,12 +1443,6 @@ struct TALER_EXCHANGEDB_TransactionList
 
 
 /**
- * @brief Handle for a database session (per-thread, for transactions).
- */
-struct TALER_EXCHANGEDB_Session;
-
-
-/**
  * Function called with details about deposits that have been made,
  * with the goal of executing the corresponding wire transaction.
  *
@@ -2071,16 +2059,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   char *library_name;
 
-  /**
-   * Get the thread-local (!) database-handle.
-   * Connect to the db if the connection does not exist yet.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @returns the database connection, or NULL on error
-   */
-  struct TALER_EXCHANGEDB_Session *
-  (*get_session) (void *cls);
-
 
   /**
    * Drop the Taler tables.  This should only be used in testcases.
@@ -2106,14 +2084,12 @@ struct TALER_EXCHANGEDB_Plugin
    * Start a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
    * @param name unique name identifying the transaction (for debugging),
    *             must point to a constant
    * @return #GNUNET_OK on success
    */
   int
   (*start) (void *cls,
-            struct TALER_EXCHANGEDB_Session *session,
             const char *name);
 
 
@@ -2121,14 +2097,12 @@ struct TALER_EXCHANGEDB_Plugin
    * Start a READ COMMITTED transaction.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param session the database connection
    * @param name unique name identifying the transaction (for debugging)
    *             must point to a constant
    * @return #GNUNET_OK on success
    */
   int
   (*start_read_committed)(void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
                           const char *name);
 
 
@@ -2136,12 +2110,10 @@ struct TALER_EXCHANGEDB_Plugin
    * Commit a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
-  (*commit)(void *cls,
-            struct TALER_EXCHANGEDB_Session *session);
+  (*commit)(void *cls);
 
 
   /**
@@ -2150,22 +2122,21 @@ struct TALER_EXCHANGEDB_Plugin
    * Does not return anything, as we will continue regardless of the outcome.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param session the database connection
+   * @return #GNUNET_OK if everything is fine
+   *         #GNUNET_NO if a transaction was rolled back
+   *         #GNUNET_SYSERR on hard errors
    */
-  void
-  (*preflight) (void *cls,
-                struct TALER_EXCHANGEDB_Session *session);
+  enum GNUNET_GenericReturnValue
+  (*preflight)(void *cls);
 
 
   /**
    * Abort/rollback a transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
    */
   void
-  (*rollback) (void *cls,
-               struct TALER_EXCHANGEDB_Session *session);
+  (*rollback) (void *cls);
 
 
   /**
@@ -2179,7 +2150,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cb_cls closure for @a cb
    * @return handle useful to cancel the listener
    */
-  struct TALER_EXCHANGEDB_EventHandler *
+  struct GNUNET_DB_EventHandler *
   (*event_listen)(void *cls,
                   struct GNUNET_TIME_Relative timeout,
                   const struct GNUNET_DB_EventHeaderP *es,
@@ -2194,21 +2165,19 @@ struct TALER_EXCHANGEDB_Plugin
    */
   void
   (*event_listen_cancel)(void *cls,
-                         struct TALER_EXCHANGEDB_EventHandler *eh);
+                         struct GNUNET_DB_EventHandler *eh);
 
 
   /**
    * Notify all that listen on @a es of an event.
    *
    * @param cls database context to use
-   * @param session connection to use
    * @param es specification of the event to generate
    * @param extra additional event data provided
    * @param extra_size number of bytes in @a extra
    */
   void
   (*event_notify)(void *cls,
-                  struct TALER_EXCHANGEDB_Session *session,
                   const struct GNUNET_DB_EventHeaderP *es,
                   const void *extra,
                   size_t extra_size);
@@ -2220,7 +2189,6 @@ struct TALER_EXCHANGEDB_Plugin
    * with this key have.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
    * @param denom_pub the public key used for signing coins of this denomination
    * @param issue issuing information with value, fees and other info about the denomination
    * @return status of the query
@@ -2228,7 +2196,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_denomination_info)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_DenominationPublicKey *denom_pub,
     const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
@@ -2237,7 +2204,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Fetch information about a denomination key.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
    * @param denom_pub_hash hash of the public key used for signing coins of this denomination
    * @param[out] issue set to issue information with value, fees and other info about the coin
    * @return transaction status code
@@ -2245,7 +2211,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*get_denomination_info)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *denom_pub_hash,
     struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue);
 
@@ -2257,14 +2222,12 @@ struct TALER_EXCHANGEDB_Plugin
    * be initialized yet.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session session to use
    * @param cb function to call on each denomination key
    * @param cb_cls closure for @a cb
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*iterate_denomination_info)(void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
                                TALER_EXCHANGEDB_DenominationCallback cb,
                                void *cb_cls);
 
@@ -2272,7 +2235,7 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Function called to invoke @a cb on every known denomination key (revoked
    * and non-revoked) that has been signed by the master key. Runs in its own
-   * read-only transaction (hence no session provided).
+   * read-only transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param cb function to call on each denomination key
@@ -2287,8 +2250,7 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Function called to invoke @a cb on every non-revoked exchange signing key
    * that has been signed by the master key.  Revoked and (for signing!)
-   * expired keys are skipped. Runs in its own read-only transaction (hence no
-   * session provided).
+   * expired keys are skipped. Runs in its own read-only transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param cb function to call on each signing key
@@ -2303,8 +2265,7 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Function called to invoke @a cb on every active auditor. Disabled
-   * auditors are skipped. Runs in its own read-only transaction (hence no
-   * session provided).
+   * auditors are skipped. Runs in its own read-only transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param cb function to call on each active auditor
@@ -2320,8 +2281,7 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Function called to invoke @a cb on every denomination with an active
    * auditor. Disabled auditors and denominations without auditor are
-   * skipped. Runs in its own read-only transaction (hence no session
-   * provided).
+   * skipped. Runs in its own read-only transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param cb function to call on each active auditor-denomination pair
@@ -2339,7 +2299,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Get the summary of a reserve.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session the database connection handle
    * @param[in,out] reserve the reserve data.  The public key of the reserve should be set
    *          in this structure; it is used to query the database.  The balance
    *          and expiration are then filled accordingly.
@@ -2347,7 +2306,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*reserves_get)(void *cls,
-                  struct TALER_EXCHANGEDB_Session *session,
                   struct TALER_EXCHANGEDB_Reserve *reserve);
 
 
@@ -2356,7 +2314,6 @@ struct TALER_EXCHANGEDB_Plugin
    * also created through this function.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session the database session handle
    * @param reserve_pub public key of the reserve
    * @param balance the amount that has to be added to the reserve
    * @param execution_time when was the amount added
@@ -2366,7 +2323,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*reserves_in_insert)(void *cls,
-                        struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_ReservePublicKeyP *reserve_pub,
                         const struct TALER_Amount *balance,
                         struct GNUNET_TIME_Absolute execution_time,
@@ -2380,7 +2336,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Used by the wirewatch process when resuming.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session the database connection handle
    * @param exchange_account_name name of the section in the exchange's configuration
    *                       for the account that we are tracking here
    * @param[out] wire_reference set to unique reference identifying the wire transfer
@@ -2388,7 +2343,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_latest_reserve_in_reference)(void *cls,
-                                     struct TALER_EXCHANGEDB_Session *session,
                                      const char *exchange_account_name,
                                      uint64_t *wire_reference);
 
@@ -2399,7 +2353,6 @@ struct TALER_EXCHANGEDB_Plugin
    * idempotency of the request.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection to use
    * @param h_blind hash of the blinded coin to be signed (will match
    *                `h_coin_envelope` in the @a collectable to be returned)
    * @param collectable corresponding collectable coin (blind signature)
@@ -2408,7 +2361,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_withdraw_info)(void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        const struct GNUNET_HashCode *h_blind,
                        struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
 
@@ -2418,16 +2370,14 @@ struct TALER_EXCHANGEDB_Plugin
    * message.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection to use
    * @param collectable corresponding collectable coin (blind signature)
    *                    if a coin is found
    * @return statement execution status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_withdraw_info)(void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
-                          const struct
-                          TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
+  (*insert_withdraw_info)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
 
 
   /**
@@ -2435,14 +2385,12 @@ struct TALER_EXCHANGEDB_Plugin
    * reserve.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
    * @param reserve_pub public key of the reserve
    * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_history)(void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 
@@ -2462,13 +2410,11 @@ struct TALER_EXCHANGEDB_Plugin
    * Count the number of known coins by denomination.
    *
    * @param cls database connection plugin state
-   * @param session database session
    * @param denom_pub_hash denomination to count by
    * @return number of coins if non-negative, otherwise an `enum GNUNET_DB_QueryStatus`
    */
   long long
   (*count_known_coins) (void *cls,
-                        struct TALER_EXCHANGEDB_Session *session,
                         const struct GNUNET_HashCode *denom_pub_hash);
 
 
@@ -2476,7 +2422,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Make sure the given @a coin is known to the database.
    *
    * @param cls database connection plugin state
-   * @param session database session
    * @param coin the coin that must be made known
    * @return database transaction status, non-negative on success
    */
@@ -2508,7 +2453,6 @@ struct TALER_EXCHANGEDB_Plugin
     TALER_EXCHANGEDB_CKS_CONFLICT = -3,
   }
   (*ensure_coin_known)(void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        const struct TALER_CoinPublicInfo *coin);
 
 
@@ -2516,13 +2460,11 @@ struct TALER_EXCHANGEDB_Plugin
    * Retrieve information about the given @a coin from the database.
    *
    * @param cls database connection plugin state
-   * @param session database session
    * @param coin the coin that must be made known
    * @return database transaction status, non-negative on success
    */
   enum GNUNET_DB_QueryStatus
   (*get_known_coin)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
                     const struct TALER_CoinSpendPublicKeyP *coin_pub,
                     struct TALER_CoinPublicInfo *coin_info);
 
@@ -2531,14 +2473,12 @@ struct TALER_EXCHANGEDB_Plugin
    * Retrieve the denomination of a known coin.
    *
    * @param cls the plugin closure
-   * @param session the database session handle
    * @param coin_pub the public key of the coin to search for
    * @param[out] denom_hash where to store the hash of the coins denomination
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_coin_denomination)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                            struct GNUNET_HashCode *denom_hash);
 
@@ -2547,7 +2487,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Check if we have the specified deposit already in the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
    * @param deposit deposit to search for
    * @param check_extras whether to check extra fields or not
    * @param[out] deposit_fee set to the deposit fee the exchange charged
@@ -2558,7 +2497,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*have_deposit)(void *cls,
-                  struct TALER_EXCHANGEDB_Session *session,
                   const struct TALER_EXCHANGEDB_Deposit *deposit,
                   int check_extras,
                   struct TALER_Amount *deposit_fee,
@@ -2569,14 +2507,12 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert information about deposited coin into the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
    * @param exchange_timestamp time the exchange received the deposit request
    * @param deposit deposit information to store
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
   (*insert_deposit)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
                     struct GNUNET_TIME_Absolute exchange_timestamp,
                     const struct TALER_EXCHANGEDB_Deposit *deposit);
 
@@ -2585,13 +2521,11 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert information about refunded coin into the database.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
    * @param refund refund information to store
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
   (*insert_refund)(void *cls,
-                   struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_EXCHANGEDB_Refund *refund);
 
 
@@ -2599,7 +2533,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Select refunds by @a coin_pub, @a merchant_pub and @a h_contract.
    *
    * @param cls closure of plugin
-   * @param session database handle to use
    * @param coin_pub coin to get refunds for
    * @param merchant_pub merchant to get refunds for
    * @param h_contract_pub contract (hash) to get refunds for
@@ -2609,7 +2542,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_refunds_by_coin)(void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
                             const struct TALER_MerchantPublicKeyP *merchant_pub,
                             const struct GNUNET_HashCode *h_contract,
@@ -2623,13 +2555,11 @@ struct TALER_EXCHANGEDB_Plugin
    * returned by @e iterate_ready_deposits()
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
    * @param deposit_rowid identifies the deposit row to modify
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
   (*mark_deposit_tiny)(void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        uint64_t rowid);
 
 
@@ -2638,7 +2568,6 @@ struct TALER_EXCHANGEDB_Plugin
    * cannot be refunded anymore.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
    * @param coin_pub the coin to check for deposit
    * @param merchant_pub merchant to receive the deposit
    * @param h_contract_terms contract terms of the deposit
@@ -2649,7 +2578,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*test_deposit_done)(void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        const struct TALER_MerchantPublicKeyP *merchant_pub,
                        const struct GNUNET_HashCode *h_contract_terms,
@@ -2662,13 +2590,11 @@ struct TALER_EXCHANGEDB_Plugin
    * @e iterate_ready_deposits() or @e iterate_matching_deposits().
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
    * @param deposit_rowid identifies the deposit row to modify
    * @return query result status
    */
   enum GNUNET_DB_QueryStatus
   (*mark_deposit_done)(void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        uint64_t rowid);
 
 
@@ -2678,14 +2604,12 @@ struct TALER_EXCHANGEDB_Plugin
    * execution time and refund deadlines must both be in the past.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
    * @param deposit_cb function to call for ONE such deposit
    * @param deposit_cb_cls closure for @a deposit_cb
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_ready_deposit)(void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        TALER_EXCHANGEDB_DepositIterator deposit_cb,
                        void *deposit_cb_cls);
 
@@ -2705,7 +2629,6 @@ struct TALER_EXCHANGEDB_Plugin
    * destination.  Those deposits must not already be "done".
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to the database
    * @param h_wire destination of the wire transfer
    * @param merchant_pub public key of the merchant
    * @param deposit_cb function to call for each deposit
@@ -2719,7 +2642,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*iterate_matching_deposits)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_wire,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
     TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
@@ -2731,13 +2653,11 @@ struct TALER_EXCHANGEDB_Plugin
    * Store new melt commitment data.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database handle to use
    * @param refresh_session operational data to store
    * @return query status for the transaction
    */
   enum GNUNET_DB_QueryStatus
   (*insert_melt)(void *cls,
-                 struct TALER_EXCHANGEDB_Session *session,
                  const struct TALER_EXCHANGEDB_Refresh *refresh_session);
 
 
@@ -2745,7 +2665,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Lookup melt commitment data under the given @a rc.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database handle to use
    * @param rc commitment to use for the lookup
    * @param[out] melt where to store the result; note that
    *             melt->session.coin.denom_sig will be set to NULL
@@ -2754,7 +2673,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_melt)(void *cls,
-              struct TALER_EXCHANGEDB_Session *session,
               const struct TALER_RefreshCommitmentP *rc,
               struct TALER_EXCHANGEDB_Melt *melt);
 
@@ -2764,7 +2682,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @a rc.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param session database handle to use
    * @param rc commitment hash to use to locate the operation
    * @param[out] noreveal_index returns the "gamma" value selected by the
    *             exchange which is the index of the transfer key that is
@@ -2773,7 +2690,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_melt_index)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
                     const struct TALER_RefreshCommitmentP *rc,
                     uint32_t *noreveal_index);
 
@@ -2784,7 +2700,6 @@ struct TALER_EXCHANGEDB_Plugin
    * we learned or created in the reveal step.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
    * @param rc identify commitment and thus refresh operation
    * @param num_rrcs number of coins to generate, size of the @a rrcs array
    * @param rrcs information about the new coins
@@ -2796,7 +2711,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_refresh_reveal)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_RefreshCommitmentP *rc,
     uint32_t num_rrcs,
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
@@ -2810,7 +2724,6 @@ struct TALER_EXCHANGEDB_Plugin
    * created in the given refresh operation.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
    * @param rc identify commitment and thus refresh operation
    * @param cb function to call with the results
    * @param cb_cls closure for @a cb
@@ -2818,7 +2731,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_refresh_reveal)(void *cls,
-                        struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_RefreshCommitmentP *rc,
                         TALER_EXCHANGEDB_RefreshCallback cb,
                         void *cb_cls);
@@ -2831,7 +2743,6 @@ struct TALER_EXCHANGEDB_Plugin
    * the private keys of the new coins after the melt.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
    * @param coin_pub public key of the coin
    * @param ldc function to call for each session the coin was melted into
    * @param ldc_cls closure for @a tdc
@@ -2839,7 +2750,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_link_data)(void *cls,
-                   struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    TALER_EXCHANGEDB_LinkCallback ldc,
                    void *tdc_cls);
@@ -2850,7 +2760,6 @@ struct TALER_EXCHANGEDB_Plugin
    * with the given coin (melt, refund, recoup and deposit operations).
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
    * @param coin_pub coin to investigate
    * @param include_recoup include recoup transactions of the coin?
    * @param[out] tlp set to list of transactions, NULL if coin is fresh
@@ -2858,7 +2767,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_coin_transactions)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
                            int include_recoup,
                            struct TALER_EXCHANGEDB_TransactionList **tlp);
@@ -2880,7 +2788,6 @@ struct TALER_EXCHANGEDB_Plugin
    * into a wire transfer by the respective @a raw_wtid.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session database connection
    * @param wtid the raw wire transfer identifier we used
    * @param cb function to call on each transaction found
    * @param cb_cls closure for @a cb
@@ -2888,7 +2795,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*lookup_wire_transfer)(void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
                           const struct TALER_WireTransferIdentifierRawP *wtid,
                           TALER_EXCHANGEDB_AggregationDataCallback cb,
                           void *cb_cls);
@@ -2900,7 +2806,6 @@ struct TALER_EXCHANGEDB_Plugin
    * to be executed.
    *
    * @param cls closure
-   * @param session database connection
    * @param h_contract_terms hash of the proposal data
    * @param h_wire hash of merchant wire details
    * @param coin_pub public key of deposited coin
@@ -2912,7 +2817,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lookup_transfer_by_deposit)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_contract_terms,
     const struct GNUNET_HashCode *h_wire,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -2925,7 +2829,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to insert aggregation information into the DB.
    *
    * @param cls closure
-   * @param session database connection
    * @param wtid the raw wire transfer identifier we used
    * @param deposit_serial_id row in the deposits table for which this is aggregation data
    * @return transaction status code
@@ -2933,7 +2836,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_aggregation_tracking)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_WireTransferIdentifierRawP *wtid,
     unsigned long long deposit_serial_id);
 
@@ -2942,7 +2844,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert wire transfer fee into database.
    *
    * @param cls closure
-   * @param session database connection
    * @param wire_method which wire method is the fee about?
    * @param start_date when does the fee go into effect
    * @param end_date when does the fee end being valid
@@ -2953,7 +2854,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*insert_wire_fee)(void *cls,
-                     struct TALER_EXCHANGEDB_Session *session,
                      const char *wire_method,
                      struct GNUNET_TIME_Absolute start_date,
                      struct GNUNET_TIME_Absolute end_date,
@@ -2966,7 +2866,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Obtain wire fee from database.
    *
    * @param cls closure
-   * @param session database connection
    * @param type type of wire transfer the fee applies for
    * @param date for which date do we want the fee?
    * @param[out] start_date when does the fee go into effect
@@ -2978,7 +2877,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_wire_fee)(void *cls,
-                  struct TALER_EXCHANGEDB_Session *session,
                   const char *type,
                   struct GNUNET_TIME_Absolute date,
                   struct GNUNET_TIME_Absolute *start_date,
@@ -2993,7 +2891,6 @@ struct TALER_EXCHANGEDB_Plugin
    * remaining balances.
    *
    * @param cls closure of the plugin
-   * @param session database connection
    * @param now timestamp based on which we decide expiration
    * @param rec function to call on expired reserves
    * @param rec_cls closure for @a rec
@@ -3001,7 +2898,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_expired_reserves)(void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
                           struct GNUNET_TIME_Absolute now,
                           TALER_EXCHANGEDB_ReserveExpiredCallback rec,
                           void *rec_cls);
@@ -3011,7 +2907,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert reserve close operation into database.
    *
    * @param cls closure
-   * @param session database connection
    * @param reserve_pub which reserve is this about?
    * @param execution_date when did we perform the transfer?
    * @param receiver_account to which account do we transfer, in payto://-format
@@ -3022,7 +2917,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*insert_reserve_closed)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            struct GNUNET_TIME_Absolute execution_date,
                            const char *receiver_account,
@@ -3035,7 +2929,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to insert wire transfer commit data into the DB.
    *
    * @param cls closure
-   * @param session database connection
    * @param type type of the wire transfer (i.e. "iban")
    * @param buf buffer with wire transfer preparation data
    * @param buf_size number of bytes in @a buf
@@ -3043,7 +2936,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_insert)(void *cls,
-                              struct TALER_EXCHANGEDB_Session *session,
                               const char *type,
                               const char *buf,
                               size_t buf_size);
@@ -3053,13 +2945,11 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to mark wire transfer commit data as finished.
    *
    * @param cls closure
-   * @param session database connection
    * @param rowid which entry to mark as finished
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_mark_finished)(void *cls,
-                                     struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t rowid);
 
 
@@ -3067,13 +2957,11 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to mark wire transfer as failed.
    *
    * @param cls closure
-   * @param session database connection
    * @param rowid which entry to mark as failed
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_mark_failed)(void *cls,
-                                   struct TALER_EXCHANGEDB_Session *session,
                                    uint64_t rowid);
 
 
@@ -3082,14 +2970,12 @@ struct TALER_EXCHANGEDB_Plugin
    * preparation data. Fetches at most one item.
    *
    * @param cls closure
-   * @param session database connection
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_get)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
                            TALER_EXCHANGEDB_WirePreparationIterator cb,
                            void *cb_cls);
 
@@ -3100,19 +2986,16 @@ struct TALER_EXCHANGEDB_Plugin
    * and only add the wire transfer out at the end.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session connection to use
    * @return #GNUNET_OK on success
    */
   int
-  (*start_deferred_wire_out) (void *cls,
-                              struct TALER_EXCHANGEDB_Session *session);
+  (*start_deferred_wire_out) (void *cls);
 
 
   /**
    * Store information about an outgoing wire transfer that was executed.
    *
    * @param cls closure
-   * @param session database connection
    * @param date time of the wire transfer
    * @param wtid subject of the wire transfer
    * @param wire_account details about the receiver account of the wire transfer,
@@ -3125,7 +3008,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*store_wire_transfer_out)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     struct GNUNET_TIME_Absolute date,
     const struct TALER_WireTransferIdentifierRawP *wtid,
     const json_t *wire_account,
@@ -3150,7 +3032,6 @@ struct TALER_EXCHANGEDB_Plugin
    * order.
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
@@ -3158,7 +3039,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_deposits_above_serial_id)(void *cls,
-                                     struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t serial_id,
                                      TALER_EXCHANGEDB_DepositCallback cb,
                                      void *cb_cls);
@@ -3168,7 +3048,6 @@ struct TALER_EXCHANGEDB_Plugin
    * order.
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
@@ -3176,7 +3055,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_refreshes_above_serial_id)(void *cls,
-                                      struct TALER_EXCHANGEDB_Session *session,
                                       uint64_t serial_id,
                                       TALER_EXCHANGEDB_RefreshesCallback cb,
                                       void *cb_cls);
@@ -3187,7 +3065,6 @@ struct TALER_EXCHANGEDB_Plugin
    * order.
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
@@ -3195,7 +3072,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_refunds_above_serial_id)(void *cls,
-                                    struct TALER_EXCHANGEDB_Session *session,
                                     uint64_t serial_id,
                                     TALER_EXCHANGEDB_RefundCallback cb,
                                     void *cb_cls);
@@ -3206,7 +3082,6 @@ struct TALER_EXCHANGEDB_Plugin
    * in monotonically increasing order.
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
    * @param cb_cls closure for @a cb
@@ -3214,7 +3089,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_reserves_in_above_serial_id)(void *cls,
-                                        struct TALER_EXCHANGEDB_Session *session,
                                         uint64_t serial_id,
                                         TALER_EXCHANGEDB_ReserveInCallback cb,
                                         void *cb_cls);
@@ -3225,7 +3099,6 @@ struct TALER_EXCHANGEDB_Plugin
    * in monotonically increasing order by @a account_name.
    *
    * @param cls closure
-   * @param session database connection
    * @param account_name name of the account for which we do the selection
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
@@ -3235,7 +3108,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_reserves_in_above_serial_id_by_account)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const char *account_name,
     uint64_t serial_id,
     TALER_EXCHANGEDB_ReserveInCallback cb,
@@ -3247,7 +3119,6 @@ struct TALER_EXCHANGEDB_Plugin
    * in monotonically increasing order.
    *
    * @param cls closure
-   * @param session database connection
    * @param account_name name of the account for which we do the selection
    * @param serial_id highest serial ID to exclude (select strictly larger)
    * @param cb function to call on each result
@@ -3257,7 +3128,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_withdrawals_above_serial_id)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     uint64_t serial_id,
     TALER_EXCHANGEDB_WithdrawCallback cb,
     void *cb_cls);
@@ -3268,7 +3138,6 @@ struct TALER_EXCHANGEDB_Plugin
    * executed, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
@@ -3276,7 +3145,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_wire_out_above_serial_id)(void *cls,
-                                     struct TALER_EXCHANGEDB_Session *session,
                                      uint64_t serial_id,
                                      TALER_EXCHANGEDB_WireTransferOutCallback cb,
                                      void *cb_cls);
@@ -3286,7 +3154,6 @@ struct TALER_EXCHANGEDB_Plugin
    * executed, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
-   * @param session database connection
    * @param account_name name to select by
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call for ONE unfinished item
@@ -3296,7 +3163,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_wire_out_above_serial_id_by_account)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const char *account_name,
     uint64_t serial_id,
     TALER_EXCHANGEDB_WireTransferOutCallback cb,
@@ -3308,7 +3174,6 @@ struct TALER_EXCHANGEDB_Plugin
    * received, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
@@ -3316,7 +3181,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_recoup_above_serial_id)(void *cls,
-                                   struct TALER_EXCHANGEDB_Session *session,
                                    uint64_t serial_id,
                                    TALER_EXCHANGEDB_RecoupCallback cb,
                                    void *cb_cls);
@@ -3327,7 +3191,6 @@ struct TALER_EXCHANGEDB_Plugin
    * refreshed coins, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call for ONE unfinished item
    * @param cb_cls closure for @a cb
@@ -3336,7 +3199,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_recoup_refresh_above_serial_id)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     uint64_t serial_id,
     TALER_EXCHANGEDB_RecoupRefreshCallback cb,
     void *cb_cls);
@@ -3347,7 +3209,6 @@ struct TALER_EXCHANGEDB_Plugin
    * triggered, ordered by serial ID (monotonically increasing).
    *
    * @param cls closure
-   * @param session database connection
    * @param serial_id lowest serial ID to include (select larger or equal)
    * @param cb function to call
    * @param cb_cls closure for @a cb
@@ -3356,7 +3217,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_reserve_closed_above_serial_id)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     uint64_t serial_id,
     TALER_EXCHANGEDB_ReserveClosedCallback cb,
     void *cb_cls);
@@ -3367,7 +3227,6 @@ struct TALER_EXCHANGEDB_Plugin
    * coin.  The funds are to be added back to the reserve.
    *
    * @param cls closure
-   * @param session database connection
    * @param reserve_pub public key of the reserve that is being refunded
    * @param coin public information about a coin
    * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
@@ -3381,7 +3240,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_recoup_request)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     const struct TALER_CoinPublicInfo *coin,
     const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -3396,7 +3254,6 @@ struct TALER_EXCHANGEDB_Plugin
    * refreshed coin.  The funds are to be added back to the original coin.
    *
    * @param cls closure
-   * @param session database connection
    * @param coin public information about the refreshed coin
    * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
    * @param coin_blind blinding key of the coin
@@ -3409,7 +3266,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_recoup_refresh_request)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_CoinPublicInfo *coin,
     const struct TALER_CoinSpendSignatureP *coin_sig,
     const struct TALER_DenominationBlindingKeyP *coin_blind,
@@ -3423,14 +3279,12 @@ struct TALER_EXCHANGEDB_Plugin
    * from given the hash of the blinded coin.
    *
    * @param cls closure
-   * @param session a session
    * @param h_blind_ev hash of the blinded coin
    * @param[out] reserve_pub set to information about the reserve (on success only)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_by_h_blind)(void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             const struct GNUNET_HashCode *h_blind_ev,
                             struct TALER_ReservePublicKeyP *reserve_pub);
 
@@ -3440,14 +3294,12 @@ struct TALER_EXCHANGEDB_Plugin
    * given the hash of the blinded (fresh) coin.
    *
    * @param cls closure
-   * @param session a session
    * @param h_blind_ev hash of the blinded coin
    * @param[out] old_coin_pub set to information about the old coin (on success only)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_old_coin_by_h_blind)(void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
                              const struct GNUNET_HashCode *h_blind_ev,
                              struct TALER_CoinSpendPublicKeyP *old_coin_pub);
 
@@ -3457,7 +3309,6 @@ struct TALER_EXCHANGEDB_Plugin
    * in the database.
    *
    * @param cls closure
-   * @param session a session
    * @param denom_pub_hash hash of the revoked denomination key
    * @param master_sig signature affirming the revocation
    * @return transaction status code
@@ -3465,7 +3316,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_denomination_revocation)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *denom_pub_hash,
     const struct TALER_MasterSignatureP *master_sig);
 
@@ -3475,7 +3325,6 @@ struct TALER_EXCHANGEDB_Plugin
    * the database.
    *
    * @param cls closure
-   * @param session a session
    * @param denom_pub_hash hash of the revoked denomination key
    * @param[out] master_sig signature affirming the revocation
    * @param[out] rowid row where the information is stored
@@ -3483,7 +3332,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_denomination_revocation)(void *cls,
-                                 struct TALER_EXCHANGEDB_Session *session,
                                  const struct GNUNET_HashCode *denom_pub_hash,
                                  struct TALER_MasterSignatureP *master_sig,
                                  uint64_t *rowid);
@@ -3495,7 +3343,6 @@ struct TALER_EXCHANGEDB_Plugin
    * been deposited between @a start_date and @a end_date.
    *
    * @param cls closure
-   * @param session a session
    * @param start_date lower bound on the requested wire execution date
    * @param end_date upper bound on the requested wire execution date
    * @param cb function to call on all such deposits
@@ -3504,7 +3351,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*select_deposits_missing_wire)(void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session,
                                   struct GNUNET_TIME_Absolute start_date,
                                   struct GNUNET_TIME_Absolute end_date,
                                   TALER_EXCHANGEDB_WireMissingCallback cb,
@@ -3515,14 +3361,12 @@ struct TALER_EXCHANGEDB_Plugin
    * Check the last date an auditor was modified.
    *
    * @param cls closure
-   * @param session a session
    * @param auditor_pub key to look up information for
    * @param[out] last_date last modification date to auditor status
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*lookup_auditor_timestamp)(void *cls,
-                              struct TALER_EXCHANGEDB_Session *session,
                               const struct TALER_AuditorPublicKeyP *auditor_pub,
                               struct GNUNET_TIME_Absolute *last_date);
 
@@ -3531,7 +3375,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Lookup current state of an auditor.
    *
    * @param cls closure
-   * @param session a session
    * @param auditor_pub key to look up information for
    * @param[out] auditor_url set to the base URL of the auditor's REST API; memory to be
    *            released by the caller!
@@ -3540,7 +3383,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*lookup_auditor_status)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
                            const struct TALER_AuditorPublicKeyP *auditor_pub,
                            char **auditor_url,
                            bool *enabled);
@@ -3550,7 +3392,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert information about an auditor that will audit this exchange.
    *
    * @param cls closure
-   * @param session a session
    * @param auditor_pub key of the auditor
    * @param auditor_url base URL of the auditor's REST service
    * @param auditor_name name of the auditor (for humans)
@@ -3560,7 +3401,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*insert_auditor)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
                     const struct TALER_AuditorPublicKeyP *auditor_pub,
                     const char *auditor_url,
                     const char *auditor_name,
@@ -3571,7 +3411,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Update information about an auditor that will audit this exchange.
    *
    * @param cls closure
-   * @param session a session
    * @param auditor_pub key of the auditor (primary key for the existing record)
    * @param auditor_url base URL of the auditor's REST service, to be updated
    * @param auditor_name name of the auditor (for humans)
@@ -3582,7 +3421,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*update_auditor)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
                     const struct TALER_AuditorPublicKeyP *auditor_pub,
                     const char *auditor_url,
                     const char *auditor_name,
@@ -3594,14 +3432,12 @@ struct TALER_EXCHANGEDB_Plugin
    * Check the last date an exchange wire account was modified.
    *
    * @param cls closure
-   * @param session a session
    * @param payto_uri key to look up information for
    * @param[out] last_date last modification date to auditor status
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*lookup_wire_timestamp)(void *cls,
-                           struct TALER_EXCHANGEDB_Session *session,
                            const char *payto_uri,
                            struct GNUNET_TIME_Absolute *last_date);
 
@@ -3610,7 +3446,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert information about an wire account used by this exchange.
    *
    * @param cls closure
-   * @param session a session
    * @param payto_uri wire account of the exchange
    * @param start_date date when the account was added by the offline system
    *                      (only to be used for replay detection)
@@ -3620,7 +3455,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*insert_wire)(void *cls,
-                 struct TALER_EXCHANGEDB_Session *session,
                  const char *payto_uri,
                  struct GNUNET_TIME_Absolute start_date,
                  const struct TALER_MasterSignatureP *master_sig);
@@ -3630,7 +3464,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Update information about a wire account of the exchange.
    *
    * @param cls closure
-   * @param session a session
    * @param payto_uri account the update is about
    * @param change_date date when the account status was last changed
    *                      (only to be used for replay detection)
@@ -3639,7 +3472,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*update_wire)(void *cls,
-                 struct TALER_EXCHANGEDB_Session *session,
                  const char *payto_uri,
                  struct GNUNET_TIME_Absolute change_date,
                  bool enabled);
@@ -3680,7 +3512,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Store information about a revoked online signing key.
    *
    * @param cls closure
-   * @param session a session (can be NULL)
    * @param exchange_pub exchange online signing key that was revoked
    * @param master_sig signature affirming the revocation
    * @return transaction status code
@@ -3688,7 +3519,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_signkey_revocation)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_ExchangePublicKeyP *exchange_pub,
     const struct TALER_MasterSignatureP *master_sig);
 
@@ -3697,7 +3527,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Obtain information about a revoked online signing key.
    *
    * @param cls closure
-   * @param session a session (can be NULL)
    * @param exchange_pub exchange online signing key that was revoked
    * @param[out] master_sig signature affirming the revocation
    * @return transaction status code
@@ -3705,7 +3534,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lookup_signkey_revocation)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_ExchangePublicKeyP *exchange_pub,
     struct TALER_MasterSignatureP *master_sig);
 
@@ -3714,7 +3542,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Lookup information about current denomination key.
    *
    * @param cls closure
-   * @param session a session
    * @param h_denom_pub hash of the denomination public key
    * @param[out] meta set to various meta data about the key
    * @return transaction status code
@@ -3722,7 +3549,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lookup_denomination_key)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 
@@ -3731,7 +3557,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Add denomination key.
    *
    * @param cls closure
-   * @param session a session
    * @param h_denom_pub hash of the denomination public key
    * @param denom_pub the denomination public key
    * @param meta meta data about the denomination
@@ -3741,7 +3566,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*add_denomination_key)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
     const struct TALER_DenominationPublicKey *denom_pub,
     const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
@@ -3753,7 +3577,6 @@ struct TALER_EXCHANGEDB_Plugin
    * denomination key by adding the master signature.
    *
    * @param cls closure
-   * @param session a session
    * @param exchange_pub the exchange online signing public key
    * @param meta meta data about @a exchange_pub
    * @param master_sig master signature to add
@@ -3762,7 +3585,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*activate_signing_key)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_ExchangePublicKeyP *exchange_pub,
     const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
     const struct TALER_MasterSignatureP *master_sig);
@@ -3772,7 +3594,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Lookup signing key meta data.
    *
    * @param cls closure
-   * @param session a session
    * @param exchange_pub the exchange online signing public key
    * @param[out] meta meta data about @a exchange_pub
    * @return transaction status code
@@ -3780,7 +3601,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lookup_signing_key)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct TALER_ExchangePublicKeyP *exchange_pub,
     struct TALER_EXCHANGEDB_SignkeyMetaData *meta);
 
@@ -3789,7 +3609,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Insert information about an auditor auditing a denomination key.
    *
    * @param cls closure
-   * @param session a session
    * @param h_denom_pub the audited denomination
    * @param auditor_pub the auditor's key
    * @param auditor_sig signature affirming the auditor's audit activity
@@ -3798,7 +3617,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_auditor_denom_sig)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
     const struct TALER_AuditorPublicKeyP *auditor_pub,
     const struct TALER_AuditorSignatureP *auditor_sig);
@@ -3808,7 +3626,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Obtain information about an auditor auditing a denomination key.
    *
    * @param cls closure
-   * @param session a session
    * @param h_denom_pub the audited denomination
    * @param auditor_pub the auditor's key
    * @param[out] auditor_sig set to signature affirming the auditor's audit activity
@@ -3817,7 +3634,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*select_auditor_denom_sig)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const struct GNUNET_HashCode *h_denom_pub,
     const struct TALER_AuditorPublicKeyP *auditor_pub,
     struct TALER_AuditorSignatureP *auditor_sig);
@@ -3827,7 +3643,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Lookup information about known wire fees.
    *
    * @param cls closure
-   * @param session a session
    * @param wire_method the wire method to lookup fees for
    * @param start_time starting time of fee
    * @param end_time end time of fee
@@ -3842,7 +3657,6 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*lookup_wire_fee_by_time)(
     void *cls,
-    struct TALER_EXCHANGEDB_Session *session,
     const char *wire_method,
     struct GNUNET_TIME_Absolute start_time,
     struct GNUNET_TIME_Absolute end_time,
@@ -3855,7 +3669,6 @@ struct TALER_EXCHANGEDB_Plugin
    * exchange-auditor database replication.
    *
    * @param cls closure
-   * @param session a session
    * @param table table for which we should return the serial
    * @param[out] latest serial number in use
    * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
@@ -3863,7 +3676,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*lookup_serial_by_table)(void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             enum TALER_EXCHANGEDB_ReplicatedTable table,
                             uint64_t *serial);
 
@@ -3872,7 +3684,6 @@ struct TALER_EXCHANGEDB_Plugin
    * exchange-auditor database replication.
    *
    * @param cls closure
-   * @param session a session
    * @param table table for which we should return the serial
    * @param serial largest serial number to exclude
    * @param cb function to call on the records
@@ -3882,7 +3693,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*lookup_records_by_table)(void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
                              enum TALER_EXCHANGEDB_ReplicatedTable table,
                              uint64_t serial,
                              TALER_EXCHANGEDB_ReplicationCallback cb,
@@ -3894,20 +3704,18 @@ struct TALER_EXCHANGEDB_Plugin
    * replication.
    *
    * @param cls closure
-   * @param session a session
    * @param tb table data to insert
    * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
    *         @a table does not have a serial number
    */
   enum GNUNET_DB_QueryStatus
   (*insert_records_by_table)(void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
                              const struct TALER_EXCHANGEDB_TableData *td);
 
 
   /**
    * Function called to grab a work shard on an operation @a op. Runs in its
-   * own transaction (hence no session provided).
+   * own transaction.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param job_name name of the operation to grab a word shard for
@@ -3930,7 +3738,6 @@ struct TALER_EXCHANGEDB_Plugin
    * Function called to persist that work on a shard was completed.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param session a session
    * @param job_name name of the operation to grab a word shard for
    * @param start_row inclusive start row of the shard
    * @param end_row exclusive end row of the shard
@@ -3938,7 +3745,6 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*complete_shard)(void *cls,
-                    struct TALER_EXCHANGEDB_Session *session,
                     const char *job_name,
                     uint64_t start_row,
                     uint64_t end_row);

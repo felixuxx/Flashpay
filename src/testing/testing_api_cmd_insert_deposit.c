@@ -149,16 +149,13 @@ insert_deposit_run (void *cls,
 
   if ( (GNUNET_OK !=
         ids->dbc->plugin->start (ids->dbc->plugin->cls,
-                                 ids->dbc->session,
                                  "talertestinglib: denomination insertion")) ||
        (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         ids->dbc->plugin->insert_denomination_info (ids->dbc->plugin->cls,
-                                                    ids->dbc->session,
                                                     &dpk,
                                                     &issue)) ||
        (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-        ids->dbc->plugin->commit (ids->dbc->plugin->cls,
-                                  ids->dbc->session)) )
+        ids->dbc->plugin->commit (ids->dbc->plugin->cls)) )
   {
     TALER_TESTING_interpreter_fail (is);
     return;
@@ -228,24 +225,19 @@ insert_deposit_run (void *cls,
   /* finally, actually perform the DB operation */
   if ( (GNUNET_OK !=
         ids->dbc->plugin->start (ids->dbc->plugin->cls,
-                                 ids->dbc->session,
                                  "libtalertesting: insert deposit")) ||
        (0 >
         ids->dbc->plugin->ensure_coin_known (ids->dbc->plugin->cls,
-                                             ids->dbc->session,
                                              &deposit.coin)) ||
        (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         ids->dbc->plugin->insert_deposit (ids->dbc->plugin->cls,
-                                          ids->dbc->session,
                                           ids->exchange_timestamp,
                                           &deposit)) ||
        (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-        ids->dbc->plugin->commit (ids->dbc->plugin->cls,
-                                  ids->dbc->session)) )
+        ids->dbc->plugin->commit (ids->dbc->plugin->cls)) )
   {
     GNUNET_break (0);
-    ids->dbc->plugin->rollback (ids->dbc->plugin->cls,
-                                ids->dbc->session);
+    ids->dbc->plugin->rollback (ids->dbc->plugin->cls);
     TALER_TESTING_interpreter_fail (is);
   }
 
@@ -302,7 +294,7 @@ insert_deposit_traits (void *cls,
  * Make the "insert-deposit" CMD.
  *
  * @param label command label.
- * @param dbc collects database plugin and session handles.
+ * @param dbc collects database plugin
  * @param merchant_name Human-readable name of the merchant.
  * @param merchant_account merchant's account name (NOT a payto:// URI)
  * @param exchange_timestamp when did the exchange receive the deposit

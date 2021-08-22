@@ -107,7 +107,6 @@ struct AddKeysContext
  *
  * @param cls closure with a `struct AddKeysContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -115,7 +114,6 @@ struct AddKeysContext
 static enum GNUNET_DB_QueryStatus
 add_keys (void *cls,
           struct MHD_Connection *connection,
-          struct TALER_EXCHANGEDB_Session *session,
           MHD_RESULT *mhd_ret)
 {
   struct AddKeysContext *akc = cls;
@@ -131,7 +129,6 @@ add_keys (void *cls,
     /* For idempotency, check if the key is already active */
     qs = TEH_plugin->lookup_denomination_key (
       TEH_plugin->cls,
-      session,
       &akc->d_sigs[i].h_denom_pub,
       &meta);
     if (qs < 0)
@@ -207,7 +204,6 @@ add_keys (void *cls,
       continue; /* skip, already known */
     qs = TEH_plugin->add_denomination_key (
       TEH_plugin->cls,
-      session,
       &akc->d_sigs[i].h_denom_pub,
       &denom_pub,
       &meta,
@@ -239,7 +235,6 @@ add_keys (void *cls,
 
     qs = TEH_plugin->lookup_signing_key (
       TEH_plugin->cls,
-      session,
       &akc->s_sigs[i].exchange_pub,
       &meta);
     if (qs < 0)
@@ -297,7 +292,6 @@ add_keys (void *cls,
       continue; /* skip, already known */
     qs = TEH_plugin->activate_signing_key (
       TEH_plugin->cls,
-      session,
       &akc->s_sigs[i].exchange_pub,
       &meta,
       &akc->s_sigs[i].master_sig);

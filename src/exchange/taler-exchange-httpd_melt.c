@@ -170,14 +170,12 @@ struct MeltContext
  * melt operation.
  *
  * @param connection the connection to send errors to
- * @param session the database connection
  * @param[in,out] rmc melt context
  * @param[out] mhd_ret status code to return to MHD on hard error
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 refresh_check_melt (struct MHD_Connection *connection,
-                    struct TALER_EXCHANGEDB_Session *session,
                     struct MeltContext *rmc,
                     MHD_RESULT *mhd_ret)
 {
@@ -191,7 +189,6 @@ refresh_check_melt (struct MHD_Connection *connection,
   /* get historic transaction costs of this coin, including recoups as
      we might be a zombie coin */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          session,
                                           &rmc->refresh_session.coin.coin_pub,
                                           GNUNET_YES,
                                           &tl);
@@ -301,7 +298,6 @@ refresh_check_melt (struct MHD_Connection *connection,
  *
  * @param cls our `struct MeltContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -309,7 +305,6 @@ refresh_check_melt (struct MHD_Connection *connection,
 static enum GNUNET_DB_QueryStatus
 melt_transaction (void *cls,
                   struct MHD_Connection *connection,
-                  struct TALER_EXCHANGEDB_Session *session,
                   MHD_RESULT *mhd_ret)
 {
   struct MeltContext *rmc = cls;
@@ -321,7 +316,6 @@ melt_transaction (void *cls,
   {
     qs = TEH_make_coin_known (&rmc->refresh_session.coin,
                               connection,
-                              session,
                               mhd_ret);
     if (qs < 0)
       return qs;
@@ -329,7 +323,6 @@ melt_transaction (void *cls,
 
   /* Check if we already created a matching refresh_session */
   qs = TEH_plugin->get_melt_index (TEH_plugin->cls,
-                                   session,
                                    &rmc->refresh_session.rc,
                                    &noreveal_index);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
@@ -355,7 +348,6 @@ melt_transaction (void *cls,
 
   /* check coin has enough funds remaining on it to cover melt cost */
   qs = refresh_check_melt (connection,
-                           session,
                            rmc,
                            mhd_ret);
   if (0 > qs)
@@ -367,7 +359,6 @@ melt_transaction (void *cls,
                                 TALER_CNC_KAPPA);
   if (0 >=
       (qs = TEH_plugin->insert_melt (TEH_plugin->cls,
-                                     session,
                                      &rmc->refresh_session)))
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR != qs)
@@ -511,7 +502,6 @@ check_for_denomination_key (struct MHD_Connection *connection,
        revoked (those must be recouped) */
     qs = TEH_plugin->get_coin_denomination (
       TEH_plugin->cls,
-      NULL,
       &rmc->refresh_session.coin.coin_pub,
       &denom_hash);
     if (0 > qs)

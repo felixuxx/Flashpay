@@ -41,7 +41,7 @@ static struct TALER_TESTING_ExchangeConfiguration ec;
 static struct TALER_TESTING_BankConfiguration bc;
 
 /**
- * Contains plugin and session.
+ * Contains plugin.
  */
 static struct TALER_TESTING_DatabaseConnection dbc;
 
@@ -499,8 +499,14 @@ prepare_database (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  dbc.session = dbc.plugin->get_session (dbc.plugin->cls);
-  GNUNET_assert (NULL != dbc.session);
+  if (GNUNET_OK !=
+      dbc.plugin->preflight (dbc.plugin->cls))
+  {
+    GNUNET_break (0);
+    result = 77;
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   GNUNET_SCHEDULER_add_shutdown (&unload_db,
                                  NULL);
   run (NULL,

@@ -226,7 +226,6 @@ TALER_BANK_admin_add_incoming (
   {
     GNUNET_free (aai);
     json_decref (admin_obj);
-    GNUNET_break (0);
     return NULL;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,

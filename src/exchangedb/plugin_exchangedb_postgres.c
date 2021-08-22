@@ -88,73 +88,11 @@
 
 
 /**
- * Handler for a database session (per-thread, for transactions).
- */
-struct TALER_EXCHANGEDB_Session
-{
-  /**
-   * Postgres connection handle.
-   */
-  struct GNUNET_PQ_Context *conn;
-
-  /**
-   * Name of the current transaction, for debugging.
-   */
-  const char *transaction_name;
-
-  /**
-   * Did we initialize the prepared statements
-   * for this session?
-   */
-  bool init;
-};
-
-
-/**
- * Event registration record.
- */
-struct TALER_EXCHANGEDB_EventHandler
-{
-  /**
-   * Underlying GNUnet event handler.
-   */
-  struct GNUNET_DB_EventHandler *geh;
-
-  /**
-   * Entry in the heap.
-   */
-  struct GNUNET_CONTAINER_HeapNode *hn;
-
-  /**
-   * Our timeout.
-   */
-  struct GNUNET_TIME_Absolute timeout;
-
-  /**
-   * Callback to invoke (on @e timeout).
-   */
-  GNUNET_DB_EventCallback cb;
-
-  /**
-   * Closure for @e cb.
-   */
-  void *cb_cls;
-
-};
-
-
-/**
  * Type of the "cls" argument given to each of the functions in
  * our API.
  */
 struct PostgresClosure
 {
-
-  /**
-   * Thread-local database connection.
-   * Contains a pointer to `struct GNUNET_PQ_Context` or NULL.
-   */
-  pthread_key_t db_conn_threadlocal;
 
   /**
    * Our configuration.
@@ -165,12 +103,6 @@ struct PostgresClosure
    * Directory with SQL statements to run to create tables.
    */
   char *sql_dir;
-
-  /**
-   * Heap of `struct TALER_EXCHANGEDB_EventHandler`
-   * by timeout.
-   */
-  struct GNUNET_CONTAINER_Heap *event_heap;
 
   /**
    * After how long should idle reserves be closed?
@@ -189,25 +121,14 @@ struct PostgresClosure
   char *currency;
 
   /**
-   * Session to be used if the thread is @e main_self.
+   * Postgres connection handle.
    */
-  struct TALER_EXCHANGEDB_Session *main_session;
+  struct GNUNET_PQ_Context *conn;
 
   /**
-   * Handle for the main() thread of the program.
+   * Name of the current transaction, for debugging.
    */
-  pthread_t main_self;
-
-  /**
-   * Thread responsible for processing database event
-   * notifications.
-   */
-  pthread_t event_thread;
-
-  /**
-   * Lock for @e listener_count access.
-   */
-  pthread_mutex_t event_lock;
+  const char *transaction_name;
 
   /**
    * Number of registered listerners. @e event_thread
@@ -216,15 +137,11 @@ struct PostgresClosure
   uint64_t listener_count;
 
   /**
-   * Additional FD to signal the @e event_thread
-   * (used to stop it).
+   * Did we initialize the prepared statements
+   * for this session?
    */
-  int event_fd;
+  bool init;
 
-  /**
-   * Current Postges socket we watch on for notifications.
-   */
-  int pg_sock;
 };
 
 
@@ -237,10 +154,10 @@ struct PostgresClosure
 static int
 postgres_drop_tables (void *cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
 
-  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
                                      "drop",
                                      NULL,
@@ -261,10 +178,10 @@ postgres_drop_tables (void *cls)
 static int
 postgres_create_tables (void *cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_Context *conn;
 
-  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "exchangedb-postgres",
                                      "exchange-",
                                      NULL,
@@ -277,34 +194,13 @@ postgres_create_tables (void *cls)
 
 
 /**
- * Close thread-local database connection when a thread is destroyed.
- *
- * @param cls closure we get from pthreads (the db handle)
- */
-static void
-db_conn_destroy (void *cls)
-{
-  struct TALER_EXCHANGEDB_Session *session = cls;
-  struct GNUNET_PQ_Context *db_conn;
-
-  if (NULL == session)
-    return;
-  db_conn = session->conn;
-  session->conn = NULL;
-  if (NULL != db_conn)
-    GNUNET_PQ_disconnect (db_conn);
-  GNUNET_free (session);
-}
-
-
-/**
  * Initialize prepared statements for @a sess.
  *
  * @param[in,out] sess session to initialize
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-init_session (struct TALER_EXCHANGEDB_Session *sess)
+prepare_statements (struct PostgresClosure *pg)
 {
   enum GNUNET_GenericReturnValue ret;
   struct GNUNET_PQ_PreparedStatement ps[] = {
@@ -2541,41 +2437,27 @@ init_session (struct TALER_EXCHANGEDB_Session *sess)
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
-  ret = GNUNET_PQ_prepare_statements (sess->conn,
+  ret = GNUNET_PQ_prepare_statements (pg->conn,
                                       ps);
   if (GNUNET_OK != ret)
     return ret;
-  sess->init = true;
+  pg->init = true;
   return GNUNET_OK;
 }
 
 
 /**
- * Get the thread-local database-handle.
- * Connect to the db if the connection does not exist yet.
+ * Connect to the database if the connection does not exist yet.
  *
- * @param pc the plugin-specific state
+ * @param pg the plugin-specific state
  * @param skip_prepare true if we should skip prepared statement setup
- * @return the database connection, or NULL on error
+ * @return #GNUNET_OK on success
  */
-static struct TALER_EXCHANGEDB_Session *
-internal_get_session (struct PostgresClosure *pc,
-                      bool skip_prepare)
+static enum GNUNET_GenericReturnValue
+internal_setup (struct PostgresClosure *pg,
+                bool skip_prepare)
 {
-  struct GNUNET_PQ_Context *db_conn;
-  struct TALER_EXCHANGEDB_Session *session;
-
-  if (pthread_equal (pc->main_self,
-                     pthread_self ()))
-    session = pc->main_session;
-  else
-    session = pthread_getspecific (pc->db_conn_threadlocal);
-  if (NULL != session)
-  {
-    if (NULL == session->transaction_name)
-      GNUNET_PQ_reconnect_if_down (session->conn);
-    return session;
-  }
+  if (NULL == pg->conn)
   {
 #if AUTO_EXPLAIN
     /* Enable verbose logging to see where queries do not
@@ -2596,71 +2478,24 @@ internal_get_session (struct PostgresClosure *pc,
 #else
     struct GNUNET_PQ_ExecuteStatement *es = NULL;
 #endif
+    struct GNUNET_PQ_Context *db_conn;
 
-    db_conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+    db_conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                           "exchangedb-postgres",
                                           NULL,
                                           es,
                                           NULL);
+    if (NULL == db_conn)
+      return GNUNET_SYSERR;
+    pg->conn = db_conn;
   }
-  if (NULL == db_conn)
-    return NULL;
-  session = GNUNET_new (struct TALER_EXCHANGEDB_Session);
-  session->conn = db_conn;
-  if ( (! skip_prepare) &&
-       (GNUNET_OK !=
-        init_session (session)) )
-  {
-    GNUNET_break (0);
-    GNUNET_PQ_disconnect (db_conn);
-    GNUNET_free (session);
-    return NULL;
-  }
-  if (pthread_equal (pc->main_self,
-                     pthread_self ()))
-  {
-    pc->main_session = session;
-  }
-  else
-  {
-    if (0 != pthread_setspecific (pc->db_conn_threadlocal,
-                                  session))
-    {
-      GNUNET_break (0);
-      GNUNET_PQ_disconnect (db_conn);
-      GNUNET_free (session);
-      return NULL;
-    }
-  }
-  return session;
-}
-
-
-/**
- * Get the thread-local database-handle.
- * Connect to the db if the connection does not exist yet.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return the database connection, or NULL on error
- */
-static struct TALER_EXCHANGEDB_Session *
-postgres_get_session (void *cls)
-{
-  struct PostgresClosure *pc = cls;
-  struct TALER_EXCHANGEDB_Session *sess;
-
-  sess = internal_get_session (pc,
-                               false);
-  if (! sess->init)
-  {
-    if (GNUNET_OK !=
-        init_session (sess))
-    {
-      GNUNET_break (0);
-      return NULL;
-    }
-  }
-  return sess;
+  if (NULL == pg->transaction_name)
+    GNUNET_PQ_reconnect_if_down (pg->conn);
+  if (pg->init)
+    return GNUNET_OK;
+  if (skip_prepare)
+    return GNUNET_OK;
+  return prepare_statements (pg);
 }
 
 
@@ -2670,49 +2505,81 @@ postgres_get_session (void *cls)
  * Does not return anything, as we will continue regardless of the outcome.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
+ * @return #GNUNET_OK if everything is fine
+ *         #GNUNET_NO if a transaction was rolled back
+ *         #GNUNET_SYSERR on hard errors
  */
-static void
-postgres_preflight (void *cls,
-                    struct TALER_EXCHANGEDB_Session *session);
+static enum GNUNET_GenericReturnValue
+postgres_preflight (void *cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("ROLLBACK"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
+  };
+
+  if (! pg->init)
+  {
+    if (GNUNET_OK !=
+        internal_setup (pg,
+                        false))
+      return GNUNET_SYSERR;
+  }
+  if (NULL == pg->transaction_name)
+    return GNUNET_OK; /* all good */
+  if (GNUNET_OK ==
+      GNUNET_PQ_exec_statements (pg->conn,
+                                 es))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "BUG: Preflight check rolled back transaction `%s'!\n",
+                pg->transaction_name);
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "BUG: Preflight check failed to rollback transaction `%s'!\n",
+                pg->transaction_name);
+  }
+  pg->transaction_name = NULL;
+  return GNUNET_NO;
+}
+
 
 /**
  * Start a transaction.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  * @param name unique name identifying the transaction (for debugging)
  *             must point to a constant
  * @return #GNUNET_OK on success
  */
 static int
 postgres_start (void *cls,
-                struct TALER_EXCHANGEDB_Session *session,
                 const char *name)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL SERIALIZABLE"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  (void) cls;
+  if (GNUNET_SYSERR ==
+      postgres_preflight (pg))
+    return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting transaction named: %s\n",
-              name);
-  postgres_preflight (cls,
-                      session);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting transaction on %p\n",
-              session->conn);
+              "Starting transaction named %s on %p\n",
+              name,
+              pg->conn);
   if (GNUNET_OK !=
-      GNUNET_PQ_exec_statements (session->conn,
+      GNUNET_PQ_exec_statements (pg->conn,
                                  es))
   {
     TALER_LOG_ERROR ("Failed to start transaction\n");
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  session->transaction_name = name;
+  pg->transaction_name = name;
   return GNUNET_OK;
 }
 
@@ -2721,39 +2588,36 @@ postgres_start (void *cls,
  * Start a READ COMMITTED transaction.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  * @param name unique name identifying the transaction (for debugging)
  *             must point to a constant
  * @return #GNUNET_OK on success
  */
 static int
 postgres_start_read_committed (void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
                                const char *name)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL READ COMMITTED"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  (void) cls;
+  if (GNUNET_SYSERR ==
+      postgres_preflight (pg))
+    return GNUNET_SYSERR;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting transaction named: %s\n",
-              name);
-  postgres_preflight (cls,
-                      session);
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Starting transaction on %p\n",
-              session->conn);
+              "Starting transaction named %s on %p\n",
+              name,
+              pg->conn);
   if (GNUNET_OK !=
-      GNUNET_PQ_exec_statements (session->conn,
+      GNUNET_PQ_exec_statements (pg->conn,
                                  es))
   {
     TALER_LOG_ERROR ("Failed to start transaction\n");
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  session->transaction_name = name;
+  pg->transaction_name = name;
   return GNUNET_OK;
 }
 
@@ -2762,25 +2626,23 @@ postgres_start_read_committed (void *cls,
  * Roll back the current transaction of a database connection.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  */
 static void
-postgres_rollback (void *cls,
-                   struct TALER_EXCHANGEDB_Session *session)
+postgres_rollback (void *cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("ROLLBACK"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Rolling back transaction on %p\n",
-              session->conn);
+              pg->conn);
   GNUNET_break (GNUNET_OK ==
-                GNUNET_PQ_exec_statements (session->conn,
+                GNUNET_PQ_exec_statements (pg->conn,
                                            es));
-  session->transaction_name = NULL;
+  pg->transaction_name = NULL;
 }
 
 
@@ -2788,176 +2650,22 @@ postgres_rollback (void *cls,
  * Commit the current transaction of a database connection.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  * @return final transaction status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_commit (void *cls,
-                 struct TALER_EXCHANGEDB_Session *session)
+postgres_commit (void *cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) cls;
-  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "do_commit",
                                            params);
-  session->transaction_name = NULL;
+  pg->transaction_name = NULL;
   return qs;
-}
-
-
-/**
- * Do a pre-flight check that we are not in an uncommitted transaction.
- * If we are, try to commit the previous transaction and output a warning.
- * Does not return anything, as we will continue regardless of the outcome.
- *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
- */
-static void
-postgres_preflight (void *cls,
-                    struct TALER_EXCHANGEDB_Session *session)
-{
-  struct GNUNET_PQ_ExecuteStatement es[] = {
-    GNUNET_PQ_make_execute ("ROLLBACK"),
-    GNUNET_PQ_EXECUTE_STATEMENT_END
-  };
-
-  (void) cls;
-  if (NULL == session)
-  {
-    GNUNET_break (0);
-    return;
-  }
-  if (NULL == session->transaction_name)
-    return; /* all good */
-  if (GNUNET_OK ==
-      GNUNET_PQ_exec_statements (session->conn,
-                                 es))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check rolled back transaction `%s'!\n",
-                session->transaction_name);
-  }
-  else
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "BUG: Preflight check failed to rollback transaction `%s'!\n",
-                session->transaction_name);
-  }
-  session->transaction_name = NULL;
-}
-
-
-/**
- * Main function of the thread that processes events.
- *
- * @param cls a `struct PostgresClosure *`
- */
-static void *
-handle_events (void *cls)
-{
-  struct PostgresClosure *pg = cls;
-  struct pollfd pfds[] = {
-    {
-      .fd = pg->event_fd,
-      .events = POLLIN
-    },
-    {
-      .fd = pg->pg_sock,
-      .events = POLLIN
-    }
-  };
-  nfds_t nfds = (-1 == pg->pg_sock) ? 1 : 2;
-  struct TALER_EXCHANGEDB_EventHandler *r;
-
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&pg->event_lock));
-  while (0 != pg->listener_count)
-  {
-    int ret;
-    int timeout = -1; /* no timeout */
-
-    GNUNET_assert (0 ==
-                   pthread_mutex_unlock (&pg->event_lock));
-    while (1)
-    {
-      r = GNUNET_CONTAINER_heap_peek (pg->event_heap);
-      if (NULL == r)
-        break;
-      if (GNUNET_TIME_absolute_is_future (r->timeout))
-        break;
-      GNUNET_assert (r ==
-                     GNUNET_CONTAINER_heap_remove_root (pg->event_heap));
-      r->hn = NULL;
-      r->cb (r->cb_cls,
-             NULL,
-             0);
-    }
-    if (NULL != r)
-    {
-      struct GNUNET_TIME_Relative rem;
-
-      rem = GNUNET_TIME_absolute_get_remaining (r->timeout);
-      timeout = rem.rel_value_us / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
-    }
-    ret = poll (pfds,
-                nfds,
-                timeout);
-    if (-1 == ret)
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                           "poll");
-    for (int i = 0; i<ret; i++)
-    {
-      if ( (pg->event_fd == pfds[i].fd) &&
-           (0 != (POLLIN & pfds[i].revents)) )
-      {
-        /* consume signal */
-        uint64_t val;
-
-        GNUNET_break (sizeof (uint64_t) ==
-                      read (pg->event_fd,
-                            &val,
-                            sizeof (val)));
-      }
-      if ( (pg->pg_sock == pfds[i].fd) &&
-           (0 != (POLLIN & pfds[i].revents)) )
-      {
-        GNUNET_assert (NULL != pg->main_session);
-        GNUNET_PQ_event_do_poll (pg->main_session->conn);
-      }
-    }
-    GNUNET_assert (0 ==
-                   pthread_mutex_lock (&pg->event_lock));
-  }
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&pg->event_lock));
-  return NULL;
-}
-
-
-/**
- * Function called whenever the socket needed for
- * notifications from postgres changes.
- *
- * @param cls closure
- * @param fd socket to listen on, -1 for none
- */
-static void
-pq_socket_cb (void *cls,
-              int fd)
-{
-  struct PostgresClosure *pg = cls;
-  uint64_t val = 1;
-
-  pg->pg_sock = fd;
-  GNUNET_break (sizeof (uint64_t) ==
-                write (pg->event_fd,
-                       &val,
-                       sizeof (val)));
 }
 
 
@@ -2972,7 +2680,7 @@ pq_socket_cb (void *cls,
  * @param cb_cls closure for @a cb
  * @return handle useful to cancel the listener
  */
-static struct TALER_EXCHANGEDB_EventHandler *
+static struct GNUNET_DB_EventHandler *
 postgres_event_listen (void *cls,
                        struct GNUNET_TIME_Relative timeout,
                        const struct GNUNET_DB_EventHeaderP *es,
@@ -2980,36 +2688,12 @@ postgres_event_listen (void *cls,
                        void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
-  struct TALER_EXCHANGEDB_EventHandler *eh;
-  struct TALER_EXCHANGEDB_Session *session;
 
-  session = postgres_get_session (pg);
-  eh = GNUNET_new (struct TALER_EXCHANGEDB_EventHandler);
-  eh->cb = cb;
-  eh->cb_cls = cb_cls;
-  eh->timeout = GNUNET_TIME_relative_to_absolute (timeout);
-  eh->geh = GNUNET_PQ_event_listen (session->conn,
-                                    es,
-                                    cb,
-                                    cb_cls);
-  GNUNET_assert (NULL != eh->geh);
-  eh->hn = GNUNET_CONTAINER_heap_insert (pg->event_heap,
-                                         eh,
-                                         eh->timeout.abs_value_us);
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&pg->event_lock));
-  pg->listener_count++;
-  if (1 == pg->listener_count)
-  {
-    GNUNET_assert (0 ==
-                   pthread_create (&pg->event_thread,
-                                   NULL,
-                                   &handle_events,
-                                   pg));
-  }
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&pg->event_lock));
-  return eh;
+  return GNUNET_PQ_event_listen (pg->conn,
+                                 es,
+                                 timeout,
+                                 cb,
+                                 cb_cls);
 }
 
 
@@ -3021,35 +2705,10 @@ postgres_event_listen (void *cls,
  */
 static void
 postgres_event_listen_cancel (void *cls,
-                              struct TALER_EXCHANGEDB_EventHandler *eh)
+                              struct GNUNET_DB_EventHandler *eh)
 {
-  struct PostgresClosure *pg = cls;
-
-  GNUNET_assert (0 ==
-                 pthread_mutex_lock (&pg->event_lock));
-  pg->listener_count--;
-  if (0 == pg->listener_count)
-  {
-    uint64_t val = 1;
-    void *ret;
-
-    GNUNET_break (sizeof (uint64_t) ==
-                  write (pg->event_fd,
-                         &val,
-                         sizeof (val)));
-    GNUNET_break (0 ==
-                  pthread_join (pg->event_thread,
-                                &ret));
-  }
-  GNUNET_assert (0 ==
-                 pthread_mutex_unlock (&pg->event_lock));
-  if (NULL != eh->hn)
-  {
-    GNUNET_CONTAINER_heap_remove_node (eh->hn);
-    eh->hn = NULL;
-  }
-  GNUNET_PQ_event_listen_cancel (eh->geh);
-  GNUNET_free (eh);
+  (void) cls;
+  GNUNET_PQ_event_listen_cancel (eh);
 }
 
 
@@ -3057,22 +2716,19 @@ postgres_event_listen_cancel (void *cls,
  * Notify all that listen on @a es of an event.
  *
  * @param cls database context to use
- * @param session connection to use
  * @param es specification of the event to generate
  * @param extra additional event data provided
  * @param extra_size number of bytes in @a extra
  */
 static void
 postgres_event_notify (void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        const struct GNUNET_DB_EventHeaderP *es,
                        const void *extra,
                        size_t extra_size)
 {
   struct PostgresClosure *pg = cls;
 
-  (void) pg;
-  GNUNET_PQ_event_notify (session->conn,
+  GNUNET_PQ_event_notify (pg->conn,
                           es,
                           extra,
                           extra_size);
@@ -3084,7 +2740,6 @@ postgres_event_notify (void *cls,
  * reference by auditors and other consistency checks.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param denom_pub the public key used for signing coins of this denomination
  * @param issue issuing information with value, fees and other info about the coin
  * @return status of the query
@@ -3092,10 +2747,10 @@ postgres_event_notify (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_info (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
     GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
@@ -3112,7 +2767,6 @@ postgres_insert_denomination_info (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_assert (0 != GNUNET_TIME_absolute_ntoh (
                    issue->properties.start).abs_value_us);
   GNUNET_assert (0 != GNUNET_TIME_absolute_ntoh (
@@ -3135,7 +2789,7 @@ postgres_insert_denomination_info (
                  TALER_amount_cmp_currency_nbo (&issue->properties.value,
                                                 &issue->properties.fee_refund));
 
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_insert",
                                              params);
 }
@@ -3145,7 +2799,6 @@ postgres_insert_denomination_info (
  * Fetch information about a denomination key.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param denom_pub_hash hash of the public key used for signing coins of this denomination
  * @param[out] issue set to issue information with value, fees and other info about the coin
  * @return transaction status code
@@ -3153,7 +2806,6 @@ postgres_insert_denomination_info (
 static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_info (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *denom_pub_hash,
   struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
@@ -3190,7 +2842,7 @@ postgres_get_denomination_info (
   memset (&issue->properties.master,
           0,
           sizeof (issue->properties.master));
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "denomination_get",
                                                  params,
                                                  rs);
@@ -3302,32 +2954,26 @@ domination_cb_helper (void *cls,
  * Fetch information about all known denomination keys.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param cb function to call on each denomination key
  * @param cb_cls closure for @a cb
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_iterate_denomination_info (void *cls,
-                                    struct TALER_EXCHANGEDB_Session *session,
                                     TALER_EXCHANGEDB_DenominationCallback cb,
                                     void *cb_cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
   struct DenomIteratorContext dic = {
     .cb = cb,
     .cb_cls = cb_cls,
-    .pg = pc
+    .pg = pg
   };
 
-  if (NULL == session)
-    session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "denomination_iterate",
                                                params,
                                                &domination_cb_helper,
@@ -3432,7 +3078,7 @@ dominations_cb_helper (void *cls,
 /**
 * Function called to invoke @a cb on every known denomination key (revoked
 * and non-revoked) that has been signed by the master key. Runs in its own
-* read-only transaction (hence no session provided).
+* read-only transaction.
 *
 *
  * @param cls the @e cls of this struct with the plugin-specific state
@@ -3445,21 +3091,17 @@ postgres_iterate_denominations (void *cls,
                                 TALER_EXCHANGEDB_DenominationsCallback cb,
                                 void *cb_cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
   struct DenomsIteratorContext dic = {
     .cb = cb,
     .cb_cls = cb_cls,
-    .pg = pc
+    .pg = pg
   };
-  struct TALER_EXCHANGEDB_Session *session;
 
-  session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "select_denominations",
                                                params,
                                                &dominations_cb_helper,
@@ -3538,8 +3180,7 @@ signkeys_cb_helper (void *cls,
 /**
  * Function called to invoke @a cb on every non-revoked exchange signing key
  * that has been signed by the master key.  Revoked and (for signing!)
- * expired keys are skipped. Runs in its own read-only transaction (hence no
- * session provided).
+ * expired keys are skipped. Runs in its own read-only transaction.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param cb function to call on each signing key
@@ -3551,7 +3192,7 @@ postgres_iterate_active_signkeys (void *cls,
                                   TALER_EXCHANGEDB_ActiveSignkeysCallback cb,
                                   void *cb_cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&now),
@@ -3561,13 +3202,9 @@ postgres_iterate_active_signkeys (void *cls,
     .cb = cb,
     .cb_cls = cb_cls,
   };
-  struct TALER_EXCHANGEDB_Session *session;
 
   now = GNUNET_TIME_absolute_get ();
-  session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "select_signkeys",
                                                params,
                                                &signkeys_cb_helper,
@@ -3642,8 +3279,7 @@ auditors_cb_helper (void *cls,
 
 /**
  * Function called to invoke @a cb on every active auditor. Disabled
- * auditors are skipped. Runs in its own read-only transaction (hence no
- * session provided).
+ * auditors are skipped. Runs in its own read-only transaction.
   *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param cb function to call on each active auditor
@@ -3655,7 +3291,7 @@ postgres_iterate_active_auditors (void *cls,
                                   TALER_EXCHANGEDB_AuditorsCallback cb,
                                   void *cb_cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
@@ -3663,12 +3299,8 @@ postgres_iterate_active_auditors (void *cls,
     .cb = cb,
     .cb_cls = cb_cls,
   };
-  struct TALER_EXCHANGEDB_Session *session;
 
-  session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "select_auditors",
                                                params,
                                                &auditors_cb_helper,
@@ -3742,8 +3374,7 @@ auditor_denoms_cb_helper (void *cls,
 /**
  * Function called to invoke @a cb on every denomination with an active
  * auditor. Disabled auditors and denominations without auditor are
- * skipped. Runs in its own read-only transaction (hence no session
- * provided).
+ * skipped. Runs in its own read-only transaction.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param cb function to call on each active auditor
@@ -3756,7 +3387,7 @@ postgres_iterate_auditor_denominations (
   TALER_EXCHANGEDB_AuditorDenominationsCallback cb,
   void *cb_cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
@@ -3764,12 +3395,8 @@ postgres_iterate_auditor_denominations (
     .cb = cb,
     .cb_cls = cb_cls,
   };
-  struct TALER_EXCHANGEDB_Session *session;
 
-  session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "select_auditor_denoms",
                                                params,
                                                &auditor_denoms_cb_helper,
@@ -3781,7 +3408,6 @@ postgres_iterate_auditor_denominations (
  * Get the summary of a reserve.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection handle
  * @param[in,out] reserve the reserve data.  The public key of the reserve should be
  *          set in this structure; it is used to query the database.  The balance
  *          and expiration are then filled accordingly.
@@ -3789,7 +3415,6 @@ postgres_iterate_auditor_denominations (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_reserves_get (void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        struct TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct PostgresClosure *pg = cls;
@@ -3804,7 +3429,7 @@ postgres_reserves_get (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "reserves_get",
                                                    params,
                                                    rs);
@@ -3815,16 +3440,15 @@ postgres_reserves_get (void *cls,
  * Updates a reserve with the data from the given reserve structure.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  * @param reserve the reserve structure whose data will be used to update the
  *          corresponding record in the database.
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 reserves_update (void *cls,
-                 struct TALER_EXCHANGEDB_Session *session,
                  const struct TALER_EXCHANGEDB_Reserve *reserve)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&reserve->expiry),
     TALER_PQ_query_param_absolute_time (&reserve->gc),
@@ -3833,8 +3457,7 @@ reserves_update (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "reserve_update",
                                              params);
 }
@@ -3844,12 +3467,11 @@ reserves_update (void *cls,
  * Generate event notification for the reserve
  * change.
  *
- * @param session database session to use
+ * @param pg plugin state
  * @param reserve_pub reserve to notfiy on
  */
 static void
 notify_on_reserve (struct PostgresClosure *pg,
-                   struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct TALER_ReserveEventP rep = {
@@ -3858,8 +3480,9 @@ notify_on_reserve (struct PostgresClosure *pg,
     .reserve_pub = *reserve_pub
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Notifying on reserve!\n");
   postgres_event_notify (pg,
-                         session,
                          &rep.header,
                          NULL,
                          0);
@@ -3871,7 +3494,6 @@ notify_on_reserve (struct PostgresClosure *pg,
  * through this function.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection handle
  * @param reserve_pub public key of the reserve
  * @param balance the amount that has to be added to the reserve
  * @param execution_time when was the amount added
@@ -3883,7 +3505,6 @@ notify_on_reserve (struct PostgresClosure *pg,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_reserves_in_insert (void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
                              const struct TALER_ReservePublicKeyP *reserve_pub,
                              const struct TALER_Amount *balance,
                              struct GNUNET_TIME_Absolute execution_time,
@@ -3936,7 +3557,7 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Reserve does not exist; creating a new one\n");
     /* Note: query uses 'on conflict do nothing' */
-    qs1 = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+    qs1 = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                     "reserve_create",
                                                     params,
                                                     rs);
@@ -3961,7 +3582,7 @@ postgres_reserves_in_insert (void *cls,
         GNUNET_PQ_query_param_end
       };
 
-      qs2 = GNUNET_PQ_eval_prepared_non_select (session->conn,
+      qs2 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                 "reserves_in_add_transaction",
                                                 params);
     }
@@ -3977,7 +3598,7 @@ postgres_reserves_in_insert (void *cls,
         GNUNET_PQ_query_param_end
       };
 
-      qs2 = GNUNET_PQ_eval_prepared_non_select (session->conn,
+      qs2 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                 "reserves_in_add_by_uuid",
                                                 params);
     }
@@ -4002,7 +3623,6 @@ postgres_reserves_in_insert (void *cls,
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs1)
   {
     notify_on_reserve (pg,
-                       session,
                        reserve_pub);
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* new reserve, we are finished */
   }
@@ -4012,13 +3632,11 @@ postgres_reserves_in_insert (void *cls,
   {
     enum GNUNET_DB_QueryStatus cs;
 
-    cs = postgres_commit (cls,
-                          session);
+    cs = postgres_commit (pg);
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
-        postgres_start (cls,
-                        session,
+        postgres_start (pg,
                         "reserve-update-serializable"))
     {
       GNUNET_break (0);
@@ -4028,8 +3646,7 @@ postgres_reserves_in_insert (void *cls,
   {
     enum GNUNET_DB_QueryStatus reserve_exists;
 
-    reserve_exists = postgres_reserves_get (cls,
-                                            session,
+    reserve_exists = postgres_reserves_get (pg,
                                             &reserve);
     switch (reserve_exists)
     {
@@ -4074,8 +3691,7 @@ postgres_reserves_in_insert (void *cls,
     updated_reserve.gc = GNUNET_TIME_absolute_max (gc,
                                                    reserve.gc);
     (void) GNUNET_TIME_round_abs (&updated_reserve.gc);
-    qs3 = reserves_update (cls,
-                           session,
+    qs3 = reserves_update (pg,
                            &updated_reserve);
     switch (qs3)
     {
@@ -4094,19 +3710,16 @@ postgres_reserves_in_insert (void *cls,
     }
   }
   notify_on_reserve (pg,
-                     session,
                      reserve_pub);
   /* Go back to original transaction mode */
   {
     enum GNUNET_DB_QueryStatus cs;
 
-    cs = postgres_commit (cls,
-                          session);
+    cs = postgres_commit (pg);
     if (cs < 0)
       return cs;
     if (GNUNET_OK !=
-        postgres_start_read_committed (cls,
-                                       session,
+        postgres_start_read_committed (pg,
                                        "reserve-insert-continued"))
     {
       GNUNET_break (0);
@@ -4121,7 +3734,6 @@ postgres_reserves_in_insert (void *cls,
  * Obtain the most recent @a wire_reference that was inserted via @e reserves_in_insert.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session the database session handle
  * @param exchange_account_name name of the section in the exchange's configuration
  *                       for the account that we are tracking here
  * @param[out] wire_reference set to unique reference identifying the wire transfer
@@ -4130,10 +3742,10 @@ postgres_reserves_in_insert (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_latest_reserve_in_reference (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const char *exchange_account_name,
   uint64_t *wire_reference)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (exchange_account_name),
     GNUNET_PQ_query_param_end
@@ -4144,8 +3756,7 @@ postgres_get_latest_reserve_in_reference (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "reserves_in_get_latest_wire_reference",
                                                    params,
                                                    rs);
@@ -4157,7 +3768,6 @@ postgres_get_latest_reserve_in_reference (
  * key of the hash of the blinded message.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database connection to use
  * @param h_blind hash of the blinded coin to be signed (will match
  *                `h_coin_envelope` in the @a collectable to be returned)
  * @param collectable corresponding collectable coin (blind signature)
@@ -4167,7 +3777,6 @@ postgres_get_latest_reserve_in_reference (
 static enum GNUNET_DB_QueryStatus
 postgres_get_withdraw_info (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_blind,
   struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
@@ -4197,13 +3806,13 @@ postgres_get_withdraw_info (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                     "lock_withdraw",
                                                     no_params)))
     return qs;
 #endif
   collectable->h_coin_envelope = *h_blind;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_withdraw_info",
                                                    params,
                                                    rs);
@@ -4215,7 +3824,6 @@ postgres_get_withdraw_info (
  * hash of the blinded message.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database connection to use
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
  * @return query execution status
@@ -4223,7 +3831,6 @@ postgres_get_withdraw_info (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_withdraw_info (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
@@ -4244,7 +3851,7 @@ postgres_insert_withdraw_info (
 
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
-  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "insert_withdraw_info",
                                            params);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -4256,8 +3863,7 @@ postgres_insert_withdraw_info (
   /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      (qs = postgres_reserves_get (cls,
-                                   session,
+      (qs = postgres_reserves_get (pg,
                                    &reserve)))
   {
     /* Should have been checked before we got here... */
@@ -4285,8 +3891,7 @@ postgres_insert_withdraw_info (
   reserve.gc = GNUNET_TIME_absolute_max (gc,
                                          reserve.gc);
   (void) GNUNET_TIME_round_abs (&reserve.gc);
-  qs = reserves_update (cls,
-                        session,
+  qs = reserves_update (pg,
                         &reserve);
   GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -4590,14 +4195,12 @@ add_exchange_to_bank (void *cls,
  * reserve.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session connection to use
  * @param reserve_pub public key of the reserve
  * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_history (void *cls,
-                              struct TALER_EXCHANGEDB_Session *session,
                               const struct TALER_ReservePublicKeyP *reserve_pub,
                               struct TALER_EXCHANGEDB_ReserveHistory **rhp)
 {
@@ -4644,7 +4247,7 @@ postgres_get_reserve_history (void *cls,
   qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS; /* make static analysis happy */
   for (unsigned int i = 0; NULL != work[i].cb; i++)
   {
-    qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+    qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                work[i].statement,
                                                params,
                                                work[i].cb,
@@ -4674,7 +4277,6 @@ postgres_get_reserve_history (void *cls,
  * Check if we have the specified deposit already in the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database connection
  * @param deposit deposit to search for
  * @param check_extras whether to check extra fields match or not
  * @param[out] deposit_fee set to the deposit fee the exchange charged
@@ -4685,7 +4287,6 @@ postgres_get_reserve_history (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_have_deposit (void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        const struct TALER_EXCHANGEDB_Deposit *deposit,
                        int check_extras,
                        struct TALER_Amount *deposit_fee,
@@ -4722,7 +4323,7 @@ postgres_have_deposit (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                     "lock_deposit",
                                                     no_params)))
     return qs;
@@ -4730,7 +4331,7 @@ postgres_have_deposit (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting deposits for coin %s\n",
               TALER_B2S (&deposit->coin.coin_pub));
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_deposit",
                                                  params,
                                                  rs);
@@ -4764,22 +4365,20 @@ postgres_have_deposit (void *cls,
  * @e iterate_ready_deposits()
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param rowid identifies the deposit row to modify
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_tiny (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             uint64_t rowid)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "mark_deposit_tiny",
                                              params);
 }
@@ -4790,7 +4389,6 @@ postgres_mark_deposit_tiny (void *cls,
  * refunded anymore.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param coin_pub the coin to check for deposit
  * @param merchant_pub merchant to receive the deposit
  * @param h_contract_terms contract terms of the deposit
@@ -4801,12 +4399,12 @@ postgres_mark_deposit_tiny (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_test_deposit_done (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
                             const struct TALER_MerchantPublicKeyP *merchant_pub,
                             const struct GNUNET_HashCode *h_contract_terms,
                             const struct GNUNET_HashCode *h_wire)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
@@ -4822,8 +4420,7 @@ postgres_test_deposit_done (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) cls;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "test_deposit_done",
                                                  params,
                                                  rs);
@@ -4843,22 +4440,20 @@ postgres_test_deposit_done (void *cls,
  * @e iterate_ready_deposits() or @e iterate_matching_deposits().
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param rowid identifies the deposit row to modify
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_mark_deposit_done (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             uint64_t rowid)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "mark_deposit_done",
                                              params);
 }
@@ -4870,14 +4465,12 @@ postgres_mark_deposit_done (void *cls,
  * execution time must be in the past.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param deposit_cb function to call for ONE such deposit
  * @param deposit_cb_cls closure for @a deposit_cb
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_ready_deposit (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             TALER_EXCHANGEDB_DepositIterator deposit_cb,
                             void *deposit_cb_cls)
 {
@@ -4928,7 +4521,7 @@ postgres_get_ready_deposit (void *cls,
               GNUNET_STRINGS_absolute_time_to_string (now),
               (unsigned long long) now.abs_value_us);
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "deposits_get_ready",
                                                  params,
                                                  rs);
@@ -5065,7 +4658,6 @@ match_deposit_cb (void *cls,
  * destination.  Those deposits must not already be "done".
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param h_wire destination of the wire transfer
  * @param merchant_pub public key of the merchant
  * @param deposit_cb function to call for each deposit
@@ -5077,7 +4669,6 @@ match_deposit_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_iterate_matching_deposits (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_wire,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
@@ -5099,7 +4690,7 @@ postgres_iterate_matching_deposits (
   mdc.pg = pg;
   mdc.limit = limit;
   mdc.status = GNUNET_OK;
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "deposits_iterate_matching",
                                              params,
                                              &match_deposit_cb,
@@ -5119,18 +4710,16 @@ postgres_iterate_matching_deposits (
  * Retrieve the record for a known coin.
  *
  * @param cls the plugin closure
- * @param session the database session handle
  * @param coin_pub the public key of the coin to search for
  * @param coin_info place holder for the returned coin information object
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_known_coin (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_CoinSpendPublicKeyP *coin_pub,
                          struct TALER_CoinPublicInfo *coin_info)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
@@ -5147,11 +4736,7 @@ postgres_get_known_coin (void *cls,
               "Getting known coin data for coin %s\n",
               TALER_B2S (coin_pub));
   coin_info->coin_pub = *coin_pub;
-  if (NULL == session)
-    session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_known_coin",
                                                    params,
                                                    rs);
@@ -5162,7 +4747,6 @@ postgres_get_known_coin (void *cls,
  * Retrieve the denomination of a known coin.
  *
  * @param cls the plugin closure
- * @param session the database session handle
  * @param coin_pub the public key of the coin to search for
  * @param[out] denom_hash where to store the hash of the coins denomination
  * @return transaction status code
@@ -5170,11 +4754,10 @@ postgres_get_known_coin (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_coin_denomination (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   struct GNUNET_HashCode *denom_hash)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
@@ -5188,11 +4771,7 @@ postgres_get_coin_denomination (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Getting coin denomination of coin %s\n",
               TALER_B2S (coin_pub));
-  if (NULL == session)
-    session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_coin_denomination",
                                                    params,
                                                    rs);
@@ -5205,15 +4784,14 @@ postgres_get_coin_denomination (
  * functionality.
  *
  * @param cls plugin closure
- * @param session the shared database session
  * @param coin_info the public coin info
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 insert_known_coin (void *cls,
-                   struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_CoinPublicInfo *coin_info)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin_info->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin_info->denom_pub_hash),
@@ -5221,11 +4799,10 @@ insert_known_coin (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating known coin %s\n",
               TALER_B2S (&coin_info->coin_pub));
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_known_coin",
                                              params);
 }
@@ -5235,15 +4812,14 @@ insert_known_coin (void *cls,
  * Count the number of known coins by denomination.
  *
  * @param cls database connection plugin state
- * @param session database session
  * @param denom_pub_hash denomination to count by
  * @return number of coins if non-negative, otherwise an `enum GNUNET_DB_QueryStatus`
  */
 static long long
 postgres_count_known_coins (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             const struct GNUNET_HashCode *denom_pub_hash)
 {
+  struct PostgresClosure *pg = cls;
   uint64_t count;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
@@ -5256,8 +4832,7 @@ postgres_count_known_coins (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) cls;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "count_known_coins",
                                                  params,
                                                  rs);
@@ -5271,16 +4846,14 @@ postgres_count_known_coins (void *cls,
  * Make sure the given @a coin is known to the database.
  *
  * @param cls database connection plugin state
- * @param session database session
  * @param coin the coin that must be made known
  * @return database transaction status, non-negative on success
  */
 static enum TALER_EXCHANGEDB_CoinKnownStatus
 postgres_ensure_coin_known (void *cls,
-                            struct TALER_EXCHANGEDB_Session *session,
                             const struct TALER_CoinPublicInfo *coin)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_HashCode denom_pub_hash;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5297,13 +4870,13 @@ postgres_ensure_coin_known (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                     "lock_known_coins",
                                                     no_params)))
     return qs;
 #endif
   /* check if the coin is already known */
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_known_coin_dh",
                                                  params,
                                                  rs);
@@ -5324,8 +4897,7 @@ postgres_ensure_coin_known (void *cls,
   }
 
   /* if not known, insert it */
-  qs = insert_known_coin (pc,
-                          session,
+  qs = insert_known_coin (pg,
                           coin);
   switch (qs)
   {
@@ -5347,17 +4919,16 @@ postgres_ensure_coin_known (void *cls,
  * Insert information about deposited coin into the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session connection to the database
  * @param exchange_timestamp time the exchange received the deposit request
  * @param deposit deposit information to store
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_deposit (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
                          struct GNUNET_TIME_Absolute exchange_timestamp,
                          const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
     TALER_PQ_query_param_amount (&deposit->amount_with_fee),
@@ -5373,13 +4944,12 @@ postgres_insert_deposit (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Inserting deposit to be executed at %s (%llu/%llu)\n",
               GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),
               (unsigned long long) deposit->wire_deadline.abs_value_us,
               (unsigned long long) deposit->refund_deadline.abs_value_us);
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_deposit",
                                              params);
 }
@@ -5389,15 +4959,14 @@ postgres_insert_deposit (void *cls,
  * Insert information about refunded coin into the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param refund refund information to store
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_refund (void *cls,
-                        struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_Refund *refund)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&refund->coin.coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&refund->details.merchant_pub),
@@ -5408,11 +4977,10 @@ postgres_insert_refund (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (&refund->details.refund_amount,
                                             &refund->details.refund_fee));
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_refund",
                                              params);
 }
@@ -5491,7 +5059,6 @@ get_refunds_cb (void *cls,
  * Select refunds by @a coin_pub, @a merchant_pub and @a h_contract.
  *
  * @param cls closure of plugin
- * @param session database handle to use
  * @param coin_pub coin to get refunds for
  * @param merchant_pub merchant to get refunds for
  * @param h_contract contract (hash) to get refunds for
@@ -5502,7 +5069,6 @@ get_refunds_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_refunds_by_coin (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct GNUNET_HashCode *h_contract,
@@ -5524,7 +5090,7 @@ postgres_select_refunds_by_coin (
     .status = GNUNET_OK
   };
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_refunds_by_coin_and_contract",
                                              params,
                                              &get_refunds_cb,
@@ -5539,7 +5105,6 @@ postgres_select_refunds_by_coin (
  * Lookup refresh melt commitment data under the given @a rc.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database handle to use, NULL if not run in any transaction
  * @param rc commitment hash to use to locate the operation
  * @param[out] melt where to store the result; note that
  *             melt->session.coin.denom_sig will be set to NULL
@@ -5548,7 +5113,6 @@ postgres_select_refunds_by_coin (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_melt (void *cls,
-                   struct TALER_EXCHANGEDB_Session *session,
                    const struct TALER_RefreshCommitmentP *rc,
                    struct TALER_EXCHANGEDB_Melt *melt)
 {
@@ -5576,11 +5140,7 @@ postgres_get_melt (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   melt->session.coin.denom_sig.rsa_signature = NULL;
-  if (NULL == session)
-    session = postgres_get_session (pg);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_melt",
                                                  params,
                                                  rs);
@@ -5594,7 +5154,6 @@ postgres_get_melt (void *cls,
  * @a rc.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database handle to use
  * @param rc commitment hash to use to locate the operation
  * @param[out] noreveal_index returns the "gamma" value selected by the
  *             exchange which is the index of the transfer key that is
@@ -5603,10 +5162,10 @@ postgres_get_melt (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_melt_index (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_RefreshCommitmentP *rc,
                          uint32_t *noreveal_index)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (rc),
     GNUNET_PQ_query_param_end
@@ -5617,8 +5176,7 @@ postgres_get_melt_index (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_melt_index",
                                                    params,
                                                    rs);
@@ -5629,16 +5187,15 @@ postgres_get_melt_index (void *cls,
  * Store new refresh melt commitment data.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database handle to use
  * @param refresh_session session data to store
  * @return query status for the transaction
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_melt (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_EXCHANGEDB_Refresh *refresh_session)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&refresh_session->rc),
     GNUNET_PQ_query_param_auto_from_type (&refresh_session->coin.coin_pub),
@@ -5648,8 +5205,7 @@ postgres_insert_melt (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_melt",
                                              params);
 }
@@ -5661,7 +5217,6 @@ postgres_insert_melt (
  * we learned or created in the /refresh/reveal step.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session database connection
  * @param rc identify commitment and thus refresh operation
  * @param num_rrcs number of coins to generate, size of the @a rrcs array
  * @param rrcs information about the new coins
@@ -5673,7 +5228,6 @@ postgres_insert_melt (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_refresh_reveal (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_RefreshCommitmentP *rc,
   uint32_t num_rrcs,
   const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
@@ -5681,7 +5235,8 @@ postgres_insert_refresh_reveal (
   const struct TALER_TransferPrivateKeyP *tprivs,
   const struct TALER_TransferPublicKeyP *tp)
 {
-  (void) cls;
+  struct PostgresClosure *pg = cls;
+
   if (TALER_CNC_KAPPA != num_tprivs + 1)
   {
     GNUNET_break (0);
@@ -5710,7 +5265,7 @@ postgres_insert_refresh_reveal (
     GNUNET_CRYPTO_hash (rrc->coin_ev,
                         rrc->coin_ev_size,
                         &h_coin_ev);
-    qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+    qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_refresh_revealed_coin",
                                              params);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -5722,12 +5277,13 @@ postgres_insert_refresh_reveal (
       GNUNET_PQ_query_param_auto_from_type (rc),
       GNUNET_PQ_query_param_auto_from_type (tp),
       GNUNET_PQ_query_param_fixed_size (tprivs,
-                                        num_tprivs * sizeof (struct
-                                                             TALER_TransferPrivateKeyP)),
+                                        num_tprivs
+                                        * sizeof (struct
+                                                  TALER_TransferPrivateKeyP)),
       GNUNET_PQ_query_param_end
     };
 
-    return GNUNET_PQ_eval_prepared_non_select (session->conn,
+    return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                "insert_refresh_transfer_keys",
                                                params);
   }
@@ -5820,7 +5376,6 @@ add_revealed_coins (void *cls,
  * create in the given refresh operation.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database connection
  * @param rc identify commitment and thus refresh operation
  * @param cb function to call with the results
  * @param cb_cls closure for @a cb
@@ -5828,11 +5383,11 @@ add_revealed_coins (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_refresh_reveal (void *cls,
-                             struct TALER_EXCHANGEDB_Session *session,
                              const struct TALER_RefreshCommitmentP *rc,
                              TALER_EXCHANGEDB_RefreshCallback cb,
                              void *cb_cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GetRevealContext grctx;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_TransferPublicKeyP tp;
@@ -5851,12 +5406,11 @@ postgres_get_refresh_reveal (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
   /* First get the coins */
   memset (&grctx,
           0,
           sizeof (grctx));
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_refresh_revealed_coins",
                                              params,
                                              &add_revealed_coins,
@@ -5882,7 +5436,7 @@ postgres_get_refresh_reveal (void *cls,
   }
 
   /* now also get the transfer keys (public and private) */
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_refresh_transfer_keys",
                                                  params,
                                                  rs);
@@ -5978,7 +5532,6 @@ free_link_data_list (void *cls,
 {
   struct TALER_EXCHANGEDB_LinkList *next;
 
-  (void) cls;
   while (NULL != ldl)
   {
     next = ldl->next;
@@ -6065,7 +5618,6 @@ add_ldl (void *cls,
  * information, the denomination keys and the signatures.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database connection
  * @param coin_pub public key of the coin
  * @param ldc function to call for each session the coin was melted into
  * @param ldc_cls closure for @a tdc
@@ -6073,11 +5625,11 @@ add_ldl (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_link_data (void *cls,
-                        struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
                         TALER_EXCHANGEDB_LinkCallback ldc,
                         void *ldc_cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_end
@@ -6089,7 +5641,7 @@ postgres_get_link_data (void *cls,
   ldctx.ldc_cls = ldc_cls;
   ldctx.last = NULL;
   ldctx.status = GNUNET_OK;
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_link",
                                              params,
                                              &add_ldl,
@@ -6132,11 +5684,6 @@ struct CoinHistoryContext
    * Closure for all callbacks of this database plugin.
    */
   void *db_cls;
-
-  /**
-   * Database session we are using.
-   */
-  struct TALER_EXCHANGEDB_Session *session;
 
   /**
    * Plugin context.
@@ -6578,7 +6125,6 @@ struct Work
  * (/refresh/melt, /deposit, /refund and /recoup operations).
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session database connection
  * @param coin_pub coin to investigate
  * @param include_recoup should recoup transactions be included in the @a tlp
  * @param[out] tlp set to list of transactions, NULL if coin is fresh
@@ -6587,7 +6133,6 @@ struct Work
 static enum GNUNET_DB_QueryStatus
 postgres_get_coin_transactions (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   int include_recoup,
   struct TALER_EXCHANGEDB_TransactionList **tlp)
@@ -6635,7 +6180,6 @@ postgres_get_coin_transactions (
   struct CoinHistoryContext chc = {
     .head = NULL,
     .coin_pub = coin_pub,
-    .session = session,
     .pg = pg,
     .db_cls = cls
   };
@@ -6646,7 +6190,7 @@ postgres_get_coin_transactions (
               TALER_B2S (coin_pub));
   for (unsigned int i = 0; NULL != work[i].statement; i++)
   {
-    qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+    qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                work[i].statement,
                                                params,
                                                work[i].cb,
@@ -6777,7 +6321,6 @@ handle_wt_result (void *cls,
  * into a wire transfer by the respective @a wtid.
  *
  * @param cls closure
- * @param session database connection
  * @param wtid the raw wire transfer identifier we used
  * @param cb function to call on each transaction found
  * @param cb_cls closure for @a cb
@@ -6786,7 +6329,6 @@ handle_wt_result (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_wire_transfer (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   TALER_EXCHANGEDB_AggregationDataCallback cb,
   void *cb_cls)
@@ -6804,7 +6346,7 @@ postgres_lookup_wire_transfer (
   ctx.pg = pg;
   ctx.status = GNUNET_OK;
   /* check if the melt record exists and get it */
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "lookup_transactions",
                                              params,
                                              &handle_wt_result,
@@ -6821,7 +6363,6 @@ postgres_lookup_wire_transfer (
  * to be executed.
  *
  * @param cls closure
- * @param session database connection
  * @param h_contract_terms hash of the proposal data
  * @param h_wire hash of merchant wire details
  * @param coin_pub public key of deposited coin
@@ -6833,7 +6374,6 @@ postgres_lookup_wire_transfer (
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_transfer_by_deposit (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_contract_terms,
   const struct GNUNET_HashCode *h_wire,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -6867,7 +6407,7 @@ postgres_lookup_transfer_by_deposit (
   };
 
   /* check if the melt record exists and get it */
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "lookup_deposit_wtid",
                                                  params,
                                                  rs);
@@ -6907,7 +6447,7 @@ postgres_lookup_transfer_by_deposit (
       GNUNET_PQ_result_spec_end
     };
 
-    qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+    qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_deposit_for_wtid",
                                                    params2,
                                                    rs2);
@@ -6931,7 +6471,6 @@ postgres_lookup_transfer_by_deposit (
  * Function called to insert aggregation information into the DB.
  *
  * @param cls closure
- * @param session database connection
  * @param wtid the raw wire transfer identifier we used
  * @param deposit_serial_id row in the deposits table for which this is aggregation data
  * @return transaction status code
@@ -6939,10 +6478,10 @@ postgres_lookup_transfer_by_deposit (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_aggregation_tracking (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   unsigned long long deposit_serial_id)
 {
+  struct PostgresClosure *pg = cls;
   uint64_t rid = deposit_serial_id;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rid),
@@ -6950,8 +6489,7 @@ postgres_insert_aggregation_tracking (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_aggregation_tracking",
                                              params);
 }
@@ -6961,7 +6499,6 @@ postgres_insert_aggregation_tracking (
  * Obtain wire fee from database.
  *
  * @param cls closure
- * @param session database connection
  * @param type type of wire transfer the fee applies for
  * @param date for which date do we want the fee?
  * @param[out] start_date when does the fee go into effect
@@ -6973,7 +6510,6 @@ postgres_insert_aggregation_tracking (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_wire_fee (void *cls,
-                       struct TALER_EXCHANGEDB_Session *session,
                        const char *type,
                        struct GNUNET_TIME_Absolute date,
                        struct GNUNET_TIME_Absolute *start_date,
@@ -6997,7 +6533,7 @@ postgres_get_wire_fee (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_wire_fee",
                                                    params,
                                                    rs);
@@ -7008,7 +6544,6 @@ postgres_get_wire_fee (void *cls,
  * Insert wire transfer fee into database.
  *
  * @param cls closure
- * @param session database connection
  * @param type type of wire transfer this fee applies for
  * @param start_date when does the fee go into effect
  * @param end_date when does the fee end being valid
@@ -7019,7 +6554,6 @@ postgres_get_wire_fee (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_fee (void *cls,
-                          struct TALER_EXCHANGEDB_Session *session,
                           const char *type,
                           struct GNUNET_TIME_Absolute start_date,
                           struct GNUNET_TIME_Absolute end_date,
@@ -7045,7 +6579,6 @@ postgres_insert_wire_fee (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = postgres_get_wire_fee (pg,
-                              session,
                               type,
                               start_date,
                               &sd,
@@ -7085,7 +6618,7 @@ postgres_insert_wire_fee (void *cls,
     return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
 
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_wire_fee",
                                              params);
 }
@@ -7181,7 +6714,6 @@ reserve_expired_cb (void *cls,
  * remaining balances.
  *
  * @param cls closure of the plugin
- * @param session database connection
  * @param now timestamp based on which we decide expiration
  * @param rec function to call on expired reserves
  * @param rec_cls closure for @a rec
@@ -7189,7 +6721,6 @@ reserve_expired_cb (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_expired_reserves (void *cls,
-                               struct TALER_EXCHANGEDB_Session *session,
                                struct GNUNET_TIME_Absolute now,
                                TALER_EXCHANGEDB_ReserveExpiredCallback rec,
                                void *rec_cls)
@@ -7206,7 +6737,7 @@ postgres_get_expired_reserves (void *cls,
   ectx.rec_cls = rec_cls;
   ectx.pg = pg;
   ectx.status = GNUNET_OK;
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_expired_reserves",
                                              params,
                                              &reserve_expired_cb,
@@ -7221,7 +6752,6 @@ postgres_get_expired_reserves (void *cls,
  * Insert reserve close operation into database.
  *
  * @param cls closure
- * @param session database connection
  * @param reserve_pub which reserve is this about?
  * @param execution_date when did we perform the transfer?
  * @param receiver_account to which account do we transfer?
@@ -7233,7 +6763,6 @@ postgres_get_expired_reserves (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_reserve_closed (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct GNUNET_TIME_Absolute execution_date,
   const char *receiver_account,
@@ -7241,6 +6770,7 @@ postgres_insert_reserve_closed (
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *closing_fee)
 {
+  struct PostgresClosure *pg = cls;
   struct TALER_EXCHANGEDB_Reserve reserve;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
@@ -7254,7 +6784,7 @@ postgres_insert_reserve_closed (
   enum TALER_AmountArithmeticResult ret;
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "reserves_close_insert",
                                            params);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -7264,7 +6794,6 @@ postgres_insert_reserve_closed (
   reserve.pub = *reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       (qs = postgres_reserves_get (cls,
-                                   session,
                                    &reserve)))
   {
     /* Existence should have been checked before we got here... */
@@ -7288,7 +6817,6 @@ postgres_insert_reserve_closed (
   }
   GNUNET_break (TALER_AAR_RESULT_ZERO == ret);
   return reserves_update (cls,
-                          session,
                           &reserve);
 }
 
@@ -7297,7 +6825,6 @@ postgres_insert_reserve_closed (
  * Function called to insert wire transfer commit data into the DB.
  *
  * @param cls closure
- * @param session database connection
  * @param type type of the wire transfer (i.e. "iban")
  * @param buf buffer with wire transfer preparation data
  * @param buf_size number of bytes in @a buf
@@ -7305,19 +6832,18 @@ postgres_insert_reserve_closed (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_wire_prepare_data_insert (void *cls,
-                                   struct TALER_EXCHANGEDB_Session *session,
                                    const char *type,
                                    const char *buf,
                                    size_t buf_size)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (type),
     GNUNET_PQ_query_param_fixed_size (buf, buf_size),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_prepare_data_insert",
                                              params);
 }
@@ -7327,23 +6853,21 @@ postgres_wire_prepare_data_insert (void *cls,
  * Function called to mark wire transfer commit data as finished.
  *
  * @param cls closure
- * @param session database connection
  * @param rowid which entry to mark as finished
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_wire_prepare_data_mark_finished (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t rowid)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_prepare_data_mark_done",
                                              params);
 }
@@ -7353,23 +6877,21 @@ postgres_wire_prepare_data_mark_finished (
  * Function called to mark wire transfer commit data as failed.
  *
  * @param cls closure
- * @param session database connection
  * @param rowid which entry to mark as failed
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_wire_prepare_data_mark_failed (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t rowid)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&rowid),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_prepare_data_mark_failed",
                                              params);
 }
@@ -7380,17 +6902,16 @@ postgres_wire_prepare_data_mark_failed (
  * preparation data. Fetches at most one item.
  *
  * @param cls closure
- * @param session database connection
  * @param cb function to call for ONE unfinished item
  * @param cb_cls closure for @a cb
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_wire_prepare_data_get (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
                                 TALER_EXCHANGEDB_WirePreparationIterator cb,
                                 void *cb_cls)
 {
+  struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
@@ -7410,8 +6931,7 @@ postgres_wire_prepare_data_get (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "wire_prepare_data_get",
                                                  params,
                                                  rs);
@@ -7433,34 +6953,32 @@ postgres_wire_prepare_data_get (void *cls,
  * and only add the wire transfer out at the end.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @return #GNUNET_OK on success
  */
 static int
-postgres_start_deferred_wire_out (void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session)
+postgres_start_deferred_wire_out (void *cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("SET CONSTRAINTS wire_out_ref DEFERRED"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  postgres_preflight (cls,
-                      session);
+  if (GNUNET_SYSERR ==
+      postgres_preflight (pg))
+    return GNUNET_SYSERR;
   if (GNUNET_OK !=
-      postgres_start (cls,
-                      session,
+      postgres_start (pg,
                       "deferred wire out"))
     return GNUNET_SYSERR;
   if (GNUNET_OK !=
-      GNUNET_PQ_exec_statements (session->conn,
+      GNUNET_PQ_exec_statements (pg->conn,
                                  es))
   {
     TALER_LOG_ERROR (
       "Failed to defer wire_out_ref constraint on transaction\n");
     GNUNET_break (0);
-    postgres_rollback (cls,
-                       session);
+    postgres_rollback (pg);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
@@ -7471,7 +6989,6 @@ postgres_start_deferred_wire_out (void *cls,
  * Store information about an outgoing wire transfer that was executed.
  *
  * @param cls closure
- * @param session database connection
  * @param date time of the wire transfer
  * @param wtid subject of the wire transfer
  * @param wire_account details about the receiver account of the wire transfer
@@ -7483,13 +7000,13 @@ postgres_start_deferred_wire_out (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_store_wire_transfer_out (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   struct GNUNET_TIME_Absolute date,
   const struct TALER_WireTransferIdentifierRawP *wtid,
   const json_t *wire_account,
   const char *exchange_account_section,
   const struct TALER_Amount *amount)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
@@ -7499,8 +7016,7 @@ postgres_store_wire_transfer_out (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_wire_out",
                                              params);
 }
@@ -7720,7 +7236,6 @@ deposit_serial_helper_cb (void *cls,
  * order.
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call on each result
  * @param cb_cls closure for @a cb
@@ -7729,7 +7244,6 @@ deposit_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_deposits_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_DepositCallback cb,
   void *cb_cls)
@@ -7747,7 +7261,7 @@ postgres_select_deposits_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_deposits_incr",
                                              params,
                                              &deposit_serial_helper_cb,
@@ -7859,7 +7373,6 @@ refreshs_serial_helper_cb (void *cls,
  * order.
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call on each result
  * @param cb_cls closure for @a cb
@@ -7868,7 +7381,6 @@ refreshs_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_refreshes_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_RefreshesCallback cb,
   void *cb_cls)
@@ -7886,7 +7398,7 @@ postgres_select_refreshes_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_refresh_commitments_incr",
                                              params,
                                              &refreshs_serial_helper_cb,
@@ -7997,7 +7509,6 @@ refunds_serial_helper_cb (void *cls,
  * order.
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call on each result
  * @param cb_cls closure for @a cb
@@ -8006,7 +7517,6 @@ refunds_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_refunds_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_RefundCallback cb,
   void *cb_cls)
@@ -8024,7 +7534,7 @@ postgres_select_refunds_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_refunds_incr",
                                              params,
                                              &refunds_serial_helper_cb,
@@ -8132,7 +7642,6 @@ reserves_in_serial_helper_cb (void *cls,
  * in monotonically increasing order.
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call on each result
  * @param cb_cls closure for @a cb
@@ -8141,7 +7650,6 @@ reserves_in_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_reserves_in_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_ReserveInCallback cb,
   void *cb_cls)
@@ -8159,7 +7667,7 @@ postgres_select_reserves_in_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_reserves_in_get_transactions_incr",
                                              params,
                                              &reserves_in_serial_helper_cb,
@@ -8175,7 +7683,6 @@ postgres_select_reserves_in_above_serial_id (
  * in monotonically increasing order by account.
  *
  * @param cls closure
- * @param session database connection
  * @param account_name name of the account to select by
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call on each result
@@ -8185,7 +7692,6 @@ postgres_select_reserves_in_above_serial_id (
 static enum GNUNET_DB_QueryStatus
 postgres_select_reserves_in_above_serial_id_by_account (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const char *account_name,
   uint64_t serial_id,
   TALER_EXCHANGEDB_ReserveInCallback cb,
@@ -8205,7 +7711,7 @@ postgres_select_reserves_in_above_serial_id_by_account (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_reserves_in_get_transactions_incr_by_account",
                                              params,
                                              &reserves_in_serial_helper_cb,
@@ -8317,7 +7823,6 @@ reserves_out_serial_helper_cb (void *cls,
  * in monotonically increasing order.
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call on each result
  * @param cb_cls closure for @a cb
@@ -8326,7 +7831,6 @@ reserves_out_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_withdrawals_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_WithdrawCallback cb,
   void *cb_cls)
@@ -8344,7 +7848,7 @@ postgres_select_withdrawals_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_reserves_out_incr",
                                              params,
                                              &reserves_out_serial_helper_cb,
@@ -8448,7 +7952,6 @@ wire_out_serial_helper_cb (void *cls,
  * executed.
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call for ONE unfinished item
  * @param cb_cls closure for @a cb
@@ -8457,7 +7960,6 @@ wire_out_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_wire_out_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_WireTransferOutCallback cb,
   void *cb_cls)
@@ -8475,7 +7977,7 @@ postgres_select_wire_out_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_wire_incr",
                                              params,
                                              &wire_out_serial_helper_cb,
@@ -8491,7 +7993,6 @@ postgres_select_wire_out_above_serial_id (
  * executed by account.
  *
  * @param cls closure
- * @param session database connection
  * @param account_name account to select
  * @param serial_id highest serial ID to exclude (select strictly larger)
  * @param cb function to call for ONE unfinished item
@@ -8501,7 +8002,6 @@ postgres_select_wire_out_above_serial_id (
 static enum GNUNET_DB_QueryStatus
 postgres_select_wire_out_above_serial_id_by_account (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const char *account_name,
   uint64_t serial_id,
   TALER_EXCHANGEDB_WireTransferOutCallback cb,
@@ -8521,7 +8021,7 @@ postgres_select_wire_out_above_serial_id_by_account (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "audit_get_wire_incr_by_account",
                                              params,
                                              &wire_out_serial_helper_cb,
@@ -8644,7 +8144,6 @@ recoup_serial_helper_cb (void *cls,
  * received, ordered by serial ID (monotonically increasing).
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id lowest serial ID to include (select larger or equal)
  * @param cb function to call for ONE unfinished item
  * @param cb_cls closure for @a cb
@@ -8653,7 +8152,6 @@ recoup_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_recoup_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_RecoupCallback cb,
   void *cb_cls)
@@ -8671,7 +8169,7 @@ postgres_select_recoup_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "recoup_get_incr",
                                              params,
                                              &recoup_serial_helper_cb,
@@ -8798,7 +8296,6 @@ recoup_refresh_serial_helper_cb (void *cls,
  * refreshed coins, ordered by serial ID (monotonically increasing).
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id lowest serial ID to include (select larger or equal)
  * @param cb function to call for ONE unfinished item
  * @param cb_cls closure for @a cb
@@ -8807,7 +8304,6 @@ recoup_refresh_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_recoup_refresh_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_RecoupRefreshCallback cb,
   void *cb_cls)
@@ -8825,7 +8321,7 @@ postgres_select_recoup_refresh_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "recoup_refresh_get_incr",
                                              params,
                                              &recoup_refresh_serial_helper_cb,
@@ -8937,7 +8433,6 @@ reserve_closed_serial_helper_cb (void *cls,
  * triggered, ordered by serial ID (monotonically increasing).
  *
  * @param cls closure
- * @param session database connection
  * @param serial_id lowest serial ID to include (select larger or equal)
  * @param cb function to call for ONE unfinished item
  * @param cb_cls closure for @a cb
@@ -8946,7 +8441,6 @@ reserve_closed_serial_helper_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_reserve_closed_above_serial_id (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   uint64_t serial_id,
   TALER_EXCHANGEDB_ReserveClosedCallback cb,
   void *cb_cls)
@@ -8964,7 +8458,7 @@ postgres_select_reserve_closed_above_serial_id (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "reserves_close_get_incr",
                                              params,
                                              &reserve_closed_serial_helper_cb,
@@ -8982,7 +8476,6 @@ postgres_select_reserve_closed_above_serial_id (
  * wire transfer back to the customer's account for the reserve.
  *
  * @param cls closure
- * @param session database connection
  * @param reserve_pub public key of the reserve that is being refunded
  * @param coin information about the coin
  * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
@@ -8995,7 +8488,6 @@ postgres_select_reserve_closed_above_serial_id (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_recoup_request (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_CoinSpendSignatureP *coin_sig,
@@ -9020,7 +8512,7 @@ postgres_insert_recoup_request (
   enum GNUNET_DB_QueryStatus qs;
 
   /* now store actual recoup information */
-  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "recoup_insert",
                                            params);
   if (0 > qs)
@@ -9031,8 +8523,7 @@ postgres_insert_recoup_request (
 
   /* Update reserve balance */
   reserve.pub = *reserve_pub;
-  qs = postgres_reserves_get (cls,
-                              session,
+  qs = postgres_reserves_get (pg,
                               &reserve);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
@@ -9060,8 +8551,7 @@ postgres_insert_recoup_request (
   reserve.expiry = GNUNET_TIME_absolute_max (expiry,
                                              reserve.expiry);
   (void) GNUNET_TIME_round_abs (&reserve.expiry);
-  qs = reserves_update (cls,
-                        session,
+  qs = reserves_update (pg,
                         &reserve);
   if (0 >= qs)
   {
@@ -9079,7 +8569,6 @@ postgres_insert_recoup_request (
  * "recoup_by_old_coin" used in #postgres_get_coin_transactions()).
  *
  * @param cls closure
- * @param session database connection
  * @param coin public information about the refreshed coin
  * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
  * @param coin_blind blinding key of the coin
@@ -9092,7 +8581,6 @@ postgres_insert_recoup_request (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_recoup_refresh_request (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_DenominationBlindingKeyP *coin_blind,
@@ -9100,6 +8588,7 @@ postgres_insert_recoup_refresh_request (
   const struct GNUNET_HashCode *h_blind_ev,
   struct GNUNET_TIME_Absolute timestamp)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (coin_sig),
@@ -9111,12 +8600,11 @@ postgres_insert_recoup_refresh_request (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) cls;
   /* now store actual recoup information */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Inserting recoup-refresh for coin %s\n",
               TALER_B2S (&coin->coin_pub));
-  qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "recoup_refresh_insert",
                                            params);
   if (0 > qs)
@@ -9133,17 +8621,16 @@ postgres_insert_recoup_refresh_request (
  * from given the hash of the blinded coin.
  *
  * @param cls closure
- * @param session a session
  * @param h_blind_ev hash of the blinded coin
  * @param[out] reserve_pub set to information about the reserve (on success only)
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_by_h_blind (void *cls,
-                                 struct TALER_EXCHANGEDB_Session *session,
                                  const struct GNUNET_HashCode *h_blind_ev,
                                  struct TALER_ReservePublicKeyP *reserve_pub)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
     GNUNET_PQ_query_param_end
@@ -9154,8 +8641,7 @@ postgres_get_reserve_by_h_blind (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "reserve_by_h_blind",
                                                    params,
                                                    rs);
@@ -9167,17 +8653,16 @@ postgres_get_reserve_by_h_blind (void *cls,
  * given the hash of the blinded (fresh) coin.
  *
  * @param cls closure
- * @param session a session
  * @param h_blind_ev hash of the blinded coin
  * @param[out] old_coin_pub set to information about the old coin (on success only)
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_old_coin_by_h_blind (void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session,
                                   const struct GNUNET_HashCode *h_blind_ev,
                                   struct TALER_CoinSpendPublicKeyP *old_coin_pub)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (h_blind_ev),
     GNUNET_PQ_query_param_end
@@ -9188,8 +8673,7 @@ postgres_get_old_coin_by_h_blind (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "old_coin_by_h_blind",
                                                    params,
                                                    rs);
@@ -9201,7 +8685,6 @@ postgres_get_old_coin_by_h_blind (void *cls,
  * in the database.
  *
  * @param cls closure
- * @param session a session
  * @param denom_pub_hash hash of the revoked denomination key
  * @param master_sig signature affirming the revocation
  * @return transaction status code
@@ -9209,23 +8692,17 @@ postgres_get_old_coin_by_h_blind (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_revocation (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *denom_pub_hash,
   const struct TALER_MasterSignatureP *master_sig)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
 
-  if (NULL == session)
-    session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_revocation_insert",
                                              params);
 }
@@ -9236,7 +8713,6 @@ postgres_insert_denomination_revocation (
  * the database.
  *
  * @param cls closure
- * @param session a session
  * @param denom_pub_hash hash of the revoked denomination key
  * @param[out] master_sig signature affirming the revocation
  * @param[out] rowid row where the information is stored
@@ -9245,11 +8721,11 @@ postgres_insert_denomination_revocation (
 static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_revocation (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *denom_pub_hash,
   struct TALER_MasterSignatureP *master_sig,
   uint64_t *rowid)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     GNUNET_PQ_query_param_end
@@ -9260,8 +8736,7 @@ postgres_get_denomination_revocation (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "denomination_revocation_get",
                                                    params,
                                                    rs);
@@ -9365,7 +8840,6 @@ missing_wire_cb (void *cls,
  * been deposited between @a start_date and @a end_date.
  *
  * @param cls closure
- * @param session a session
  * @param start_date lower bound on the requested wire execution date
  * @param end_date upper bound on the requested wire execution date
  * @param cb function to call on all such deposits
@@ -9374,7 +8848,6 @@ missing_wire_cb (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_select_deposits_missing_wire (void *cls,
-                                       struct TALER_EXCHANGEDB_Session *session,
                                        struct GNUNET_TIME_Absolute start_date,
                                        struct GNUNET_TIME_Absolute end_date,
                                        TALER_EXCHANGEDB_WireMissingCallback cb,
@@ -9394,7 +8867,7 @@ postgres_select_deposits_missing_wire (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "deposits_get_overdue",
                                              params,
                                              &missing_wire_cb,
@@ -9409,7 +8882,6 @@ postgres_select_deposits_missing_wire (void *cls,
  * Check the last date an auditor was modified.
  *
  * @param cls closure
- * @param session a session
  * @param auditor_pub key to look up information for
  * @param[out] last_date last modification date to auditor status
  * @return transaction status code
@@ -9417,10 +8889,10 @@ postgres_select_deposits_missing_wire (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_auditor_timestamp (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   struct GNUNET_TIME_Absolute *last_date)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
     GNUNET_PQ_query_param_end
@@ -9431,8 +8903,7 @@ postgres_lookup_auditor_timestamp (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "lookup_auditor_timestamp",
                                                    params,
                                                    rs);
@@ -9443,7 +8914,6 @@ postgres_lookup_auditor_timestamp (
  * Lookup current state of an auditor.
  *
  * @param cls closure
- * @param session a session
  * @param auditor_pub key to look up information for
  * @param[out] auditor_url set to the base URL of the auditor's REST API; memory to be
  *            released by the caller!
@@ -9451,13 +8921,13 @@ postgres_lookup_auditor_timestamp (
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-postgres_lookup_auditor_status (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
-                                const struct
-                                TALER_AuditorPublicKeyP *auditor_pub,
-                                char **auditor_url,
-                                bool *enabled)
+postgres_lookup_auditor_status (
+  void *cls,
+  const struct TALER_AuditorPublicKeyP *auditor_pub,
+  char **auditor_url,
+  bool *enabled)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
     GNUNET_PQ_query_param_end
@@ -9472,8 +8942,7 @@ postgres_lookup_auditor_status (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) cls;
-  qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "lookup_auditor_status",
                                                  params,
                                                  rs);
@@ -9486,7 +8955,6 @@ postgres_lookup_auditor_status (void *cls,
  * Insert information about an auditor that will audit this exchange.
  *
  * @param cls closure
- * @param session a session
  * @param auditor_pub key of the auditor
  * @param auditor_url base URL of the auditor's REST service
  * @param auditor_name name of the auditor (for humans)
@@ -9496,12 +8964,12 @@ postgres_lookup_auditor_status (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_AuditorPublicKeyP *auditor_pub,
                          const char *auditor_url,
                          const char *auditor_name,
                          struct GNUNET_TIME_Absolute start_date)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
     GNUNET_PQ_query_param_string (auditor_name),
@@ -9510,8 +8978,7 @@ postgres_insert_auditor (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_auditor",
                                              params);
 }
@@ -9521,7 +8988,6 @@ postgres_insert_auditor (void *cls,
  * Update information about an auditor that will audit this exchange.
  *
  * @param cls closure
- * @param session a session
  * @param auditor_pub key of the auditor (primary key for the existing record)
  * @param auditor_url base URL of the auditor's REST service, to be updated
  * @param auditor_name name of the auditor (for humans)
@@ -9532,13 +8998,13 @@ postgres_insert_auditor (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
                          const struct TALER_AuditorPublicKeyP *auditor_pub,
                          const char *auditor_url,
                          const char *auditor_name,
                          struct GNUNET_TIME_Absolute change_date,
                          bool enabled)
 {
+  struct PostgresClosure *pg = cls;
   uint8_t enabled8 = enabled ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
@@ -9549,8 +9015,7 @@ postgres_update_auditor (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "update_auditor",
                                              params);
 }
@@ -9560,17 +9025,16 @@ postgres_update_auditor (void *cls,
  * Check the last date an exchange wire account was modified.
  *
  * @param cls closure
- * @param session a session
  * @param payto_uri key to look up information for
  * @param[out] last_date last modification date to auditor status
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_wire_timestamp (void *cls,
-                                struct TALER_EXCHANGEDB_Session *session,
                                 const char *payto_uri,
                                 struct GNUNET_TIME_Absolute *last_date)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_end
@@ -9581,8 +9045,7 @@ postgres_lookup_wire_timestamp (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "lookup_wire_timestamp",
                                                    params,
                                                    rs);
@@ -9593,7 +9056,6 @@ postgres_lookup_wire_timestamp (void *cls,
  * Insert information about an wire account used by this exchange.
  *
  * @param cls closure
- * @param session a session
  * @param payto_uri wire account of the exchange
  * @param start_date date when the account was added by the offline system
  *                      (only to be used for replay detection)
@@ -9603,11 +9065,11 @@ postgres_lookup_wire_timestamp (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire (void *cls,
-                      struct TALER_EXCHANGEDB_Session *session,
                       const char *payto_uri,
                       struct GNUNET_TIME_Absolute start_date,
                       const struct TALER_MasterSignatureP *master_sig)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
@@ -9615,8 +9077,7 @@ postgres_insert_wire (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_wire",
                                              params);
 }
@@ -9626,7 +9087,6 @@ postgres_insert_wire (void *cls,
  * Update information about a wire account of the exchange.
  *
  * @param cls closure
- * @param session a session
  * @param payto_uri account the update is about
  * @param change_date date when the account status was last changed
  *                      (only to be used for replay detection)
@@ -9635,11 +9095,11 @@ postgres_insert_wire (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_wire (void *cls,
-                      struct TALER_EXCHANGEDB_Session *session,
                       const char *payto_uri,
                       struct GNUNET_TIME_Absolute change_date,
                       bool enabled)
 {
+  struct PostgresClosure *pg = cls;
   uint8_t enabled8 = enabled ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_uri),
@@ -9648,8 +9108,7 @@ postgres_update_wire (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "update_wire",
                                              params);
 }
@@ -9744,12 +9203,8 @@ postgres_get_wire_accounts (void *cls,
     GNUNET_PQ_query_param_end
   };
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_EXCHANGEDB_Session *session;
 
-  session = postgres_get_session (pg);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_wire_accounts",
                                              params,
                                              &get_wire_accounts_cb,
@@ -9873,12 +9328,8 @@ postgres_get_wire_fees (void *cls,
     .status = GNUNET_OK
   };
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_EXCHANGEDB_Session *session;
 
-  session = postgres_get_session (pg);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "get_wire_fees",
                                              params,
                                              &get_wire_fees_cb,
@@ -9893,7 +9344,6 @@ postgres_get_wire_fees (void *cls,
  * Store information about a revoked online signing key.
  *
  * @param cls closure
- * @param session a session (can be NULL)
  * @param exchange_pub exchange online signing key that was revoked
  * @param master_sig signature affirming the revocation
  * @return transaction status code
@@ -9901,18 +9351,17 @@ postgres_get_wire_fees (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_signkey_revocation (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (exchange_pub),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_signkey_revocation",
                                              params);
 }
@@ -9922,7 +9371,6 @@ postgres_insert_signkey_revocation (
  * Obtain information about a revoked online signing key.
  *
  * @param cls closure
- * @param session a session (can be NULL)
  * @param exchange_pub exchange online signing key
  * @param[out] master_sig set to signature affirming the revocation (if revoked)
  * @return transaction status code
@@ -9930,7 +9378,6 @@ postgres_insert_signkey_revocation (
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_signkey_revocation (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -9945,13 +9392,7 @@ postgres_lookup_signkey_revocation (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  if (NULL == session)
-    session = postgres_get_session (pg);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "lookup_signkey_revocation",
                                                    params,
                                                    rs);
@@ -9962,7 +9403,6 @@ postgres_lookup_signkey_revocation (
  * Lookup information about current denomination key.
  *
  * @param cls closure
- * @param session a session
  * @param h_denom_pub hash of the denomination public key
  * @param[out] meta set to various meta data about the key
  * @return transaction status code
@@ -9970,7 +9410,6 @@ postgres_lookup_signkey_revocation (
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_denomination_key (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_denom_pub,
   struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
@@ -10001,7 +9440,7 @@ postgres_lookup_denomination_key (
     GNUNET_PQ_result_spec_end
   };
 
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "lookup_denomination_key",
                                                    params,
                                                    rs);
@@ -10013,7 +9452,6 @@ postgres_lookup_denomination_key (
  * denomination key by adding the master signature.
  *
  * @param cls closure
- * @param session a session
  * @param h_denom_pub hash of the denomination public key
  * @param denom_pub the actual denomination key
  * @param meta meta data about the denomination
@@ -10023,7 +9461,6 @@ postgres_lookup_denomination_key (
 static enum GNUNET_DB_QueryStatus
 postgres_add_denomination_key (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
@@ -10046,10 +9483,6 @@ postgres_add_denomination_key (
     GNUNET_PQ_query_param_end
   };
 
-  if (NULL == session)
-    session = postgres_get_session (pg);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
   /* Sanity check: ensure fees match coin currency */
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (&meta->value,
@@ -10063,7 +9496,7 @@ postgres_add_denomination_key (
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (&meta->value,
                                             &meta->fee_refund));
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "denomination_insert",
                                              iparams);
 }
@@ -10073,7 +9506,6 @@ postgres_add_denomination_key (
  * Add signing key.
  *
  * @param cls closure
- * @param session a session
  * @param exchange_pub the exchange online signing public key
  * @param meta meta data about @a exchange_pub
  * @param master_sig master signature to add
@@ -10082,7 +9514,6 @@ postgres_add_denomination_key (
 static enum GNUNET_DB_QueryStatus
 postgres_activate_signing_key (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_EXCHANGEDB_SignkeyMetaData *meta,
   const struct TALER_MasterSignatureP *master_sig)
@@ -10097,11 +9528,7 @@ postgres_activate_signing_key (
     GNUNET_PQ_query_param_end
   };
 
-  if (NULL == session)
-    session = postgres_get_session (pg);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_signkey",
                                              iparams);
 }
@@ -10111,7 +9538,6 @@ postgres_activate_signing_key (
  * Lookup signing key meta data.
  *
  * @param cls closure
- * @param session a session
  * @param exchange_pub the exchange online signing public key
  * @param[out] meta meta data about @a exchange_pub
  * @return transaction status code
@@ -10119,7 +9545,6 @@ postgres_activate_signing_key (
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_signing_key (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   struct TALER_EXCHANGEDB_SignkeyMetaData *meta)
 {
@@ -10138,11 +9563,7 @@ postgres_lookup_signing_key (
     GNUNET_PQ_result_spec_end
   };
 
-  if (NULL == session)
-    session = postgres_get_session (pg);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "lookup_signing_key",
                                                    params,
                                                    rs);
@@ -10153,7 +9574,6 @@ postgres_lookup_signing_key (
  * Insert information about an auditor auditing a denomination key.
  *
  * @param cls closure
- * @param session a session
  * @param h_denom_pub the audited denomination
  * @param auditor_pub the auditor's key
  * @param auditor_sig signature affirming the auditor's audit activity
@@ -10162,11 +9582,11 @@ postgres_lookup_signing_key (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_denom_sig (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
     GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
@@ -10174,8 +9594,7 @@ postgres_insert_auditor_denom_sig (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_auditor_denom_sig",
                                              params);
 }
@@ -10185,7 +9604,6 @@ postgres_insert_auditor_denom_sig (
  * Select information about an auditor auditing a denomination key.
  *
  * @param cls closure
- * @param session a session
  * @param h_denom_pub the audited denomination
  * @param auditor_pub the auditor's key
  * @param[out] auditor_sig set to signature affirming the auditor's audit activity
@@ -10194,11 +9612,11 @@ postgres_insert_auditor_denom_sig (
 static enum GNUNET_DB_QueryStatus
 postgres_select_auditor_denom_sig (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const struct GNUNET_HashCode *h_denom_pub,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   struct TALER_AuditorSignatureP *auditor_sig)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
     GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
@@ -10210,8 +9628,7 @@ postgres_select_auditor_denom_sig (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "select_auditor_denom_sig",
                                                    params,
                                                    rs);
@@ -10326,7 +9743,6 @@ wire_fee_by_time_helper (void *cls,
  * succeeds BUT returns an invalid amount for both fees.
  *
  * @param cls closure
- * @param session a session
  * @param wire_method the wire method to lookup fees for
  * @param start_time starting time of fee
  * @param end_time end time of fee
@@ -10341,14 +9757,13 @@ wire_fee_by_time_helper (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_wire_fee_by_time (
   void *cls,
-  struct TALER_EXCHANGEDB_Session *session,
   const char *wire_method,
   struct GNUNET_TIME_Absolute start_time,
   struct GNUNET_TIME_Absolute end_time,
   struct TALER_Amount *wire_fee,
   struct TALER_Amount *closing_fee)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (wire_method),
     GNUNET_PQ_query_param_absolute_time (&start_time),
@@ -10358,14 +9773,10 @@ postgres_lookup_wire_fee_by_time (
   struct WireFeeLookupContext wlc = {
     .wire_fee = wire_fee,
     .closing_fee = closing_fee,
-    .pg = pc,
+    .pg = pg,
   };
 
-  if (NULL == session)
-    session = postgres_get_session (pc);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  return GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  return GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                                "lookup_wire_fee_by_time",
                                                params,
                                                &wire_fee_by_time_helper,
@@ -10378,7 +9789,6 @@ postgres_lookup_wire_fee_by_time (
  * exchange-auditor database replication.
  *
  * @param cls closure
- * @param session a session
  * @param table table for which we should return the serial
  * @param[out] serial latest serial number in use
  * @return transaction status code, GNUNET_DB_STATUS_HARD_ERROR if
@@ -10386,10 +9796,10 @@ postgres_lookup_wire_fee_by_time (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_serial_by_table (void *cls,
-                                 struct TALER_EXCHANGEDB_Session *session,
                                  enum TALER_EXCHANGEDB_ReplicatedTable table,
                                  uint64_t *serial)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
@@ -10470,8 +9880,7 @@ postgres_lookup_serial_by_table (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    statement,
                                                    params,
                                                    rs);
@@ -10513,7 +9922,6 @@ struct LookupRecordsByTableContext
  * exchange-auditor database replication.
  *
  * @param cls closure
- * @param session a session
  * @param table table for which we should return the serial
  * @param serial largest serial number to exclude
  * @param cb function to call on the records
@@ -10523,19 +9931,18 @@ struct LookupRecordsByTableContext
  */
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_records_by_table (void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session,
                                   enum TALER_EXCHANGEDB_ReplicatedTable table,
                                   uint64_t serial,
                                   TALER_EXCHANGEDB_ReplicationCallback cb,
                                   void *cb_cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&serial),
     GNUNET_PQ_query_param_end
   };
   struct LookupRecordsByTableContext ctx = {
-    .pg = pc,
+    .pg = pg,
     .cb = cb,
     .cb_cls = cb_cls
   };
@@ -10634,8 +10041,7 @@ postgres_lookup_records_by_table (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  (void) cls;
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              statement,
                                              params,
                                              rh,
@@ -10652,13 +10058,11 @@ postgres_lookup_records_by_table (void *cls,
  * Signature of helper functions of #postgres_insert_records_by_table.
  *
  * @param pg plugin context
- * @param session database session
  * @param td record to insert
  * @return transaction status code
  */
 typedef enum GNUNET_DB_QueryStatus
 (*InsertRecordCallback)(struct PostgresClosure *pg,
-                        struct TALER_EXCHANGEDB_Session *session,
                         const struct TALER_EXCHANGEDB_TableData *td);
 
 
@@ -10670,14 +10074,12 @@ typedef enum GNUNET_DB_QueryStatus
  * replication.
  *
  * @param cls closure
- * @param session a session
  * @param td table data to insert
  * @return transaction status code, #GNUNET_DB_STATUS_HARD_ERROR if
  *         @e table in @a tr is not supported
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_records_by_table (void *cls,
-                                  struct TALER_EXCHANGEDB_Session *session,
                                   const struct TALER_EXCHANGEDB_TableData *td)
 {
   struct PostgresClosure *pg = cls;
@@ -10753,14 +10155,13 @@ postgres_insert_records_by_table (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   return rh (pg,
-             session,
              td);
 }
 
 
 /**
  * Function called to grab a work shard on an operation @a op. Runs in its
- * own transaction (hence no session provided).
+ * own transaction.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param job_name name of the operation to grab a word shard for
@@ -10778,16 +10179,12 @@ postgres_begin_shard (void *cls,
                       uint64_t *start_row,
                       uint64_t *end_row)
 {
-  struct TALER_EXCHANGEDB_Session *session;
+  struct PostgresClosure *pg = cls;
 
-  session = postgres_get_session (cls);
-  if (NULL == session)
-    return GNUNET_DB_STATUS_HARD_ERROR;
   for (unsigned int retries = 0; retries<3; retries++)
   {
     if (GNUNET_OK !=
-        postgres_start (cls,
-                        session,
+        postgres_start (pg,
                         "begin_shard"))
     {
       GNUNET_break (0);
@@ -10812,7 +10209,7 @@ postgres_begin_shard (void *cls,
 
       past = GNUNET_TIME_absolute_subtract (GNUNET_TIME_absolute_get (),
                                             delay);
-      qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+      qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                      "get_open_shard",
                                                      params,
                                                      rs);
@@ -10820,12 +10217,10 @@ postgres_begin_shard (void *cls,
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         {
@@ -10840,26 +10235,23 @@ postgres_begin_shard (void *cls,
           };
 
           now = GNUNET_TIME_absolute_get ();
-          qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+          qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                    "reclaim_shard",
                                                    params);
           switch (qs)
           {
           case GNUNET_DB_STATUS_HARD_ERROR:
             GNUNET_break (0);
-            postgres_rollback (cls,
-                               session);
+            postgres_rollback (pg);
             return qs;
           case GNUNET_DB_STATUS_SOFT_ERROR:
-            postgres_rollback (cls,
-                               session);
+            postgres_rollback (pg);
             continue;
           case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
             goto commit;
           case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
             GNUNET_break (0); /* logic error, should be impossible */
-            postgres_rollback (cls,
-                               session);
+            postgres_rollback (pg);
             return GNUNET_DB_STATUS_HARD_ERROR;
           }
         }
@@ -10882,7 +10274,7 @@ postgres_begin_shard (void *cls,
         GNUNET_PQ_result_spec_end
       };
 
-      qs = GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+      qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                      "get_last_shard",
                                                      params,
                                                      rs);
@@ -10890,12 +10282,10 @@ postgres_begin_shard (void *cls,
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         break;
@@ -10923,19 +10313,17 @@ postgres_begin_shard (void *cls,
                   "Trying to claim shard %llu-%llu\n",
                   (unsigned long long) *start_row,
                   (unsigned long long) *end_row);
-      qs = GNUNET_PQ_eval_prepared_non_select (session->conn,
+      qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                                "claim_next_shard",
                                                params);
       switch (qs)
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
         /* continued below */
@@ -10943,8 +10331,7 @@ postgres_begin_shard (void *cls,
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
         /* someone else got this shard already,
            try again */
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         continue;
       }
     } /* claim_next_shard */
@@ -10954,18 +10341,15 @@ commit:
     {
       enum GNUNET_DB_QueryStatus qs;
 
-      qs = postgres_commit (cls,
-                            session);
+      qs = postgres_commit (pg);
       switch (qs)
       {
       case GNUNET_DB_STATUS_HARD_ERROR:
         GNUNET_break (0);
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         return qs;
       case GNUNET_DB_STATUS_SOFT_ERROR:
-        postgres_rollback (cls,
-                           session);
+        postgres_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
@@ -10981,7 +10365,6 @@ commit:
  * Function called to persist that work on a shard was completed.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session a session
  * @param job_name name of the operation to grab a word shard for
  * @param start_row inclusive start row of the shard
  * @param end_row exclusive end row of the shard
@@ -10989,11 +10372,12 @@ commit:
  */
 enum GNUNET_DB_QueryStatus
 postgres_complete_shard (void *cls,
-                         struct TALER_EXCHANGEDB_Session *session,
                          const char *job_name,
                          uint64_t start_row,
                          uint64_t end_row)
 {
+  struct PostgresClosure *pg = cls;
+
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (job_name),
     GNUNET_PQ_query_param_uint64 (&start_row),
@@ -11001,12 +10385,11 @@ postgres_complete_shard (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Completing shard %llu-%llu\n",
               (unsigned long long) start_row,
               (unsigned long long) end_row);
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "complete_shard",
                                              params);
 }
@@ -11028,9 +10411,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
 
   pg = GNUNET_new (struct PostgresClosure);
   pg->cfg = cfg;
-  pg->event_heap = GNUNET_CONTAINER_heap_create (
-    GNUNET_CONTAINER_HEAP_ORDER_MIN);
-  pg->main_self = pthread_self (); /* loaded while single-threaded! */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchangedb-postgres",
@@ -11040,14 +10420,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb-postgres",
                                "CONFIG");
-    GNUNET_free (pg);
-    return NULL;
-  }
-  if (0 != pthread_key_create (&pg->db_conn_threadlocal,
-                               &db_conn_destroy))
-  {
-    TALER_LOG_ERROR ("Cannot create pthread key.\n");
-    GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
   }
@@ -11078,39 +10450,18 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_free (pg);
     return NULL;
   }
+  if (GNUNET_OK !=
+      internal_setup (pg,
+                      true))
   {
-    struct TALER_EXCHANGEDB_Session *session;
-
-    session = internal_get_session (pg,
-                                    true);
-    if (NULL == session)
-    {
-      GNUNET_free (pg->currency);
-      GNUNET_free (pg->sql_dir);
-      GNUNET_free (pg);
-      return NULL;
-    }
-    pg->event_fd = eventfd (0, 0);
-    if (-1 == pg->event_fd)
-    {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "eventfd");
-      GNUNET_free (pg->currency);
-      GNUNET_free (pg->sql_dir);
-      GNUNET_free (pg);
-      return NULL;
-    }
-    GNUNET_assert (0 ==
-                   pthread_mutex_init (&pg->event_lock,
-                                       NULL));
-    GNUNET_PQ_event_set_socket_callback (session->conn,
-                                         &pq_socket_cb,
-                                         pg);
+    GNUNET_free (pg->currency);
+    GNUNET_free (pg->sql_dir);
+    GNUNET_free (pg);
+    return NULL;
   }
 
   plugin = GNUNET_new (struct TALER_EXCHANGEDB_Plugin);
   plugin->cls = pg;
-  plugin->get_session = &postgres_get_session;
   plugin->drop_tables = &postgres_drop_tables;
   plugin->create_tables = &postgres_create_tables;
   plugin->start = &postgres_start;
@@ -11272,14 +10623,8 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
   struct TALER_EXCHANGEDB_Plugin *plugin = cls;
   struct PostgresClosure *pg = plugin->cls;
 
-  /* If we launched a session for the main thread,
-     kill it here before we unload */
-  GNUNET_assert (0 == pg->listener_count);
-  db_conn_destroy (pg->main_session);
-  GNUNET_break (0 ==
-                close (pg->event_fd));
-  pthread_mutex_destroy (&pg->event_lock);
-  GNUNET_CONTAINER_heap_destroy (pg->event_heap);
+  if (NULL != pg->conn)
+    GNUNET_PQ_disconnect (pg->conn);
   GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);
   GNUNET_free (pg);

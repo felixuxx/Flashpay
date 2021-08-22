@@ -114,7 +114,6 @@ struct RecoupContext
  *
  * @param cls the `struct RecoupContext *`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status code
@@ -122,7 +121,6 @@ struct RecoupContext
 static enum GNUNET_DB_QueryStatus
 recoup_transaction (void *cls,
                     struct MHD_Connection *connection,
-                    struct TALER_EXCHANGEDB_Session *session,
                     MHD_RESULT *mhd_ret)
 {
   struct RecoupContext *pc = cls;
@@ -135,7 +133,6 @@ recoup_transaction (void *cls,
   /* make sure coin is 'known' in database */
   qs = TEH_make_coin_known (pc->coin,
                             connection,
-                            session,
                             mhd_ret);
   if (qs < 0)
     return qs;
@@ -145,7 +142,6 @@ recoup_transaction (void *cls,
   if (pc->refreshed)
   {
     qs = TEH_plugin->get_old_coin_by_h_blind (TEH_plugin->cls,
-                                              session,
                                               &pc->h_blind,
                                               &pc->target.old_coin_pub);
     if (0 > qs)
@@ -164,7 +160,6 @@ recoup_transaction (void *cls,
   else
   {
     qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
-                                             session,
                                              &pc->h_blind,
                                              &pc->target.reserve_pub);
     if (0 > qs)
@@ -194,7 +189,6 @@ recoup_transaction (void *cls,
 
   /* Calculate remaining balance, including recoups already applied. */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          session,
                                           &pc->coin->coin_pub,
                                           GNUNET_YES,
                                           &tl);
@@ -270,8 +264,7 @@ recoup_transaction (void *cls,
     /* Recoup has no effect: coin fully spent! */
     enum GNUNET_DB_QueryStatus ret;
 
-    TEH_plugin->rollback (TEH_plugin->cls,
-                          session);
+    TEH_plugin->rollback (TEH_plugin->cls);
     if (GNUNET_NO == existing_recoup_found)
     {
       /* Refuse: insufficient funds for recoup */
@@ -300,7 +293,6 @@ recoup_transaction (void *cls,
   if (pc->refreshed)
   {
     qs = TEH_plugin->insert_recoup_refresh_request (TEH_plugin->cls,
-                                                    session,
                                                     pc->coin,
                                                     pc->coin_sig,
                                                     pc->coin_bks,
@@ -311,7 +303,6 @@ recoup_transaction (void *cls,
   else
   {
     qs = TEH_plugin->insert_recoup_request (TEH_plugin->cls,
-                                            session,
                                             &pc->target.reserve_pub,
                                             pc->coin,
                                             pc->coin_sig,

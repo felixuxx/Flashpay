@@ -665,8 +665,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
                   "Hard error, not recording progress\n");
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
                              TALER_ARL_asession);
-    TALER_ARL_edb->rollback (TALER_ARL_edb->cls,
-                             TALER_ARL_esession);
+    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
     return qs;
   }
   for (struct WireAccount *wa = wa_head;
@@ -741,8 +740,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls,
-                                TALER_ARL_esession);
+    qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -769,8 +767,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
                 "Processing failed, rolling back transaction\n");
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
                              TALER_ARL_asession);
-    TALER_ARL_edb->rollback (TALER_ARL_edb->cls,
-                             TALER_ARL_esession);
+    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   }
   return qs;
 }
@@ -870,7 +867,6 @@ check_for_required_transfers (void)
               "Analyzing exchange's unfinished deposits (deadline: %s)\n",
               GNUNET_STRINGS_absolute_time_to_string (next_timestamp));
   qs = TALER_ARL_edb->select_deposits_missing_wire (TALER_ARL_edb->cls,
-                                                    TALER_ARL_esession,
                                                     pp.last_timestamp,
                                                     next_timestamp,
                                                     &wire_missing_cb,
@@ -1267,7 +1263,6 @@ check_exchange_wire_out (struct WireAccount *wa)
               wa->ai->section_name);
   qs = TALER_ARL_edb->select_wire_out_above_serial_id_by_account (
     TALER_ARL_edb->cls,
-    TALER_ARL_esession,
     wa->ai->section_name,
     wa->pp.last_wire_out_serial_id,
     &wire_out_cb,
@@ -1824,7 +1819,6 @@ process_credits (void *cls)
               wa->ai->section_name);
   qs = TALER_ARL_edb->select_reserves_in_above_serial_id_by_account (
     TALER_ARL_edb->cls,
-    TALER_ARL_esession,
     wa->ai->section_name,
     wa->pp.last_reserve_in_serial_id,
     &reserve_in_cb,
@@ -1953,11 +1947,11 @@ reserve_closed_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 begin_transaction (void)
 {
-  TALER_ARL_esession = TALER_ARL_edb->get_session (TALER_ARL_edb->cls);
-  if (NULL == TALER_ARL_esession)
+  if (GNUNET_OK !=
+      TALER_ARL_edb->preflight (TALER_ARL_edb->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize exchange database session.\n");
+                "Failed to initialize exchange database connection.\n");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
@@ -1974,11 +1968,9 @@ begin_transaction (void)
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  TALER_ARL_edb->preflight (TALER_ARL_edb->cls,
-                            TALER_ARL_esession);
+  TALER_ARL_edb->preflight (TALER_ARL_edb->cls);
   if (GNUNET_OK !=
       TALER_ARL_edb->start (TALER_ARL_edb->cls,
-                            TALER_ARL_esession,
                             "wire auditor"))
   {
     GNUNET_break (0);
@@ -2031,7 +2023,6 @@ begin_transaction (void)
 
     qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
       TALER_ARL_edb->cls,
-      TALER_ARL_esession,
       pp.last_reserve_close_uuid,
       &reserve_closed_cb,
       NULL);

@@ -84,7 +84,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
   taler-exchange-httpd_keys.c taler-exchange-httpd_keys.h \
   taler-exchange-httpd_link.c taler-exchange-httpd_link.h \
-  taler-exchange-httpd_loop.c taler-exchange-httpd_loop.h \
   taler-exchange-httpd_management.h \
   taler-exchange-httpd_management_auditors.c \
   taler-exchange-httpd_management_auditors_AP_disable.c \
@@ -122,7 +121,6 @@ taler_exchange_httpd_LDADD = \
   -lgnunetjson \
   -ljansson \
   -lz \
-  -lpthread \
   $(XLIB)
 
 # Testcases
@@ -130,8 +128,7 @@ taler_exchange_httpd_LDADD = \
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 
 check_SCRIPTS = \
-  test_taler_exchange_httpd.sh \
-  test_taler_exchange_httpd_restart.sh
+  test_taler_exchange_httpd.sh
 if HAVE_EXPENSIVE_TESTS
 check_SCRIPTS += \
   test_taler_exchange_httpd_afl.sh

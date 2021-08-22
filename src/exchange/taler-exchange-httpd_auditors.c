@@ -65,7 +65,6 @@ struct AddAuditorDenomContext
  *
  * @param cls closure with a `struct AddAuditorDenomContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -73,7 +72,6 @@ struct AddAuditorDenomContext
 static enum GNUNET_DB_QueryStatus
 add_auditor_denom_sig (void *cls,
                        struct MHD_Connection *connection,
-                       struct TALER_EXCHANGEDB_Session *session,
                        MHD_RESULT *mhd_ret)
 {
   struct AddAuditorDenomContext *awc = cls;
@@ -84,7 +82,6 @@ add_auditor_denom_sig (void *cls,
 
   qs = TEH_plugin->lookup_denomination_key (
     TEH_plugin->cls,
-    session,
     awc->h_denom_pub,
     &meta);
   if (qs < 0)
@@ -110,7 +107,6 @@ add_auditor_denom_sig (void *cls,
 
   qs = TEH_plugin->lookup_auditor_status (
     TEH_plugin->cls,
-    session,
     awc->auditor_pub,
     &auditor_url,
     &enabled);
@@ -174,7 +170,6 @@ add_auditor_denom_sig (void *cls,
   GNUNET_free (auditor_url);
 
   qs = TEH_plugin->insert_auditor_denom_sig (TEH_plugin->cls,
-                                             session,
                                              awc->h_denom_pub,
                                              awc->auditor_pub,
                                              &awc->auditor_sig);

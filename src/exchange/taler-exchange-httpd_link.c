@@ -130,7 +130,6 @@ fail:
  *
  * @param cls closure
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -138,14 +137,12 @@ fail:
 static enum GNUNET_DB_QueryStatus
 link_transaction (void *cls,
                   struct MHD_Connection *connection,
-                  struct TALER_EXCHANGEDB_Session *session,
                   MHD_RESULT *mhd_ret)
 {
   struct HTD_Context *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->get_link_data (TEH_plugin->cls,
-                                  session,
                                   &ctx->coin_pub,
                                   &handle_link_data,
                                   ctx);

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -34,7 +34,6 @@
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_link.h"
-#include "taler-exchange-httpd_loop.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
 #include "taler-exchange-httpd_mhd.h"
@@ -53,7 +52,7 @@
 /**
  * Backlog for listen operation on unix domain sockets.
  */
-#define UNIX_BACKLOG 500
+#define UNIX_BACKLOG 50
 
 
 /**
@@ -67,7 +66,7 @@ int TEH_allow_keys_timetravel;
 /**
  * The exchange's configuration (global)
  */
-struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
+const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 
 /**
  * How long is caching /keys allowed at most? (global)
@@ -101,32 +100,19 @@ char *TEH_currency;
 static unsigned int connection_timeout = 30;
 
 /**
- * How many threads to use.
- * The default value (0) sets the actual number of threads
- * based on the number of available cores.
+ * -C command-line flag given?
  */
-static unsigned int num_threads = 0;
+static int connection_close;
 
 /**
- * The HTTP Daemon.
+ * Value to return from main()
  */
-static struct MHD_Daemon *mhd;
+static int global_ret;
 
 /**
  * Port to run the daemon on.
  */
 static uint16_t serve_port;
-
-/**
- * Path for the unix domain-socket
- * to run the daemon on.
- */
-static char *serve_unixpath;
-
-/**
- * File mode for unix-domain socket.
- */
-static mode_t unixpath_mode;
 
 /**
  * Counter for the number of requests this HTTP has processed so far.
@@ -302,11 +288,8 @@ handle_mhd_completion_callback (void *cls,
 
   TALER_MHD_parse_post_cleanup_callback (rc->opaque_post_parsing_context);
   /* Sanity-check that we didn't leave any transactions hanging */
-  /* NOTE: In high-performance production, we could consider
-     removing this as it should not be needed and might be costly
-     (to be benchmarked). */
-  TEH_plugin->preflight (TEH_plugin->cls,
-                         TEH_plugin->get_session (TEH_plugin->cls));
+  GNUNET_break (GNUNET_OK ==
+                TEH_plugin->preflight (TEH_plugin->cls));
   GNUNET_free (rc);
   *con_cls = NULL;
   GNUNET_async_scope_restore (&old_scope);
@@ -1179,18 +1162,6 @@ exchange_serve_process_config (void)
                 "Failed to initialize DB subsystem\n");
     return GNUNET_SYSERR;
   }
-
-  if (GNUNET_OK !=
-      TALER_MHD_parse_config (TEH_cfg,
-                              "exchange",
-                              &serve_port,
-                              &serve_unixpath,
-                              &unixpath_mode))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to setup HTTPd subsystem\n");
-    return GNUNET_SYSERR;
-  }
   return GNUNET_OK;
 }
 
@@ -1248,16 +1219,11 @@ write_stats (void)
 /* Developer logic for supporting the `-f' option. */
 #if HAVE_DEVELOPER
 
-
 /**
  * Option `-f' (specifies an input file to give to the HTTP server).
  */
 static char *input_filename;
 
-/**
- * We finished handling the request and should now terminate.
- */
-static int do_terminate;
 
 /**
  * Run 'nc' or 'ncat' as a fake HTTP client using #input_filename
@@ -1277,7 +1243,8 @@ run_fake_client (void)
                    "-"))
     fd = STDIN_FILENO;
   else
-    fd = open (input_filename, O_RDONLY);
+    fd = open (input_filename,
+               O_RDONLY);
   if (-1 == fd)
   {
     fprintf (stderr,
@@ -1325,6 +1292,50 @@ run_fake_client (void)
 
 
 /**
+ * Run the exchange to serve a single request only, without threads.
+ *
+ * @return #GNUNET_OK on success
+ */
+static void
+run_single_request (void)
+{
+  pid_t xfork;
+
+  xfork = fork ();
+  if (-1 == xfork)
+  {
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (0 == xfork)
+  {
+    pid_t cld;
+
+    cld = run_fake_client ();
+    if (-1 == cld)
+      _exit (EXIT_FAILURE);
+    _exit (EXIT_SUCCESS);
+  }
+
+  {
+    int status;
+
+    if (xfork != waitpid (xfork,
+                          &status,
+                          0))
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Waiting for `nc' child failed: %s\n",
+                  strerror (errno));
+  }
+}
+
+
+/* end of HAVE_DEVELOPER */
+#endif
+
+
+/**
  * Signature of the callback used by MHD to notify the application
  * about completed connections.  If we are running in test-mode with
  * an #input_filename, this function is used to terminate the HTTPD
@@ -1344,240 +1355,138 @@ connection_done (void *cls,
   (void) cls;
   (void) connection;
   (void) socket_context;
+
+#if HAVE_DEVELOPER
   /* We only act if the connection is closed. */
   if (MHD_CONNECTION_NOTIFY_CLOSED != toe)
     return;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Connection done!\n");
-  do_terminate = GNUNET_YES;
-}
-
-
-/**
- * Run the exchange to serve a single request only, without threads.
- *
- * @return #GNUNET_OK on success
- */
-static int
-run_single_request (void)
-{
-  pid_t cld;
-  int status;
-
-  /* run only the testfile input, then terminate */
-  mhd
-    = MHD_start_daemon (MHD_USE_PIPE_FOR_SHUTDOWN
-                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                        | MHD_USE_TCP_FASTOPEN,
-                        0, /* pick free port */
-                        NULL, NULL,
-                        &handle_mhd_request, NULL,
-                        MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 10,
-                        MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
-                        NULL,
-                        MHD_OPTION_NOTIFY_COMPLETED,
-                        &handle_mhd_completion_callback, NULL,
-                        MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
-                        MHD_OPTION_NOTIFY_CONNECTION, &connection_done, NULL,
-                        MHD_OPTION_END);
-  if (NULL == mhd)
-  {
-    fprintf (stderr,
-             "Failed to start HTTP server.\n");
-    return GNUNET_SYSERR;
-  }
-  serve_port = MHD_get_daemon_info (mhd,
-                                    MHD_DAEMON_INFO_BIND_PORT)->port;
-  cld = run_fake_client ();
-  if (-1 == cld)
-    return GNUNET_SYSERR;
-  /* run the event loop until #connection_done() was called */
-  while (GNUNET_NO == do_terminate)
-  {
-    fd_set rs;
-    fd_set ws;
-    fd_set es;
-    struct timeval tv;
-    MHD_UNSIGNED_LONG_LONG timeout;
-    int maxsock = -1;
-    int have_tv;
-
-    FD_ZERO (&rs);
-    FD_ZERO (&ws);
-    FD_ZERO (&es);
-    if (MHD_YES !=
-        MHD_get_fdset (mhd,
-                       &rs,
-                       &ws,
-                       &es,
-                       &maxsock))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    have_tv = MHD_get_timeout (mhd,
-                               &timeout);
-    tv.tv_sec = timeout / 1000;
-    tv.tv_usec = 1000 * (timeout % 1000);
-    if (-1 == select (maxsock + 1,
-                      &rs,
-                      &ws,
-                      &es,
-                      have_tv ? &tv : NULL))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    MHD_run (mhd);
-  }
-  {
-    MHD_socket sock = MHD_quiesce_daemon (mhd);
-
-    TEH_resume_keys_requests (true);
-    TEH_reserves_get_cleanup ();
-    MHD_stop_daemon (mhd);
-    GNUNET_break (0 == close (sock));
-  }
-  mhd = NULL;
-  if (cld != waitpid (cld,
-                      &status,
-                      0))
-    fprintf (stderr,
-             "Waiting for `nc' child failed: %s\n",
-             strerror (errno));
-  return GNUNET_OK;
-}
-
-
-/* end of HAVE_DEVELOPER */
+  if (NULL != input_filename)
+    GNUNET_SCHEDULER_shutdown ();
 #endif
+}
 
 
 /**
- * Run the ordinary multi-threaded main loop and the logic to
- * wait for CTRL-C.
+ * Function run on shutdown.
  *
- * @param fh listen socket
- * @param argv command line arguments
- * @return #GNUNET_OK on success
+ * @param cls NULL
  */
-static int
-run_main_loop (int fh,
-               char *const *argv)
+static void
+do_shutdown (void *cls)
 {
-  int ret;
+  struct MHD_Daemon *mhd;
+  (void) cls;
 
-  GNUNET_assert (0 < num_threads);
-
-  mhd
-    = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
-                        | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                        | MHD_USE_INTERNAL_POLLING_THREAD
-                        | MHD_ALLOW_SUSPEND_RESUME
-                        | MHD_USE_TCP_FASTOPEN,
-                        (-1 == fh) ? serve_port : 0,
-                        NULL, NULL,
-                        &handle_mhd_request, NULL,
-                        MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) num_threads,
-                        MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
-                        MHD_OPTION_LISTEN_SOCKET, fh,
-                        MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
-                        NULL,
-                        MHD_OPTION_NOTIFY_COMPLETED,
-                        &handle_mhd_completion_callback, NULL,
-                        MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
-                        MHD_OPTION_END);
-  if (NULL == mhd)
-  {
-    fprintf (stderr,
-             "Failed to start HTTP server.\n");
-    return GNUNET_SYSERR;
-  }
-
-  atexit (&write_stats);
-  ret = TEH_loop_run ();
-  switch (ret)
-  {
-  case GNUNET_OK:
-  case GNUNET_SYSERR:
-    {
-      MHD_socket sock = MHD_quiesce_daemon (mhd);
-
-      TEH_resume_keys_requests (true);
-      TEH_reserves_get_cleanup ();
-      MHD_stop_daemon (mhd);
-      GNUNET_break (0 == close (sock));
-    }
-    mhd = NULL;
-    break;
-  case GNUNET_NO:
-    {
-      MHD_socket sock = MHD_quiesce_daemon (mhd);
-      pid_t chld;
-      int flags;
-
-      /* Set flags to make 'sock' inherited by child */
-      flags = fcntl (sock, F_GETFD);
-      GNUNET_assert (-1 != flags);
-      flags &= ~FD_CLOEXEC;
-      GNUNET_assert (-1 != fcntl (sock,
-                                  F_SETFD,
-                                  flags));
-      chld = fork ();
-      if (-1 == chld)
-      {
-        /* fork() failed, continue clean up, unhappily */
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "fork");
-      }
-      if (0 == chld)
-      {
-        char pids[12];
-
-        /* exec another taler-exchange-httpd, passing on the listen socket;
-           as in systemd it is expected to be on FD #3 */
-        if (3 != dup2 (sock, 3))
-        {
-          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                               "dup2");
-          _exit (1);
-        }
-        /* Tell the child that it is the desired recipient for FD #3 */
-        GNUNET_snprintf (pids,
-                         sizeof (pids),
-                         "%u",
-                         getpid ());
-        setenv ("LISTEN_PID", pids, 1);
-        setenv ("LISTEN_FDS", "1", 1);
-        /* Finally, exec the (presumably) more recent exchange binary */
-        execvp ("taler-exchange-httpd",
-                argv);
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "execvp");
-        _exit (1);
-      }
-      /* we're the original process, handle remaining contextions
-         before exiting; as the listen socket is no longer used,
-         close it here */
-      GNUNET_break (0 == close (sock));
-      while (0 != MHD_get_daemon_info (mhd,
-                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->
-             num_connections)
-        sleep (1);
-      /* Now we're really done, practice clean shutdown */
-      TEH_resume_keys_requests (true);
-      TEH_reserves_get_cleanup ();
-      MHD_stop_daemon (mhd);
-    }
-    break;
-  default:
-    GNUNET_break (0);
-    TEH_resume_keys_requests (true);
+  mhd = TALER_MHD_daemon_stop ();
+  TEH_resume_keys_requests (true);
+  TEH_reserves_get_cleanup ();
+  if (NULL != mhd)
     MHD_stop_daemon (mhd);
-    break;
+  TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
+  TEH_WIRE_done ();
+}
+
+
+/**
+ * Main function that will be run by the scheduler.
+ *
+ * @param cls closure
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be
+ *        NULL!)
+ * @param config configuration
+ */
+static void
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *config)
+{
+  enum TALER_MHD_GlobalOptions go;
+  int fh;
+
+  go = TALER_MHD_GO_NONE;
+  if (connection_close)
+    go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
+  TALER_MHD_setup (go);
+  TEH_cfg = config;
+
+  if (GNUNET_OK !=
+      exchange_serve_process_config ())
+  {
+    global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TEH_WIRE_init ())
+  {
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TEH_keys_init ())
+  {
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
 
-  return ret;
+  TEH_load_terms (TEH_cfg);
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
+  fh = TALER_MHD_bind (TEH_cfg,
+                       "exchange",
+                       &serve_port);
+  if ( (0 == serve_port) &&
+       (-1 == fh) )
+  {
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  {
+    struct MHD_Daemon *mhd;
+
+    mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
+                            | MHD_USE_PIPE_FOR_SHUTDOWN
+                            | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                            | MHD_USE_TCP_FASTOPEN,
+                            (-1 == fh) ? serve_port : 0,
+                            NULL, NULL,
+                            &handle_mhd_request, NULL,
+                            MHD_OPTION_LISTEN_BACKLOG_SIZE,
+                            (unsigned int) 1024,
+                            MHD_OPTION_LISTEN_SOCKET,
+                            fh,
+                            MHD_OPTION_EXTERNAL_LOGGER,
+                            &TALER_MHD_handle_logs,
+                            NULL,
+                            MHD_OPTION_NOTIFY_COMPLETED,
+                            &handle_mhd_completion_callback,
+                            NULL,
+                            MHD_OPTION_NOTIFY_CONNECTION,
+                            &connection_done,
+                            NULL,
+                            MHD_OPTION_CONNECTION_TIMEOUT,
+                            connection_timeout,
+                            MHD_OPTION_END);
+    if (NULL == mhd)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to launch HTTP service. Is the port in use?\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    global_ret = EXIT_SUCCESS;
+    TALER_MHD_daemon_start (mhd);
+  }
+  atexit (&write_stats);
+
+#if HAVE_DEVELOPER
+  if (NULL != input_filename)
+    run_single_request ();
+#endif
 }
 
 
@@ -1592,10 +1501,6 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *cfgfile = NULL;
-  char *loglev = NULL;
-  char *logfile = NULL;
-  int connection_close = GNUNET_NO;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('a',
                                "allow-timetravel",
@@ -1605,7 +1510,6 @@ main (int argc,
                                "connection-close",
                                "force HTTP connections to be closed after each request",
                                &connection_close),
-    GNUNET_GETOPT_option_cfgfile (&cfgfile),
     GNUNET_GETOPT_option_uint ('t',
                                "timeout",
                                "SECONDS",
@@ -1613,11 +1517,6 @@ main (int argc,
                                &connection_timeout),
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
-    GNUNET_GETOPT_option_uint ('n',
-                               "num-threads",
-                               "NUM_THREADS",
-                               "size of the thread pool",
-                               &num_threads),
 #if HAVE_DEVELOPER
     GNUNET_GETOPT_option_filename ('f',
                                    "file-input",
@@ -1627,141 +1526,22 @@ main (int argc,
 #endif
     GNUNET_GETOPT_option_help (
       "HTTP server providing a RESTful API to access a Taler exchange"),
-    GNUNET_GETOPT_option_loglevel (&loglev),
-    GNUNET_GETOPT_option_logfile (&logfile),
     GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
-  int ret;
-  const char *listen_pid;
-  const char *listen_fds;
-  int fh = -1;
-  enum TALER_MHD_GlobalOptions go;
+  enum GNUNET_GenericReturnValue ret;
 
   TALER_OS_init ();
-  ret = GNUNET_GETOPT_run ("taler-exchange-httpd",
-                           options,
-                           argc, argv);
+  ret = GNUNET_PROGRAM_run (argc, argv,
+                            "taler-exchange-httpd",
+                            "Taler exchange HTTP service",
+                            options,
+                            &run, NULL);
   if (GNUNET_SYSERR == ret)
     return EXIT_INVALIDARGUMENT;
   if (GNUNET_NO == ret)
     return EXIT_SUCCESS;
-  if (0 == num_threads)
-  {
-    cpu_set_t mask;
-    GNUNET_assert (0 ==
-                   sched_getaffinity (0,
-                                      sizeof (cpu_set_t),
-                                      &mask));
-    num_threads = CPU_COUNT (&mask);
-  }
-  go = TALER_MHD_GO_NONE;
-  if (connection_close)
-    go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
-  TALER_MHD_setup (go);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-exchange-httpd",
-                                   (NULL == loglev) ? "INFO" : loglev,
-                                   logfile));
-  GNUNET_free (loglev);
-  GNUNET_free (logfile);
-  if (NULL == cfgfile)
-    cfgfile = GNUNET_CONFIGURATION_default_filename ();
-  if (NULL == cfgfile)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Can't find default configuration file.\n");
-    return EXIT_NOTCONFIGURED;
-  }
-
-  TEH_cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR ==
-      GNUNET_CONFIGURATION_load (TEH_cfg,
-                                 cfgfile))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Malformed configuration file `%s', exit ...\n",
-                cfgfile);
-    GNUNET_free (cfgfile);
-    return EXIT_NOTCONFIGURED;
-  }
-  GNUNET_free (cfgfile);
-  if (GNUNET_OK !=
-      exchange_serve_process_config ())
-    return EXIT_NOTCONFIGURED;
-  TEH_load_terms (TEH_cfg);
-
-  /* check for systemd-style FD passing */
-  listen_pid = getenv ("LISTEN_PID");
-  listen_fds = getenv ("LISTEN_FDS");
-  if ( (NULL != listen_pid) &&
-       (NULL != listen_fds) &&
-       (getpid () == strtol (listen_pid,
-                             NULL,
-                             10)) &&
-       (1 == strtoul (listen_fds,
-                      NULL,
-                      10)) )
-  {
-    int flags;
-
-    fh = 3;
-    flags = fcntl (fh,
-                   F_GETFD);
-    if ( (-1 == flags) &&
-         (EBADF == errno) )
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Bad listen socket passed, ignored\n");
-      fh = -1;
-    }
-    flags |= FD_CLOEXEC;
-    if ( (-1 != fh) &&
-         (0 != fcntl (fh,
-                      F_SETFD,
-                      flags)) )
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "fcntl");
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Successfully obtained listen socket from hypervisor\n");
-  }
-
-  /* initialize #internal_key_state with an RC of 1 */
-  if (GNUNET_OK !=
-      TEH_WIRE_init ())
-    return EXIT_FAILURE;
-  if (GNUNET_OK !=
-      TEH_keys_init ())
-    return EXIT_FAILURE;
-  ret = TEH_loop_init ();
-  if (GNUNET_OK == ret)
-  {
-#if HAVE_DEVELOPER
-    if (NULL != input_filename)
-    {
-      ret = run_single_request ();
-    }
-    else
-#endif
-    {
-      /* consider unix path */
-      if ( (-1 == fh) &&
-           (NULL != serve_unixpath) )
-      {
-        fh = TALER_MHD_open_unix_path (serve_unixpath,
-                                       unixpath_mode);
-        if (-1 == fh)
-          return EXIT_NOPERMISSION; /* at least most likely */
-      }
-      ret = run_main_loop (fh,
-                           argv);
-    }
-    /* release signal handlers */
-    TEH_loop_done ();
-  }
-  TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
-  TEH_WIRE_done ();
-  return (GNUNET_SYSERR == ret) ? EXIT_FAILURE : EXIT_SUCCESS;
+  return global_ret;
 }
 
 

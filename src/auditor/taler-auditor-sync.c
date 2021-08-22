@@ -120,11 +120,6 @@ static struct Table tables[] = {
 struct InsertContext
 {
   /**
-   * Database session to use.
-   */
-  struct TALER_EXCHANGEDB_Session *ds;
-
-  /**
    * Table we are replicating.
    */
   struct Table *table;
@@ -154,7 +149,6 @@ do_insert (void *cls,
   if (0 >= ctx->qs)
     return GNUNET_SYSERR;
   qs = dst->insert_records_by_table (dst->cls,
-                                     ctx->ds,
                                      td);
   if (0 >= qs)
   {
@@ -193,42 +187,34 @@ do_insert (void *cls,
  *
  * @return #GNUNET_OK on success, #GNUNET_SYSERR to rollback
  */
-static int
-transact (struct TALER_EXCHANGEDB_Session *ss,
-          struct TALER_EXCHANGEDB_Session *ds)
+static enum GNUNET_GenericReturnValue
+transact (void)
 {
   struct InsertContext ctx = {
-    .ds = ds,
     .qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
   };
 
   if (0 >
       src->start (src->cls,
-                  ss,
                   "lookup src serials"))
     return GNUNET_SYSERR;
   for (unsigned int i = 0; ! tables[i].end; i++)
     src->lookup_serial_by_table (src->cls,
-                                 ss,
                                  tables[i].rt,
                                  &tables[i].end_serial);
   if (0 >
-      src->commit (src->cls,
-                   ss))
+      src->commit (src->cls))
     return GNUNET_SYSERR;
   if (GNUNET_OK !=
       dst->start (src->cls,
-                  ds,
                   "lookup dst serials"))
     return GNUNET_SYSERR;
   for (unsigned int i = 0; ! tables[i].end; i++)
     dst->lookup_serial_by_table (dst->cls,
-                                 ds,
                                  tables[i].rt,
                                  &tables[i].start_serial);
   if (0 >
-      dst->commit (dst->cls,
-                   ds))
+      dst->commit (dst->cls))
     return GNUNET_SYSERR;
   for (unsigned int i = 0; ! tables[i].end; i++)
   {
@@ -248,16 +234,13 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
 
       if (GNUNET_OK !=
           src->start (src->cls,
-                      ss,
                       "copy table (src)"))
         return GNUNET_SYSERR;
       if (GNUNET_OK !=
           dst->start (dst->cls,
-                      ds,
                       "copy table (dst)"))
         return GNUNET_SYSERR;
       qs = src->lookup_records_by_table (src->cls,
-                                         ss,
                                          table->rt,
                                          table->start_serial,
                                          &do_insert,
@@ -290,10 +273,8 @@ transact (struct TALER_EXCHANGEDB_Session *ss,
       }
       if (0 == ctx.qs)
         return GNUNET_SYSERR; /* insertion failed, maybe record existed? try again */
-      src->rollback (src->cls,
-                     ss);
-      qs = dst->commit (dst->cls,
-                        ds);
+      src->rollback (src->cls);
+      qs = dst->commit (dst->cls);
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -328,35 +309,29 @@ static void
 do_sync (void *cls)
 {
   static struct GNUNET_TIME_Relative delay;
-  struct TALER_EXCHANGEDB_Session *ss;
-  struct TALER_EXCHANGEDB_Session *ds;
 
   sync_task = NULL;
   actual_size = 0;
-  ss = src->get_session (src->cls);
-  if (NULL == ss)
+  if (GNUNET_SYSERR ==
+      src->preflight (src->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to begin transaction with data source. Exiting\n");
     return;
   }
-  ds = dst->get_session (dst->cls);
-  if (NULL == ds)
+  if (GNUNET_SYSERR ==
+      dst->preflight (dst->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to begin transaction with data destination. Exiting\n");
     return;
   }
-  if (GNUNET_OK !=
-      transact (ss,
-                ds))
+  if (GNUNET_OK != transact ())
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Transaction failed, rolling back\n");
-    src->rollback (src->cls,
-                   ss);
-    dst->rollback (dst->cls,
-                   ds);
+    src->rollback (src->cls);
+    dst->rollback (dst->cls);
   }
   if (0 != global_ret)
   {

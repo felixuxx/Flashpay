@@ -80,7 +80,6 @@ struct AddFeeContext
  *
  * @param cls closure with a `struct AddFeeContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -88,7 +87,6 @@ struct AddFeeContext
 static enum GNUNET_DB_QueryStatus
 add_fee (void *cls,
          struct MHD_Connection *connection,
-         struct TALER_EXCHANGEDB_Session *session,
          MHD_RESULT *mhd_ret)
 {
   struct AddFeeContext *afc = cls;
@@ -98,7 +96,6 @@ add_fee (void *cls,
 
   qs = TEH_plugin->lookup_wire_fee_by_time (
     TEH_plugin->cls,
-    session,
     afc->wire_method,
     afc->start_time,
     afc->end_time,
@@ -142,7 +139,6 @@ add_fee (void *cls,
 
   qs = TEH_plugin->insert_wire_fee (
     TEH_plugin->cls,
-    session,
     afc->wire_method,
     afc->start_time,
     afc->end_time,

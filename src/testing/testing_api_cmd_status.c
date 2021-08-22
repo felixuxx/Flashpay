@@ -356,6 +356,7 @@ status_run (void *cls,
   }
   ss->rsh = TALER_EXCHANGE_reserves_get (is->exchange,
                                          ss->reserve_pubp,
+                                         GNUNET_TIME_UNIT_ZERO,
                                          &reserve_status_cb,
                                          ss);
 }

@@ -468,6 +468,35 @@ TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /**
+ * Start to run an event loop for @a daemon.
+ * Only one daemon can be running per process
+ * using this API.
+ *
+ * @param daemon the MHD service to run
+ */
+void
+TALER_MHD_daemon_start (struct MHD_Daemon *daemon);
+
+
+/**
+ * Stop running the event loop for MHD.
+ *
+ * @return the daemon that we were previously running,
+ *       or NULL if none was active
+ */
+struct MHD_Daemon *
+TALER_MHD_daemon_stop (void);
+
+
+/**
+ * Trigger MHD daemon that is running. Needed when
+ * a connection was resumed.
+ */
+void
+TALER_MHD_daemon_trigger (void);
+
+
+/**
  * Prepared responses for legal documents
  * (terms of service, privacy policy).
  */

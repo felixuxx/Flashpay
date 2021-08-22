@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -1164,6 +1164,8 @@ typedef void
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param reserve_pub public key of the reserve to inspect
+ * @param timeout how long to wait for an affirmative reply
+ *        (enables long polling if the reserve does not yet exist)
  * @param cb the callback to call when a reply for this request is available
  * @param cb_cls closure for the above callback
  * @return a handle for this request; NULL if the inputs are invalid (i.e.
@@ -1173,6 +1175,7 @@ struct TALER_EXCHANGE_ReservesGetHandle *
 TALER_EXCHANGE_reserves_get (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Relative timeout,
   TALER_EXCHANGE_ReservesGetCallback cb,
   void *cb_cls);
 

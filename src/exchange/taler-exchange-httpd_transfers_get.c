@@ -406,7 +406,6 @@ free_ctx (struct WtidTransactionContext *ctx)
  *
  * @param cls closure
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -414,7 +413,6 @@ free_ctx (struct WtidTransactionContext *ctx)
 static enum GNUNET_DB_QueryStatus
 get_transfer_deposits (void *cls,
                        struct MHD_Connection *connection,
-                       struct TALER_EXCHANGEDB_Session *session,
                        MHD_RESULT *mhd_ret)
 {
   struct WtidTransactionContext *ctx = cls;
@@ -428,7 +426,6 @@ get_transfer_deposits (void *cls,
      serialization failure */
   free_ctx (ctx);
   qs = TEH_plugin->lookup_wire_transfer (TEH_plugin->cls,
-                                         session,
                                          &ctx->wtid,
                                          &handle_deposit_data,
                                          ctx);
@@ -462,7 +459,6 @@ get_transfer_deposits (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TEH_plugin->get_wire_fee (TEH_plugin->cls,
-                                 session,
                                  ctx->wire_method,
                                  ctx->exec_time,
                                  &wire_fee_start_date,

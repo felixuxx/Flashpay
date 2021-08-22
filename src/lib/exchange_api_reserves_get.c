@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -234,33 +234,18 @@ handle_reserves_get_finished (void *cls,
 }
 
 
-/**
- * Submit a request to obtain the transaction history of a reserve
- * from the exchange.  Note that while we return the full response to the
- * caller for further processing, we do already verify that the
- * response is well-formed (i.e. that signatures included in the
- * response are all valid and add up to the balance).  If the exchange's
- * reply is not well-formed, we return an HTTP status code of zero to
- * @a cb.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param reserve_pub public key of the reserve to inspect
- * @param cb the callback to call when a reply for this request is available
- * @param cb_cls closure for the above callback
- * @return a handle for this request; NULL if the inputs are invalid (i.e.
- *         signatures fail to verify).  In this case, the callback is not called.
- */
 struct TALER_EXCHANGE_ReservesGetHandle *
-TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
-                             const struct
-                             TALER_ReservePublicKeyP *reserve_pub,
-                             TALER_EXCHANGE_ReservesGetCallback cb,
-                             void *cb_cls)
+TALER_EXCHANGE_reserves_get (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Relative timeout,
+  TALER_EXCHANGE_ReservesGetCallback cb,
+  void *cb_cls)
 {
   struct TALER_EXCHANGE_ReservesGetHandle *rgh;
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
-  char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 16];
+  char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 16 + 32];
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -271,17 +256,31 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
   {
     char pub_str[sizeof (struct TALER_ReservePublicKeyP) * 2];
     char *end;
+    char timeout_str[32];
 
-    end = GNUNET_STRINGS_data_to_string (reserve_pub,
-                                         sizeof (struct
-                                                 TALER_ReservePublicKeyP),
-                                         pub_str,
-                                         sizeof (pub_str));
+    end = GNUNET_STRINGS_data_to_string (
+      reserve_pub,
+      sizeof (struct TALER_ReservePublicKeyP),
+      pub_str,
+      sizeof (pub_str));
     *end = '\0';
-    GNUNET_snprintf (arg_str,
-                     sizeof (arg_str),
-                     "/reserves/%s",
-                     pub_str);
+    GNUNET_snprintf (timeout_str,
+                     sizeof (timeout_str),
+                     "%llu",
+                     (unsigned long long)
+                     (timeout.rel_value_us
+                      / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us));
+    if (GNUNET_TIME_relative_is_zero (timeout))
+      GNUNET_snprintf (arg_str,
+                       sizeof (arg_str),
+                       "/reserves/%s",
+                       pub_str);
+    else
+      GNUNET_snprintf (arg_str,
+                       sizeof (arg_str),
+                       "/reserves/%s?timeout_ms=%s",
+                       pub_str,
+                       timeout_str);
   }
   rgh = GNUNET_new (struct TALER_EXCHANGE_ReservesGetHandle);
   rgh->exchange = exchange;
@@ -312,15 +311,9 @@ TALER_EXCHANGE_reserves_get (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Cancel a reserve status request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param rgh the reserve status request handle
- */
 void
-TALER_EXCHANGE_reserves_get_cancel (struct
-                                    TALER_EXCHANGE_ReservesGetHandle *rgh)
+TALER_EXCHANGE_reserves_get_cancel (
+  struct TALER_EXCHANGE_ReservesGetHandle *rgh)
 {
   if (NULL != rgh->job)
   {
@@ -332,4 +325,4 @@ TALER_EXCHANGE_reserves_get_cancel (struct
 }
 
 
-/* end of exchange_api_reserve.c */
+/* end of exchange_api_reserves_get.c */

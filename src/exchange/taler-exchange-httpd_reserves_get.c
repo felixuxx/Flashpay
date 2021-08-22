@@ -54,7 +54,7 @@ struct ReservePoller
    * Subscription for the database event we are
    * waiting for.
    */
-  struct TALER_EXCHANGEDB_EventHandler *eh;
+  struct GNUNET_DB_EventHandler *eh;
 
   /**
    * When will this request time out?
@@ -110,8 +110,11 @@ rp_cleanup (struct TEH_RequestContext *rc)
 {
   struct ReservePoller *rp = rc->rh_ctx;
 
+  GNUNET_assert (! rp->suspended);
   if (NULL != rp->eh)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Cancelling DB event listening\n");
     TEH_plugin->event_listen_cancel (TEH_plugin->cls,
                                      rp->eh);
     rp->eh = NULL;
@@ -153,6 +156,7 @@ db_event_cb (void *cls,
                                rp_tail,
                                rp);
   MHD_resume_connection (rp->connection);
+  TALER_MHD_daemon_trigger ();
   GNUNET_async_scope_restore (&old_scope);
 }
 
@@ -218,7 +222,6 @@ struct ReserveHistoryContext
  *
  * @param cls a `struct ReserveHistoryContext *`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!); unused
  * @return transaction status
@@ -226,7 +229,6 @@ struct ReserveHistoryContext
 static enum GNUNET_DB_QueryStatus
 reserve_history_transaction (void *cls,
                              struct MHD_Connection *connection,
-                             struct TALER_EXCHANGEDB_Session *session,
                              MHD_RESULT *mhd_ret)
 {
   struct ReserveHistoryContext *rsc = cls;
@@ -234,7 +236,6 @@ reserve_history_transaction (void *cls,
   (void) connection;
   (void) mhd_ret;
   return TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                          session,
                                           &rsc->reserve_pub,
                                           &rsc->rh);
 }
@@ -247,7 +248,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
   struct ReserveHistoryContext rsc;
   MHD_RESULT mhd_ret;
   struct GNUNET_TIME_Relative timeout = GNUNET_TIME_UNIT_ZERO;
-  struct TALER_EXCHANGEDB_EventHandler *eh = NULL;
+  struct GNUNET_DB_EventHandler *eh = NULL;
 
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
@@ -288,7 +289,8 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
                                                timeout_ms);
     }
   }
-  if (! GNUNET_TIME_relative_is_zero (timeout))
+  if ( (! GNUNET_TIME_relative_is_zero (timeout)) &&
+       (NULL == rc->rh_ctx) )
   {
     struct TALER_ReserveEventP rep = {
       .header.size = htons (sizeof (rep)),
@@ -296,6 +298,8 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
       .reserve_pub = rsc.reserve_pub
     };
 
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Starting DB event listening\n");
     eh = TEH_plugin->event_listen (TEH_plugin->cls,
                                    timeout,
                                    &rep.header,
@@ -309,7 +313,12 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
                               &mhd_ret,
                               &reserve_history_transaction,
                               &rsc))
+  {
+    if (NULL != eh)
+      TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                       eh);
     return mhd_ret;
+  }
   /* generate proper response */
   if (NULL == rsc.rh)
   {
@@ -340,6 +349,9 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
     MHD_suspend_connection (rc->connection);
     return MHD_YES;
   }
+  if (NULL != eh)
+    TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                     eh);
   mhd_ret = reply_reserve_history_success (rc->connection,
                                            rsc.rh);
   TEH_plugin->free_reserve_history (TEH_plugin->cls,

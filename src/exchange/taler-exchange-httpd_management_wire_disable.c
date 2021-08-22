@@ -65,7 +65,6 @@ struct DelWireContext
  *
  * @param cls closure with a `struct DelWireContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -73,7 +72,6 @@ struct DelWireContext
 static enum GNUNET_DB_QueryStatus
 del_wire (void *cls,
           struct MHD_Connection *connection,
-          struct TALER_EXCHANGEDB_Session *session,
           MHD_RESULT *mhd_ret)
 {
   struct DelWireContext *awc = cls;
@@ -81,7 +79,6 @@ del_wire (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_wire_timestamp (TEH_plugin->cls,
-                                          session,
                                           awc->payto_uri,
                                           &last_date);
   if (qs < 0)
@@ -114,7 +111,6 @@ del_wire (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TEH_plugin->update_wire (TEH_plugin->cls,
-                                session,
                                 awc->payto_uri,
                                 awc->validity_end,
                                 false);

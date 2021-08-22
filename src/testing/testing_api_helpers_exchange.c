@@ -559,7 +559,8 @@ TALER_TESTING_wait_auditor_ready (const char *base_url)
                    base_url); // make sure ends with '/'
   /* give child time to start and bind against the socket */
   fprintf (stderr,
-           "Waiting for `taler-auditor-httpd' to be ready\n");
+           "Waiting for `taler-auditor-httpd' to be ready at %s\n",
+           base_url);
   iter = 0;
   do
   {

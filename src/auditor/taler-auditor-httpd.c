@@ -61,9 +61,9 @@
 static int auditor_connection_close;
 
 /**
- * The auditor's configuration (global)
+ * The auditor's configuration.
  */
-static struct GNUNET_CONFIGURATION_Handle *cfg;
+static const struct GNUNET_CONFIGURATION_Handle *cfg;
 
 /**
  * Our DB plugin.
@@ -86,9 +86,9 @@ static struct TALER_AuditorPublicKeyP auditor_pub;
 static unsigned int connection_timeout = 30;
 
 /**
- * The HTTP Daemon.
+ * Return value from main()
  */
-static struct MHD_Daemon *mhd;
+static int global_ret;
 
 /**
  * Port to run the daemon on.
@@ -96,176 +96,9 @@ static struct MHD_Daemon *mhd;
 static uint16_t serve_port;
 
 /**
- * Path for the unix domain-socket to run the daemon on.
- */
-static char *serve_unixpath;
-
-/**
- * File mode for unix-domain socket.
- */
-static mode_t unixpath_mode;
-
-/**
  * Our currency.
  */
 char *TAH_currency;
-
-/**
- * Pipe used for signaling reloading of our key state.
- */
-static int reload_pipe[2] = { -1, -1 };
-
-
-/**
- * Handle a signal, writing relevant signal numbers to the pipe.
- *
- * @param signal_number the signal number
- */
-static void
-handle_signal (int signal_number)
-{
-  char c = signal_number;
-
-  (void) ! write (reload_pipe[1],
-                  &c,
-                  1);
-  /* While one might like to "handle errors" here, even logging via fprintf()
-     isn't safe inside of a signal handler. So there is nothing we safely CAN
-     do. OTOH, also very little that can go wrong in practice. Calling _exit()
-     on errors might be a possibility, but that might do more harm than good. *///
-}
-
-
-/**
- * Call #handle_signal() to pass the received signal via
- * the control pipe.
- */
-static void
-handle_sigint (void)
-{
-  handle_signal (SIGINT);
-}
-
-
-/**
- * Call #handle_signal() to pass the received signal via
- * the control pipe.
- */
-static void
-handle_sigterm (void)
-{
-  handle_signal (SIGTERM);
-}
-
-
-/**
- * Call #handle_signal() to pass the received signal via
- * the control pipe.
- */
-static void
-handle_sighup (void)
-{
-  handle_signal (SIGHUP);
-}
-
-
-/**
- * Call #handle_signal() to pass the received signal via
- * the control pipe.
- */
-static void
-handle_sigchld (void)
-{
-  handle_signal (SIGCHLD);
-}
-
-
-/**
- * Read signals from a pipe in a loop, and reload keys from disk if
- * SIGUSR1 is received, terminate if SIGTERM/SIGINT is received, and
- * restart if SIGHUP is received.
- *
- * @return #GNUNET_SYSERR on errors,
- *         #GNUNET_OK to terminate normally
- *         #GNUNET_NO to restart an update version of the binary
- */
-static int
-signal_loop (void)
-{
-  struct GNUNET_SIGNAL_Context *sigterm;
-  struct GNUNET_SIGNAL_Context *sigint;
-  struct GNUNET_SIGNAL_Context *sighup;
-  struct GNUNET_SIGNAL_Context *sigchld;
-  int ret;
-
-  if (0 != pipe (reload_pipe))
-  {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                         "pipe");
-    return GNUNET_SYSERR;
-  }
-  sigterm = GNUNET_SIGNAL_handler_install (SIGTERM,
-                                           &handle_sigterm);
-  sigint = GNUNET_SIGNAL_handler_install (SIGINT,
-                                          &handle_sigint);
-  sighup = GNUNET_SIGNAL_handler_install (SIGHUP,
-                                          &handle_sighup);
-  sigchld = GNUNET_SIGNAL_handler_install (SIGCHLD,
-                                           &handle_sigchld);
-
-  ret = 2;
-  while (2 == ret)
-  {
-    char c;
-    ssize_t res;
-
-    errno = 0;
-    res = read (reload_pipe[0],
-                &c,
-                1);
-    if ( (res < 0) &&
-         (EINTR != errno))
-    {
-      GNUNET_break (0);
-      ret = GNUNET_SYSERR;
-      break;
-    }
-    if (EINTR == errno)
-    {
-      /* ignore, do the loop again */
-      continue;
-    }
-    switch (c)
-    {
-    case SIGTERM:
-    case SIGINT:
-      /* terminate */
-      ret = GNUNET_OK;
-      break;
-    case SIGHUP:
-      /* restart updated binary */
-      ret = GNUNET_NO;
-      break;
-#if HAVE_DEVELOPER
-    case SIGCHLD:
-      /* running in test-mode, test finished, terminate */
-      ret = GNUNET_OK;
-      break;
-#endif
-    default:
-      /* unexpected character */
-      GNUNET_break (0);
-      break;
-    }
-  }
-  GNUNET_SIGNAL_handler_uninstall (sigterm);
-  GNUNET_SIGNAL_handler_uninstall (sigint);
-  GNUNET_SIGNAL_handler_uninstall (sighup);
-  GNUNET_SIGNAL_handler_uninstall (sigchld);
-  GNUNET_break (0 == close (reload_pipe[0]));
-  GNUNET_break (0 == close (reload_pipe[1]));
-  return ret;
-}
 
 
 /**
@@ -435,7 +268,7 @@ handle_mhd_request (void *cls,
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 auditor_serve_process_config (void)
 {
   if (NULL ==
@@ -452,13 +285,11 @@ auditor_serve_process_config (void)
                 "Failed to initialize DB subsystem to query exchange database\n");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_OK !=
-      TALER_MHD_parse_config (cfg,
-                              "auditor",
-                              &serve_port,
-                              &serve_unixpath,
-                              &unixpath_mode))
+  if (GNUNET_SYSERR ==
+      TAH_eplugin->preflight (TAH_eplugin->cls))
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to initialize DB subsystem to query exchange database\n");
     return GNUNET_SYSERR;
   }
   if (GNUNET_OK !=
@@ -534,6 +365,113 @@ auditor_serve_process_config (void)
 
 
 /**
+ * Function run on shutdown.
+ *
+ * @param cls NULL
+ */
+static void
+do_shutdown (void *cls)
+{
+  struct MHD_Daemon *mhd;
+  (void) cls;
+
+  mhd = TALER_MHD_daemon_stop ();
+  TEAH_DEPOSIT_CONFIRMATION_done ();
+  if (NULL != mhd)
+    MHD_stop_daemon (mhd);
+  if (NULL != TAH_plugin)
+  {
+    TALER_AUDITORDB_plugin_unload (TAH_plugin);
+    TAH_plugin = NULL;
+  }
+  if (NULL != TAH_eplugin)
+  {
+    TALER_EXCHANGEDB_plugin_unload (TAH_eplugin);
+    TAH_eplugin = NULL;
+  }
+}
+
+
+/**
+ * Main function that will be run by the scheduler.
+ *
+ * @param cls closure
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be
+ *        NULL!)
+ * @param config configuration
+ */
+static void
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *config)
+{
+  enum TALER_MHD_GlobalOptions go;
+  int fh;
+
+  go = TALER_MHD_GO_NONE;
+  if (auditor_connection_close)
+    go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
+  TALER_MHD_setup (go);
+  cfg = config;
+
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
+  if (GNUNET_OK !=
+      auditor_serve_process_config ())
+  {
+    global_ret = EXIT_NOTCONFIGURED;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  TEAH_DEPOSIT_CONFIRMATION_init ();
+  fh = TALER_MHD_bind (cfg,
+                       "auditor",
+                       &serve_port);
+  if ( (0 == serve_port) &&
+       (-1 == fh) )
+  {
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  {
+    struct MHD_Daemon *mhd;
+
+    mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
+                            | MHD_USE_PIPE_FOR_SHUTDOWN
+                            | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                            | MHD_USE_TCP_FASTOPEN,
+                            (-1 == fh) ? serve_port : 0,
+                            NULL, NULL,
+                            &handle_mhd_request, NULL,
+                            MHD_OPTION_LISTEN_BACKLOG_SIZE,
+                            (unsigned int) 1024,
+                            MHD_OPTION_LISTEN_SOCKET,
+                            fh,
+                            MHD_OPTION_EXTERNAL_LOGGER,
+                            &TALER_MHD_handle_logs,
+                            NULL,
+                            MHD_OPTION_NOTIFY_COMPLETED,
+                            &handle_mhd_completion_callback,
+                            NULL,
+                            MHD_OPTION_CONNECTION_TIMEOUT,
+                            connection_timeout,
+                            MHD_OPTION_END);
+    if (NULL == mhd)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to launch HTTP service. Is the port in use?\n");
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+    global_ret = EXIT_SUCCESS;
+    TALER_MHD_daemon_start (mhd);
+  }
+}
+
+
+/**
  * The main function of the taler-auditor-httpd server ("the auditor").
  *
  * @param argc number of arguments from the command line
@@ -544,15 +482,11 @@ int
 main (int argc,
       char *const *argv)
 {
-  char *cfgfile = NULL;
-  char *loglev = NULL;
-  char *logfile = NULL;
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_flag ('C',
                                "connection-close",
                                "force HTTP connections to be closed after each request",
                                &auditor_connection_close),
-    GNUNET_GETOPT_option_cfgfile (&cfgfile),
     GNUNET_GETOPT_option_uint ('t',
                                "timeout",
                                "SECONDS",
@@ -560,207 +494,22 @@ main (int argc,
                                &connection_timeout),
     GNUNET_GETOPT_option_help (
       "HTTP server providing a RESTful API to access a Taler auditor"),
-    GNUNET_GETOPT_option_loglevel (&loglev),
-    GNUNET_GETOPT_option_logfile (&logfile),
     GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
   int ret;
-  const char *listen_pid;
-  const char *listen_fds;
-  int fh = -1;
-  enum TALER_MHD_GlobalOptions go;
 
   TALER_OS_init ();
-  {
-    int ret;
-
-    ret = GNUNET_GETOPT_run ("taler-auditor-httpd",
-                             options,
-                             argc, argv);
-    if (GNUNET_NO == ret)
-      return EXIT_SUCCESS;
-    if (GNUNET_SYSERR == ret)
-      return EXIT_FAILURE;
-  }
-  go = TALER_MHD_GO_NONE;
-  if (auditor_connection_close)
-    go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;
-  TALER_MHD_setup (go);
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_log_setup ("taler-auditor-httpd",
-                                   (NULL == loglev) ? "INFO" : loglev,
-                                   logfile));
-  if (NULL == cfgfile)
-    cfgfile = GNUNET_CONFIGURATION_default_filename ();
-  if (NULL == cfgfile)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Can't find default configuration file.\n");
-    return EXIT_NOTCONFIGURED;
-  }
-  cfg = GNUNET_CONFIGURATION_create ();
-  if (GNUNET_SYSERR ==
-      GNUNET_CONFIGURATION_load (cfg,
-                                 cfgfile))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Malformed configuration file `%s', exiting ...\n",
-                cfgfile);
-    GNUNET_free (cfgfile);
-    return EXIT_NOTCONFIGURED;
-  }
-  GNUNET_free (cfgfile);
-
-  if (GNUNET_OK !=
-      auditor_serve_process_config ())
-    return EXIT_NOTCONFIGURED;
-  TEAH_DEPOSIT_CONFIRMATION_init ();
-  /* check for systemd-style FD passing */
-  listen_pid = getenv ("LISTEN_PID");
-  listen_fds = getenv ("LISTEN_FDS");
-  if ( (NULL != listen_pid) &&
-       (NULL != listen_fds) &&
-       (getpid () == strtol (listen_pid,
-                             NULL,
-                             10)) &&
-       (1 == strtoul (listen_fds,
-                      NULL,
-                      10)) )
-  {
-    int flags;
-
-    fh = 3;
-    flags = fcntl (fh,
-                   F_GETFD);
-    if ( (-1 == flags) &&
-         (EBADF == errno) )
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Bad listen socket passed, ignored\n");
-      fh = -1;
-    }
-    flags |= FD_CLOEXEC;
-    if ( (-1 != fh) &&
-         (0 != fcntl (fh,
-                      F_SETFD,
-                      flags)) )
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                           "fcntl");
-  }
-
-  /* consider unix path */
-  if ( (-1 == fh) &&
-       (NULL != serve_unixpath) )
-  {
-    fh = TALER_MHD_open_unix_path (serve_unixpath,
-                                   unixpath_mode);
-    if (-1 == fh)
-    {
-      TEAH_DEPOSIT_CONFIRMATION_done ();
-      return EXIT_NOPERMISSION; /* most likely at least */
-    }
-  }
-
-  mhd = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY | MHD_USE_PIPE_FOR_SHUTDOWN
-                          | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                          | MHD_USE_INTERNAL_POLLING_THREAD
-                          | MHD_USE_TCP_FASTOPEN,
-                          (-1 == fh) ? serve_port : 0,
-                          NULL, NULL,
-                          &handle_mhd_request, NULL,
-                          MHD_OPTION_THREAD_POOL_SIZE, (unsigned int) 32,
-                          MHD_OPTION_LISTEN_BACKLOG_SIZE, (unsigned int) 1024,
-                          MHD_OPTION_LISTEN_SOCKET, fh,
-                          MHD_OPTION_EXTERNAL_LOGGER, &TALER_MHD_handle_logs,
-                          NULL,
-                          MHD_OPTION_NOTIFY_COMPLETED,
-                          &handle_mhd_completion_callback, NULL,
-                          MHD_OPTION_CONNECTION_TIMEOUT, connection_timeout,
-                          MHD_OPTION_END);
-  if (NULL == mhd)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to start HTTP server.\n");
-    TEAH_DEPOSIT_CONFIRMATION_done ();
-    return EXIT_FAILURE;
-  }
-
-  /* normal behavior */
-  ret = signal_loop ();
-  switch (ret)
-  {
-  case GNUNET_OK:
-  case GNUNET_SYSERR:
-    MHD_stop_daemon (mhd);
-    break;
-  case GNUNET_NO:
-    {
-      MHD_socket sock = MHD_quiesce_daemon (mhd);
-      pid_t chld;
-      int flags;
-
-      /* Set flags to make 'sock' inherited by child */
-      flags = fcntl (sock, F_GETFD);
-      GNUNET_assert (-1 != flags);
-      flags &= ~FD_CLOEXEC;
-      GNUNET_assert (-1 != fcntl (sock, F_SETFD, flags));
-      chld = fork ();
-      if (-1 == chld)
-      {
-        /* fork() failed, continue clean up, unhappily */
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "fork");
-      }
-      if (0 == chld)
-      {
-        char pids[12];
-
-        /* exec another taler-auditor-httpd, passing on the listen socket;
-           as in systemd it is expected to be on FD #3 */
-        if (3 != dup2 (sock, 3))
-        {
-          GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                               "dup2");
-          _exit (1);
-        }
-        /* Tell the child that it is the desired recipient for FD #3 */
-        GNUNET_snprintf (pids,
-                         sizeof (pids),
-                         "%u",
-                         getpid ());
-        setenv ("LISTEN_PID", pids, 1);
-        setenv ("LISTEN_FDS", "1", 1);
-        /* Finally, exec the (presumably) more recent auditor binary */
-        execvp ("taler-auditor-httpd",
-                argv);
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                             "execvp");
-        _exit (1);
-      }
-      /* we're the original process, handle remaining contextions
-         before exiting; as the listen socket is no longer used,
-         close it here */
-      GNUNET_break (0 == close (sock));
-      while (0 != MHD_get_daemon_info (mhd,
-                                       MHD_DAEMON_INFO_CURRENT_CONNECTIONS)->
-             num_connections)
-        sleep (1);
-      /* Now we're really done, practice clean shutdown */
-      MHD_stop_daemon (mhd);
-    }
-    break;
-  default:
-    GNUNET_break (0);
-    MHD_stop_daemon (mhd);
-    break;
-  }
-  TALER_AUDITORDB_plugin_unload (TAH_plugin);
-  TAH_plugin = NULL;
-  TALER_EXCHANGEDB_plugin_unload (TAH_eplugin);
-  TAH_eplugin = NULL;
-  TEAH_DEPOSIT_CONFIRMATION_done ();
-  return (GNUNET_SYSERR == ret) ? EXIT_FAILURE : EXIT_SUCCESS;
+  ret = GNUNET_PROGRAM_run (argc, argv,
+                            "taler-auditor-httpd",
+                            "Taler auditor HTTP service",
+                            options,
+                            &run, NULL);
+  if (GNUNET_SYSERR == ret)
+    return EXIT_INVALIDARGUMENT;
+  if (GNUNET_NO == ret)
+    return EXIT_SUCCESS;
+  return global_ret;
 }
 
 

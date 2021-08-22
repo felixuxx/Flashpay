@@ -63,11 +63,6 @@ struct WireAccount
   const struct TALER_EXCHANGEDB_AccountInfo *ai;
 
   /**
-   * Database session we are using for the current transaction.
-   */
-  struct TALER_EXCHANGEDB_Session *session;
-
-  /**
    * Active request for history.
    */
   struct TALER_BANK_CreditHistoryHandle *hh;
@@ -355,8 +350,7 @@ find_transfers (void *cls);
 static void
 handle_soft_error (struct WireAccount *wa)
 {
-  db_plugin->rollback (db_plugin->cls,
-                       wa->session);
+  db_plugin->rollback (db_plugin->cls);
   if (1 < wa->batch_size)
   {
     wa->batch_thresh = wa->batch_size;
@@ -386,7 +380,6 @@ do_commit (struct WireAccount *wa)
   {
     /* shard is complete, mark this as well */
     qs = db_plugin->complete_shard (db_plugin->cls,
-                                    wa->session,
                                     wa->job_name,
                                     wa->shard_start,
                                     wa->shard_end);
@@ -394,8 +387,7 @@ do_commit (struct WireAccount *wa)
     {
     case GNUNET_DB_STATUS_HARD_ERROR:
       GNUNET_break (0);
-      db_plugin->rollback (db_plugin->cls,
-                           wa->session);
+      db_plugin->rollback (db_plugin->cls);
       GNUNET_SCHEDULER_shutdown ();
       return;
     case GNUNET_DB_STATUS_SOFT_ERROR:
@@ -413,8 +405,7 @@ do_commit (struct WireAccount *wa)
       break;
     }
   }
-  qs = db_plugin->commit (db_plugin->cls,
-                          wa->session);
+  qs = db_plugin->commit (db_plugin->cls);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
@@ -432,7 +423,6 @@ do_commit (struct WireAccount *wa)
   }
   /* transaction success, update #last_row_off */
   wa->batch_start = wa->latest_row_off;
-  wa->session = NULL;     /* should not be needed */
   if (wa->batch_size < MAXIMUM_BATCH_SIZE)
   {
     int delta;
@@ -492,7 +482,6 @@ history_cb (void *cls,
             const json_t *json)
 {
   struct WireAccount *wa = cls;
-  struct TALER_EXCHANGEDB_Session *session = wa->session;
   enum GNUNET_DB_QueryStatus qs;
 
   (void) json;
@@ -518,8 +507,7 @@ history_cb (void *cls,
                 "Serial ID %llu not monotonic (got %llu before). Failing!\n",
                 (unsigned long long) serial_id,
                 (unsigned long long) wa->latest_row_off);
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     GNUNET_SCHEDULER_shutdown ();
     wa->hh = NULL;
     return GNUNET_SYSERR;
@@ -547,7 +535,6 @@ history_cb (void *cls,
      (Note: this may require changing both the
      plugin API as well as modifying how this function is called.) */
   qs = db_plugin->reserves_in_insert (db_plugin->cls,
-                                      session,
                                       &details->reserve_pub,
                                       &details->amount,
                                       details->execution_date,
@@ -558,8 +545,7 @@ history_cb (void *cls,
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     GNUNET_SCHEDULER_shutdown ();
     wa->hh = NULL;
     return GNUNET_SYSERR;
@@ -590,23 +576,22 @@ history_cb (void *cls,
 static void
 find_transfers (void *cls)
 {
-  struct TALER_EXCHANGEDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
   unsigned int limit;
 
   (void) cls;
   task = NULL;
-  if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
+  if (GNUNET_SYSERR ==
+      db_plugin->preflight (db_plugin->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to obtain database session!\n");
+                "Failed to obtain database connection!\n");
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   wa_pos->delay = true;
   wa_pos->current_batch_size = 0; /* reset counter */
-  wa_pos->session = session;
   if (wa_pos->shard_end <= wa_pos->batch_start)
   {
     uint64_t start;
@@ -662,7 +647,6 @@ find_transfers (void *cls)
   }
   if (GNUNET_OK !=
       db_plugin->start_read_committed (db_plugin->cls,
-                                       session,
                                        "wirewatch check for incoming wire transfers"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -689,8 +673,7 @@ find_transfers (void *cls)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to start request for account history!\n");
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;

@@ -70,7 +70,6 @@ TEH_handler_management_denominations_HDP_revoke (
       NULL);
   }
   qs = TEH_plugin->insert_denomination_revocation (TEH_plugin->cls,
-                                                   NULL,
                                                    h_denom_pub,
                                                    &master_sig);
   if (qs < 0)

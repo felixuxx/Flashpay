@@ -42,7 +42,7 @@ extern struct GNUNET_TIME_Relative TEH_reserve_closing_delay;
 /**
  * The exchange's configuration.
  */
-extern struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
+extern const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 
 /**
  * Main directory with exchange data.

@@ -42,11 +42,6 @@ struct TALER_Amount TALER_ARL_currency_round_unit;
 const struct GNUNET_CONFIGURATION_Handle *TALER_ARL_cfg;
 
 /**
- * Our session with the #TALER_ARL_edb.
- */
-struct TALER_EXCHANGEDB_Session *TALER_ARL_esession;
-
-/**
  * Handle to access the auditor's database.
  */
 struct TALER_AUDITORDB_Plugin *TALER_ARL_adb;
@@ -213,7 +208,6 @@ TALER_ARL_get_denomination_info_by_hash (
     denominations = GNUNET_CONTAINER_multihashmap_create (256,
                                                           GNUNET_NO);
     qs = TALER_ARL_edb->iterate_denomination_info (TALER_ARL_edb->cls,
-                                                   TALER_ARL_esession,
                                                    &add_denomination,
                                                    NULL);
     if (0 > qs)
@@ -239,7 +233,6 @@ TALER_ARL_get_denomination_info_by_hash (
     struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
 
     qs = TALER_ARL_edb->get_denomination_info (TALER_ARL_edb->cls,
-                                               TALER_ARL_esession,
                                                dh,
                                                &issue);
     if (qs <= 0)
@@ -324,23 +317,24 @@ transact (TALER_ARL_Analysis analysis,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  TALER_ARL_edb->preflight (TALER_ARL_edb->cls,
-                            TALER_ARL_esession);
+  if (GNUNET_OK !=
+      TALER_ARL_edb->preflight (TALER_ARL_edb->cls))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   ret = TALER_ARL_edb->start (TALER_ARL_edb->cls,
-                              TALER_ARL_esession,
                               "auditor");
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
-    TALER_ARL_edb->rollback (TALER_ARL_edb->cls,
-                             TALER_ARL_esession);
+    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
     return GNUNET_SYSERR;
   }
   qs = analysis (analysis_cls);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls,
-                                TALER_ARL_esession);
+    qs = TALER_ARL_edb->commit (TALER_ARL_edb->cls);
     if (0 > qs)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -367,8 +361,7 @@ transact (TALER_ARL_Analysis analysis,
                 "Processing failed (or no changes), rolling back transaction\n");
     TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
                              TALER_ARL_asession);
-    TALER_ARL_edb->rollback (TALER_ARL_edb->cls,
-                             TALER_ARL_esession);
+    TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   }
   switch (qs)
   {
@@ -396,11 +389,11 @@ int
 TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
                                   void *ana_cls)
 {
-  TALER_ARL_esession = TALER_ARL_edb->get_session (TALER_ARL_edb->cls);
-  if (NULL == TALER_ARL_esession)
+  if (GNUNET_OK !=
+      TALER_ARL_edb->preflight (TALER_ARL_edb->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to initialize exchange session.\n");
+                "Failed to initialize exchange connection.\n");
     return GNUNET_SYSERR;
   }
   TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);

@@ -45,21 +45,18 @@
  *
  * @param coin the coin to make known
  * @param connection MHD request context
- * @param session database session and transaction to use
  * @param[out] mhd_ret set to MHD status on error
  * @return transaction status, negative on error (@a mhd_ret will be set in this case)
  */
 enum GNUNET_DB_QueryStatus
 TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
                      struct MHD_Connection *connection,
-                     struct TALER_EXCHANGEDB_Session *session,
                      MHD_RESULT *mhd_ret)
 {
   enum TALER_EXCHANGEDB_CoinKnownStatus cks;
 
   /* make sure coin is 'known' in database */
   cks = TEH_plugin->ensure_coin_known (TEH_plugin->cls,
-                                       session,
                                        coin);
   switch (cks)
   {
@@ -85,7 +82,6 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
     enum GNUNET_DB_QueryStatus qs;
 
     qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                            session,
                                             &coin->coin_pub,
                                             GNUNET_NO,
                                             &tl);
@@ -135,11 +131,10 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                         TEH_DB_TransactionCallback cb,
                         void *cb_cls)
 {
-  struct TALER_EXCHANGEDB_Session *session;
-
   if (NULL != mhd_ret)
     *mhd_ret = -1; /* set to invalid value, to help detect bugs */
-  if (NULL == (session = TEH_plugin->get_session (TEH_plugin->cls)))
+  if (GNUNET_OK !=
+      TEH_plugin->preflight (TEH_plugin->cls))
   {
     GNUNET_break (0);
     if (NULL != mhd_ret)
@@ -157,7 +152,6 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
 
     if (GNUNET_OK !=
         TEH_plugin->start (TEH_plugin->cls,
-                           session,
                            name))
     {
       GNUNET_break (0);
@@ -170,16 +164,13 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     }
     qs = cb (cb_cls,
              connection,
-             session,
              mhd_ret);
     if (0 > qs)
-      TEH_plugin->rollback (TEH_plugin->cls,
-                            session);
+      TEH_plugin->rollback (TEH_plugin->cls);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       return GNUNET_SYSERR;
     if (0 <= qs)
-      qs = TEH_plugin->commit (TEH_plugin->cls,
-                               session);
+      qs = TEH_plugin->commit (TEH_plugin->cls);
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
       if (NULL != mhd_ret)

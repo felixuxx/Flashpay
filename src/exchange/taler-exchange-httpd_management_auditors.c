@@ -74,7 +74,6 @@ struct AddAuditorContext
  *
  * @param cls closure with a `struct AddAuditorContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -82,7 +81,6 @@ struct AddAuditorContext
 static enum GNUNET_DB_QueryStatus
 add_auditor (void *cls,
              struct MHD_Connection *connection,
-             struct TALER_EXCHANGEDB_Session *session,
              MHD_RESULT *mhd_ret)
 {
   struct AddAuditorContext *aac = cls;
@@ -90,7 +88,6 @@ add_auditor (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_auditor_timestamp (TEH_plugin->cls,
-                                             session,
                                              &aac->auditor_pub,
                                              &last_date);
   if (qs < 0)
@@ -116,14 +113,12 @@ add_auditor (void *cls,
   }
   if (0 == qs)
     qs = TEH_plugin->insert_auditor (TEH_plugin->cls,
-                                     session,
                                      &aac->auditor_pub,
                                      aac->auditor_url,
                                      aac->auditor_name,
                                      aac->validity_start);
   else
     qs = TEH_plugin->update_auditor (TEH_plugin->cls,
-                                     session,
                                      &aac->auditor_pub,
                                      aac->auditor_url,
                                      aac->auditor_name,

@@ -94,7 +94,6 @@ reply_refund_success (struct MHD_Connection *connection,
  *
  * @param cls closure with a `const struct TALER_EXCHANGEDB_Refund *`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -102,7 +101,6 @@ reply_refund_success (struct MHD_Connection *connection,
 static enum GNUNET_DB_QueryStatus
 refund_transaction (void *cls,
                     struct MHD_Connection *connection,
-                    struct TALER_EXCHANGEDB_Session *session,
                     MHD_RESULT *mhd_ret)
 {
   const struct TALER_EXCHANGEDB_Refund *refund = cls;
@@ -118,7 +116,6 @@ refund_transaction (void *cls,
 
   tl = NULL;
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          session,
                                           &refund->coin.coin_pub,
                                           GNUNET_NO,
                                           &tl);
@@ -344,7 +341,6 @@ refund_transaction (void *cls,
 
   /* Finally, store new refund data */
   qs = TEH_plugin->insert_refund (TEH_plugin->cls,
-                                  session,
                                   refund);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
@@ -407,7 +403,6 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     enum GNUNET_DB_QueryStatus qs;
 
     qs = TEH_plugin->get_coin_denomination (TEH_plugin->cls,
-                                            NULL,
                                             &refund->coin.coin_pub,
                                             &denom_hash);
     if (0 > qs)

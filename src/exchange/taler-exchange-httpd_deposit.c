@@ -133,14 +133,12 @@ struct DepositContext
  *
  * @param cls a `struct DepositContext`
  * @param connection MHD request context
- * @param session database session and transaction to use
  * @param[out] mhd_ret set to MHD status on error
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 deposit_precheck (void *cls,
                   struct MHD_Connection *connection,
-                  struct TALER_EXCHANGEDB_Session *session,
                   MHD_RESULT *mhd_ret)
 {
   struct DepositContext *dc = cls;
@@ -149,7 +147,6 @@ deposit_precheck (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
-                                 session,
                                  deposit,
                                  GNUNET_YES /* check refund deadline */,
                                  &deposit_fee,
@@ -202,14 +199,12 @@ deposit_precheck (void *cls,
  *
  * @param cls a `struct DepositContext`
  * @param connection MHD request context
- * @param session database session and transaction to use
  * @param[out] mhd_ret set to MHD status on error
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 deposit_transaction (void *cls,
                      struct MHD_Connection *connection,
-                     struct TALER_EXCHANGEDB_Session *session,
                      MHD_RESULT *mhd_ret)
 {
   struct DepositContext *dc = cls;
@@ -220,7 +215,6 @@ deposit_transaction (void *cls,
   /* make sure coin is 'known' in database */
   qs = TEH_make_coin_known (&deposit->coin,
                             connection,
-                            session,
                             mhd_ret);
   if (qs < 0)
     return qs;
@@ -230,7 +224,6 @@ deposit_transaction (void *cls,
      that we are in the transaction scope. */
   qs = deposit_precheck (cls,
                          connection,
-                         session,
                          mhd_ret);
   if (qs < 0)
     return qs;
@@ -244,7 +237,6 @@ deposit_transaction (void *cls,
     struct TALER_EXCHANGEDB_TransactionList *tl;
 
     qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                            session,
                                             &deposit->coin.coin_pub,
                                             GNUNET_NO,
                                             &tl);
@@ -292,7 +284,6 @@ deposit_transaction (void *cls,
                                             tl);
   }
   qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
-                                   session,
                                    dc->exchange_timestamp,
                                    deposit);
   if (GNUNET_DB_STATUS_HARD_ERROR == qs)

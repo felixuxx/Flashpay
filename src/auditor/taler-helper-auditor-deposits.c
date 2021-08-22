@@ -123,7 +123,6 @@ test_dc (void *cls,
     struct TALER_Amount deposit_fee;
 
     qs = TALER_ARL_edb->have_deposit (TALER_ARL_edb->cls,
-                                      TALER_ARL_esession,
                                       &dep,
                                       GNUNET_NO /* do not check refund deadline */,
                                       &deposit_fee,

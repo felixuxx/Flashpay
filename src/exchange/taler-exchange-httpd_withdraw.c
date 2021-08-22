@@ -152,7 +152,6 @@ struct WithdrawContext
  *
  * @param cls a `struct WithdrawContext *`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -160,7 +159,6 @@ struct WithdrawContext
 static enum GNUNET_DB_QueryStatus
 withdraw_transaction (void *cls,
                       struct MHD_Connection *connection,
-                      struct TALER_EXCHANGEDB_Session *session,
                       MHD_RESULT *mhd_ret)
 {
   struct WithdrawContext *wc = cls;
@@ -175,7 +173,6 @@ withdraw_transaction (void *cls,
   wc->collectable.sig.rsa_signature = NULL;
 #endif
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                      session,
                                       &wc->wsrd.h_coin_envelope,
                                       &wc->collectable);
   if (0 > qs)
@@ -212,7 +209,6 @@ withdraw_transaction (void *cls,
               "Trying to withdraw from reserve: %s\n",
               TALER_B2S (&r.pub));
   qs = TEH_plugin->reserves_get (TEH_plugin->cls,
-                                 session,
                                  &r);
   if (0 > qs)
   {
@@ -253,7 +249,6 @@ withdraw_transaction (void *cls,
     }
 #endif
     qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                          session,
                                           &wc->wsrd.reserve_pub,
                                           &rh);
     if (NULL == rh)
@@ -300,7 +295,6 @@ withdraw_transaction (void *cls,
   wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
   wc->collectable.reserve_sig = wc->signature;
   qs = TEH_plugin->insert_withdraw_info (TEH_plugin->cls,
-                                         session,
                                          &wc->collectable);
   if (0 > qs)
   {

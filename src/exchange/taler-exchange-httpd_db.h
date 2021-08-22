@@ -31,14 +31,12 @@
  *
  * @param coin the coin to make known
  * @param connection MHD request context
- * @param session database session and transaction to use
  * @param[out] mhd_ret set to MHD status on error
  * @return transaction status, negative on error (@a mhd_ret will be set in this case)
  */
 enum GNUNET_DB_QueryStatus
 TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
                      struct MHD_Connection *connection,
-                     struct TALER_EXCHANGEDB_Session *session,
                      MHD_RESULT *mhd_ret);
 
 
@@ -52,7 +50,6 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
  *
  * @param cls closure
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -60,7 +57,6 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
 typedef enum GNUNET_DB_QueryStatus
 (*TEH_DB_TransactionCallback)(void *cls,
                               struct MHD_Connection *connection,
-                              struct TALER_EXCHANGEDB_Session *session,
                               MHD_RESULT *mhd_ret);
 
 

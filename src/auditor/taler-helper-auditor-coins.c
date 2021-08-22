@@ -476,7 +476,6 @@ check_coin_history (const struct TALER_CoinSpendPublicKeyP *coin_pub,
   int have_refund;
 
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
-                                             TALER_ARL_esession,
                                              coin_pub,
                                              GNUNET_YES,
                                              &tl);
@@ -717,7 +716,6 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
               TALER_amount2s (&ds->denom_balance),
               (unsigned long long) ds->num_issued);
   qs = TALER_ARL_edb->get_denomination_revocation (TALER_ARL_edb->cls,
-                                                   TALER_ARL_esession,
                                                    denom_hash,
                                                    &msig,
                                                    &rowid);
@@ -878,7 +876,6 @@ sync_denomination (void *cls,
                 TALER_amount2s (&ds->denom_balance),
                 (unsigned long long) ds->num_issued);
     cnt = TALER_ARL_edb->count_known_coins (TALER_ARL_edb->cls,
-                                            TALER_ARL_esession,
                                             denom_hash);
     if (0 > cnt)
     {
@@ -1187,7 +1184,6 @@ check_known_coin (const char *operation,
               "Checking denomination signature on %s\n",
               TALER_B2S (coin_pub));
   qs = TALER_ARL_edb->get_known_coin (TALER_ARL_edb->cls,
-                                      TALER_ARL_esession,
                                       coin_pub,
                                       &ci);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
@@ -1336,7 +1332,6 @@ refresh_session_cb (void *cls,
     };
 
     qs = TALER_ARL_edb->get_refresh_reveal (TALER_ARL_edb->cls,
-                                            TALER_ARL_esession,
                                             rc,
                                             &reveal_data_cb,
                                             &reveal_ctx);
@@ -2250,7 +2245,6 @@ check_denomination (
   struct TALER_AuditorSignatureP auditor_sig;
 
   qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
-                                                TALER_ARL_esession,
                                                 &issue->denom_hash,
                                                 &TALER_ARL_auditor_pub,
                                                 &auditor_sig);
@@ -2329,7 +2323,6 @@ analyze_coins (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking denominations...\n");
   qs = TALER_ARL_edb->iterate_denomination_info (TALER_ARL_edb->cls,
-                                                 TALER_ARL_esession,
                                                  &check_denomination,
                                                  NULL);
   if (0 > qs)
@@ -2389,7 +2382,6 @@ analyze_coins (void *cls)
   if (0 >
       (qs = TALER_ARL_edb->select_withdrawals_above_serial_id (
          TALER_ARL_edb->cls,
-         TALER_ARL_esession,
          ppc.last_withdraw_serial_id,
          &withdraw_cb,
          &cc)) )
@@ -2404,7 +2396,6 @@ analyze_coins (void *cls)
   if (0 >
       (qs = TALER_ARL_edb->select_refunds_above_serial_id (
          TALER_ARL_edb->cls,
-         TALER_ARL_esession,
          ppc.last_refund_serial_id,
          &refund_cb,
          &cc)))
@@ -2419,7 +2410,6 @@ analyze_coins (void *cls)
   if (0 >
       (qs = TALER_ARL_edb->select_recoup_refresh_above_serial_id (
          TALER_ARL_edb->cls,
-         TALER_ARL_esession,
          ppc.last_recoup_refresh_serial_id,
          &recoup_refresh_cb,
          &cc)))
@@ -2432,7 +2422,6 @@ analyze_coins (void *cls)
   if (0 >
       (qs = TALER_ARL_edb->select_recoup_above_serial_id (
          TALER_ARL_edb->cls,
-         TALER_ARL_esession,
          ppc.last_recoup_serial_id,
          &recoup_cb,
          &cc)))
@@ -2447,7 +2436,6 @@ analyze_coins (void *cls)
   if (0 >
       (qs = TALER_ARL_edb->select_refreshes_above_serial_id (
          TALER_ARL_edb->cls,
-         TALER_ARL_esession,
          ppc.last_melt_serial_id,
          &refresh_session_cb,
          &cc)))
@@ -2462,7 +2450,6 @@ analyze_coins (void *cls)
   if (0 >
       (qs = TALER_ARL_edb->select_deposits_above_serial_id (
          TALER_ARL_edb->cls,
-         TALER_ARL_esession,
          ppc.last_deposit_serial_id,
          &deposit_cb,
          &cc)))

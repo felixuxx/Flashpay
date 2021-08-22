@@ -69,7 +69,6 @@ TEH_handler_management_signkeys_EP_revoke (
       NULL);
   }
   qs = TEH_plugin->insert_signkey_revocation (TEH_plugin->cls,
-                                              NULL,
                                               exchange_pub,
                                               &master_sig);
   if (qs < 0)

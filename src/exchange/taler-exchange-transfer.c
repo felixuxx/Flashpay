@@ -38,11 +38,6 @@ struct WirePrepareData
 {
 
   /**
-   * Database session for all of our transactions.
-   */
-  struct TALER_EXCHANGEDB_Session *session;
-
-  /**
    * Wire execution handle.
    */
   struct TALER_BANK_TransferHandle *eh;
@@ -140,8 +135,7 @@ shutdown_task (void *cls)
       TALER_BANK_transfer_cancel (wpd->eh);
       wpd->eh = NULL;
     }
-    db_plugin->rollback (db_plugin->cls,
-                         wpd->session);
+    db_plugin->rollback (db_plugin->cls);
     GNUNET_free (wpd);
     wpd = NULL;
   }
@@ -196,16 +190,14 @@ parse_wirewatch_config (void)
 /**
  * Perform a database commit. If it fails, print a warning.
  *
- * @param session session to perform the commit for.
  * @return status of commit
  */
 static enum GNUNET_DB_QueryStatus
-commit_or_warn (struct TALER_EXCHANGEDB_Session *session)
+commit_or_warn (void)
 {
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = db_plugin->commit (db_plugin->cls,
-                          session);
+  qs = db_plugin->commit (db_plugin->cls);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     return qs;
   GNUNET_log ((GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -245,7 +237,6 @@ wire_confirm_cb (void *cls,
                  uint64_t row_id,
                  struct GNUNET_TIME_Absolute wire_timestamp)
 {
-  struct TALER_EXCHANGEDB_Session *session = wpd->session;
   enum GNUNET_DB_QueryStatus qs;
 
   (void) cls;
@@ -256,7 +247,6 @@ wire_confirm_cb (void *cls,
   {
   case MHD_HTTP_OK:
     qs = db_plugin->wire_prepare_data_mark_finished (db_plugin->cls,
-                                                     session,
                                                      wpd->row_id);
     /* continued below */
     break;
@@ -267,7 +257,6 @@ wire_confirm_cb (void *cls,
                 http_status_code,
                 ec);
     qs = db_plugin->wire_prepare_data_mark_failed (db_plugin->cls,
-                                                   session,
                                                    wpd->row_id);
     /* continued below */
     break;
@@ -276,8 +265,7 @@ wire_confirm_cb (void *cls,
                 "Wire transaction failed: %u/%d\n",
                 http_status_code,
                 ec);
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     GNUNET_free (wpd);
@@ -287,8 +275,7 @@ wire_confirm_cb (void *cls,
   if (0 >= qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
     {
       /* try again */
@@ -307,7 +294,7 @@ wire_confirm_cb (void *cls,
   }
   GNUNET_free (wpd);
   wpd = NULL;
-  switch (commit_or_warn (session))
+  switch (commit_or_warn ())
   {
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
@@ -362,8 +349,7 @@ wire_prepare_cb (void *cls,
        (NULL == buf) )
   {
     GNUNET_break (0);
-    db_plugin->rollback (db_plugin->cls,
-                         wpd->session);
+    db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
     goto cleanup;
   }
@@ -377,8 +363,7 @@ wire_prepare_cb (void *cls,
     /* Should really never happen here, as when we get
        here the wire account should be in the cache. */
     GNUNET_break (0);
-    db_plugin->rollback (db_plugin->cls,
-                         wpd->session);
+    db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_NOTCONFIGURED;
     goto cleanup;
   }
@@ -392,8 +377,7 @@ wire_prepare_cb (void *cls,
   if (NULL == wpd->eh)
   {
     GNUNET_break (0); /* Irrecoverable */
-    db_plugin->rollback (db_plugin->cls,
-                         wpd->session);
+    db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
     goto cleanup;
   }
@@ -415,23 +399,22 @@ static void
 run_transfers (void *cls)
 {
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_EXCHANGEDB_Session *session;
 
   (void) cls;
   task = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for pending wire transfers\n");
-  if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
+  if (GNUNET_SYSERR ==
+      db_plugin->preflight (db_plugin->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to obtain database session!\n");
+                "Failed to obtain database connection!\n");
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
-                        session,
                         "aggregator run transfer"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -441,15 +424,12 @@ run_transfers (void *cls)
     return;
   }
   wpd = GNUNET_new (struct WirePrepareData);
-  wpd->session = session;
   qs = db_plugin->wire_prepare_data_get (db_plugin->cls,
-                                         session,
                                          &wire_prepare_cb,
                                          NULL);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
     return;  /* continued via continuation set in #wire_prepare_cb() */
-  db_plugin->rollback (db_plugin->cls,
-                       session);
+  db_plugin->rollback (db_plugin->cls);
   GNUNET_free (wpd);
   wpd = NULL;
   switch (qs)

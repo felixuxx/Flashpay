@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2016-2020 Taler Systems SA
+  Copyright (C) 2016-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -174,16 +174,14 @@ parse_wirewatch_config (void)
 /**
  * Perform a database commit. If it fails, print a warning.
  *
- * @param session session to perform the commit for.
  * @return status of commit
  */
 static enum GNUNET_DB_QueryStatus
-commit_or_warn (struct TALER_EXCHANGEDB_Session *session)
+commit_or_warn (void)
 {
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = db_plugin->commit (db_plugin->cls,
-                          session);
+  qs = db_plugin->commit (db_plugin->cls);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     return qs;
   GNUNET_log ((GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -195,26 +193,12 @@ commit_or_warn (struct TALER_EXCHANGEDB_Session *session)
 
 
 /**
- * Closure for #expired_reserve_cb().
- */
-struct ExpiredReserveContext
-{
-
-  /**
-   * Database session we are using.
-   */
-  struct TALER_EXCHANGEDB_Session *session;
-
-};
-
-
-/**
  * Function called with details about expired reserves.
  * We trigger the reserve closure by inserting the respective
  * closing record and prewire instructions into the respective
  * tables.
  *
- * @param cls a `struct ExpiredReserveContext *`
+ * @param cls NULL
  * @param reserve_pub public key of the reserve
  * @param left amount left in the reserve
  * @param account_payto_uri information about the bank account that initially
@@ -229,8 +213,6 @@ expired_reserve_cb (void *cls,
                     const char *account_payto_uri,
                     struct GNUNET_TIME_Absolute expiration_date)
 {
-  struct ExpiredReserveContext *erc = cls;
-  struct TALER_EXCHANGEDB_Session *session = erc->session;
   struct GNUNET_TIME_Absolute now;
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount_without_fee;
@@ -239,6 +221,7 @@ expired_reserve_cb (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
+  (void) cls;
   /* NOTE: potential optimization: use custom SQL API to not
      fetch this: */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -269,7 +252,6 @@ expired_reserve_cb (void *cls,
     enum GNUNET_DB_QueryStatus qs;
 
     qs = db_plugin->get_wire_fee (db_plugin->cls,
-                                  session,
                                   wa->method,
                                   expiration_date,
                                   &start_date,
@@ -326,7 +308,6 @@ expired_reserve_cb (void *cls,
                       sizeof (*reserve_pub)));
   if (GNUNET_SYSERR != ret)
     qs = db_plugin->insert_reserve_closed (db_plugin->cls,
-                                           session,
                                            reserve_pub,
                                            now,
                                            account_payto_uri,
@@ -356,7 +337,7 @@ expired_reserve_cb (void *cls,
     /* Reserve balance was almost zero OR soft error */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reserve was virtually empty, moving on\n");
-    (void) commit_or_warn (session);
+    (void) commit_or_warn ();
     return qs;
   }
 
@@ -373,7 +354,6 @@ expired_reserve_cb (void *cls,
                                  &buf_size);
     /* Commit our intention to execute the wire transfer! */
     qs = db_plugin->wire_prepare_data_insert (db_plugin->cls,
-                                              session,
                                               wa->method,
                                               buf,
                                               buf_size);
@@ -404,17 +384,16 @@ expired_reserve_cb (void *cls,
 static void
 run_reserve_closures (void *cls)
 {
-  struct TALER_EXCHANGEDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
-  struct ExpiredReserveContext erc;
   struct GNUNET_TIME_Absolute now;
 
   (void) cls;
   task = NULL;
-  if (NULL == (session = db_plugin->get_session (db_plugin->cls)))
+  if (GNUNET_SYSERR ==
+      db_plugin->preflight (db_plugin->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to obtain database session!\n");
+                "Failed to obtain database connection!\n");
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
@@ -422,7 +401,6 @@ run_reserve_closures (void *cls)
 
   if (GNUNET_OK !=
       db_plugin->start (db_plugin->cls,
-                        session,
                         "aggregator reserve closures"))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -431,30 +409,26 @@ run_reserve_closures (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  erc.session = session;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for reserves to close by date %s\n",
               GNUNET_STRINGS_absolute_time_to_string (now));
   qs = db_plugin->get_expired_reserves (db_plugin->cls,
-                                        session,
                                         now,
                                         &expired_reserve_cb,
-                                        &erc);
+                                        NULL);
   GNUNET_assert (1 >= qs);
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
     GNUNET_break (0);
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);
@@ -462,8 +436,7 @@ run_reserve_closures (void *cls)
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "No more idle reserves to close, going to sleep.\n");
-    db_plugin->rollback (db_plugin->cls,
-                         session);
+    db_plugin->rollback (db_plugin->cls);
     GNUNET_assert (NULL == task);
     if (GNUNET_YES == test_mode)
     {
@@ -477,7 +450,7 @@ run_reserve_closures (void *cls)
     }
     return;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    (void) commit_or_warn (session);
+    (void) commit_or_warn ();
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_reserve_closures,
                                      NULL);

@@ -756,7 +756,6 @@ wire_transfer_information_cb (
 
   /* Obtain coin's transaction history */
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
-                                             TALER_ARL_esession,
                                              coin_pub,
                                              GNUNET_YES,
                                              &tl);
@@ -770,7 +769,6 @@ wire_transfer_information_cb (
     return;
   }
   qs = TALER_ARL_edb->get_known_coin (TALER_ARL_edb->cls,
-                                      TALER_ARL_esession,
                                       coin_pub,
                                       &coin);
   if (qs <= 0)
@@ -946,7 +944,6 @@ get_wire_fee (struct AggregationContext *ac,
   wfi = GNUNET_new (struct WireFeeInfo);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       TALER_ARL_edb->get_wire_fee (TALER_ARL_edb->cls,
-                                   TALER_ARL_esession,
                                    method,
                                    timestamp,
                                    &wfi->start_date,
@@ -1083,7 +1080,6 @@ check_wire_out_cb (void *cls,
     return GNUNET_SYSERR;
   }
   qs = TALER_ARL_edb->lookup_wire_transfer (TALER_ARL_edb->cls,
-                                            TALER_ARL_esession,
                                             wtid,
                                             &wire_transfer_information_cb,
                                             &wcc);
@@ -1258,7 +1254,6 @@ analyze_aggregations (void *cls)
   ac.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qs = TALER_ARL_edb->select_wire_out_above_serial_id (
     TALER_ARL_edb->cls,
-    TALER_ARL_esession,
     ppa.last_wire_out_serial_id,
     &check_wire_out_cb,
     &ac);

@@ -55,11 +55,6 @@ extern struct TALER_Amount TALER_ARL_currency_round_unit;
 extern const struct GNUNET_CONFIGURATION_Handle *TALER_ARL_cfg;
 
 /**
- * Our session with the #TALER_ARL_edb.
- */
-extern struct TALER_EXCHANGEDB_Session *TALER_ARL_esession;
-
-/**
  * Handle to access the auditor's database.
  */
 extern struct TALER_AUDITORDB_Plugin *TALER_ARL_adb;

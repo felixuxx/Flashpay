@@ -95,8 +95,6 @@ mark_prepare_cb (void *cls,
                  const char *buf,
                  size_t buf_size)
 {
-  struct TALER_EXCHANGEDB_Session *session = cls;
-
   GNUNET_assert (11 == buf_size);
   GNUNET_assert (0 == strcasecmp (wire_method,
                                   "testcase"));
@@ -105,7 +103,6 @@ mark_prepare_cb (void *cls,
                               buf_size));
   GNUNET_break (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
                 plugin->wire_prepare_data_mark_finished (plugin->cls,
-                                                         session,
                                                          rowid));
 }
 
@@ -113,31 +110,26 @@ mark_prepare_cb (void *cls,
 /**
  * Test API relating to persisting the wire plugins preparation data.
  *
- * @param session database session to use for the test
  * @return #GNUNET_OK on success
  */
 static int
-test_wire_prepare (struct TALER_EXCHANGEDB_Session *session)
+test_wire_prepare (void)
 {
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->wire_prepare_data_get (plugin->cls,
-                                         session,
                                          &dead_prepare_cb,
                                          NULL));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->wire_prepare_data_insert (plugin->cls,
-                                            session,
                                             "testcase",
                                             "hello world",
                                             11));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->wire_prepare_data_get (plugin->cls,
-                                         session,
                                          &mark_prepare_cb,
-                                         session));
+                                         NULL));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->wire_prepare_data_get (plugin->cls,
-                                         session,
                                          &dead_prepare_cb,
                                          NULL));
   return GNUNET_OK;
@@ -149,7 +141,6 @@ drop:
 /**
  * Checks if the given reserve has the given amount of balance and expiry
  *
- * @param session the database connection
  * @param pub the public key of the reserve
  * @param value balance value
  * @param fraction balance fraction
@@ -158,8 +149,7 @@ drop:
  *           as the given parameters; #GNUNET_SYSERR if not
  */
 static int
-check_reserve (struct TALER_EXCHANGEDB_Session *session,
-               const struct TALER_ReservePublicKeyP *pub,
+check_reserve (const struct TALER_ReservePublicKeyP *pub,
                uint64_t value,
                uint32_t fraction,
                const char *currency)
@@ -169,7 +159,6 @@ check_reserve (struct TALER_EXCHANGEDB_Session *session,
   reserve.pub = *pub;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_get (plugin->cls,
-                                session,
                                 &reserve));
   FAILIF (value != reserve.balance.value);
   FAILIF (fraction != reserve.balance.fraction);
@@ -206,7 +195,6 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
  * Create a denominaiton key pair by registering the denomination in the DB.
  *
  * @param size the size of the denomination key
- * @param session the DB session
  * @param now time to use for key generation, legal expiration will be 3h later.
  * @param fee_withdraw withdraw fee to use
  * @param fee_deposit deposit fee to use
@@ -216,7 +204,6 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
  */
 static struct DenomKeyPair *
 create_denom_key_pair (unsigned int size,
-                       struct TALER_EXCHANGEDB_Session *session,
                        struct GNUNET_TIME_Absolute now,
                        const struct TALER_Amount *value,
                        const struct TALER_Amount *fee_withdraw,
@@ -269,7 +256,6 @@ create_denom_key_pair (unsigned int size,
     TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->insert_denomination_info (plugin->cls,
-                                        session,
                                         &dki.denom_pub,
                                         &dki.issue))
   {
@@ -279,7 +265,6 @@ create_denom_key_pair (unsigned int size,
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->get_denomination_info (plugin->cls,
-                                     session,
                                      &dki.issue.properties.denom_hash,
                                      &issue2))
   {
@@ -502,12 +487,10 @@ handle_link_data_cb (void *cls,
 /**
  * Function to test melting of coins as part of a refresh session
  *
- * @param session the database session
- * @param refresh_session the refresh session
  * @return #GNUNET_OK if everything went well; #GNUNET_SYSERR if not
  */
 static int
-test_melting (struct TALER_EXCHANGEDB_Session *session)
+test_melting (void)
 {
   struct TALER_EXCHANGEDB_Refresh refresh_session;
   struct TALER_EXCHANGEDB_Melt ret_refresh_session;
@@ -528,7 +511,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   now = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&now);
   dkp = create_denom_key_pair (512,
-                               session,
                                now,
                                &value,
                                &fee_withdraw,
@@ -556,20 +538,16 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   /* test insert_melt & get_melt */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_melt (plugin->cls,
-                            session,
                             &refresh_session.rc,
                             &ret_refresh_session));
   FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
           plugin->ensure_coin_known (plugin->cls,
-                                     session,
                                      &refresh_session.coin));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_melt (plugin->cls,
-                               session,
                                &refresh_session));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_melt (plugin->cls,
-                            session,
                             &refresh_session.rc,
                             &ret_refresh_session));
   FAILIF (refresh_session.noreveal_index !=
@@ -597,7 +575,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   auditor_row_cnt = 0;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_refreshes_above_serial_id (plugin->cls,
-                                                    session,
                                                     0,
                                                     &audit_refresh_session_cb,
                                                     NULL));
@@ -619,7 +596,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     now = GNUNET_TIME_absolute_get ();
     GNUNET_TIME_round_abs (&now);
     new_dkp[cnt] = create_denom_key_pair (1024,
-                                          session,
                                           now,
                                           &value,
                                           &fee_withdraw,
@@ -646,13 +622,11 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
   RND_BLK (&tpub);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_refresh_reveal (plugin->cls,
-                                      session,
                                       &refresh_session.rc,
                                       &never_called_cb,
                                       NULL));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refresh_reveal (plugin->cls,
-                                         session,
                                          &refresh_session.rc,
                                          MELT_NEW_COINS,
                                          revealed_coins,
@@ -661,14 +635,12 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
                                          &tpub));
   FAILIF (0 >=
           plugin->get_refresh_reveal (plugin->cls,
-                                      session,
                                       &refresh_session.rc,
                                       &check_refresh_reveal_cb,
                                       NULL));
 
 
   qs = plugin->get_link_data (plugin->cls,
-                              session,
                               &refresh_session.coin.coin_pub,
                               &handle_link_data_cb,
                               NULL);
@@ -679,7 +651,6 @@ test_melting (struct TALER_EXCHANGEDB_Session *session)
     enum GNUNET_DB_QueryStatus qs;
 
     qs = plugin->get_coin_transactions (plugin->cls,
-                                        session,
                                         &refresh_session.coin.coin_pub,
                                         GNUNET_YES,
                                         &tl);
@@ -1085,11 +1056,10 @@ audit_reserve_out_cb (void *cls,
 /**
  * Test garbage collection.
  *
- * @param session DB session to use
  * @return #GNUNET_OK on success
  */
 static int
-test_gc (struct TALER_EXCHANGEDB_Session *session)
+test_gc (void)
 {
   struct DenomKeyPair *dkp;
   struct GNUNET_TIME_Absolute now;
@@ -1104,7 +1074,6 @@ test_gc (struct TALER_EXCHANGEDB_Session *session)
                                           GNUNET_TIME_UNIT_HOURS,
                                           4));
   dkp = create_denom_key_pair (1024,
-                               session,
                                past,
                                &value,
                                &fee_withdraw,
@@ -1124,7 +1093,6 @@ test_gc (struct TALER_EXCHANGEDB_Session *session)
 
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       plugin->get_denomination_info (plugin->cls,
-                                     session,
                                      &denom_hash,
                                      &issue2))
   {
@@ -1140,11 +1108,10 @@ test_gc (struct TALER_EXCHANGEDB_Session *session)
 /**
  * Test wire fee storage.
  *
- * @param session DB session to use
  * @return #GNUNET_OK on success
  */
 static int
-test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
+test_wire_fees (void)
 {
   struct GNUNET_TIME_Absolute start_date;
   struct GNUNET_TIME_Absolute end_date;
@@ -1172,7 +1139,6 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
                               sizeof (master_sig));
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->insert_wire_fee (plugin->cls,
-                               session,
                                "wire-method",
                                start_date,
                                end_date,
@@ -1185,7 +1151,6 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
   }
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       plugin->insert_wire_fee (plugin->cls,
-                               session,
                                "wire-method",
                                start_date,
                                end_date,
@@ -1200,7 +1165,6 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
      half-open interval [start_date,end_date) */
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       plugin->get_wire_fee (plugin->cls,
-                            session,
                             "wire-method",
                             end_date,
                             &sd,
@@ -1214,7 +1178,6 @@ test_wire_fees (struct TALER_EXCHANGEDB_Session *session)
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->get_wire_fee (plugin->cls,
-                            session,
                             "wire-method",
                             start_date,
                             &sd,
@@ -1279,12 +1242,10 @@ audit_wire_cb (void *cls,
 /**
  * Test API relating to wire_out handling.
  *
- * @param session database session to use for the test
  * @return #GNUNET_OK on success
  */
 static int
-test_wire_out (struct TALER_EXCHANGEDB_Session *session,
-               const struct TALER_EXCHANGEDB_Deposit *deposit)
+test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   auditor_row_cnt = 0;
   memset (&wire_out_wtid,
@@ -1300,8 +1261,7 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
      the aggregation table, so we need to start the special
      transaction where this is allowed... */
   FAILIF (GNUNET_OK !=
-          plugin->start_deferred_wire_out (plugin->cls,
-                                           session));
+          plugin->start_deferred_wire_out (plugin->cls));
 
   /* setup values for wire transfer aggregation data */
   merchant_pub_wt = deposit->merchant_pub;
@@ -1317,7 +1277,6 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                         &coin_fee_wt));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->lookup_wire_transfer (plugin->cls,
-                                        session,
                                         &wire_out_wtid,
                                         &cb_wt_never,
                                         NULL));
@@ -1328,7 +1287,6 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
     h_contract_terms_wt2.bits[0]++;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->lookup_transfer_by_deposit (plugin->cls,
-                                                session,
                                                 &h_contract_terms_wt2,
                                                 &h_wire_wt,
                                                 &coin_pub_wt,
@@ -1339,7 +1297,6 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
   /* insert WT data */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_aggregation_tracking (plugin->cls,
-                                               session,
                                                &wire_out_wtid,
                                                deposit_rowid));
 
@@ -1355,7 +1312,6 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                "this-is-my-salt"));
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         plugin->store_wire_transfer_out (plugin->cls,
-                                         session,
                                          wire_out_date,
                                          &wire_out_wtid,
                                          wire_out_account,
@@ -1369,18 +1325,15 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
   }
   /* And now the commit should still succeed! */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->commit (plugin->cls,
-                          session));
+          plugin->commit (plugin->cls));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->lookup_wire_transfer (plugin->cls,
-                                        session,
                                         &wire_out_wtid,
                                         &cb_wt_check,
                                         &cb_wt_never));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->lookup_transfer_by_deposit (plugin->cls,
-                                              session,
                                               &h_contract_terms_wt,
                                               &h_wire_wt,
                                               &coin_pub_wt,
@@ -1389,7 +1342,6 @@ test_wire_out (struct TALER_EXCHANGEDB_Session *session,
                                               &cb_wtid_never));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_wire_out_above_serial_id (plugin->cls,
-                                                   session,
                                                    0,
                                                    &audit_wire_cb,
                                                    NULL));
@@ -1536,7 +1488,6 @@ static void
 run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
-  struct TALER_EXCHANGEDB_Session *session;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_TIME_Absolute deadline;
   struct TALER_DenominationBlindingKeyP coin_blind;
@@ -1566,7 +1517,6 @@ run (void *cls)
 
   dkp = NULL;
   rh = NULL;
-  session = NULL;
   deposit.coin.denom_sig.rsa_signature = NULL;
   wire = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("payto_uri",
@@ -1588,22 +1538,14 @@ run (void *cls)
     result = 77;
     goto drop;
   }
-  if (NULL ==
-      (session = plugin->get_session (plugin->cls)))
-  {
-    result = 77;
-    goto drop;
-  }
-
+  plugin->preflight (plugin->cls);
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session,
                          "test-1"));
 
   /* test DB is empty */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->select_recoup_above_serial_id (plugin->cls,
-                                                 session,
                                                  0,
                                                  &recoup_cb,
                                                  NULL));
@@ -1630,14 +1572,12 @@ run (void *cls)
   result = 4;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
-                                                   session,
                                                    "exchange-account-1",
                                                    &rr));
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
-                                      session,
                                       &reserve_pub,
                                       &value,
                                       now,
@@ -1646,13 +1586,11 @@ run (void *cls)
                                       4));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
-                                                   session,
                                                    "exchange-account-1",
                                                    &rr));
   FAILIF (4 != rr);
   FAILIF (GNUNET_OK !=
-          check_reserve (session,
-                         &reserve_pub,
+          check_reserve (&reserve_pub,
                          value.value,
                          value.fraction,
                          value.currency));
@@ -1660,7 +1598,6 @@ run (void *cls)
   (void) GNUNET_TIME_round_abs (&now);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
-                                      session,
                                       &reserve_pub,
                                       &value,
                                       now,
@@ -1669,18 +1606,15 @@ run (void *cls)
                                       5));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
-                                                   session,
                                                    "exchange-account-1",
                                                    &rr));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_latest_reserve_in_reference (plugin->cls,
-                                                   session,
                                                    "exchange-account-1",
                                                    &rr));
   FAILIF (5 != rr);
   FAILIF (GNUNET_OK !=
-          check_reserve (session,
-                         &reserve_pub,
+          check_reserve (&reserve_pub,
                          value.value * 2,
                          value.fraction * 2,
                          value.currency));
@@ -1688,7 +1622,6 @@ run (void *cls)
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   dkp = create_denom_key_pair (1024,
-                               session,
                                now,
                                &value,
                                &fee_withdraw,
@@ -1710,18 +1643,15 @@ run (void *cls)
                  TALER_amount_set_zero (CURRENCY, &cbc.withdraw_fee));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_withdraw_info (plugin->cls,
-                                        session,
                                         &cbc));
   FAILIF (GNUNET_OK !=
-          check_reserve (session,
-                         &reserve_pub,
+          check_reserve (&reserve_pub,
                          value.value,
                          value.fraction,
                          value.currency));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_by_h_blind (plugin->cls,
-                                          session,
                                           &cbc.h_coin_envelope,
                                           &reserve_pub2));
   FAILIF (0 != GNUNET_memcmp (&reserve_pub,
@@ -1729,7 +1659,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_withdraw_info (plugin->cls,
-                                     session,
                                      &cbc.h_coin_envelope,
                                      &cbc2));
   FAILIF (0 != GNUNET_memcmp (&cbc2.reserve_sig, &cbc.reserve_sig));
@@ -1751,7 +1680,6 @@ run (void *cls)
   (void) GNUNET_TIME_round_abs (&deadline);
   FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
           plugin->ensure_coin_known (plugin->cls,
-                                     session,
                                      &deposit.coin));
   {
     struct TALER_EXCHANGEDB_Reserve pre_reserve;
@@ -1761,11 +1689,9 @@ run (void *cls)
     pre_reserve.pub = reserve_pub;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->reserves_get (plugin->cls,
-                                  session,
                                   &pre_reserve));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->insert_recoup_request (plugin->cls,
-                                           session,
                                            &reserve_pub,
                                            &deposit.coin,
                                            &coin_sig,
@@ -1776,7 +1702,6 @@ run (void *cls)
     post_reserve.pub = reserve_pub;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->reserves_get (plugin->cls,
-                                  session,
                                   &post_reserve));
     FAILIF (0 >=
             TALER_amount_subtract (&delta,
@@ -1788,7 +1713,6 @@ run (void *cls)
   }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_recoup_above_serial_id (plugin->cls,
-                                                 session,
                                                  0,
                                                  &recoup_cb,
                                                  &coin_blind));
@@ -1804,7 +1728,6 @@ run (void *cls)
   (void) GNUNET_TIME_round_abs (&now);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_closed (plugin->cls,
-                                         session,
                                          &reserve_pub,
                                          now,
                                          sndr,
@@ -1812,15 +1735,13 @@ run (void *cls)
                                          &amount_with_fee,
                                          &fee_closing));
   FAILIF (GNUNET_OK !=
-          check_reserve (session,
-                         &reserve_pub,
+          check_reserve (&reserve_pub,
                          0,
                          0,
                          value.currency));
 
   result = 7;
   qs = plugin->get_reserve_history (plugin->cls,
-                                    session,
                                     &reserve_pub,
                                     &rh);
   FAILIF (0 > qs);
@@ -1891,13 +1812,11 @@ run (void *cls)
   auditor_row_cnt = 0;
   FAILIF (0 >=
           plugin->select_reserves_in_above_serial_id (plugin->cls,
-                                                      session,
                                                       0,
                                                       &audit_reserve_in_cb,
                                                       NULL));
   FAILIF (0 >=
           plugin->select_withdrawals_above_serial_id (plugin->cls,
-                                                      session,
                                                       0,
                                                       &audit_reserve_out_cb,
                                                       NULL));
@@ -1926,7 +1845,6 @@ run (void *cls)
   result = 8;
   FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
           plugin->ensure_coin_known (plugin->cls,
-                                     session,
                                      &deposit.coin));
   {
     struct GNUNET_TIME_Absolute now;
@@ -1937,12 +1855,10 @@ run (void *cls)
     GNUNET_TIME_round_abs (&now);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->insert_deposit (plugin->cls,
-                                    session,
                                     now,
                                     &deposit));
     FAILIF (1 !=
             plugin->have_deposit (plugin->cls,
-                                  session,
                                   &deposit,
                                   GNUNET_YES,
                                   &deposit_fee,
@@ -1959,7 +1875,6 @@ run (void *cls)
                                           GNUNET_TIME_UNIT_SECONDS);
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_deposits_missing_wire (plugin->cls,
-                                                  session,
                                                   start_range,
                                                   end_range,
                                                   &wire_missing_cb,
@@ -1969,7 +1884,6 @@ run (void *cls)
   auditor_row_cnt = 0;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_deposits_above_serial_id (plugin->cls,
-                                                   session,
                                                    0,
                                                    &audit_deposit_cb,
                                                    NULL));
@@ -1977,7 +1891,6 @@ run (void *cls)
   result = 9;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->iterate_matching_deposits (plugin->cls,
-                                             session,
                                              &deposit.h_wire,
                                              &deposit.merchant_pub,
                                              &matching_deposit_cb,
@@ -1986,53 +1899,41 @@ run (void *cls)
   sleep (2); /* giv deposit time to be ready */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
-                                     session,
                                      &deposit_cb,
                                      &deposit));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->commit (plugin->cls,
-                          session));
+          plugin->commit (plugin->cls));
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session,
                          "test-2"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_tiny (plugin->cls,
-                                     session,
                                      deposit_rowid));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_ready_deposit (plugin->cls,
-                                     session,
                                      &deposit_cb,
                                      &deposit));
-  plugin->rollback (plugin->cls,
-                    session);
+  plugin->rollback (plugin->cls);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
-                                     session,
                                      &deposit_cb,
                                      &deposit));
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session,
                          "test-3"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->test_deposit_done (plugin->cls,
-                                     session,
                                      &deposit.coin.coin_pub,
                                      &deposit.merchant_pub,
                                      &deposit.h_contract_terms,
                                      &deposit.h_wire));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_done (plugin->cls,
-                                     session,
                                      deposit_rowid));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->commit (plugin->cls,
-                          session));
+          plugin->commit (plugin->cls));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->test_deposit_done (plugin->cls,
-                                     session,
                                      &deposit.coin.coin_pub,
                                      &deposit.merchant_pub,
                                      &deposit.h_contract_terms,
@@ -2042,7 +1943,6 @@ run (void *cls)
   deposit2 = deposit;
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session,
                          "test-2"));
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
   {
@@ -2051,7 +1951,6 @@ run (void *cls)
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->have_deposit (plugin->cls,
-                                  session,
                                   &deposit2,
                                   GNUNET_YES,
                                   &deposit_fee,
@@ -2060,17 +1959,15 @@ run (void *cls)
     RND_BLK (&deposit2.coin.coin_pub); /* should fail if coin is different */
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->have_deposit (plugin->cls,
-                                  session,
                                   &deposit2,
                                   GNUNET_YES,
                                   &deposit_fee,
                                   &r));
   }
   FAILIF (GNUNET_OK !=
-          test_melting (session));
+          test_melting ());
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->commit (plugin->cls,
-                          session));
+          plugin->commit (plugin->cls));
 
 
   /* test insert_refund! */
@@ -2085,11 +1982,9 @@ run (void *cls)
   refund.details.refund_fee = fee_refund;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_refund (plugin->cls,
-                                 session,
                                  &refund));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_refunds_by_coin (plugin->cls,
-                                          session,
                                           &refund.coin.coin_pub,
                                           &refund.details.merchant_pub,
                                           &refund.details.h_contract_terms,
@@ -2100,30 +1995,22 @@ run (void *cls)
   RND_BLK (&master_sig);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_revocation (plugin->cls,
-                                                  session,
                                                   &dkp_pub_hash,
                                                   &master_sig));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->commit (plugin->cls,
-                          session));
-  plugin->preflight (plugin->cls,
-                     session);
+          plugin->commit (plugin->cls));
+  plugin->preflight (plugin->cls);
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session,
                          "test-4"));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->insert_denomination_revocation (plugin->cls,
-                                                  session,
                                                   &dkp_pub_hash,
                                                   &master_sig));
-  plugin->rollback (plugin->cls,
-                    session);
-  plugin->preflight (plugin->cls,
-                     session);
+  plugin->rollback (plugin->cls);
+  plugin->preflight (plugin->cls);
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
-                         session,
                          "test-5"));
   {
     struct TALER_MasterSignatureP msig;
@@ -2131,7 +2018,6 @@ run (void *cls)
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->get_denomination_revocation (plugin->cls,
-                                                 session,
                                                  &dkp_pub_hash,
                                                  &msig,
                                                  &rev_rowid));
@@ -2144,7 +2030,6 @@ run (void *cls)
   RND_BLK (&coin_blind);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_recoup_request (plugin->cls,
-                                         session,
                                          &reserve_pub,
                                          &deposit.coin,
                                          &coin_sig,
@@ -2156,14 +2041,12 @@ run (void *cls)
   auditor_row_cnt = 0;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_refunds_above_serial_id (plugin->cls,
-                                                  session,
                                                   0,
                                                   &audit_refund_cb,
                                                   NULL));
 
   FAILIF (1 != auditor_row_cnt);
   qs = plugin->get_coin_transactions (plugin->cls,
-                                      session,
                                       &refund.coin.coin_pub,
                                       GNUNET_YES,
                                       &tl);
@@ -2262,28 +2145,23 @@ run (void *cls)
   plugin->free_coin_transaction_list (plugin->cls,
                                       tl);
 
-  plugin->rollback (plugin->cls,
-                    session);
+  plugin->rollback (plugin->cls);
   FAILIF (GNUNET_OK !=
-          test_wire_prepare (session));
+          test_wire_prepare ());
   FAILIF (GNUNET_OK !=
-          test_wire_out (session,
-                         &deposit));
+          test_wire_out (&deposit));
   FAILIF (GNUNET_OK !=
-          test_gc (session));
+          test_gc ());
   FAILIF (GNUNET_OK !=
-          test_wire_fees (session));
+          test_wire_fees ());
 
-  plugin->preflight (plugin->cls,
-                     session);
+  plugin->preflight (plugin->cls);
 
   result = 0;
 
 drop:
-  if ( (0 != result) &&
-       (NULL != session) )
-    plugin->rollback (plugin->cls,
-                      session);
+  if (0 != result)
+    plugin->rollback (plugin->cls);
   if (NULL != rh)
     plugin->free_reserve_history (plugin->cls,
                                   rh);

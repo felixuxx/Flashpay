@@ -105,10 +105,6 @@ struct TALER_TESTING_DatabaseConnection
    */
   struct TALER_EXCHANGEDB_Plugin *plugin;
 
-  /**
-   * Session with the database.
-   */
-  struct TALER_EXCHANGEDB_Session *session;
 };
 
 struct TALER_TESTING_LibeufinServices

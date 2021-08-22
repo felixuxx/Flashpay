@@ -19,7 +19,6 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd.h"
@@ -339,10 +338,9 @@ struct SuspendedKeysRequests
 
 
 /**
- * Thread-local.  Contains a pointer to `struct TEH_KeyStateHandle` or NULL.
- * Stores the per-thread latest generation of our key state.
+ * Stores the latest generation of our key state.
  */
-static pthread_key_t key_state;
+static struct TEH_KeyStateHandle *key_state;
 
 /**
  * Counter incremented whenever we have a reason to re-build the keys because
@@ -351,7 +349,7 @@ static pthread_key_t key_state;
  * changes, the variable MUST be volatile.  See #TEH_keys_get_state() and
  * #TEH_keys_update_states() for uses of this variable.
  */
-static volatile uint64_t key_generation;
+static uint64_t key_generation;
 
 /**
  * Head of DLL of suspended /keys requests.
@@ -392,27 +390,9 @@ static struct TALER_SecurityModulePublicKeyP denom_sm_pub;
 static struct TALER_SecurityModulePublicKeyP esign_sm_pub;
 
 /**
- * Mutex protecting access to #denom_sm_pub and #esign_sm_pub.
- * (Could be split into two locks if ever needed.)
- */
-static pthread_mutex_t sm_pub_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/**
- * Mutex protecting access to #skr_head and #skr_tail.
- * (Could be split into two locks if ever needed.)
- */
-static pthread_mutex_t skr_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/**
  * Are we shutting down?
  */
 static bool terminating;
-
-/**
- * Did we ever initialize #key_state?
- */
-static bool key_state_available;
-
 
 /**
  * Suspend /keys request while we (hopefully) are waiting to be
@@ -427,10 +407,8 @@ suspend_request (struct MHD_Connection *connection)
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Suspending /keys request until key material changes\n");
-  GNUNET_assert (0 == pthread_mutex_lock (&skr_mutex));
   if (terminating)
   {
-    GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
@@ -452,9 +430,9 @@ suspend_request (struct MHD_Connection *connection)
     skr_size--;
     skr_connection = skr->connection;
     MHD_resume_connection (skr->connection);
+    TALER_MHD_daemon_trigger ();
     GNUNET_free (skr);
   }
-  GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
   return MHD_YES;
 }
 
@@ -464,7 +442,6 @@ TEH_resume_keys_requests (bool do_shutdown)
 {
   struct SuspendedKeysRequests *skr;
 
-  GNUNET_assert (0 == pthread_mutex_lock (&skr_mutex));
   if (do_shutdown)
     terminating = true;
   while (NULL != (skr = skr_head))
@@ -474,9 +451,9 @@ TEH_resume_keys_requests (bool do_shutdown)
                                  skr);
     skr_size--;
     MHD_resume_connection (skr->connection);
+    TALER_MHD_daemon_trigger ();
     GNUNET_free (skr);
   }
-  GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
 }
 
 
@@ -510,7 +487,6 @@ clear_response_cache (struct TEH_KeyStateHandle *ksh)
 static void
 check_denom_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
 {
-  GNUNET_assert (0 == pthread_mutex_lock (&sm_pub_mutex));
   if (0 !=
       GNUNET_memcmp (sm_pub,
                      &denom_sm_pub))
@@ -523,7 +499,6 @@ check_denom_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
     }
     denom_sm_pub = *sm_pub; /* TOFU ;-) */
   }
-  GNUNET_assert (0 == pthread_mutex_unlock (&sm_pub_mutex));
 }
 
 
@@ -536,7 +511,6 @@ check_denom_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
 static void
 check_esign_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
 {
-  GNUNET_assert (0 == pthread_mutex_lock (&sm_pub_mutex));
   if (0 !=
       GNUNET_memcmp (sm_pub,
                      &esign_sm_pub))
@@ -549,7 +523,6 @@ check_esign_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
     }
     esign_sm_pub = *sm_pub; /* TOFU ;-) */
   }
-  GNUNET_assert (0 == pthread_mutex_unlock (&sm_pub_mutex));
 }
 
 
@@ -896,38 +869,9 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
 }
 
 
-/**
- * Free all resources associated with @a cls.  Called when
- * the respective pthread is destroyed.
- *
- * @param[in] cls a `struct TEH_KeyStateHandle`.
- */
-static void
-destroy_key_state_cb (void *cls)
-{
-  struct TEH_KeyStateHandle *ksh = cls;
-
-  destroy_key_state (ksh,
-                     true);
-}
-
-
-/**
- * Initialize keys submodule.
- *
- * @return #GNUNET_OK on success
- */
 int
 TEH_keys_init ()
 {
-  if (0 !=
-      pthread_key_create (&key_state,
-                          &destroy_key_state_cb))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  key_state_available = true;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            "exchange",
@@ -949,11 +893,9 @@ TEH_keys_init ()
 void __attribute__ ((destructor))
 TEH_keys_finished ()
 {
-  if (key_state_available)
-  {
-    GNUNET_assert (0 ==
-                   pthread_key_delete (key_state));
-  }
+  if (NULL != key_state)
+    destroy_key_state (key_state,
+                       true);
 }
 
 
@@ -1799,22 +1741,14 @@ get_key_state (bool management_only)
   struct TEH_KeyStateHandle *old_ksh;
   struct TEH_KeyStateHandle *ksh;
 
-  GNUNET_assert (key_state_available);
-  old_ksh = pthread_getspecific (key_state);
+  old_ksh = key_state;
   if (NULL == old_ksh)
   {
     ksh = build_key_state (NULL,
                            management_only);
     if (NULL == ksh)
       return NULL;
-    if (0 != pthread_setspecific (key_state,
-                                  ksh))
-    {
-      GNUNET_break (0);
-      destroy_key_state (ksh,
-                         true);
-      return NULL;
-    }
+    key_state = ksh;
     return ksh;
   }
   if ( (old_ksh->key_generation < key_generation) ||
@@ -1826,15 +1760,7 @@ get_key_state (bool management_only)
                 (unsigned long long) key_generation);
     ksh = build_key_state (old_ksh->helpers,
                            management_only);
-    if (0 != pthread_setspecific (key_state,
-                                  ksh))
-    {
-      GNUNET_break (0);
-      if (NULL != ksh)
-        destroy_key_state (ksh,
-                           false);
-      return NULL;
-    }
+    key_state = ksh;
     old_ksh->helpers = NULL;
     destroy_key_state (old_ksh,
                        false);
@@ -2099,17 +2025,14 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
     ksh = TEH_keys_get_state ();
     if (NULL == ksh)
     {
-      GNUNET_assert (0 == pthread_mutex_lock (&skr_mutex));
       if ( (SKR_LIMIT == skr_size) &&
            (rc->connection == skr_connection) )
       {
-        GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                            "too many connections suspended on /keys");
       }
-      GNUNET_assert (0 == pthread_mutex_unlock (&skr_mutex));
       return suspend_request (rc->connection);
     }
     krd = bsearch (&last_issue_date,

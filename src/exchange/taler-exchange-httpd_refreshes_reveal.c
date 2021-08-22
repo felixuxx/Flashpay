@@ -201,7 +201,6 @@ check_exists_cb (void *cls,
  *
  * @param cls closure of type `struct RevealContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -209,7 +208,6 @@ check_exists_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 refreshes_reveal_preflight (void *cls,
                             struct MHD_Connection *connection,
-                            struct TALER_EXCHANGEDB_Session *session,
                             MHD_RESULT *mhd_ret)
 {
   struct RevealContext *rctx = cls;
@@ -217,7 +215,6 @@ refreshes_reveal_preflight (void *cls,
 
   /* Try to see if we already have given an answer before. */
   qs = TEH_plugin->get_refresh_reveal (TEH_plugin->cls,
-                                       session,
                                        &rctx->rc,
                                        &check_exists_cb,
                                        rctx);
@@ -258,7 +255,6 @@ refreshes_reveal_preflight (void *cls,
  *
  * @param cls closure of type `struct RevealContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -266,7 +262,6 @@ refreshes_reveal_preflight (void *cls,
 static enum GNUNET_DB_QueryStatus
 refreshes_reveal_transaction (void *cls,
                               struct MHD_Connection *connection,
-                              struct TALER_EXCHANGEDB_Session *session,
                               MHD_RESULT *mhd_ret)
 {
   struct RevealContext *rctx = cls;
@@ -276,7 +271,6 @@ refreshes_reveal_transaction (void *cls,
   /* Obtain basic information about the refresh operation and what
      gamma we committed to. */
   qs = TEH_plugin->get_melt (TEH_plugin->cls,
-                             session,
                              &rctx->rc,
                              &melt);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
@@ -441,7 +435,6 @@ refreshes_reveal_transaction (void *cls,
  *
  * @param cls closure of type `struct RevealContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -449,7 +442,6 @@ refreshes_reveal_transaction (void *cls,
 static enum GNUNET_DB_QueryStatus
 refreshes_reveal_persist (void *cls,
                           struct MHD_Connection *connection,
-                          struct TALER_EXCHANGEDB_Session *session,
                           MHD_RESULT *mhd_ret)
 {
   struct RevealContext *rctx = cls;
@@ -470,7 +462,6 @@ refreshes_reveal_persist (void *cls,
       rrc->coin_sig = rctx->ev_sigs[i];
     }
     qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
-                                            session,
                                             &rctx->rc,
                                             rctx->num_fresh_coins,
                                             rrcs,
@@ -621,7 +612,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
 
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         (qs = TEH_plugin->get_melt (TEH_plugin->cls,
-                                    NULL,
                                     &rctx->rc,
                                     &melt)))
     {

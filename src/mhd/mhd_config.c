@@ -322,6 +322,53 @@ TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *bind_to;
   struct GNUNET_NETWORK_Handle *nh;
 
+  /* try systemd passing first */
+  {
+    const char *listen_pid;
+    const char *listen_fds;
+
+    /* check for systemd-style FD passing */
+    listen_pid = getenv ("LISTEN_PID");
+    listen_fds = getenv ("LISTEN_FDS");
+    if ( (NULL != listen_pid) &&
+         (NULL != listen_fds) &&
+         (getpid () == strtol (listen_pid,
+                               NULL,
+                               10)) &&
+         (1 == strtoul (listen_fds,
+                        NULL,
+                        10)) )
+    {
+      int fh;
+      int flags;
+
+      fh = 3;
+      flags = fcntl (fh,
+                     F_GETFD);
+      if ( (-1 == flags) &&
+           (EBADF == errno) )
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Bad listen socket passed, ignored\n");
+        fh = -1;
+      }
+      flags |= FD_CLOEXEC;
+      if ( (-1 != fh) &&
+           (0 != fcntl (fh,
+                        F_SETFD,
+                        flags)) )
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "fcntl");
+      if (-1 != fh)
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                    "Successfully obtained listen socket from hypervisor\n");
+        return fh;
+      }
+    }
+  }
+
+  /* now try configuration file */
   *port = 0;
   {
     char *serve_unixpath;

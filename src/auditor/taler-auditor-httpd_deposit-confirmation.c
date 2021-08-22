@@ -147,7 +147,6 @@ verify_and_execute_deposit_confirmation (
 
     /* check for revocation */
     qs = TAH_eplugin->lookup_signkey_revocation (TAH_eplugin->cls,
-                                                 NULL,
                                                  &es->exchange_pub,
                                                  &master_sig);
     if (0 > qs)

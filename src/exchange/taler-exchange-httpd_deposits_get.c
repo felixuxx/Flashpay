@@ -203,7 +203,6 @@ handle_wtid_data (void *cls,
  *
  * @param cls closure of type `struct DepositWtidContext *`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -211,14 +210,12 @@ handle_wtid_data (void *cls,
 static enum GNUNET_DB_QueryStatus
 deposits_get_transaction (void *cls,
                           struct MHD_Connection *connection,
-                          struct TALER_EXCHANGEDB_Session *session,
                           MHD_RESULT *mhd_ret)
 {
   struct DepositWtidContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_transfer_by_deposit (TEH_plugin->cls,
-                                               session,
                                                &ctx->tps->h_contract_terms,
                                                &ctx->tps->h_wire,
                                                &ctx->tps->coin_pub,

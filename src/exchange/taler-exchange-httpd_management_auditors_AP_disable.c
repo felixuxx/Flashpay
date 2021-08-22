@@ -65,7 +65,6 @@ struct DelAuditorContext
  *
  * @param cls closure with a `struct DelAuditorContext`
  * @param connection MHD request which triggered the transaction
- * @param session database session to use
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
  * @return transaction status
@@ -73,7 +72,6 @@ struct DelAuditorContext
 static enum GNUNET_DB_QueryStatus
 del_auditor (void *cls,
              struct MHD_Connection *connection,
-             struct TALER_EXCHANGEDB_Session *session,
              MHD_RESULT *mhd_ret)
 {
   struct DelAuditorContext *dac = cls;
@@ -81,7 +79,6 @@ del_auditor (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_auditor_timestamp (TEH_plugin->cls,
-                                             session,
                                              &dac->auditor_pub,
                                              &last_date);
   if (qs < 0)
@@ -114,7 +111,6 @@ del_auditor (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   qs = TEH_plugin->update_auditor (TEH_plugin->cls,
-                                   session,
                                    &dac->auditor_pub,
                                    "", /* auditor URL */
                                    "", /* auditor name */

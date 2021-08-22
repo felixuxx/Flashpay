@@ -744,7 +744,6 @@ handle_recoup_by_reserve (
   if (NULL == rev)
   {
     qs = TALER_ARL_edb->get_denomination_revocation (TALER_ARL_edb->cls,
-                                                     TALER_ARL_esession,
                                                      &coin->denom_pub_hash,
                                                      &msig,
                                                      &rev_rowid);
@@ -882,7 +881,6 @@ get_closing_fee (const char *receiver_account,
               method);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       TALER_ARL_edb->get_wire_fee (TALER_ARL_edb->cls,
-                                   TALER_ARL_esession,
                                    method,
                                    atime,
                                    &start_date,
@@ -1089,7 +1087,6 @@ verify_reserve_balance (void *cls,
 
     reserve.pub = rs->reserve_pub;
     qs = TALER_ARL_edb->reserves_get (TALER_ARL_edb->cls,
-                                      TALER_ARL_esession,
                                       &reserve);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
@@ -1377,7 +1374,6 @@ analyze_reserves (void *cls)
 
   qs = TALER_ARL_edb->select_reserves_in_above_serial_id (
     TALER_ARL_edb->cls,
-    TALER_ARL_esession,
     ppr.last_reserve_in_serial_id,
     &handle_reserve_in,
     &rc);
@@ -1388,7 +1384,6 @@ analyze_reserves (void *cls)
   }
   qs = TALER_ARL_edb->select_withdrawals_above_serial_id (
     TALER_ARL_edb->cls,
-    TALER_ARL_esession,
     ppr.last_reserve_out_serial_id,
     &handle_reserve_out,
     &rc);
@@ -1399,7 +1394,6 @@ analyze_reserves (void *cls)
   }
   qs = TALER_ARL_edb->select_recoup_above_serial_id (
     TALER_ARL_edb->cls,
-    TALER_ARL_esession,
     ppr.last_reserve_recoup_serial_id,
     &handle_recoup_by_reserve,
     &rc);
@@ -1410,7 +1404,6 @@ analyze_reserves (void *cls)
   }
   qs = TALER_ARL_edb->select_reserve_closed_above_serial_id (
     TALER_ARL_edb->cls,
-    TALER_ARL_esession,
     ppr.last_reserve_close_serial_id,
     &handle_reserve_closed,
     &rc);
