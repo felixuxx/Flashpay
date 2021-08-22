@@ -1186,11 +1186,6 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     h->mhd_rfd = NULL;
   }
 #endif
-  if (NULL != h->mhd_bank)
-  {
-    MHD_stop_daemon (h->mhd_bank);
-    h->mhd_bank = NULL;
-  }
   if (-1 != h->lp_event)
   {
     uint64_t val = 1;
@@ -1223,6 +1218,11 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     while (NULL != (lp = GNUNET_CONTAINER_heap_remove_root (h->lp_heap)))
       lp_trigger (lp,
                   h);
+  }
+  if (NULL != h->mhd_bank)
+  {
+    MHD_stop_daemon (h->mhd_bank);
+    h->mhd_bank = NULL;
   }
   if (NULL != h->accounts)
   {
