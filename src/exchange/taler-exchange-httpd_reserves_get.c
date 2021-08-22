@@ -334,6 +334,9 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
     rc->rh_ctx = rp;
     rc->rh_cleaner = &rp_cleanup;
     rp->suspended = true;
+    GNUNET_CONTAINER_DLL_insert (rp_head,
+                                 rp_tail,
+                                 rp);
     MHD_suspend_connection (rc->connection);
     return MHD_YES;
   }
