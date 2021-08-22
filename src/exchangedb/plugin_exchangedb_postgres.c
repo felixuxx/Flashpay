@@ -194,9 +194,9 @@ postgres_create_tables (void *cls)
 
 
 /**
- * Initialize prepared statements for @a sess.
+ * Initialize prepared statements for @a pg.
  *
- * @param[in,out] sess session to initialize
+ * @param[in,out] pg connection to initialize
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue

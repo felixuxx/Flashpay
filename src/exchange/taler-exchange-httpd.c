@@ -1338,7 +1338,7 @@ run_single_request (void)
 /**
  * Signature of the callback used by MHD to notify the application
  * about completed connections.  If we are running in test-mode with
- * an #input_filename, this function is used to terminate the HTTPD
+ * an input_filename, this function is used to terminate the HTTPD
  * after the first request has been processed.
  *
  * @param cls client-defined closure, NULL

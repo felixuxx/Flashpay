@@ -29,7 +29,7 @@
 
 
 /**
- * Set if we should immediately #MHD_run again.
+ * Set if we should immediately MHD_run() again.
  */
 static int triggered;
 
