@@ -24,6 +24,7 @@
  */
 #include "platform.h"
 #include "taler_error_codes.h"
+#include "taler_dbevents.h"
 #include "taler_pq_lib.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
@@ -3071,10 +3072,10 @@ postgres_event_notify (void *cls,
   struct PostgresClosure *pg = cls;
 
   (void) pg;
-  return GNUNET_PQ_event_notify (session->conn,
-                                 es,
-                                 extra,
-                                 extra_size);
+  GNUNET_PQ_event_notify (session->conn,
+                          es,
+                          extra,
+                          extra_size);
 }
 
 
@@ -3840,6 +3841,32 @@ reserves_update (void *cls,
 
 
 /**
+ * Generate event notification for the reserve
+ * change.
+ *
+ * @param session database session to use
+ * @param reserve_pub reserve to notfiy on
+ */
+static void
+notify_on_reserve (struct PostgresClosure *pg,
+                   struct TALER_EXCHANGEDB_Session *session,
+                   const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  struct TALER_ReserveEventP rep = {
+    .header.size = htons (sizeof (rep)),
+    .header.type = htons (TALER_DBEVENT_EXCHANGE_RESERVE_INCOMING),
+    .reserve_pub = *reserve_pub
+  };
+
+  postgres_event_notify (pg,
+                         session,
+                         &rep.header,
+                         NULL,
+                         0);
+}
+
+
+/**
  * Insert an incoming transaction into reserves.  New reserves are also created
  * through this function.
  *
@@ -3973,7 +4000,12 @@ postgres_reserves_in_insert (void *cls,
     }
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs1)
+  {
+    notify_on_reserve (pg,
+                       session,
+                       reserve_pub);
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* new reserve, we are finished */
+  }
 
   /* we were wrong with our optimistic assumption:
      reserve does exist, need to do an update instead */
@@ -4061,7 +4093,9 @@ postgres_reserves_in_insert (void *cls,
       break;
     }
   }
-
+  notify_on_reserve (pg,
+                     session,
+                     reserve_pub);
   /* Go back to original transaction mode */
   {
     enum GNUNET_DB_QueryStatus cs;
