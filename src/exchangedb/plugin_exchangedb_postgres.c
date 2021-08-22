@@ -2964,7 +2964,7 @@ pq_socket_cb (void *cls,
  * Register callback to be invoked on events of type @a es.
  *
  * @param cls database context to use
- * @param session connection to use
+ * @param timeout how long until to generate a timeout event
  * @param es specification of the event to listen for
  * @param cb function to call when the event happens, possibly
  *         multiple times (until cancel is invoked)
