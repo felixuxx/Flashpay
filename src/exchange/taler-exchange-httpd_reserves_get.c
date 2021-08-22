@@ -246,7 +246,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
 {
   struct ReserveHistoryContext rsc;
   MHD_RESULT mhd_ret;
-  struct GNUNET_TIME_Relative timeout;
+  struct GNUNET_TIME_Relative timeout = GNUNET_TIME_UNIT_ZERO;
   struct TALER_EXCHANGEDB_EventHandler *eh = NULL;
 
   if (GNUNET_OK !=
