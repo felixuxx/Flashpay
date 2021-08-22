@@ -1169,11 +1169,6 @@ free_account (void *cls,
 void
 TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
 {
-  if (NULL != h->mhd_task)
-  {
-    GNUNET_SCHEDULER_cancel (h->mhd_task);
-    h->mhd_task = NULL;
-  }
   if (NULL != h->lp_task)
   {
     GNUNET_SCHEDULER_cancel (h->lp_task);
@@ -1223,6 +1218,11 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
   {
     MHD_stop_daemon (h->mhd_bank);
     h->mhd_bank = NULL;
+  }
+  if (NULL != h->mhd_task)
+  {
+    GNUNET_SCHEDULER_cancel (h->mhd_task);
+    h->mhd_task = NULL;
   }
   if (NULL != h->accounts)
   {
