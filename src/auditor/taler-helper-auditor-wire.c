@@ -663,8 +663,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
     else
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Hard error, not recording progress\n");
-    TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
-                             TALER_ARL_asession);
+    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
     return qs;
   }
@@ -691,7 +690,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == wa->qsx)
       qs = TALER_ARL_adb->update_wire_auditor_account_progress (
         TALER_ARL_adb->cls,
-        TALER_ARL_asession,
         &TALER_ARL_master_pub,
         wa->ai->section_name,
         &wa->pp,
@@ -700,7 +698,6 @@ commit (enum GNUNET_DB_QueryStatus qs)
     else
       qs = TALER_ARL_adb->insert_wire_auditor_account_progress (
         TALER_ARL_adb->cls,
-        TALER_ARL_asession,
         &TALER_ARL_master_pub,
         wa->ai->section_name,
         &wa->pp,
@@ -719,12 +716,10 @@ commit (enum GNUNET_DB_QueryStatus qs)
                                          NULL);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx_gwap)
     qs = TALER_ARL_adb->update_wire_auditor_progress (TALER_ARL_adb->cls,
-                                                      TALER_ARL_asession,
                                                       &TALER_ARL_master_pub,
                                                       &pp);
   else
     qs = TALER_ARL_adb->insert_wire_auditor_progress (TALER_ARL_adb->cls,
-                                                      TALER_ARL_asession,
                                                       &TALER_ARL_master_pub,
                                                       &pp);
   if (0 >= qs)
@@ -746,13 +741,11 @@ commit (enum GNUNET_DB_QueryStatus qs)
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Exchange DB commit failed, rolling back transaction\n");
-      TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
-                               TALER_ARL_asession);
+      TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     }
     else
     {
-      qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls,
-                                  TALER_ARL_asession);
+      qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
       if (0 > qs)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -765,8 +758,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Processing failed, rolling back transaction\n");
-    TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
-                             TALER_ARL_asession);
+    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   }
   return qs;
@@ -1947,23 +1939,22 @@ reserve_closed_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 begin_transaction (void)
 {
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_ARL_edb->preflight (TALER_ARL_edb->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize exchange database connection.\n");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
-  if (NULL == TALER_ARL_asession)
+  if (GNUNET_SYSERR ==
+      TALER_ARL_adb->preflight (TALER_ARL_adb->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize auditor database session.\n");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (GNUNET_OK !=
-      TALER_ARL_adb->start (TALER_ARL_adb->cls,
-                            TALER_ARL_asession))
+      TALER_ARL_adb->start (TALER_ARL_adb->cls))
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -1982,7 +1973,6 @@ begin_transaction (void)
   {
     wa->qsx = TALER_ARL_adb->get_wire_auditor_account_progress (
       TALER_ARL_adb->cls,
-      TALER_ARL_asession,
       &TALER_ARL_master_pub,
       wa->ai->section_name,
       &wa->pp,
@@ -1996,7 +1986,6 @@ begin_transaction (void)
     wa->start_pp = wa->pp;
   }
   qsx_gwap = TALER_ARL_adb->get_wire_auditor_progress (TALER_ARL_adb->cls,
-                                                       TALER_ARL_asession,
                                                        &TALER_ARL_master_pub,
                                                        &pp);
   if (0 > qsx_gwap)

@@ -317,7 +317,6 @@ load_auditor_reserve_summary (struct ReserveSummary *rs)
   uint64_t rowid;
 
   qs = TALER_ARL_adb->get_reserve_info (TALER_ARL_adb->cls,
-                                        TALER_ARL_asession,
                                         &rs->reserve_pub,
                                         &TALER_ARL_master_pub,
                                         &rowid,
@@ -1255,7 +1254,6 @@ verify_reserve_balance (void *cls,
                   TALER_B2S (&rs->reserve_pub),
                   TALER_amount2s (&nbalance));
       qs = TALER_ARL_adb->del_reserve_info (TALER_ARL_adb->cls,
-                                            TALER_ARL_asession,
                                             &rs->reserve_pub,
                                             &TALER_ARL_master_pub);
       if (0 >= qs)
@@ -1282,7 +1280,6 @@ verify_reserve_balance (void *cls,
                 TALER_amount2s (&nbalance));
     if (rs->had_ri)
       qs = TALER_ARL_adb->update_reserve_info (TALER_ARL_adb->cls,
-                                               TALER_ARL_asession,
                                                &rs->reserve_pub,
                                                &TALER_ARL_master_pub,
                                                &nbalance,
@@ -1290,7 +1287,6 @@ verify_reserve_balance (void *cls,
                                                rs->a_expiration_date);
     else
       qs = TALER_ARL_adb->insert_reserve_info (TALER_ARL_adb->cls,
-                                               TALER_ARL_asession,
                                                &rs->reserve_pub,
                                                &TALER_ARL_master_pub,
                                                &nbalance,
@@ -1333,7 +1329,6 @@ analyze_reserves (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing reserves\n");
   qsp = TALER_ARL_adb->get_auditor_progress_reserve (TALER_ARL_adb->cls,
-                                                     TALER_ARL_asession,
                                                      &TALER_ARL_master_pub,
                                                      &ppr);
   if (0 > qsp)
@@ -1358,7 +1353,6 @@ analyze_reserves (void *cls)
   }
   rc.qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   qsx = TALER_ARL_adb->get_reserve_summary (TALER_ARL_adb->cls,
-                                            TALER_ARL_asession,
                                             &TALER_ARL_master_pub,
                                             &total_escrow_balance,
                                             &total_withdraw_fee_income);
@@ -1427,7 +1421,6 @@ analyze_reserves (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
   {
     qs = TALER_ARL_adb->insert_reserve_summary (TALER_ARL_adb->cls,
-                                                TALER_ARL_asession,
                                                 &TALER_ARL_master_pub,
                                                 &total_escrow_balance,
                                                 &total_withdraw_fee_income);
@@ -1435,7 +1428,6 @@ analyze_reserves (void *cls)
   else
   {
     qs = TALER_ARL_adb->update_reserve_summary (TALER_ARL_adb->cls,
-                                                TALER_ARL_asession,
                                                 &TALER_ARL_master_pub,
                                                 &total_escrow_balance,
                                                 &total_withdraw_fee_income);
@@ -1447,12 +1439,10 @@ analyze_reserves (void *cls)
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
     qs = TALER_ARL_adb->update_auditor_progress_reserve (TALER_ARL_adb->cls,
-                                                         TALER_ARL_asession,
                                                          &TALER_ARL_master_pub,
                                                          &ppr);
   else
     qs = TALER_ARL_adb->insert_auditor_progress_reserve (TALER_ARL_adb->cls,
-                                                         TALER_ARL_asession,
                                                          &TALER_ARL_master_pub,
                                                          &ppr);
   if (0 >= qs)

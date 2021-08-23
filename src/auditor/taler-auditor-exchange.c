@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2018, 2019 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -176,13 +176,12 @@ main (int argc,
   /* Update DB */
   {
     enum GNUNET_DB_QueryStatus qs;
-    struct TALER_AUDITORDB_Session *session;
 
-    session = adb->get_session (adb->cls);
-    if (NULL == session)
+    if (GNUNET_SYSERR ==
+        adb->preflight (adb->cls))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to initialize database session\n");
+                  "Failed to initialize database connection\n");
       TALER_AUDITORDB_plugin_unload (adb);
       return EXIT_FAILURE;
     }
@@ -190,13 +189,11 @@ main (int argc,
     if (remove_flag)
     {
       qs = adb->delete_exchange (adb->cls,
-                                 session,
                                  &master_public_key);
     }
     else
     {
       qs = adb->insert_exchange (adb->cls,
-                                 session,
                                  &master_public_key,
                                  exchange_url);
     }

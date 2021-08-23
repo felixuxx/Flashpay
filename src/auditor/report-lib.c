@@ -47,11 +47,6 @@ const struct GNUNET_CONFIGURATION_Handle *TALER_ARL_cfg;
 struct TALER_AUDITORDB_Plugin *TALER_ARL_adb;
 
 /**
- * Our session with the #TALER_ARL_adb.
- */
-struct TALER_AUDITORDB_Session *TALER_ARL_asession;
-
-/**
  * Master public key of the exchange to audit.
  */
 struct TALER_MasterPublicKeyP TALER_ARL_master_pub;
@@ -310,8 +305,7 @@ transact (TALER_ARL_Analysis analysis,
   int ret;
   enum GNUNET_DB_QueryStatus qs;
 
-  ret = TALER_ARL_adb->start (TALER_ARL_adb->cls,
-                              TALER_ARL_asession);
+  ret = TALER_ARL_adb->start (TALER_ARL_adb->cls);
   if (GNUNET_OK != ret)
   {
     GNUNET_break (0);
@@ -340,13 +334,11 @@ transact (TALER_ARL_Analysis analysis,
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Exchange DB commit failed, rolling back transaction\n");
-      TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
-                               TALER_ARL_asession);
+      TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     }
     else
     {
-      qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls,
-                                  TALER_ARL_asession);
+      qs = TALER_ARL_adb->commit (TALER_ARL_adb->cls);
       if (0 > qs)
       {
         GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -359,8 +351,7 @@ transact (TALER_ARL_Analysis analysis,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Processing failed (or no changes), rolling back transaction\n");
-    TALER_ARL_adb->rollback (TALER_ARL_adb->cls,
-                             TALER_ARL_asession);
+    TALER_ARL_adb->rollback (TALER_ARL_adb->cls);
     TALER_ARL_edb->rollback (TALER_ARL_edb->cls);
   }
   switch (qs)
@@ -389,15 +380,15 @@ int
 TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
                                   void *ana_cls)
 {
-  if (GNUNET_OK !=
+  if (GNUNET_SYSERR ==
       TALER_ARL_edb->preflight (TALER_ARL_edb->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize exchange connection.\n");
     return GNUNET_SYSERR;
   }
-  TALER_ARL_asession = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
-  if (NULL == TALER_ARL_asession)
+  if (GNUNET_SYSERR ==
+      TALER_ARL_adb->preflight (TALER_ARL_adb->cls))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to initialize auditor session.\n");
@@ -804,11 +795,10 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     return GNUNET_SYSERR;
   }
   {
-    struct TALER_AUDITORDB_Session *as;
     int found;
 
-    as = TALER_ARL_adb->get_session (TALER_ARL_adb->cls);
-    if (NULL == as)
+    if (GNUNET_SYSERR ==
+        TALER_ARL_adb->preflight (TALER_ARL_adb->cls))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Failed to start session with auditor database.\n");
@@ -817,7 +807,6 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
     }
     found = GNUNET_NO;
     (void) TALER_ARL_adb->list_exchanges (TALER_ARL_adb->cls,
-                                          as,
                                           &test_master_present,
                                           &found);
     if (GNUNET_NO == found)

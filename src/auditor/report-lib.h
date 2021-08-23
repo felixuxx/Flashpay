@@ -60,11 +60,6 @@ extern const struct GNUNET_CONFIGURATION_Handle *TALER_ARL_cfg;
 extern struct TALER_AUDITORDB_Plugin *TALER_ARL_adb;
 
 /**
- * Our session with the #TALER_ARL_adb.
- */
-extern struct TALER_AUDITORDB_Session *TALER_ARL_asession;
-
-/**
  * Master public key of the exchange to audit.
  */
 extern struct TALER_MasterPublicKeyP TALER_ARL_master_pub;

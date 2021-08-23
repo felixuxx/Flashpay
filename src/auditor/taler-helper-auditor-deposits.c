@@ -188,7 +188,6 @@ analyze_deposit_confirmations (void *cls)
   ppdc.last_deposit_confirmation_serial_id = 0;
   qsp = TALER_ARL_adb->get_auditor_progress_deposit_confirmation (
     TALER_ARL_adb->cls,
-    TALER_ARL_asession,
     &TALER_ARL_master_pub,
     &ppdc);
   if (0 > qsp)
@@ -217,7 +216,6 @@ analyze_deposit_confirmations (void *cls)
   dcc.first_missed_coin_serial = UINT64_MAX;
   qsx = TALER_ARL_adb->get_deposit_confirmations (
     TALER_ARL_adb->cls,
-    TALER_ARL_asession,
     &TALER_ARL_master_pub,
     ppdc.last_deposit_confirmation_serial_id,
     &test_dc,
@@ -245,13 +243,11 @@ analyze_deposit_confirmations (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
     qs = TALER_ARL_adb->update_auditor_progress_deposit_confirmation (
       TALER_ARL_adb->cls,
-      TALER_ARL_asession,
       &TALER_ARL_master_pub,
       &ppdc);
   else
     qs = TALER_ARL_adb->insert_auditor_progress_deposit_confirmation (
       TALER_ARL_adb->cls,
-      TALER_ARL_asession,
       &TALER_ARL_master_pub,
       &ppdc);
   if (0 >= qs)

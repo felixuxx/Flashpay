@@ -1218,7 +1218,6 @@ analyze_aggregations (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing aggregations\n");
   qsp = TALER_ARL_adb->get_auditor_progress_aggregation (TALER_ARL_adb->cls,
-                                                         TALER_ARL_asession,
                                                          &TALER_ARL_master_pub,
                                                          &ppa);
   if (0 > qsp)
@@ -1243,7 +1242,6 @@ analyze_aggregations (void *cls)
           0,
           sizeof (ac));
   qsx = TALER_ARL_adb->get_wire_fee_summary (TALER_ARL_adb->cls,
-                                             TALER_ARL_asession,
                                              &TALER_ARL_master_pub,
                                              &total_aggregation_fee_income);
   if (0 > qsx)
@@ -1282,13 +1280,11 @@ analyze_aggregations (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qsx)
     ac.qs = TALER_ARL_adb->insert_wire_fee_summary (
       TALER_ARL_adb->cls,
-      TALER_ARL_asession,
       &TALER_ARL_master_pub,
       &total_aggregation_fee_income);
   else
     ac.qs = TALER_ARL_adb->update_wire_fee_summary (
       TALER_ARL_adb->cls,
-      TALER_ARL_asession,
       &TALER_ARL_master_pub,
       &total_aggregation_fee_income);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != ac.qs)
@@ -1299,13 +1295,11 @@ analyze_aggregations (void *cls)
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
     qs = TALER_ARL_adb->update_auditor_progress_aggregation (
       TALER_ARL_adb->cls,
-      TALER_ARL_asession,
       &TALER_ARL_master_pub,
       &ppa);
   else
     qs = TALER_ARL_adb->insert_auditor_progress_aggregation (
       TALER_ARL_adb->cls,
-      TALER_ARL_asession,
       &TALER_ARL_master_pub,
       &ppa);
   if (0 >= qs)

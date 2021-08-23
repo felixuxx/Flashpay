@@ -344,9 +344,7 @@ static struct TEH_KeyStateHandle *key_state;
 
 /**
  * Counter incremented whenever we have a reason to re-build the keys because
- * something external changed (in another thread).  The counter is manipulated
- * using an atomic update, and thus to ensure that threads notice when it
- * changes, the variable MUST be volatile.  See #TEH_keys_get_state() and
+ * something external changed (in another thread).  See #TEH_keys_get_state() and
  * #TEH_keys_update_states() for uses of this variable.
  */
 static uint64_t key_generation;
@@ -1721,8 +1719,7 @@ build_key_state (struct HelperState *hs,
 void
 TEH_keys_update_states ()
 {
-  __sync_fetch_and_add (&key_generation,
-                        1);
+  key_generation++;
   TEH_resume_keys_requests (false);
 }
 

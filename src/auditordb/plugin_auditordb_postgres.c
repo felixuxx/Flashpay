@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -54,10 +54,12 @@
 
 
 /**
- * Handle for a database session (per-thread, for transactions).
+ * Type of the "cls" argument given to each of the functions in
+ * our API.
  */
-struct TALER_AUDITORDB_Session
+struct PostgresClosure
 {
+
   /**
    * Postgres connection handle.
    */
@@ -69,21 +71,6 @@ struct TALER_AUDITORDB_Session
    * ROLLBACK.
    */
   const char *transaction_name;
-};
-
-
-/**
- * Type of the "cls" argument given to each of the functions in
- * our API.
- */
-struct PostgresClosure
-{
-
-  /**
-   * Thread-local database connection.
-   * Contains a pointer to `PGconn` or NULL.
-   */
-  pthread_key_t db_conn_threadlocal;
 
   /**
    * Our configuration.
@@ -108,7 +95,7 @@ struct PostgresClosure
  *        used when restarting the auditor
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_drop_tables (void *cls,
                       int drop_exchangelist)
 {
@@ -133,7 +120,7 @@ postgres_drop_tables (void *cls,
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_create_tables (void *cls)
 {
   struct PostgresClosure *pc = cls;
@@ -152,39 +139,14 @@ postgres_create_tables (void *cls)
 
 
 /**
- * Close thread-local database connection when a thread is destroyed.
- *
- * @param cls closure we get from pthreads (the db handle)
- */
-static void
-db_conn_destroy (void *cls)
-{
-  struct TALER_AUDITORDB_Session *session = cls;
-  struct GNUNET_PQ_Context *db_conn;
-
-  if (NULL == session)
-    return;
-  db_conn = session->conn;
-  session->conn = NULL;
-  if (NULL != db_conn)
-    GNUNET_PQ_disconnect (db_conn);
-  GNUNET_free (session);
-}
-
-
-/**
- * Get the thread-local database-handle.
  * Connect to the db if the connection does not exist yet.
  *
- * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @return the database connection, or NULL on error
+ * @param[in,out] pg the plugin-specific state
+ * @return #GNUNET_OK on success
  */
-static struct TALER_AUDITORDB_Session *
-postgres_get_session (void *cls)
+static int
+setup_connection (struct PostgresClosure *pg)
 {
-  struct PostgresClosure *pc = cls;
-  struct GNUNET_PQ_Context *db_conn;
-  struct TALER_AUDITORDB_Session *session;
   struct GNUNET_PQ_PreparedStatement ps[] = {
     /* used in #postgres_commit */
     GNUNET_PQ_make_prepare ("do_commit",
@@ -683,68 +645,70 @@ postgres_get_session (void *cls)
                             1),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
+  struct GNUNET_PQ_Context *db_conn;
 
-  if (NULL != (session = pthread_getspecific (pc->db_conn_threadlocal)))
+  if (NULL != pg->conn)
   {
-    GNUNET_PQ_reconnect_if_down (session->conn);
-    return session;
+    GNUNET_PQ_reconnect_if_down (pg->conn);
+    return GNUNET_OK;
   }
-  db_conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+  db_conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                         "auditordb-postgres",
                                         NULL,
                                         NULL,
                                         ps);
   if (NULL == db_conn)
-    return NULL;
-  session = GNUNET_new (struct TALER_AUDITORDB_Session);
-  session->conn = db_conn;
-  if (0 != pthread_setspecific (pc->db_conn_threadlocal,
-                                session))
-  {
-    GNUNET_break (0);
-    GNUNET_PQ_disconnect (db_conn);
-    GNUNET_free (session);
-    return NULL;
-  }
-  return session;
+    return GNUNET_SYSERR;
+  pg->conn = db_conn;
+  return GNUNET_OK;
 }
 
 
 /**
  * Do a pre-flight check that we are not in an uncommitted transaction.
- * If we are, try to commit the previous transaction and output a warning.
- * Does not return anything, as we will continue regardless of the outcome.
+ * If we are, rollback the previous transaction and output a warning.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
+ * @return #GNUNET_OK on success,
+ *         #GNUNET_NO if we rolled back an earlier transaction
+ *         #GNUNET_SYSERR if we have no DB connection
  */
-static void
-postgres_preflight (void *cls,
-                    struct TALER_AUDITORDB_Session *session)
+static enum GNUNET_GenericReturnValue
+postgres_preflight (void *cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("ROLLBACK"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  (void) cls;
-  if (NULL == session->transaction_name)
-    return; /* all good */
+  if (NULL == pg->conn)
+  {
+    if (GNUNET_OK !=
+        setup_connection (pg))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  if (NULL == pg->transaction_name)
+    return GNUNET_OK; /* all good */
   if (GNUNET_OK ==
-      GNUNET_PQ_exec_statements (session->conn,
+      GNUNET_PQ_exec_statements (pg->conn,
                                  es))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "BUG: Preflight check rolled back transaction `%s'!\n",
-                session->transaction_name);
+                pg->transaction_name);
   }
   else
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "BUG: Preflight check failed to rollback transaction `%s'!\n",
-                session->transaction_name);
+                pg->transaction_name);
   }
-  session->transaction_name = NULL;
+  pg->transaction_name = NULL;
+  return GNUNET_NO;
 }
 
 
@@ -752,23 +716,20 @@ postgres_preflight (void *cls,
  * Start a transaction.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  * @return #GNUNET_OK on success
  */
-static int
-postgres_start (void *cls,
-                struct TALER_AUDITORDB_Session *session)
+static enum GNUNET_GenericReturnValue
+postgres_start (void *cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("START TRANSACTION ISOLATION LEVEL SERIALIZABLE"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  postgres_preflight (cls,
-                      session);
-  (void) cls;
+  postgres_preflight (cls);
   if (GNUNET_OK !=
-      GNUNET_PQ_exec_statements (session->conn,
+      GNUNET_PQ_exec_statements (pg->conn,
                                  es))
   {
     TALER_LOG_ERROR ("Failed to start transaction\n");
@@ -783,20 +744,18 @@ postgres_start (void *cls,
  * Roll back the current transaction of a database connection.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  */
 static void
-postgres_rollback (void *cls,
-                   struct TALER_AUDITORDB_Session *session)
+postgres_rollback (void *cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_ExecuteStatement es[] = {
     GNUNET_PQ_make_execute ("ROLLBACK"),
     GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  (void) cls;
   GNUNET_break (GNUNET_OK ==
-                GNUNET_PQ_exec_statements (session->conn,
+                GNUNET_PQ_exec_statements (pg->conn,
                                            es));
 }
 
@@ -805,19 +764,17 @@ postgres_rollback (void *cls,
  * Commit the current transaction of a database connection.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
- * @param session the database connection
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-postgres_commit (void *cls,
-                 struct TALER_AUDITORDB_Session *session)
+postgres_commit (void *cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "do_commit",
                                              params);
 }
@@ -834,7 +791,7 @@ postgres_commit (void *cls,
 static int
 postgres_gc (void *cls)
 {
-  struct PostgresClosure *pc = cls;
+  struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_PQ_QueryParam params_time[] = {
     TALER_PQ_query_param_absolute_time (&now),
@@ -852,7 +809,7 @@ postgres_gc (void *cls)
   };
 
   now = GNUNET_TIME_absolute_get ();
-  conn = GNUNET_PQ_connect_with_cfg (pc->cfg,
+  conn = GNUNET_PQ_connect_with_cfg (pg->cfg,
                                      "auditordb-postgres",
                                      NULL,
                                      NULL,
@@ -878,25 +835,23 @@ postgres_gc (void *cls)
  * Insert information about an exchange this auditor will be auditing.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param master_pub master public key of the exchange
  * @param exchange_url public (base) URL of the API of the exchange
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_exchange (void *cls,
-                          struct TALER_AUDITORDB_Session *session,
                           const struct TALER_MasterPublicKeyP *master_pub,
                           const char *exchange_url)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (exchange_url),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_insert_exchange",
                                              params);
 }
@@ -908,22 +863,20 @@ postgres_insert_exchange (void *cls,
  * to this exchange!
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param master_pub master public key of the exchange
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_delete_exchange (void *cls,
-                          struct TALER_AUDITORDB_Session *session,
                           const struct TALER_MasterPublicKeyP *master_pub)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_delete_exchange",
                                              params);
 }
@@ -968,7 +921,6 @@ exchange_info_cb (void *cls,
 {
   struct ExchangeInfoContext *eic = cls;
 
-  (void) cls;
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct TALER_MasterPublicKeyP master_pub;
@@ -1001,17 +953,16 @@ exchange_info_cb (void *cls,
  * Obtain information about exchanges this auditor is auditing.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param cb function to call with the results
  * @param cb_cls closure for @a cb
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_list_exchanges (void *cls,
-                         struct TALER_AUDITORDB_Session *session,
                          TALER_AUDITORDB_ExchangeCallback cb,
                          void *cb_cls)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_end
   };
@@ -1021,8 +972,7 @@ postgres_list_exchanges (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) cls;
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_list_exchanges",
                                              params,
                                              &exchange_info_cb,
@@ -1038,16 +988,15 @@ postgres_list_exchanges (void *cls,
  * Insert information about a signing key of the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param sk signing key information to store
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_exchange_signkey (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_AUDITORDB_ExchangeSigningKey *sk)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&sk->master_public_key),
     TALER_PQ_query_param_absolute_time (&sk->ep_start),
@@ -1058,8 +1007,7 @@ postgres_insert_exchange_signkey (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_insert_exchange_signkey",
                                              params);
 }
@@ -1069,16 +1017,15 @@ postgres_insert_exchange_signkey (
  * Insert information about a deposit confirmation into the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param dc deposit confirmation information to store
  * @return query result status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_deposit_confirmation (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_AUDITORDB_DepositConfirmation *dc)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&dc->master_public_key),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_contract_terms),
@@ -1094,8 +1041,7 @@ postgres_insert_deposit_confirmation (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_deposit_confirmation_insert",
                                              params);
 }
@@ -1206,7 +1152,6 @@ deposit_confirmation_cb (void *cls,
  * Get information about deposit confirmations from the database.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to the database
  * @param master_public_key for which exchange do we want to get deposit confirmations
  * @param start_id row/serial ID where to start the iteration (0 from
  *                  the start, exclusive, i.e. serial_ids must start from 1)
@@ -1217,7 +1162,6 @@ deposit_confirmation_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_get_deposit_confirmations (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_public_key,
   uint64_t start_id,
   TALER_AUDITORDB_DepositConfirmationCallback cb,
@@ -1237,7 +1181,7 @@ postgres_get_deposit_confirmations (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_deposit_confirmation_select",
                                              params,
                                              &deposit_confirmation_cb,
@@ -1254,7 +1198,6 @@ postgres_get_deposit_confirmations (
  * data.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppr where is the auditor in processing
  * @return transaction status code
@@ -1262,10 +1205,10 @@ postgres_get_deposit_confirmations (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_reserve (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointReserve *ppr)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
@@ -1275,8 +1218,7 @@ postgres_insert_auditor_progress_reserve (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_insert_reserve",
                                              params);
 }
@@ -1287,7 +1229,6 @@ postgres_insert_auditor_progress_reserve (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppr where is the auditor in processing
  * @return transaction status code
@@ -1295,10 +1236,10 @@ postgres_insert_auditor_progress_reserve (
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_reserve (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointReserve *ppr)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppr->last_reserve_out_serial_id),
@@ -1308,8 +1249,7 @@ postgres_update_auditor_progress_reserve (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_update_reserve",
                                              params);
 }
@@ -1319,7 +1259,6 @@ postgres_update_auditor_progress_reserve (
  * Get information about the progress of the auditor.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param[out] ppr set to where the auditor is in processing
  * @return transaction status code
@@ -1327,10 +1266,10 @@ postgres_update_auditor_progress_reserve (
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_reserve (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct TALER_AUDITORDB_ProgressPointReserve *ppr)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1347,8 +1286,7 @@ postgres_get_auditor_progress_reserve (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_progress_select_reserve",
                                                    params,
                                                    rs);
@@ -1360,7 +1298,6 @@ postgres_get_auditor_progress_reserve (
  * data.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppa where is the auditor in processing
  * @return transaction status code
@@ -1368,18 +1305,17 @@ postgres_get_auditor_progress_reserve (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_aggregation (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&ppa->last_wire_out_serial_id),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_insert_aggregation",
                                              params);
 }
@@ -1390,7 +1326,6 @@ postgres_insert_auditor_progress_aggregation (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppa where is the auditor in processing
  * @return transaction status code
@@ -1398,18 +1333,17 @@ postgres_insert_auditor_progress_aggregation (
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_aggregation (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppa->last_wire_out_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_update_aggregation",
                                              params);
 }
@@ -1419,7 +1353,6 @@ postgres_update_auditor_progress_aggregation (
  * Get information about the progress of the auditor.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param[out] ppa set to where the auditor is in processing
  * @return transaction status code
@@ -1427,10 +1360,10 @@ postgres_update_auditor_progress_aggregation (
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_aggregation (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct TALER_AUDITORDB_ProgressPointAggregation *ppa)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1441,8 +1374,7 @@ postgres_get_auditor_progress_aggregation (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_progress_select_aggregation",
                                                    params,
                                                    rs);
@@ -1454,7 +1386,6 @@ postgres_get_auditor_progress_aggregation (
  * data.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppdc where is the auditor in processing
  * @return transaction status code
@@ -1462,18 +1393,17 @@ postgres_get_auditor_progress_aggregation (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_deposit_confirmation (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&ppdc->last_deposit_confirmation_serial_id),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_insert_deposit_confirmation",
                                              params);
 }
@@ -1484,7 +1414,6 @@ postgres_insert_auditor_progress_deposit_confirmation (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppdc where is the auditor in processing
  * @return transaction status code
@@ -1492,18 +1421,17 @@ postgres_insert_auditor_progress_deposit_confirmation (
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_deposit_confirmation (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppdc->last_deposit_confirmation_serial_id),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_update_deposit_confirmation",
                                              params);
 }
@@ -1513,7 +1441,6 @@ postgres_update_auditor_progress_deposit_confirmation (
  * Get information about the progress of the auditor.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param[out] ppdc set to where the auditor is in processing
  * @return transaction status code
@@ -1521,10 +1448,10 @@ postgres_update_auditor_progress_deposit_confirmation (
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_deposit_confirmation (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct TALER_AUDITORDB_ProgressPointDepositConfirmation *ppdc)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1535,8 +1462,7 @@ postgres_get_auditor_progress_deposit_confirmation (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_progress_select_deposit_confirmation",
                                                    params,
                                                    rs);
@@ -1548,7 +1474,6 @@ postgres_get_auditor_progress_deposit_confirmation (
  * data.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppc where is the auditor in processing
  * @return transaction status code
@@ -1556,10 +1481,10 @@ postgres_get_auditor_progress_deposit_confirmation (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_progress_coin (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointCoin *ppc)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_uint64 (&ppc->last_withdraw_serial_id),
@@ -1571,8 +1496,7 @@ postgres_insert_auditor_progress_coin (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_insert_coin",
                                              params);
 }
@@ -1583,7 +1507,6 @@ postgres_insert_auditor_progress_coin (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param ppc where is the auditor in processing
  * @return transaction status code
@@ -1591,10 +1514,10 @@ postgres_insert_auditor_progress_coin (
 static enum GNUNET_DB_QueryStatus
 postgres_update_auditor_progress_coin (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_ProgressPointCoin *ppc)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&ppc->last_withdraw_serial_id),
     GNUNET_PQ_query_param_uint64 (&ppc->last_deposit_serial_id),
@@ -1606,8 +1529,7 @@ postgres_update_auditor_progress_coin (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_progress_update_coin",
                                              params);
 }
@@ -1617,7 +1539,6 @@ postgres_update_auditor_progress_coin (
  * Get information about the progress of the auditor.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param[out] ppc set to where the auditor is in processing
  * @return transaction status code
@@ -1625,10 +1546,10 @@ postgres_update_auditor_progress_coin (
 static enum GNUNET_DB_QueryStatus
 postgres_get_auditor_progress_coin (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct TALER_AUDITORDB_ProgressPointCoin *ppc)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1649,8 +1570,7 @@ postgres_get_auditor_progress_coin (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_progress_select_coin",
                                                    params,
                                                    rs);
@@ -1662,7 +1582,6 @@ postgres_get_auditor_progress_coin (
  * data.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
  * @param pp how far are we in the auditor's tables
@@ -1673,13 +1592,13 @@ postgres_get_auditor_progress_coin (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_auditor_account_progress (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const char *account_name,
   const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
   uint64_t in_wire_off,
   uint64_t out_wire_off)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (account_name),
@@ -1690,8 +1609,7 @@ postgres_insert_wire_auditor_account_progress (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_auditor_account_progress_insert",
                                              params);
 }
@@ -1702,7 +1620,6 @@ postgres_insert_wire_auditor_account_progress (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
  * @param pp where is the auditor in processing
@@ -1713,13 +1630,13 @@ postgres_insert_wire_auditor_account_progress (
 static enum GNUNET_DB_QueryStatus
 postgres_update_wire_auditor_account_progress (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const char *account_name,
   const struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
   uint64_t in_wire_off,
   uint64_t out_wire_off)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_in_serial_id),
     GNUNET_PQ_query_param_uint64 (&pp->last_wire_out_serial_id),
@@ -1730,8 +1647,7 @@ postgres_update_wire_auditor_account_progress (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_auditor_account_progress_update",
                                              params);
 }
@@ -1741,7 +1657,6 @@ postgres_update_wire_auditor_account_progress (
  * Get information about the progress of the auditor.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param account_name name of the wire account we are auditing
  * @param[out] pp where is the auditor in processing
@@ -1752,13 +1667,13 @@ postgres_update_wire_auditor_account_progress (
 static enum GNUNET_DB_QueryStatus
 postgres_get_wire_auditor_account_progress (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const char *account_name,
   struct TALER_AUDITORDB_WireAccountProgressPoint *pp,
   uint64_t *in_wire_off,
   uint64_t *out_wire_off)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_string (account_name),
@@ -1776,8 +1691,7 @@ postgres_get_wire_auditor_account_progress (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "wire_auditor_account_progress_select",
                                                    params,
                                                    rs);
@@ -1789,7 +1703,6 @@ postgres_get_wire_auditor_account_progress (
  * data.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param pp where is the auditor in processing
  * @return transaction status code
@@ -1797,10 +1710,10 @@ postgres_get_wire_auditor_account_progress (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_auditor_progress (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_WireProgressPoint *pp)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
@@ -1808,8 +1721,7 @@ postgres_insert_wire_auditor_progress (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_auditor_progress_insert",
                                              params);
 }
@@ -1820,7 +1732,6 @@ postgres_insert_wire_auditor_progress (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param pp where is the auditor in processing
  * @return transaction status code
@@ -1828,10 +1739,10 @@ postgres_insert_wire_auditor_progress (
 static enum GNUNET_DB_QueryStatus
 postgres_update_wire_auditor_progress (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_AUDITORDB_WireProgressPoint *pp)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_uuid),
@@ -1839,8 +1750,7 @@ postgres_update_wire_auditor_progress (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "wire_auditor_progress_update",
                                              params);
 }
@@ -1850,7 +1760,6 @@ postgres_update_wire_auditor_progress (
  * Get information about the progress of the auditor.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param[out] pp set to where the auditor is in processing
  * @return transaction status code
@@ -1858,10 +1767,10 @@ postgres_update_wire_auditor_progress (
 static enum GNUNET_DB_QueryStatus
 postgres_get_wire_auditor_progress (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct TALER_AUDITORDB_WireProgressPoint *pp)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1874,8 +1783,7 @@ postgres_get_wire_auditor_progress (
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "wire_auditor_progress_select",
                                                    params,
                                                    rs);
@@ -1887,7 +1795,6 @@ postgres_get_wire_auditor_progress (
  * existing record for the reserve.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
  * @param reserve_balance amount stored in the reserve
@@ -1899,7 +1806,6 @@ postgres_get_wire_auditor_progress (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_insert_reserve_info (void *cls,
-                              struct TALER_AUDITORDB_Session *session,
                               const struct TALER_ReservePublicKeyP *reserve_pub,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *reserve_balance,
@@ -1907,6 +1813,7 @@ postgres_insert_reserve_info (void *cls,
                               struct GNUNET_TIME_Absolute expiration_date,
                               const char *origin_account)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
@@ -1917,12 +1824,11 @@ postgres_insert_reserve_info (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (reserve_balance,
                                             withdraw_fee_balance));
 
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserves_insert",
                                              params);
 }
@@ -1933,7 +1839,6 @@ postgres_insert_reserve_info (void *cls,
  * existing record, which must already exist.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
  * @param reserve_balance amount stored in the reserve
@@ -1944,13 +1849,13 @@ postgres_insert_reserve_info (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_update_reserve_info (void *cls,
-                              struct TALER_AUDITORDB_Session *session,
                               const struct TALER_ReservePublicKeyP *reserve_pub,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *reserve_balance,
                               const struct TALER_Amount *withdraw_fee_balance,
                               struct GNUNET_TIME_Absolute expiration_date)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
@@ -1960,12 +1865,11 @@ postgres_update_reserve_info (void *cls,
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (reserve_balance,
                                             withdraw_fee_balance));
 
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserves_update",
                                              params);
 }
@@ -1975,25 +1879,23 @@ postgres_update_reserve_info (void *cls,
  * Delete information about a reserve.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_del_reserve_info (void *cls,
-                           struct TALER_AUDITORDB_Session *session,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            const struct TALER_MasterPublicKeyP *master_pub)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserves_delete",
                                              params);
 }
@@ -2003,7 +1905,6 @@ postgres_del_reserve_info (void *cls,
  * Get information about a reserve.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param reserve_pub public key of the reserve
  * @param master_pub master public key of the exchange
  * @param[out] rowid which row did we get the information from
@@ -2016,7 +1917,6 @@ postgres_del_reserve_info (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_info (void *cls,
-                           struct TALER_AUDITORDB_Session *session,
                            const struct TALER_ReservePublicKeyP *reserve_pub,
                            const struct TALER_MasterPublicKeyP *master_pub,
                            uint64_t *rowid,
@@ -2040,8 +1940,7 @@ postgres_get_reserve_info (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_reserves_select",
                                                    params,
                                                    rs);
@@ -2053,7 +1952,6 @@ postgres_get_reserve_info (void *cls,
  * existing record for the @a master_pub.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master public key of the exchange
  * @param reserve_balance amount stored in the reserve
  * @param withdraw_fee_balance amount the exchange gained in withdraw fees
@@ -2063,11 +1961,11 @@ postgres_get_reserve_info (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_reserve_summary (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *reserve_balance,
   const struct TALER_Amount *withdraw_fee_balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (reserve_balance),
@@ -2075,12 +1973,11 @@ postgres_insert_reserve_summary (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (reserve_balance,
                                             withdraw_fee_balance));
 
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserve_balance_insert",
                                              params);
 }
@@ -2091,7 +1988,6 @@ postgres_insert_reserve_summary (
  * existing record, which must already exist.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master public key of the exchange
  * @param reserve_balance amount stored in the reserve
  * @param withdraw_fee_balance amount the exchange gained in withdraw fees
@@ -2101,11 +1997,11 @@ postgres_insert_reserve_summary (
 static enum GNUNET_DB_QueryStatus
 postgres_update_reserve_summary (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *reserve_balance,
   const struct TALER_Amount *withdraw_fee_balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
@@ -2113,8 +2009,7 @@ postgres_update_reserve_summary (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_reserve_balance_update",
                                              params);
 }
@@ -2124,7 +2019,6 @@ postgres_update_reserve_summary (
  * Get summary information about all reserves.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master public key of the exchange
  * @param[out] reserve_balance amount stored in the reserve
  * @param[out] withdraw_fee_balance amount the exchange gained in withdraw fees
@@ -2133,7 +2027,6 @@ postgres_update_reserve_summary (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_summary (void *cls,
-                              struct TALER_AUDITORDB_Session *session,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               struct TALER_Amount *reserve_balance,
                               struct TALER_Amount *withdraw_fee_balance)
@@ -2150,8 +2043,7 @@ postgres_get_reserve_summary (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_reserve_balance_select",
                                                    params,
                                                    rs);
@@ -2163,7 +2055,6 @@ postgres_get_reserve_summary (void *cls,
  * existing record for the same @a master_pub.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master public key of the exchange
  * @param wire_fee_balance amount the exchange gained in wire fees
  * @return transaction status code
@@ -2171,18 +2062,17 @@ postgres_get_reserve_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_wire_fee_summary (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *wire_fee_balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (wire_fee_balance),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_wire_fee_balance_insert",
                                              params);
 }
@@ -2193,7 +2083,6 @@ postgres_insert_wire_fee_summary (
  * existing record, which must already exist.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master public key of the exchange
  * @param wire_fee_balance amount the exchange gained in wire fees
  * @return transaction status code
@@ -2201,18 +2090,17 @@ postgres_insert_wire_fee_summary (
 static enum GNUNET_DB_QueryStatus
 postgres_update_wire_fee_summary (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *wire_fee_balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (wire_fee_balance),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_wire_fee_balance_update",
                                              params);
 }
@@ -2222,14 +2110,12 @@ postgres_update_wire_fee_summary (
  * Get summary information about an exchanges wire fee balance.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master public key of the exchange
  * @param[out] wire_fee_balance set amount the exchange gained in wire fees
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_wire_fee_summary (void *cls,
-                               struct TALER_AUDITORDB_Session *session,
                                const struct TALER_MasterPublicKeyP *master_pub,
                                struct TALER_Amount *wire_fee_balance)
 {
@@ -2244,8 +2130,7 @@ postgres_get_wire_fee_summary (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_wire_fee_balance_select",
                                                    params,
                                                    rs);
@@ -2257,7 +2142,6 @@ postgres_get_wire_fee_summary (void *cls,
  * must not be an existing record for the denomination key.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
@@ -2269,7 +2153,6 @@ postgres_get_wire_fee_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_balance (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct GNUNET_HashCode *denom_pub_hash,
   const struct TALER_Amount *denom_balance,
   const struct TALER_Amount *denom_loss,
@@ -2277,6 +2160,7 @@ postgres_insert_denomination_balance (
   const struct TALER_Amount *recoup_loss,
   uint64_t num_issued)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
     TALER_PQ_query_param_amount (denom_balance),
@@ -2287,8 +2171,7 @@ postgres_insert_denomination_balance (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_denomination_pending_insert",
                                              params);
 }
@@ -2299,7 +2182,6 @@ postgres_insert_denomination_balance (
  * must be an existing record for the denomination key.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param denom_balance value of coins outstanding with this denomination key
  * @param denom_loss value of coins redeemed that were not outstanding (effectively, negative @a denom_balance)
@@ -2311,7 +2193,6 @@ postgres_insert_denomination_balance (
 static enum GNUNET_DB_QueryStatus
 postgres_update_denomination_balance (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct GNUNET_HashCode *denom_pub_hash,
   const struct TALER_Amount *denom_balance,
   const struct TALER_Amount *denom_loss,
@@ -2319,6 +2200,7 @@ postgres_update_denomination_balance (
   const struct TALER_Amount *recoup_loss,
   uint64_t num_issued)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
     TALER_PQ_query_param_amount (denom_loss),
@@ -2329,8 +2211,7 @@ postgres_update_denomination_balance (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_denomination_pending_update",
                                              params);
 }
@@ -2340,7 +2221,6 @@ postgres_update_denomination_balance (
  * Get information about a denomination key's balances.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param denom_pub_hash hash of the denomination public key
  * @param[out] denom_balance value of coins outstanding with this denomination key
  * @param[out] denom_risk value of coins issued with this denomination key
@@ -2351,7 +2231,6 @@ postgres_update_denomination_balance (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_balance (void *cls,
-                                   struct TALER_AUDITORDB_Session *session,
                                    const struct GNUNET_HashCode *denom_pub_hash,
                                    struct TALER_Amount *denom_balance,
                                    struct TALER_Amount *denom_loss,
@@ -2373,8 +2252,7 @@ postgres_get_denomination_balance (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_denomination_pending_select",
                                                    params,
                                                    rs);
@@ -2386,7 +2264,6 @@ postgres_get_denomination_balance (void *cls,
  * must not be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param denom_balance value of coins outstanding with this denomination key
  * @param deposit_fee_balance total deposit fees collected for this DK
@@ -2400,7 +2277,6 @@ postgres_get_denomination_balance (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_balance_summary (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *denom_balance,
   const struct TALER_Amount *deposit_fee_balance,
@@ -2410,6 +2286,7 @@ postgres_insert_balance_summary (
   const struct TALER_Amount *loss,
   const struct TALER_Amount *irregular_recoup)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (denom_balance),
@@ -2422,7 +2299,6 @@ postgres_insert_balance_summary (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
   GNUNET_assert (GNUNET_YES ==
                  TALER_amount_cmp_currency (denom_balance,
                                             deposit_fee_balance));
@@ -2434,7 +2310,7 @@ postgres_insert_balance_summary (
                  TALER_amount_cmp_currency (denom_balance,
                                             refund_fee_balance));
 
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_balance_summary_insert",
                                              params);
 }
@@ -2445,7 +2321,6 @@ postgres_insert_balance_summary (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param denom_balance value of coins outstanding with this denomination key
  * @param deposit_fee_balance total deposit fees collected for this DK
@@ -2459,7 +2334,6 @@ postgres_insert_balance_summary (
 static enum GNUNET_DB_QueryStatus
 postgres_update_balance_summary (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *denom_balance,
   const struct TALER_Amount *deposit_fee_balance,
@@ -2469,6 +2343,7 @@ postgres_update_balance_summary (
   const struct TALER_Amount *loss,
   const struct TALER_Amount *irregular_recoup)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (denom_balance),
     TALER_PQ_query_param_amount (deposit_fee_balance),
@@ -2481,8 +2356,7 @@ postgres_update_balance_summary (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_balance_summary_update",
                                              params);
 }
@@ -2492,7 +2366,6 @@ postgres_update_balance_summary (
  * Get information about an exchange's denomination balances.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param[out] denom_balance value of coins outstanding with this denomination key
  * @param[out] deposit_fee_balance total deposit fees collected for this DK
@@ -2505,7 +2378,6 @@ postgres_update_balance_summary (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_balance_summary (void *cls,
-                              struct TALER_AUDITORDB_Session *session,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               struct TALER_Amount *denom_balance,
                               struct TALER_Amount *deposit_fee_balance,
@@ -2531,7 +2403,7 @@ postgres_get_balance_summary (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_balance_summary_select",
                                                    params,
                                                    rs);
@@ -2543,7 +2415,6 @@ postgres_get_balance_summary (void *cls,
  * revenue about a denomination key.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param denom_pub_hash hash of the denomination key
  * @param revenue_timestamp when did this profit get realized
@@ -2556,13 +2427,13 @@ postgres_get_balance_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_historic_denom_revenue (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct GNUNET_HashCode *denom_pub_hash,
   struct GNUNET_TIME_Absolute revenue_timestamp,
   const struct TALER_Amount *revenue_balance,
   const struct TALER_Amount *loss_balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
@@ -2572,8 +2443,7 @@ postgres_insert_historic_denom_revenue (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_historic_denomination_revenue_insert",
                                              params);
 }
@@ -2665,7 +2535,6 @@ historic_denom_revenue_cb (void *cls,
  * of the given @a master_pub.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param cb function to call with the results
  * @param cb_cls closure for @a cb
@@ -2674,7 +2543,6 @@ historic_denom_revenue_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_historic_denom_revenue (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_HistoricDenominationRevenueDataCallback cb,
   void *cb_cls)
@@ -2691,7 +2559,7 @@ postgres_select_historic_denom_revenue (
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_historic_denomination_revenue_select",
                                              params,
                                              &historic_denom_revenue_cb,
@@ -2706,7 +2574,6 @@ postgres_select_historic_denom_revenue (
  * Insert information about an exchange's historic revenue from reserves.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param start_time beginning of aggregated time interval
  * @param end_time end of aggregated time interval
@@ -2716,12 +2583,12 @@ postgres_select_historic_denom_revenue (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_historic_reserve_revenue (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Absolute start_time,
   struct GNUNET_TIME_Absolute end_time,
   const struct TALER_Amount *reserve_profits)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_absolute_time (&start_time),
@@ -2730,8 +2597,7 @@ postgres_insert_historic_reserve_revenue (
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_historic_reserve_summary_insert",
                                              params);
 }
@@ -2817,7 +2683,6 @@ historic_reserve_revenue_cb (void *cls,
  * Return information about an exchange's historic revenue from reserves.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param cb function to call with results
  * @param cb_cls closure for @a cb
@@ -2826,7 +2691,6 @@ historic_reserve_revenue_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_historic_reserve_revenue (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   TALER_AUDITORDB_HistoricReserveRevenueDataCallback cb,
   void *cb_cls)
@@ -2843,7 +2707,7 @@ postgres_select_historic_reserve_revenue (
     .pg = pg
   };
 
-  qs = GNUNET_PQ_eval_prepared_multi_select (session->conn,
+  qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "auditor_historic_reserve_summary_select",
                                              params,
                                              &historic_reserve_revenue_cb,
@@ -2859,7 +2723,6 @@ postgres_select_historic_reserve_revenue (
  * account balance.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param balance what the bank account balance of the exchange should show
  * @return transaction status code
@@ -2867,18 +2730,17 @@ postgres_select_historic_reserve_revenue (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_predicted_result (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (balance),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_predicted_result_insert",
                                              params);
 }
@@ -2889,7 +2751,6 @@ postgres_insert_predicted_result (
  * must be an existing record for the exchange.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param balance what the bank account balance of the exchange should show
  * @return transaction status code
@@ -2897,18 +2758,17 @@ postgres_insert_predicted_result (
 static enum GNUNET_DB_QueryStatus
 postgres_update_predicted_result (
   void *cls,
-  struct TALER_AUDITORDB_Session *session,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_Amount *balance)
 {
+  struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (balance),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
   };
 
-  (void) cls;
-  return GNUNET_PQ_eval_prepared_non_select (session->conn,
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "auditor_predicted_result_update",
                                              params);
 }
@@ -2918,14 +2778,12 @@ postgres_update_predicted_result (
  * Get an exchange's predicted balance.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param session connection to use
  * @param master_pub master key of the exchange
  * @param[out] balance expected bank account balance of the exchange
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_predicted_balance (void *cls,
-                                struct TALER_AUDITORDB_Session *session,
                                 const struct TALER_MasterPublicKeyP *master_pub,
                                 struct TALER_Amount *balance)
 {
@@ -2940,7 +2798,7 @@ postgres_get_predicted_balance (void *cls,
     GNUNET_PQ_result_spec_end
   };
 
-  return GNUNET_PQ_eval_prepared_singleton_select (session->conn,
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "auditor_predicted_result_select",
                                                    params,
                                                    rs);
@@ -2962,13 +2820,6 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
 
   pg = GNUNET_new (struct PostgresClosure);
   pg->cfg = cfg;
-  if (0 != pthread_key_create (&pg->db_conn_threadlocal,
-                               &db_conn_destroy))
-  {
-    TALER_LOG_ERROR ("Cannot create pthread key.\n");
-    GNUNET_free (pg);
-    return NULL;
-  }
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
                                  &pg->currency))
@@ -2978,7 +2829,7 @@ libtaler_plugin_auditordb_postgres_init (void *cls)
   }
   plugin = GNUNET_new (struct TALER_AUDITORDB_Plugin);
   plugin->cls = pg;
-  plugin->get_session = &postgres_get_session;
+  plugin->preflight = &postgres_preflight;
   plugin->drop_tables = &postgres_drop_tables;
   plugin->create_tables = &postgres_create_tables;
   plugin->start = &postgres_start;
@@ -3075,6 +2926,8 @@ libtaler_plugin_auditordb_postgres_done (void *cls)
   struct TALER_AUDITORDB_Plugin *plugin = cls;
   struct PostgresClosure *pg = plugin->cls;
 
+  if (NULL != pg->conn)
+    GNUNET_PQ_disconnect (pg->conn);
   GNUNET_free (pg->currency);
   GNUNET_free (pg);
   GNUNET_free (plugin);

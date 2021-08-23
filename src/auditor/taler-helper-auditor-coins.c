@@ -679,7 +679,6 @@ init_denomination (const struct GNUNET_HashCode *denom_hash,
   uint64_t rowid;
 
   qs = TALER_ARL_adb->get_denomination_balance (TALER_ARL_adb->cls,
-                                                TALER_ARL_asession,
                                                 denom_hash,
                                                 &ds->denom_balance,
                                                 &ds->denom_loss,
@@ -819,7 +818,6 @@ sync_denomination (void *cls,
        outstanding coins as revenue; and reduce cc->risk exposure. */
     if (ds->in_db)
       qs = TALER_ARL_adb->del_denomination_balance (TALER_ARL_adb->cls,
-                                                    TALER_ARL_asession,
                                                     denom_hash);
     else
       qs = GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
@@ -851,7 +849,6 @@ sync_denomination (void *cls,
       if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           (qs = TALER_ARL_adb->insert_historic_denom_revenue (
              TALER_ARL_adb->cls,
-             TALER_ARL_asession,
              &TALER_ARL_master_pub,
              denom_hash,
              expire_deposit,
@@ -905,7 +902,6 @@ sync_denomination (void *cls,
       }
       if (ds->in_db)
         qs = TALER_ARL_adb->update_denomination_balance (TALER_ARL_adb->cls,
-                                                         TALER_ARL_asession,
                                                          denom_hash,
                                                          &ds->denom_balance,
                                                          &ds->denom_loss,
@@ -914,7 +910,6 @@ sync_denomination (void *cls,
                                                          ds->num_issued);
       else
         qs = TALER_ARL_adb->insert_denomination_balance (TALER_ARL_adb->cls,
-                                                         TALER_ARL_asession,
                                                          denom_hash,
                                                          &ds->denom_balance,
                                                          &ds->denom_loss,
@@ -2333,7 +2328,6 @@ analyze_coins (void *cls)
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Analyzing coins\n");
   qsp = TALER_ARL_adb->get_auditor_progress_coin (TALER_ARL_adb->cls,
-                                                  TALER_ARL_asession,
                                                   &TALER_ARL_master_pub,
                                                   &ppc);
   if (0 > qsp)
@@ -2363,7 +2357,6 @@ analyze_coins (void *cls)
   cc.denom_summaries = GNUNET_CONTAINER_multihashmap_create (256,
                                                              GNUNET_NO);
   qsx = TALER_ARL_adb->get_balance_summary (TALER_ARL_adb->cls,
-                                            TALER_ARL_asession,
                                             &TALER_ARL_master_pub,
                                             &total_escrow_balance,
                                             &total_deposit_fee_income,
@@ -2473,7 +2466,6 @@ analyze_coins (void *cls)
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsx)
     qs = TALER_ARL_adb->update_balance_summary (TALER_ARL_adb->cls,
-                                                TALER_ARL_asession,
                                                 &TALER_ARL_master_pub,
                                                 &total_escrow_balance,
                                                 &total_deposit_fee_income,
@@ -2484,7 +2476,6 @@ analyze_coins (void *cls)
                                                 &total_irregular_recoups);
   else
     qs = TALER_ARL_adb->insert_balance_summary (TALER_ARL_adb->cls,
-                                                TALER_ARL_asession,
                                                 &TALER_ARL_master_pub,
                                                 &total_escrow_balance,
                                                 &total_deposit_fee_income,
@@ -2501,12 +2492,10 @@ analyze_coins (void *cls)
 
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qsp)
     qs = TALER_ARL_adb->update_auditor_progress_coin (TALER_ARL_adb->cls,
-                                                      TALER_ARL_asession,
                                                       &TALER_ARL_master_pub,
                                                       &ppc);
   else
     qs = TALER_ARL_adb->insert_auditor_progress_coin (TALER_ARL_adb->cls,
-                                                      TALER_ARL_asession,
                                                       &TALER_ARL_master_pub,
                                                       &ppc);
   if (0 >= qs)

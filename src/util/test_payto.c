@@ -46,6 +46,8 @@ main (int argc,
   GNUNET_log_setup ("test-payto",
                     "WARNING",
                     NULL);
+  GNUNET_assert (NULL ==
+                 TALER_iban_validate ("FR1420041010050500013M02606"));
   r = TALER_xtalerbank_account_from_payto (
     "payto://x-taler-bank/localhost:1080/alice");
   CHECK ("alice",

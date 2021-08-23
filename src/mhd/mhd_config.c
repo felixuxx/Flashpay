@@ -255,6 +255,7 @@ TALER_MHD_open_unix_path (const char *unix_path,
     GNUNET_free (un);
     return -1;
   }
+
   if (GNUNET_OK !=
       GNUNET_NETWORK_socket_bind (nh,
                                   (void *) un,
@@ -445,6 +446,18 @@ TALER_MHD_bind (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            "socket");
       freeaddrinfo (res);
       return -1;
+    }
+    {
+      const int on = 1;
+
+      if (GNUNET_OK !=
+          GNUNET_NETWORK_socket_setsockopt (nh,
+                                            SOL_SOCKET,
+                                            SO_REUSEPORT,
+                                            &on,
+                                            sizeof(on)))
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                             "setsockopt");
     }
     if (GNUNET_OK !=
         GNUNET_NETWORK_socket_bind (nh,

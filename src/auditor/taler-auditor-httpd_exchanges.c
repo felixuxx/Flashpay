@@ -75,15 +75,14 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
                        size_t *upload_data_size)
 {
   json_t *ja;
-  struct TALER_AUDITORDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
 
   (void) rh;
   (void) connection_cls;
   (void) upload_data;
   (void) upload_data_size;
-  session = TAH_plugin->get_session (TAH_plugin->cls);
-  if (NULL == session)
+  if (GNUNET_SYSERR ==
+      TAH_plugin->preflight (TAH_plugin->cls))
   {
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
@@ -94,7 +93,6 @@ TAH_EXCHANGES_handler (struct TAH_RequestHandler *rh,
   ja = json_array ();
   GNUNET_break (NULL != ja);
   qs = TAH_plugin->list_exchanges (TAH_plugin->cls,
-                                   session,
                                    &add_exchange,
                                    ja);
   if (0 > qs)

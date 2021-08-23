@@ -62,7 +62,6 @@ verify_and_execute_deposit_confirmation (
   const struct TALER_AUDITORDB_DepositConfirmation *dc,
   const struct TALER_AUDITORDB_ExchangeSigningKey *es)
 {
-  struct TALER_AUDITORDB_Session *session;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_HashCode h;
@@ -96,8 +95,8 @@ verify_and_execute_deposit_confirmation (
   cached = GNUNET_CONTAINER_multihashmap_get (cache,
                                               &h);
   GNUNET_assert (0 == pthread_mutex_unlock (&lock));
-  session = TAH_plugin->get_session (TAH_plugin->cls);
-  if (NULL == session)
+  if (GNUNET_SYSERR ==
+      TAH_plugin->preflight (TAH_plugin->cls))
   {
     GNUNET_break (0);
     return TALER_MHD_reply_with_error (connection,
@@ -126,7 +125,6 @@ verify_and_execute_deposit_confirmation (
 
     /* execute transaction */
     qs = TAH_plugin->insert_exchange_signkey (TAH_plugin->cls,
-                                              session,
                                               es);
     if (0 > qs)
     {
@@ -216,7 +214,6 @@ verify_and_execute_deposit_confirmation (
 
   /* execute transaction */
   qs = TAH_plugin->insert_deposit_confirmation (TAH_plugin->cls,
-                                                session,
                                                 dc);
   if (0 > qs)
   {

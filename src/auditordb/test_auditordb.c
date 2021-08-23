@@ -73,7 +73,6 @@ static void
 run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
-  struct TALER_AUDITORDB_Session *session;
   uint64_t rowid;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -94,16 +93,15 @@ run (void *cls)
     result = 77;
     goto unload;
   }
-  if (NULL ==
-      (session = plugin->get_session (plugin->cls)))
+  if (GNUNET_SYSERR ==
+      plugin->preflight (plugin->cls))
   {
     result = 77;
     goto drop;
   }
 
   FAILIF (GNUNET_OK !=
-          plugin->start (plugin->cls,
-                         session));
+          plugin->start (plugin->cls));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "initializing\n");
@@ -164,7 +162,6 @@ run (void *cls)
               "Test: auditor_insert_exchange\n");
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_exchange (plugin->cls,
-                                   session,
                                    &master_pub,
                                    "https://exchange/"));
 
@@ -187,7 +184,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_auditor_progress_coin (plugin->cls,
-                                                session,
                                                 &master_pub,
                                                 &ppc));
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -200,7 +196,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_auditor_progress_coin (plugin->cls,
-                                                session,
                                                 &master_pub,
                                                 &ppc));
 
@@ -209,7 +204,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_auditor_progress_coin (plugin->cls,
-                                             session,
                                              &master_pub,
                                              &ppc2));
   FAILIF ( (ppc.last_deposit_serial_id != ppc2.last_deposit_serial_id) ||
@@ -233,7 +227,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_info (plugin->cls,
-                                       session,
                                        &reserve_pub,
                                        &master_pub,
                                        &reserve_balance,
@@ -246,7 +239,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_reserve_info (plugin->cls,
-                                       session,
                                        &reserve_pub,
                                        &master_pub,
                                        &reserve_balance,
@@ -260,7 +252,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_info (plugin->cls,
-                                    session,
                                     &reserve_pub,
                                     &master_pub,
                                     &rowid,
@@ -281,7 +272,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_summary (plugin->cls,
-                                          session,
                                           &master_pub,
                                           &withdraw_fee_balance,
                                           &reserve_balance));
@@ -291,7 +281,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_reserve_summary (plugin->cls,
-                                          session,
                                           &master_pub,
                                           &reserve_balance,
                                           &withdraw_fee_balance));
@@ -304,7 +293,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_reserve_summary (plugin->cls,
-                                       session,
                                        &master_pub,
                                        &reserve_balance2,
                                        &withdraw_fee_balance2));
@@ -362,7 +350,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_denomination_balance (plugin->cls,
-                                               session,
                                                &denom_pub_hash,
                                                &denom_balance,
                                                &denom_loss,
@@ -380,7 +367,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_denomination_balance (plugin->cls,
-                                               session,
                                                &denom_pub_hash,
                                                &denom_balance,
                                                &denom_loss,
@@ -392,7 +378,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_denomination_balance (plugin->cls,
-                                            session,
                                             &denom_pub_hash,
                                             &denom_balance2,
                                             &denom_loss2,
@@ -411,7 +396,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_balance_summary (plugin->cls,
-                                          session,
                                           &master_pub,
                                           &refund_fee_balance,
                                           &melt_fee_balance,
@@ -426,7 +410,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_balance_summary (plugin->cls,
-                                          session,
                                           &master_pub,
                                           &denom_balance,
                                           &deposit_fee_balance,
@@ -449,7 +432,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_balance_summary (plugin->cls,
-                                       session,
                                        &master_pub,
                                        &denom_balance2,
                                        &deposit_fee_balance2,
@@ -480,7 +462,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_denom_revenue (plugin->cls,
-                                                 session,
                                                  &master_pub,
                                                  &denom_pub_hash,
                                                  past,
@@ -489,7 +470,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_denom_revenue (plugin->cls,
-                                                 session,
                                                  &master_pub,
                                                  &rnd_hash,
                                                  now,
@@ -534,7 +514,6 @@ run (void *cls)
 
   FAILIF (0 >=
           plugin->select_historic_denom_revenue (plugin->cls,
-                                                 session,
                                                  &master_pub,
                                                  &
                                                  select_historic_denom_revenue_result,
@@ -550,7 +529,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_reserve_revenue (plugin->cls,
-                                                   session,
                                                    &master_pub,
                                                    past,
                                                    future,
@@ -558,7 +536,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_historic_reserve_revenue (plugin->cls,
-                                                   session,
                                                    &master_pub,
                                                    now,
                                                    future,
@@ -598,7 +575,6 @@ run (void *cls)
 
   FAILIF (0 >=
           plugin->select_historic_reserve_revenue (plugin->cls,
-                                                   session,
                                                    &master_pub,
                                                    select_historic_reserve_revenue_result,
                                                    NULL));
@@ -608,7 +584,6 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_predicted_result (plugin->cls,
-                                           session,
                                            &master_pub,
                                            &rbalance));
 
@@ -621,18 +596,15 @@ run (void *cls)
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_predicted_result (plugin->cls,
-                                           session,
                                            &master_pub,
                                            &rbalance));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_wire_fee_summary (plugin->cls,
-                                           session,
                                            &master_pub,
                                            &rbalance));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->update_wire_fee_summary (plugin->cls,
-                                           session,
                                            &master_pub,
                                            &reserve_profits));
   {
@@ -640,7 +612,6 @@ run (void *cls)
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->get_wire_fee_summary (plugin->cls,
-                                          session,
                                           &master_pub,
                                           &rprof));
     FAILIF (0 !=
@@ -648,34 +619,29 @@ run (void *cls)
                               &reserve_profits));
   }
   FAILIF (0 >
-          plugin->commit (plugin->cls,
-                          session));
+          plugin->commit (plugin->cls));
 
 
   FAILIF (GNUNET_OK !=
-          plugin->start (plugin->cls,
-                         session));
+          plugin->start (plugin->cls));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: get_predicted_balance\n");
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_predicted_balance (plugin->cls,
-                                         session,
                                          &master_pub,
                                          &rbalance2));
 
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->del_reserve_info (plugin->cls,
-                                    session,
                                     &reserve_pub,
                                     &master_pub));
 
   FAILIF (0 != TALER_amount_cmp (&rbalance2,
                                  &rbalance));
 
-  plugin->rollback (plugin->cls,
-                    session);
+  plugin->rollback (plugin->cls);
 
 #if GC_IMPLEMENTED
   FAILIF (GNUNET_OK !=
@@ -685,22 +651,17 @@ run (void *cls)
   result = 0;
 
 drop:
-  if (NULL != session)
   {
-    plugin->rollback (plugin->cls,
-                      session);
+    plugin->rollback (plugin->cls);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Test: auditor_delete_exchange\n");
     GNUNET_break (GNUNET_OK ==
-                  plugin->start (plugin->cls,
-                                 session));
+                  plugin->start (plugin->cls));
     GNUNET_break (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT ==
                   plugin->delete_exchange (plugin->cls,
-                                           session,
                                            &master_pub));
     GNUNET_break (0 <=
-                  plugin->commit (plugin->cls,
-                                  session));
+                  plugin->commit (plugin->cls));
   }
   GNUNET_break (GNUNET_OK ==
                 plugin->drop_tables (plugin->cls,
