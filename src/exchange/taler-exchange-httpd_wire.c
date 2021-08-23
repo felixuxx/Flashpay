@@ -28,20 +28,16 @@
 
 
 /**
- * Thread-local.  Contains a pointer to `struct WireStateHandle` or NULL.
- * Stores the per-thread latest generation of our wire response.
+ * Stores the latest generation of our wire response.
  */
-static pthread_key_t wire_state;
+static struct WireStateHandle *wire_state;
 
 
 /**
  * Counter incremented whenever we have a reason to re-build the #wire_state
- * because something external changed (in another thread).  The counter is
- * manipulated using an atomic update, and thus to ensure that threads notice
- * when it changes, the variable MUST be volatile.  See #get_wire_state()
- * and #TEH_wire_update_state() for uses of this variable.
+ * because something external changed.
  */
-static volatile uint64_t wire_generation;
+static uint64_t wire_generation;
 
 
 /**
@@ -81,36 +77,14 @@ destroy_wire_state (struct WireStateHandle *wsh)
 }
 
 
-/**
- * Free memory associated with wire state. Signature
- * suitable for pthread_key_create().
- *
- * @param[in] cls the `struct WireStateHandle` to destroy
- */static void
-destroy_wire_state_cb (void *cls)
-{
-  struct WireStateHandle *wsh = cls;
-
-  destroy_wire_state (wsh);
-}
-
-
-enum GNUNET_GenericReturnValue
-TEH_WIRE_init ()
-{
-  if (0 !=
-      pthread_key_create (&wire_state,
-                          &destroy_wire_state_cb))
-    return GNUNET_SYSERR;
-  return GNUNET_OK;
-}
-
-
 void
 TEH_WIRE_done ()
 {
-  GNUNET_assert (0 ==
-                 pthread_key_delete (wire_state));
+  if (NULL != wire_state)
+  {
+    destroy_wire_state (wire_state);
+    wire_state = NULL;
+  }
 }
 
 
@@ -328,8 +302,7 @@ build_wire_state (void)
 void
 TEH_wire_update_state (void)
 {
-  __sync_fetch_and_add (&wire_generation,
-                        1);
+  wire_generation++;
 }
 
 
@@ -345,21 +318,14 @@ get_wire_state (void)
 {
   struct WireStateHandle *old_wsh;
 
-  old_wsh = pthread_getspecific (wire_state);
+  old_wsh = wire_state;
   if ( (NULL == old_wsh) ||
        (old_wsh->wire_generation < wire_generation) )
   {
     struct WireStateHandle *wsh;
 
     wsh = build_wire_state ();
-    if (0 != pthread_setspecific (wire_state,
-                                  wsh))
-    {
-      GNUNET_break (0);
-      if (NULL != wsh)
-        destroy_wire_state (wsh);
-      return NULL;
-    }
+    wire_state = wsh;
     if (NULL != old_wsh)
       destroy_wire_state (old_wsh);
     return wsh;

@@ -1419,13 +1419,6 @@ run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TEH_WIRE_init ())
-  {
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-  if (GNUNET_OK !=
       TEH_keys_init ())
   {
     global_ret = EXIT_FAILURE;
