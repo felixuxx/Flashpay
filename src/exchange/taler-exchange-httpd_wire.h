@@ -27,15 +27,6 @@
 
 
 /**
- * Initialize wire subsystem.
- *
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error.
- */
-enum GNUNET_GenericReturnValue
-TEH_WIRE_init (void);
-
-
-/**
  * Clean up wire subsystem.
  */
 void
