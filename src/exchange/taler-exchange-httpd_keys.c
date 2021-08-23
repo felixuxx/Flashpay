@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler_dbevents.h"
 #include "taler-exchange-httpd.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_responses.h"
@@ -348,6 +349,12 @@ static struct TEH_KeyStateHandle *key_state;
  * #TEH_keys_update_states() for uses of this variable.
  */
 static uint64_t key_generation;
+
+/**
+ * Handler listening for wire updates by other exchange
+ * services.
+ */
+static struct GNUNET_DB_EventHandler *keys_eh;
 
 /**
  * Head of DLL of suspended /keys requests.
@@ -867,9 +874,35 @@ destroy_key_state (struct TEH_KeyStateHandle *ksh,
 }
 
 
-int
+/**
+ * Function called whenever another exchange process has updated
+ * the keys data in the database.
+ *
+ * @param cls NULL
+ * @param extra unused
+ * @param extra_size number of bytes in @a extra unused
+ */
+static void
+keys_update_event_cb (void *cls,
+                      const void *extra,
+                      size_t extra_size)
+{
+  (void) cls;
+  (void) extra;
+  (void) extra_size;
+  key_generation++;
+  TEH_resume_keys_requests (false);
+}
+
+
+enum GNUNET_GenericReturnValue
 TEH_keys_init ()
 {
+  struct GNUNET_DB_EventHeaderP es = {
+    .size = htons (sizeof (es)),
+    .type = htons (TALER_DBEVENT_EXCHANGE_KEYS_UPDATED),
+  };
+
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            "exchange",
@@ -881,6 +914,16 @@ TEH_keys_init ()
                                "SIGNKEY_LEGAL_DURATION");
     return GNUNET_SYSERR;
   }
+  keys_eh = TEH_plugin->event_listen (TEH_plugin->cls,
+                                      GNUNET_TIME_UNIT_FOREVER_REL,
+                                      &es,
+                                      &keys_update_event_cb,
+                                      NULL);
+  if (NULL == keys_eh)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   return GNUNET_OK;
 }
 
@@ -888,12 +931,18 @@ TEH_keys_init ()
 /**
  * Fully clean up our state.
  */
-void __attribute__ ((destructor))
+void
 TEH_keys_finished ()
 {
   if (NULL != key_state)
     destroy_key_state (key_state,
                        true);
+  if (NULL != keys_eh)
+  {
+    TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                     keys_eh);
+    keys_eh = NULL;
+  }
 }
 
 
@@ -1719,6 +1768,15 @@ build_key_state (struct HelperState *hs,
 void
 TEH_keys_update_states ()
 {
+  struct GNUNET_DB_EventHeaderP es = {
+    .size = htons (sizeof (es)),
+    .type = htons (TALER_DBEVENT_EXCHANGE_KEYS_UPDATED),
+  };
+
+  TEH_plugin->event_notify (TEH_plugin->cls,
+                            &es,
+                            NULL,
+                            0);
   key_generation++;
   TEH_resume_keys_requests (false);
 }

@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include <gnunet/gnunet_json_lib.h>
+#include "taler_dbevents.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler_json_lib.h"
@@ -32,6 +33,11 @@
  */
 static struct WireStateHandle *wire_state;
 
+/**
+ * Handler listening for wire updates by other exchange
+ * services.
+ */
+static struct GNUNET_DB_EventHandler *wire_eh;
 
 /**
  * Counter incremented whenever we have a reason to re-build the #wire_state
@@ -77,6 +83,48 @@ destroy_wire_state (struct WireStateHandle *wsh)
 }
 
 
+/**
+ * Function called whenever another exchange process has updated
+ * the wire data in the database.
+ *
+ * @param cls NULL
+ * @param extra unused
+ * @param extra_size number of bytes in @a extra unused
+ */
+static void
+wire_update_event_cb (void *cls,
+                      const void *extra,
+                      size_t extra_size)
+{
+  (void) cls;
+  (void) extra;
+  (void) extra_size;
+  wire_generation++;
+}
+
+
+int
+TEH_wire_init ()
+{
+  struct GNUNET_DB_EventHeaderP es = {
+    .size = htons (sizeof (es)),
+    .type = htons (TALER_DBEVENT_EXCHANGE_KEYS_UPDATED),
+  };
+
+  wire_eh = TEH_plugin->event_listen (TEH_plugin->cls,
+                                      GNUNET_TIME_UNIT_FOREVER_REL,
+                                      &es,
+                                      &wire_update_event_cb,
+                                      NULL);
+  if (NULL == wire_eh)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
 void
 TEH_WIRE_done ()
 {
@@ -84,6 +132,12 @@ TEH_WIRE_done ()
   {
     destroy_wire_state (wire_state);
     wire_state = NULL;
+  }
+  if (NULL != wire_eh)
+  {
+    TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                     wire_eh);
+    wire_eh = NULL;
   }
 }
 
@@ -302,6 +356,15 @@ build_wire_state (void)
 void
 TEH_wire_update_state (void)
 {
+  struct GNUNET_DB_EventHeaderP es = {
+    .size = htons (sizeof (es)),
+    .type = htons (TALER_DBEVENT_EXCHANGE_WIRE_UPDATED),
+  };
+
+  TEH_plugin->event_notify (TEH_plugin->cls,
+                            &es,
+                            NULL,
+                            0);
   wire_generation++;
 }
 

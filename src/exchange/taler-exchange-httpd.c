@@ -1382,8 +1382,9 @@ do_shutdown (void *cls)
   TEH_reserves_get_cleanup ();
   if (NULL != mhd)
     MHD_stop_daemon (mhd);
-  TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
   TEH_WIRE_done ();
+  TEH_keys_finished ();
+  TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
 }
 
 
@@ -1420,6 +1421,13 @@ run (void *cls,
   }
   if (GNUNET_OK !=
       TEH_keys_init ())
+  {
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TEH_wire_init ())
   {
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();

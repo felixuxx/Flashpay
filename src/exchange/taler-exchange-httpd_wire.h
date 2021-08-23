@@ -34,6 +34,15 @@ TEH_WIRE_done (void);
 
 
 /**
+ * Initialize wire subsystem.
+ *
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TEH_wire_init (void);
+
+
+/**
  * Something changed in the database. Rebuild the wire replies.  This function
  * should be called if the exchange learns about a new signature from our
  * master key.

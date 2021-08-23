@@ -193,6 +193,13 @@ TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub);
 
 
 /**
+ * Fully clean up keys subsystem.
+ */
+void
+TEH_keys_finished (void);
+
+
+/**
  * Resumse all suspended /keys requests, we may now have key material
  * (or are shutting down).
  *
@@ -377,11 +384,11 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
 
 
 /**
- * Initialize keys submodule.
+ * Initialize keys subsystem.
  *
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TEH_keys_init (void);
 
 
