@@ -226,6 +226,8 @@ TALER_iban_validate (const char *iban)
   unsigned int i;
   unsigned int j;
 
+  if (NULL == iban)
+    return GNUNET_strdup ("(null) is not a valid IBAN");
   len = strlen (iban);
   if (len < 4)
     return GNUNET_strdup ("IBAN number too short to be valid");
