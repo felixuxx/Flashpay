@@ -1711,7 +1711,8 @@ build_key_state (struct HelperState *hs,
                                           ksh);
   if (qs < 0)
   {
-    GNUNET_break (0);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
     destroy_key_state (ksh,
                        true);
     return NULL;

@@ -1419,6 +1419,13 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  if (GNUNET_SYSERR ==
+      TEH_plugin->preflight (TEH_plugin->cls))
+  {
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
   if (GNUNET_OK !=
       TEH_keys_init ())
   {
