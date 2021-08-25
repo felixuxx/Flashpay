@@ -27,6 +27,12 @@
 #include "taler_crypto_lib.h"
 
 /**
+ * Version of the Taler API, in hex.
+ * Thus 0.8.4-1 = 0x00080401.
+ */
+#define TALER_API_VERSION 0x00080401
+
+/**
  * Stringify operator.
  *
  * @param a some expression to stringify. Must NOT be a macro.
