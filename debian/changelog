@@ -1,3 +1,9 @@
+taler-exchange (0.8.4-1) unstable; urgency=low
+
+  * Updated GANA.
+
+ -- Florian Dold <dold@taler.net>  Thu, 26 Aug 2021 16:37:33 +0200
+
 taler-exchange (0.8.4) unstable; urgency=low
 
   * Official release of GNU Taler exchange 0.8.4.
