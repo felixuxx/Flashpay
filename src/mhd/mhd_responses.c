@@ -220,6 +220,21 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
 
 
 MHD_RESULT
+TALER_MHD_reply_json_steal (struct MHD_Connection *connection,
+                            json_t *json,
+                            unsigned int response_code)
+{
+  MHD_RESULT ret;
+
+  ret = TALER_MHD_reply_json (connection,
+                              json,
+                              response_code);
+  json_decref (json);
+  return ret;
+}
+
+
+MHD_RESULT
 TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
 {
   struct MHD_Response *response;

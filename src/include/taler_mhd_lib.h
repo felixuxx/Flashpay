@@ -125,6 +125,21 @@ TALER_MHD_reply_json (struct MHD_Connection *connection,
 
 
 /**
+ * Send JSON object as response, and free the @a json
+ * object.
+ *
+ * @param connection the MHD connection
+ * @param json the json object (freed!)
+ * @param response_code the http response code
+ * @return MHD result code
+ */
+MHD_RESULT
+TALER_MHD_reply_json_steal (struct MHD_Connection *connection,
+                            json_t *json,
+                            unsigned int response_code);
+
+
+/**
  * Function to call to handle the request by building a JSON
  * reply from a format string and varargs.
  *
@@ -151,8 +166,8 @@ TALER_MHD_reply_json_pack (struct MHD_Connection *connection,
  * @return MHD result code
  */
 #define TALER_MHD_REPLY_JSON_PACK(connection,response_code,...) \
-  TALER_MHD_reply_json (connection, GNUNET_JSON_PACK (__VA_ARGS__), \
-                        response_code)
+  TALER_MHD_reply_json_steal (connection, GNUNET_JSON_PACK (__VA_ARGS__), \
+                              response_code)
 
 
 /**
