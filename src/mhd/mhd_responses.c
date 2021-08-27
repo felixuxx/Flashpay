@@ -148,6 +148,17 @@ TALER_MHD_make_json (const json_t *json)
 }
 
 
+struct MHD_Response *
+TALER_MHD_make_json_steal (json_t *json)
+{
+  struct MHD_Response *res;
+
+  res = TALER_MHD_make_json (json);
+  json_decref (json);
+  return res;
+}
+
+
 MHD_RESULT
 TALER_MHD_reply_json (struct MHD_Connection *connection,
                       const json_t *json,

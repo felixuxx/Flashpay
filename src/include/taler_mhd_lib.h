@@ -212,6 +212,16 @@ TALER_MHD_make_json (const json_t *json);
 
 
 /**
+ * Make JSON response object and free @a json.
+ *
+ * @param json the json object, freed.
+ * @return MHD response object
+ */
+struct MHD_Response *
+TALER_MHD_make_json_steal (json_t *json);
+
+
+/**
  * Make JSON response object.
  *
  * @param fmt format string for pack
@@ -230,7 +240,7 @@ TALER_MHD_make_json_pack (const char *fmt,
  * @return MHD response object
  */
 #define TALER_MHD_MAKE_JSON_PACK(...) \
-  TALER_MHD_make_json (GNUNET_JSON_PACK (__VA_ARGS__))
+  TALER_MHD_make_json_steal (GNUNET_JSON_PACK (__VA_ARGS__))
 
 
 /**
