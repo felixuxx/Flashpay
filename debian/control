@@ -9,7 +9,7 @@ Build-Depends:
  bash,
  debhelper-compat (= 12),
  gettext,
- libgnunet-dev,
+ libgnunet-dev (>=0.15.3),
  libcurl4-gnutls-dev (>=7.35.0) | libcurl4-openssl-dev (>= 7.35.0),
  libgcrypt20-dev (>=1.6),
  libgnutls28-dev (>=3.2.12),
@@ -109,7 +109,7 @@ Section: libdevel
 Architecture: any
 Depends:
  libtalerexchange (= ${binary:Version}),
- libgnunet-dev (>=0.14.0),
+ libgnunet-dev (>=0.15.3),
  libgcrypt20-dev (>=1.6),
  libmicrohttpd-dev (>=0.9.33),
  ${misc:Depends},
