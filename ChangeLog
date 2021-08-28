@@ -1,7 +1,12 @@
+Sat 28 Aug 2021 05:22:57 PM CEST
+    Fixed various memory leaks.
+    Fixed database initialization sequence to avoid warning on first request.
+    Releasing GNU Taler Exchange 0.8.4. -CG
+
 Fri 13 Aug 2021 10:40:57 PM CEST
     Add support for long-polling of bank account histories.
     Add support for event notifications to exchange DB API.
-    Releasing GNU Taler 0.8.3. -CG
+    Releasing GNU Taler Exchange 0.8.3. -CG
 
 Sun 08 Aug 2021 08:36:21 PM CEST
     Improved code to use new GNUNET_JSON_PACK API.
@@ -15,7 +20,7 @@ Sun 08 Aug 2021 08:36:21 PM CEST
     suspended /keys requests could eat up all the sockets.
     Force flushing /keys response if set of auditors changes.
     Fixed /keys cherry-picking logic.
-    Releasing GNU Taler 0.8.2. -CG
+    Releasing GNU Taler Exchange 0.8.2. -CG
 
 Mon 05 Apr 2021 07:58:09 PM CEST
     Add Gettext support (chiefly for error code hints). -CG
@@ -31,20 +36,20 @@ Tue 10 Nov 2020 01:03:22 PM CET
     Updates to error codes and HTTP status codes for improved
     consistency. Fixed spelling issues. Ensure main() returns
     0 when called with '-h' or '--help'.
-    Releasing GNU Taler 0.8.1. -CG
+    Releasing GNU Taler Exchange 0.8.1. -CG
 
 Sat 03 Oct 2020 03:59:45 PM CEST
     Various minor fixes, code cleanup, updates to more recent
     GNUnet APIs, new error codes, and timetravel test support.
-    Releasing GNU Taler 0.8.0. -CG
+    Releasing GNU Taler Exchange 0.8.0. -CG
 
 Sun 29 Mar 2020 08:53:46 PM CEST
     Changed protocol to be more RESTful. Expanded auditor tests.
     Completed transition to new wire gateway API for bank interaction.
-    Releasing GNU Taler 0.7.0. -CG
+    Releasing GNU Taler Exchange 0.7.0. -CG
 
 Tue 24 Dec 2019 11:09:14 PM CET
-    Releasing GNU Taler 0.6.0. -CG
+    Releasing GNU Taler Exchange 0.6.0. -CG
 
 Sat 17 Aug 2019 10:03:38 PM CEST
     Remove "currency" field from exchange database, as we only
