@@ -1404,6 +1404,11 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   struct TALER_ExchangeSignatureP exchange_sig;
   json_t *keys;
 
+  GNUNET_assert (NULL != signkeys);
+  GNUNET_assert (NULL != recoup);
+  GNUNET_assert (NULL != denoms);
+  GNUNET_assert (NULL != ksh->auditors);
+  GNUNET_assert (NULL != TEH_currency);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Creating /keys at cherry pick date %s\n",
               GNUNET_STRINGS_absolute_time_to_string (last_cpd));
@@ -1525,7 +1530,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
  * @param[in,out] ksh state handle to update
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericResponseCode
 finish_keys_response (struct TEH_KeyStateHandle *ksh)
 {
   json_t *recoup;
