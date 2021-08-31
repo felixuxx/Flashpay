@@ -1530,7 +1530,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
  * @param[in,out] ksh state handle to update
  * @return #GNUNET_OK on success
  */
-static enum GNUNET_GenericResponseCode
+static enum GNUNET_GenericReturnValue
 finish_keys_response (struct TEH_KeyStateHandle *ksh)
 {
   json_t *recoup;
