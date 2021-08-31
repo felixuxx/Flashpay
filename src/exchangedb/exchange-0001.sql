@@ -151,7 +151,6 @@ COMMENT ON COLUMN reserves_out.h_blind_ev
   IS 'Hash of the blinded coin, used as primary key here so that broken clients that use a non-random coin or blinding factor fail to withdraw (otherwise they would fail on deposit when the coin is not unique there).';
 COMMENT ON COLUMN reserves_out.denom_pub_hash
   IS 'We do not CASCADE ON DELETE here, we may keep the denomination data alive';
--- FIXME: replace denom_pub_hash with denominations_serial *EVERYWHERE*
 
 CREATE INDEX IF NOT EXISTS reserves_out_reserve_pub_index
   ON reserves_out
@@ -336,7 +335,8 @@ CREATE TABLE IF NOT EXISTS wire_out
   );
 COMMENT ON TABLE wire_out
   IS 'wire transfers the exchange has executed';
-
+COMMENT ON COLUMN wire_out.exchange_account_section
+  IS 'identifies the configuration section with the debit account of this payment';
 
 CREATE TABLE IF NOT EXISTS aggregation_tracking
   (aggregation_serial_id BIGSERIAL UNIQUE
