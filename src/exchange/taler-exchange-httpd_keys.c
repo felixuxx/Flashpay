@@ -2125,15 +2125,9 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
     }
     if (NULL == krd)
     {
-      /* Maybe client picked time stamp too far in the future?  In that case,
-         "INTERNAL_SERVER_ERROR" might be misleading, could be more like a
-         NOT_FOUND situation. But, OTOH, for 'sane' clients it is more likely
-         to be our fault, so let's speculatively assume we are to blame ;-) *///
-      GNUNET_break (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                                         "no key data for given timestamp");
+      /* Likely keys not ready *yet*.
+         Wait until they are. */
+      return suspend_request (rc->connection);
     }
     return MHD_queue_response (rc->connection,
                                MHD_HTTP_OK,
