@@ -1391,7 +1391,7 @@ setup_general_response_headers (const struct TEH_KeyStateHandle *ksh,
  * @param denoms list of denominations to return
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 create_krd (struct TEH_KeyStateHandle *ksh,
             const struct GNUNET_HashCode *denom_keys_hash,
             struct GNUNET_TIME_Absolute last_cpd,
@@ -1404,6 +1404,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   struct TALER_ExchangeSignatureP exchange_sig;
   json_t *keys;
 
+  GNUNET_assert (0 != last_cpd.abs_value_us);
   GNUNET_assert (NULL != signkeys);
   GNUNET_assert (NULL != recoup);
   GNUNET_assert (NULL != denoms);
@@ -1541,8 +1542,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   struct GNUNET_HashContext *hash_context;
 
   sctx.signkeys = json_array ();
-  sctx.next_sk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
   GNUNET_assert (NULL != sctx.signkeys);
+  sctx.next_sk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
   GNUNET_CONTAINER_multipeermap_iterate (ksh->signkey_map,
                                          &add_sign_key_cb,
                                          &sctx);
@@ -1637,6 +1638,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     }
   }
   GNUNET_CONTAINER_heap_destroy (heap);
+  if (0 != last_cpd.abs_value_us)
   {
     struct GNUNET_HashCode hc;
 
@@ -1658,11 +1660,17 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       json_decref (recoup);
       return GNUNET_SYSERR;
     }
+    ksh->management_only = false;
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No denomination keys available. Refusing to generate /keys response.\n");
+    GNUNET_CRYPTO_hash_context_abort (hash_context);
   }
   json_decref (sctx.signkeys);
   json_decref (recoup);
   json_decref (denoms);
-  ksh->management_only = false;
   return GNUNET_OK;
 }
 
