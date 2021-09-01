@@ -241,6 +241,18 @@ TALER_amount_is_valid (const struct TALER_Amount *amount)
 }
 
 
+bool
+TALER_amount_is_zero (const struct TALER_Amount *amount)
+{
+  if (GNUNET_OK !=
+      TALER_amount_is_valid (amount))
+    return false;
+  return
+    (0 == amount->value) &&
+    (0 == amount->fraction);
+}
+
+
 /**
  * Test if @a a is valid, NBO variant.
  *

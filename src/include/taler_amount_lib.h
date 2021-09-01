@@ -161,6 +161,17 @@ TALER_amount_set_zero (const char *cur,
 
 
 /**
+ * Test if the given @a amount is zero.
+ *
+ * @param amount amount to compare to zero
+ * @return true if the amount is zero,
+ *         false if it is non-zero or invalid
+ */
+bool
+TALER_amount_is_zero (const struct TALER_Amount *amount);
+
+
+/**
  * Test if the given amount is valid.
  *
  * @param amount amount to check
