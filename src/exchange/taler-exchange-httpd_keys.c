@@ -743,7 +743,7 @@ helper_esign_cb (
  * @param[out] hs helper state to initialize
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 setup_key_helpers (struct HelperState *hs)
 {
   hs->denom_keys
