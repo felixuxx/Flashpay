@@ -649,6 +649,8 @@ helper_denom_cb (
               section_name,
               GNUNET_STRINGS_relative_time_to_string (validity_duration,
                                                       GNUNET_NO));
+  key_generation++;
+  TEH_resume_keys_requests (false);
   hd = GNUNET_CONTAINER_multihashmap_get (hs->denom_keys,
                                           h_denom_pub);
   if (NULL != hd)
@@ -710,6 +712,8 @@ helper_esign_cb (
               TALER_B2S (exchange_pub),
               GNUNET_STRINGS_relative_time_to_string (validity_duration,
                                                       GNUNET_NO));
+  key_generation++;
+  TEH_resume_keys_requests (false);
   pid.public_key = exchange_pub->eddsa_pub;
   hsk = GNUNET_CONTAINER_multipeermap_get (hs->esign_keys,
                                            &pid);
