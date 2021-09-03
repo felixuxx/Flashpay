@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS aggregation_wip
   ,wire_target TEXT NOT NULL
   ,exchange_account_section TEXT NOT NULL
   ,execution_date INT8 NOT NULL
+  ,work_level INT4 NOT NULL
   ,PRIMARY KEY (wire_target,execution_date));
 
 COMMENT ON TABLE aggregation_wip
@@ -39,21 +40,23 @@ COMMENT ON COLUMN aggregation_wip.execution_date
   IS 'time when the payment was triggered (is due)';
 COMMENT ON COLUMN aggregation_wip.exchange_account_section
   IS 'identifies the configuration section with the debit account of this payment';
+COMMENT ON COLUMN aggregation_wip.work_level
+  IS 'at which level are we currently doing the aggregation work for this job; all nodes in the B-tree on lower levels must be fully aggregated when this is set';
 
 
 CREATE TABLE IF NOT EXISTS aggregation_tree
-  (aggregation_wip_uuid INT8 REFERENCES aggregation_wip (aggregation_wip_serial) ON DELETE CASCADE
+ (aggregation_node_serial BIGSERIAL UNIQUE,
+  aggregation_wip_serial INT8 REFERENCES aggregation_wip (aggregation_wip_serial) ON DELETE CASCADE
   ,amount_val INT8 NOT NULL DEFAULT 0
   ,amount_frac INT4 NOT NULL DEFAULT 0
   ,shard_offset INT8 NOT NULL
   ,shard_end INT8 NOT NULL
   ,shard_level INT4 NOT NULL
   ,aggregated BOOLEAN NOT NULL DEFAULT false
-  ,summed BOOLEAN NOT NULL DEFAULT false
   ,PRIMARY KEY (aggregation_wip_uuid,shard_offset,shard_level)
   );
 COMMENT ON TABLE aggregation_tree
-  IS 'Entry in the B-tree for tracking aggregations that are work in progress. Entries are created when aggregation work is to be done on the level below. The exception is level 0, here each worker that performs a successful SELECT on its locked entry must create a speculative subsequent entry past the SELECTed range. Once the aggregation at for one entry is done, aggregated is set to true. Once an entry is itself aggregated into the level above, summed is set to true. Once the entire tree is summed, the aggregation_wip entry is deleted and the entire tree purged via the cascade.';
+  IS 'Entry in the B-tree for tracking aggregations that are work in progress. Entries are created when aggregation work is to be done on the level below. The exception is level 0, here each worker that performs a successful SELECT on its locked entry must create a speculative subsequent entry past the SELECTed range. Once the aggregation at for one entry is done, aggregated is set to true. Once the entire tree is aggregated, the aggregation_wip entry is deleted and the entire tree purged via the cascade.';
 COMMENT ON COLUMN aggregation_tree.amount_val
   IS 'identifies the amount aggregated so far';
 COMMENT ON COLUMN aggregation_tree.shard_offset
@@ -64,8 +67,6 @@ COMMENT ON COLUMN aggregation_tree.shard_level
   IS 'depth of the aggregation tree for this entry; work on a given level can only start if the level below has finished';
 COMMENT ON COLUMN aggregation_tree.aggregated
   IS 'true once this transactions corresponding to this range have been added up into the amount_val (when false, amount_val is 0 and this column represents work that remains to be done)';
-COMMENT ON COLUMN aggregation_tree.summed
-  IS 'true once this entry has been aggregated into a higher-level entry';
 
 
 -- Complete transaction
