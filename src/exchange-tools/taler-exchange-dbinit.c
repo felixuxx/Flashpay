@@ -89,20 +89,33 @@ run (void *cls,
     global_ret = EXIT_NOPERMISSION;
     return;
   }
-  if (clear_shards)
+  if (gc_db || clear_shards)
   {
-    if (0 < plugin->delete_revolving_shards (plugin->cls))
+    if (GNUNET_OK !=
+        plugin->preflight (plugin->cls))
     {
       fprintf (stderr,
-               "Clearing revolving shards failed!\n");
+               "Failed to prepare database.\n");
+      TALER_EXCHANGEDB_plugin_unload (plugin);
+      global_ret = EXIT_NOPERMISSION;
+      return;
     }
-  }
-  if (gc_db)
-  {
-    if (GNUNET_SYSERR == plugin->gc (plugin->cls))
+    if (clear_shards)
     {
-      fprintf (stderr,
-               "Garbage collection failed!\n");
+      if (0 >
+          plugin->delete_revolving_shards (plugin->cls))
+      {
+        fprintf (stderr,
+                 "Clearing revolving shards failed!\n");
+      }
+    }
+    if (gc_db)
+    {
+      if (GNUNET_SYSERR == plugin->gc (plugin->cls))
+      {
+        fprintf (stderr,
+                 "Garbage collection failed!\n");
+      }
     }
   }
   TALER_EXCHANGEDB_plugin_unload (plugin);

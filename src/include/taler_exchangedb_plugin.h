@@ -974,7 +974,7 @@ struct TALER_EXCHANGEDB_Deposit
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Hash over the proposa data between merchant and customer
+   * Hash over the proposal data between merchant and customer
    * (remains unknown to the Exchange).
    */
   struct GNUNET_HashCode h_contract_terms;
@@ -3760,7 +3760,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param shard_size desired shard size
    * @param shard_limit exclusive end of the shard range
    * @param[out] start_row inclusive start row of the shard (returned)
-   * @param[out] end_row exclusive end row of the shard (returned)
+   * @param[out] end_row inclusive end row of the shard (returned)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -3779,7 +3779,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param job_name name of the operation to grab a word shard for
    * @param start_row inclusive start row of the shard
-   * @param end_row exclusive end row of the shard
+   * @param end_row inclusive end row of the shard
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus

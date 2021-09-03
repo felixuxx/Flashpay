@@ -1,0 +1,593 @@
+/*
+  This file is part of TALER
+  (C) 2021 Taler Systems SA
+
+  TALER is free software; you can redistribute it and/or modify it
+  under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation; either version 3, or
+  (at your option) any later version.
+
+  TALER is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with TALER; see the file COPYING.  If not,
+  see <http://www.gnu.org/licenses/>
+*/
+/**
+ * @file benchmark/taler-aggregator-benchmark.c
+ * @brief Setup exchange database suitable for aggregator benchmarking
+ * @author Christian Grothoff
+ */
+#include "platform.h"
+#include <jansson.h>
+#include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_json_lib.h>
+#include "taler_util.h"
+#include "taler_signatures.h"
+#include "taler_exchangedb_lib.h"
+#include "taler_error_codes.h"
+
+
+/**
+ * Exit code.
+ */
+static int global_ret;
+
+/**
+ * How many deposits we want to create per merchant.
+ */
+static unsigned int howmany_deposits = 1;
+
+/**
+ * How many merchants do we want to setup.
+ */
+static unsigned int howmany_merchants = 1;
+
+/**
+ * Probability of a refund, as in $NUMBER:100.
+ * Use 0 for no refunds.
+ */
+static unsigned int refund_rate = 0;
+
+/**
+ * Currency used.
+ */
+static char *currency;
+
+/**
+ * Merchant JSON wire details.
+ */
+static json_t *json_wire;
+
+/**
+ * Configuration.
+ */
+static const struct GNUNET_CONFIGURATION_Handle *cfg;
+
+/**
+ * Database plugin.
+ */
+static struct TALER_EXCHANGEDB_Plugin *plugin;
+
+/**
+ * Main task doing the work().
+ */
+static struct GNUNET_SCHEDULER_Task *task;
+
+/**
+ * Hash of the denomination.
+ */
+static struct GNUNET_HashCode h_denom_pub;
+
+/**
+ * "signature" to use for the coin(s).
+ */
+static struct TALER_DenominationSignature denom_sig;
+
+/**
+ * Time range when deposits start.
+ */
+static struct GNUNET_TIME_Absolute start;
+
+/**
+ * Time range when deposits end.
+ */
+static struct GNUNET_TIME_Absolute end;
+
+
+/**
+ * Throw a weighted coin with @a probability.
+ *
+ * @return #GNUNET_OK with @a probability,
+ *         #GNUNET_NO with 1 - @a probability
+ */
+static unsigned int
+eval_probability (float probability)
+{
+  uint64_t random;
+  float random_01;
+
+  random = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_WEAK,
+                                     UINT64_MAX);
+  random_01 = (double) random / (double) UINT64_MAX;
+  return (random_01 <= probability) ? GNUNET_OK : GNUNET_NO;
+}
+
+
+/**
+ * Randomize data at pointer @a x
+ *
+ * @param x pointer to data to randomize
+ */
+#define RANDOMIZE(x) \
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE, x, sizeof (*x))
+
+
+/**
+ * Initialize @a out with an amount given by @a val and
+ * @a frac using the main "currency".
+ *
+ * @param val value to set
+ * @param frac fraction to set
+ * @param[out] out where to write the amount
+ */
+static void
+make_amount (unsigned int val,
+             unsigned int frac,
+             struct TALER_Amount *out)
+{
+  memset (out,
+          0,
+          sizeof (struct TALER_Amount));
+  out->value = val;
+  out->fraction = frac;
+  strcpy (out->currency,
+          currency);
+}
+
+
+/**
+ * Initialize @a out with an amount given by @a val and
+ * @a frac using the main "currency".
+ *
+ * @param val value to set
+ * @param frac fraction to set
+ * @param[out] out where to write the amount
+ */
+static void
+make_amountN (unsigned int val,
+              unsigned int frac,
+              struct TALER_AmountNBO *out)
+{
+  struct TALER_Amount in;
+
+  make_amount (val,
+               frac,
+               &in);
+  TALER_amount_hton (out,
+                     &in);
+}
+
+
+/**
+ * Create random-ish timestamp.
+ *
+ * @return time stamp between start and end
+ */
+static struct GNUNET_TIME_Absolute
+random_time (void)
+{
+  uint64_t delta;
+  struct GNUNET_TIME_Absolute ret;
+
+  delta = end.abs_value_us - start.abs_value_us;
+  delta = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_NONCE,
+                                    delta);
+  ret.abs_value_us = start.abs_value_us + delta;
+  (void) GNUNET_TIME_round_abs (&ret);
+  return ret;
+}
+
+
+/**
+ * Function run on shutdown.
+ *
+ * @param cls unused
+ */
+static void
+do_shutdown (void *cls)
+{
+  (void) cls;
+  if (NULL != plugin)
+  {
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    plugin = NULL;
+  }
+  if (NULL != task)
+  {
+    GNUNET_SCHEDULER_cancel (task);
+    task = NULL;
+  }
+  if (NULL !=denom_sig.rsa_signature)
+  {
+    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+    denom_sig.rsa_signature = NULL;
+  }
+  if (NULL != json_wire)
+  {
+    json_decref (json_wire);
+    json_wire = NULL;
+  }
+}
+
+
+struct Merchant
+{
+
+  /**
+   * Public key of the merchant.  Enables later identification
+   * of the merchant in case of a need to rollback transactions.
+   */
+  struct TALER_MerchantPublicKeyP merchant_pub;
+
+  /**
+   * Hash of the (canonical) representation of @e wire, used
+   * to check the signature on the request.  Generated by
+   * the exchange from the detailed wire data provided by the
+   * merchant.
+   */
+  struct GNUNET_HashCode h_wire;
+
+};
+
+struct Deposit
+{
+
+  /**
+   * Information about the coin that is being deposited.
+   */
+  struct TALER_CoinPublicInfo coin;
+
+  /**
+   * Hash over the proposal data between merchant and customer
+   * (remains unknown to the Exchange).
+   */
+  struct GNUNET_HashCode h_contract_terms;
+
+};
+
+
+/**
+ * Add a refund from @a m for @a d.
+ *
+ * @param m merchant granting the refund
+ * @param d deposit being refunded
+ * @return true on success
+ */
+static bool
+add_refund (const struct Merchant *m,
+            const struct Deposit *d)
+{
+  struct TALER_EXCHANGEDB_Refund r;
+
+  r.coin = d->coin;
+  r.details.merchant_pub = m->merchant_pub;
+  RANDOMIZE (&r.details.merchant_sig);
+  r.details.h_contract_terms = d->h_contract_terms;
+  r.details.rtransaction_id = 42;
+  make_amount (0, 9999, &r.details.refund_amount);
+  make_amount (0, 5, &r.details.refund_fee);
+  if (0 <=
+      plugin->insert_refund (plugin->cls,
+                             &r))
+  {
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return false;
+  }
+  return true;
+}
+
+
+/**
+ * Add a (random-ish) deposit for merchant @a m.
+ *
+ * @param m merchant to receive the deposit
+ * @return true on success
+ */
+static bool
+add_deposit (const struct Merchant *m)
+{
+  struct Deposit d;
+  struct TALER_EXCHANGEDB_Deposit deposit;
+
+  RANDOMIZE (&d.coin.coin_pub);
+  d.coin.denom_pub_hash = h_denom_pub;
+  d.coin.denom_sig = denom_sig;
+  RANDOMIZE (&d.h_contract_terms);
+
+  if (0 >=
+      plugin->ensure_coin_known (plugin->cls,
+                                 &d.coin))
+  {
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return false;
+  }
+  deposit.coin = d.coin;
+  RANDOMIZE (&deposit.csig);
+  deposit.merchant_pub = m->merchant_pub;
+  deposit.h_contract_terms = d.h_contract_terms;
+  deposit.h_wire = m->h_wire;
+  deposit.receiver_wire_account
+    = json_wire;
+  deposit.timestamp = random_time ();
+  deposit.refund_deadline = random_time ();
+  deposit.wire_deadline = random_time ();
+  make_amount (0, 99999, &deposit.amount_with_fee);
+  make_amount (0, 5, &deposit.deposit_fee);
+  if (0 >=
+      plugin->insert_deposit (plugin->cls,
+                              random_time (),
+                              &deposit))
+  {
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return false;
+  }
+  if (GNUNET_YES ==
+      eval_probability (((float) refund_rate) / 100.0))
+    return add_refund (m,
+                       &d);
+  return true;
+}
+
+
+/**
+ * Function to do the work.
+ *
+ * @param cls unused
+ */
+static void
+work (void *cls)
+{
+  struct Merchant m;
+
+  (void) cls;
+  task = NULL;
+  RANDOMIZE (&m);
+  if (GNUNET_OK !=
+      plugin->start (plugin->cls,
+                     "aggregator-benchmark-fill"))
+  {
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  for (unsigned int i = 0; i<howmany_deposits; i++)
+  {
+    if (! add_deposit (&m))
+    {
+      global_ret = EXIT_FAILURE;
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+  }
+  if (0 <=
+      plugin->commit (plugin->cls))
+  {
+    if (0 == --howmany_merchants)
+    {
+      GNUNET_SCHEDULER_shutdown ();
+      return;
+    }
+  }
+  else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to commit, will try again\n");
+  }
+  task = GNUNET_SCHEDULER_add_now (&work,
+                                   NULL);
+}
+
+
+/**
+ * Actual execution.
+ *
+ * @param cls unused
+ * @param args remaining command-line arguments
+ * @param cfgfile name of the configuration file used (for saving, can be NULL!)
+ * @param cfg configuration
+ */
+static void
+run (void *cls,
+     char *const *args,
+     const char *cfgfile,
+     const struct GNUNET_CONFIGURATION_Handle *c)
+{
+  struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
+
+  (void) cls;
+  /* make sure everything 'ends' before the current time,
+     so that the aggregator will process everything without
+     need for time-travel */
+  end = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&end);
+  start = GNUNET_TIME_absolute_subtract (end,
+                                         GNUNET_TIME_UNIT_MONTHS);
+  (void) GNUNET_TIME_round_abs (&start);
+  cfg = c;
+  if (GNUNET_OK !=
+      TALER_config_get_currency (cfg,
+                                 &currency))
+  {
+    global_ret = EXIT_NOTCONFIGURED;
+    return;
+  }
+  plugin = TALER_EXCHANGEDB_plugin_load (cfg);
+  if (NULL == plugin)
+  {
+    global_ret = EXIT_NOTCONFIGURED;
+    return;
+  }
+  if (GNUNET_SYSERR ==
+      plugin->preflight (plugin->cls))
+  {
+    global_ret = EXIT_FAILURE;
+    TALER_EXCHANGEDB_plugin_unload (plugin);
+    return;
+  }
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
+  RANDOMIZE (&issue.signature);
+  issue.properties.purpose.purpose = htonl (
+    TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
+  issue.properties.purpose.size = htonl (sizeof (issue.properties));
+  RANDOMIZE (&issue.properties.master);
+  issue.properties.start
+    = GNUNET_TIME_absolute_hton (start);
+  issue.properties.expire_withdraw
+    = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_absolute_add (start,
+                                  GNUNET_TIME_UNIT_DAYS));
+  issue.properties.expire_deposit
+    = GNUNET_TIME_absolute_hton (end);
+  issue.properties.expire_legal
+    = GNUNET_TIME_absolute_hton (
+        GNUNET_TIME_absolute_add (end,
+                                  GNUNET_TIME_UNIT_YEARS));
+  {
+    struct GNUNET_CRYPTO_RsaPrivateKey *pk;
+    struct GNUNET_CRYPTO_RsaPublicKey *pub;
+    struct GNUNET_HashCode hc;
+    struct TALER_DenominationPublicKey denom_pub;
+
+    RANDOMIZE (&hc);
+    pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
+    pub = GNUNET_CRYPTO_rsa_private_key_get_public (pk);
+    denom_pub.rsa_public_key = pub;
+    GNUNET_CRYPTO_rsa_public_key_hash (pub,
+                                       &h_denom_pub);
+    make_amountN (1, 0, &issue.properties.value);
+    make_amountN (0, 5, &issue.properties.fee_withdraw);
+    make_amountN (0, 5, &issue.properties.fee_deposit);
+    make_amountN (0, 5, &issue.properties.fee_refresh);
+    make_amountN (0, 5, &issue.properties.fee_refund);
+    issue.properties.denom_hash = h_denom_pub;
+    if (0 >=
+        plugin->insert_denomination_info (plugin->cls,
+                                          &denom_pub,
+                                          &issue))
+    {
+      GNUNET_break (0);
+      GNUNET_SCHEDULER_shutdown ();
+      global_ret = EXIT_FAILURE;
+      return;
+    }
+
+    denom_sig.rsa_signature
+      = GNUNET_CRYPTO_rsa_sign_fdh (pk,
+                                    &hc);
+    GNUNET_CRYPTO_rsa_public_key_free (pub);
+    GNUNET_CRYPTO_rsa_private_key_free (pk);
+  }
+
+  {
+    struct TALER_Amount wire_fee;
+    struct TALER_MasterSignatureP master_sig;
+    unsigned int year;
+    struct GNUNET_TIME_Absolute ws;
+    struct GNUNET_TIME_Absolute we;
+
+    year = GNUNET_TIME_get_current_year ();
+    for (unsigned int y = year - 1; y<year + 2; y++)
+    {
+      ws = GNUNET_TIME_year_to_time (y - 1);
+      we = GNUNET_TIME_year_to_time (y);
+      make_amount (0, 5, &wire_fee);
+      memset (&master_sig,
+              0,
+              sizeof (master_sig));
+      if (0 >
+          plugin->insert_wire_fee (plugin->cls,
+                                   "aggregator-benchmark",
+                                   ws,
+                                   we,
+                                   &wire_fee,
+                                   &wire_fee,
+                                   &master_sig))
+      {
+        GNUNET_break (0);
+        GNUNET_SCHEDULER_shutdown ();
+        global_ret = EXIT_FAILURE;
+        return;
+      }
+    }
+  }
+
+  json_wire = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("payto_uri",
+                             "payto://aggregator-benchmark/accountfoo"),
+    GNUNET_JSON_pack_string ("salt",
+                             "thesalty"));
+  task = GNUNET_SCHEDULER_add_now (&work,
+                                   NULL);
+}
+
+
+/**
+ * The main function of the taler-aggregator-benchmark tool.
+ *
+ * @param argc number of arguments from the command line
+ * @param argv command line arguments
+ * @return 0 ok, non-zero on failure
+ */
+int
+main (int argc,
+      char *const *argv)
+{
+  struct GNUNET_GETOPT_CommandLineOption options[] = {
+    GNUNET_GETOPT_option_uint ('d',
+                               "deposits",
+                               "DN",
+                               "How many deposits we should instantiate per merchant",
+                               &howmany_deposits),
+    GNUNET_GETOPT_option_uint ('m',
+                               "merchants",
+                               "DM",
+                               "How many merchants should we create",
+                               &howmany_merchants),
+    GNUNET_GETOPT_option_uint ('r',
+                               "refunds",
+                               "RATE",
+                               "Probability of refund per deposit (0-100)",
+                               &refund_rate),
+    GNUNET_GETOPT_OPTION_END
+  };
+  enum GNUNET_GenericReturnValue result;
+
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
+  if (0 >=
+      (result = GNUNET_PROGRAM_run (argc,
+                                    argv,
+                                    "taler-aggregator-benchmark",
+                                    "generate database to benchmark the aggregator",
+                                    options,
+                                    &run,
+                                    NULL)))
+  {
+    if (GNUNET_NO == result)
+      return EXIT_SUCCESS;
+    return EXIT_INVALIDARGUMENT;
+  }
+  return global_ret;
+}

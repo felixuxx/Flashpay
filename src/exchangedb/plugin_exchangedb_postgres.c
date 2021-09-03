@@ -10488,7 +10488,7 @@ postgres_complete_shard (void *cls,
  * @param shard_size desired shard size
  * @param shard_limit exclusive end of the shard range
  * @param[out] start_row inclusive start row of the shard (returned)
- * @param[out] end_row exclusive end row of the shard (returned)
+ * @param[out] end_row inclusive end row of the shard (returned)
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
@@ -10517,13 +10517,14 @@ postgres_begin_revolving_shard (void *cls,
     /* First, find last 'end_row' */
     {
       enum GNUNET_DB_QueryStatus qs;
+      uint32_t last_end;
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_string (job_name),
         GNUNET_PQ_query_param_end
       };
       struct GNUNET_PQ_ResultSpec rs[] = {
         GNUNET_PQ_result_spec_uint32 ("end_row",
-                                      start_row),
+                                      &last_end),
         GNUNET_PQ_result_spec_end
       };
 
@@ -10541,6 +10542,7 @@ postgres_begin_revolving_shard (void *cls,
         postgres_rollback (pg);
         continue;
       case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+        *start_row = 1U + last_end;
         break;
       case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
         *start_row = 0; /* base-case: no shards yet */
@@ -10562,7 +10564,7 @@ postgres_begin_revolving_shard (void *cls,
       };
 
       *end_row = GNUNET_MIN (shard_limit,
-                             *start_row + shard_size);
+                             *start_row + shard_size - 1);
       now = GNUNET_TIME_absolute_get ();
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Trying to claim shard %llu-%llu\n",

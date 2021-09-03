@@ -11,8 +11,20 @@ if USE_COVERAGE
 endif
 
 bin_PROGRAMS = \
+  taler-aggregator-benchmark \
   taler-bank-benchmark \
   taler-exchange-benchmark
+
+taler_aggregator_benchmark_SOURCES = \
+  taler-aggregator-benchmark.c
+taler_aggregator_benchmark_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetjson \
+  -ljansson \
+  -lgnunetutil \
+  $(XLIB)
 
 taler_bank_benchmark_SOURCES = \
   taler-bank-benchmark.c

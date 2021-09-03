@@ -124,7 +124,7 @@ struct Shard
   uint32_t shard_start;
 
   /**
-   * Exclusive end row of the shard.
+   * Inclusive end row of the shard.
    */
   uint32_t shard_end;
 
@@ -724,7 +724,7 @@ run_aggregation (void *cls)
   qs = db_plugin->get_ready_deposit (
     db_plugin->cls,
     s->shard_start,
-    s->shard_end - 1, /* -1: exclusive->inclusive */
+    s->shard_end,
     &deposit_cb,
     &au_active);
   switch (qs)
@@ -754,9 +754,12 @@ run_aggregation (void *cls)
       cleanup_au (&au_active);
       db_plugin->rollback (db_plugin->cls);
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Completed shard after %s\n",
+                  "Completed shard [%u,%u] after %s with %llu deposits\n",
+                  (unsigned int) s->shard_start,
+                  (unsigned int) s->shard_end,
                   GNUNET_STRINGS_relative_time_to_string (duration,
-                                                          GNUNET_YES));
+                                                          GNUNET_YES),
+                  (unsigned long long) counter);
       release_shard (s);
       if (GNUNET_YES == test_mode)
       {
@@ -1035,6 +1038,10 @@ run_shard (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Starting shard [%u:%u]!\n",
+              (unsigned int) s->shard_start,
+              (unsigned int) s->shard_end);
   task = GNUNET_SCHEDULER_add_now (&run_aggregation,
                                    s);
 }
