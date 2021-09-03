@@ -100,15 +100,10 @@ struct AggregationUnit
   unsigned int rows_offset;
 
   /**
-   * Set to #GNUNET_YES if we have to abort due to failure.
-   */
-  int failed;
-
-  /**
-   * Set to #GNUNET_YES if we encountered a refund during #refund_by_coin_cb.
+   * Set to true if we encountered a refund during #refund_by_coin_cb.
    * Used to wave the deposit fee.
    */
-  int have_refund;
+  bool have_refund;
 };
 
 
@@ -288,7 +283,7 @@ refund_by_coin_cb (void *cls,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Aggregator subtracts applicable refund of amount %s\n",
               TALER_amount2s (amount_with_fee));
-  aux->have_refund = GNUNET_YES;
+  aux->have_refund = true;
   if (0 >
       TALER_amount_subtract (&aux->total_amount,
                              &aux->total_amount,
@@ -335,7 +330,6 @@ deposit_cb (void *cls,
   struct AggregationUnit *au = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  (void) cls;
   /* NOTE: potential optimization: use custom SQL API to not
      fetch this one: */
   (void) wire_deadline; /* already checked by SQL query */
@@ -348,7 +342,7 @@ deposit_cb (void *cls,
               TALER_amount2s (amount_with_fee));
   au->row_id = row_id;
   au->total_amount = *amount_with_fee;
-  au->have_refund = GNUNET_NO;
+  au->have_refund = false;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           coin_pub,
                                           &au->merchant_pub,
@@ -360,7 +354,7 @@ deposit_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if (GNUNET_NO == au->have_refund)
+  if (! au->have_refund)
   {
     struct TALER_Amount ntotal;
 
@@ -524,7 +518,7 @@ aggregate_cb (void *cls,
   /* we begin with the total contribution of the current coin */
   au->total_amount = *amount_with_fee;
   /* compute contribution of this coin (after fees) */
-  au->have_refund = GNUNET_NO;
+  au->have_refund = false;
   qs = db_plugin->select_refunds_by_coin (db_plugin->cls,
                                           coin_pub,
                                           &au->merchant_pub,
@@ -536,7 +530,7 @@ aggregate_cb (void *cls,
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }
-  if (GNUNET_NO == au->have_refund)
+  if (! au->have_refund)
   {
     struct TALER_Amount tmp;
 
@@ -716,8 +710,7 @@ run_aggregation (void *cls)
                                              &aggregate_cb,
                                              &au_active,
                                              TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT);
-  if ( (GNUNET_DB_STATUS_HARD_ERROR == qs) ||
-       (GNUNET_YES == au_active.failed) )
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to execute deposit iteration!\n");
