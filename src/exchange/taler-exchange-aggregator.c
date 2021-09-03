@@ -302,8 +302,6 @@ refund_by_coin_cb (void *cls,
  *
  * @param cls a `struct AggregationUnit`
  * @param row_id identifies database entry
- * @param exchange_timestamp when did the deposit happen
- * @param wallet_timestamp when did the contract happen
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
@@ -311,30 +309,21 @@ refund_by_coin_cb (void *cls,
  * @param h_contract_terms hash of the proposal data known to merchant and customer
  * @param wire_deadline by which the merchant advised that he would like the
  *        wire transfer to be executed
- * @param wire wire details for the merchant
  * @return transaction status code,  #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 static enum GNUNET_DB_QueryStatus
 deposit_cb (void *cls,
             uint64_t row_id,
-            struct GNUNET_TIME_Absolute exchange_timestamp,
-            struct GNUNET_TIME_Absolute wallet_timestamp,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
             const struct GNUNET_HashCode *h_contract_terms,
-            struct GNUNET_TIME_Absolute wire_deadline,
             const json_t *wire)
 {
   struct AggregationUnit *au = cls;
   enum GNUNET_DB_QueryStatus qs;
 
-  /* NOTE: potential optimization: use custom SQL API to not
-     fetch this one: */
-  (void) wire_deadline; /* already checked by SQL query */
-  (void) exchange_timestamp;
-  (void) wallet_timestamp;
   au->merchant_pub = *merchant_pub;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Aggregator processing payment %s with amount %s\n",

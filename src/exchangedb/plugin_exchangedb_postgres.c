@@ -951,13 +951,10 @@ prepare_statements (struct PostgresClosure *pg)
                             ",amount_with_fee_frac"
                             ",denom.fee_deposit_val"
                             ",denom.fee_deposit_frac"
-                            ",wire_deadline"
                             ",h_contract_terms"
                             ",wire"
                             ",merchant_pub"
                             ",kc.coin_pub"
-                            ",exchange_timestamp"
-                            ",wallet_timestamp"
                             " FROM deposits"
                             "    JOIN known_coins kc USING (known_coin_id)"
                             "    JOIN denominations denom USING (denominations_serial)"
@@ -4482,9 +4479,6 @@ postgres_get_ready_deposit (void *cls,
   };
   struct TALER_Amount amount_with_fee;
   struct TALER_Amount deposit_fee;
-  struct GNUNET_TIME_Absolute wire_deadline;
-  struct GNUNET_TIME_Absolute wallet_timestamp;
-  struct GNUNET_TIME_Absolute exchange_timestamp;
   struct GNUNET_HashCode h_contract_terms;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -4497,12 +4491,6 @@ postgres_get_ready_deposit (void *cls,
                                  &amount_with_fee),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                  &deposit_fee),
-    TALER_PQ_result_spec_absolute_time ("exchange_timestamp",
-                                        &exchange_timestamp),
-    TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
-                                        &wallet_timestamp),
-    TALER_PQ_result_spec_absolute_time ("wire_deadline",
-                                        &wire_deadline),
     GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                           &h_contract_terms),
     GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
@@ -4530,14 +4518,11 @@ postgres_get_ready_deposit (void *cls,
 
   qs = deposit_cb (deposit_cb_cls,
                    serial_id,
-                   exchange_timestamp,
-                   wallet_timestamp,
                    &merchant_pub,
                    &coin_pub,
                    &amount_with_fee,
                    &deposit_fee,
                    &h_contract_terms,
-                   wire_deadline,
                    wire);
   GNUNET_PQ_cleanup_result (rs);
   return qs;
