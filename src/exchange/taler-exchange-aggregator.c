@@ -211,7 +211,7 @@ shutdown_task (void *cls)
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_wirewatch_config (void)
 {
   if (GNUNET_OK !=
