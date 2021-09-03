@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -17,6 +17,7 @@
  * @file exchange-tools/taler-exchange-dbinit.c
  * @brief Create tables for the exchange database.
  * @author Florian Dold
+ * @author Christian Grothoff
  */
 #include "platform.h"
 #include <gnunet/gnunet_util_lib.h>
@@ -32,6 +33,11 @@ static int global_ret;
  * -r option: do full DB reset
  */
 static int reset_db;
+
+/**
+ * -s option: clear revolving shard locks
+ */
+static int clear_shards;
 
 /**
  * -g option: garbage collect DB reset
@@ -83,6 +89,14 @@ run (void *cls,
     global_ret = EXIT_NOPERMISSION;
     return;
   }
+  if (clear_shards)
+  {
+    if (0 < plugin->delete_revolving_shards (plugin->cls))
+    {
+      fprintf (stderr,
+               "Clearing revolving shards failed!\n");
+    }
+  }
   if (gc_db)
   {
     if (GNUNET_SYSERR == plugin->gc (plugin->cls))
@@ -108,14 +122,18 @@ main (int argc,
       char *const *argv)
 {
   const struct GNUNET_GETOPT_CommandLineOption options[] = {
-    GNUNET_GETOPT_option_flag ('r',
-                               "reset",
-                               "reset database (DANGEROUS: all existing data is lost!)",
-                               &reset_db),
     GNUNET_GETOPT_option_flag ('g',
                                "gc",
                                "garbage collect database",
                                &gc_db),
+    GNUNET_GETOPT_option_flag ('r',
+                               "reset",
+                               "reset database (DANGEROUS: all existing data is lost!)",
+                               &reset_db),
+    GNUNET_GETOPT_option_flag ('s',
+                               "shardunlock",
+                               "unlock all revolving shard locks (use after system crash or shard size change while services are not running)",
+                               &clear_shards),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

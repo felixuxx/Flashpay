@@ -1,3 +1,6 @@
+Fri 03 Sep 2021 07:02:05 PM CEST
+    Add experimental aggregator sharding logic. -CG
+
 Sat 28 Aug 2021 05:22:57 PM CEST
     Fixed various memory leaks.
     Fixed database initialization sequence to avoid warning on first request.

@@ -804,29 +804,22 @@ static uint64_t deposit_rowid;
  * @param cls closure a `struct TALER_EXCHANGEDB_Deposit *`
  * @param rowid unique ID for the deposit in our DB, used for marking
  *              it as 'tiny' or 'done'
- * @param exchange_timestamp when did the deposit happen
- * @param wallet_timestamp when did the wallet sign the contract
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_deadline by which the merchant advised that he would like the
- *        wire transfer to be executed
  * @param wire wire details for the merchant
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 static enum GNUNET_DB_QueryStatus
 deposit_cb (void *cls,
             uint64_t rowid,
-            struct GNUNET_TIME_Absolute exchange_timestamp,
-            struct GNUNET_TIME_Absolute wallet_timestamp,
             const struct TALER_MerchantPublicKeyP *merchant_pub,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
             const struct GNUNET_HashCode *h_contract_terms,
-            struct GNUNET_TIME_Absolute wire_deadline,
             const json_t *wire)
 {
   struct TALER_EXCHANGEDB_Deposit *deposit = cls;
@@ -1896,9 +1889,11 @@ run (void *cls)
                                              &matching_deposit_cb,
                                              &deposit,
                                              2));
-  sleep (2); /* giv deposit time to be ready */
+  sleep (2); /* give deposit time to be ready */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
+                                     0,
+                                     INT32_MAX,
                                      &deposit_cb,
                                      &deposit));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
@@ -1911,11 +1906,15 @@ run (void *cls)
                                      deposit_rowid));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_ready_deposit (plugin->cls,
+                                     0,
+                                     INT32_MAX,
                                      &deposit_cb,
                                      &deposit));
   plugin->rollback (plugin->cls);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
+                                     0,
+                                     INT32_MAX,
                                      &deposit_cb,
                                      &deposit));
   FAILIF (GNUNET_OK !=

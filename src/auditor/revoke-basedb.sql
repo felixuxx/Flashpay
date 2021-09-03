@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 13.3 (Debian 13.3-1)
--- Dumped by pg_dump version 13.3 (Debian 13.3-1)
+-- Dumped from database version 13.4 (Debian 13.4-3)
+-- Dumped by pg_dump version 13.4 (Debian 13.4-3)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17,21 +17,23 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: _v; Type: SCHEMA; Schema: -; Owner: -
+-- Name: _v; Type: SCHEMA; Schema: -; Owner: grothoff
 --
 
 CREATE SCHEMA _v;
 
 
+ALTER SCHEMA _v OWNER TO grothoff;
+
 --
--- Name: SCHEMA _v; Type: COMMENT; Schema: -; Owner: -
+-- Name: SCHEMA _v; Type: COMMENT; Schema: -; Owner: grothoff
 --
 
 COMMENT ON SCHEMA _v IS 'Schema for versioning data and functionality.';
 
 
 --
--- Name: assert_patch_is_applied(text); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: assert_patch_is_applied(text); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.assert_patch_is_applied(in_patch_name text) RETURNS text
@@ -49,15 +51,17 @@ END;
 $$;
 
 
+ALTER FUNCTION _v.assert_patch_is_applied(in_patch_name text) OWNER TO grothoff;
+
 --
--- Name: FUNCTION assert_patch_is_applied(in_patch_name text); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION assert_patch_is_applied(in_patch_name text); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.assert_patch_is_applied(in_patch_name text) IS 'Function that can be used to make sure that patch has been applied.';
 
 
 --
--- Name: assert_user_is_not_superuser(); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: assert_user_is_not_superuser(); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.assert_user_is_not_superuser() RETURNS text
@@ -75,15 +79,17 @@ END;
 $$;
 
 
+ALTER FUNCTION _v.assert_user_is_not_superuser() OWNER TO grothoff;
+
 --
--- Name: FUNCTION assert_user_is_not_superuser(); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION assert_user_is_not_superuser(); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.assert_user_is_not_superuser() IS 'Function that can be used to make sure that patch is being applied using normal (not superuser) account.';
 
 
 --
--- Name: assert_user_is_one_of(text[]); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: assert_user_is_one_of(text[]); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.assert_user_is_one_of(VARIADIC p_acceptable_users text[]) RETURNS text
@@ -99,15 +105,17 @@ END;
 $$;
 
 
+ALTER FUNCTION _v.assert_user_is_one_of(VARIADIC p_acceptable_users text[]) OWNER TO grothoff;
+
 --
--- Name: FUNCTION assert_user_is_one_of(VARIADIC p_acceptable_users text[]); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION assert_user_is_one_of(VARIADIC p_acceptable_users text[]); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.assert_user_is_one_of(VARIADIC p_acceptable_users text[]) IS 'Function that can be used to make sure that patch is being applied by one of defined users.';
 
 
 --
--- Name: assert_user_is_superuser(); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: assert_user_is_superuser(); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.assert_user_is_superuser() RETURNS text
@@ -125,15 +133,17 @@ END;
 $$;
 
 
+ALTER FUNCTION _v.assert_user_is_superuser() OWNER TO grothoff;
+
 --
--- Name: FUNCTION assert_user_is_superuser(); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION assert_user_is_superuser(); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.assert_user_is_superuser() IS 'Function that can be used to make sure that patch is being applied using superuser account.';
 
 
 --
--- Name: register_patch(text); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: register_patch(text); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.register_patch(text) RETURNS SETOF integer
@@ -143,15 +153,17 @@ CREATE FUNCTION _v.register_patch(text) RETURNS SETOF integer
 $_$;
 
 
+ALTER FUNCTION _v.register_patch(text) OWNER TO grothoff;
+
 --
--- Name: FUNCTION register_patch(text); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION register_patch(text); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.register_patch(text) IS 'Wrapper to allow registration of patches without requirements and conflicts.';
 
 
 --
--- Name: register_patch(text, text[]); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: register_patch(text, text[]); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.register_patch(text, text[]) RETURNS SETOF integer
@@ -161,15 +173,17 @@ CREATE FUNCTION _v.register_patch(text, text[]) RETURNS SETOF integer
 $_$;
 
 
+ALTER FUNCTION _v.register_patch(text, text[]) OWNER TO grothoff;
+
 --
--- Name: FUNCTION register_patch(text, text[]); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION register_patch(text, text[]); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.register_patch(text, text[]) IS 'Wrapper to allow registration of patches without conflicts.';
 
 
 --
--- Name: register_patch(text, text[], text[]); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: register_patch(text, text[], text[]); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.register_patch(in_patch_name text, in_requirements text[], in_conflicts text[], OUT versioning integer) RETURNS SETOF integer
@@ -212,15 +226,17 @@ END;
 $$;
 
 
+ALTER FUNCTION _v.register_patch(in_patch_name text, in_requirements text[], in_conflicts text[], OUT versioning integer) OWNER TO grothoff;
+
 --
--- Name: FUNCTION register_patch(in_patch_name text, in_requirements text[], in_conflicts text[], OUT versioning integer); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION register_patch(in_patch_name text, in_requirements text[], in_conflicts text[], OUT versioning integer); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.register_patch(in_patch_name text, in_requirements text[], in_conflicts text[], OUT versioning integer) IS 'Function to register patches in database. Raises exception if there are conflicts, prerequisites are not installed or the migration has already been installed.';
 
 
 --
--- Name: unregister_patch(text); Type: FUNCTION; Schema: _v; Owner: -
+-- Name: unregister_patch(text); Type: FUNCTION; Schema: _v; Owner: grothoff
 --
 
 CREATE FUNCTION _v.unregister_patch(in_patch_name text, OUT versioning integer) RETURNS SETOF integer
@@ -249,8 +265,10 @@ END;
 $$;
 
 
+ALTER FUNCTION _v.unregister_patch(in_patch_name text, OUT versioning integer) OWNER TO grothoff;
+
 --
--- Name: FUNCTION unregister_patch(in_patch_name text, OUT versioning integer); Type: COMMENT; Schema: _v; Owner: -
+-- Name: FUNCTION unregister_patch(in_patch_name text, OUT versioning integer); Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON FUNCTION _v.unregister_patch(in_patch_name text, OUT versioning integer) IS 'Function to unregister patches in database. Dies if the patch is not registered, or if unregistering it would break dependencies.';
@@ -261,7 +279,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: patches; Type: TABLE; Schema: _v; Owner: -
+-- Name: patches; Type: TABLE; Schema: _v; Owner: grothoff
 --
 
 CREATE TABLE _v.patches (
@@ -273,50 +291,52 @@ CREATE TABLE _v.patches (
 );
 
 
+ALTER TABLE _v.patches OWNER TO grothoff;
+
 --
--- Name: TABLE patches; Type: COMMENT; Schema: _v; Owner: -
+-- Name: TABLE patches; Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON TABLE _v.patches IS 'Contains information about what patches are currently applied on database.';
 
 
 --
--- Name: COLUMN patches.patch_name; Type: COMMENT; Schema: _v; Owner: -
+-- Name: COLUMN patches.patch_name; Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON COLUMN _v.patches.patch_name IS 'Name of patch, has to be unique for every patch.';
 
 
 --
--- Name: COLUMN patches.applied_tsz; Type: COMMENT; Schema: _v; Owner: -
+-- Name: COLUMN patches.applied_tsz; Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON COLUMN _v.patches.applied_tsz IS 'When the patch was applied.';
 
 
 --
--- Name: COLUMN patches.applied_by; Type: COMMENT; Schema: _v; Owner: -
+-- Name: COLUMN patches.applied_by; Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON COLUMN _v.patches.applied_by IS 'Who applied this patch (PostgreSQL username)';
 
 
 --
--- Name: COLUMN patches.requires; Type: COMMENT; Schema: _v; Owner: -
+-- Name: COLUMN patches.requires; Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON COLUMN _v.patches.requires IS 'List of patches that are required for given patch.';
 
 
 --
--- Name: COLUMN patches.conflicts; Type: COMMENT; Schema: _v; Owner: -
+-- Name: COLUMN patches.conflicts; Type: COMMENT; Schema: _v; Owner: grothoff
 --
 
 COMMENT ON COLUMN _v.patches.conflicts IS 'List of patches that conflict with given patch.';
 
 
 --
--- Name: aggregation_tracking; Type: TABLE; Schema: public; Owner: -
+-- Name: aggregation_tracking; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.aggregation_tracking (
@@ -326,22 +346,24 @@ CREATE TABLE public.aggregation_tracking (
 );
 
 
+ALTER TABLE public.aggregation_tracking OWNER TO grothoff;
+
 --
--- Name: TABLE aggregation_tracking; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE aggregation_tracking; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.aggregation_tracking IS 'mapping from wire transfer identifiers (WTID) to deposits (and back)';
 
 
 --
--- Name: COLUMN aggregation_tracking.wtid_raw; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN aggregation_tracking.wtid_raw; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.aggregation_tracking.wtid_raw IS 'We first create entries in the aggregation_tracking table and then finally the wire_out entry once we know the total amount. Hence the constraint must be deferrable and we cannot use a wireout_uuid here, because we do not have it when these rows are created. Changing the logic to first INSERT a dummy row into wire_out and then UPDATEing that row in the same transaction would theoretically reduce per-deposit storage costs by 5 percent (24/~460 bytes).';
 
 
 --
--- Name: aggregation_tracking_aggregation_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: aggregation_tracking_aggregation_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.aggregation_tracking_aggregation_serial_id_seq
@@ -352,15 +374,17 @@ CREATE SEQUENCE public.aggregation_tracking_aggregation_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.aggregation_tracking_aggregation_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: aggregation_tracking_aggregation_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: aggregation_tracking_aggregation_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.aggregation_tracking_aggregation_serial_id_seq OWNED BY public.aggregation_tracking.aggregation_serial_id;
 
 
 --
--- Name: app_bankaccount; Type: TABLE; Schema: public; Owner: -
+-- Name: app_bankaccount; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.app_bankaccount (
@@ -371,8 +395,10 @@ CREATE TABLE public.app_bankaccount (
 );
 
 
+ALTER TABLE public.app_bankaccount OWNER TO grothoff;
+
 --
--- Name: app_bankaccount_account_no_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: app_bankaccount_account_no_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.app_bankaccount_account_no_seq
@@ -383,15 +409,17 @@ CREATE SEQUENCE public.app_bankaccount_account_no_seq
     CACHE 1;
 
 
+ALTER TABLE public.app_bankaccount_account_no_seq OWNER TO grothoff;
+
 --
--- Name: app_bankaccount_account_no_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: app_bankaccount_account_no_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.app_bankaccount_account_no_seq OWNED BY public.app_bankaccount.account_no;
 
 
 --
--- Name: app_banktransaction; Type: TABLE; Schema: public; Owner: -
+-- Name: app_banktransaction; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.app_banktransaction (
@@ -406,8 +434,10 @@ CREATE TABLE public.app_banktransaction (
 );
 
 
+ALTER TABLE public.app_banktransaction OWNER TO grothoff;
+
 --
--- Name: app_banktransaction_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: app_banktransaction_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.app_banktransaction_id_seq
@@ -418,15 +448,17 @@ CREATE SEQUENCE public.app_banktransaction_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.app_banktransaction_id_seq OWNER TO grothoff;
+
 --
--- Name: app_banktransaction_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: app_banktransaction_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.app_banktransaction_id_seq OWNED BY public.app_banktransaction.id;
 
 
 --
--- Name: app_talerwithdrawoperation; Type: TABLE; Schema: public; Owner: -
+-- Name: app_talerwithdrawoperation; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.app_talerwithdrawoperation (
@@ -441,8 +473,10 @@ CREATE TABLE public.app_talerwithdrawoperation (
 );
 
 
+ALTER TABLE public.app_talerwithdrawoperation OWNER TO grothoff;
+
 --
--- Name: auditor_balance_summary; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_balance_summary; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_balance_summary (
@@ -464,15 +498,17 @@ CREATE TABLE public.auditor_balance_summary (
 );
 
 
+ALTER TABLE public.auditor_balance_summary OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_balance_summary; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_balance_summary; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_balance_summary IS 'the sum of the outstanding coins from auditor_denomination_pending (denom_pubs must belong to the respectives exchange master public key); it represents the auditor_balance_summary of the exchange at this point (modulo unexpected historic_loss-style events where denomination keys are compromised)';
 
 
 --
--- Name: auditor_denom_sigs; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_denom_sigs; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_denom_sigs (
@@ -484,36 +520,38 @@ CREATE TABLE public.auditor_denom_sigs (
 );
 
 
+ALTER TABLE public.auditor_denom_sigs OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_denom_sigs; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_denom_sigs; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_denom_sigs IS 'Table with auditor signatures on exchange denomination keys.';
 
 
 --
--- Name: COLUMN auditor_denom_sigs.auditor_uuid; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditor_denom_sigs.auditor_uuid; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditor_denom_sigs.auditor_uuid IS 'Identifies the auditor.';
 
 
 --
--- Name: COLUMN auditor_denom_sigs.denominations_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditor_denom_sigs.denominations_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditor_denom_sigs.denominations_serial IS 'Denomination the signature is for.';
 
 
 --
--- Name: COLUMN auditor_denom_sigs.auditor_sig; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditor_denom_sigs.auditor_sig; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditor_denom_sigs.auditor_sig IS 'Signature of the auditor, of purpose TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS.';
 
 
 --
--- Name: auditor_denom_sigs_auditor_denom_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auditor_denom_sigs_auditor_denom_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auditor_denom_sigs_auditor_denom_serial_seq
@@ -524,15 +562,17 @@ CREATE SEQUENCE public.auditor_denom_sigs_auditor_denom_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.auditor_denom_sigs_auditor_denom_serial_seq OWNER TO grothoff;
+
 --
--- Name: auditor_denom_sigs_auditor_denom_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auditor_denom_sigs_auditor_denom_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auditor_denom_sigs_auditor_denom_serial_seq OWNED BY public.auditor_denom_sigs.auditor_denom_serial;
 
 
 --
--- Name: auditor_denomination_pending; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_denomination_pending; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_denomination_pending (
@@ -550,36 +590,38 @@ CREATE TABLE public.auditor_denomination_pending (
 );
 
 
+ALTER TABLE public.auditor_denomination_pending OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_denomination_pending; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_denomination_pending; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_denomination_pending IS 'outstanding denomination coins that the exchange is aware of and what the respective balances are (outstanding as well as issued overall which implies the maximum value at risk).';
 
 
 --
--- Name: COLUMN auditor_denomination_pending.num_issued; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditor_denomination_pending.num_issued; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditor_denomination_pending.num_issued IS 'counts the number of coins issued (withdraw, refresh) of this denomination';
 
 
 --
--- Name: COLUMN auditor_denomination_pending.denom_risk_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditor_denomination_pending.denom_risk_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditor_denomination_pending.denom_risk_val IS 'amount that could theoretically be lost in the future due to recoup operations';
 
 
 --
--- Name: COLUMN auditor_denomination_pending.recoup_loss_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditor_denomination_pending.recoup_loss_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditor_denomination_pending.recoup_loss_val IS 'amount actually lost due to recoup operations past revocation';
 
 
 --
--- Name: auditor_exchange_signkeys; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_exchange_signkeys; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_exchange_signkeys (
@@ -594,15 +636,17 @@ CREATE TABLE public.auditor_exchange_signkeys (
 );
 
 
+ALTER TABLE public.auditor_exchange_signkeys OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_exchange_signkeys; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_exchange_signkeys; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_exchange_signkeys IS 'list of the online signing keys of exchanges we are auditing';
 
 
 --
--- Name: auditor_exchanges; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_exchanges; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_exchanges (
@@ -612,15 +656,17 @@ CREATE TABLE public.auditor_exchanges (
 );
 
 
+ALTER TABLE public.auditor_exchanges OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_exchanges; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_exchanges; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_exchanges IS 'list of the exchanges we are auditing';
 
 
 --
--- Name: auditor_historic_denomination_revenue; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_historic_denomination_revenue; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_historic_denomination_revenue (
@@ -635,22 +681,24 @@ CREATE TABLE public.auditor_historic_denomination_revenue (
 );
 
 
+ALTER TABLE public.auditor_historic_denomination_revenue OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_historic_denomination_revenue; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_historic_denomination_revenue; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_historic_denomination_revenue IS 'Table with historic profits; basically, when a denom_pub has expired and everything associated with it is garbage collected, the final profits end up in here; note that the denom_pub here is not a foreign key, we just keep it as a reference point.';
 
 
 --
--- Name: COLUMN auditor_historic_denomination_revenue.revenue_balance_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditor_historic_denomination_revenue.revenue_balance_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditor_historic_denomination_revenue.revenue_balance_val IS 'the sum of all of the profits we made on the coin except for withdraw fees (which are in historic_reserve_revenue); so this includes the deposit, melt and refund fees';
 
 
 --
--- Name: auditor_historic_reserve_summary; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_historic_reserve_summary; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_historic_reserve_summary (
@@ -662,15 +710,17 @@ CREATE TABLE public.auditor_historic_reserve_summary (
 );
 
 
+ALTER TABLE public.auditor_historic_reserve_summary OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_historic_reserve_summary; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_historic_reserve_summary; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_historic_reserve_summary IS 'historic profits from reserves; we eventually GC auditor_historic_reserve_revenue, and then store the totals in here (by time intervals).';
 
 
 --
--- Name: auditor_predicted_result; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_predicted_result; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_predicted_result (
@@ -680,15 +730,17 @@ CREATE TABLE public.auditor_predicted_result (
 );
 
 
+ALTER TABLE public.auditor_predicted_result OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_predicted_result; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_predicted_result; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_predicted_result IS 'Table with the sum of the ledger, auditor_historic_revenue and the auditor_reserve_balance.  This is the final amount that the exchange should have in its bank account right now.';
 
 
 --
--- Name: auditor_progress_aggregation; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_progress_aggregation; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_progress_aggregation (
@@ -697,8 +749,10 @@ CREATE TABLE public.auditor_progress_aggregation (
 );
 
 
+ALTER TABLE public.auditor_progress_aggregation OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_progress_aggregation; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_progress_aggregation; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_progress_aggregation IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
@@ -706,7 +760,7 @@ COMMENT ON TABLE public.auditor_progress_aggregation IS 'information as to which
 
 
 --
--- Name: auditor_progress_coin; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_progress_coin; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_progress_coin (
@@ -720,8 +774,10 @@ CREATE TABLE public.auditor_progress_coin (
 );
 
 
+ALTER TABLE public.auditor_progress_coin OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_progress_coin; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_progress_coin; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_progress_coin IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
@@ -729,7 +785,7 @@ COMMENT ON TABLE public.auditor_progress_coin IS 'information as to which transa
 
 
 --
--- Name: auditor_progress_deposit_confirmation; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_progress_deposit_confirmation; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_progress_deposit_confirmation (
@@ -738,8 +794,10 @@ CREATE TABLE public.auditor_progress_deposit_confirmation (
 );
 
 
+ALTER TABLE public.auditor_progress_deposit_confirmation OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_progress_deposit_confirmation; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_progress_deposit_confirmation; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_progress_deposit_confirmation IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
@@ -747,7 +805,7 @@ COMMENT ON TABLE public.auditor_progress_deposit_confirmation IS 'information as
 
 
 --
--- Name: auditor_progress_reserve; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_progress_reserve; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_progress_reserve (
@@ -759,8 +817,10 @@ CREATE TABLE public.auditor_progress_reserve (
 );
 
 
+ALTER TABLE public.auditor_progress_reserve OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_progress_reserve; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_progress_reserve; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_progress_reserve IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
@@ -768,7 +828,7 @@ COMMENT ON TABLE public.auditor_progress_reserve IS 'information as to which tra
 
 
 --
--- Name: auditor_reserve_balance; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_reserve_balance; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_reserve_balance (
@@ -780,15 +840,17 @@ CREATE TABLE public.auditor_reserve_balance (
 );
 
 
+ALTER TABLE public.auditor_reserve_balance OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_reserve_balance; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_reserve_balance; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_reserve_balance IS 'sum of the balances of all customer reserves (by exchange master public key)';
 
 
 --
--- Name: auditor_reserves; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_reserves; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_reserves (
@@ -805,15 +867,17 @@ CREATE TABLE public.auditor_reserves (
 );
 
 
+ALTER TABLE public.auditor_reserves OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_reserves; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_reserves; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_reserves IS 'all of the customer reserves and their respective balances that the auditor is aware of';
 
 
 --
--- Name: auditor_reserves_auditor_reserves_rowid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auditor_reserves_auditor_reserves_rowid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auditor_reserves_auditor_reserves_rowid_seq
@@ -824,15 +888,17 @@ CREATE SEQUENCE public.auditor_reserves_auditor_reserves_rowid_seq
     CACHE 1;
 
 
+ALTER TABLE public.auditor_reserves_auditor_reserves_rowid_seq OWNER TO grothoff;
+
 --
--- Name: auditor_reserves_auditor_reserves_rowid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auditor_reserves_auditor_reserves_rowid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auditor_reserves_auditor_reserves_rowid_seq OWNED BY public.auditor_reserves.auditor_reserves_rowid;
 
 
 --
--- Name: auditor_wire_fee_balance; Type: TABLE; Schema: public; Owner: -
+-- Name: auditor_wire_fee_balance; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditor_wire_fee_balance (
@@ -842,15 +908,17 @@ CREATE TABLE public.auditor_wire_fee_balance (
 );
 
 
+ALTER TABLE public.auditor_wire_fee_balance OWNER TO grothoff;
+
 --
--- Name: TABLE auditor_wire_fee_balance; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditor_wire_fee_balance; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditor_wire_fee_balance IS 'sum of the balances of all wire fees (by exchange master public key)';
 
 
 --
--- Name: auditors; Type: TABLE; Schema: public; Owner: -
+-- Name: auditors; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auditors (
@@ -864,43 +932,45 @@ CREATE TABLE public.auditors (
 );
 
 
+ALTER TABLE public.auditors OWNER TO grothoff;
+
 --
--- Name: TABLE auditors; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE auditors; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.auditors IS 'Table with auditors the exchange uses or has used in the past. Entries never expire as we need to remember the last_change column indefinitely.';
 
 
 --
--- Name: COLUMN auditors.auditor_pub; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditors.auditor_pub; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditors.auditor_pub IS 'Public key of the auditor.';
 
 
 --
--- Name: COLUMN auditors.auditor_url; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditors.auditor_url; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditors.auditor_url IS 'The base URL of the auditor.';
 
 
 --
--- Name: COLUMN auditors.is_active; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditors.is_active; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditors.is_active IS 'true if we are currently supporting the use of this auditor.';
 
 
 --
--- Name: COLUMN auditors.last_change; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN auditors.last_change; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.auditors.last_change IS 'Latest time when active status changed. Used to detect replays of old messages.';
 
 
 --
--- Name: auditors_auditor_uuid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auditors_auditor_uuid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auditors_auditor_uuid_seq
@@ -911,15 +981,17 @@ CREATE SEQUENCE public.auditors_auditor_uuid_seq
     CACHE 1;
 
 
+ALTER TABLE public.auditors_auditor_uuid_seq OWNER TO grothoff;
+
 --
--- Name: auditors_auditor_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auditors_auditor_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auditors_auditor_uuid_seq OWNED BY public.auditors.auditor_uuid;
 
 
 --
--- Name: auth_group; Type: TABLE; Schema: public; Owner: -
+-- Name: auth_group; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auth_group (
@@ -928,8 +1000,10 @@ CREATE TABLE public.auth_group (
 );
 
 
+ALTER TABLE public.auth_group OWNER TO grothoff;
+
 --
--- Name: auth_group_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auth_group_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auth_group_id_seq
@@ -940,15 +1014,17 @@ CREATE SEQUENCE public.auth_group_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.auth_group_id_seq OWNER TO grothoff;
+
 --
--- Name: auth_group_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auth_group_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auth_group_id_seq OWNED BY public.auth_group.id;
 
 
 --
--- Name: auth_group_permissions; Type: TABLE; Schema: public; Owner: -
+-- Name: auth_group_permissions; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auth_group_permissions (
@@ -958,8 +1034,10 @@ CREATE TABLE public.auth_group_permissions (
 );
 
 
+ALTER TABLE public.auth_group_permissions OWNER TO grothoff;
+
 --
--- Name: auth_group_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auth_group_permissions_id_seq
@@ -970,15 +1048,17 @@ CREATE SEQUENCE public.auth_group_permissions_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.auth_group_permissions_id_seq OWNER TO grothoff;
+
 --
--- Name: auth_group_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auth_group_permissions_id_seq OWNED BY public.auth_group_permissions.id;
 
 
 --
--- Name: auth_permission; Type: TABLE; Schema: public; Owner: -
+-- Name: auth_permission; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auth_permission (
@@ -989,8 +1069,10 @@ CREATE TABLE public.auth_permission (
 );
 
 
+ALTER TABLE public.auth_permission OWNER TO grothoff;
+
 --
--- Name: auth_permission_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auth_permission_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auth_permission_id_seq
@@ -1001,15 +1083,17 @@ CREATE SEQUENCE public.auth_permission_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.auth_permission_id_seq OWNER TO grothoff;
+
 --
--- Name: auth_permission_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auth_permission_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auth_permission_id_seq OWNED BY public.auth_permission.id;
 
 
 --
--- Name: auth_user; Type: TABLE; Schema: public; Owner: -
+-- Name: auth_user; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auth_user (
@@ -1027,8 +1111,10 @@ CREATE TABLE public.auth_user (
 );
 
 
+ALTER TABLE public.auth_user OWNER TO grothoff;
+
 --
--- Name: auth_user_groups; Type: TABLE; Schema: public; Owner: -
+-- Name: auth_user_groups; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auth_user_groups (
@@ -1038,8 +1124,10 @@ CREATE TABLE public.auth_user_groups (
 );
 
 
+ALTER TABLE public.auth_user_groups OWNER TO grothoff;
+
 --
--- Name: auth_user_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auth_user_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auth_user_groups_id_seq
@@ -1050,15 +1138,17 @@ CREATE SEQUENCE public.auth_user_groups_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.auth_user_groups_id_seq OWNER TO grothoff;
+
 --
--- Name: auth_user_groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auth_user_groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auth_user_groups_id_seq OWNED BY public.auth_user_groups.id;
 
 
 --
--- Name: auth_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auth_user_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auth_user_id_seq
@@ -1069,15 +1159,17 @@ CREATE SEQUENCE public.auth_user_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.auth_user_id_seq OWNER TO grothoff;
+
 --
--- Name: auth_user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auth_user_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auth_user_id_seq OWNED BY public.auth_user.id;
 
 
 --
--- Name: auth_user_user_permissions; Type: TABLE; Schema: public; Owner: -
+-- Name: auth_user_user_permissions; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.auth_user_user_permissions (
@@ -1087,8 +1179,10 @@ CREATE TABLE public.auth_user_user_permissions (
 );
 
 
+ALTER TABLE public.auth_user_user_permissions OWNER TO grothoff;
+
 --
--- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.auth_user_user_permissions_id_seq
@@ -1099,15 +1193,17 @@ CREATE SEQUENCE public.auth_user_user_permissions_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.auth_user_user_permissions_id_seq OWNER TO grothoff;
+
 --
--- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.auth_user_user_permissions_id_seq OWNED BY public.auth_user_user_permissions.id;
 
 
 --
--- Name: denomination_revocations; Type: TABLE; Schema: public; Owner: -
+-- Name: denomination_revocations; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.denomination_revocations (
@@ -1118,15 +1214,17 @@ CREATE TABLE public.denomination_revocations (
 );
 
 
+ALTER TABLE public.denomination_revocations OWNER TO grothoff;
+
 --
--- Name: TABLE denomination_revocations; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE denomination_revocations; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.denomination_revocations IS 'remembering which denomination keys have been revoked';
 
 
 --
--- Name: denomination_revocations_denom_revocations_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: denomination_revocations_denom_revocations_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.denomination_revocations_denom_revocations_serial_id_seq
@@ -1137,15 +1235,17 @@ CREATE SEQUENCE public.denomination_revocations_denom_revocations_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.denomination_revocations_denom_revocations_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: denomination_revocations_denom_revocations_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: denomination_revocations_denom_revocations_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.denomination_revocations_denom_revocations_serial_id_seq OWNED BY public.denomination_revocations.denom_revocations_serial_id;
 
 
 --
--- Name: denominations; Type: TABLE; Schema: public; Owner: -
+-- Name: denominations; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.denominations (
@@ -1174,22 +1274,24 @@ CREATE TABLE public.denominations (
 );
 
 
+ALTER TABLE public.denominations OWNER TO grothoff;
+
 --
--- Name: TABLE denominations; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE denominations; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.denominations IS 'Main denominations table. All the valid denominations the exchange knows about.';
 
 
 --
--- Name: COLUMN denominations.denominations_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN denominations.denominations_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.denominations.denominations_serial IS 'needed for exchange-auditor replication logic';
 
 
 --
--- Name: denominations_denominations_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: denominations_denominations_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.denominations_denominations_serial_seq
@@ -1200,15 +1302,17 @@ CREATE SEQUENCE public.denominations_denominations_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.denominations_denominations_serial_seq OWNER TO grothoff;
+
 --
--- Name: denominations_denominations_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: denominations_denominations_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.denominations_denominations_serial_seq OWNED BY public.denominations.denominations_serial;
 
 
 --
--- Name: deposit_confirmations; Type: TABLE; Schema: public; Owner: -
+-- Name: deposit_confirmations; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.deposit_confirmations (
@@ -1235,15 +1339,17 @@ CREATE TABLE public.deposit_confirmations (
 );
 
 
+ALTER TABLE public.deposit_confirmations OWNER TO grothoff;
+
 --
--- Name: TABLE deposit_confirmations; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE deposit_confirmations; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.deposit_confirmations IS 'deposit confirmation sent to us by merchants; we must check that the exchange reported these properly.';
 
 
 --
--- Name: deposit_confirmations_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: deposit_confirmations_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.deposit_confirmations_serial_id_seq
@@ -1254,15 +1360,17 @@ CREATE SEQUENCE public.deposit_confirmations_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.deposit_confirmations_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: deposit_confirmations_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: deposit_confirmations_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.deposit_confirmations_serial_id_seq OWNED BY public.deposit_confirmations.serial_id;
 
 
 --
--- Name: deposits; Type: TABLE; Schema: public; Owner: -
+-- Name: deposits; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.deposits (
@@ -1281,6 +1389,7 @@ CREATE TABLE public.deposits (
     tiny boolean DEFAULT false NOT NULL,
     done boolean DEFAULT false NOT NULL,
     known_coin_id bigint NOT NULL,
+    shard integer DEFAULT 0 NOT NULL,
     CONSTRAINT deposits_coin_sig_check CHECK ((length(coin_sig) = 64)),
     CONSTRAINT deposits_h_contract_terms_check CHECK ((length(h_contract_terms) = 64)),
     CONSTRAINT deposits_h_wire_check CHECK ((length(h_wire) = 64)),
@@ -1288,29 +1397,38 @@ CREATE TABLE public.deposits (
 );
 
 
+ALTER TABLE public.deposits OWNER TO grothoff;
+
 --
--- Name: TABLE deposits; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE deposits; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.deposits IS 'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
 
 
 --
--- Name: COLUMN deposits.tiny; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN deposits.tiny; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.deposits.tiny IS 'Set to TRUE if we decided that the amount is too small to ever trigger a wire transfer by itself (requires real aggregation)';
 
 
 --
--- Name: COLUMN deposits.done; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN deposits.done; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.deposits.done IS 'Set to TRUE once we have included this deposit in some aggregate wire transfer to the merchant';
 
 
 --
--- Name: deposits_deposit_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: COLUMN deposits.shard; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON COLUMN public.deposits.shard IS 'Used for load sharding. Should be set based on h_wire, merchant_pub and a service salt. Default of 0 onlyapplies for colums migrated from a previous version without sharding support. 64-bit value because we need an *unsigned* 32-bit value.';
+
+
+--
+-- Name: deposits_deposit_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.deposits_deposit_serial_id_seq
@@ -1321,15 +1439,17 @@ CREATE SEQUENCE public.deposits_deposit_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.deposits_deposit_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: deposits_deposit_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: deposits_deposit_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.deposits_deposit_serial_id_seq OWNED BY public.deposits.deposit_serial_id;
 
 
 --
--- Name: django_content_type; Type: TABLE; Schema: public; Owner: -
+-- Name: django_content_type; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.django_content_type (
@@ -1339,8 +1459,10 @@ CREATE TABLE public.django_content_type (
 );
 
 
+ALTER TABLE public.django_content_type OWNER TO grothoff;
+
 --
--- Name: django_content_type_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: django_content_type_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.django_content_type_id_seq
@@ -1351,15 +1473,17 @@ CREATE SEQUENCE public.django_content_type_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.django_content_type_id_seq OWNER TO grothoff;
+
 --
--- Name: django_content_type_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: django_content_type_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.django_content_type_id_seq OWNED BY public.django_content_type.id;
 
 
 --
--- Name: django_migrations; Type: TABLE; Schema: public; Owner: -
+-- Name: django_migrations; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.django_migrations (
@@ -1370,8 +1494,10 @@ CREATE TABLE public.django_migrations (
 );
 
 
+ALTER TABLE public.django_migrations OWNER TO grothoff;
+
 --
--- Name: django_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: django_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.django_migrations_id_seq
@@ -1382,15 +1508,17 @@ CREATE SEQUENCE public.django_migrations_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.django_migrations_id_seq OWNER TO grothoff;
+
 --
--- Name: django_migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: django_migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.django_migrations_id_seq OWNED BY public.django_migrations.id;
 
 
 --
--- Name: django_session; Type: TABLE; Schema: public; Owner: -
+-- Name: django_session; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.django_session (
@@ -1400,8 +1528,10 @@ CREATE TABLE public.django_session (
 );
 
 
+ALTER TABLE public.django_session OWNER TO grothoff;
+
 --
--- Name: exchange_sign_keys; Type: TABLE; Schema: public; Owner: -
+-- Name: exchange_sign_keys; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.exchange_sign_keys (
@@ -1416,50 +1546,52 @@ CREATE TABLE public.exchange_sign_keys (
 );
 
 
+ALTER TABLE public.exchange_sign_keys OWNER TO grothoff;
+
 --
--- Name: TABLE exchange_sign_keys; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE exchange_sign_keys; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.exchange_sign_keys IS 'Table with master public key signatures on exchange online signing keys.';
 
 
 --
--- Name: COLUMN exchange_sign_keys.exchange_pub; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN exchange_sign_keys.exchange_pub; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.exchange_sign_keys.exchange_pub IS 'Public online signing key of the exchange.';
 
 
 --
--- Name: COLUMN exchange_sign_keys.master_sig; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN exchange_sign_keys.master_sig; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.exchange_sign_keys.master_sig IS 'Signature affirming the validity of the signing key of purpose TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.';
 
 
 --
--- Name: COLUMN exchange_sign_keys.valid_from; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN exchange_sign_keys.valid_from; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.exchange_sign_keys.valid_from IS 'Time when this online signing key will first be used to sign messages.';
 
 
 --
--- Name: COLUMN exchange_sign_keys.expire_sign; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN exchange_sign_keys.expire_sign; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.exchange_sign_keys.expire_sign IS 'Time when this online signing key will no longer be used to sign.';
 
 
 --
--- Name: COLUMN exchange_sign_keys.expire_legal; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN exchange_sign_keys.expire_legal; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.exchange_sign_keys.expire_legal IS 'Time when this online signing key legally expires.';
 
 
 --
--- Name: exchange_sign_keys_esk_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: exchange_sign_keys_esk_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.exchange_sign_keys_esk_serial_seq
@@ -1470,15 +1602,17 @@ CREATE SEQUENCE public.exchange_sign_keys_esk_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.exchange_sign_keys_esk_serial_seq OWNER TO grothoff;
+
 --
--- Name: exchange_sign_keys_esk_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: exchange_sign_keys_esk_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.exchange_sign_keys_esk_serial_seq OWNED BY public.exchange_sign_keys.esk_serial;
 
 
 --
--- Name: known_coins; Type: TABLE; Schema: public; Owner: -
+-- Name: known_coins; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.known_coins (
@@ -1490,15 +1624,17 @@ CREATE TABLE public.known_coins (
 );
 
 
+ALTER TABLE public.known_coins OWNER TO grothoff;
+
 --
--- Name: TABLE known_coins; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE known_coins; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.known_coins IS 'information about coins and their signatures, so we do not have to store the signatures more than once if a coin is involved in multiple operations';
 
 
 --
--- Name: known_coins_known_coin_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: known_coins_known_coin_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.known_coins_known_coin_id_seq
@@ -1509,15 +1645,17 @@ CREATE SEQUENCE public.known_coins_known_coin_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.known_coins_known_coin_id_seq OWNER TO grothoff;
+
 --
--- Name: known_coins_known_coin_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: known_coins_known_coin_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.known_coins_known_coin_id_seq OWNED BY public.known_coins.known_coin_id;
 
 
 --
--- Name: merchant_accounts; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_accounts; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_accounts (
@@ -1532,43 +1670,45 @@ CREATE TABLE public.merchant_accounts (
 );
 
 
+ALTER TABLE public.merchant_accounts OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_accounts; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_accounts; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_accounts IS 'bank accounts of the instances';
 
 
 --
--- Name: COLUMN merchant_accounts.h_wire; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_accounts.h_wire; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_accounts.h_wire IS 'salted hash of payto_uri';
 
 
 --
--- Name: COLUMN merchant_accounts.salt; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_accounts.salt; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_accounts.salt IS 'salt used when hashing payto_uri into h_wire';
 
 
 --
--- Name: COLUMN merchant_accounts.payto_uri; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_accounts.payto_uri; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_accounts.payto_uri IS 'payto URI of a merchant bank account';
 
 
 --
--- Name: COLUMN merchant_accounts.active; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_accounts.active; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_accounts.active IS 'true if we actively use this bank account, false if it is just kept around for older contracts to refer to';
 
 
 --
--- Name: merchant_accounts_account_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_accounts_account_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_accounts_account_serial_seq
@@ -1579,15 +1719,17 @@ CREATE SEQUENCE public.merchant_accounts_account_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_accounts_account_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_accounts_account_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_accounts_account_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_accounts_account_serial_seq OWNED BY public.merchant_accounts.account_serial;
 
 
 --
--- Name: merchant_contract_terms; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_contract_terms; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_contract_terms (
@@ -1607,85 +1749,87 @@ CREATE TABLE public.merchant_contract_terms (
 );
 
 
+ALTER TABLE public.merchant_contract_terms OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_contract_terms; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_contract_terms; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_contract_terms IS 'Contracts are orders that have been claimed by a wallet';
 
 
 --
--- Name: COLUMN merchant_contract_terms.merchant_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.merchant_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.merchant_serial IS 'Identifies the instance offering the contract';
 
 
 --
--- Name: COLUMN merchant_contract_terms.order_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.order_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.order_id IS 'Not a foreign key into merchant_orders because paid contracts persist after expiration';
 
 
 --
--- Name: COLUMN merchant_contract_terms.contract_terms; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.contract_terms; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.contract_terms IS 'These contract terms include the wallet nonce';
 
 
 --
--- Name: COLUMN merchant_contract_terms.h_contract_terms; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.h_contract_terms; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.h_contract_terms IS 'Hash over contract_terms';
 
 
 --
--- Name: COLUMN merchant_contract_terms.pay_deadline; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.pay_deadline; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.pay_deadline IS 'How long is the offer valid. After this time, the order can be garbage collected';
 
 
 --
--- Name: COLUMN merchant_contract_terms.refund_deadline; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.refund_deadline; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.refund_deadline IS 'By what times do refunds have to be approved (useful to reject refund requests)';
 
 
 --
--- Name: COLUMN merchant_contract_terms.paid; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.paid; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.paid IS 'true implies the customer paid for this contract; order should be DELETEd from merchant_orders once paid is set to release merchant_order_locks; paid remains true even if the payment was later refunded';
 
 
 --
--- Name: COLUMN merchant_contract_terms.wired; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.wired; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.wired IS 'true implies the exchange wired us the full amount for all non-refunded payments under this contract';
 
 
 --
--- Name: COLUMN merchant_contract_terms.fulfillment_url; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.fulfillment_url; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.fulfillment_url IS 'also included in contract_terms, but we need it here to SELECT on it during repurchase detection; can be NULL if the contract has no fulfillment URL';
 
 
 --
--- Name: COLUMN merchant_contract_terms.session_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_contract_terms.session_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_contract_terms.session_id IS 'last session_id from we confirmed the paying client to use, empty string for none';
 
 
 --
--- Name: merchant_deposit_to_transfer; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_deposit_to_transfer; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_deposit_to_transfer (
@@ -1700,22 +1844,24 @@ CREATE TABLE public.merchant_deposit_to_transfer (
 );
 
 
+ALTER TABLE public.merchant_deposit_to_transfer OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_deposit_to_transfer; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_deposit_to_transfer; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_deposit_to_transfer IS 'Mapping of deposits to (possibly unconfirmed) wire transfers; NOTE: not used yet';
 
 
 --
--- Name: COLUMN merchant_deposit_to_transfer.execution_time; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_deposit_to_transfer.execution_time; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_deposit_to_transfer.execution_time IS 'Execution time as claimed by the exchange, roughly matches time seen by merchant';
 
 
 --
--- Name: merchant_deposits; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_deposits; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_deposits (
@@ -1740,43 +1886,45 @@ CREATE TABLE public.merchant_deposits (
 );
 
 
+ALTER TABLE public.merchant_deposits OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_deposits; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_deposits; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_deposits IS 'Refunds approved by the merchant (backoffice) logic, excludes abort refunds';
 
 
 --
--- Name: COLUMN merchant_deposits.deposit_timestamp; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_deposits.deposit_timestamp; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_deposits.deposit_timestamp IS 'Time when the exchange generated the deposit confirmation';
 
 
 --
--- Name: COLUMN merchant_deposits.wire_fee_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_deposits.wire_fee_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_deposits.wire_fee_val IS 'We MAY want to see if we should try to get this via merchant_exchange_wire_fees (not sure, may be too complicated with the date range, etc.)';
 
 
 --
--- Name: COLUMN merchant_deposits.signkey_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_deposits.signkey_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_deposits.signkey_serial IS 'Online signing key of the exchange on the deposit confirmation';
 
 
 --
--- Name: COLUMN merchant_deposits.exchange_sig; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_deposits.exchange_sig; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_deposits.exchange_sig IS 'Signature of the exchange over the deposit confirmation';
 
 
 --
--- Name: merchant_deposits_deposit_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_deposits_deposit_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_deposits_deposit_serial_seq
@@ -1787,15 +1935,17 @@ CREATE SEQUENCE public.merchant_deposits_deposit_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_deposits_deposit_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_deposits_deposit_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_deposits_deposit_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_deposits_deposit_serial_seq OWNED BY public.merchant_deposits.deposit_serial;
 
 
 --
--- Name: merchant_exchange_signing_keys; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_exchange_signing_keys; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_exchange_signing_keys (
@@ -1812,22 +1962,24 @@ CREATE TABLE public.merchant_exchange_signing_keys (
 );
 
 
+ALTER TABLE public.merchant_exchange_signing_keys OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_exchange_signing_keys; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_exchange_signing_keys; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_exchange_signing_keys IS 'Here we store proofs of the exchange online signing keys being signed by the exchange master key';
 
 
 --
--- Name: COLUMN merchant_exchange_signing_keys.master_pub; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_exchange_signing_keys.master_pub; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_exchange_signing_keys.master_pub IS 'Master public key of the exchange with these online signing keys';
 
 
 --
--- Name: merchant_exchange_signing_keys_signkey_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_exchange_signing_keys_signkey_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_exchange_signing_keys_signkey_serial_seq
@@ -1838,15 +1990,17 @@ CREATE SEQUENCE public.merchant_exchange_signing_keys_signkey_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_exchange_signing_keys_signkey_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_exchange_signing_keys_signkey_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_exchange_signing_keys_signkey_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_exchange_signing_keys_signkey_serial_seq OWNED BY public.merchant_exchange_signing_keys.signkey_serial;
 
 
 --
--- Name: merchant_exchange_wire_fees; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_exchange_wire_fees; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_exchange_wire_fees (
@@ -1866,22 +2020,24 @@ CREATE TABLE public.merchant_exchange_wire_fees (
 );
 
 
+ALTER TABLE public.merchant_exchange_wire_fees OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_exchange_wire_fees; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_exchange_wire_fees; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_exchange_wire_fees IS 'Here we store proofs of the wire fee structure of the various exchanges';
 
 
 --
--- Name: COLUMN merchant_exchange_wire_fees.master_pub; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_exchange_wire_fees.master_pub; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_exchange_wire_fees.master_pub IS 'Master public key of the exchange with these wire fees';
 
 
 --
--- Name: merchant_exchange_wire_fees_wirefee_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_exchange_wire_fees_wirefee_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_exchange_wire_fees_wirefee_serial_seq
@@ -1892,15 +2048,17 @@ CREATE SEQUENCE public.merchant_exchange_wire_fees_wirefee_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_exchange_wire_fees_wirefee_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_exchange_wire_fees_wirefee_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_exchange_wire_fees_wirefee_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_exchange_wire_fees_wirefee_serial_seq OWNED BY public.merchant_exchange_wire_fees.wirefee_serial;
 
 
 --
--- Name: merchant_instances; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_instances; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_instances (
@@ -1921,43 +2079,45 @@ CREATE TABLE public.merchant_instances (
 );
 
 
+ALTER TABLE public.merchant_instances OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_instances; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_instances; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_instances IS 'all the instances supported by this backend';
 
 
 --
--- Name: COLUMN merchant_instances.merchant_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_instances.merchant_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_instances.merchant_id IS 'identifier of the merchant as used in the base URL (required)';
 
 
 --
--- Name: COLUMN merchant_instances.merchant_name; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_instances.merchant_name; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_instances.merchant_name IS 'legal name of the merchant as a simple string (required)';
 
 
 --
--- Name: COLUMN merchant_instances.address; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_instances.address; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_instances.address IS 'physical address of the merchant as a Location in JSON format (required)';
 
 
 --
--- Name: COLUMN merchant_instances.jurisdiction; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_instances.jurisdiction; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_instances.jurisdiction IS 'jurisdiction of the merchant as a Location in JSON format (required)';
 
 
 --
--- Name: merchant_instances_merchant_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_instances_merchant_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_instances_merchant_serial_seq
@@ -1968,15 +2128,17 @@ CREATE SEQUENCE public.merchant_instances_merchant_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_instances_merchant_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_instances_merchant_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_instances_merchant_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_instances_merchant_serial_seq OWNED BY public.merchant_instances.merchant_serial;
 
 
 --
--- Name: merchant_inventory; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_inventory; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_inventory (
@@ -1998,92 +2160,94 @@ CREATE TABLE public.merchant_inventory (
 );
 
 
+ALTER TABLE public.merchant_inventory OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_inventory; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_inventory; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_inventory IS 'products offered by the merchant (may be incomplete, frontend can override)';
 
 
 --
--- Name: COLUMN merchant_inventory.description; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.description; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.description IS 'Human-readable product description';
 
 
 --
--- Name: COLUMN merchant_inventory.description_i18n; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.description_i18n; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.description_i18n IS 'JSON map from IETF BCP 47 language tags to localized descriptions';
 
 
 --
--- Name: COLUMN merchant_inventory.unit; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.unit; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.unit IS 'Unit of sale for the product (liters, kilograms, packages)';
 
 
 --
--- Name: COLUMN merchant_inventory.image; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.image; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.image IS 'NOT NULL, but can be 0 bytes; must contain an ImageDataUrl';
 
 
 --
--- Name: COLUMN merchant_inventory.taxes; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.taxes; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.taxes IS 'JSON array containing taxes the merchant pays, must be JSON, but can be just "[]"';
 
 
 --
--- Name: COLUMN merchant_inventory.price_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.price_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.price_val IS 'Current price of one unit of the product';
 
 
 --
--- Name: COLUMN merchant_inventory.total_stock; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.total_stock; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.total_stock IS 'A value of -1 is used for unlimited (electronic good), may never be lowered';
 
 
 --
--- Name: COLUMN merchant_inventory.total_sold; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.total_sold; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.total_sold IS 'Number of products sold, must be below total_stock, non-negative, may never be lowered';
 
 
 --
--- Name: COLUMN merchant_inventory.total_lost; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.total_lost; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.total_lost IS 'Number of products that used to be in stock but were lost (spoiled, damaged), may never be lowered; total_stock >= total_sold + total_lost must always hold';
 
 
 --
--- Name: COLUMN merchant_inventory.address; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.address; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.address IS 'JSON formatted Location of where the product is stocked';
 
 
 --
--- Name: COLUMN merchant_inventory.next_restock; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory.next_restock; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory.next_restock IS 'GNUnet absolute time indicating when the next restock is expected. 0 for unknown.';
 
 
 --
--- Name: merchant_inventory_locks; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_inventory_locks; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_inventory_locks (
@@ -2095,29 +2259,31 @@ CREATE TABLE public.merchant_inventory_locks (
 );
 
 
+ALTER TABLE public.merchant_inventory_locks OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_inventory_locks; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_inventory_locks; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_inventory_locks IS 'locks on inventory helt by shopping carts; note that locks MAY not be honored if merchants increase total_lost for inventory';
 
 
 --
--- Name: COLUMN merchant_inventory_locks.total_locked; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory_locks.total_locked; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory_locks.total_locked IS 'how many units of the product does this lock reserve';
 
 
 --
--- Name: COLUMN merchant_inventory_locks.expiration; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_inventory_locks.expiration; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_inventory_locks.expiration IS 'when does this lock automatically expire (if no order is created)';
 
 
 --
--- Name: merchant_inventory_product_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_inventory_product_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_inventory_product_serial_seq
@@ -2128,15 +2294,17 @@ CREATE SEQUENCE public.merchant_inventory_product_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_inventory_product_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_inventory_product_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_inventory_product_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_inventory_product_serial_seq OWNED BY public.merchant_inventory.product_serial;
 
 
 --
--- Name: merchant_keys; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_keys; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_keys (
@@ -2146,15 +2314,17 @@ CREATE TABLE public.merchant_keys (
 );
 
 
+ALTER TABLE public.merchant_keys OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_keys; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_keys; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_keys IS 'private keys of instances that have not been deleted';
 
 
 --
--- Name: merchant_order_locks; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_order_locks; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_order_locks (
@@ -2164,22 +2334,24 @@ CREATE TABLE public.merchant_order_locks (
 );
 
 
+ALTER TABLE public.merchant_order_locks OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_order_locks; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_order_locks; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_order_locks IS 'locks on orders awaiting claim and payment; note that locks MAY not be honored if merchants increase total_lost for inventory';
 
 
 --
--- Name: COLUMN merchant_order_locks.total_locked; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_order_locks.total_locked; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_order_locks.total_locked IS 'how many units of the product does this lock reserve';
 
 
 --
--- Name: merchant_orders; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_orders; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_orders (
@@ -2196,50 +2368,52 @@ CREATE TABLE public.merchant_orders (
 );
 
 
+ALTER TABLE public.merchant_orders OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_orders; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_orders; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_orders IS 'Orders we offered to a customer, but that have not yet been claimed';
 
 
 --
--- Name: COLUMN merchant_orders.merchant_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_orders.merchant_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_orders.merchant_serial IS 'Identifies the instance offering the contract';
 
 
 --
--- Name: COLUMN merchant_orders.claim_token; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_orders.claim_token; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_orders.claim_token IS 'Token optionally used to authorize the wallet to claim the order. All zeros (not NULL) if not used';
 
 
 --
--- Name: COLUMN merchant_orders.h_post_data; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_orders.h_post_data; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_orders.h_post_data IS 'Hash of the POST request that created this order, for idempotency checks';
 
 
 --
--- Name: COLUMN merchant_orders.pay_deadline; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_orders.pay_deadline; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_orders.pay_deadline IS 'How long is the offer valid. After this time, the order can be garbage collected';
 
 
 --
--- Name: COLUMN merchant_orders.contract_terms; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_orders.contract_terms; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_orders.contract_terms IS 'Claiming changes the contract_terms, hence we have no hash of the terms in this table';
 
 
 --
--- Name: merchant_orders_order_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_orders_order_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_orders_order_serial_seq
@@ -2250,15 +2424,17 @@ CREATE SEQUENCE public.merchant_orders_order_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_orders_order_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_orders_order_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_orders_order_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_orders_order_serial_seq OWNED BY public.merchant_orders.order_serial;
 
 
 --
--- Name: merchant_refund_proofs; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_refund_proofs; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_refund_proofs (
@@ -2269,15 +2445,17 @@ CREATE TABLE public.merchant_refund_proofs (
 );
 
 
+ALTER TABLE public.merchant_refund_proofs OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_refund_proofs; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_refund_proofs; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_refund_proofs IS 'Refunds confirmed by the exchange (not all approved refunds are grabbed by the wallet)';
 
 
 --
--- Name: merchant_refunds; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_refunds; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_refunds (
@@ -2292,22 +2470,24 @@ CREATE TABLE public.merchant_refunds (
 );
 
 
+ALTER TABLE public.merchant_refunds OWNER TO grothoff;
+
 --
--- Name: COLUMN merchant_refunds.rtransaction_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_refunds.rtransaction_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_refunds.rtransaction_id IS 'Needed for uniqueness in case a refund is increased for the same order';
 
 
 --
--- Name: COLUMN merchant_refunds.refund_timestamp; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_refunds.refund_timestamp; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_refunds.refund_timestamp IS 'Needed for grouping of refunds in the wallet UI; has no semantics in the protocol (only for UX), but should be from the time when the merchant internally approved the refund';
 
 
 --
--- Name: merchant_refunds_refund_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_refunds_refund_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_refunds_refund_serial_seq
@@ -2318,15 +2498,17 @@ CREATE SEQUENCE public.merchant_refunds_refund_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_refunds_refund_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_refunds_refund_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_refunds_refund_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_refunds_refund_serial_seq OWNED BY public.merchant_refunds.refund_serial;
 
 
 --
--- Name: merchant_tip_pickup_signatures; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_tip_pickup_signatures; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_tip_pickup_signatures (
@@ -2336,15 +2518,17 @@ CREATE TABLE public.merchant_tip_pickup_signatures (
 );
 
 
+ALTER TABLE public.merchant_tip_pickup_signatures OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_tip_pickup_signatures; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_tip_pickup_signatures; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_tip_pickup_signatures IS 'blind signatures we got from the exchange during the tip pickup';
 
 
 --
--- Name: merchant_tip_pickups; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_tip_pickups; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_tip_pickups (
@@ -2357,15 +2541,17 @@ CREATE TABLE public.merchant_tip_pickups (
 );
 
 
+ALTER TABLE public.merchant_tip_pickups OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_tip_pickups; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_tip_pickups; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_tip_pickups IS 'tips that have been picked up';
 
 
 --
--- Name: merchant_tip_pickups_pickup_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_tip_pickups_pickup_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_tip_pickups_pickup_serial_seq
@@ -2376,15 +2562,17 @@ CREATE SEQUENCE public.merchant_tip_pickups_pickup_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_tip_pickups_pickup_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_tip_pickups_pickup_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_tip_pickups_pickup_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_tip_pickups_pickup_serial_seq OWNED BY public.merchant_tip_pickups.pickup_serial;
 
 
 --
--- Name: merchant_tip_reserve_keys; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_tip_reserve_keys; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_tip_reserve_keys (
@@ -2395,8 +2583,10 @@ CREATE TABLE public.merchant_tip_reserve_keys (
 );
 
 
+ALTER TABLE public.merchant_tip_reserve_keys OWNER TO grothoff;
+
 --
--- Name: merchant_tip_reserves; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_tip_reserves; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_tip_reserves (
@@ -2417,50 +2607,52 @@ CREATE TABLE public.merchant_tip_reserves (
 );
 
 
+ALTER TABLE public.merchant_tip_reserves OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_tip_reserves; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_tip_reserves; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_tip_reserves IS 'private keys of reserves that have not been deleted';
 
 
 --
--- Name: COLUMN merchant_tip_reserves.expiration; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tip_reserves.expiration; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tip_reserves.expiration IS 'FIXME: EXCHANGE API needs to tell us when reserves close if we are to compute this';
 
 
 --
--- Name: COLUMN merchant_tip_reserves.merchant_initial_balance_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tip_reserves.merchant_initial_balance_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tip_reserves.merchant_initial_balance_val IS 'Set to the initial balance the merchant told us when creating the reserve';
 
 
 --
--- Name: COLUMN merchant_tip_reserves.exchange_initial_balance_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tip_reserves.exchange_initial_balance_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tip_reserves.exchange_initial_balance_val IS 'Set to the initial balance the exchange told us when we queried the reserve status';
 
 
 --
--- Name: COLUMN merchant_tip_reserves.tips_committed_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tip_reserves.tips_committed_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tip_reserves.tips_committed_val IS 'Amount of outstanding approved tips that have not been picked up';
 
 
 --
--- Name: COLUMN merchant_tip_reserves.tips_picked_up_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tip_reserves.tips_picked_up_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tip_reserves.tips_picked_up_val IS 'Total amount tips that have been picked up from this reserve';
 
 
 --
--- Name: merchant_tip_reserves_reserve_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_tip_reserves_reserve_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_tip_reserves_reserve_serial_seq
@@ -2471,15 +2663,17 @@ CREATE SEQUENCE public.merchant_tip_reserves_reserve_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_tip_reserves_reserve_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_tip_reserves_reserve_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_tip_reserves_reserve_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_tip_reserves_reserve_serial_seq OWNED BY public.merchant_tip_reserves.reserve_serial;
 
 
 --
--- Name: merchant_tips; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_tips; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_tips (
@@ -2498,43 +2692,45 @@ CREATE TABLE public.merchant_tips (
 );
 
 
+ALTER TABLE public.merchant_tips OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_tips; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_tips; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_tips IS 'tips that have been authorized';
 
 
 --
--- Name: COLUMN merchant_tips.reserve_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tips.reserve_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tips.reserve_serial IS 'Reserve from which this tip is funded';
 
 
 --
--- Name: COLUMN merchant_tips.expiration; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tips.expiration; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tips.expiration IS 'by when does the client have to pick up the tip';
 
 
 --
--- Name: COLUMN merchant_tips.amount_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tips.amount_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tips.amount_val IS 'total transaction cost for all coins including withdraw fees';
 
 
 --
--- Name: COLUMN merchant_tips.picked_up_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_tips.picked_up_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_tips.picked_up_val IS 'Tip amount left to be picked up';
 
 
 --
--- Name: merchant_tips_tip_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_tips_tip_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_tips_tip_serial_seq
@@ -2545,15 +2741,17 @@ CREATE SEQUENCE public.merchant_tips_tip_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_tips_tip_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_tips_tip_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_tips_tip_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_tips_tip_serial_seq OWNED BY public.merchant_tips.tip_serial;
 
 
 --
--- Name: merchant_transfer_signatures; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_transfer_signatures; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_transfer_signatures (
@@ -2567,22 +2765,24 @@ CREATE TABLE public.merchant_transfer_signatures (
 );
 
 
+ALTER TABLE public.merchant_transfer_signatures OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_transfer_signatures; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_transfer_signatures; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_transfer_signatures IS 'table represents the main information returned from the /transfer request to the exchange.';
 
 
 --
--- Name: COLUMN merchant_transfer_signatures.execution_time; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_transfer_signatures.execution_time; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_transfer_signatures.execution_time IS 'Execution time as claimed by the exchange, roughly matches time seen by merchant';
 
 
 --
--- Name: merchant_transfer_to_coin; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_transfer_to_coin; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_transfer_to_coin (
@@ -2596,29 +2796,31 @@ CREATE TABLE public.merchant_transfer_to_coin (
 );
 
 
+ALTER TABLE public.merchant_transfer_to_coin OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_transfer_to_coin; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_transfer_to_coin; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_transfer_to_coin IS 'Mapping of (credit) transfers to (deposited) coins';
 
 
 --
--- Name: COLUMN merchant_transfer_to_coin.exchange_deposit_value_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_transfer_to_coin.exchange_deposit_value_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_transfer_to_coin.exchange_deposit_value_val IS 'Deposit value as claimed by the exchange, should match our values in merchant_deposits minus refunds';
 
 
 --
--- Name: COLUMN merchant_transfer_to_coin.exchange_deposit_fee_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_transfer_to_coin.exchange_deposit_fee_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_transfer_to_coin.exchange_deposit_fee_val IS 'Deposit value as claimed by the exchange, should match our values in merchant_deposits';
 
 
 --
--- Name: merchant_transfers; Type: TABLE; Schema: public; Owner: -
+-- Name: merchant_transfers; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.merchant_transfers (
@@ -2634,36 +2836,38 @@ CREATE TABLE public.merchant_transfers (
 );
 
 
+ALTER TABLE public.merchant_transfers OWNER TO grothoff;
+
 --
--- Name: TABLE merchant_transfers; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE merchant_transfers; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.merchant_transfers IS 'table represents the information provided by the (trusted) merchant about incoming wire transfers';
 
 
 --
--- Name: COLUMN merchant_transfers.credit_amount_val; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_transfers.credit_amount_val; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_transfers.credit_amount_val IS 'actual value of the (aggregated) wire transfer, excluding the wire fee';
 
 
 --
--- Name: COLUMN merchant_transfers.verified; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_transfers.verified; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_transfers.verified IS 'true once we got an acceptable response from the exchange for this transfer';
 
 
 --
--- Name: COLUMN merchant_transfers.confirmed; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN merchant_transfers.confirmed; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.merchant_transfers.confirmed IS 'true once the merchant confirmed that this transfer was received';
 
 
 --
--- Name: merchant_transfers_credit_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: merchant_transfers_credit_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.merchant_transfers_credit_serial_seq
@@ -2674,15 +2878,17 @@ CREATE SEQUENCE public.merchant_transfers_credit_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.merchant_transfers_credit_serial_seq OWNER TO grothoff;
+
 --
--- Name: merchant_transfers_credit_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: merchant_transfers_credit_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.merchant_transfers_credit_serial_seq OWNED BY public.merchant_transfers.credit_serial;
 
 
 --
--- Name: prewire; Type: TABLE; Schema: public; Owner: -
+-- Name: prewire; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.prewire (
@@ -2694,36 +2900,38 @@ CREATE TABLE public.prewire (
 );
 
 
+ALTER TABLE public.prewire OWNER TO grothoff;
+
 --
--- Name: TABLE prewire; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE prewire; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.prewire IS 'pre-commit data for wire transfers we are about to execute';
 
 
 --
--- Name: COLUMN prewire.finished; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN prewire.finished; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.prewire.finished IS 'set to TRUE once bank confirmed receiving the wire transfer request';
 
 
 --
--- Name: COLUMN prewire.buf; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN prewire.buf; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.prewire.buf IS 'serialized data to send to the bank to execute the wire transfer';
 
 
 --
--- Name: COLUMN prewire.failed; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN prewire.failed; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.prewire.failed IS 'set to TRUE if the bank responded with a non-transient failure to our transfer request';
 
 
 --
--- Name: prewire_prewire_uuid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: prewire_prewire_uuid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.prewire_prewire_uuid_seq
@@ -2734,15 +2942,17 @@ CREATE SEQUENCE public.prewire_prewire_uuid_seq
     CACHE 1;
 
 
+ALTER TABLE public.prewire_prewire_uuid_seq OWNER TO grothoff;
+
 --
--- Name: prewire_prewire_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: prewire_prewire_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.prewire_prewire_uuid_seq OWNED BY public.prewire.prewire_uuid;
 
 
 --
--- Name: recoup; Type: TABLE; Schema: public; Owner: -
+-- Name: recoup; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.recoup (
@@ -2759,22 +2969,24 @@ CREATE TABLE public.recoup (
 );
 
 
+ALTER TABLE public.recoup OWNER TO grothoff;
+
 --
--- Name: TABLE recoup; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE recoup; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.recoup IS 'Information about recoups that were executed';
 
 
 --
--- Name: COLUMN recoup.reserve_out_serial_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN recoup.reserve_out_serial_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.recoup.reserve_out_serial_id IS 'Identifies the h_blind_ev of the recouped coin.';
 
 
 --
--- Name: recoup_recoup_uuid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: recoup_recoup_uuid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.recoup_recoup_uuid_seq
@@ -2785,15 +2997,17 @@ CREATE SEQUENCE public.recoup_recoup_uuid_seq
     CACHE 1;
 
 
+ALTER TABLE public.recoup_recoup_uuid_seq OWNER TO grothoff;
+
 --
--- Name: recoup_recoup_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: recoup_recoup_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.recoup_recoup_uuid_seq OWNED BY public.recoup.recoup_uuid;
 
 
 --
--- Name: recoup_refresh; Type: TABLE; Schema: public; Owner: -
+-- Name: recoup_refresh; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.recoup_refresh (
@@ -2810,15 +3024,17 @@ CREATE TABLE public.recoup_refresh (
 );
 
 
+ALTER TABLE public.recoup_refresh OWNER TO grothoff;
+
 --
--- Name: COLUMN recoup_refresh.rrc_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN recoup_refresh.rrc_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.recoup_refresh.rrc_serial IS 'Identifies the h_blind_ev of the recouped coin (as h_coin_ev).';
 
 
 --
--- Name: recoup_refresh_recoup_refresh_uuid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: recoup_refresh_recoup_refresh_uuid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.recoup_refresh_recoup_refresh_uuid_seq
@@ -2829,15 +3045,17 @@ CREATE SEQUENCE public.recoup_refresh_recoup_refresh_uuid_seq
     CACHE 1;
 
 
+ALTER TABLE public.recoup_refresh_recoup_refresh_uuid_seq OWNER TO grothoff;
+
 --
--- Name: recoup_refresh_recoup_refresh_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: recoup_refresh_recoup_refresh_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.recoup_refresh_recoup_refresh_uuid_seq OWNED BY public.recoup_refresh.recoup_refresh_uuid;
 
 
 --
--- Name: refresh_commitments; Type: TABLE; Schema: public; Owner: -
+-- Name: refresh_commitments; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.refresh_commitments (
@@ -2853,15 +3071,17 @@ CREATE TABLE public.refresh_commitments (
 );
 
 
+ALTER TABLE public.refresh_commitments OWNER TO grothoff;
+
 --
--- Name: TABLE refresh_commitments; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE refresh_commitments; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.refresh_commitments IS 'Commitments made when melting coins and the gamma value chosen by the exchange.';
 
 
 --
--- Name: refresh_commitments_melt_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: refresh_commitments_melt_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.refresh_commitments_melt_serial_id_seq
@@ -2872,15 +3092,17 @@ CREATE SEQUENCE public.refresh_commitments_melt_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.refresh_commitments_melt_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: refresh_commitments_melt_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: refresh_commitments_melt_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.refresh_commitments_melt_serial_id_seq OWNED BY public.refresh_commitments.melt_serial_id;
 
 
 --
--- Name: refresh_revealed_coins; Type: TABLE; Schema: public; Owner: -
+-- Name: refresh_revealed_coins; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.refresh_revealed_coins (
@@ -2897,57 +3119,59 @@ CREATE TABLE public.refresh_revealed_coins (
 );
 
 
+ALTER TABLE public.refresh_revealed_coins OWNER TO grothoff;
+
 --
--- Name: TABLE refresh_revealed_coins; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE refresh_revealed_coins; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.refresh_revealed_coins IS 'Revelations about the new coins that are to be created during a melting session.';
 
 
 --
--- Name: COLUMN refresh_revealed_coins.freshcoin_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_revealed_coins.freshcoin_index; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_revealed_coins.freshcoin_index IS 'index of the fresh coin being created (one melt operation may result in multiple fresh coins)';
 
 
 --
--- Name: COLUMN refresh_revealed_coins.coin_ev; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_revealed_coins.coin_ev; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_revealed_coins.coin_ev IS 'envelope of the new coin to be signed';
 
 
 --
--- Name: COLUMN refresh_revealed_coins.h_coin_ev; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_revealed_coins.h_coin_ev; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_revealed_coins.h_coin_ev IS 'hash of the envelope of the new coin to be signed (for lookups)';
 
 
 --
--- Name: COLUMN refresh_revealed_coins.ev_sig; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_revealed_coins.ev_sig; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_revealed_coins.ev_sig IS 'exchange signature over the envelope';
 
 
 --
--- Name: COLUMN refresh_revealed_coins.rrc_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_revealed_coins.rrc_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_revealed_coins.rrc_serial IS 'needed for exchange-auditor replication logic';
 
 
 --
--- Name: COLUMN refresh_revealed_coins.melt_serial_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_revealed_coins.melt_serial_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_revealed_coins.melt_serial_id IS 'Identifies the refresh commitment (rc) of the operation.';
 
 
 --
--- Name: refresh_revealed_coins_rrc_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: refresh_revealed_coins_rrc_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.refresh_revealed_coins_rrc_serial_seq
@@ -2958,15 +3182,17 @@ CREATE SEQUENCE public.refresh_revealed_coins_rrc_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.refresh_revealed_coins_rrc_serial_seq OWNER TO grothoff;
+
 --
--- Name: refresh_revealed_coins_rrc_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: refresh_revealed_coins_rrc_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.refresh_revealed_coins_rrc_serial_seq OWNED BY public.refresh_revealed_coins.rrc_serial;
 
 
 --
--- Name: refresh_transfer_keys; Type: TABLE; Schema: public; Owner: -
+-- Name: refresh_transfer_keys; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.refresh_transfer_keys (
@@ -2978,43 +3204,45 @@ CREATE TABLE public.refresh_transfer_keys (
 );
 
 
+ALTER TABLE public.refresh_transfer_keys OWNER TO grothoff;
+
 --
--- Name: TABLE refresh_transfer_keys; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE refresh_transfer_keys; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.refresh_transfer_keys IS 'Transfer keys of a refresh operation (the data revealed to the exchange).';
 
 
 --
--- Name: COLUMN refresh_transfer_keys.transfer_pub; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_transfer_keys.transfer_pub; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_transfer_keys.transfer_pub IS 'transfer public key for the gamma index';
 
 
 --
--- Name: COLUMN refresh_transfer_keys.transfer_privs; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_transfer_keys.transfer_privs; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_transfer_keys.transfer_privs IS 'array of TALER_CNC_KAPPA - 1 transfer private keys that have been revealed, with the gamma entry being skipped';
 
 
 --
--- Name: COLUMN refresh_transfer_keys.rtc_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_transfer_keys.rtc_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_transfer_keys.rtc_serial IS 'needed for exchange-auditor replication logic';
 
 
 --
--- Name: COLUMN refresh_transfer_keys.melt_serial_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refresh_transfer_keys.melt_serial_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refresh_transfer_keys.melt_serial_id IS 'Identifies the refresh commitment (rc) of the operation.';
 
 
 --
--- Name: refresh_transfer_keys_rtc_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: refresh_transfer_keys_rtc_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.refresh_transfer_keys_rtc_serial_seq
@@ -3025,15 +3253,17 @@ CREATE SEQUENCE public.refresh_transfer_keys_rtc_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.refresh_transfer_keys_rtc_serial_seq OWNER TO grothoff;
+
 --
--- Name: refresh_transfer_keys_rtc_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: refresh_transfer_keys_rtc_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.refresh_transfer_keys_rtc_serial_seq OWNED BY public.refresh_transfer_keys.rtc_serial;
 
 
 --
--- Name: refunds; Type: TABLE; Schema: public; Owner: -
+-- Name: refunds; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.refunds (
@@ -3047,29 +3277,31 @@ CREATE TABLE public.refunds (
 );
 
 
+ALTER TABLE public.refunds OWNER TO grothoff;
+
 --
--- Name: TABLE refunds; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE refunds; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.refunds IS 'Data on coins that were refunded. Technically, refunds always apply against specific deposit operations involving a coin. The combination of coin_pub, merchant_pub, h_contract_terms and rtransaction_id MUST be unique, and we usually select by coin_pub so that one goes first.';
 
 
 --
--- Name: COLUMN refunds.rtransaction_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refunds.rtransaction_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refunds.rtransaction_id IS 'used by the merchant to make refunds unique in case the same coin for the same deposit gets a subsequent (higher) refund';
 
 
 --
--- Name: COLUMN refunds.deposit_serial_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN refunds.deposit_serial_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.refunds.deposit_serial_id IS 'Identifies ONLY the merchant_pub, h_contract_terms and known_coin_id. Multiple deposits may match a refund, this only identifies one of them.';
 
 
 --
--- Name: refunds_refund_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: refunds_refund_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.refunds_refund_serial_id_seq
@@ -3080,15 +3312,17 @@ CREATE SEQUENCE public.refunds_refund_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.refunds_refund_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: refunds_refund_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: refunds_refund_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.refunds_refund_serial_id_seq OWNED BY public.refunds.refund_serial_id;
 
 
 --
--- Name: reserves; Type: TABLE; Schema: public; Owner: -
+-- Name: reserves; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.reserves (
@@ -3103,29 +3337,31 @@ CREATE TABLE public.reserves (
 );
 
 
+ALTER TABLE public.reserves OWNER TO grothoff;
+
 --
--- Name: TABLE reserves; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE reserves; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.reserves IS 'Summarizes the balance of a reserve. Updated when new funds are added or withdrawn.';
 
 
 --
--- Name: COLUMN reserves.expiration_date; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN reserves.expiration_date; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.reserves.expiration_date IS 'Used to trigger closing of reserves that have not been drained after some time';
 
 
 --
--- Name: COLUMN reserves.gc_date; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN reserves.gc_date; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.reserves.gc_date IS 'Used to forget all information about a reserve during garbage collection';
 
 
 --
--- Name: reserves_close; Type: TABLE; Schema: public; Owner: -
+-- Name: reserves_close; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.reserves_close (
@@ -3142,15 +3378,17 @@ CREATE TABLE public.reserves_close (
 );
 
 
+ALTER TABLE public.reserves_close OWNER TO grothoff;
+
 --
--- Name: TABLE reserves_close; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE reserves_close; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.reserves_close IS 'wire transfers executed by the reserve to close reserves';
 
 
 --
--- Name: reserves_close_close_uuid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: reserves_close_close_uuid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.reserves_close_close_uuid_seq
@@ -3161,15 +3399,17 @@ CREATE SEQUENCE public.reserves_close_close_uuid_seq
     CACHE 1;
 
 
+ALTER TABLE public.reserves_close_close_uuid_seq OWNER TO grothoff;
+
 --
--- Name: reserves_close_close_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: reserves_close_close_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.reserves_close_close_uuid_seq OWNED BY public.reserves_close.close_uuid;
 
 
 --
--- Name: reserves_in; Type: TABLE; Schema: public; Owner: -
+-- Name: reserves_in; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.reserves_in (
@@ -3184,15 +3424,17 @@ CREATE TABLE public.reserves_in (
 );
 
 
+ALTER TABLE public.reserves_in OWNER TO grothoff;
+
 --
--- Name: TABLE reserves_in; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE reserves_in; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.reserves_in IS 'list of transfers of funds into the reserves, one per incoming wire transfer';
 
 
 --
--- Name: reserves_in_reserve_in_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: reserves_in_reserve_in_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.reserves_in_reserve_in_serial_id_seq
@@ -3203,15 +3445,17 @@ CREATE SEQUENCE public.reserves_in_reserve_in_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.reserves_in_reserve_in_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: reserves_in_reserve_in_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: reserves_in_reserve_in_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.reserves_in_reserve_in_serial_id_seq OWNED BY public.reserves_in.reserve_in_serial_id;
 
 
 --
--- Name: reserves_out; Type: TABLE; Schema: public; Owner: -
+-- Name: reserves_out; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.reserves_out (
@@ -3229,22 +3473,24 @@ CREATE TABLE public.reserves_out (
 );
 
 
+ALTER TABLE public.reserves_out OWNER TO grothoff;
+
 --
--- Name: TABLE reserves_out; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE reserves_out; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.reserves_out IS 'Withdraw operations performed on reserves.';
 
 
 --
--- Name: COLUMN reserves_out.h_blind_ev; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN reserves_out.h_blind_ev; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.reserves_out.h_blind_ev IS 'Hash of the blinded coin, used as primary key here so that broken clients that use a non-random coin or blinding factor fail to withdraw (otherwise they would fail on deposit when the coin is not unique there).';
 
 
 --
--- Name: reserves_out_reserve_out_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: reserves_out_reserve_out_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.reserves_out_reserve_out_serial_id_seq
@@ -3255,15 +3501,17 @@ CREATE SEQUENCE public.reserves_out_reserve_out_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.reserves_out_reserve_out_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: reserves_out_reserve_out_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: reserves_out_reserve_out_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.reserves_out_reserve_out_serial_id_seq OWNED BY public.reserves_out.reserve_out_serial_id;
 
 
 --
--- Name: reserves_reserve_uuid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: reserves_reserve_uuid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.reserves_reserve_uuid_seq
@@ -3274,15 +3522,103 @@ CREATE SEQUENCE public.reserves_reserve_uuid_seq
     CACHE 1;
 
 
+ALTER TABLE public.reserves_reserve_uuid_seq OWNER TO grothoff;
+
 --
--- Name: reserves_reserve_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: reserves_reserve_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.reserves_reserve_uuid_seq OWNED BY public.reserves.reserve_uuid;
 
 
 --
--- Name: signkey_revocations; Type: TABLE; Schema: public; Owner: -
+-- Name: revolving_work_shards; Type: TABLE; Schema: public; Owner: grothoff
+--
+
+CREATE UNLOGGED TABLE public.revolving_work_shards (
+    shard_serial_id bigint NOT NULL,
+    last_attempt bigint NOT NULL,
+    start_row integer NOT NULL,
+    end_row integer NOT NULL,
+    active boolean DEFAULT false NOT NULL,
+    job_name character varying NOT NULL
+);
+
+
+ALTER TABLE public.revolving_work_shards OWNER TO grothoff;
+
+--
+-- Name: TABLE revolving_work_shards; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON TABLE public.revolving_work_shards IS 'coordinates work between multiple processes working on the same job with partitions that need to be repeatedly processed; unlogged because on system crashes the locks represented by this table will have to be cleared anyway, typically using "taler-exchange-dbinit -s"';
+
+
+--
+-- Name: COLUMN revolving_work_shards.shard_serial_id; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON COLUMN public.revolving_work_shards.shard_serial_id IS 'unique serial number identifying the shard';
+
+
+--
+-- Name: COLUMN revolving_work_shards.last_attempt; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON COLUMN public.revolving_work_shards.last_attempt IS 'last time a worker attempted to work on the shard';
+
+
+--
+-- Name: COLUMN revolving_work_shards.start_row; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON COLUMN public.revolving_work_shards.start_row IS 'row at which the shard scope starts, inclusive';
+
+
+--
+-- Name: COLUMN revolving_work_shards.end_row; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON COLUMN public.revolving_work_shards.end_row IS 'row at which the shard scope ends, exclusive';
+
+
+--
+-- Name: COLUMN revolving_work_shards.active; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON COLUMN public.revolving_work_shards.active IS 'set to TRUE when a worker is active on the shard';
+
+
+--
+-- Name: COLUMN revolving_work_shards.job_name; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON COLUMN public.revolving_work_shards.job_name IS 'unique name of the job the workers on this shard are performing';
+
+
+--
+-- Name: revolving_work_shards_shard_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
+--
+
+CREATE SEQUENCE public.revolving_work_shards_shard_serial_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.revolving_work_shards_shard_serial_id_seq OWNER TO grothoff;
+
+--
+-- Name: revolving_work_shards_shard_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
+--
+
+ALTER SEQUENCE public.revolving_work_shards_shard_serial_id_seq OWNED BY public.revolving_work_shards.shard_serial_id;
+
+
+--
+-- Name: signkey_revocations; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.signkey_revocations (
@@ -3293,15 +3629,17 @@ CREATE TABLE public.signkey_revocations (
 );
 
 
+ALTER TABLE public.signkey_revocations OWNER TO grothoff;
+
 --
--- Name: TABLE signkey_revocations; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE signkey_revocations; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.signkey_revocations IS 'remembering which online signing keys have been revoked';
 
 
 --
--- Name: signkey_revocations_signkey_revocations_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: signkey_revocations_signkey_revocations_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.signkey_revocations_signkey_revocations_serial_id_seq
@@ -3312,15 +3650,17 @@ CREATE SEQUENCE public.signkey_revocations_signkey_revocations_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.signkey_revocations_signkey_revocations_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: signkey_revocations_signkey_revocations_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: signkey_revocations_signkey_revocations_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.signkey_revocations_signkey_revocations_serial_id_seq OWNED BY public.signkey_revocations.signkey_revocations_serial_id;
 
 
 --
--- Name: wire_accounts; Type: TABLE; Schema: public; Owner: -
+-- Name: wire_accounts; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.wire_accounts (
@@ -3332,43 +3672,45 @@ CREATE TABLE public.wire_accounts (
 );
 
 
+ALTER TABLE public.wire_accounts OWNER TO grothoff;
+
 --
--- Name: TABLE wire_accounts; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE wire_accounts; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.wire_accounts IS 'Table with current and historic bank accounts of the exchange. Entries never expire as we need to remember the last_change column indefinitely.';
 
 
 --
--- Name: COLUMN wire_accounts.payto_uri; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN wire_accounts.payto_uri; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.wire_accounts.payto_uri IS 'payto URI (RFC 8905) with the bank account of the exchange.';
 
 
 --
--- Name: COLUMN wire_accounts.master_sig; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN wire_accounts.master_sig; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.wire_accounts.master_sig IS 'Signature of purpose TALER_SIGNATURE_MASTER_WIRE_DETAILS';
 
 
 --
--- Name: COLUMN wire_accounts.is_active; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN wire_accounts.is_active; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.wire_accounts.is_active IS 'true if we are currently supporting the use of this account.';
 
 
 --
--- Name: COLUMN wire_accounts.last_change; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN wire_accounts.last_change; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.wire_accounts.last_change IS 'Latest time when active status changed. Used to detect replays of old messages.';
 
 
 --
--- Name: wire_auditor_account_progress; Type: TABLE; Schema: public; Owner: -
+-- Name: wire_auditor_account_progress; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.wire_auditor_account_progress (
@@ -3381,8 +3723,10 @@ CREATE TABLE public.wire_auditor_account_progress (
 );
 
 
+ALTER TABLE public.wire_auditor_account_progress OWNER TO grothoff;
+
 --
--- Name: TABLE wire_auditor_account_progress; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE wire_auditor_account_progress; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.wire_auditor_account_progress IS 'information as to which transactions the auditor has processed in the exchange database.  Used for SELECTing the
@@ -3390,7 +3734,7 @@ COMMENT ON TABLE public.wire_auditor_account_progress IS 'information as to whic
 
 
 --
--- Name: wire_auditor_progress; Type: TABLE; Schema: public; Owner: -
+-- Name: wire_auditor_progress; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.wire_auditor_progress (
@@ -3400,8 +3744,10 @@ CREATE TABLE public.wire_auditor_progress (
 );
 
 
+ALTER TABLE public.wire_auditor_progress OWNER TO grothoff;
+
 --
--- Name: wire_fee; Type: TABLE; Schema: public; Owner: -
+-- Name: wire_fee; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.wire_fee (
@@ -3418,22 +3764,24 @@ CREATE TABLE public.wire_fee (
 );
 
 
+ALTER TABLE public.wire_fee OWNER TO grothoff;
+
 --
--- Name: TABLE wire_fee; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE wire_fee; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.wire_fee IS 'list of the wire fees of this exchange, by date';
 
 
 --
--- Name: COLUMN wire_fee.wire_fee_serial; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN wire_fee.wire_fee_serial; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.wire_fee.wire_fee_serial IS 'needed for exchange-auditor replication logic';
 
 
 --
--- Name: wire_fee_wire_fee_serial_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: wire_fee_wire_fee_serial_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.wire_fee_wire_fee_serial_seq
@@ -3444,15 +3792,17 @@ CREATE SEQUENCE public.wire_fee_wire_fee_serial_seq
     CACHE 1;
 
 
+ALTER TABLE public.wire_fee_wire_fee_serial_seq OWNER TO grothoff;
+
 --
--- Name: wire_fee_wire_fee_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: wire_fee_wire_fee_serial_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.wire_fee_wire_fee_serial_seq OWNED BY public.wire_fee.wire_fee_serial;
 
 
 --
--- Name: wire_out; Type: TABLE; Schema: public; Owner: -
+-- Name: wire_out; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.wire_out (
@@ -3467,15 +3817,17 @@ CREATE TABLE public.wire_out (
 );
 
 
+ALTER TABLE public.wire_out OWNER TO grothoff;
+
 --
--- Name: TABLE wire_out; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE wire_out; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.wire_out IS 'wire transfers the exchange has executed';
 
 
 --
--- Name: wire_out_wireout_uuid_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: wire_out_wireout_uuid_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.wire_out_wireout_uuid_seq
@@ -3486,15 +3838,17 @@ CREATE SEQUENCE public.wire_out_wireout_uuid_seq
     CACHE 1;
 
 
+ALTER TABLE public.wire_out_wireout_uuid_seq OWNER TO grothoff;
+
 --
--- Name: wire_out_wireout_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: wire_out_wireout_uuid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.wire_out_wireout_uuid_seq OWNED BY public.wire_out.wireout_uuid;
 
 
 --
--- Name: work_shards; Type: TABLE; Schema: public; Owner: -
+-- Name: work_shards; Type: TABLE; Schema: public; Owner: grothoff
 --
 
 CREATE TABLE public.work_shards (
@@ -3507,57 +3861,59 @@ CREATE TABLE public.work_shards (
 );
 
 
+ALTER TABLE public.work_shards OWNER TO grothoff;
+
 --
--- Name: TABLE work_shards; Type: COMMENT; Schema: public; Owner: -
+-- Name: TABLE work_shards; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON TABLE public.work_shards IS 'coordinates work between multiple processes working on the same job';
 
 
 --
--- Name: COLUMN work_shards.shard_serial_id; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN work_shards.shard_serial_id; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.work_shards.shard_serial_id IS 'unique serial number identifying the shard';
 
 
 --
--- Name: COLUMN work_shards.last_attempt; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN work_shards.last_attempt; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.work_shards.last_attempt IS 'last time a worker attempted to work on the shard';
 
 
 --
--- Name: COLUMN work_shards.start_row; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN work_shards.start_row; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.work_shards.start_row IS 'row at which the shard scope starts, inclusive';
 
 
 --
--- Name: COLUMN work_shards.end_row; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN work_shards.end_row; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.work_shards.end_row IS 'row at which the shard scope ends, exclusive';
 
 
 --
--- Name: COLUMN work_shards.completed; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN work_shards.completed; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.work_shards.completed IS 'set to TRUE once the shard is finished by a worker';
 
 
 --
--- Name: COLUMN work_shards.job_name; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN work_shards.job_name; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON COLUMN public.work_shards.job_name IS 'unique name of the job the workers on this shard are performing';
 
 
 --
--- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE; Schema: public; Owner: grothoff
 --
 
 CREATE SEQUENCE public.work_shards_shard_serial_id_seq
@@ -3568,344 +3924,353 @@ CREATE SEQUENCE public.work_shards_shard_serial_id_seq
     CACHE 1;
 
 
+ALTER TABLE public.work_shards_shard_serial_id_seq OWNER TO grothoff;
+
 --
--- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: grothoff
 --
 
 ALTER SEQUENCE public.work_shards_shard_serial_id_seq OWNED BY public.work_shards.shard_serial_id;
 
 
 --
--- Name: aggregation_tracking aggregation_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: aggregation_tracking aggregation_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.aggregation_tracking ALTER COLUMN aggregation_serial_id SET DEFAULT nextval('public.aggregation_tracking_aggregation_serial_id_seq'::regclass);
 
 
 --
--- Name: app_bankaccount account_no; Type: DEFAULT; Schema: public; Owner: -
+-- Name: app_bankaccount account_no; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_bankaccount ALTER COLUMN account_no SET DEFAULT nextval('public.app_bankaccount_account_no_seq'::regclass);
 
 
 --
--- Name: app_banktransaction id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: app_banktransaction id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_banktransaction ALTER COLUMN id SET DEFAULT nextval('public.app_banktransaction_id_seq'::regclass);
 
 
 --
--- Name: auditor_denom_sigs auditor_denom_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auditor_denom_sigs auditor_denom_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_denom_sigs ALTER COLUMN auditor_denom_serial SET DEFAULT nextval('public.auditor_denom_sigs_auditor_denom_serial_seq'::regclass);
 
 
 --
--- Name: auditor_reserves auditor_reserves_rowid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auditor_reserves auditor_reserves_rowid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_reserves ALTER COLUMN auditor_reserves_rowid SET DEFAULT nextval('public.auditor_reserves_auditor_reserves_rowid_seq'::regclass);
 
 
 --
--- Name: auditors auditor_uuid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auditors auditor_uuid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditors ALTER COLUMN auditor_uuid SET DEFAULT nextval('public.auditors_auditor_uuid_seq'::regclass);
 
 
 --
--- Name: auth_group id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auth_group id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group ALTER COLUMN id SET DEFAULT nextval('public.auth_group_id_seq'::regclass);
 
 
 --
--- Name: auth_group_permissions id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auth_group_permissions id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group_permissions ALTER COLUMN id SET DEFAULT nextval('public.auth_group_permissions_id_seq'::regclass);
 
 
 --
--- Name: auth_permission id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auth_permission id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_permission ALTER COLUMN id SET DEFAULT nextval('public.auth_permission_id_seq'::regclass);
 
 
 --
--- Name: auth_user id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auth_user id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user ALTER COLUMN id SET DEFAULT nextval('public.auth_user_id_seq'::regclass);
 
 
 --
--- Name: auth_user_groups id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auth_user_groups id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_groups ALTER COLUMN id SET DEFAULT nextval('public.auth_user_groups_id_seq'::regclass);
 
 
 --
--- Name: auth_user_user_permissions id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: auth_user_user_permissions id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_user_permissions ALTER COLUMN id SET DEFAULT nextval('public.auth_user_user_permissions_id_seq'::regclass);
 
 
 --
--- Name: denomination_revocations denom_revocations_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: denomination_revocations denom_revocations_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.denomination_revocations ALTER COLUMN denom_revocations_serial_id SET DEFAULT nextval('public.denomination_revocations_denom_revocations_serial_id_seq'::regclass);
 
 
 --
--- Name: denominations denominations_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: denominations denominations_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.denominations ALTER COLUMN denominations_serial SET DEFAULT nextval('public.denominations_denominations_serial_seq'::regclass);
 
 
 --
--- Name: deposit_confirmations serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: deposit_confirmations serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.deposit_confirmations ALTER COLUMN serial_id SET DEFAULT nextval('public.deposit_confirmations_serial_id_seq'::regclass);
 
 
 --
--- Name: deposits deposit_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: deposits deposit_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.deposits ALTER COLUMN deposit_serial_id SET DEFAULT nextval('public.deposits_deposit_serial_id_seq'::regclass);
 
 
 --
--- Name: django_content_type id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: django_content_type id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.django_content_type ALTER COLUMN id SET DEFAULT nextval('public.django_content_type_id_seq'::regclass);
 
 
 --
--- Name: django_migrations id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: django_migrations id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.django_migrations ALTER COLUMN id SET DEFAULT nextval('public.django_migrations_id_seq'::regclass);
 
 
 --
--- Name: exchange_sign_keys esk_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: exchange_sign_keys esk_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.exchange_sign_keys ALTER COLUMN esk_serial SET DEFAULT nextval('public.exchange_sign_keys_esk_serial_seq'::regclass);
 
 
 --
--- Name: known_coins known_coin_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: known_coins known_coin_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.known_coins ALTER COLUMN known_coin_id SET DEFAULT nextval('public.known_coins_known_coin_id_seq'::regclass);
 
 
 --
--- Name: merchant_accounts account_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_accounts account_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_accounts ALTER COLUMN account_serial SET DEFAULT nextval('public.merchant_accounts_account_serial_seq'::regclass);
 
 
 --
--- Name: merchant_deposits deposit_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_deposits deposit_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposits ALTER COLUMN deposit_serial SET DEFAULT nextval('public.merchant_deposits_deposit_serial_seq'::regclass);
 
 
 --
--- Name: merchant_exchange_signing_keys signkey_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_exchange_signing_keys signkey_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_exchange_signing_keys ALTER COLUMN signkey_serial SET DEFAULT nextval('public.merchant_exchange_signing_keys_signkey_serial_seq'::regclass);
 
 
 --
--- Name: merchant_exchange_wire_fees wirefee_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_exchange_wire_fees wirefee_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_exchange_wire_fees ALTER COLUMN wirefee_serial SET DEFAULT nextval('public.merchant_exchange_wire_fees_wirefee_serial_seq'::regclass);
 
 
 --
--- Name: merchant_instances merchant_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_instances merchant_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_instances ALTER COLUMN merchant_serial SET DEFAULT nextval('public.merchant_instances_merchant_serial_seq'::regclass);
 
 
 --
--- Name: merchant_inventory product_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_inventory product_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_inventory ALTER COLUMN product_serial SET DEFAULT nextval('public.merchant_inventory_product_serial_seq'::regclass);
 
 
 --
--- Name: merchant_orders order_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_orders order_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_orders ALTER COLUMN order_serial SET DEFAULT nextval('public.merchant_orders_order_serial_seq'::regclass);
 
 
 --
--- Name: merchant_refunds refund_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_refunds refund_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_refunds ALTER COLUMN refund_serial SET DEFAULT nextval('public.merchant_refunds_refund_serial_seq'::regclass);
 
 
 --
--- Name: merchant_tip_pickups pickup_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_tip_pickups pickup_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_pickups ALTER COLUMN pickup_serial SET DEFAULT nextval('public.merchant_tip_pickups_pickup_serial_seq'::regclass);
 
 
 --
--- Name: merchant_tip_reserves reserve_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_tip_reserves reserve_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_reserves ALTER COLUMN reserve_serial SET DEFAULT nextval('public.merchant_tip_reserves_reserve_serial_seq'::regclass);
 
 
 --
--- Name: merchant_tips tip_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_tips tip_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tips ALTER COLUMN tip_serial SET DEFAULT nextval('public.merchant_tips_tip_serial_seq'::regclass);
 
 
 --
--- Name: merchant_transfers credit_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: merchant_transfers credit_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfers ALTER COLUMN credit_serial SET DEFAULT nextval('public.merchant_transfers_credit_serial_seq'::regclass);
 
 
 --
--- Name: prewire prewire_uuid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: prewire prewire_uuid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.prewire ALTER COLUMN prewire_uuid SET DEFAULT nextval('public.prewire_prewire_uuid_seq'::regclass);
 
 
 --
--- Name: recoup recoup_uuid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: recoup recoup_uuid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup ALTER COLUMN recoup_uuid SET DEFAULT nextval('public.recoup_recoup_uuid_seq'::regclass);
 
 
 --
--- Name: recoup_refresh recoup_refresh_uuid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: recoup_refresh recoup_refresh_uuid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup_refresh ALTER COLUMN recoup_refresh_uuid SET DEFAULT nextval('public.recoup_refresh_recoup_refresh_uuid_seq'::regclass);
 
 
 --
--- Name: refresh_commitments melt_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: refresh_commitments melt_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_commitments ALTER COLUMN melt_serial_id SET DEFAULT nextval('public.refresh_commitments_melt_serial_id_seq'::regclass);
 
 
 --
--- Name: refresh_revealed_coins rrc_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: refresh_revealed_coins rrc_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_revealed_coins ALTER COLUMN rrc_serial SET DEFAULT nextval('public.refresh_revealed_coins_rrc_serial_seq'::regclass);
 
 
 --
--- Name: refresh_transfer_keys rtc_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: refresh_transfer_keys rtc_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_transfer_keys ALTER COLUMN rtc_serial SET DEFAULT nextval('public.refresh_transfer_keys_rtc_serial_seq'::regclass);
 
 
 --
--- Name: refunds refund_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: refunds refund_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refunds ALTER COLUMN refund_serial_id SET DEFAULT nextval('public.refunds_refund_serial_id_seq'::regclass);
 
 
 --
--- Name: reserves reserve_uuid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: reserves reserve_uuid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves ALTER COLUMN reserve_uuid SET DEFAULT nextval('public.reserves_reserve_uuid_seq'::regclass);
 
 
 --
--- Name: reserves_close close_uuid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: reserves_close close_uuid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_close ALTER COLUMN close_uuid SET DEFAULT nextval('public.reserves_close_close_uuid_seq'::regclass);
 
 
 --
--- Name: reserves_in reserve_in_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: reserves_in reserve_in_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_in ALTER COLUMN reserve_in_serial_id SET DEFAULT nextval('public.reserves_in_reserve_in_serial_id_seq'::regclass);
 
 
 --
--- Name: reserves_out reserve_out_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: reserves_out reserve_out_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_out ALTER COLUMN reserve_out_serial_id SET DEFAULT nextval('public.reserves_out_reserve_out_serial_id_seq'::regclass);
 
 
 --
--- Name: signkey_revocations signkey_revocations_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: revolving_work_shards shard_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
+--
+
+ALTER TABLE ONLY public.revolving_work_shards ALTER COLUMN shard_serial_id SET DEFAULT nextval('public.revolving_work_shards_shard_serial_id_seq'::regclass);
+
+
+--
+-- Name: signkey_revocations signkey_revocations_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.signkey_revocations ALTER COLUMN signkey_revocations_serial_id SET DEFAULT nextval('public.signkey_revocations_signkey_revocations_serial_id_seq'::regclass);
 
 
 --
--- Name: wire_fee wire_fee_serial; Type: DEFAULT; Schema: public; Owner: -
+-- Name: wire_fee wire_fee_serial; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_fee ALTER COLUMN wire_fee_serial SET DEFAULT nextval('public.wire_fee_wire_fee_serial_seq'::regclass);
 
 
 --
--- Name: wire_out wireout_uuid; Type: DEFAULT; Schema: public; Owner: -
+-- Name: wire_out wireout_uuid; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_out ALTER COLUMN wireout_uuid SET DEFAULT nextval('public.wire_out_wireout_uuid_seq'::regclass);
 
 
 --
--- Name: work_shards shard_serial_id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: work_shards shard_serial_id; Type: DEFAULT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.work_shards ALTER COLUMN shard_serial_id SET DEFAULT nextval('public.work_shards_shard_serial_id_seq'::regclass);
 
 
 --
--- Data for Name: patches; Type: TABLE DATA; Schema: _v; Owner: -
+-- Data for Name: patches; Type: TABLE DATA; Schema: _v; Owner: grothoff
 --
 
 COPY _v.patches (patch_name, applied_tsz, applied_by, requires, conflicts) FROM stdin;
@@ -3913,11 +4278,12 @@ exchange-0001	2021-01-11 09:53:31.904146+01	grothoff	{}	{}
 exchange-0002	2021-01-11 09:53:32.007044+01	grothoff	{}	{}
 merchant-0001	2021-01-11 09:53:32.230025+01	grothoff	{}	{}
 auditor-0001	2021-01-11 09:53:32.365843+01	grothoff	{}	{}
+exchange-0003	2021-09-03 18:54:34.079466+02	grothoff	{}	{}
 \.
 
 
 --
--- Data for Name: aggregation_tracking; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: aggregation_tracking; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.aggregation_tracking (aggregation_serial_id, deposit_serial_id, wtid_raw) FROM stdin;
@@ -3925,7 +4291,7 @@ COPY public.aggregation_tracking (aggregation_serial_id, deposit_serial_id, wtid
 
 
 --
--- Data for Name: app_bankaccount; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: app_bankaccount; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.app_bankaccount (is_public, account_no, balance, user_id) FROM stdin;
@@ -3944,7 +4310,7 @@ t	2	+TESTKUDOS:8	2
 
 
 --
--- Data for Name: app_banktransaction; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: app_banktransaction; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.app_banktransaction (id, amount, subject, date, cancelled, request_uid, credit_account_id, debit_account_id) FROM stdin;
@@ -3954,7 +4320,7 @@ COPY public.app_banktransaction (id, amount, subject, date, cancelled, request_u
 
 
 --
--- Data for Name: app_talerwithdrawoperation; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: app_talerwithdrawoperation; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.app_talerwithdrawoperation (withdraw_id, amount, selection_done, confirmation_done, aborted, selected_reserve_pub, selected_exchange_account_id, withdraw_account_id) FROM stdin;
@@ -3963,7 +4329,7 @@ COPY public.app_talerwithdrawoperation (withdraw_id, amount, selection_done, con
 
 
 --
--- Data for Name: auditor_balance_summary; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_balance_summary; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_balance_summary (master_pub, denom_balance_val, denom_balance_frac, deposit_fee_balance_val, deposit_fee_balance_frac, melt_fee_balance_val, melt_fee_balance_frac, refund_fee_balance_val, refund_fee_balance_frac, risk_val, risk_frac, loss_val, loss_frac, irregular_recoup_val, irregular_recoup_frac) FROM stdin;
@@ -3971,7 +4337,7 @@ COPY public.auditor_balance_summary (master_pub, denom_balance_val, denom_balanc
 
 
 --
--- Data for Name: auditor_denom_sigs; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_denom_sigs; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_denom_sigs (auditor_denom_serial, auditor_uuid, denominations_serial, auditor_sig) FROM stdin;
@@ -4403,7 +4769,7 @@ COPY public.auditor_denom_sigs (auditor_denom_serial, auditor_uuid, denomination
 
 
 --
--- Data for Name: auditor_denomination_pending; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_denomination_pending; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_denomination_pending (denom_pub_hash, denom_balance_val, denom_balance_frac, denom_loss_val, denom_loss_frac, num_issued, denom_risk_val, denom_risk_frac, recoup_loss_val, recoup_loss_frac) FROM stdin;
@@ -4411,7 +4777,7 @@ COPY public.auditor_denomination_pending (denom_pub_hash, denom_balance_val, den
 
 
 --
--- Data for Name: auditor_exchange_signkeys; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_exchange_signkeys; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_exchange_signkeys (master_pub, ep_start, ep_expire, ep_end, exchange_pub, master_sig) FROM stdin;
@@ -4420,7 +4786,7 @@ COPY public.auditor_exchange_signkeys (master_pub, ep_start, ep_expire, ep_end, 
 
 
 --
--- Data for Name: auditor_exchanges; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_exchanges; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_exchanges (master_pub, exchange_url) FROM stdin;
@@ -4429,7 +4795,7 @@ COPY public.auditor_exchanges (master_pub, exchange_url) FROM stdin;
 
 
 --
--- Data for Name: auditor_historic_denomination_revenue; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_historic_denomination_revenue; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_historic_denomination_revenue (master_pub, denom_pub_hash, revenue_timestamp, revenue_balance_val, revenue_balance_frac, loss_balance_val, loss_balance_frac) FROM stdin;
@@ -4437,7 +4803,7 @@ COPY public.auditor_historic_denomination_revenue (master_pub, denom_pub_hash, r
 
 
 --
--- Data for Name: auditor_historic_reserve_summary; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_historic_reserve_summary; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_historic_reserve_summary (master_pub, start_date, end_date, reserve_profits_val, reserve_profits_frac) FROM stdin;
@@ -4445,7 +4811,7 @@ COPY public.auditor_historic_reserve_summary (master_pub, start_date, end_date, 
 
 
 --
--- Data for Name: auditor_predicted_result; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_predicted_result; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_predicted_result (master_pub, balance_val, balance_frac) FROM stdin;
@@ -4453,7 +4819,7 @@ COPY public.auditor_predicted_result (master_pub, balance_val, balance_frac) FRO
 
 
 --
--- Data for Name: auditor_progress_aggregation; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_progress_aggregation; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_progress_aggregation (master_pub, last_wire_out_serial_id) FROM stdin;
@@ -4461,7 +4827,7 @@ COPY public.auditor_progress_aggregation (master_pub, last_wire_out_serial_id) F
 
 
 --
--- Data for Name: auditor_progress_coin; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_progress_coin; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_progress_coin (master_pub, last_withdraw_serial_id, last_deposit_serial_id, last_melt_serial_id, last_refund_serial_id, last_recoup_serial_id, last_recoup_refresh_serial_id) FROM stdin;
@@ -4469,7 +4835,7 @@ COPY public.auditor_progress_coin (master_pub, last_withdraw_serial_id, last_dep
 
 
 --
--- Data for Name: auditor_progress_deposit_confirmation; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_progress_deposit_confirmation; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_progress_deposit_confirmation (master_pub, last_deposit_confirmation_serial_id) FROM stdin;
@@ -4477,7 +4843,7 @@ COPY public.auditor_progress_deposit_confirmation (master_pub, last_deposit_conf
 
 
 --
--- Data for Name: auditor_progress_reserve; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_progress_reserve; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_progress_reserve (master_pub, last_reserve_in_serial_id, last_reserve_out_serial_id, last_reserve_recoup_serial_id, last_reserve_close_serial_id) FROM stdin;
@@ -4485,7 +4851,7 @@ COPY public.auditor_progress_reserve (master_pub, last_reserve_in_serial_id, las
 
 
 --
--- Data for Name: auditor_reserve_balance; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_reserve_balance; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_reserve_balance (master_pub, reserve_balance_val, reserve_balance_frac, withdraw_fee_balance_val, withdraw_fee_balance_frac) FROM stdin;
@@ -4493,7 +4859,7 @@ COPY public.auditor_reserve_balance (master_pub, reserve_balance_val, reserve_ba
 
 
 --
--- Data for Name: auditor_reserves; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_reserves; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_reserves (reserve_pub, master_pub, reserve_balance_val, reserve_balance_frac, withdraw_fee_balance_val, withdraw_fee_balance_frac, expiration_date, auditor_reserves_rowid, origin_account) FROM stdin;
@@ -4501,7 +4867,7 @@ COPY public.auditor_reserves (reserve_pub, master_pub, reserve_balance_val, rese
 
 
 --
--- Data for Name: auditor_wire_fee_balance; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditor_wire_fee_balance; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditor_wire_fee_balance (master_pub, wire_fee_balance_val, wire_fee_balance_frac) FROM stdin;
@@ -4509,7 +4875,7 @@ COPY public.auditor_wire_fee_balance (master_pub, wire_fee_balance_val, wire_fee
 
 
 --
--- Data for Name: auditors; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auditors; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auditors (auditor_uuid, auditor_pub, auditor_name, auditor_url, is_active, last_change) FROM stdin;
@@ -4518,7 +4884,7 @@ COPY public.auditors (auditor_uuid, auditor_pub, auditor_name, auditor_url, is_a
 
 
 --
--- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auth_group (id, name) FROM stdin;
@@ -4526,7 +4892,7 @@ COPY public.auth_group (id, name) FROM stdin;
 
 
 --
--- Data for Name: auth_group_permissions; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auth_group_permissions; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
@@ -4534,7 +4900,7 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 
 
 --
--- Data for Name: auth_permission; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auth_permission; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
@@ -4574,7 +4940,7 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 
 
 --
--- Data for Name: auth_user; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auth_user; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auth_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) FROM stdin;
@@ -4593,7 +4959,7 @@ COPY public.auth_user (id, password, last_login, is_superuser, username, first_n
 
 
 --
--- Data for Name: auth_user_groups; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auth_user_groups; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auth_user_groups (id, user_id, group_id) FROM stdin;
@@ -4601,7 +4967,7 @@ COPY public.auth_user_groups (id, user_id, group_id) FROM stdin;
 
 
 --
--- Data for Name: auth_user_user_permissions; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: auth_user_user_permissions; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.auth_user_user_permissions (id, user_id, permission_id) FROM stdin;
@@ -4609,7 +4975,7 @@ COPY public.auth_user_user_permissions (id, user_id, permission_id) FROM stdin;
 
 
 --
--- Data for Name: denomination_revocations; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: denomination_revocations; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.denomination_revocations (denom_revocations_serial_id, master_sig, denominations_serial) FROM stdin;
@@ -4619,7 +4985,7 @@ COPY public.denomination_revocations (denom_revocations_serial_id, master_sig, d
 
 
 --
--- Data for Name: denominations; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: denominations; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.denominations (denom_pub_hash, denom_pub, master_pub, master_sig, valid_from, expire_withdraw, expire_deposit, expire_legal, coin_val, coin_frac, fee_withdraw_val, fee_withdraw_frac, fee_deposit_val, fee_deposit_frac, fee_refresh_val, fee_refresh_frac, fee_refund_val, fee_refund_frac, denominations_serial) FROM stdin;
@@ -5051,7 +5417,7 @@ COPY public.denominations (denom_pub_hash, denom_pub, master_pub, master_sig, va
 
 
 --
--- Data for Name: deposit_confirmations; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: deposit_confirmations; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.deposit_confirmations (master_pub, serial_id, h_contract_terms, h_wire, exchange_timestamp, refund_deadline, amount_without_fee_val, amount_without_fee_frac, coin_pub, merchant_pub, exchange_sig, exchange_pub, master_sig) FROM stdin;
@@ -5060,16 +5426,16 @@ COPY public.deposit_confirmations (master_pub, serial_id, h_contract_terms, h_wi
 
 
 --
--- Data for Name: deposits; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: deposits; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
-COPY public.deposits (deposit_serial_id, amount_with_fee_val, amount_with_fee_frac, wallet_timestamp, exchange_timestamp, refund_deadline, wire_deadline, merchant_pub, h_contract_terms, h_wire, coin_sig, wire, tiny, done, known_coin_id) FROM stdin;
-1	1	0	1610355247000000	1610355248000000	1610356147000000	1610356147000000	\\xad01369734f961973a40a5ea0f73272424d5a6bb513accb13e4910cf39a10942	\\x437becca6923b054068edafc1d492e4559beabe044150d618e98ada2d5625b7a411703f0b0080f776f630cd97f10cca868ff0f605f92a0ea656437eba3c4b6c7	\\x6bc2923573f8eca180ad0902041c511b1d9caf2fda212ea7b415e91cf9d6355dde67c85b9357e5155814bc06f8ba53ad16c6ac9ec9ad3ddc013dd7654d0a554c	\\xc1484690896bbe107626f5ad5bf1c9dc90a577700946f0fe5ac2d74d1a5bbce3775bb84f8b589addc79f6b1525eebf746d3b0167709aded74f84f8e83dbace04	{"payto_uri":"payto://x-taler-bank/localhost/43","salt":"VMSVGZDKZJ0CZH8HT95CJ5T0QDAZWA15P8TAYP61C6ENSRRBK9707PXC3GH21KH76P7NXTHCME4SKATF0V49BGQNH23QS35QCA2GPG0"}	f	f	2
+COPY public.deposits (deposit_serial_id, amount_with_fee_val, amount_with_fee_frac, wallet_timestamp, exchange_timestamp, refund_deadline, wire_deadline, merchant_pub, h_contract_terms, h_wire, coin_sig, wire, tiny, done, known_coin_id, shard) FROM stdin;
+1	1	0	1610355247000000	1610355248000000	1610356147000000	1610356147000000	\\xad01369734f961973a40a5ea0f73272424d5a6bb513accb13e4910cf39a10942	\\x437becca6923b054068edafc1d492e4559beabe044150d618e98ada2d5625b7a411703f0b0080f776f630cd97f10cca868ff0f605f92a0ea656437eba3c4b6c7	\\x6bc2923573f8eca180ad0902041c511b1d9caf2fda212ea7b415e91cf9d6355dde67c85b9357e5155814bc06f8ba53ad16c6ac9ec9ad3ddc013dd7654d0a554c	\\xc1484690896bbe107626f5ad5bf1c9dc90a577700946f0fe5ac2d74d1a5bbce3775bb84f8b589addc79f6b1525eebf746d3b0167709aded74f84f8e83dbace04	{"payto_uri":"payto://x-taler-bank/localhost/43","salt":"VMSVGZDKZJ0CZH8HT95CJ5T0QDAZWA15P8TAYP61C6ENSRRBK9707PXC3GH21KH76P7NXTHCME4SKATF0V49BGQNH23QS35QCA2GPG0"}	f	f	2	0
 \.
 
 
 --
--- Data for Name: django_content_type; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: django_content_type; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.django_content_type (id, app_label, model) FROM stdin;
@@ -5085,7 +5451,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 
 
 --
--- Data for Name: django_migrations; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: django_migrations; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
@@ -5109,7 +5475,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 
 
 --
--- Data for Name: django_session; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: django_session; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
@@ -5117,7 +5483,7 @@ COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
 
 
 --
--- Data for Name: exchange_sign_keys; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: exchange_sign_keys; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.exchange_sign_keys (esk_serial, exchange_pub, master_sig, valid_from, expire_sign, expire_legal) FROM stdin;
@@ -5130,7 +5496,7 @@ COPY public.exchange_sign_keys (esk_serial, exchange_pub, master_sig, valid_from
 
 
 --
--- Data for Name: known_coins; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: known_coins; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.known_coins (known_coin_id, coin_pub, denom_sig, denominations_serial) FROM stdin;
@@ -5149,7 +5515,7 @@ COPY public.known_coins (known_coin_id, coin_pub, denom_sig, denominations_seria
 
 
 --
--- Data for Name: merchant_accounts; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_accounts; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_accounts (account_serial, merchant_serial, h_wire, salt, payto_uri, active) FROM stdin;
@@ -5158,7 +5524,7 @@ COPY public.merchant_accounts (account_serial, merchant_serial, h_wire, salt, pa
 
 
 --
--- Data for Name: merchant_contract_terms; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_contract_terms; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_contract_terms (order_serial, merchant_serial, order_id, contract_terms, h_contract_terms, creation_time, pay_deadline, refund_deadline, paid, wired, fulfillment_url, session_id) FROM stdin;
@@ -5168,7 +5534,7 @@ COPY public.merchant_contract_terms (order_serial, merchant_serial, order_id, co
 
 
 --
--- Data for Name: merchant_deposit_to_transfer; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_deposit_to_transfer; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_deposit_to_transfer (deposit_serial, coin_contribution_value_val, coin_contribution_value_frac, credit_serial, execution_time, signkey_serial, exchange_sig) FROM stdin;
@@ -5176,7 +5542,7 @@ COPY public.merchant_deposit_to_transfer (deposit_serial, coin_contribution_valu
 
 
 --
--- Data for Name: merchant_deposits; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_deposits; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_deposits (deposit_serial, order_serial, deposit_timestamp, coin_pub, exchange_url, amount_with_fee_val, amount_with_fee_frac, deposit_fee_val, deposit_fee_frac, refund_fee_val, refund_fee_frac, wire_fee_val, wire_fee_frac, signkey_serial, exchange_sig, account_serial) FROM stdin;
@@ -5185,7 +5551,7 @@ COPY public.merchant_deposits (deposit_serial, order_serial, deposit_timestamp, 
 
 
 --
--- Data for Name: merchant_exchange_signing_keys; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_exchange_signing_keys; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_exchange_signing_keys (signkey_serial, master_pub, exchange_pub, start_date, expire_date, end_date, master_sig) FROM stdin;
@@ -5198,7 +5564,7 @@ COPY public.merchant_exchange_signing_keys (signkey_serial, master_pub, exchange
 
 
 --
--- Data for Name: merchant_exchange_wire_fees; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_exchange_wire_fees; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_exchange_wire_fees (wirefee_serial, master_pub, h_wire_method, start_date, end_date, wire_fee_val, wire_fee_frac, closing_fee_val, closing_fee_frac, master_sig) FROM stdin;
@@ -5207,7 +5573,7 @@ COPY public.merchant_exchange_wire_fees (wirefee_serial, master_pub, h_wire_meth
 
 
 --
--- Data for Name: merchant_instances; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_instances; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_instances (merchant_serial, merchant_pub, merchant_id, merchant_name, address, jurisdiction, default_max_deposit_fee_val, default_max_deposit_fee_frac, default_max_wire_fee_val, default_max_wire_fee_frac, default_wire_fee_amortization, default_wire_transfer_delay, default_pay_delay) FROM stdin;
@@ -5216,7 +5582,7 @@ COPY public.merchant_instances (merchant_serial, merchant_pub, merchant_id, merc
 
 
 --
--- Data for Name: merchant_inventory; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_inventory; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_inventory (product_serial, merchant_serial, product_id, description, description_i18n, unit, image, taxes, price_val, price_frac, total_stock, total_sold, total_lost, address, next_restock) FROM stdin;
@@ -5224,7 +5590,7 @@ COPY public.merchant_inventory (product_serial, merchant_serial, product_id, des
 
 
 --
--- Data for Name: merchant_inventory_locks; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_inventory_locks; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_inventory_locks (product_serial, lock_uuid, total_locked, expiration) FROM stdin;
@@ -5232,7 +5598,7 @@ COPY public.merchant_inventory_locks (product_serial, lock_uuid, total_locked, e
 
 
 --
--- Data for Name: merchant_keys; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_keys; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_keys (merchant_priv, merchant_serial) FROM stdin;
@@ -5241,7 +5607,7 @@ COPY public.merchant_keys (merchant_priv, merchant_serial) FROM stdin;
 
 
 --
--- Data for Name: merchant_order_locks; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_order_locks; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_order_locks (product_serial, total_locked, order_serial) FROM stdin;
@@ -5249,7 +5615,7 @@ COPY public.merchant_order_locks (product_serial, total_locked, order_serial) FR
 
 
 --
--- Data for Name: merchant_orders; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_orders; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_orders (order_serial, merchant_serial, order_id, claim_token, h_post_data, pay_deadline, creation_time, contract_terms) FROM stdin;
@@ -5258,7 +5624,7 @@ COPY public.merchant_orders (order_serial, merchant_serial, order_id, claim_toke
 
 
 --
--- Data for Name: merchant_refund_proofs; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_refund_proofs; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_refund_proofs (refund_serial, exchange_sig, signkey_serial) FROM stdin;
@@ -5266,7 +5632,7 @@ COPY public.merchant_refund_proofs (refund_serial, exchange_sig, signkey_serial)
 
 
 --
--- Data for Name: merchant_refunds; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_refunds; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_refunds (refund_serial, order_serial, rtransaction_id, refund_timestamp, coin_pub, reason, refund_amount_val, refund_amount_frac) FROM stdin;
@@ -5274,7 +5640,7 @@ COPY public.merchant_refunds (refund_serial, order_serial, rtransaction_id, refu
 
 
 --
--- Data for Name: merchant_tip_pickup_signatures; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_tip_pickup_signatures; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_tip_pickup_signatures (pickup_serial, coin_offset, blind_sig) FROM stdin;
@@ -5282,7 +5648,7 @@ COPY public.merchant_tip_pickup_signatures (pickup_serial, coin_offset, blind_si
 
 
 --
--- Data for Name: merchant_tip_pickups; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_tip_pickups; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_tip_pickups (pickup_serial, tip_serial, pickup_id, amount_val, amount_frac) FROM stdin;
@@ -5290,7 +5656,7 @@ COPY public.merchant_tip_pickups (pickup_serial, tip_serial, pickup_id, amount_v
 
 
 --
--- Data for Name: merchant_tip_reserve_keys; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_tip_reserve_keys; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_tip_reserve_keys (reserve_serial, reserve_priv, exchange_url) FROM stdin;
@@ -5298,7 +5664,7 @@ COPY public.merchant_tip_reserve_keys (reserve_serial, reserve_priv, exchange_ur
 
 
 --
--- Data for Name: merchant_tip_reserves; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_tip_reserves; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_tip_reserves (reserve_serial, reserve_pub, merchant_serial, creation_time, expiration, merchant_initial_balance_val, merchant_initial_balance_frac, exchange_initial_balance_val, exchange_initial_balance_frac, tips_committed_val, tips_committed_frac, tips_picked_up_val, tips_picked_up_frac) FROM stdin;
@@ -5306,7 +5672,7 @@ COPY public.merchant_tip_reserves (reserve_serial, reserve_pub, merchant_serial,
 
 
 --
--- Data for Name: merchant_tips; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_tips; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_tips (tip_serial, reserve_serial, tip_id, justification, next_url, expiration, amount_val, amount_frac, picked_up_val, picked_up_frac, was_picked_up) FROM stdin;
@@ -5314,7 +5680,7 @@ COPY public.merchant_tips (tip_serial, reserve_serial, tip_id, justification, ne
 
 
 --
--- Data for Name: merchant_transfer_signatures; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_transfer_signatures; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_transfer_signatures (credit_serial, signkey_serial, wire_fee_val, wire_fee_frac, execution_time, exchange_sig) FROM stdin;
@@ -5322,7 +5688,7 @@ COPY public.merchant_transfer_signatures (credit_serial, signkey_serial, wire_fe
 
 
 --
--- Data for Name: merchant_transfer_to_coin; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_transfer_to_coin; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_transfer_to_coin (deposit_serial, credit_serial, offset_in_exchange_list, exchange_deposit_value_val, exchange_deposit_value_frac, exchange_deposit_fee_val, exchange_deposit_fee_frac) FROM stdin;
@@ -5330,7 +5696,7 @@ COPY public.merchant_transfer_to_coin (deposit_serial, credit_serial, offset_in_
 
 
 --
--- Data for Name: merchant_transfers; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: merchant_transfers; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.merchant_transfers (credit_serial, exchange_url, wtid, credit_amount_val, credit_amount_frac, account_serial, verified, confirmed) FROM stdin;
@@ -5338,7 +5704,7 @@ COPY public.merchant_transfers (credit_serial, exchange_url, wtid, credit_amount
 
 
 --
--- Data for Name: prewire; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: prewire; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.prewire (prewire_uuid, type, finished, buf, failed) FROM stdin;
@@ -5346,7 +5712,7 @@ COPY public.prewire (prewire_uuid, type, finished, buf, failed) FROM stdin;
 
 
 --
--- Data for Name: recoup; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: recoup; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.recoup (recoup_uuid, coin_sig, coin_blind, amount_val, amount_frac, "timestamp", known_coin_id, reserve_out_serial_id) FROM stdin;
@@ -5355,7 +5721,7 @@ COPY public.recoup (recoup_uuid, coin_sig, coin_blind, amount_val, amount_frac, 
 
 
 --
--- Data for Name: recoup_refresh; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: recoup_refresh; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.recoup_refresh (recoup_refresh_uuid, coin_sig, coin_blind, amount_val, amount_frac, "timestamp", known_coin_id, rrc_serial) FROM stdin;
@@ -5371,7 +5737,7 @@ COPY public.recoup_refresh (recoup_refresh_uuid, coin_sig, coin_blind, amount_va
 
 
 --
--- Data for Name: refresh_commitments; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: refresh_commitments; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.refresh_commitments (melt_serial_id, rc, old_coin_sig, amount_with_fee_val, amount_with_fee_frac, noreveal_index, old_known_coin_id) FROM stdin;
@@ -5381,7 +5747,7 @@ COPY public.refresh_commitments (melt_serial_id, rc, old_coin_sig, amount_with_f
 
 
 --
--- Data for Name: refresh_revealed_coins; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: refresh_revealed_coins; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.refresh_revealed_coins (freshcoin_index, link_sig, coin_ev, h_coin_ev, ev_sig, rrc_serial, denominations_serial, melt_serial_id) FROM stdin;
@@ -5439,7 +5805,7 @@ COPY public.refresh_revealed_coins (freshcoin_index, link_sig, coin_ev, h_coin_e
 
 
 --
--- Data for Name: refresh_transfer_keys; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: refresh_transfer_keys; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.refresh_transfer_keys (transfer_pub, transfer_privs, rtc_serial, melt_serial_id) FROM stdin;
@@ -5449,7 +5815,7 @@ COPY public.refresh_transfer_keys (transfer_pub, transfer_privs, rtc_serial, mel
 
 
 --
--- Data for Name: refunds; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: refunds; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.refunds (refund_serial_id, merchant_sig, rtransaction_id, amount_with_fee_val, amount_with_fee_frac, deposit_serial_id) FROM stdin;
@@ -5457,7 +5823,7 @@ COPY public.refunds (refund_serial_id, merchant_sig, rtransaction_id, amount_wit
 
 
 --
--- Data for Name: reserves; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: reserves; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.reserves (reserve_pub, account_details, current_balance_val, current_balance_frac, expiration_date, gc_date, reserve_uuid) FROM stdin;
@@ -5466,7 +5832,7 @@ COPY public.reserves (reserve_pub, account_details, current_balance_val, current
 
 
 --
--- Data for Name: reserves_close; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: reserves_close; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.reserves_close (close_uuid, execution_date, wtid, receiver_account, amount_val, amount_frac, closing_fee_val, closing_fee_frac, reserve_uuid) FROM stdin;
@@ -5474,7 +5840,7 @@ COPY public.reserves_close (close_uuid, execution_date, wtid, receiver_account, 
 
 
 --
--- Data for Name: reserves_in; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: reserves_in; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.reserves_in (reserve_in_serial_id, wire_reference, credit_val, credit_frac, sender_account_details, exchange_account_section, execution_date, reserve_uuid) FROM stdin;
@@ -5483,7 +5849,7 @@ COPY public.reserves_in (reserve_in_serial_id, wire_reference, credit_val, credi
 
 
 --
--- Data for Name: reserves_out; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: reserves_out; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.reserves_out (reserve_out_serial_id, h_blind_ev, denom_sig, reserve_sig, execution_date, amount_with_fee_val, amount_with_fee_frac, reserve_uuid, denominations_serial) FROM stdin;
@@ -5519,7 +5885,15 @@ COPY public.reserves_out (reserve_out_serial_id, h_blind_ev, denom_sig, reserve_
 
 
 --
--- Data for Name: signkey_revocations; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: revolving_work_shards; Type: TABLE DATA; Schema: public; Owner: grothoff
+--
+
+COPY public.revolving_work_shards (shard_serial_id, last_attempt, start_row, end_row, active, job_name) FROM stdin;
+\.
+
+
+--
+-- Data for Name: signkey_revocations; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.signkey_revocations (signkey_revocations_serial_id, esk_serial, master_sig) FROM stdin;
@@ -5527,7 +5901,7 @@ COPY public.signkey_revocations (signkey_revocations_serial_id, esk_serial, mast
 
 
 --
--- Data for Name: wire_accounts; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: wire_accounts; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.wire_accounts (payto_uri, master_sig, is_active, last_change) FROM stdin;
@@ -5536,7 +5910,7 @@ payto://x-taler-bank/localhost/Exchange	\\x49469e3b20fdcf3ec9d38b605ef26ebe1bed2
 
 
 --
--- Data for Name: wire_auditor_account_progress; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: wire_auditor_account_progress; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.wire_auditor_account_progress (master_pub, account_name, last_wire_reserve_in_serial_id, last_wire_wire_out_serial_id, wire_in_off, wire_out_off) FROM stdin;
@@ -5544,7 +5918,7 @@ COPY public.wire_auditor_account_progress (master_pub, account_name, last_wire_r
 
 
 --
--- Data for Name: wire_auditor_progress; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: wire_auditor_progress; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.wire_auditor_progress (master_pub, last_timestamp, last_reserve_close_uuid) FROM stdin;
@@ -5552,7 +5926,7 @@ COPY public.wire_auditor_progress (master_pub, last_timestamp, last_reserve_clos
 
 
 --
--- Data for Name: wire_fee; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: wire_fee; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.wire_fee (wire_method, start_date, end_date, wire_fee_val, wire_fee_frac, closing_fee_val, closing_fee_frac, master_sig, wire_fee_serial) FROM stdin;
@@ -5561,7 +5935,7 @@ x-taler-bank	1609459200000000	1640995200000000	0	1000000	0	1000000	\\x6691a71633
 
 
 --
--- Data for Name: wire_out; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: wire_out; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.wire_out (wireout_uuid, execution_date, wtid_raw, wire_target, exchange_account_section, amount_val, amount_frac) FROM stdin;
@@ -5569,7 +5943,7 @@ COPY public.wire_out (wireout_uuid, execution_date, wtid_raw, wire_target, excha
 
 
 --
--- Data for Name: work_shards; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: work_shards; Type: TABLE DATA; Schema: public; Owner: grothoff
 --
 
 COPY public.work_shards (shard_serial_id, last_attempt, start_row, end_row, completed, job_name) FROM stdin;
@@ -5577,336 +5951,343 @@ COPY public.work_shards (shard_serial_id, last_attempt, start_row, end_row, comp
 
 
 --
--- Name: aggregation_tracking_aggregation_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: aggregation_tracking_aggregation_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.aggregation_tracking_aggregation_serial_id_seq', 1, false);
 
 
 --
--- Name: app_bankaccount_account_no_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: app_bankaccount_account_no_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.app_bankaccount_account_no_seq', 11, true);
 
 
 --
--- Name: app_banktransaction_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: app_banktransaction_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.app_banktransaction_id_seq', 2, true);
 
 
 --
--- Name: auditor_denom_sigs_auditor_denom_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auditor_denom_sigs_auditor_denom_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auditor_denom_sigs_auditor_denom_serial_seq', 1269, true);
 
 
 --
--- Name: auditor_reserves_auditor_reserves_rowid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auditor_reserves_auditor_reserves_rowid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auditor_reserves_auditor_reserves_rowid_seq', 1, false);
 
 
 --
--- Name: auditors_auditor_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auditors_auditor_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auditors_auditor_uuid_seq', 1, true);
 
 
 --
--- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auth_group_id_seq', 1, false);
 
 
 --
--- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 
 
 --
--- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auth_permission_id_seq', 32, true);
 
 
 --
--- Name: auth_user_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auth_user_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auth_user_groups_id_seq', 1, false);
 
 
 --
--- Name: auth_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auth_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auth_user_id_seq', 11, true);
 
 
 --
--- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 
 
 --
--- Name: denomination_revocations_denom_revocations_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: denomination_revocations_denom_revocations_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.denomination_revocations_denom_revocations_serial_id_seq', 2, true);
 
 
 --
--- Name: denominations_denominations_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: denominations_denominations_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.denominations_denominations_serial_seq', 424, true);
 
 
 --
--- Name: deposit_confirmations_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: deposit_confirmations_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.deposit_confirmations_serial_id_seq', 1, true);
 
 
 --
--- Name: deposits_deposit_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: deposits_deposit_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.deposits_deposit_serial_id_seq', 1, true);
 
 
 --
--- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.django_content_type_id_seq', 8, true);
 
 
 --
--- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.django_migrations_id_seq', 16, true);
 
 
 --
--- Name: exchange_sign_keys_esk_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: exchange_sign_keys_esk_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.exchange_sign_keys_esk_serial_seq', 5, true);
 
 
 --
--- Name: known_coins_known_coin_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: known_coins_known_coin_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.known_coins_known_coin_id_seq', 13, true);
 
 
 --
--- Name: merchant_accounts_account_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_accounts_account_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_accounts_account_serial_seq', 1, true);
 
 
 --
--- Name: merchant_deposits_deposit_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_deposits_deposit_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_deposits_deposit_serial_seq', 1, true);
 
 
 --
--- Name: merchant_exchange_signing_keys_signkey_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_exchange_signing_keys_signkey_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_exchange_signing_keys_signkey_serial_seq', 10, true);
 
 
 --
--- Name: merchant_exchange_wire_fees_wirefee_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_exchange_wire_fees_wirefee_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_exchange_wire_fees_wirefee_serial_seq', 1, true);
 
 
 --
--- Name: merchant_instances_merchant_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_instances_merchant_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_instances_merchant_serial_seq', 1, true);
 
 
 --
--- Name: merchant_inventory_product_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_inventory_product_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_inventory_product_serial_seq', 1, false);
 
 
 --
--- Name: merchant_orders_order_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_orders_order_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_orders_order_serial_seq', 2, true);
 
 
 --
--- Name: merchant_refunds_refund_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_refunds_refund_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_refunds_refund_serial_seq', 1, false);
 
 
 --
--- Name: merchant_tip_pickups_pickup_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_tip_pickups_pickup_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_tip_pickups_pickup_serial_seq', 1, false);
 
 
 --
--- Name: merchant_tip_reserves_reserve_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_tip_reserves_reserve_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_tip_reserves_reserve_serial_seq', 1, false);
 
 
 --
--- Name: merchant_tips_tip_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_tips_tip_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_tips_tip_serial_seq', 1, false);
 
 
 --
--- Name: merchant_transfers_credit_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: merchant_transfers_credit_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.merchant_transfers_credit_serial_seq', 1, false);
 
 
 --
--- Name: prewire_prewire_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: prewire_prewire_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.prewire_prewire_uuid_seq', 1, false);
 
 
 --
--- Name: recoup_recoup_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: recoup_recoup_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.recoup_recoup_uuid_seq', 1, true);
 
 
 --
--- Name: recoup_refresh_recoup_refresh_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: recoup_refresh_recoup_refresh_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.recoup_refresh_recoup_refresh_uuid_seq', 9, true);
 
 
 --
--- Name: refresh_commitments_melt_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: refresh_commitments_melt_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.refresh_commitments_melt_serial_id_seq', 2, true);
 
 
 --
--- Name: refresh_revealed_coins_rrc_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: refresh_revealed_coins_rrc_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.refresh_revealed_coins_rrc_serial_seq', 50, true);
 
 
 --
--- Name: refresh_transfer_keys_rtc_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: refresh_transfer_keys_rtc_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.refresh_transfer_keys_rtc_serial_seq', 2, true);
 
 
 --
--- Name: refunds_refund_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: refunds_refund_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.refunds_refund_serial_id_seq', 1, false);
 
 
 --
--- Name: reserves_close_close_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: reserves_close_close_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.reserves_close_close_uuid_seq', 1, false);
 
 
 --
--- Name: reserves_in_reserve_in_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: reserves_in_reserve_in_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.reserves_in_reserve_in_serial_id_seq', 1, true);
 
 
 --
--- Name: reserves_out_reserve_out_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: reserves_out_reserve_out_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.reserves_out_reserve_out_serial_id_seq', 28, true);
 
 
 --
--- Name: reserves_reserve_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: reserves_reserve_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.reserves_reserve_uuid_seq', 1, true);
 
 
 --
--- Name: signkey_revocations_signkey_revocations_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: revolving_work_shards_shard_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
+--
+
+SELECT pg_catalog.setval('public.revolving_work_shards_shard_serial_id_seq', 1, false);
+
+
+--
+-- Name: signkey_revocations_signkey_revocations_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.signkey_revocations_signkey_revocations_serial_id_seq', 1, false);
 
 
 --
--- Name: wire_fee_wire_fee_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: wire_fee_wire_fee_serial_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.wire_fee_wire_fee_serial_seq', 1, true);
 
 
 --
--- Name: wire_out_wireout_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: wire_out_wireout_uuid_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.wire_out_wireout_uuid_seq', 1, false);
 
 
 --
--- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: work_shards_shard_serial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: grothoff
 --
 
 SELECT pg_catalog.setval('public.work_shards_shard_serial_id_seq', 1, false);
 
 
 --
--- Name: patches patches_pkey; Type: CONSTRAINT; Schema: _v; Owner: -
+-- Name: patches patches_pkey; Type: CONSTRAINT; Schema: _v; Owner: grothoff
 --
 
 ALTER TABLE ONLY _v.patches
@@ -5914,7 +6295,7 @@ ALTER TABLE ONLY _v.patches
 
 
 --
--- Name: aggregation_tracking aggregation_tracking_aggregation_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: aggregation_tracking aggregation_tracking_aggregation_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.aggregation_tracking
@@ -5922,7 +6303,7 @@ ALTER TABLE ONLY public.aggregation_tracking
 
 
 --
--- Name: aggregation_tracking aggregation_tracking_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: aggregation_tracking aggregation_tracking_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.aggregation_tracking
@@ -5930,7 +6311,7 @@ ALTER TABLE ONLY public.aggregation_tracking
 
 
 --
--- Name: app_bankaccount app_bankaccount_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: app_bankaccount app_bankaccount_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_bankaccount
@@ -5938,7 +6319,7 @@ ALTER TABLE ONLY public.app_bankaccount
 
 
 --
--- Name: app_bankaccount app_bankaccount_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: app_bankaccount app_bankaccount_user_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_bankaccount
@@ -5946,7 +6327,7 @@ ALTER TABLE ONLY public.app_bankaccount
 
 
 --
--- Name: app_banktransaction app_banktransaction_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: app_banktransaction app_banktransaction_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_banktransaction
@@ -5954,7 +6335,7 @@ ALTER TABLE ONLY public.app_banktransaction
 
 
 --
--- Name: app_banktransaction app_banktransaction_request_uid_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: app_banktransaction app_banktransaction_request_uid_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_banktransaction
@@ -5962,7 +6343,7 @@ ALTER TABLE ONLY public.app_banktransaction
 
 
 --
--- Name: app_talerwithdrawoperation app_talerwithdrawoperation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: app_talerwithdrawoperation app_talerwithdrawoperation_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_talerwithdrawoperation
@@ -5970,7 +6351,7 @@ ALTER TABLE ONLY public.app_talerwithdrawoperation
 
 
 --
--- Name: auditor_denom_sigs auditor_denom_sigs_auditor_denom_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_denom_sigs auditor_denom_sigs_auditor_denom_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_denom_sigs
@@ -5978,7 +6359,7 @@ ALTER TABLE ONLY public.auditor_denom_sigs
 
 
 --
--- Name: auditor_denom_sigs auditor_denom_sigs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_denom_sigs auditor_denom_sigs_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_denom_sigs
@@ -5986,7 +6367,7 @@ ALTER TABLE ONLY public.auditor_denom_sigs
 
 
 --
--- Name: auditor_denomination_pending auditor_denomination_pending_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_denomination_pending auditor_denomination_pending_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_denomination_pending
@@ -5994,7 +6375,7 @@ ALTER TABLE ONLY public.auditor_denomination_pending
 
 
 --
--- Name: auditor_exchanges auditor_exchanges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_exchanges auditor_exchanges_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_exchanges
@@ -6002,7 +6383,7 @@ ALTER TABLE ONLY public.auditor_exchanges
 
 
 --
--- Name: auditor_historic_denomination_revenue auditor_historic_denomination_revenue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_historic_denomination_revenue auditor_historic_denomination_revenue_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_historic_denomination_revenue
@@ -6010,7 +6391,7 @@ ALTER TABLE ONLY public.auditor_historic_denomination_revenue
 
 
 --
--- Name: auditor_progress_aggregation auditor_progress_aggregation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_aggregation auditor_progress_aggregation_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_aggregation
@@ -6018,7 +6399,7 @@ ALTER TABLE ONLY public.auditor_progress_aggregation
 
 
 --
--- Name: auditor_progress_coin auditor_progress_coin_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_coin auditor_progress_coin_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_coin
@@ -6026,7 +6407,7 @@ ALTER TABLE ONLY public.auditor_progress_coin
 
 
 --
--- Name: auditor_progress_deposit_confirmation auditor_progress_deposit_confirmation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_deposit_confirmation auditor_progress_deposit_confirmation_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_deposit_confirmation
@@ -6034,7 +6415,7 @@ ALTER TABLE ONLY public.auditor_progress_deposit_confirmation
 
 
 --
--- Name: auditor_progress_reserve auditor_progress_reserve_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_reserve auditor_progress_reserve_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_reserve
@@ -6042,7 +6423,7 @@ ALTER TABLE ONLY public.auditor_progress_reserve
 
 
 --
--- Name: auditor_reserves auditor_reserves_auditor_reserves_rowid_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_reserves auditor_reserves_auditor_reserves_rowid_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_reserves
@@ -6050,7 +6431,7 @@ ALTER TABLE ONLY public.auditor_reserves
 
 
 --
--- Name: auditors auditors_auditor_uuid_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditors auditors_auditor_uuid_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditors
@@ -6058,7 +6439,7 @@ ALTER TABLE ONLY public.auditors
 
 
 --
--- Name: auditors auditors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auditors auditors_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditors
@@ -6066,7 +6447,7 @@ ALTER TABLE ONLY public.auditors
 
 
 --
--- Name: auth_group auth_group_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_group auth_group_name_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group
@@ -6074,7 +6455,7 @@ ALTER TABLE ONLY public.auth_group
 
 
 --
--- Name: auth_group_permissions auth_group_permissions_group_id_permission_id_0cd325b0_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_group_permissions auth_group_permissions_group_id_permission_id_0cd325b0_uniq; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group_permissions
@@ -6082,7 +6463,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- Name: auth_group_permissions auth_group_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_group_permissions auth_group_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group_permissions
@@ -6090,7 +6471,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- Name: auth_group auth_group_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_group auth_group_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group
@@ -6098,7 +6479,7 @@ ALTER TABLE ONLY public.auth_group
 
 
 --
--- Name: auth_permission auth_permission_content_type_id_codename_01ab375a_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_permission auth_permission_content_type_id_codename_01ab375a_uniq; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_permission
@@ -6106,7 +6487,7 @@ ALTER TABLE ONLY public.auth_permission
 
 
 --
--- Name: auth_permission auth_permission_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_permission auth_permission_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_permission
@@ -6114,7 +6495,7 @@ ALTER TABLE ONLY public.auth_permission
 
 
 --
--- Name: auth_user_groups auth_user_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_groups auth_user_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_groups
@@ -6122,7 +6503,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- Name: auth_user_groups auth_user_groups_user_id_group_id_94350c0c_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_groups auth_user_groups_user_id_group_id_94350c0c_uniq; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_groups
@@ -6130,7 +6511,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- Name: auth_user auth_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user auth_user_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user
@@ -6138,7 +6519,7 @@ ALTER TABLE ONLY public.auth_user
 
 
 --
--- Name: auth_user_user_permissions auth_user_user_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_user_permissions auth_user_user_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_user_permissions
@@ -6146,7 +6527,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- Name: auth_user_user_permissions auth_user_user_permissions_user_id_permission_id_14a6b632_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_user_permissions auth_user_user_permissions_user_id_permission_id_14a6b632_uniq; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_user_permissions
@@ -6154,7 +6535,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- Name: auth_user auth_user_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user auth_user_username_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user
@@ -6162,7 +6543,7 @@ ALTER TABLE ONLY public.auth_user
 
 
 --
--- Name: denomination_revocations denomination_revocations_denom_revocations_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: denomination_revocations denomination_revocations_denom_revocations_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.denomination_revocations
@@ -6170,7 +6551,7 @@ ALTER TABLE ONLY public.denomination_revocations
 
 
 --
--- Name: denominations denominations_denominations_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: denominations denominations_denominations_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.denominations
@@ -6178,7 +6559,7 @@ ALTER TABLE ONLY public.denominations
 
 
 --
--- Name: denominations denominations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: denominations denominations_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.denominations
@@ -6186,7 +6567,7 @@ ALTER TABLE ONLY public.denominations
 
 
 --
--- Name: denomination_revocations denominations_serial_pk; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: denomination_revocations denominations_serial_pk; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.denomination_revocations
@@ -6194,7 +6575,7 @@ ALTER TABLE ONLY public.denomination_revocations
 
 
 --
--- Name: deposit_confirmations deposit_confirmations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: deposit_confirmations deposit_confirmations_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.deposit_confirmations
@@ -6202,7 +6583,7 @@ ALTER TABLE ONLY public.deposit_confirmations
 
 
 --
--- Name: deposit_confirmations deposit_confirmations_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: deposit_confirmations deposit_confirmations_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.deposit_confirmations
@@ -6210,7 +6591,7 @@ ALTER TABLE ONLY public.deposit_confirmations
 
 
 --
--- Name: deposits deposits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: deposits deposits_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.deposits
@@ -6218,7 +6599,7 @@ ALTER TABLE ONLY public.deposits
 
 
 --
--- Name: django_content_type django_content_type_app_label_model_76bd3d3b_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: django_content_type django_content_type_app_label_model_76bd3d3b_uniq; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.django_content_type
@@ -6226,7 +6607,7 @@ ALTER TABLE ONLY public.django_content_type
 
 
 --
--- Name: django_content_type django_content_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: django_content_type django_content_type_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.django_content_type
@@ -6234,7 +6615,7 @@ ALTER TABLE ONLY public.django_content_type
 
 
 --
--- Name: django_migrations django_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: django_migrations django_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.django_migrations
@@ -6242,7 +6623,7 @@ ALTER TABLE ONLY public.django_migrations
 
 
 --
--- Name: django_session django_session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: django_session django_session_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.django_session
@@ -6250,7 +6631,7 @@ ALTER TABLE ONLY public.django_session
 
 
 --
--- Name: exchange_sign_keys exchange_sign_keys_esk_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: exchange_sign_keys exchange_sign_keys_esk_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.exchange_sign_keys
@@ -6258,7 +6639,7 @@ ALTER TABLE ONLY public.exchange_sign_keys
 
 
 --
--- Name: exchange_sign_keys exchange_sign_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: exchange_sign_keys exchange_sign_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.exchange_sign_keys
@@ -6266,7 +6647,7 @@ ALTER TABLE ONLY public.exchange_sign_keys
 
 
 --
--- Name: known_coins known_coins_known_coin_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: known_coins known_coins_known_coin_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.known_coins
@@ -6274,7 +6655,7 @@ ALTER TABLE ONLY public.known_coins
 
 
 --
--- Name: known_coins known_coins_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: known_coins known_coins_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.known_coins
@@ -6282,7 +6663,7 @@ ALTER TABLE ONLY public.known_coins
 
 
 --
--- Name: merchant_accounts merchant_accounts_merchant_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_accounts merchant_accounts_merchant_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_accounts
@@ -6290,7 +6671,7 @@ ALTER TABLE ONLY public.merchant_accounts
 
 
 --
--- Name: merchant_accounts merchant_accounts_merchant_serial_payto_uri_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_accounts merchant_accounts_merchant_serial_payto_uri_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_accounts
@@ -6298,7 +6679,7 @@ ALTER TABLE ONLY public.merchant_accounts
 
 
 --
--- Name: merchant_accounts merchant_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_accounts merchant_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_accounts
@@ -6306,7 +6687,7 @@ ALTER TABLE ONLY public.merchant_accounts
 
 
 --
--- Name: merchant_contract_terms merchant_contract_terms_merchant_serial_h_contract_terms_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_contract_terms merchant_contract_terms_merchant_serial_h_contract_terms_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_contract_terms
@@ -6314,7 +6695,7 @@ ALTER TABLE ONLY public.merchant_contract_terms
 
 
 --
--- Name: merchant_contract_terms merchant_contract_terms_merchant_serial_order_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_contract_terms merchant_contract_terms_merchant_serial_order_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_contract_terms
@@ -6322,7 +6703,7 @@ ALTER TABLE ONLY public.merchant_contract_terms
 
 
 --
--- Name: merchant_contract_terms merchant_contract_terms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_contract_terms merchant_contract_terms_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_contract_terms
@@ -6330,7 +6711,7 @@ ALTER TABLE ONLY public.merchant_contract_terms
 
 
 --
--- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_deposit_serial_credit_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_deposit_serial_credit_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposit_to_transfer
@@ -6338,7 +6719,7 @@ ALTER TABLE ONLY public.merchant_deposit_to_transfer
 
 
 --
--- Name: merchant_deposits merchant_deposits_order_serial_coin_pub_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposits merchant_deposits_order_serial_coin_pub_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposits
@@ -6346,7 +6727,7 @@ ALTER TABLE ONLY public.merchant_deposits
 
 
 --
--- Name: merchant_deposits merchant_deposits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposits merchant_deposits_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposits
@@ -6354,7 +6735,7 @@ ALTER TABLE ONLY public.merchant_deposits
 
 
 --
--- Name: merchant_exchange_signing_keys merchant_exchange_signing_key_exchange_pub_start_date_maste_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_exchange_signing_keys merchant_exchange_signing_key_exchange_pub_start_date_maste_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_exchange_signing_keys
@@ -6362,7 +6743,7 @@ ALTER TABLE ONLY public.merchant_exchange_signing_keys
 
 
 --
--- Name: merchant_exchange_signing_keys merchant_exchange_signing_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_exchange_signing_keys merchant_exchange_signing_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_exchange_signing_keys
@@ -6370,7 +6751,7 @@ ALTER TABLE ONLY public.merchant_exchange_signing_keys
 
 
 --
--- Name: merchant_exchange_wire_fees merchant_exchange_wire_fees_master_pub_h_wire_method_start__key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_exchange_wire_fees merchant_exchange_wire_fees_master_pub_h_wire_method_start__key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_exchange_wire_fees
@@ -6378,7 +6759,7 @@ ALTER TABLE ONLY public.merchant_exchange_wire_fees
 
 
 --
--- Name: merchant_exchange_wire_fees merchant_exchange_wire_fees_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_exchange_wire_fees merchant_exchange_wire_fees_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_exchange_wire_fees
@@ -6386,7 +6767,7 @@ ALTER TABLE ONLY public.merchant_exchange_wire_fees
 
 
 --
--- Name: merchant_instances merchant_instances_merchant_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_instances merchant_instances_merchant_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_instances
@@ -6394,7 +6775,7 @@ ALTER TABLE ONLY public.merchant_instances
 
 
 --
--- Name: merchant_instances merchant_instances_merchant_pub_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_instances merchant_instances_merchant_pub_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_instances
@@ -6402,7 +6783,7 @@ ALTER TABLE ONLY public.merchant_instances
 
 
 --
--- Name: merchant_instances merchant_instances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_instances merchant_instances_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_instances
@@ -6410,7 +6791,7 @@ ALTER TABLE ONLY public.merchant_instances
 
 
 --
--- Name: merchant_inventory merchant_inventory_merchant_serial_product_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_inventory merchant_inventory_merchant_serial_product_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_inventory
@@ -6418,7 +6799,7 @@ ALTER TABLE ONLY public.merchant_inventory
 
 
 --
--- Name: merchant_inventory merchant_inventory_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_inventory merchant_inventory_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_inventory
@@ -6426,7 +6807,7 @@ ALTER TABLE ONLY public.merchant_inventory
 
 
 --
--- Name: merchant_keys merchant_keys_merchant_priv_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_keys merchant_keys_merchant_priv_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_keys
@@ -6434,7 +6815,7 @@ ALTER TABLE ONLY public.merchant_keys
 
 
 --
--- Name: merchant_keys merchant_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_keys merchant_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_keys
@@ -6442,7 +6823,7 @@ ALTER TABLE ONLY public.merchant_keys
 
 
 --
--- Name: merchant_orders merchant_orders_merchant_serial_order_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_orders merchant_orders_merchant_serial_order_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_orders
@@ -6450,7 +6831,7 @@ ALTER TABLE ONLY public.merchant_orders
 
 
 --
--- Name: merchant_orders merchant_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_orders merchant_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_orders
@@ -6458,7 +6839,7 @@ ALTER TABLE ONLY public.merchant_orders
 
 
 --
--- Name: merchant_refund_proofs merchant_refund_proofs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_refund_proofs merchant_refund_proofs_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_refund_proofs
@@ -6466,7 +6847,7 @@ ALTER TABLE ONLY public.merchant_refund_proofs
 
 
 --
--- Name: merchant_refunds merchant_refunds_order_serial_coin_pub_rtransaction_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_refunds merchant_refunds_order_serial_coin_pub_rtransaction_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_refunds
@@ -6474,7 +6855,7 @@ ALTER TABLE ONLY public.merchant_refunds
 
 
 --
--- Name: merchant_refunds merchant_refunds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_refunds merchant_refunds_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_refunds
@@ -6482,7 +6863,7 @@ ALTER TABLE ONLY public.merchant_refunds
 
 
 --
--- Name: merchant_tip_pickup_signatures merchant_tip_pickup_signatures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_pickup_signatures merchant_tip_pickup_signatures_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_pickup_signatures
@@ -6490,7 +6871,7 @@ ALTER TABLE ONLY public.merchant_tip_pickup_signatures
 
 
 --
--- Name: merchant_tip_pickups merchant_tip_pickups_pickup_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_pickups merchant_tip_pickups_pickup_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_pickups
@@ -6498,7 +6879,7 @@ ALTER TABLE ONLY public.merchant_tip_pickups
 
 
 --
--- Name: merchant_tip_pickups merchant_tip_pickups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_pickups merchant_tip_pickups_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_pickups
@@ -6506,7 +6887,7 @@ ALTER TABLE ONLY public.merchant_tip_pickups
 
 
 --
--- Name: merchant_tip_reserve_keys merchant_tip_reserve_keys_reserve_priv_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_reserve_keys merchant_tip_reserve_keys_reserve_priv_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_reserve_keys
@@ -6514,7 +6895,7 @@ ALTER TABLE ONLY public.merchant_tip_reserve_keys
 
 
 --
--- Name: merchant_tip_reserve_keys merchant_tip_reserve_keys_reserve_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_reserve_keys merchant_tip_reserve_keys_reserve_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_reserve_keys
@@ -6522,7 +6903,7 @@ ALTER TABLE ONLY public.merchant_tip_reserve_keys
 
 
 --
--- Name: merchant_tip_reserves merchant_tip_reserves_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_reserves merchant_tip_reserves_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_reserves
@@ -6530,7 +6911,7 @@ ALTER TABLE ONLY public.merchant_tip_reserves
 
 
 --
--- Name: merchant_tip_reserves merchant_tip_reserves_reserve_pub_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_reserves merchant_tip_reserves_reserve_pub_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_reserves
@@ -6538,7 +6919,7 @@ ALTER TABLE ONLY public.merchant_tip_reserves
 
 
 --
--- Name: merchant_tips merchant_tips_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tips merchant_tips_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tips
@@ -6546,7 +6927,7 @@ ALTER TABLE ONLY public.merchant_tips
 
 
 --
--- Name: merchant_tips merchant_tips_tip_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tips merchant_tips_tip_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tips
@@ -6554,7 +6935,7 @@ ALTER TABLE ONLY public.merchant_tips
 
 
 --
--- Name: merchant_transfer_signatures merchant_transfer_signatures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfer_signatures merchant_transfer_signatures_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfer_signatures
@@ -6562,7 +6943,7 @@ ALTER TABLE ONLY public.merchant_transfer_signatures
 
 
 --
--- Name: merchant_transfer_to_coin merchant_transfer_to_coin_deposit_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfer_to_coin merchant_transfer_to_coin_deposit_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfer_to_coin
@@ -6570,7 +6951,7 @@ ALTER TABLE ONLY public.merchant_transfer_to_coin
 
 
 --
--- Name: merchant_transfers merchant_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfers merchant_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfers
@@ -6578,7 +6959,7 @@ ALTER TABLE ONLY public.merchant_transfers
 
 
 --
--- Name: merchant_transfers merchant_transfers_wtid_exchange_url_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfers merchant_transfers_wtid_exchange_url_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfers
@@ -6586,7 +6967,7 @@ ALTER TABLE ONLY public.merchant_transfers
 
 
 --
--- Name: prewire prewire_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: prewire prewire_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.prewire
@@ -6594,7 +6975,7 @@ ALTER TABLE ONLY public.prewire
 
 
 --
--- Name: recoup recoup_recoup_uuid_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: recoup recoup_recoup_uuid_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup
@@ -6602,7 +6983,7 @@ ALTER TABLE ONLY public.recoup
 
 
 --
--- Name: recoup_refresh recoup_refresh_recoup_refresh_uuid_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: recoup_refresh recoup_refresh_recoup_refresh_uuid_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup_refresh
@@ -6610,7 +6991,7 @@ ALTER TABLE ONLY public.recoup_refresh
 
 
 --
--- Name: refresh_commitments refresh_commitments_melt_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_commitments refresh_commitments_melt_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_commitments
@@ -6618,7 +6999,7 @@ ALTER TABLE ONLY public.refresh_commitments
 
 
 --
--- Name: refresh_commitments refresh_commitments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_commitments refresh_commitments_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_commitments
@@ -6626,7 +7007,7 @@ ALTER TABLE ONLY public.refresh_commitments
 
 
 --
--- Name: refresh_revealed_coins refresh_revealed_coins_coin_ev_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_revealed_coins refresh_revealed_coins_coin_ev_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_revealed_coins
@@ -6634,7 +7015,7 @@ ALTER TABLE ONLY public.refresh_revealed_coins
 
 
 --
--- Name: refresh_revealed_coins refresh_revealed_coins_h_coin_ev_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_revealed_coins refresh_revealed_coins_h_coin_ev_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_revealed_coins
@@ -6642,7 +7023,7 @@ ALTER TABLE ONLY public.refresh_revealed_coins
 
 
 --
--- Name: refresh_revealed_coins refresh_revealed_coins_rrc_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_revealed_coins refresh_revealed_coins_rrc_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_revealed_coins
@@ -6650,7 +7031,7 @@ ALTER TABLE ONLY public.refresh_revealed_coins
 
 
 --
--- Name: refresh_transfer_keys refresh_transfer_keys_rtc_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_transfer_keys refresh_transfer_keys_rtc_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_transfer_keys
@@ -6658,7 +7039,7 @@ ALTER TABLE ONLY public.refresh_transfer_keys
 
 
 --
--- Name: refunds refunds_refund_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: refunds refunds_refund_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refunds
@@ -6666,7 +7047,7 @@ ALTER TABLE ONLY public.refunds
 
 
 --
--- Name: reserves_close reserves_close_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_close reserves_close_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_close
@@ -6674,7 +7055,7 @@ ALTER TABLE ONLY public.reserves_close
 
 
 --
--- Name: reserves_in reserves_in_reserve_in_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_in reserves_in_reserve_in_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_in
@@ -6682,7 +7063,7 @@ ALTER TABLE ONLY public.reserves_in
 
 
 --
--- Name: reserves_out reserves_out_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_out reserves_out_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_out
@@ -6690,7 +7071,7 @@ ALTER TABLE ONLY public.reserves_out
 
 
 --
--- Name: reserves_out reserves_out_reserve_out_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_out reserves_out_reserve_out_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_out
@@ -6698,7 +7079,7 @@ ALTER TABLE ONLY public.reserves_out
 
 
 --
--- Name: reserves reserves_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves reserves_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves
@@ -6706,7 +7087,7 @@ ALTER TABLE ONLY public.reserves
 
 
 --
--- Name: reserves reserves_reserve_uuid_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves reserves_reserve_uuid_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves
@@ -6714,7 +7095,23 @@ ALTER TABLE ONLY public.reserves
 
 
 --
--- Name: signkey_revocations signkey_revocations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: revolving_work_shards revolving_work_shards_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
+--
+
+ALTER TABLE ONLY public.revolving_work_shards
+    ADD CONSTRAINT revolving_work_shards_pkey PRIMARY KEY (job_name, start_row);
+
+
+--
+-- Name: revolving_work_shards revolving_work_shards_shard_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
+--
+
+ALTER TABLE ONLY public.revolving_work_shards
+    ADD CONSTRAINT revolving_work_shards_shard_serial_id_key UNIQUE (shard_serial_id);
+
+
+--
+-- Name: signkey_revocations signkey_revocations_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.signkey_revocations
@@ -6722,7 +7119,7 @@ ALTER TABLE ONLY public.signkey_revocations
 
 
 --
--- Name: signkey_revocations signkey_revocations_signkey_revocations_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: signkey_revocations signkey_revocations_signkey_revocations_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.signkey_revocations
@@ -6730,7 +7127,7 @@ ALTER TABLE ONLY public.signkey_revocations
 
 
 --
--- Name: wire_accounts wire_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_accounts wire_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_accounts
@@ -6738,7 +7135,7 @@ ALTER TABLE ONLY public.wire_accounts
 
 
 --
--- Name: wire_auditor_account_progress wire_auditor_account_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_auditor_account_progress wire_auditor_account_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_auditor_account_progress
@@ -6746,7 +7143,7 @@ ALTER TABLE ONLY public.wire_auditor_account_progress
 
 
 --
--- Name: wire_auditor_progress wire_auditor_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_auditor_progress wire_auditor_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_auditor_progress
@@ -6754,7 +7151,7 @@ ALTER TABLE ONLY public.wire_auditor_progress
 
 
 --
--- Name: wire_fee wire_fee_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_fee wire_fee_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_fee
@@ -6762,7 +7159,7 @@ ALTER TABLE ONLY public.wire_fee
 
 
 --
--- Name: wire_fee wire_fee_wire_fee_serial_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_fee wire_fee_wire_fee_serial_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_fee
@@ -6770,7 +7167,7 @@ ALTER TABLE ONLY public.wire_fee
 
 
 --
--- Name: wire_out wire_out_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_out wire_out_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_out
@@ -6778,7 +7175,7 @@ ALTER TABLE ONLY public.wire_out
 
 
 --
--- Name: wire_out wire_out_wtid_raw_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_out wire_out_wtid_raw_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_out
@@ -6786,7 +7183,7 @@ ALTER TABLE ONLY public.wire_out
 
 
 --
--- Name: work_shards work_shards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: work_shards work_shards_pkey; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.work_shards
@@ -6794,7 +7191,7 @@ ALTER TABLE ONLY public.work_shards
 
 
 --
--- Name: work_shards work_shards_shard_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: work_shards work_shards_shard_serial_id_key; Type: CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.work_shards
@@ -6802,371 +7199,385 @@ ALTER TABLE ONLY public.work_shards
 
 
 --
--- Name: aggregation_tracking_wtid_index; Type: INDEX; Schema: public; Owner: -
+-- Name: aggregation_tracking_wtid_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX aggregation_tracking_wtid_index ON public.aggregation_tracking USING btree (wtid_raw);
 
 
 --
--- Name: INDEX aggregation_tracking_wtid_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: INDEX aggregation_tracking_wtid_index; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON INDEX public.aggregation_tracking_wtid_index IS 'for lookup_transactions';
 
 
 --
--- Name: app_banktransaction_credit_account_id_a8ba05ac; Type: INDEX; Schema: public; Owner: -
+-- Name: app_banktransaction_credit_account_id_a8ba05ac; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX app_banktransaction_credit_account_id_a8ba05ac ON public.app_banktransaction USING btree (credit_account_id);
 
 
 --
--- Name: app_banktransaction_date_f72bcad6; Type: INDEX; Schema: public; Owner: -
+-- Name: app_banktransaction_date_f72bcad6; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX app_banktransaction_date_f72bcad6 ON public.app_banktransaction USING btree (date);
 
 
 --
--- Name: app_banktransaction_debit_account_id_5b1f7528; Type: INDEX; Schema: public; Owner: -
+-- Name: app_banktransaction_debit_account_id_5b1f7528; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX app_banktransaction_debit_account_id_5b1f7528 ON public.app_banktransaction USING btree (debit_account_id);
 
 
 --
--- Name: app_banktransaction_request_uid_b7d06af5_like; Type: INDEX; Schema: public; Owner: -
+-- Name: app_banktransaction_request_uid_b7d06af5_like; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX app_banktransaction_request_uid_b7d06af5_like ON public.app_banktransaction USING btree (request_uid varchar_pattern_ops);
 
 
 --
--- Name: app_talerwithdrawoperation_selected_exchange_account__6c8b96cf; Type: INDEX; Schema: public; Owner: -
+-- Name: app_talerwithdrawoperation_selected_exchange_account__6c8b96cf; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX app_talerwithdrawoperation_selected_exchange_account__6c8b96cf ON public.app_talerwithdrawoperation USING btree (selected_exchange_account_id);
 
 
 --
--- Name: app_talerwithdrawoperation_withdraw_account_id_992dc5b3; Type: INDEX; Schema: public; Owner: -
+-- Name: app_talerwithdrawoperation_withdraw_account_id_992dc5b3; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX app_talerwithdrawoperation_withdraw_account_id_992dc5b3 ON public.app_talerwithdrawoperation USING btree (withdraw_account_id);
 
 
 --
--- Name: auditor_historic_reserve_summary_by_master_pub_start_date; Type: INDEX; Schema: public; Owner: -
+-- Name: auditor_historic_reserve_summary_by_master_pub_start_date; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auditor_historic_reserve_summary_by_master_pub_start_date ON public.auditor_historic_reserve_summary USING btree (master_pub, start_date);
 
 
 --
--- Name: auditor_reserves_by_reserve_pub; Type: INDEX; Schema: public; Owner: -
+-- Name: auditor_reserves_by_reserve_pub; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auditor_reserves_by_reserve_pub ON public.auditor_reserves USING btree (reserve_pub);
 
 
 --
--- Name: auth_group_name_a6ea08ec_like; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_group_name_a6ea08ec_like; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_group_name_a6ea08ec_like ON public.auth_group USING btree (name varchar_pattern_ops);
 
 
 --
--- Name: auth_group_permissions_group_id_b120cbf9; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_group_permissions_group_id_b120cbf9; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_group_permissions_group_id_b120cbf9 ON public.auth_group_permissions USING btree (group_id);
 
 
 --
--- Name: auth_group_permissions_permission_id_84c5c92e; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_group_permissions_permission_id_84c5c92e; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_group_permissions_permission_id_84c5c92e ON public.auth_group_permissions USING btree (permission_id);
 
 
 --
--- Name: auth_permission_content_type_id_2f476e4b; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_permission_content_type_id_2f476e4b; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_permission_content_type_id_2f476e4b ON public.auth_permission USING btree (content_type_id);
 
 
 --
--- Name: auth_user_groups_group_id_97559544; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_user_groups_group_id_97559544; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_user_groups_group_id_97559544 ON public.auth_user_groups USING btree (group_id);
 
 
 --
--- Name: auth_user_groups_user_id_6a12ed8b; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_user_groups_user_id_6a12ed8b; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_user_groups_user_id_6a12ed8b ON public.auth_user_groups USING btree (user_id);
 
 
 --
--- Name: auth_user_user_permissions_permission_id_1fbb5f2c; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_user_user_permissions_permission_id_1fbb5f2c; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_user_user_permissions_permission_id_1fbb5f2c ON public.auth_user_user_permissions USING btree (permission_id);
 
 
 --
--- Name: auth_user_user_permissions_user_id_a95ead1b; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_user_user_permissions_user_id_a95ead1b; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_user_user_permissions_user_id_a95ead1b ON public.auth_user_user_permissions USING btree (user_id);
 
 
 --
--- Name: auth_user_username_6821ab7c_like; Type: INDEX; Schema: public; Owner: -
+-- Name: auth_user_username_6821ab7c_like; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX auth_user_username_6821ab7c_like ON public.auth_user USING btree (username varchar_pattern_ops);
 
 
 --
--- Name: denominations_expire_legal_index; Type: INDEX; Schema: public; Owner: -
+-- Name: denominations_expire_legal_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX denominations_expire_legal_index ON public.denominations USING btree (expire_legal);
 
 
 --
--- Name: deposits_get_ready_index; Type: INDEX; Schema: public; Owner: -
+-- Name: deposits_get_ready_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
-CREATE INDEX deposits_get_ready_index ON public.deposits USING btree (tiny, done, wire_deadline, refund_deadline);
+CREATE INDEX deposits_get_ready_index ON public.deposits USING btree (shard, tiny, done, wire_deadline, refund_deadline);
 
 
 --
--- Name: deposits_iterate_matching_index; Type: INDEX; Schema: public; Owner: -
+-- Name: INDEX deposits_get_ready_index; Type: COMMENT; Schema: public; Owner: grothoff
+--
+
+COMMENT ON INDEX public.deposits_get_ready_index IS 'for deposits_get_ready';
+
+
+--
+-- Name: deposits_iterate_matching_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX deposits_iterate_matching_index ON public.deposits USING btree (merchant_pub, h_wire, done, wire_deadline);
 
 
 --
--- Name: INDEX deposits_iterate_matching_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: INDEX deposits_iterate_matching_index; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON INDEX public.deposits_iterate_matching_index IS 'for deposits_iterate_matching';
 
 
 --
--- Name: django_session_expire_date_a5c62663; Type: INDEX; Schema: public; Owner: -
+-- Name: django_session_expire_date_a5c62663; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX django_session_expire_date_a5c62663 ON public.django_session USING btree (expire_date);
 
 
 --
--- Name: django_session_session_key_c0390e0f_like; Type: INDEX; Schema: public; Owner: -
+-- Name: django_session_session_key_c0390e0f_like; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX django_session_session_key_c0390e0f_like ON public.django_session USING btree (session_key varchar_pattern_ops);
 
 
 --
--- Name: merchant_contract_terms_by_merchant_and_expiration; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_contract_terms_by_merchant_and_expiration; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_contract_terms_by_merchant_and_expiration ON public.merchant_contract_terms USING btree (merchant_serial, pay_deadline);
 
 
 --
--- Name: merchant_contract_terms_by_merchant_and_payment; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_contract_terms_by_merchant_and_payment; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_contract_terms_by_merchant_and_payment ON public.merchant_contract_terms USING btree (merchant_serial, paid);
 
 
 --
--- Name: merchant_contract_terms_by_merchant_session_and_fulfillment; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_contract_terms_by_merchant_session_and_fulfillment; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_contract_terms_by_merchant_session_and_fulfillment ON public.merchant_contract_terms USING btree (merchant_serial, fulfillment_url, session_id);
 
 
 --
--- Name: merchant_inventory_locks_by_expiration; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_inventory_locks_by_expiration; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_inventory_locks_by_expiration ON public.merchant_inventory_locks USING btree (expiration);
 
 
 --
--- Name: merchant_inventory_locks_by_uuid; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_inventory_locks_by_uuid; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_inventory_locks_by_uuid ON public.merchant_inventory_locks USING btree (lock_uuid);
 
 
 --
--- Name: merchant_orders_by_creation_time; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_orders_by_creation_time; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_orders_by_creation_time ON public.merchant_orders USING btree (creation_time);
 
 
 --
--- Name: merchant_orders_by_expiration; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_orders_by_expiration; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_orders_by_expiration ON public.merchant_orders USING btree (pay_deadline);
 
 
 --
--- Name: merchant_orders_locks_by_order_and_product; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_orders_locks_by_order_and_product; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_orders_locks_by_order_and_product ON public.merchant_order_locks USING btree (order_serial, product_serial);
 
 
 --
--- Name: merchant_refunds_by_coin_and_order; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_refunds_by_coin_and_order; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_refunds_by_coin_and_order ON public.merchant_refunds USING btree (coin_pub, order_serial);
 
 
 --
--- Name: merchant_tip_reserves_by_exchange_balance; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_tip_reserves_by_exchange_balance; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_tip_reserves_by_exchange_balance ON public.merchant_tip_reserves USING btree (exchange_initial_balance_val, exchange_initial_balance_frac);
 
 
 --
--- Name: merchant_tip_reserves_by_merchant_serial_and_creation_time; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_tip_reserves_by_merchant_serial_and_creation_time; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_tip_reserves_by_merchant_serial_and_creation_time ON public.merchant_tip_reserves USING btree (merchant_serial, creation_time);
 
 
 --
--- Name: merchant_tip_reserves_by_reserve_pub_and_merchant_serial; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_tip_reserves_by_reserve_pub_and_merchant_serial; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_tip_reserves_by_reserve_pub_and_merchant_serial ON public.merchant_tip_reserves USING btree (reserve_pub, merchant_serial, creation_time);
 
 
 --
--- Name: merchant_tips_by_pickup_and_expiration; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_tips_by_pickup_and_expiration; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_tips_by_pickup_and_expiration ON public.merchant_tips USING btree (was_picked_up, expiration);
 
 
 --
--- Name: merchant_transfers_by_credit; Type: INDEX; Schema: public; Owner: -
+-- Name: merchant_transfers_by_credit; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX merchant_transfers_by_credit ON public.merchant_transfer_to_coin USING btree (credit_serial);
 
 
 --
--- Name: prepare_get_index; Type: INDEX; Schema: public; Owner: -
+-- Name: prepare_get_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX prepare_get_index ON public.prewire USING btree (failed, finished);
 
 
 --
--- Name: INDEX prepare_get_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: INDEX prepare_get_index; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON INDEX public.prepare_get_index IS 'for wire_prepare_data_get';
 
 
 --
--- Name: prepare_iteration_index; Type: INDEX; Schema: public; Owner: -
+-- Name: prepare_iteration_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX prepare_iteration_index ON public.prewire USING btree (finished);
 
 
 --
--- Name: INDEX prepare_iteration_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: INDEX prepare_iteration_index; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON INDEX public.prepare_iteration_index IS 'for gc_prewire';
 
 
 --
--- Name: reserves_expiration_index; Type: INDEX; Schema: public; Owner: -
+-- Name: reserves_expiration_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX reserves_expiration_index ON public.reserves USING btree (expiration_date, current_balance_val, current_balance_frac);
 
 
 --
--- Name: INDEX reserves_expiration_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: INDEX reserves_expiration_index; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON INDEX public.reserves_expiration_index IS 'used in get_expired_reserves';
 
 
 --
--- Name: reserves_gc_index; Type: INDEX; Schema: public; Owner: -
+-- Name: reserves_gc_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX reserves_gc_index ON public.reserves USING btree (gc_date);
 
 
 --
--- Name: INDEX reserves_gc_index; Type: COMMENT; Schema: public; Owner: -
+-- Name: INDEX reserves_gc_index; Type: COMMENT; Schema: public; Owner: grothoff
 --
 
 COMMENT ON INDEX public.reserves_gc_index IS 'for reserve garbage collection';
 
 
 --
--- Name: reserves_in_exchange_account_serial; Type: INDEX; Schema: public; Owner: -
+-- Name: reserves_in_exchange_account_serial; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX reserves_in_exchange_account_serial ON public.reserves_in USING btree (exchange_account_section, reserve_in_serial_id DESC);
 
 
 --
--- Name: reserves_in_execution_index; Type: INDEX; Schema: public; Owner: -
+-- Name: reserves_in_execution_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX reserves_in_execution_index ON public.reserves_in USING btree (exchange_account_section, execution_date);
 
 
 --
--- Name: reserves_out_execution_date; Type: INDEX; Schema: public; Owner: -
+-- Name: reserves_out_execution_date; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX reserves_out_execution_date ON public.reserves_out USING btree (execution_date);
 
 
 --
--- Name: wire_fee_gc_index; Type: INDEX; Schema: public; Owner: -
+-- Name: revolving_work_shards_index; Type: INDEX; Schema: public; Owner: grothoff
+--
+
+CREATE INDEX revolving_work_shards_index ON public.revolving_work_shards USING btree (job_name, active, last_attempt);
+
+
+--
+-- Name: wire_fee_gc_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX wire_fee_gc_index ON public.wire_fee USING btree (end_date);
 
 
 --
--- Name: work_shards_index; Type: INDEX; Schema: public; Owner: -
+-- Name: work_shards_index; Type: INDEX; Schema: public; Owner: grothoff
 --
 
 CREATE INDEX work_shards_index ON public.work_shards USING btree (job_name, completed, last_attempt);
 
 
 --
--- Name: aggregation_tracking aggregation_tracking_deposit_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: aggregation_tracking aggregation_tracking_deposit_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.aggregation_tracking
@@ -7174,7 +7585,7 @@ ALTER TABLE ONLY public.aggregation_tracking
 
 
 --
--- Name: app_bankaccount app_bankaccount_user_id_2722a34f_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: app_bankaccount app_bankaccount_user_id_2722a34f_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_bankaccount
@@ -7182,7 +7593,7 @@ ALTER TABLE ONLY public.app_bankaccount
 
 
 --
--- Name: app_banktransaction app_banktransaction_credit_account_id_a8ba05ac_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: app_banktransaction app_banktransaction_credit_account_id_a8ba05ac_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_banktransaction
@@ -7190,7 +7601,7 @@ ALTER TABLE ONLY public.app_banktransaction
 
 
 --
--- Name: app_banktransaction app_banktransaction_debit_account_id_5b1f7528_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: app_banktransaction app_banktransaction_debit_account_id_5b1f7528_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_banktransaction
@@ -7198,7 +7609,7 @@ ALTER TABLE ONLY public.app_banktransaction
 
 
 --
--- Name: app_talerwithdrawoperation app_talerwithdrawope_selected_exchange_ac_6c8b96cf_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: app_talerwithdrawoperation app_talerwithdrawope_selected_exchange_ac_6c8b96cf_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_talerwithdrawoperation
@@ -7206,7 +7617,7 @@ ALTER TABLE ONLY public.app_talerwithdrawoperation
 
 
 --
--- Name: app_talerwithdrawoperation app_talerwithdrawope_withdraw_account_id_992dc5b3_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: app_talerwithdrawoperation app_talerwithdrawope_withdraw_account_id_992dc5b3_fk_app_banka; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.app_talerwithdrawoperation
@@ -7214,7 +7625,7 @@ ALTER TABLE ONLY public.app_talerwithdrawoperation
 
 
 --
--- Name: auditor_denom_sigs auditor_denom_sigs_auditor_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_denom_sigs auditor_denom_sigs_auditor_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_denom_sigs
@@ -7222,7 +7633,7 @@ ALTER TABLE ONLY public.auditor_denom_sigs
 
 
 --
--- Name: auditor_denom_sigs auditor_denom_sigs_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_denom_sigs auditor_denom_sigs_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_denom_sigs
@@ -7230,7 +7641,7 @@ ALTER TABLE ONLY public.auditor_denom_sigs
 
 
 --
--- Name: auth_group_permissions auth_group_permissio_permission_id_84c5c92e_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_group_permissions auth_group_permissio_permission_id_84c5c92e_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group_permissions
@@ -7238,7 +7649,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- Name: auth_group_permissions auth_group_permissions_group_id_b120cbf9_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_group_permissions auth_group_permissions_group_id_b120cbf9_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_group_permissions
@@ -7246,7 +7657,7 @@ ALTER TABLE ONLY public.auth_group_permissions
 
 
 --
--- Name: auth_permission auth_permission_content_type_id_2f476e4b_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_permission auth_permission_content_type_id_2f476e4b_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_permission
@@ -7254,7 +7665,7 @@ ALTER TABLE ONLY public.auth_permission
 
 
 --
--- Name: auth_user_groups auth_user_groups_group_id_97559544_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_groups auth_user_groups_group_id_97559544_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_groups
@@ -7262,7 +7673,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- Name: auth_user_groups auth_user_groups_user_id_6a12ed8b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_groups auth_user_groups_user_id_6a12ed8b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_groups
@@ -7270,7 +7681,7 @@ ALTER TABLE ONLY public.auth_user_groups
 
 
 --
--- Name: auth_user_user_permissions auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_user_permissions auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_user_permissions
@@ -7278,7 +7689,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- Name: auth_user_user_permissions auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auth_user_user_permissions auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auth_user_user_permissions
@@ -7286,7 +7697,7 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- Name: denomination_revocations denomination_revocations_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: denomination_revocations denomination_revocations_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.denomination_revocations
@@ -7294,7 +7705,7 @@ ALTER TABLE ONLY public.denomination_revocations
 
 
 --
--- Name: deposits deposits_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: deposits deposits_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.deposits
@@ -7302,7 +7713,7 @@ ALTER TABLE ONLY public.deposits
 
 
 --
--- Name: known_coins known_coins_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: known_coins known_coins_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.known_coins
@@ -7310,7 +7721,7 @@ ALTER TABLE ONLY public.known_coins
 
 
 --
--- Name: auditor_exchange_signkeys master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_exchange_signkeys master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_exchange_signkeys
@@ -7318,7 +7729,7 @@ ALTER TABLE ONLY public.auditor_exchange_signkeys
 
 
 --
--- Name: auditor_progress_reserve master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_reserve master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_reserve
@@ -7326,7 +7737,7 @@ ALTER TABLE ONLY public.auditor_progress_reserve
 
 
 --
--- Name: auditor_progress_aggregation master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_aggregation master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_aggregation
@@ -7334,7 +7745,7 @@ ALTER TABLE ONLY public.auditor_progress_aggregation
 
 
 --
--- Name: auditor_progress_deposit_confirmation master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_deposit_confirmation master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_deposit_confirmation
@@ -7342,7 +7753,7 @@ ALTER TABLE ONLY public.auditor_progress_deposit_confirmation
 
 
 --
--- Name: auditor_progress_coin master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_progress_coin master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_progress_coin
@@ -7350,7 +7761,7 @@ ALTER TABLE ONLY public.auditor_progress_coin
 
 
 --
--- Name: wire_auditor_account_progress master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_auditor_account_progress master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_auditor_account_progress
@@ -7358,7 +7769,7 @@ ALTER TABLE ONLY public.wire_auditor_account_progress
 
 
 --
--- Name: wire_auditor_progress master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: wire_auditor_progress master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.wire_auditor_progress
@@ -7366,7 +7777,7 @@ ALTER TABLE ONLY public.wire_auditor_progress
 
 
 --
--- Name: auditor_reserves master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_reserves master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_reserves
@@ -7374,7 +7785,7 @@ ALTER TABLE ONLY public.auditor_reserves
 
 
 --
--- Name: auditor_reserve_balance master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_reserve_balance master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_reserve_balance
@@ -7382,7 +7793,7 @@ ALTER TABLE ONLY public.auditor_reserve_balance
 
 
 --
--- Name: auditor_wire_fee_balance master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_wire_fee_balance master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_wire_fee_balance
@@ -7390,7 +7801,7 @@ ALTER TABLE ONLY public.auditor_wire_fee_balance
 
 
 --
--- Name: auditor_balance_summary master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_balance_summary master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_balance_summary
@@ -7398,7 +7809,7 @@ ALTER TABLE ONLY public.auditor_balance_summary
 
 
 --
--- Name: auditor_historic_denomination_revenue master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_historic_denomination_revenue master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_historic_denomination_revenue
@@ -7406,7 +7817,7 @@ ALTER TABLE ONLY public.auditor_historic_denomination_revenue
 
 
 --
--- Name: auditor_historic_reserve_summary master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_historic_reserve_summary master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_historic_reserve_summary
@@ -7414,7 +7825,7 @@ ALTER TABLE ONLY public.auditor_historic_reserve_summary
 
 
 --
--- Name: deposit_confirmations master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: deposit_confirmations master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.deposit_confirmations
@@ -7422,7 +7833,7 @@ ALTER TABLE ONLY public.deposit_confirmations
 
 
 --
--- Name: auditor_predicted_result master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: auditor_predicted_result master_pub_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.auditor_predicted_result
@@ -7430,7 +7841,7 @@ ALTER TABLE ONLY public.auditor_predicted_result
 
 
 --
--- Name: merchant_accounts merchant_accounts_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_accounts merchant_accounts_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_accounts
@@ -7438,7 +7849,7 @@ ALTER TABLE ONLY public.merchant_accounts
 
 
 --
--- Name: merchant_contract_terms merchant_contract_terms_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_contract_terms merchant_contract_terms_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_contract_terms
@@ -7446,7 +7857,7 @@ ALTER TABLE ONLY public.merchant_contract_terms
 
 
 --
--- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_credit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_credit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposit_to_transfer
@@ -7454,7 +7865,7 @@ ALTER TABLE ONLY public.merchant_deposit_to_transfer
 
 
 --
--- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_deposit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_deposit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposit_to_transfer
@@ -7462,7 +7873,7 @@ ALTER TABLE ONLY public.merchant_deposit_to_transfer
 
 
 --
--- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposit_to_transfer merchant_deposit_to_transfer_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposit_to_transfer
@@ -7470,7 +7881,7 @@ ALTER TABLE ONLY public.merchant_deposit_to_transfer
 
 
 --
--- Name: merchant_deposits merchant_deposits_account_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposits merchant_deposits_account_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposits
@@ -7478,7 +7889,7 @@ ALTER TABLE ONLY public.merchant_deposits
 
 
 --
--- Name: merchant_deposits merchant_deposits_order_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposits merchant_deposits_order_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposits
@@ -7486,7 +7897,7 @@ ALTER TABLE ONLY public.merchant_deposits
 
 
 --
--- Name: merchant_deposits merchant_deposits_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_deposits merchant_deposits_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_deposits
@@ -7494,7 +7905,7 @@ ALTER TABLE ONLY public.merchant_deposits
 
 
 --
--- Name: merchant_inventory_locks merchant_inventory_locks_product_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_inventory_locks merchant_inventory_locks_product_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_inventory_locks
@@ -7502,7 +7913,7 @@ ALTER TABLE ONLY public.merchant_inventory_locks
 
 
 --
--- Name: merchant_inventory merchant_inventory_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_inventory merchant_inventory_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_inventory
@@ -7510,7 +7921,7 @@ ALTER TABLE ONLY public.merchant_inventory
 
 
 --
--- Name: merchant_keys merchant_keys_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_keys merchant_keys_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_keys
@@ -7518,7 +7929,7 @@ ALTER TABLE ONLY public.merchant_keys
 
 
 --
--- Name: merchant_order_locks merchant_order_locks_order_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_order_locks merchant_order_locks_order_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_order_locks
@@ -7526,7 +7937,7 @@ ALTER TABLE ONLY public.merchant_order_locks
 
 
 --
--- Name: merchant_order_locks merchant_order_locks_product_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_order_locks merchant_order_locks_product_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_order_locks
@@ -7534,7 +7945,7 @@ ALTER TABLE ONLY public.merchant_order_locks
 
 
 --
--- Name: merchant_orders merchant_orders_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_orders merchant_orders_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_orders
@@ -7542,7 +7953,7 @@ ALTER TABLE ONLY public.merchant_orders
 
 
 --
--- Name: merchant_refund_proofs merchant_refund_proofs_refund_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_refund_proofs merchant_refund_proofs_refund_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_refund_proofs
@@ -7550,7 +7961,7 @@ ALTER TABLE ONLY public.merchant_refund_proofs
 
 
 --
--- Name: merchant_refund_proofs merchant_refund_proofs_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_refund_proofs merchant_refund_proofs_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_refund_proofs
@@ -7558,7 +7969,7 @@ ALTER TABLE ONLY public.merchant_refund_proofs
 
 
 --
--- Name: merchant_refunds merchant_refunds_order_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_refunds merchant_refunds_order_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_refunds
@@ -7566,7 +7977,7 @@ ALTER TABLE ONLY public.merchant_refunds
 
 
 --
--- Name: merchant_tip_pickup_signatures merchant_tip_pickup_signatures_pickup_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_pickup_signatures merchant_tip_pickup_signatures_pickup_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_pickup_signatures
@@ -7574,7 +7985,7 @@ ALTER TABLE ONLY public.merchant_tip_pickup_signatures
 
 
 --
--- Name: merchant_tip_pickups merchant_tip_pickups_tip_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_pickups merchant_tip_pickups_tip_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_pickups
@@ -7582,7 +7993,7 @@ ALTER TABLE ONLY public.merchant_tip_pickups
 
 
 --
--- Name: merchant_tip_reserve_keys merchant_tip_reserve_keys_reserve_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_reserve_keys merchant_tip_reserve_keys_reserve_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_reserve_keys
@@ -7590,7 +8001,7 @@ ALTER TABLE ONLY public.merchant_tip_reserve_keys
 
 
 --
--- Name: merchant_tip_reserves merchant_tip_reserves_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tip_reserves merchant_tip_reserves_merchant_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tip_reserves
@@ -7598,7 +8009,7 @@ ALTER TABLE ONLY public.merchant_tip_reserves
 
 
 --
--- Name: merchant_tips merchant_tips_reserve_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_tips merchant_tips_reserve_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_tips
@@ -7606,7 +8017,7 @@ ALTER TABLE ONLY public.merchant_tips
 
 
 --
--- Name: merchant_transfer_signatures merchant_transfer_signatures_credit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfer_signatures merchant_transfer_signatures_credit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfer_signatures
@@ -7614,7 +8025,7 @@ ALTER TABLE ONLY public.merchant_transfer_signatures
 
 
 --
--- Name: merchant_transfer_signatures merchant_transfer_signatures_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfer_signatures merchant_transfer_signatures_signkey_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfer_signatures
@@ -7622,7 +8033,7 @@ ALTER TABLE ONLY public.merchant_transfer_signatures
 
 
 --
--- Name: merchant_transfer_to_coin merchant_transfer_to_coin_credit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfer_to_coin merchant_transfer_to_coin_credit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfer_to_coin
@@ -7630,7 +8041,7 @@ ALTER TABLE ONLY public.merchant_transfer_to_coin
 
 
 --
--- Name: merchant_transfer_to_coin merchant_transfer_to_coin_deposit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfer_to_coin merchant_transfer_to_coin_deposit_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfer_to_coin
@@ -7638,7 +8049,7 @@ ALTER TABLE ONLY public.merchant_transfer_to_coin
 
 
 --
--- Name: merchant_transfers merchant_transfers_account_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: merchant_transfers merchant_transfers_account_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.merchant_transfers
@@ -7646,7 +8057,7 @@ ALTER TABLE ONLY public.merchant_transfers
 
 
 --
--- Name: recoup recoup_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: recoup recoup_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup
@@ -7654,7 +8065,7 @@ ALTER TABLE ONLY public.recoup
 
 
 --
--- Name: recoup_refresh recoup_refresh_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: recoup_refresh recoup_refresh_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup_refresh
@@ -7662,7 +8073,7 @@ ALTER TABLE ONLY public.recoup_refresh
 
 
 --
--- Name: recoup_refresh recoup_refresh_rrc_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: recoup_refresh recoup_refresh_rrc_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup_refresh
@@ -7670,7 +8081,7 @@ ALTER TABLE ONLY public.recoup_refresh
 
 
 --
--- Name: recoup recoup_reserve_out_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: recoup recoup_reserve_out_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.recoup
@@ -7678,7 +8089,7 @@ ALTER TABLE ONLY public.recoup
 
 
 --
--- Name: refresh_commitments refresh_commitments_old_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_commitments refresh_commitments_old_known_coin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_commitments
@@ -7686,7 +8097,7 @@ ALTER TABLE ONLY public.refresh_commitments
 
 
 --
--- Name: refresh_revealed_coins refresh_revealed_coins_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_revealed_coins refresh_revealed_coins_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_revealed_coins
@@ -7694,7 +8105,7 @@ ALTER TABLE ONLY public.refresh_revealed_coins
 
 
 --
--- Name: refresh_revealed_coins refresh_revealed_coins_melt_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_revealed_coins refresh_revealed_coins_melt_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_revealed_coins
@@ -7702,7 +8113,7 @@ ALTER TABLE ONLY public.refresh_revealed_coins
 
 
 --
--- Name: refresh_transfer_keys refresh_transfer_keys_melt_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: refresh_transfer_keys refresh_transfer_keys_melt_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refresh_transfer_keys
@@ -7710,7 +8121,7 @@ ALTER TABLE ONLY public.refresh_transfer_keys
 
 
 --
--- Name: refunds refunds_deposit_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: refunds refunds_deposit_serial_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.refunds
@@ -7718,7 +8129,7 @@ ALTER TABLE ONLY public.refunds
 
 
 --
--- Name: reserves_close reserves_close_reserve_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_close reserves_close_reserve_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_close
@@ -7726,7 +8137,7 @@ ALTER TABLE ONLY public.reserves_close
 
 
 --
--- Name: reserves_in reserves_in_reserve_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_in reserves_in_reserve_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_in
@@ -7734,7 +8145,7 @@ ALTER TABLE ONLY public.reserves_in
 
 
 --
--- Name: reserves_out reserves_out_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_out reserves_out_denominations_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_out
@@ -7742,7 +8153,7 @@ ALTER TABLE ONLY public.reserves_out
 
 
 --
--- Name: reserves_out reserves_out_reserve_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reserves_out reserves_out_reserve_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.reserves_out
@@ -7750,7 +8161,7 @@ ALTER TABLE ONLY public.reserves_out
 
 
 --
--- Name: signkey_revocations signkey_revocations_esk_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: signkey_revocations signkey_revocations_esk_serial_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.signkey_revocations
@@ -7758,7 +8169,7 @@ ALTER TABLE ONLY public.signkey_revocations
 
 
 --
--- Name: aggregation_tracking wire_out_ref; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: aggregation_tracking wire_out_ref; Type: FK CONSTRAINT; Schema: public; Owner: grothoff
 --
 
 ALTER TABLE ONLY public.aggregation_tracking

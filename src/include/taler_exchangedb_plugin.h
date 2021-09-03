@@ -2601,12 +2601,16 @@ struct TALER_EXCHANGEDB_Plugin
    * execution time and refund deadlines must both be in the past.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
+   * @param start_shard_row minimum shard row to select
+   * @param end_shard_row maximum shard row to select (inclusive)
    * @param deposit_cb function to call for ONE such deposit
    * @param deposit_cb_cls closure for @a deposit_cb
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_ready_deposit)(void *cls,
+                       uint32_t start_shard_row,
+                       uint32_t end_shard_row,
                        TALER_EXCHANGEDB_DepositIterator deposit_cb,
                        void *deposit_cb_cls);
 
@@ -2978,15 +2982,15 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Start a transaction where we transiently violate the foreign
+   * Starts a READ COMMITTED transaction where we transiently violate the foreign
    * constraints on the "wire_out" table as we insert aggregations
    * and only add the wire transfer out at the end.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @return #GNUNET_OK on success
    */
-  int
-  (*start_deferred_wire_out) (void *cls);
+  enum GNUNET_GenericReturnValue
+  (*start_deferred_wire_out)(void *cls);
 
 
   /**
@@ -3745,6 +3749,57 @@ struct TALER_EXCHANGEDB_Plugin
                     const char *job_name,
                     uint64_t start_row,
                     uint64_t end_row);
+
+
+  /**
+   * Function called to grab a revolving work shard on an operation @a op. Runs
+   * in its own transaction. Returns the oldest inactive shard.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param job_name name of the operation to grab a revolving shard for
+   * @param shard_size desired shard size
+   * @param shard_limit exclusive end of the shard range
+   * @param[out] start_row inclusive start row of the shard (returned)
+   * @param[out] end_row exclusive end row of the shard (returned)
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*begin_revolving_shard)(void *cls,
+                           const char *job_name,
+                           uint32_t shard_size,
+                           uint32_t shard_limit,
+                           uint32_t *start_row,
+                           uint32_t *end_row);
+
+
+  /**
+   * Function called to release a revolving shard back into the work pool.
+   * Clears the "completed" flag.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param job_name name of the operation to grab a word shard for
+   * @param start_row inclusive start row of the shard
+   * @param end_row exclusive end row of the shard
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*release_revolving_shard)(void *cls,
+                             const char *job_name,
+                             uint32_t start_row,
+                             uint32_t end_row);
+
+
+  /**
+   * Function called to delete all revolving shards.
+   * To be used after a crash or when the shard size is
+   * changed.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @return transaction status code
+   */
+  enum GNUNET_DB_QueryStatus
+  (*delete_revolving_shards)(void *cls);
+
 
 };
 
