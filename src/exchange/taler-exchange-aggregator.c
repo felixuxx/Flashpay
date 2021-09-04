@@ -353,8 +353,7 @@ refund_by_coin_cb (void *cls,
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_deadline by which the merchant advised that he would like the
- *        wire transfer to be executed
+ * @param wire target account for the wire transfer
  * @return transaction status code,  #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 static enum GNUNET_DB_QueryStatus
@@ -761,9 +760,10 @@ run_aggregation (void *cls)
                                                           GNUNET_YES),
                   (unsigned long long) counter);
       release_shard (s);
-      if (GNUNET_YES == test_mode)
+      if ( (GNUNET_YES == test_mode) &&
+           (0 == counter) )
       {
-        /* in test mode, shutdown after a shard is done */
+        /* in test mode, shutdown after a shard is done with 0 work */
         GNUNET_SCHEDULER_shutdown ();
         return;
       }

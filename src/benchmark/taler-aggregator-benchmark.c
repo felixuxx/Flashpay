@@ -435,7 +435,7 @@ work (void *cls)
  * @param cls unused
  * @param args remaining command-line arguments
  * @param cfgfile name of the configuration file used (for saving, can be NULL!)
- * @param cfg configuration
+ * @param c configuration
  */
 static void
 run (void *cls,

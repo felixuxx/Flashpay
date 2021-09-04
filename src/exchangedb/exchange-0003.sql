@@ -25,7 +25,7 @@ SELECT _v.register_patch('exchange-0003', NULL, NULL);
 ALTER TABLE deposits
   ADD COLUMN shard INT4 NOT NULL DEFAULT 0;
 COMMENT ON COLUMN deposits.shard
-  IS 'Used for load sharding. Should be set based on h_wire, merchant_pub and a service salt. Default of 0 onlyapplies for colums migrated from a previous version without sharding support. 64-bit value because we need an *unsigned* 32-bit value.';
+  IS 'Used for load sharding. Should be set based on h_wire, merchant_pub and a service salt. Default of 0 onlyapplies for columns migrated from a previous version without sharding support. 64-bit value because we need an *unsigned* 32-bit value.';
 
 DROP INDEX deposits_get_ready_index;
 CREATE INDEX deposits_get_ready_index

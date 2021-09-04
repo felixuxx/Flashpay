@@ -1472,15 +1472,11 @@ typedef enum GNUNET_DB_QueryStatus
  * @param cls closure
  * @param rowid unique ID for the deposit in our DB, used for marking
  *              it as 'tiny' or 'done'
- * @param exchange_timestamp when did the exchange receive the deposit
- * @param wallet_timestamp when did the wallet sign the contract
  * @param merchant_pub public key of the merchant
  * @param coin_pub public key of the coin
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire_deadline by which the merchant advised that he would like the
- *        wire transfer to be executed
  * @param receiver_wire_account wire details for the merchant, includes
  *        'url' in payto://-format;
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
