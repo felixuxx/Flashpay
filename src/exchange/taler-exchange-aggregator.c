@@ -817,6 +817,9 @@ run_aggregation (void *cls)
                                      s);
     return;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Found %d other deposits to combine into wire transfer.\n",
+              qs);
 
   /* Subtract wire transfer fee and round to the unit supported by the
      wire transfer method; Check if after rounding down, we still have

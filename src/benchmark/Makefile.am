@@ -20,6 +20,7 @@ taler_aggregator_benchmark_SOURCES = \
 taler_aggregator_benchmark_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
+  $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/util/libtalerutil.la \
   -lgnunetjson \
   -ljansson \

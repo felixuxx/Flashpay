@@ -28,6 +28,7 @@
 #include "taler_util.h"
 #include "taler_signatures.h"
 #include "taler_exchangedb_lib.h"
+#include "taler_json_lib.h"
 #include "taler_error_codes.h"
 
 
@@ -278,7 +279,7 @@ add_refund (const struct Merchant *m,
   RANDOMIZE (&r.details.merchant_sig);
   r.details.h_contract_terms = d->h_contract_terms;
   r.details.rtransaction_id = 42;
-  make_amount (0, 9999, &r.details.refund_amount);
+  make_amount (0, 5000000, &r.details.refund_amount);
   make_amount (0, 5, &r.details.refund_fee);
   if (0 <=
       plugin->insert_refund (plugin->cls,
@@ -329,7 +330,7 @@ add_deposit (const struct Merchant *m)
   deposit.timestamp = random_time ();
   deposit.refund_deadline = random_time ();
   deposit.wire_deadline = random_time ();
-  make_amount (0, 99999, &deposit.amount_with_fee);
+  make_amount (1, 0, &deposit.amount_with_fee);
   make_amount (0, 5, &deposit.deposit_fee);
   if (0 >=
       plugin->insert_deposit (plugin->cls,
@@ -358,10 +359,37 @@ static void
 work (void *cls)
 {
   struct Merchant m;
+  char *acc;
+  uint64_t rnd1;
+  uint64_t rnd2;
 
   (void) cls;
   task = NULL;
-  RANDOMIZE (&m);
+  rnd1 = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_NONCE,
+                                   UINT64_MAX);
+  rnd2 = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_NONCE,
+                                   UINT64_MAX);
+  GNUNET_asprintf (&acc,
+                   "payto://aggregator-benchmark/account-%llX-%llX",
+                   (unsigned long long) rnd1,
+                   (unsigned long long) rnd2);
+  json_wire = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string ("payto_uri",
+                             acc),
+    GNUNET_JSON_pack_string ("salt",
+                             "thesalty"));
+  GNUNET_free (acc);
+  RANDOMIZE (&m.merchant_pub);
+  if (GNUNET_OK !=
+      TALER_JSON_merchant_wire_signature_hash (json_wire,
+                                               &m.h_wire))
+  {
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+
   if (GNUNET_OK !=
       plugin->start (plugin->cls,
                      "aggregator-benchmark-fill"))
@@ -394,6 +422,8 @@ work (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to commit, will try again\n");
   }
+  json_decref (json_wire);
+  json_wire = NULL;
   task = GNUNET_SCHEDULER_add_now (&work,
                                    NULL);
 }
@@ -476,7 +506,7 @@ run (void *cls,
     denom_pub.rsa_public_key = pub;
     GNUNET_CRYPTO_rsa_public_key_hash (pub,
                                        &h_denom_pub);
-    make_amountN (1, 0, &issue.properties.value);
+    make_amountN (2, 0, &issue.properties.value);
     make_amountN (0, 5, &issue.properties.fee_withdraw);
     make_amountN (0, 5, &issue.properties.fee_deposit);
     make_amountN (0, 5, &issue.properties.fee_refresh);
@@ -533,11 +563,6 @@ run (void *cls,
     }
   }
 
-  json_wire = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("payto_uri",
-                             "payto://aggregator-benchmark/accountfoo"),
-    GNUNET_JSON_pack_string ("salt",
-                             "thesalty"));
   task = GNUNET_SCHEDULER_add_now (&work,
                                    NULL);
 }

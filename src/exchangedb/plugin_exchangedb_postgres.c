@@ -4636,7 +4636,7 @@ struct MatchingDepositContext
   /**
    * Set to #GNUNET_SYSERR on hard errors.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -4657,7 +4657,7 @@ match_deposit_cb (void *cls,
   struct MatchingDepositContext *mdc = cls;
   struct PostgresClosure *pg = mdc->pg;
 
-  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Found %u/%u matching deposits\n",
               num_results,
               mdc->limit);
@@ -4735,15 +4735,16 @@ postgres_iterate_matching_deposits (
     GNUNET_PQ_query_param_auto_from_type (h_wire),
     GNUNET_PQ_query_param_end
   };
-  struct MatchingDepositContext mdc;
+  struct MatchingDepositContext mdc = {
+    .deposit_cb = deposit_cb,
+    .deposit_cb_cls = deposit_cb_cls,
+    .merchant_pub = merchant_pub,
+    .pg = pg,
+    .limit = limit,
+    .status = GNUNET_OK
+  };
   enum GNUNET_DB_QueryStatus qs;
 
-  mdc.deposit_cb = deposit_cb;
-  mdc.deposit_cb_cls = deposit_cb_cls;
-  mdc.merchant_pub = merchant_pub;
-  mdc.pg = pg;
-  mdc.limit = limit;
-  mdc.status = GNUNET_OK;
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "deposits_iterate_matching",
                                              params,
