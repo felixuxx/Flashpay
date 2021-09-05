@@ -326,6 +326,46 @@ select_shard (void *cls);
 
 
 /**
+ * We are done with the current batch.  Commit
+ * and move on.
+ */
+static void
+batch_done (void)
+{
+  /* batch done */
+  switch (commit_or_warn ())
+  {
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    /* try again */
+    GNUNET_assert (NULL == task);
+    task = GNUNET_SCHEDULER_add_now (&run_transfers,
+                                     NULL);
+    return;
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    shard->batch_start = shard->batch_end + 1;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Batch complete\n");
+    /* continue with #run_transfers(), just to guard
+       against the unlikely case that there are more. */
+    GNUNET_assert (NULL == task);
+    task = GNUNET_SCHEDULER_add_now (&run_transfers,
+                                     NULL);
+    return;
+  default:
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+}
+
+
+/**
  * Function called with the result from the execute step.
  * On success, we mark the respective wire transfer as finished,
  * and in general we afterwards continue to #run_transfers(),
@@ -408,36 +448,7 @@ wire_confirm_cb (void *cls,
   }
   if (NULL != wpd_head)
     return; /* wait for other queries to complete */
-  /* batch done */
-  switch (commit_or_warn ())
-  {
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    /* try again */
-    GNUNET_assert (NULL == task);
-    task = GNUNET_SCHEDULER_add_now (&run_transfers,
-                                     NULL);
-    return;
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    shard->batch_start = shard->batch_end + 1;
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Batch complete\n");
-    /* continue with #run_transfers(), just to guard
-       against the unlikely case that there are more. */
-    GNUNET_assert (NULL == task);
-    task = GNUNET_SCHEDULER_add_now (&run_transfers,
-                                     NULL);
-    return;
-  default:
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
+  batch_done ();
 }
 
 
@@ -462,6 +473,15 @@ wire_prepare_cb (void *cls,
   struct WirePrepareData *wpd;
 
   (void) cls;
+  if (rowid >= shard->shard_end)
+  {
+    /* skip */
+    shard->batch_end = shard->shard_end - 1;
+    if (NULL != wpd_head)
+      return;
+    batch_done ();
+    return;
+  }
   if ( (NULL == wire_method) ||
        (NULL == buf) )
   {
