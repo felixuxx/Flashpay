@@ -75,7 +75,7 @@ createdb $TARGET_DB || exit_skip "Could not create database $TARGET_DB"
 
 
 # obtain key configuration data
-MASTER_PRIV_FILE=`taler-config -f -c $CONF -s EXCHANGE -o MASTER_PRIV_FILE`
+MASTER_PRIV_FILE=`taler-config -f -c $CONF -s exchange-offline -o MASTER_PRIV_FILE`
 MASTER_PRIV_DIR=`dirname $MASTER_PRIV_FILE`
 mkdir -p $MASTER_PRIV_DIR
 gnunet-ecc -g1 $MASTER_PRIV_FILE > /dev/null
@@ -197,7 +197,7 @@ echo " DONE"
 
 echo -n "Setting up merchant"
 
-curl -H "Content-Type: application/json" -X POST -d '{"auth":{"method":"external"},"payto_uris":["payto://x-taler-bank/localhost/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/private/instances
+curl -H "Content-Type: application/json" -X POST -d '{"auth":{"method":"external"},"payto_uris":["payto://x-taler-bank/localhost/43"],"id":"default","name":"default","address":{},"jurisdiction":{},"default_max_wire_fee":"TESTKUDOS:1", "default_max_deposit_fee":"TESTKUDOS:1","default_wire_fee_amortization":1,"default_wire_transfer_delay":{"d_ms" : 3600000},"default_pay_delay":{"d_ms": 3600000}}' http://localhost:9966/management/instances
 
 
 echo " DONE"
