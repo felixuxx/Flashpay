@@ -357,7 +357,6 @@ TALER_BANK_transfer (
     return NULL;
   }
   json_decref (transfer_obj);
-
   th->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   th->post_ctx.headers,

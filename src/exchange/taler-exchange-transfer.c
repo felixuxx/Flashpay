@@ -33,6 +33,11 @@
  */
 #define MAXIMUM_BATCH_SIZE 1024
 
+/**
+ * How often will we retry a request (given certain
+ * HTTP status codes) before giving up?
+ */
+#define MAX_RETRIES 16
 
 /**
  * Information about our work shard.
@@ -103,6 +108,17 @@ struct WirePrepareData
    * Row ID of the transfer.
    */
   unsigned long long row_id;
+
+  /**
+   * Number of bytes allocated after this struct
+   * with the prewire data.
+   */
+  size_t buf_size;
+
+  /**
+   * How often did we retry so far?
+   */
+  unsigned int retries;
 
 };
 
@@ -217,16 +233,6 @@ static void
 shutdown_task (void *cls)
 {
   (void) cls;
-  if (NULL != ctx)
-  {
-    GNUNET_CURL_fini (ctx);
-    ctx = NULL;
-  }
-  if (NULL != rc)
-  {
-    GNUNET_CURL_gnunet_rc_destroy (rc);
-    rc = NULL;
-  }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Running shutdown\n");
   if (NULL != task)
@@ -241,6 +247,16 @@ shutdown_task (void *cls)
   db_plugin = NULL;
   TALER_EXCHANGEDB_unload_accounts ();
   cfg = NULL;
+  if (NULL != ctx)
+  {
+    GNUNET_CURL_fini (ctx);
+    ctx = NULL;
+  }
+  if (NULL != rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (rc);
+    rc = NULL;
+  }
 }
 
 
@@ -410,6 +426,36 @@ wire_confirm_cb (void *cls,
                                                    wpd->row_id);
     /* continued below */
     break;
+  case 0:
+  case MHD_HTTP_TOO_MANY_REQUESTS:
+  case MHD_HTTP_INTERNAL_SERVER_ERROR:
+  case MHD_HTTP_BAD_GATEWAY:
+  case MHD_HTTP_SERVICE_UNAVAILABLE:
+  case MHD_HTTP_GATEWAY_TIMEOUT:
+    wpd->retries++;
+    if (wpd->retries < MAX_RETRIES)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Wire transfer %llu failed (%u), trying again\n",
+                  (unsigned long long) wpd->row_id,
+                  http_status_code);
+      wpd->eh = TALER_BANK_transfer (ctx,
+                                     wpd->wa->auth,
+                                     &wpd[1],
+                                     wpd->buf_size,
+                                     &wire_confirm_cb,
+                                     wpd);
+      return;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Wire transaction %llu failed: %u/%d\n",
+                (unsigned long long) wpd->row_id,
+                http_status_code,
+                ec);
+    db_plugin->rollback (db_plugin->cls);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   default:
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Wire transfer %llu failed: %u/%d\n",
@@ -469,7 +515,6 @@ wire_prepare_cb (void *cls,
                  const char *buf,
                  size_t buf_size)
 {
-  const struct TALER_EXCHANGEDB_AccountInfo *wa;
   struct WirePrepareData *wpd;
 
   (void) cls;
@@ -491,7 +536,12 @@ wire_prepare_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  wpd = GNUNET_new (struct WirePrepareData);
+  wpd = GNUNET_malloc (sizeof (struct WirePrepareData)
+                       + buf_size);
+  memcpy (&wpd[1],
+          buf,
+          buf_size);
+  wpd->buf_size = buf_size;
   wpd->row_id = rowid;
   GNUNET_CONTAINER_DLL_insert (wpd_head,
                                wpd_tail,
@@ -510,9 +560,8 @@ wire_prepare_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  wa = wpd->wa;
   wpd->eh = TALER_BANK_transfer (ctx,
-                                 wa->auth,
+                                 wpd->wa->auth,
                                  buf,
                                  buf_size,
                                  &wire_confirm_cb,
@@ -580,6 +629,10 @@ run_transfers (void *cls)
                                      NULL);
     return;
   }
+  /* cap number of parallel connections to a reasonable
+     limit for concurrent requests to the bank */
+  limit = GNUNET_MIN (limit,
+                      256);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for %lld pending wire transfers [%llu-...)\n",
               (long long) limit,

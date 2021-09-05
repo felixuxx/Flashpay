@@ -988,6 +988,7 @@ make_transfer (
         return GNUNET_SYSERR;
       }
       *ret_row_id = t->row_id;
+      *timestamp = t->date;
       GNUNET_assert (0 ==
                      pthread_mutex_unlock (&h->uuid_map_lock));
       return GNUNET_OK;

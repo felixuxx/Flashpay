@@ -370,7 +370,7 @@ work (void *cls)
   rnd2 = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_NONCE,
                                    UINT64_MAX);
   GNUNET_asprintf (&acc,
-                   "payto://aggregator-benchmark/account-%llX-%llX",
+                   "payto://x-taler-bank/localhost:8082/account-%llX-%llX",
                    (unsigned long long) rnd1,
                    (unsigned long long) rnd2);
   json_wire = GNUNET_JSON_PACK (
@@ -548,7 +548,7 @@ run (void *cls,
               sizeof (master_sig));
       if (0 >
           plugin->insert_wire_fee (plugin->cls,
-                                   "aggregator-benchmark",
+                                   "x-taler-bank",
                                    ws,
                                    we,
                                    &wire_fee,
