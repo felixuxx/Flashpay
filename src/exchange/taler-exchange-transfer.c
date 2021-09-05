@@ -349,10 +349,13 @@ static void
 batch_done (void)
 {
   /* batch done */
+  GNUNET_assert (NULL == wpd_head);
   switch (commit_or_warn ())
   {
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Serialization failure, trying again immediately!\n");
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
@@ -452,6 +455,7 @@ wire_confirm_cb (void *cls,
                 (unsigned long long) wpd->row_id,
                 http_status_code,
                 ec);
+    cleanup_wpd ();
     db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
@@ -463,6 +467,7 @@ wire_confirm_cb (void *cls,
                 http_status_code,
                 ec);
     db_plugin->rollback (db_plugin->cls);
+    cleanup_wpd ();
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
@@ -475,6 +480,8 @@ wire_confirm_cb (void *cls,
     db_plugin->rollback (db_plugin->cls);
     cleanup_wpd ();
     GNUNET_assert (NULL == task);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Serialization failure, trying again immediately!\n");
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
     return;
@@ -518,6 +525,9 @@ wire_prepare_cb (void *cls,
   struct WirePrepareData *wpd;
 
   (void) cls;
+  if ( (NULL != task) ||
+       (EXIT_SUCCESS != global_ret) )
+    return; /* current transaction was aborted */
   if (rowid >= shard->shard_end)
   {
     /* skip */
@@ -555,6 +565,7 @@ wire_prepare_cb (void *cls,
     /* Should really never happen here, as when we get
        here the wire account should be in the cache. */
     GNUNET_break (0);
+    cleanup_wpd ();
     db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_NOTCONFIGURED;
     GNUNET_SCHEDULER_shutdown ();
@@ -569,6 +580,7 @@ wire_prepare_cb (void *cls,
   if (NULL == wpd->eh)
   {
     GNUNET_break (0); /* Irrecoverable */
+    cleanup_wpd ();
     db_plugin->rollback (db_plugin->cls);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
@@ -610,9 +622,10 @@ run_transfers (void *cls)
       GNUNET_SCHEDULER_shutdown ();
       return;
     case GNUNET_DB_STATUS_SOFT_ERROR:
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Got DB soft error for complete_shard. Rolling back.\n");
       GNUNET_free (shard);
+      GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_now (&select_shard,
                                        NULL);
       return;
@@ -625,6 +638,7 @@ run_transfers (void *cls)
     }
     shard_delay = GNUNET_TIME_absolute_get_duration (shard->shard_start_time);
     GNUNET_free (shard);
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&select_shard,
                                      NULL);
     return;
@@ -647,6 +661,7 @@ run_transfers (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
+  GNUNET_assert (NULL == task);
   qs = db_plugin->wire_prepare_data_get (db_plugin->cls,
                                          shard->batch_start,
                                          limit,
@@ -655,6 +670,7 @@ run_transfers (void *cls)
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
+    cleanup_wpd ();
     db_plugin->rollback (db_plugin->cls);
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
@@ -663,6 +679,9 @@ run_transfers (void *cls)
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
     db_plugin->rollback (db_plugin->cls);
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Serialization failure, trying again immediately!\n");
+    cleanup_wpd ();
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                      NULL);
@@ -670,6 +689,7 @@ run_transfers (void *cls)
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     /* no more prepared wire transfers, go sleep a bit! */
     db_plugin->rollback (db_plugin->cls);
+    GNUNET_assert (NULL == wpd_head);
     GNUNET_assert (NULL == task);
     if (GNUNET_YES == test_mode)
     {
@@ -679,8 +699,9 @@ run_transfers (void *cls)
     }
     else
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "No more pending wire transfers, going idle\n");
+      GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_delayed (transfer_idle_sleep_interval,
                                            &run_transfers,
                                            NULL);
@@ -708,6 +729,7 @@ select_shard (void *cls)
 
   (void) cls;
   task = NULL;
+  GNUNET_assert (NULL == wpd_head);
   if (GNUNET_SYSERR ==
       db_plugin->preflight (db_plugin->cls))
   {
@@ -742,12 +764,24 @@ select_shard (void *cls)
     return;
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
-    task = GNUNET_SCHEDULER_add_delayed (transfer_idle_sleep_interval,
-                                         &select_shard,
-                                         NULL);
+    {
+      static struct GNUNET_TIME_Relative delay;
+
+      delay = GNUNET_TIME_randomized_backoff (delay,
+                                              GNUNET_TIME_UNIT_SECONDS);
+      GNUNET_assert (NULL == task);
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Serialization failure, trying again in %s!\n",
+                  GNUNET_STRINGS_relative_time_to_string (delay,
+                                                          GNUNET_YES));
+      task = GNUNET_SCHEDULER_add_delayed (delay,
+                                           &select_shard,
+                                           NULL);
+    }
     return;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_break (0);
+    GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_delayed (transfer_idle_sleep_interval,
                                          &select_shard,
                                          NULL);
@@ -765,6 +799,7 @@ select_shard (void *cls)
   shard->shard_start = start;
   shard->shard_end = end;
   shard->batch_start = start;
+  GNUNET_assert (NULL == task);
   task = GNUNET_SCHEDULER_add_now (&run_transfers,
                                    NULL);
 }

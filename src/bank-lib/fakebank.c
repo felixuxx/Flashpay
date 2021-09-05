@@ -597,14 +597,9 @@ lookup_account (struct TALER_FAKEBANK_Handle *h,
           0,
           sizeof (hc));
   slen = strlen (name);
-  if (slen < sizeof (hc))
-    memcpy (&hc,
-            name,
-            slen); /* fake hashing for speed! */
-  else
-    GNUNET_CRYPTO_hash (name,
-                        strlen (name),
-                        &hc);
+  GNUNET_CRYPTO_hash (name,
+                      slen,
+                      &hc);
   GNUNET_assert (0 ==
                  pthread_mutex_lock (&h->accounts_lock));
   account = GNUNET_CONTAINER_multihashmap_get (h->accounts,
@@ -2582,6 +2577,8 @@ TALER_FAKEBANK_start2 (uint16_t port,
                                     &handle_mhd_completion_callback, h,
                                     MHD_OPTION_LISTEN_BACKLOG_SIZE,
                                     (unsigned int) 1024,
+                                    MHD_OPTION_CONNECTION_LIMIT,
+                                    (unsigned int) 65536,
                                     MHD_OPTION_END);
     if (NULL == h->mhd_bank)
     {
@@ -2632,6 +2629,8 @@ TALER_FAKEBANK_start2 (uint16_t port,
                                     &handle_mhd_completion_callback, h,
                                     MHD_OPTION_LISTEN_BACKLOG_SIZE,
                                     (unsigned int) 1024,
+                                    MHD_OPTION_CONNECTION_LIMIT,
+                                    (unsigned int) 65536,
                                     MHD_OPTION_THREAD_POOL_SIZE,
                                     num_threads,
                                     MHD_OPTION_END);

@@ -47,6 +47,11 @@ static int ret;
  */
 static struct TALER_FAKEBANK_Handle *fb;
 
+/**
+ * Keepalive task in multi-threaded mode.
+ */
+static struct GNUNET_SCHEDULER_Task *keepalive;
+
 
 /**
  * Stop the process.
@@ -59,6 +64,24 @@ do_shutdown (void *cls)
   (void) cls;
   TALER_FAKEBANK_stop (fb);
   fb = NULL;
+  if (NULL != keepalive)
+  {
+    GNUNET_SCHEDULER_cancel (keepalive);
+    keepalive = NULL;
+  }
+}
+
+
+/**
+ * Task that should never be run.
+ *
+ * @param cls NULL
+ */
+static void
+keepalive_task (void *cls)
+{
+  (void) cls;
+  GNUNET_assert (0);
 }
 
 
@@ -125,10 +148,14 @@ run (void *cls,
                               num_threads);
   if (NULL == fb)
   {
+    GNUNET_break (0);
     ret = EXIT_FAILURE;
     return;
   }
   GNUNET_free (currency_string);
+  keepalive = GNUNET_SCHEDULER_add_delayed (GNUNET_TIME_UNIT_FOREVER_REL,
+                                            &keepalive_task,
+                                            NULL);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   ret = EXIT_SUCCESS;
