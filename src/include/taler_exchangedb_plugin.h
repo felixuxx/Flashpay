@@ -2964,15 +2964,19 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Function called to get an unfinished wire transfer
-   * preparation data. Fetches at most one item.
+   * preparation data.
    *
    * @param cls closure
-   * @param cb function to call for ONE unfinished item
+   * @param start_row offset to query table at
+   * @param limit maximum number of results to return
+   * @param cb function to call for unfinished work
    * @param cb_cls closure for @a cb
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*wire_prepare_data_get)(void *cls,
+                           uint64_t start_row,
+                           uint64_t limit,
                            TALER_EXCHANGEDB_WirePreparationIterator cb,
                            void *cb_cls);
 

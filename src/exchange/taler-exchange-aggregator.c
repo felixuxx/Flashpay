@@ -1034,9 +1034,22 @@ run_shard (void *cls)
                                          &s->shard_end);
   if (0 >= qs)
   {
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+    {
+      static struct GNUNET_TIME_Relative delay;
+
+      GNUNET_free (s);
+      delay = GNUNET_TIME_randomized_backoff (delay,
+                                              GNUNET_TIME_UNIT_SECONDS);
+      task = GNUNET_SCHEDULER_add_delayed (delay,
+                                           &run_shard,
+                                           NULL);
+      return;
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to begin shard!\n");
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+                "Failed to begin shard (%d)!\n",
+                qs);
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;

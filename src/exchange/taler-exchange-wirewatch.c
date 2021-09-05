@@ -752,6 +752,7 @@ main (int argc,
                                "COUNT",
                                "Plan work load with up to COUNT worker processes (default: 16)",
                                &max_workers),
+    GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

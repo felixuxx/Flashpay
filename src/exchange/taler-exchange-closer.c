@@ -60,7 +60,7 @@ static struct GNUNET_SCHEDULER_Task *task;
 /**
  * How long should we sleep when idle before trying to find more work?
  */
-static struct GNUNET_TIME_Relative aggregator_idle_sleep_interval;
+static struct GNUNET_TIME_Relative closer_idle_sleep_interval;
 
 /**
  * Value to return from main(). 0 on success, non-zero
@@ -112,8 +112,8 @@ shutdown_task (void *cls)
  *
  * @return #GNUNET_OK on success
  */
-static int
-parse_wirewatch_config (void)
+static enum GNUNET_GenericReturnValue
+parse_closer_config (void)
 {
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (cfg,
@@ -129,12 +129,12 @@ parse_wirewatch_config (void)
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
                                            "exchange",
-                                           "AGGREGATOR_IDLE_SLEEP_INTERVAL",
-                                           &aggregator_idle_sleep_interval))
+                                           "CLOSER_IDLE_SLEEP_INTERVAL",
+                                           &closer_idle_sleep_interval))
   {
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchange",
-                               "AGGREGATOR_IDLE_SLEEP_INTERVAL");
+                               "CLOSER_IDLE_SLEEP_INTERVAL");
     return GNUNET_SYSERR;
   }
   if ( (GNUNET_OK !=
@@ -444,7 +444,7 @@ run_reserve_closures (void *cls)
     }
     else
     {
-      task = GNUNET_SCHEDULER_add_delayed (aggregator_idle_sleep_interval,
+      task = GNUNET_SCHEDULER_add_delayed (closer_idle_sleep_interval,
                                            &run_reserve_closures,
                                            NULL);
     }
@@ -480,7 +480,7 @@ run (void *cls,
   (void) cfgfile;
 
   cfg = c;
-  if (GNUNET_OK != parse_wirewatch_config ())
+  if (GNUNET_OK != parse_closer_config ())
   {
     cfg = NULL;
     global_ret = EXIT_NOTCONFIGURED;

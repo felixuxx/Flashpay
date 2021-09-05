@@ -117,6 +117,8 @@ test_wire_prepare (void)
 {
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->wire_prepare_data_get (plugin->cls,
+                                         0,
+                                         1,
                                          &dead_prepare_cb,
                                          NULL));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -126,10 +128,14 @@ test_wire_prepare (void)
                                             11));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->wire_prepare_data_get (plugin->cls,
+                                         0,
+                                         1,
                                          &mark_prepare_cb,
                                          NULL));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->wire_prepare_data_get (plugin->cls,
+                                         0,
+                                         1,
                                          &dead_prepare_cb,
                                          NULL));
   return GNUNET_OK;

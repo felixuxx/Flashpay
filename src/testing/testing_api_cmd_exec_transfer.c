@@ -66,6 +66,9 @@ transfer_run (void *cls,
                                "taler-exchange-transfer",
                                "taler-exchange-transfer",
                                "-c", as->config_filename,
+                               "-L", "INFO",
+                               "-S", "1",
+                               "-w", "0",
                                "-t", /* exit when done */
                                NULL);
   if (NULL == as->transfer_proc)
