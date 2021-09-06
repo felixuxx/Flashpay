@@ -28,10 +28,10 @@
 #include "taler_bank_service.h"
 
 /**
- * What is the maximum batch size we use for credit history
+ * What is the default batch size we use for credit history
  * requests with the bank.  See `batch_size` below.
  */
-#define MAXIMUM_BATCH_SIZE 1024
+#define DEFAULT_BATCH_SIZE (4 * 1024)
 
 /**
  * How often will we retry a request (given certain
@@ -161,6 +161,11 @@ static struct Shard *shard;
 static struct GNUNET_CURL_Context *ctx;
 
 /**
+ * Randomized back-off we use on serialization errors.
+ */
+static struct GNUNET_TIME_Relative serialization_delay;
+
+/**
  * Scheduler context for running the @e ctx.
  */
 static struct GNUNET_CURL_RescheduleContext *rc;
@@ -189,11 +194,9 @@ static struct GNUNET_TIME_Relative transfer_idle_sleep_interval;
 static struct GNUNET_TIME_Relative shard_delay;
 
 /**
- * Modulus to apply to group shards.  The shard size must ultimately be a
- * multiple of the batch size. Thus, if this is not a multiple of the
- * #MAXIMUM_BATCH_SIZE, the batch size will be set to the #shard_size.
+ * Size of the shards.
  */
-static unsigned int shard_size = MAXIMUM_BATCH_SIZE;
+static unsigned int shard_size = DEFAULT_BATCH_SIZE;
 
 /**
  * How many workers should we plan our scheduling with?
@@ -313,7 +316,10 @@ commit_or_warn (void)
 
   qs = db_plugin->commit (db_plugin->cls);
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    serialization_delay = GNUNET_TIME_UNIT_ZERO;
     return qs;
+  }
   GNUNET_log ((GNUNET_DB_STATUS_SOFT_ERROR == qs)
               ? GNUNET_ERROR_TYPE_INFO
               : GNUNET_ERROR_TYPE_ERROR,
@@ -765,16 +771,14 @@ select_shard (void *cls)
   case GNUNET_DB_STATUS_SOFT_ERROR:
     /* try again */
     {
-      static struct GNUNET_TIME_Relative delay;
-
-      delay = GNUNET_TIME_randomized_backoff (delay,
-                                              GNUNET_TIME_UNIT_SECONDS);
+      serialization_delay = GNUNET_TIME_randomized_backoff (serialization_delay,
+                                                            GNUNET_TIME_UNIT_SECONDS);
       GNUNET_assert (NULL == task);
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Serialization failure, trying again in %s!\n",
-                  GNUNET_STRINGS_relative_time_to_string (delay,
+                  GNUNET_STRINGS_relative_time_to_string (serialization_delay,
                                                           GNUNET_YES));
-      task = GNUNET_SCHEDULER_add_delayed (delay,
+      task = GNUNET_SCHEDULER_add_delayed (serialization_delay,
                                            &select_shard,
                                            NULL);
     }

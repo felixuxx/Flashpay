@@ -24,7 +24,7 @@
 #include "platform.h"
 #include "taler_curl_lib.h"
 
-#if COMPRESS_BODIES
+#if TALER_CURL_COMPRESS_BODIES
 #include <zlib.h>
 #endif
 
@@ -53,7 +53,7 @@ TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
     return GNUNET_SYSERR;
   }
   slen = strlen (str);
-#if COMPRESS_BODIES
+#if TALER_CURL_COMPRESS_BODIES
   {
     Bytef *cbuf;
     uLongf cbuf_size;

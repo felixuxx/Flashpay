@@ -30,7 +30,7 @@
 /**
  * Should we compress PUT/POST bodies with 'deflate' encoding?
  */
-#define COMPRESS_BODIES 1
+#define TALER_CURL_COMPRESS_BODIES 1
 
 /**
  * State used for #TALER_curl_easy_post() and
