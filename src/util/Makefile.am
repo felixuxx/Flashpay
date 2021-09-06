@@ -86,7 +86,8 @@ libtalerutil_la_SOURCES = \
 libtalerutil_la_LIBADD = \
   -lgnunetutil \
   $(LIBGCRYPT_LIBS) \
-  -lmicrohttpd $(XLIB)
+  -lmicrohttpd $(XLIB) \
+  -lm
 
 libtalerutil_la_LDFLAGS = \
   -version-info 0:0:0 \
