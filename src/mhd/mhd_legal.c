@@ -34,6 +34,16 @@
 struct Terms
 {
   /**
+   * Kept in a DLL.
+   */
+  struct Terms *prev;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct Terms *next;
+
+  /**
    * Mime type of the terms.
    */
   const char *mime_type;
@@ -65,6 +75,11 @@ struct Terms
    */
   size_t compressed_terms_size;
 
+  /**
+   * Sorting key by format preference in case
+   * everything else is equal. Higher is preferred.
+   */
+  unsigned int priority;
 
 };
 
@@ -76,14 +91,14 @@ struct Terms
 struct TALER_MHD_Legal
 {
   /**
-   * Array of terms of service, terminated by NULL/0 value.
+   * DLL of terms of service.
    */
-  struct Terms *terms;
+  struct Terms *terms_head;
 
   /**
-   * Length of the #terms array.
+   * DLL of terms of service.
    */
-  unsigned int terms_len;
+  struct Terms *terms_tail;
 
   /**
    * Etag to use for the terms of service (= version).
@@ -198,10 +213,10 @@ TALER_MHD_reply_legal (struct MHD_Connection *conn,
       lang = "en";
     /* Find best match: must match mime type (if possible), and if
        mime type matches, ideally also language */
-    for (unsigned int i = 0; i < legal->terms_len; i++)
+    for (struct Terms *p = legal->terms_head;
+         NULL != p;
+         p = p->next)
     {
-      struct Terms *p = &legal->terms[i];
-
       if ( (NULL == t) ||
            (TALER_MHD_xmime_matches (mime,
                                      p->mime_type)) )
@@ -303,21 +318,23 @@ load_terms (struct TALER_MHD_Legal *legal,
   {
     const char *ext;
     const char *mime;
+    unsigned int priority;
   } mm[] = {
-    { .ext = ".html", .mime = "text/html" },
-    { .ext = ".htm", .mime = "text/html" },
-    { .ext = ".txt", .mime = "text/plain" },
-    { .ext = ".pdf", .mime = "application/pdf" },
+    { .ext = ".html", .mime = "text/html", .priority = 100 },
+    { .ext = ".htm", .mime = "text/html", .priority = 99 },
+    { .ext = ".txt", .mime = "text/plain", .priority = 50 },
+    { .ext = ".pdf", .mime = "application/pdf", .priority = 25 },
     { .ext = ".jpg", .mime = "image/jpeg" },
     { .ext = ".jpeg", .mime = "image/jpeg" },
     { .ext = ".png", .mime = "image/png" },
     { .ext = ".gif", .mime = "image/gif" },
-    { .ext = ".epub", .mime = "application/epub+zip" },
-    { .ext = ".xml", .mime = "text/xml" },
+    { .ext = ".epub", .mime = "application/epub+zip", .priority = 10 },
+    { .ext = ".xml", .mime = "text/xml", .priority = 10 },
     { .ext = NULL, .mime = NULL }
   };
   const char *ext = strrchr (name, '.');
   const char *mime;
+  unsigned int priority;
 
   if (NULL == ext)
   {
@@ -347,6 +364,7 @@ load_terms (struct TALER_MHD_Legal *legal,
                          ext))
     {
       mime = mm[i].mime;
+      priority = mm[i].priority;
       break;
     }
   if (NULL == mime)
@@ -420,30 +438,44 @@ load_terms (struct TALER_MHD_Legal *legal,
       GNUNET_break (0 == close (fd));
       GNUNET_free (fn);
 
-      /* append to global list of terms of service */
+      /* insert into global list of terms of service */
       {
-        struct Terms t = {
-          .mime_type = mime,
-          .terms = buf,
-          .language = GNUNET_strdup (lang),
-          .terms_size = bsize
-        };
+        struct Terms *t;
 
-        buf = GNUNET_memdup (t.terms,
-                             t.terms_size);
+        t = GNUNET_new (struct Terms);
+        t->mime_type = mime;
+        t->terms = buf;
+        t->language = GNUNET_strdup (lang);
+        t->terms_size = bsize;
+        t->priority = priority;
+        buf = GNUNET_memdup (t->terms,
+                             t->terms_size);
         if (TALER_MHD_body_compress (&buf,
                                      &bsize))
         {
-          t.compressed_terms = buf;
-          t.compressed_terms_size = bsize;
+          t->compressed_terms = buf;
+          t->compressed_terms_size = bsize;
         }
         else
         {
           GNUNET_free (buf);
         }
-        GNUNET_array_append (legal->terms,
-                             legal->terms_len,
-                             t);
+        {
+          struct Terms *prev = NULL;
+
+          for (struct Terms *pos = legal->terms_head;
+               NULL != pos;
+               pos = pos->next)
+          {
+            if (pos->priority < priority)
+              break;
+            prev = pos;
+          }
+          GNUNET_CONTAINER_DLL_insert_after (legal->terms_head,
+                                             legal->terms_tail,
+                                             prev,
+                                             t);
+        }
       }
     }
   }
@@ -557,21 +589,21 @@ TALER_MHD_legal_load (const struct GNUNET_CONFIGURATION_Handle *cfg,
 void
 TALER_MHD_legal_free (struct TALER_MHD_Legal *legal)
 {
+  struct Terms *t;
   if (NULL == legal)
     return;
-  for (unsigned int i = 0; i<legal->terms_len; i++)
+  while (NULL != (t = legal->terms_head))
   {
-    struct Terms *t = &legal->terms[i];
-
     GNUNET_free (t->language);
     GNUNET_free (t->compressed_terms);
     if (0 != munmap (t->terms, t->terms_size))
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                            "munmap");
+    GNUNET_CONTAINER_DLL_remove (legal->terms_head,
+                                 legal->terms_tail,
+                                 t);
+    GNUNET_free (t);
   }
-  GNUNET_array_grow (legal->terms,
-                     legal->terms_len,
-                     0);
   GNUNET_free (legal->terms_etag);
   GNUNET_free (legal);
 }
