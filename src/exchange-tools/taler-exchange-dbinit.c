@@ -128,7 +128,7 @@ run (void *cls,
  *
  * @param argc number of arguments from the command line
  * @param argv command line arguments
- * @return 0 ok, 1 on error
+ * @return 0 ok, non-zero on error
  */
 int
 main (int argc,

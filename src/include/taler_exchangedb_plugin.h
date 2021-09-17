@@ -2059,8 +2059,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
-  int
-  (*drop_tables) (void *cls);
+  enum GNUNET_GenericReturnValue
+  (*drop_tables)(void *cls);
 
 
   /**
@@ -2069,8 +2069,8 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the @e cls of this struct with the plugin-specific state
    * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
    */
-  int
-  (*create_tables) (void *cls);
+  enum GNUNET_GenericReturnValue
+  (*create_tables)(void *cls);
 
 
   /**
@@ -2081,9 +2081,9 @@ struct TALER_EXCHANGEDB_Plugin
    *             must point to a constant
    * @return #GNUNET_OK on success
    */
-  int
-  (*start) (void *cls,
-            const char *name);
+  enum GNUNET_GenericReturnValue
+  (*start)(void *cls,
+           const char *name);
 
 
   /**
@@ -2094,7 +2094,7 @@ struct TALER_EXCHANGEDB_Plugin
    *             must point to a constant
    * @return #GNUNET_OK on success
    */
-  int
+  enum GNUNET_GenericReturnValue
   (*start_read_committed)(void *cls,
                           const char *name);
 

@@ -131,12 +131,6 @@ struct PostgresClosure
   const char *transaction_name;
 
   /**
-   * Number of registered listerners. @e event_thread
-   * should terminate if this value reaches 0.
-   */
-  uint64_t listener_count;
-
-  /**
    * Did we initialize the prepared statements
    * for this session?
    */
@@ -151,7 +145,7 @@ struct PostgresClosure
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_drop_tables (void *cls)
 {
   struct PostgresClosure *pg = cls;
@@ -175,7 +169,7 @@ postgres_drop_tables (void *cls)
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @return #GNUNET_OK upon success; #GNUNET_SYSERR upon failure
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_create_tables (void *cls)
 {
   struct PostgresClosure *pg = cls;
@@ -2613,7 +2607,7 @@ postgres_preflight (void *cls)
  *             must point to a constant
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_start (void *cls,
                 const char *name)
 {
@@ -2651,7 +2645,7 @@ postgres_start (void *cls,
  *             must point to a constant
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_start_read_committed (void *cls,
                                const char *name)
 {
