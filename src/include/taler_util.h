@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -196,6 +196,7 @@ TALER_OS_init (void);
 char *
 TALER_urlencode (const char *s);
 
+
 /**
  * Test if all characters in @a url are valid for
  * a URL.
@@ -205,6 +206,7 @@ TALER_urlencode (const char *s);
  */
 bool
 TALER_url_valid_charset (const char *url);
+
 
 /**
  * Check if @a lang matches the @a language_pattern, and if so with
