@@ -306,28 +306,6 @@ jq -e .wire_format_inconsistencies[0] < test-audit-wire.json > /dev/null && exit
 
 echo PASS
 
-echo -n "Check for lag detection... "
-
-# Check wire transfer lag reported (no aggregator!)
-# NOTE: This test is EXPECTED to fail for ~1h after
-# re-generating the test database as we do not
-# report lag of less than 1h (see GRACE_PERIOD in
-# taler-helper-auditor-wire.c)
-if [ $DATABASE_AGE -gt 3600 ]
-then
-    jq -e .lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Lag not detected in run without aggregator at age $DATABASE_AGE"
-
-    LAG=`jq -r .total_amount_lag < test-audit-wire.json`
-    if test $LAG = "TESTKUDOS:0"
-    then
-        exit_fail "Expected total lag to be non-zero"
-    fi
-    echo "PASS"
-else
-    echo "SKIP (database too new)"
-fi
-
-
 echo -n "Test for wire amounts... "
 WIRED=`jq -r .total_wire_in_delta_plus < test-audit-wire.json`
 if test $WIRED != "TESTKUDOS:0"
