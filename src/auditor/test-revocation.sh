@@ -314,7 +314,7 @@ echo -n "Check for lag detection... "
 # taler-helper-auditor-wire.c)
 if [ $DATABASE_AGE -gt 3600 ]
 then
-    jq -e .lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Lag not detected in run without aggregator at age $DELTA"
+    jq -e .lag_details[0] < test-audit-wire.json > /dev/null || exit_fail "Lag not detected in run without aggregator at age $DATABASE_AGE"
 
     LAG=`jq -r .total_amount_lag < test-audit-wire.json`
     if test $LAG = "TESTKUDOS:0"
