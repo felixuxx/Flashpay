@@ -120,8 +120,9 @@ function audit_only () {
 
 # Cleanup to run after the auditor
 function post_audit () {
+    echo -n "Cleanup ..."
     cleanup
-    echo "DONE"
+    echo " DONE"
     echo -n "TeXing ."
     taler-helper-auditor-render.py test-audit-aggregation.json test-audit-coins.json test-audit-deposits.json test-audit-reserves.json test-audit-wire.json < ../../contrib/auditor-report.tex.j2 > test-report.tex || exit_fail "Renderer failed"
 
