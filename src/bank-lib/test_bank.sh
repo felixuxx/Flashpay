@@ -2,6 +2,12 @@
 
 set -eu
 
+# Exit, with status code "skip" (no 'real' failure)
+function exit_skip() {
+    echo $1
+    exit 77
+}
+
 # Cleanup to run whenever we exit
 function cleanup()
 {
