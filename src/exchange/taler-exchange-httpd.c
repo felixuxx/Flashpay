@@ -1534,7 +1534,6 @@ main (int argc,
 #endif
     GNUNET_GETOPT_option_help (
       "HTTP server providing a RESTful API to access a Taler exchange"),
-    GNUNET_GETOPT_option_version (VERSION "-" VCS_VERSION),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
