@@ -259,7 +259,7 @@ the validity and enforceability of any remaining provisions.
 
 
 Governing law, Waivers, Severability and Assignment
-------------------------------------------------
+---------------------------------------------------
 
 No matter where you’re located, the laws of Switzerland will govern these
 Terms. If any provisions of these Terms are inconsistent with any applicable
