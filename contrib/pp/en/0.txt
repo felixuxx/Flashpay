@@ -79,7 +79,7 @@ We may process your information for the following reasons:
    * to transfer money as specified by our users (Taler transactions);
 
    * to assist government entities in linking income to the underlying
-     contract
+     contract as required by law and local regulations
 
    * to support you using the Taler Wallet or to improve our Services
 
@@ -109,9 +109,7 @@ Agents or third party partners
 We may provide your Personal Information to our employees,
 contractors, agents, service providers, and designees (“Agents”) to
 enable them to perform certain services for us exclusively, including:
-improvement and maintenance of our software and Services. By accepting
-this Privacy Policy, as outlined above, you consent to any such
-transfer.
+improvement and maintenance of our software and Services.
 
 
 Protection of us and others
@@ -136,6 +134,43 @@ collected is incorrect, you are welcome to contact us so we can update
 it and keep your data accurate. Any data that is no longer needed for
 purposes specified in the “How We Use the Information We Gather”
 section will be deleted after ninety (90) days.
+
+
+What are your data protection rights?
+=====================================
+
+Anastasis would like to make sure you are fully aware of all of your
+data protection rights. Every user is entitled to the following:
+
+**The right to access**: You have the right to request Anastasis for
+   copies of your personal data. We may charge you a small fee for
+   this service.
+
+**The right to rectification**: You have the right to request that
+Anastasis correct any information you believe is inaccurate. You also
+have the right to request Anastasis to complete information you
+believe is incomplete.  The right to erasure - You have the right to
+request that Anastasis erase your personal data, under certain
+conditions.
+
+**The right to restrict processing**: You have the right to request
+   that Anastasis restrict the processing of your personal data, under
+   certain conditions.
+
+**The right to object to processing**: You have the right to object to
+   Anastasis's processing of your personal data, under certain
+   conditions.
+
+**The right to data portability**: You have the right to request that
+   Anastasis transfer the data that we have collected to another
+   organization, or directly to you, under certain conditions.
+
+If you make a request, we have one month to respond to you. If you
+would like to exercise any of these rights, please contact us at our
+email: privacy@taler-systems.com
+
+You can always contact your local data protection authority to enforce
+your rights.
 
 
 Data retention
