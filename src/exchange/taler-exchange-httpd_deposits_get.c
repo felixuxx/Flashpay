@@ -141,7 +141,7 @@ struct DepositWtidContext
    * (and the above were not set).
    * Set to #GNUNET_SYSERR if there was a serious error.
    */
-  int pending;
+  enum GNUNET_GenericReturnValue pending;
 };
 
 
