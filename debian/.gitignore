@@ -18,3 +18,5 @@ taler-auditor.postrm.debhelper
 taler-auditor.substvars
 taler-auditor/
 taler-exchange.postrm.debhelper
+*.debhelper
+*.substvars
