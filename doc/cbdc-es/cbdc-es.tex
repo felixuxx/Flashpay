@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass[10pt,spanish]{article}
 \usepackage[a4paper,
 top=2cm,
 bottom=2cm,
@@ -6,57 +6,33 @@ includefoot,
 left=3cm,
 right=2cm,
 footskip=1cm]{geometry}
-
-%\usepackage{lastpage} % enables \pageref{LastPage}
-
-%\cfoot*{\normalfont Page \pagemark{} of \normalfont \pageref{LastPage}}
-
-% Adjust variables in brackets for special indentation
-%\setlength{\parindent}{0pt}
-%\setlength{\parskip}{0.5ex plus 1pt minus 1pt}
-
-% Set fonts for a nicer PDF view
+\usepackage{url}
 \IfFileExists{lmodern.sty}{\usepackage{lmodern}}{}
-
 \usepackage{graphicx}
 \usepackage{mathpazo}
 \usepackage{amsmath}
-%\usepackage{newtxmath}
 \usepackage{mathptmx}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{color}
 \usepackage[hidelinks]{hyperref}
 
-\clubpenalty=10000
-\widowpenalty=10000
-\displaywidowpenalty=10000
-\brokenpenalty=10000
-\doublehyphendemerits=10000 
-\finalhyphendemerits=5000
-\tolerance=10000
-\urlstyle{same}
-
 \begin{document}
 
 \title{Cómo Emitir una Moneda Digital del Banco Central*}
-\author{David Chaum \textsuperscript{a}, 
-Christian Grothoff \textsuperscript{b} 
-y Thomas Moser \textsuperscript{c}}
-\date{\today}
+\author{David Chaum\footnote{david@chaum.com} \\
+  xx Network \and
+  Christian Grothoff\footnote{christian.grothoff@bfh.ch} \\
+  Universidad de Ciencias Aplicadas de Berna y Proyecto GNU \and
+  Thomas Moser\footnote{thomas.moser@snb.ch}\\
+  Banco Nacional de Suiza}
+\date{Primera versión: mayo 2020}
 \maketitle
 
-\begin{center} \textsuperscript{a} xx Network, 
-\textsuperscript{b} Universidad de Ciencias Aplicadas de Berna y Proyecto GNU, 
-\textsuperscript{c} Banco Nacional de Suiza 
-\end{center}
+\renewcommand{\abstractname}{Resumen}
+\renewcommand{\refname}{Referencias}
 
-\vspace{20pt}
-\begin{center} 
-\vspace{20pt}
-\textbf{Resumen}
-\end{center}
-\emph{
+\begin{abstract}% [Resumen]
 Con la aparición de Bitcoin y monedas estables propuestas recientemente
 por grandes empresas tecnológicas como Diem (antes Libra), los bancos
 centrales se enfrentan a la creciente competencia de particulares que
@@ -73,19 +49,18 @@ reglamentarios de modo convincente y ofrecer un nivel de protección de
 resistencia cuántica contra los riesgos sistémicos que amenazan la
 privacidad. Ni la política monetaria ni la estabilidad financiera se
 verían materialmente afectadas porque una CBDC con este diseño
-replicaría el efectivo físico en lugar de los depósitos bancarios.}
-\vspace{20pt}
+replicaría el efectivo físico en lugar de los depósitos bancarios. \\
 JEL: E42, E51, E52, E58, G2
-\newline
-\newline
+\\
 Keywords: Monedas digitales, banco central, CBDC, firmas ciegas, monedas
 estables
+\end{abstract}
 \vspace{20pt}
-\newline
-* David Chaum (david@chaum.com), Christian Grothoff (christian.grothoff@bfh.ch), 
-Thomas Moser (thomas.moser@snb.ch).
-\newline
-Agradecemos a Michael Barczay, Roman Baumann, Morten Bech, Nicolas Cuche, 
+\vspace{20pt}
+
+
+\section*{Agradecimientos}
+Agradecemos a Michael Barczay, Roman Baumann, Morten Bech, Nicolas Cuche,
 Florian Dold, Andreas Fuster, Stefan Kügel, Benjamin Müller, Dirk Niepelt,
 Oliver Sigrist, Richard Stallman, Andreas Wehrli, y tres colaboradores
 anónimos por sus comentarios y sugerencias. Las ideas, opiniones,
@@ -94,13 +69,13 @@ documento pertenecen estrictamente a los autores. No reflejan
 necesariamente los puntos de vista del Banco Nacional de Suiza (BNS). El
 BNS no asume ninguna responsabilidad por errores u omisiones ni por la
 exactitud de la información contenida en este documento.
-\vspace{20pt}
-\newline
-{Primera versión: mayo 2020}
+
+Traducción: Javier Sepulveda y Dora Scilipoti (verano 2021)
+
 
 \newpage
 \hypertarget{introducciuxf3n}{%
-\section{\texorpdfstring{ \textbf{Introducción}}{1. Introducción}}
+\section{Introducción}
 \label{1.-introducciuxf3n}}
 
 Desde la aparición de los ordenadores personales en los años ochenta, y
@@ -173,12 +148,12 @@ transacción, no proporciona beneficios tangibles en una implementación
 por parte de un banco central. Utilizar la DLT para emitir dinero
 digital puede ser útil si no hay un banco central para empezar (p. ej.
 el proyecto Sovereign de las Islas Marshall) o si la intención explícita
-es prescindir de un banco central (p. ej. Bitcoin).\footnote{Puede haber 
-buenos casos de uso para la DLT en el caso de infraestructura de 
-mercado financiero, tal como los intercambios digitales, donde surge la 
-cuestión de como obtener dinero del banco central en la DLT a efectos de 
-liquidación. Sin embargo en esas situaciones, los beneficios potenciales 
-de la DLT, por ejemplo menos costes o reconciliación automática, no surgen 
+es prescindir de un banco central (p. ej. Bitcoin).\footnote{Puede haber
+buenos casos de uso para la DLT en el caso de infraestructura de
+mercado financiero, tal como los intercambios digitales, donde surge la
+cuestión de como obtener dinero del banco central en la DLT a efectos de
+liquidación. Sin embargo en esas situaciones, los beneficios potenciales
+de la DLT, por ejemplo menos costes o reconciliación automática, no surgen
 de una emisión descentralizada del dinero del banco central.}
 
 La CBCD basada en tokens que se propone aquí permite también la
@@ -205,7 +180,7 @@ problemáticos incluso si las personas creen que no tienen nada que
 esconder, simplemente por la posibilidad de error y abuso,
 particularmente si los programas carecen de transparencia e
 imputabilidad (véase Solove 2011). Segundo, porque la privacidad en las
-transacciones protege a los usuarios frente a la explotación de datos por parte 
+transacciones protege a los usuarios frente a la explotación de datos por parte
 de los proveedores de servicios de pago.
 Tercero, porque protege a los usuarios frente a la contraparte en la
 transacción, descartando la posibilidad de un posterior comportamiento
@@ -221,9 +196,7 @@ consideraciones políticas y normativas (5) y trabajos relacionados (6);
 en fin, concluimos (7).
 
 \hypertarget{quuxe9-es-el-dinero-del-banco-central}{%
-\section{\texorpdfstring{ \textbf{¿Qué es el dinero del banco central?}}
-{2. ¿Qué es el dinero del banco central?}}
-\label{2.-quuxe9-es-el-dinero-del-banco-central}}
+\section{¿Qué es el dinero del banco central?} \label{2.-quuxe9-es-el-dinero-del-banco-central}}
 
 El dinero es un activo que puede ser usado para comprar bienes y
 servicios. Para ser considerado dinero, este activo debe ser aceptado
@@ -237,13 +210,13 @@ cotizan los precios y cómo se registran las deudas) coincide con el
 medio de intercambio por razones de conveniencia. La separación puede
 ocurrir, sin embargo, si el valor del medio de intercambio carece de
 estabilidad en relación a los bienes y servicios
-comercializados.\footnote{Esto puede ocurrir espontáneamente en un entorno 
-de alta-inflación, p. ej. cuando los precios se fijan en USD pero los pagos 
-se realizan en divisa local. Lo mismo es ciertopara los pagos en Bitcoin, 
-donde los precios usualmente se fijan en USA u otras divisas locales debido a 
-la alta volatilidad de Bitcoin. Una eparación también puede ocurrir por el 
-diseño, p. ej. en la Unidad de Fomento (UF) de Chile o la Special Drawing Right 
-(SDR) del fondo monetario internacional (IMF). Sin embargo, también entonces el 
+comercializados.\footnote{Esto puede ocurrir espontáneamente en un entorno
+de alta-inflación, p. ej. cuando los precios se fijan en USD pero los pagos
+se realizan en divisa local. Lo mismo es ciertopara los pagos en Bitcoin,
+donde los precios usualmente se fijan en USA u otras divisas locales debido a
+la alta volatilidad de Bitcoin. Una eparación también puede ocurrir por el
+diseño, p. ej. en la Unidad de Fomento (UF) de Chile o la Special Drawing Right
+(SDR) del fondo monetario internacional (IMF). Sin embargo, también entonces el
 propósito es tener una unidad de cuenta más estable.} El dinero debe también ser
 un depósito de valor para poder actuar como medio de intercambio, porque
 debe preservar su poder de compra desde el momento en que se recibe
@@ -339,9 +312,9 @@ monedas en relación al activo o los activos subyacentes depende de
 manera crucial de los derechos legales que adquieran los titulares de
 las monedas estables. Si una moneda estable es canjeable a un precio
 fijo (p. ej. 1 moneda = 1 USD, o 1 moneda = 1 onza de oro), tal
-estabilidad teóricamente se conseguirá.\footnote{Si también estabilice o 
-no el valor de las monedas estables en relación con los bienes y 
-servicios negociados depende de la estabilidad del valor del respectivo 
+estabilidad teóricamente se conseguirá.\footnote{Si también estabilice o
+no el valor de las monedas estables en relación con los bienes y
+servicios negociados depende de la estabilidad del valor del respectivo
 activo en relación con el valor de los bienes y servicios.} Lo que el esquema
 esencialmente hace es replicar a los bancos comerciales garantizando la
 convertibilidad al activo subyacente a la vista. Sin embargo, a
@@ -359,18 +332,18 @@ dinero (billetes o depósitos bancarios) no es muy rentable. En
 consecuencia, los proveedores de monedas estables tienen un incentivo
 para economizar su tenencia de activos y trasladarse hacia un sistema de
 reserva fraccionado, tal como lo hicieron los bancos comerciales.\footnote
-{La incertidumbre sobre si un moneda estable está 
-totalmente garantizada puede ser una de las razones por las que una 
-moneda stable puede negociarse por debajo de la par en el mercado 
-secundario (véase Lyons y Ganesh Viswanath-Natraj, 2020). Este fue 
-también historícamente el caso con los billetes cuando eran emitidos 
-por los bancos comerciales. Tales billetes solían negociarse con 
-diversos descuentos en el mercado secundario antes de que la emisión 
-de billetes fuera nacionalizada y transferida al monopolio de los 
-bancos centrales.} Esto implica que reducen su tenencia de activos de 
-bajo rendimiento al mínimo que se considere necesario para satisfacer el 
-requisito de convertibilidad. Añadiendo en cambio activos líquidos de 
-alto rendimiento tales como bonos del Estado. Esto mejora la 
+{La incertidumbre sobre si un moneda estable está
+totalmente garantizada puede ser una de las razones por las que una
+moneda stable puede negociarse por debajo de la par en el mercado
+secundario (véase Lyons y Ganesh Viswanath-Natraj, 2020). Este fue
+también historícamente el caso con los billetes cuando eran emitidos
+por los bancos comerciales. Tales billetes solían negociarse con
+diversos descuentos en el mercado secundario antes de que la emisión
+de billetes fuera nacionalizada y transferida al monopolio de los
+bancos centrales.} Esto implica que reducen su tenencia de activos de
+bajo rendimiento al mínimo que se considere necesario para satisfacer el
+requisito de convertibilidad. Añadiendo en cambio activos líquidos de
+alto rendimiento tales como bonos del Estado. Esto mejora la
 rentabilidad pero también incrementa el nivel de riesgo.
 
 Sin embargo, incluso si una moneda estable está garantizada al 100\% por
@@ -403,9 +376,7 @@ regulan adecuadamente. Sin embargo, la disponibilidad de CBDC limitaría
 significativamente su utilidad.
 
 \hypertarget{diseuxf1os-simplistas-de-cbdc}{%
-\section{\texorpdfstring{ \textbf{Diseños simplistas de CBDC}}
-{3. Diseños simplistas de CBDC}}
-\label{3.-diseuxf1os-simplistas-de-cbdc}}
+\section{Diseños simplistas de CBDC} \label{3.-diseuxf1os-simplistas-de-cbdc}}
 
 Como se ha señalado, una CBDC sería una obligación del banco central.
 Dos posibles diseños que se analizan en la literatura son: (a) una CBDC
@@ -441,10 +412,10 @@ activos (tokens) incluyen información acerca de su valor y de la entidad
 que emitió el token. Por tanto, la única posibilidad de lograr la
 propiedad de privacidad de la transacción como la que se obtiene con el
 dinero efectivo reside en los sistemas basados en tokens.\footnote
-{Si bien el término "Bitcoin" sugiere el uso de tokens, Bitcoin es un 
-sistema basado en cuentas. La única diferencia entre un sistema 
-tradicional basado en cuentas y una blockchain es que las cuentas no 
-se guardan en una base de datos central, sino en una base de datos 
+{Si bien el término "Bitcoin" sugiere el uso de tokens, Bitcoin es un
+sistema basado en cuentas. La única diferencia entre un sistema
+tradicional basado en cuentas y una blockchain es que las cuentas no
+se guardan en una base de datos central, sino en una base de datos
 descentralizada del tipo "solo por anexión".}
 
 \hypertarget{cbdc-basada-en-cuentas}{%
@@ -567,31 +538,30 @@ pista de los clientes, lo cual no es compatible con la privacidad de la
 transacción.
 
 \hypertarget{diseuxf1o-de-cbdc-basado-en-tokens-para-salvaguardar-la-privacidad}{%
-\section{\texorpdfstring{ \textbf{Diseño de CBDC basado en tokens para salvaguardar la
-privacidad}}{4. Diseño de CBDC basado en tokens para salvaguardar la
-privacidad}}
+\section{Diseño de CBDC basado en tokens para salvaguardar la
+privacidad}
 \label{4.-diseuxf1o-de-cbdc-basado-en-tokens-para-salvaguardar-la-privacidad}}
 
 La CBDC que se propone aquí es de tipo "solo software", simplemente una
 aplicación para teléfonos inteligentes que no requiere ningún hardware
 adicional por parte de los usuarios. La CBDC se basa en eCash y GNU
 Taler. Taler es parte del Proyecto GNU, cuyo fundador, Richard Stallman,
-acuñó el término "Software Libre", actualmente denominado "Software
-Libre y de Código Abierto" (Free/Libre Open Source Software --
-FLOSS).\footnote{Para más información sobre GNU, véase 
-https://www.gnu.org y Stallman (1985). GNU Taler se publica 
-gratuitamente bajo la Licencia Pública General Affero del Proyecto 
-GNU. Otros programas del Proyecto GNU populares entre los economistas 
-son «R» y ``GNU Regression, Econometrics and Time-series Library'' 
-(GRETL). Un análisis de los beneficios del FLOSS en comparación con el 
-software privativo en el campo de la investigación puede consultarse 
-en Baiocchi y Distaso (2003), Yalta y Lucchetti (2008) y Yalta y Yalta 
-(2010). Sobre el licenciamiento de código abierto véase Lerner y 
-Tirole (2005).} Un programa se considera "Software Libre" si la licencia 
-otorga a los usuarios cuatro libertades esenciales: la libertad 
-de ejecutar el programa como deseen, la libertad de estudiar el programa 
-y modificarlo, la libertad de redistribuir copias del programa y la 
-libertad de distribuir copias de las versiones modificadas del programa. 
+acuñó el término \emph{Software Libre}, actualmente denominado \emph{Software
+Libre y de Código Abierto} (Free/Libre Open Source Software --
+FLOSS).\footnote{Para más información sobre GNU, véase
+\url{https://www.gnu.org} y Stallman (1985). GNU Taler se publica
+gratuitamente bajo la Licencia Pública General Affero del Proyecto
+GNU. Otros programas del Proyecto GNU populares entre los economistas
+son «R» y ``GNU Regression, Econometrics and Time-series Library''
+(GRETL). Un análisis de los beneficios del FLOSS en comparación con el
+software privativo en el campo de la investigación puede consultarse
+en Baiocchi y Distaso (2003), Yalta y Lucchetti (2008) y Yalta y Yalta
+(2010). Sobre el licenciamiento de código abierto véase Lerner y
+Tirole (2005).} Un programa se considera "Software Libre" si la licencia
+otorga a los usuarios cuatro libertades esenciales: la libertad
+de ejecutar el programa como deseen, la libertad de estudiar el programa
+y modificarlo, la libertad de redistribuir copias del programa y la
+libertad de distribuir copias de las versiones modificadas del programa.
 El software libre no tiene por qué ser no comercial: proporcionar
 soporte técnico para software es un modelo de negocio estándar para el
 FLOSS.
@@ -605,24 +575,24 @@ probablemente un obstáculo para la adopción desde el principio. Con el
 FLOSS, todas las partes interesadas tienen acceso a cada detalle de la
 solución y el derecho de adaptar el software a sus necesidades. Esto
 conduce a una integración más fácil y una mejor interoperabilidad y
-competencia entre proveedores.\footnote{Sin embargo, puede haber otros 
-roles para hardware privado. Por ejemplo, proteger los depósitos de 
-claves y ciertas funciones de auditoría, en la medida en que tal 
-seguridad pueda demostrarse solo como aditiva, puede ser un área donde 
-el hardware dedicado evaluado por solo un número limitado de expertos 
+competencia entre proveedores.\footnote{Sin embargo, puede haber otros
+roles para hardware privado. Por ejemplo, proteger los depósitos de
+claves y ciertas funciones de auditoría, en la medida en que tal
+seguridad pueda demostrarse solo como aditiva, puede ser un área donde
+el hardware dedicado evaluado por solo un número limitado de expertos
 podría tener ventajas.} Además, permite que el banco central cumpla
 con los requisitos de transparencia y responsabilidad. Los beneficios
 del FLOSS para la seguridad son también ampliamente reconocidos. La
 disponibilidad del código fuente y el derecho a modificarlo facilitan la
-detección de fallos y su rápida solución.\footnote{Por ejemplo, un 
-boletín de seguridad cibernética emitido por la Agencia de Seguridad 
-Nacional de EE. UU. en abril de 2020 insta a los usuarios a priorizar 
-el software de código abierto en la selección y el uso de servicios de 
-colaboración para la comunicación por Internet: ``El desarrollo de 
-código abierto puede proporcionar confiabilidad de que el código está 
-escrito para asegurar las mejores prácticas de programación y no es 
-probable que introduzca vulnerabilidades o debilidades que puedan 
-poner en riesgo a los usuarios y los datos '' (U / OO / 134598-20).}
+detección de fallos y su rápida solución.\footnote{Por ejemplo, un
+boletín de seguridad cibernética emitido por la Agencia de Seguridad
+Nacional de EE. UU. en abril de 2020 insta a los usuarios a priorizar
+el software de código abierto en la selección y el uso de servicios de
+colaboración para la comunicación por Internet: ``El desarrollo de
+código abierto puede proporcionar confiabilidad de que el código está
+escrito para asegurar las mejores prácticas de programación y no es
+probable que introduzca vulnerabilidades o debilidades que puedan
+poner en riesgo a los usuarios y los datos '' (U/OO/134598-20).}
 
 En esta nuestra arquitectura que proponemos todas las interacciones del
 consumidor y el comerciante son con bancos comerciales. Sin embargo, la
@@ -641,9 +611,9 @@ instrumento digital al portador porque cuando el usuario retira una suma
 de dinero en forma de número, el número es ``cegado'' u ocultado por el
 teléfono inteligente con un cifrado especial. En el sistema real, una
 moneda es un par de claves pública / privada, y la clave privada solo la
-conoce el propietario de la moneda.\footnote{En Bitcoin, que es un 
-sistema basado en cuentas, el par de claves es una cuenta, siendo la 
-clave pública la "dirección" de la cuenta y por tanto un tipo de 
+conoce el propietario de la moneda.\footnote{En Bitcoin, que es un
+sistema basado en cuentas, el par de claves es una cuenta, siendo la
+clave pública la "dirección" de la cuenta y por tanto un tipo de
 "identidad'', incluso si se trata de un pseudónimo.} La moneda deriva
 su valor financiero de la firma del banco central en la clave pública de
 la moneda. El banco central hace la firma con su clave privada y dispone
@@ -680,8 +650,8 @@ conocimiento.
 esquema de firma con clave pública es que el propietario de una clave
 privada es el único que puede firmar un mensaje, mientras que la clave
 pública permite a cualquiera verificar la validez de la
-firma.\footnote{La criptografía de clave pública fué introducida por 
-Diffie y Hellman (1976), y la primera implentación de firmas digitales 
+firma.\footnote{La criptografía de clave pública fué introducida por
+Diffie y Hellman (1976), y la primera implentación de firmas digitales
 fué introducida por Rivest, Shamir y Adleman (1978).} El resultado de
 la función de verificación es la declaración binaria "verdadero" o
 "falso". Si el mensaje está firmado con la clave privada que pertenece a
@@ -691,34 +661,34 @@ contrario es falso. En nuestra propuesta, el mensaje es una "moneda" o
 su validez. Si bien GNU Taler usa por defecto firmas EdDSA modernas
 (véase Bernstein et al. 2012), presentamos un esquema de firma
 criptográfica simple basado en el bien estudiado sistema criptográfico
-RSA (Rivest et al. 1978).\footnote{Para un análisis de la larga historia 
-del criptosistema RSA y un estudio de los ataques al criptosistema RSA, 
-consulte Boneh (1999).} Sin embargo, en principio se puede utilizar 
+RSA (Rivest et al. 1978).\footnote{Para un análisis de la larga historia
+del criptosistema RSA y un estudio de los ataques al criptosistema RSA,
+consulte Boneh (1999).} Sin embargo, en principio se puede utilizar
 cualquier esquema de firma criptográfica (DSA, ECDSA, EdDSA, RSA, etc.).
 
 Para generar las claves RSA, el firmante elige primero dos grandes e
-independientes números primos \(p\) y \(q\) y calcula \(n = \emph{pq}\)
+independientes números primos $p$ y $q$ y calcula $n = \emph{pq}$
 así como la función totient de Euler
-\(\phi\left( n \right) = \left( p - 1 \right)\left( q - 1 \right)\).
-Entonces, cualquier \(e\) con \(1 < e < \phi\left( n \right)\) y
-\(\emph{gcd}\left( e,\phi\left( n \right) \right) = 1\) se puede usar para
-definir una clave pública \(\left( e,n \right)\). La condición de que el
-mayor común divisor (greatest common divisor - \emph{gcd}) de \(e\) y
-\(\phi\left( n \right)\) tiene que ser 1 (p. ej., que deben ser
+$\phi(n) = (p - 1)(q - 1)$.
+Entonces, cualquier $e$ con $1 < e < \phi(n)$ y
+$\gcd(e, \phi(n)) = 1$ se puede usar para
+definir una clave pública $(e,n)$. La condición de que el
+mayor común divisor (greatest common divisor - $\gcd$) de $e$ y
+$\phi(n)$ tiene que ser 1 (p. ej., que deben ser
 relativamente primos) asegura que la inversa de
-\(e \hspace*{1pt} \text{mod} \hspace*{1pt} \phi\left( n \right)\) existe. 
+$e \mod \phi(n)$ existe.
 Esta inversa es la
-correspondiente clave privada \emph{d}. Dado \(\phi\left( n \right)\), la clave
-privada \emph{d} se puede calcular usando el algoritmo extendido
-Euclídeo de modo que 
-\(d \bullet e \equiv 1 \hspace*{1pt} \text{mod} \hspace*{1pt} \phi\left( n \right)\).
+correspondiente clave privada $d$. Dado $\phi(n)$, la clave
+privada $d$ se puede calcular usando el algoritmo extendido
+Euclídeo de modo que
+$d \cdot e \equiv 1 \mod \phi(n)$.
 
-Dada la clave privada \emph{d} y la clave pública (\emph{e, n}), una firma simple RSA
-\emph{s} sobre un mensaje \emph{m} es 
-\(s \equiv m^{d} \hspace*{1pt} \text{mod} \hspace*{1pt} n\).
-Para verificar la firma, se calcula 
-\(m' \equiv s^{e} \hspace*{1pt} \text{mod} \hspace*{1pt} n\).
-Si \(m'\) y \emph{m} coinciden, la firma es válida, lo que prueba que el
+Dada la clave privada $d$ y la clave pública $(e, n)$, una firma simple RSA
+$s$ sobre un mensaje $m$ es
+$s \equiv m^{d} \mod n$.
+Para verificar la firma, se calcula
+$m' \equiv s^{e} \mod n$.
+Si $m'$ y $m$ coinciden, la firma es válida, lo que prueba que el
 mensaje fue firmado con la clave privada que pertenece a la clave
 publica de verificación (autenticación de mensaje) y que ese mensaje no
 ha sido cambiado en tránsito (integridad de mensaje). En la práctica,
@@ -728,7 +698,7 @@ mensajes, que son identificadores únicos y cortos para los mensajes.
 Firmar un hash corto es mucho más rápido que firmar un mensaje largo, y
 la mayoría de los algoritmos de firma solo funcionan con entradas
 relativamente cortas.\footnote{En el caso del criptosistema RSA el
-límite de la longitud es \(\log_{2}n\) bits.}
+límite de la longitud es $\log_{2}n$ bits.}
 
 \emph{Firmas ciegas.} Usamos firmas ciegas, introducidas por Chaum
 (1983), para proteger la privacidad de los compradores. Una firma ciega
@@ -748,38 +718,38 @@ privacidad incluso contra ataques informáticos cuánticos. El banco
 central, por su parte, establece múltiples denominaciones de pares de
 claves disponibles para realizar la firma ciega de monedas con
 diferentes valores, y publica/provee las correspondientes claves
-públicas \emph{(e, n)} para estos valores.
+públicas $(e, n)$ para estos valores.
 
-Sea \(f\) el valor hash de una moneda y por tanto un identificador único
+Sea $f$ el valor hash de una moneda y por tanto un identificador único
 para esta moneda. El cliente que retira la moneda primero genera una
-factor ciego aleatorio \(b\) y calcula 
-\(f' \equiv fb^{e} \hspace*{1pt} \text{mod} \hspace*{1pt} n\) 
-con la clave pública del banco central para ese valor. 
-La moneda cegada \(f'\) se transmite luego
-al banco central para ser firmada. El banco central firma \(f'\) con su
-clave privada \(d\) calculando la firma ciega 
-\(s' \equiv \left( f' \right)^{d} \hspace*{1pt} \text{mod} \hspace*{1pt} n\), 
-añade la firma \(s'\) a la moneda cegada \(f'\) y devuelve el par 
-\(\left( s',f' \right)\) al cliente. 
-El cliente puede entonces des-cegar la firma calculando 
-\(s \equiv s'b^{- 1} \hspace*{1pt} \text{mod} \hspace*{1pt} n\). 
+factor ciego aleatorio $b$ y calcula
+$f' \equiv fb^{e} \mod n$
+con la clave pública del banco central para ese valor.
+La moneda cegada $f'$ se transmite luego
+al banco central para ser firmada. El banco central firma $f'$ con su
+clave privada $d$ calculando la firma ciega
+$s' \equiv \left(f' \right)^{d} \mod n$,
+añade la firma $s'$ a la moneda cegada $f'$ y devuelve el par
+$(s',f')$ al cliente.
+El cliente puede entonces des-cegar la firma calculando
+$s \equiv s'b^{- 1} \mod n$.
 Esto funciona porque
-\(\left( f' \right)^{d} = f^{d}b^{\text{ed}} = f^{d}b\) y, así,
-multiplicar \(s'\) con \(b^{- 1}\) produce \(f^{d}\), que es una firma RSA
-válida sobre \(f\) como antes: 
-\(s^{e} \equiv f^{\text{de}} \equiv f \hspace*{1pt} \text{mod} \hspace*{1pt} n\).
+$\left( f' \right)^{d} = f^{d}b^{\text{ed}} = f^{d}b$ y, así,
+multiplicar $s'$ con $b^{- 1}$ produce $f^{d}$, que es una firma RSA
+válida sobre $f$ como antes:
+$s^{e} \equiv f^{\text{de}} \equiv f \mod n$.
 
 En la propuesta original de Chaum, las monedas eran solo tokens. Sin
 embargo, nosotros queremos que los consumidores puedan realizar
 contratos usando firmas digitales. Para lograrlo, cuando una billetera
 digital retira una moneda, primero crea una clave privada aleatoria
-\(c\) y calcula la correspondiente clave publica \(C\) de esta moneda
+$c$ y calcula la correspondiente clave publica $C$ de esta moneda
 para crear firmas digitales con esquemas de firma criptográfica
-regulares (como DSA, ECDSA, EdDSA e RSA). Entonces, se deriva \(f\)
-usando una hash criptográfica de la clave pública \(C\), que luego es
+regulares (como DSA, ECDSA, EdDSA, and RSA). Entonces, se deriva $f$
+usando una hash criptográfica de la clave pública $C$, que luego es
 firmada en modalidad ciega por el banco central (usando un factor
 aleatorio ciego actualizado para cada moneda). Ahora el cliente puede
-usar \(c\) para firmar compras electrónicamente, gastando así la moneda.
+usar $c$ para firmar compras electrónicamente, gastando así la moneda.
 
 Como se ha señalado anteriormente, el banco central establecería pares
 de claves para los diferentes valores de las monedas y publicaría las
@@ -792,12 +762,12 @@ similar existe para los billetes físicos, donde las series de los
 billetes se renuevan regularmente para que los billetes vayan equipados
 con las últimas características de seguridad, excepto que los billetes
 generalmente permanecen en circulación durante décadas en vez de por
-unos pocos meses o años.\footnote{En Suiza, por ejemplo, el Swiss 
-National Bank empezó la eliminación paulatina la serie octava de 
-billetes en abril de 2016. Estos billetes fueron puestos en 
-circulación al final de los 90. A partir del dia 1 de enero de 2020, 
-sin embargo, todos los billetes que empiezan por la serie sexta 
-emitidos en 1976, así como cualquier futura serie, permanecen válidas 
+unos pocos meses o años.\footnote{En Suiza, por ejemplo, el Swiss
+National Bank empezó la eliminación paulatina la serie octava de
+billetes en abril de 2016. Estos billetes fueron puestos en
+circulación al final de los 90. A partir del dia 1 de enero de 2020,
+sin embargo, todos los billetes que empiezan por la serie sexta
+emitidos en 1976, así como cualquier futura serie, permanecen válidas
 y se pueden cambiar por billetes actuales de forma indefenida.}
 
 Desde un punto de vista técnico, una fecha de vencimiento tiene dos
@@ -806,7 +776,7 @@ central puede descartar entradas vencidas y no tiene que almacenar y
 buscar una lista siempre creciente de monedas (gastadas) para detectar
 el doble gasto. Segundo, reduce los riesgos de seguridad porque el banco
 central no tiene que preocuparse sobre ataques contra sus claves
-(\emph{d}) de denominación (privadas) vencidas. Además , incluso si una
+($d$) de denominación (privadas) vencidas. Además , incluso si una
 clave privada se ve comprometida, el tiempo durante el cual el atacante
 puede usar la clave es limitado. Además cobrar una comisión por el
 cambio permitiría al banco central implementar tasas de interés
@@ -833,104 +803,103 @@ intercambio justo en sistemas tradicionales de efectivo electrónico.
 La construcción matemática más común para un protocolo de intercambio de
 claves es la construcción Diffie-Hellman (Diffie y Hellman 1976). Esta
 permite que dos partes puedan derivar una clave secreta compartida. Para
-hacerlo, comparten dos parámetros del dominio \emph{p} y \emph{g}, que
-pueden ser públicos, donde \emph{p} es un número primo grande y \emph{g}
-es una raíz primitiva módulo \emph{p}.\footnote{Un entero \emph{g} es una raíz 
-primitiva módulo \emph{p} si para cada entero \emph{a} coprimo a \emph{p} hay 
-algún entero \emph{k} para el cual 
-\(g^{k} \equiv a\left( \hspace*{1pt} \text{mod} \hspace*{1pt} p \right)\). 
-En la práctica, \emph{g} deberia ser tal raíz primitiva \emph{p-1}, que se 
-llama también generador, para prevenir ataques de subgrupo tales como ataques 
+hacerlo, comparten dos parámetros del dominio $p$ y $g$, que
+pueden ser públicos, donde $p$ es un número primo grande y $g$
+es una raíz primitiva módulo $p$.\footnote{Un entero $g$ es una raíz
+primitiva módulo $p$ si para cada entero $a$ coprimo a $p$ hay
+algún entero $k$ para el cual
+$g^k \equiv a \mod p$.
+En la práctica, $g$ deberia ser tal raíz primitiva $p-1$, que se
+llama también generador, para prevenir ataques de subgrupo tales como ataques
 Pohlig-Hellman (véase Lim y Pil, 1997).} Ahora, las dos partes eligen sus claves
 privadas \emph{a} y \emph{b}, que son dos números enteros grandes. Con estas claves
 privadas y los parámetros del dominio, generan sus respectivas claves
-públicas \(A \equiv g^{a} \hspace*{1pt} \text{mod} \hspace*{1pt} p\) y 
-\(B \equiv g^{b} \hspace*{1pt} \text{mod} \hspace*{1pt} p\).
+públicas $A \equiv g^{a} \mod p$ y $B \equiv g^{b} \mod p$.
 Cada una de las partes ahora puede usar su propia clave privada y la
 clave pública de la otra parte para calcular la clave secreta compartida
-\(k \equiv \left( g^{b} \right)^{a} \equiv \left( g^{a} \right)^{b} \equiv g^{\text{ab}} \hspace*{1pt} \text{mod} \hspace*{1pt} p\).
-\footnote{El mismo mecanismo también se podría usar para garantizar que 
-las monedas no se transfieran a un tercero durante el retiro. Para 
-lograr esto, los consumidores tendrían que salvaguardar una clave de 
-identidad a largo plazo. Luego, el proceso de retiro podría usar la 
-misma construcción que usa GNU Taler para obtener el cambio, excepto 
-que se usaría la clave de identidad a largo plazo de un cliente en 
-lugar de la moneda original cuando se retira de la cuenta bancaria del 
-cliente. Sin embargo, si el cliente no proteje la clave de identidad a 
-largo plazo las garantías de privacidad podrían quedar anuladas con 
-consecuente riesgo de robo de todas las monedas restantes. Dado el 
-riesgo limitado en las transferencias a terceros al retirar monedas, 
+$k \equiv \left( g \middle| b \right)^{a} \equiv \left( g^{a} \right)^{b} \equiv g^{\text{ab}} \mod p$.
+\footnote{El mismo mecanismo también se podría usar para garantizar que
+las monedas no se transfieran a un tercero durante el retiro. Para
+lograr esto, los consumidores tendrían que salvaguardar una clave de
+identidad a largo plazo. Luego, el proceso de retiro podría usar la
+misma construcción que usa GNU Taler para obtener el cambio, excepto
+que se usaría la clave de identidad a largo plazo de un cliente en
+lugar de la moneda original cuando se retira de la cuenta bancaria del
+cliente. Sin embargo, si el cliente no proteje la clave de identidad a
+largo plazo las garantías de privacidad podrían quedar anuladas con
+consecuente riesgo de robo de todas las monedas restantes. Dado el
+riesgo limitado en las transferencias a terceros al retirar monedas,
 no está claro si esta mitigación sería una buena compensación.}
 
 Para obtener el cambio (también llamado ``vuelto''), el cliente empieza
-con la clave privada de la moneda \emph{c}. gastada parcialmente. Sea \emph{C} la
-correspondiente clave pública, p. ej. 
-\(C = g^{c} \hspace*{1pt} \text{mod} \hspace*{1pt} p\). 
+con la clave privada de la moneda c. gastada parcialmente. Sea C la
+correspondiente clave pública, p. ej.
+$C = g^{c} \mod p$.
 Cuando la moneda se gastó parcialmente, el banco central grabó en su base de
-datos la transacción en la que se incluye a \emph{C}. Para simplificar, daremos
+datos la transacción en la que se incluye a C. Para simplificar, daremos
 por sentado que existe una denominación que coincide exactamente con el
 valor residual. De no ser así, se puede simplemente ejecutar
 repetidamente el protocolo de cambio hasta obtener todo el cambio
-necesario. Sea \(\left( e,n \right)\) la clave de denominación para el
+necesario. Sea $(e,n)$ la clave de denominación para el
 cambio que se tiene que emitir.
 
-Para obtener el cambio, el cliente primero crea \(\kappa\) claves de
-transferencia privada \(t_{i}\) para
-\(i \in \left\{ 1,\ldots,\kappa \right\}\) y calcula las
-correspondientes claves públicas \(T_{i}\). Estas claves de
-transferencia \(\kappa\) son simplemente pares de claves pública-privada
+Para obtener el cambio, el cliente primero crea $\kappa$ claves de
+transferencia privada $t_{i}$ para
+$i \in \left\{ 1,\ldots,\kappa \right\}$ y calcula las
+correspondientes claves públicas $T_{i}$. Estas claves de
+transferencia $\kappa$ son simplemente pares de claves pública-privada
 que permiten al cliente ejecutar localmente el protocolo de intercambio
-de claves -- con el cliente jugando en ambos lados -- \(\kappa\) veces
-entre \emph{c} y cada \(t_{i}\). Si se usa Diffie-Hellman para el protocolo de
-intercambio de claves, tendremos 
-\(T_{i} \equiv g^{t_{i}} \hspace*{1pt} \text{mod} \hspace*{1pt} p\).
+de claves -- con el cliente jugando en ambos lados -- $\kappa$ veces
+entre $c$ y cada $t_{i}$. Si se usa Diffie-Hellman para el protocolo de
+intercambio de claves, tendremos
+$T_{i} \equiv g^{t_{i}} \mod p$.
 
 El resultado son tres secretos de transferencia
-\(K_{i} \equiv \emph{KX}\left( c,t_{i} \right)\). El protocolo de
+$K_{i} \equiv \emph{KX}(c,t_{i})$. El protocolo de
 intercambio de claves se puede usar de diferentes maneras para llegar al
-mismo valor 
-\(K_{i} \equiv \emph{KX}\left( C,t_{i} \right) = \emph{KX}\left( c,T_{i} \right)\).
-Dada \(K_{i}\), el cliente usa una función criptográfica hash \emph{H} para
+mismo valor
+$K_{i} \equiv \emph{KX}(C,t_{i}) = \emph{KX}(c,T_{i})$.
+Dada $K_{i}$, el cliente usa una función criptográfica hash H para
 derivar valores
-\(\left( b_{i},c_{i} \right) \equiv H\left( K_{i} \right)\), donde
-\(b_{i}\) es un factor ciego válido para la clave de denominación
-\(\left( e,n \right)\) y \(c_{i}\) es una clave privada para obtener la
-moneda recién creada como cambio. \(c_{i}\) debe ser adecuada tanto para
+$(b_{i},c_{i}) \equiv H(K_{i})$, donde
+$b_{i}$ es un factor ciego válido para la clave de denominación
+$(e,n)$ y $c_{i}$ es una clave privada para obtener la
+moneda recién creada como cambio. $c_{i}$ debe ser adecuada tanto para
 crear firmas criptográficas como para su futuro uso con el protocolo de
-intercambio de claves (como \emph{c}, para obtener cambio a partir del cambio).
-Sea \(C_{i}\) la clave pública correspondiente a \(c_{i}\). El cliente
+intercambio de claves (como $c$, para obtener cambio a partir del cambio).
+Sea $C_{i}$ la clave pública correspondiente a $c_{i}$. El cliente
 solicita entonces al banco central que cree una firma ciega sobre
-\(C_{i}\) para \(i \in \left\{ 1,\ldots,\kappa \right\}\).\footnote
-{Si se usara el criptosistema RSA para firmas ciegas, usaríamos 
-\(f \equiv \emph{FDH}_{n}\left( C_{i} \right)\), donde 
-\(\emph{FDH}_{n}\left( \right)\) es el hash de dominio completo sobre 
-el dominio \emph{n}.} En esta petición, el cliente también se compromete a
-las claves públicas \(T_{i}\). La petición es autorizada usando una
-firma hecha con la clave privada \emph{c}.
+$C_{i}$ para $i \in \{ 1,\ldots,\kappa\}$. \footnote
+{Si se usara el criptosistema RSA para firmas ciegas, usaríamos
+$f \equiv \emph{FDH}_{n}(C_{i})$, donde
+$\emph{FDH}_{n}()$ es el hash de dominio completo sobre
+el dominio $n$.} En esta petición, el cliente también se compromete a
+las claves públicas $T_{i}$. La petición es autorizada usando una
+firma hecha con la clave privada $c$.
 
 En lugar de devolver directamente la firma ciega, el banco central
 primero desafía al cliente para comprobar que el cliente haya usado
 correctamente la construcción mencionada anteriormente proveyendo
-\(\gamma \in \left\{ 1,\ldots,\kappa \right\}\). El cliente debe
-entonces revelar al banco central la \(t_{i}\) para \(i \neq \gamma\) .
+$\gamma \in \left\{ 1,\ldots,\kappa \right\}$. El cliente debe
+entonces revelar al banco central la $t_{i}$ para $i \neq \gamma$ .
 El banco central puede entonces calcular
-\(K_{i} \equiv \emph{KX}\left(C,t_{i} \right)\) y derivar los valores
-de \(\left( b_{i},c_{i} \right)\). Si para todas las \(i \neq \gamma\)
-la \(t_{i}\) provista demuestra que el cliente usó la construcción
+$K_{i} \equiv \emph{KX}(C,t_{i})$ y derivar los valores
+de $(b_{i},c_{i})$. Si para todas las $i \neq \gamma$
+la $t_{i}$ provista demuestra que el cliente usó la construcción
 correctamente, el banco central devuelve la firma ciega sobre
-\(C_{\gamma}\). Si el cliente no provee una prueba correcta, se pierde
+$C_{\gamma}$. Si el cliente no provee una prueba correcta, se pierde
 el valor residual de la moneda original. Esto penaliza efectivamente a
 quienes intentan evadir la transparencia de sus ingresos con una tasa de
-impuestos estimada de \(1 - \frac{1}{\kappa}\).
+impuestos estimada de $1 - \frac{1}{\kappa}$.
 
 Para evitar que un cliente conspire con un comerciante que está tratando
 de ocultar sus ingresos, el banco central permite que cualquiera que
-conozca \emph{C} pueda obtener, en cualquier momento, los valores de
-\(T_{\gamma}\) y las correspondientes firmas ciegas de todas las monedas
-vinculadas a la moneda original \emph{C}. Esto permite que el propietario de la
-moneda original -- que conoce \emph{c} -- calcule 
-\(K_{\gamma} \equiv \emph{KX}\left( c,T_{\gamma} \right)\) y, a partir de
-allí, pueda derivar \(\left( b_{i},c_{i} \right)\) y descifrar la firma
+conozca $C$ pueda obtener, en cualquier momento, los valores de
+$T_{\gamma}$ y las correspondientes firmas ciegas de todas las monedas
+vinculadas a la moneda original $C$. Esto permite que el propietario de la
+moneda original -- que conoce $c$ -- calcule
+$K_{\gamma} \equiv \emph{KX}( c,T_{\gamma})$ y, a partir de
+allí, pueda derivar $(b_{i},c_{i})$ y descifrar la firma
 ciega. En consecuencia, un comerciante que oculte sus ingresos de este
 modo formaría básicamente una unión económica limitada con el cliente en
 lugar de obtener un control exclusivo.
@@ -950,29 +919,29 @@ automático. La transacción entre el banco comercial del usuario y el
 banco central tiene lugar en segundo plano. El procedimiento para
 retirar CBDC sería como se muestra en la Figura 1.
 
-\includegraphics[width=6.13681in,height=4.60208in]{taler_figure_1_dora_SPANISH.jpg}
+\includegraphics[width=\textwidth]{taler_figure_1_dora_SPANISH.jpg}
 
 Un cliente (1) proporciona autenticación a su banco comercial usando la
 autenticación respectiva del banco comercial y los procedimientos de
 autorización. A continuación, el teléfono (u ordenador) del cliente
-obtiene la clave de denominación \emph{(e, n)} provista por el banco central
+obtiene la clave de denominación (e, n) provista por el banco central
 para ese valor; calcula entonces (2) un par de claves para una moneda,
-con la clave privada \emph{c} y la clave pública \emph{C}, y elige un factor de cegado
-\emph{b}. A la clave pública de la moneda se le aplica una función hash
-(→ \emph{f}) y es cegada (→ \(f'\)). A continuación, (3) el teléfono
-del cliente envía \(f'\) junto con una autorización para retirar la
+con la clave privada c y la clave pública C, y elige un factor de cegado
+$b$. A la clave pública de la moneda se le aplica una función hash
+($\to$ $f$) y es cegada ($\to$ $f'$). A continuación, (3) el teléfono
+del cliente envía $f'$ junto con una autorización para retirar la
 moneda y debitar de la cuenta del cliente en el banco comercial a través
 de un canal seguro establecido. El banco comercial entonces (4) debita
-la cantidad en la cuenta de depósito del cliente, (5) autoriza
+la cantidad en la cuenta de depósito del cliente , (5) autoriza
 digitalmente la petición con la propia firma digital de su sucursal
 bancaria y reenvía la petición y la moneda cegada al banco central para
 su firma. El banco central (6) deduce el valor de la moneda en la cuenta
 del banco comercial, firma la moneda de forma ciega con la clave privada
 del banco central para el valor respectivo, y (7) devuelve la firma
-ciega \emph{s'} al banco comercial. (8) reenvía la firma ciega \emph{s'}
+ciega $s'$ al banco comercial. (8) reenvía la firma ciega $s'$
 a la billetera electrónica del cliente. Finalmente, el teléfono del
-cliente (9) usa \emph{b} para descifrar la firma (→ \emph{f}) y almacena la
-moneda recién acuñada \emph{(c, s)}.
+cliente (9) usa b para descifrar la firma ($\to$ $f$) y almacena la
+moneda recién acuñada (c, s).
 
 Cuando se gastan CBDC, el proceso es análogo a pagar al vendedor en
 efectivo. Sin embargo, para asegurar el acuerdo, el vendedor debe
@@ -981,14 +950,14 @@ Figura 2.
 
 Un cliente y un vendedor negocian un contrato comercial, y (1) el
 cliente usa una moneda electrónica para firmar el contrato o factura de
-venta con la clave privada \emph{c} de la moneda y transmite la firma al
+venta con la clave privada c de la moneda y transmite la firma al
 vendedor. La firma de una moneda en un contrato con una moneda válida es
 una instrucción del cliente para pagar al vendedor que es identificado
 por la cuenta bancaria en el contrato. Los clientes pueden firmar
 contratos con múltiples monedas en caso de que una sola moneda fuera
 insuficiente para pagar la cantidad total. El vendedor (2) valida
 entonces la firma de la moneda sobre el contrato y la firma s del banco
-central sobre \emph{f} que corresponde a la \emph{C} de la moneda con las
+central sobre $f$ que corresponde a la C de la moneda con las
 respectivas claves públicas y reenvía la moneda firmada (junto con la
 información de la cuenta del vendedor) al banco comercial del vendedor.
 El banco comercial del vendedor (3) confirma que el vendedor es uno de
@@ -1002,7 +971,7 @@ continuación, (7) el banco comercial acredita la cuenta del vendedor e
 (8) informa al vendedor. El vendedor (9) entrega el producto o servicio
 al cliente. Todo el proceso dura solo unos pocos milisegundos.
 
-\includegraphics[width=6.13681in,height=4.60208in]{taler_figure_2_dora_SPANISH.jpg}.
+\includegraphics[width=\textwidth]{taler_figure_2_dora_SPANISH.jpg}.
 
 \hypertarget{consideraciones-acerca-de-la-seguridad}{%
 \subsection{Consideraciones acerca de la Seguridad}
@@ -1032,8 +1001,8 @@ monedas que no han gastado. El banco central anunciaría la revocación de
 clave mediante la API (Application Programming Interface), que sería
 detectada por las billeteras e iniciarían el siguiente protocolo de
 actualización: el usuario revela al banco central la clave pública
-\emph{C} de la moneda, la firma \emph{s} del banco central, y el factor
-ciego \emph{b}, posibilitando así que el banco central verifique el
+$C$ de la moneda, la firma $s$ del banco central, y el factor
+ciego $b$, posibilitando así que el banco central verifique el
 retiro legítimo del usuario y devuelva el valor de la moneda no gastada.
 Para detectar un posible compromiso de esta clave, el banco central
 puede monitorear la base de datos en busca de casos de depósitos que
@@ -1099,9 +1068,7 @@ banda y computación) a escala estaría por debajo de USD 0,0001 por
 transacción (para obtener detalles sobre los datos, consulte Dold 2019).
 
 \hypertarget{consideraciones-normativas-y-poluxedticas}{%
-\section{\texorpdfstring{ \textbf{Consideraciones normativas y políticas}}
-{5. Consideraciones normativas y políticas}}
-\label{5.-consideraciones-normativas-y-poluxedticas}}
+\section{Consideraciones normativas y políticas}\label{5.-consideraciones-normativas-y-poluxedticas}}
 
 En el esquema propuesto, los bancos centrales no conocen la identidad de
 los consumidores o comerciantes ni los montos totales de las
@@ -1188,14 +1155,12 @@ menor tenga un ritmo de circulación diferente a la del efectivo físico,
 pero esto no sería un problema material para las políticas monetarias.
 
 \hypertarget{trabajos-relacionados}{%
-\section{\texorpdfstring{ \textbf{Trabajos relacionados}}
-{6. Trabajos relacionados}}
-\label{6.-trabajos-relacionados}}
+\section{Trabajos relacionados}\label{6.-trabajos-relacionados}}
 
 Como se señaló anteriormente, la CBDC propuesta en el presente documento
-se basa en eCash y GNU Taler.\footnote{La implementación de eCash por la 
-compañía DigiCash en los años noventa está documentada en 
-\href{https://www.chaum.com/ecash}{{https://www.chaum.com/ecash}}.} A
+se basa en eCash y GNU Taler.\footnote{La implementación de eCash por la
+compañía DigiCash en los años noventa está documentada en
+\url{https://www.chaum.com/ecash}.} A
 partir de la propuesta original de Chaum para el efectivo electrónico,
 la investigación se ha centrado en tres cuestiones principales. Primero,
 en la propuesta original de Chaum las monedas tenían un valor fijo y
@@ -1267,7 +1232,7 @@ tanto, no está claro qué ventajas de privacidad, rendimiento o seguridad
 tiene la EUROchain sobre el dinero existente en depósito.
 
 \hypertarget{conclusiuxf3n}{%
-\section{\texorpdfstring{ \textbf{Conclusión}}{7. Conclusión}}
+\section{Conclusión}
 \label{7.-conclusiuxf3n}}
 
 Con la aparición de Bitcoin y monedas digitales recientemente propuestas
@@ -1310,6 +1275,7 @@ el esquema propuesto en este documento, y los bancos centrales pueden
 evitar perturbaciones significativas en sus políticas monetarias y
 estabilidad financiera cosechando al mismo tiempo los beneficios de la
 digitalización.
+
 
 \newpage
 REFERENCIAS
@@ -1689,5 +1655,8 @@ pp. 371--94.
 and Freedom Respecting Software for Economists.'' Journal of Applied
 Econometrics, Vol. 23, pp. 279-86.
 \end{itemize}
+
+\bibliographystyle{plain}
+\bibliography{cbdc,rfc}
 
 \end{document}
