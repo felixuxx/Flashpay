@@ -775,7 +775,7 @@ contratos usando firmas digitales. Para lograrlo, cuando una billetera
 digital retira una moneda, primero crea una clave privada aleatoria
 \(c\) y calcula la correspondiente clave publica \(C\) de esta moneda
 para crear firmas digitales con esquemas de firma criptográfica
-regulares (como DSA, ECDSA, EdDSA, and RSA). Entonces, se deriva \(f\)
+regulares (como DSA, ECDSA, EdDSA e RSA). Entonces, se deriva \(f\)
 usando una hash criptográfica de la clave pública \(C\), que luego es
 firmada en modalidad ciega por el banco central (usando un factor
 aleatorio ciego actualizado para cada moneda). Ahora el cliente puede
@@ -848,7 +848,7 @@ públicas \(A \equiv g^{a} \hspace*{1pt} \text{mod} \hspace*{1pt} p\) y
 \(B \equiv g^{b} \hspace*{1pt} \text{mod} \hspace*{1pt} p\).
 Cada una de las partes ahora puede usar su propia clave privada y la
 clave pública de la otra parte para calcular la clave secreta compartida
-\(k \equiv \left( g \middle| b \right)^{a} \equiv \left( g^{a} \right)^{b} \equiv g^{\text{ab}} \hspace*{1pt} \text{mod} \hspace*{1pt} p\).
+\(k \equiv \left( g^{b} \right)^{a} \equiv \left( g^{a} \right)^{b} \equiv g^{\text{ab}} \hspace*{1pt} \text{mod} \hspace*{1pt} p\).
 \footnote{El mismo mecanismo también se podría usar para garantizar que 
 las monedas no se transfieran a un tercero durante el retiro. Para 
 lograr esto, los consumidores tendrían que salvaguardar una clave de 
@@ -863,11 +863,11 @@ riesgo limitado en las transferencias a terceros al retirar monedas,
 no está claro si esta mitigación sería una buena compensación.}
 
 Para obtener el cambio (también llamado ``vuelto''), el cliente empieza
-con la clave privada de la moneda c. gastada parcialmente. Sea C la
+con la clave privada de la moneda \emph{c}. gastada parcialmente. Sea \emph{C} la
 correspondiente clave pública, p. ej. 
 \(C = g^{c} \hspace*{1pt} \text{mod} \hspace*{1pt} p\). 
 Cuando la moneda se gastó parcialmente, el banco central grabó en su base de
-datos la transacción en la que se incluye a C. Para simplificar, daremos
+datos la transacción en la que se incluye a \emph{C}. Para simplificar, daremos
 por sentado que existe una denominación que coincide exactamente con el
 valor residual. De no ser así, se puede simplemente ejecutar
 repetidamente el protocolo de cambio hasta obtener todo el cambio
@@ -890,7 +890,7 @@ El resultado son tres secretos de transferencia
 intercambio de claves se puede usar de diferentes maneras para llegar al
 mismo valor 
 \(K_{i} \equiv \emph{KX}\left( C,t_{i} \right) = \emph{KX}\left( c,T_{i} \right)\).
-Dada \(K_{i}\), el cliente usa una función criptográfica hash H para
+Dada \(K_{i}\), el cliente usa una función criptográfica hash \emph{H} para
 derivar valores
 \(\left( b_{i},c_{i} \right) \equiv H\left( K_{i} \right)\), donde
 \(b_{i}\) es un factor ciego válido para la clave de denominación
@@ -900,13 +900,13 @@ crear firmas criptográficas como para su futuro uso con el protocolo de
 intercambio de claves (como \emph{c}, para obtener cambio a partir del cambio).
 Sea \(C_{i}\) la clave pública correspondiente a \(c_{i}\). El cliente
 solicita entonces al banco central que cree una firma ciega sobre
-\(C_{i}\) para \(i \in \left\{ 1,\ldots,\kappa \right\}\). \footnote
+\(C_{i}\) para \(i \in \left\{ 1,\ldots,\kappa \right\}\).\footnote
 {Si se usara el criptosistema RSA para firmas ciegas, usaríamos 
 \(f \equiv \emph{FDH}_{n}\left( C_{i} \right)\), donde 
 \(\emph{FDH}_{n}\left( \right)\) es el hash de dominio completo sobre 
 el dominio \emph{n}.} En esta petición, el cliente también se compromete a
 las claves públicas \(T_{i}\). La petición es autorizada usando una
-firma hecha con la clave privada\emph{c}.
+firma hecha con la clave privada \emph{c}.
 
 En lugar de devolver directamente la firma ciega, el banco central
 primero desafía al cliente para comprobar que el cliente haya usado
@@ -955,15 +955,15 @@ retirar CBDC sería como se muestra en la Figura 1.
 Un cliente (1) proporciona autenticación a su banco comercial usando la
 autenticación respectiva del banco comercial y los procedimientos de
 autorización. A continuación, el teléfono (u ordenador) del cliente
-obtiene la clave de denominación (e, n) provista por el banco central
+obtiene la clave de denominación \emph{(e, n)} provista por el banco central
 para ese valor; calcula entonces (2) un par de claves para una moneda,
-con la clave privada c y la clave pública C, y elige un factor de cegado
-\emph{b. A la} clave pública de la moneda se le aplica una función hash
+con la clave privada \emph{c} y la clave pública \emph{C}, y elige un factor de cegado
+\emph{b}. A la clave pública de la moneda se le aplica una función hash
 (→ \emph{f}) y es cegada (→ \(f'\)). A continuación, (3) el teléfono
 del cliente envía \(f'\) junto con una autorización para retirar la
 moneda y debitar de la cuenta del cliente en el banco comercial a través
 de un canal seguro establecido. El banco comercial entonces (4) debita
-la cantidad en la cuenta de depósito del cliente , (5) autoriza
+la cantidad en la cuenta de depósito del cliente, (5) autoriza
 digitalmente la petición con la propia firma digital de su sucursal
 bancaria y reenvía la petición y la moneda cegada al banco central para
 su firma. El banco central (6) deduce el valor de la moneda en la cuenta
@@ -971,8 +971,8 @@ del banco comercial, firma la moneda de forma ciega con la clave privada
 del banco central para el valor respectivo, y (7) devuelve la firma
 ciega \emph{s'} al banco comercial. (8) reenvía la firma ciega \emph{s'}
 a la billetera electrónica del cliente. Finalmente, el teléfono del
-cliente (9) usa b para descifrar la firma (→ \emph{f}) y almacena la
-moneda recién acuñada (c, s).
+cliente (9) usa \emph{b} para descifrar la firma (→ \emph{f}) y almacena la
+moneda recién acuñada \emph{(c, s)}.
 
 Cuando se gastan CBDC, el proceso es análogo a pagar al vendedor en
 efectivo. Sin embargo, para asegurar el acuerdo, el vendedor debe
@@ -981,14 +981,14 @@ Figura 2.
 
 Un cliente y un vendedor negocian un contrato comercial, y (1) el
 cliente usa una moneda electrónica para firmar el contrato o factura de
-venta con la clave privada c de la moneda y transmite la firma al
+venta con la clave privada \emph{c} de la moneda y transmite la firma al
 vendedor. La firma de una moneda en un contrato con una moneda válida es
 una instrucción del cliente para pagar al vendedor que es identificado
 por la cuenta bancaria en el contrato. Los clientes pueden firmar
 contratos con múltiples monedas en caso de que una sola moneda fuera
 insuficiente para pagar la cantidad total. El vendedor (2) valida
 entonces la firma de la moneda sobre el contrato y la firma s del banco
-central sobre \emph{f} que corresponde a la C de la moneda con las
+central sobre \emph{f} que corresponde a la \emph{C} de la moneda con las
 respectivas claves públicas y reenvía la moneda firmada (junto con la
 información de la cuenta del vendedor) al banco comercial del vendedor.
 El banco comercial del vendedor (3) confirma que el vendedor es uno de
@@ -1087,7 +1087,7 @@ Los front-end también deben comunicarse con los back-end mediante una
 interconexión. Las interconexiones puede soportar grandes cantidades de
 transacciones por segundo. El tamaño de una transacción individual suele
 ser de 1-10 kilobytes aproximadamente. Asi, las interconexiones de un
-centro de datos moderno, con velocidades de conmutación de 400Gbit/s,
+centro de datos moderno, con velocidades de conmutación de 400 Gbit/s,
 pueden soportar millones de transacciones por segundo.
 
 En fin, el costo total del sistema es bajo. Es probable que el
