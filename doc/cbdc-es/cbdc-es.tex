@@ -728,16 +728,15 @@ con la clave pública del banco central para ese valor.
 La moneda cegada $f'$ se transmite luego
 al banco central para ser firmada. El banco central firma $f'$ con su
 clave privada $d$ calculando la firma ciega
-$s' \equiv \left(f' \right)^{d} \mod n$,
-añade la firma $s'$ a la moneda cegada $f'$ y devuelve el par
-$(s',f')$ al cliente.
+$s' \equiv \left(f' \right)^{d} \mod n$ y devuelve
+$s'$ al cliente.
 El cliente puede entonces des-cegar la firma calculando
 $s \equiv s'b^{- 1} \mod n$.
 Esto funciona porque
-$\left( f' \right)^{d} = f^{d}b^{\text{ed}} = f^{d}b$ y, así,
-multiplicar $s'$ con $b^{- 1}$ produce $f^{d}$, que es una firma RSA
+$\left( f' \right)^d = f^db^{ed} = f^db$ y, así,
+multiplicar $s'$ con $b^{- 1}$ produce $f^d$, que es una firma RSA
 válida sobre $f$ como antes:
-$s^{e} \equiv f^{\text{de}} \equiv f \mod n$.
+$s^e \equiv f^{de} \equiv f \mod n$.
 
 En la propuesta original de Chaum, las monedas eran solo tokens. Sin
 embargo, nosotros queremos que los consumidores puedan realizar
