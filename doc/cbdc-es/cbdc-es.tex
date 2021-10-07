@@ -16,6 +16,7 @@ footskip=1cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{color}
 \usepackage[hidelinks]{hyperref}
+\usepackage{natbib,har2nat}
 
 \begin{document}
 
@@ -85,13 +86,12 @@ buscado crear dinero digital para realizar pagos en línea. La primera
 propuesta la realizó Chaum en 1983. A pesar de que tales métodos fueron
 implementados, no prosperaron. Fueron en cambio los sistemas con tarjeta
 de crédito los que se convirtieron en el método dominante para pagos en
-línea. La propuesta de Nakamoto en 2008 para un sistema P2P de dinero
+línea. La propuesta de Nakamoto en 2008~\cite{Nakamoto} para un sistema P2P de dinero
 digital y el posterior lanzamiento exitoso de Bitcoin desataron una
 nueva era de investigación sobre el tema y desarrollo de dinero digital.
 CoinMarketCap enumera más de 5.000 criptomonedas. Recientemente los
 bancos centrales han empezado a considerar, o al menos estudiar, la
-emisión de monedas digitales (véase Auer et. al. 2020, Boar et al. 2020,
-Kiff et al. 2020 y Mancini-Griffoli et al. 2018).
+emisión de monedas digitales~\cite[véase][]{AuerBoehme,AuerCornelli,Boar,Kiff,Mancini-Griffoli}.
 
 Actualmente los bancos centrales emiten dos tipos de dinero: (i)
 reservas en forma de cuentas de liquidación en los bancos centrales para
@@ -99,8 +99,8 @@ determinados participantes del mercado financiero y (ii) moneda en forma
 de billetes disponibles para el público. En consecuencia, la
 bibliografía sobre la moneda digital del banco central (CBDC) distingue
 entre (a) venta de CBDC al por mayor, con acceso limitado, y (b) venta
-de CBDC al por menor, accesible al público (véase, p. ej. Bech y Garratt
-2017). Una CBDC al por mayor sería menos disruptiva para el sistema
+de CBDC al por menor, accesible al público \cite[véase, p. ej.][]{Bech}.
+Una CBDC al por mayor sería menos disruptiva para el sistema
 actual debido a que los bancos y los participantes seleccionados del
 mercado financiero ya tienen acceso a dinero digital del banco en forma
 de cuentas del banco central, que utilizan para liquidar pagos
@@ -109,8 +109,7 @@ banco central y la tecnología de libro mayor distribuido (Distributed
 Ledger Technology - DLT) ofrecen beneficios netos en comparación con los
 sistemas de liquidación bruta en tiempo real (Real-Time Gross
 Settlement - RTGS). Hasta el momento, la conclusión es que no es así, al
-menos cuando se trata de pagos interbancarios nacionales (véase Chapman
-et al. 2017).
+menos cuando se trata de pagos interbancarios nacionales~\cite[véase][]{Chapman}.
 
 Una CBDC al por menor, que sería una nueva forma de dinero del banco
 central a disposición del público, podría ser más disruptiva para el
@@ -118,52 +117,52 @@ sistema actual, dependiendo de su diseño. Cuanto más compita una CBDC de
 este tipo con los depósitos bancarios comerciales, mayor será la amenaza
 para la financiación bancaria, con un posible impacto adverso en el
 crédito bancario y la actividad económica (véase Agur et al. 2019). Sin
-embargo, una CBDC al por menor podría también tener beneficios (véase
-Bordo y Levin 2017, Berentsen y Schär 2018, Bindseil 2020, Niepelt 2020,
-Sveriges Riksbank 2020 y Bank of England 2020). Poner a disposición de
+embargo, una CBDC al por menor podría también tener
+beneficios~\cite[véase][]{Bordo,Berentsen,Bindseil,Niepelt,Riksbank,BoE}.
+Poner a disposición de
 todos dinero electrónico del banco central sin riesgo de contrapartida
 podría mejorar la estabilidad y la resistencia del sistema de pago al
 por menor. También podría proporcionar una infraestructura de pago
 neutral para promover la competencia, la eficiencia y la innovación. En
 general, es probable que los costos y beneficios de una CBDC al por
 menor difieran de un país a otro. Para conocer la opinión del Banco
-Nacional de Suiza, que no tiene planes de emitir una CBDC al por menor,
-véase Jordan (2019).
+Nacional de Suiza, que no tiene planes de emitir una CBDC al por
+menor~\cite[véase][]{Jordan}.
 
-El presente documento se centra en una CBDC al por menor, pero no
-abordamos la cuestión de si un banco central \emph{debería o no} emitir
-una moneda CBDC. Nos centramos en cambio en el diseño potencial de una
-CBCD. Recientemente ha habido un creciente interés en el diseño de
-monedas CBCD (véase p. ej. Allen et al. (2020), Bank of England (2020)).
-El diseño que proponemos difiere significativamente de otras propuestas.
-Nuestro sistema se basa en la tecnología eCash descrita por Chaum (1983)
-y Chaum et al. (1990), mejorándola. En particular, proponemos un sistema
-para CBCD basado en tokens y solo mediante software, sin blockchain para
-la DLT. La DLT es un diseño interesante en ausencia de un actor
-principal o si las entidades que interactúan no concuerdan en nombrar un
-actor central de confianza. Sin embargo, este no es el caso de una CBCD
-al por menor emitida por un \emph{banco central}. Distribuir el libro
-mayor del banco central con una blockchain solo aumenta los costes de
-transacción, no proporciona beneficios tangibles en una implementación
-por parte de un banco central. Utilizar la DLT para emitir dinero
-digital puede ser útil si no hay un banco central para empezar (p. ej.
-el proyecto Sovereign de las Islas Marshall) o si la intención explícita
-es prescindir de un banco central (p. ej. Bitcoin).\footnote{Puede haber
-buenos casos de uso para la DLT en el caso de infraestructura de
-mercado financiero, tal como los intercambios digitales, donde surge la
-cuestión de como obtener dinero del banco central en la DLT a efectos de
-liquidación. Sin embargo en esas situaciones, los beneficios potenciales
-de la DLT, por ejemplo menos costes o reconciliación automática, no surgen
-de una emisión descentralizada del dinero del banco central.}
+El presente documento se centra en una CBDC al por menor, pero no abordamos la
+cuestión de si un banco central \emph{debería o no} emitir una moneda
+CBDC. Nos centramos en cambio en el diseño potencial de una
+CBCD. Recientemente ha habido un creciente interés en el diseño de monedas
+CBCD (\cite[véase p. ej.][]{Allen,BoE}).  El diseño que proponemos difiere
+significativamente de otras propuestas.  Nuestro sistema se basa en la
+tecnología eCash descrita por Chaum~\cite{Chaum1983,Chaum1990},
+mejorándola. En particular, proponemos un sistema para CBCD basado en tokens y
+solo mediante software, sin blockchain para la DLT. La DLT es un diseño
+interesante en ausencia de un actor principal o si las entidades que
+interactúan no concuerdan en nombrar un actor central de confianza. Sin
+embargo, este no es el caso de una CBCD al por menor emitida por un
+\emph{banco central}. Distribuir el libro mayor del banco central con una
+blockchain solo aumenta los costes de transacción, no proporciona beneficios
+tangibles en una implementación por parte de un banco central. Utilizar la DLT
+para emitir dinero digital puede ser útil si no hay un banco central para
+empezar (p. ej.  el proyecto Sovereign de las Islas Marshall) o si la
+intención explícita es prescindir de un banco central
+(p. ej. Bitcoin).\footnote{Puede haber buenos casos de uso para la DLT en el
+caso de infraestructura de mercado financiero, tal como los intercambios
+digitales, donde surge la cuestión de como obtener dinero del banco central en
+la DLT a efectos de liquidación. Sin embargo en esas situaciones, los
+beneficios potenciales de la DLT, por ejemplo menos costes o reconciliación
+automática, no surgen de una emisión descentralizada del dinero del banco
+central.}
 
 La CBCD basada en tokens que se propone aquí permite también la
 preservación de una cualidad clave del dinero físico: la privacidad en
 la transacción. Usualmente se argumenta que las protecciones
 criptográficas para la privacidad exigen tantos recursos computacionales
-que su utilización en dispositivos móviles no es factible (véase Allen
-et al. 2020). Si bien esto puede ser cierto en el contexto de la DLT,
+que su utilización en dispositivos móviles no es factible~\cite[véase][]{Allen}.
+Si bien esto puede ser cierto en el contexto de la DLT,
 donde la rastreabilidad pública de las transacciones es necesaria para
-prevenir el doble gasto (Narayanan et al. 2016), no es cierto para el
+prevenir el doble gasto~\cite{Narayanan}, no es cierto para el
 protocolo de firma ciega de tipo Chaum con un banco central que se
 propone en el presente documento. Nuestra CBDC, basada en firmas ciegas
 y arquitectura de dos niveles, garantiza una perfecta privacidad de
@@ -179,14 +178,13 @@ de vigilancia gubernamental. Los programas de vigilancia masiva son
 problemáticos incluso si las personas creen que no tienen nada que
 esconder, simplemente por la posibilidad de error y abuso,
 particularmente si los programas carecen de transparencia e
-imputabilidad (véase Solove 2011). Segundo, porque la privacidad en las
+imputabilidad~\cite[véase][]{Solove}. Segundo, porque la privacidad en las
 transacciones protege a los usuarios frente a la explotación de datos por parte
 de los proveedores de servicios de pago.
 Tercero, porque protege a los usuarios frente a la contraparte en la
 transacción, descartando la posibilidad de un posterior comportamiento
 oportunista, o frente a riesgos de seguridad debido a fallos o
-negligencia en la protección de los datos del cliente (véase Kahn et al.
-2005).
+negligencia en la protección de los datos del cliente~\cite[véase][]{Kahn2005}.
 
 Este documento está estructurado como sigue: en la sección 2 explicamos
 la diferencia entre el dinero del banco central y otro dinero. En la
@@ -294,7 +292,7 @@ valor en una de las dos maneras siguientes: o bien imitando a los bancos
 centrales (monedas estables algorítmicas) o bien imitando a los bancos
 comerciales o a los medios de inversión (monedas estables con respaldo
 de activos).\footnote{Para más detalles sobre la taxonomia y descripción
-de las monedas stables véase Bullman et al. (2019).}
+de las monedas stables véase Bullman et al. (2019).\nocite{Bullmann}}
 
 Las ``monedas estables algorítmicas'' dependen de algoritmos para
 regular su suministro. En otras palabras, intentan alcanzar la
@@ -335,7 +333,7 @@ reserva fraccionado, tal como lo hicieron los bancos comerciales.\footnote
 {La incertidumbre sobre si un moneda estable está
 totalmente garantizada puede ser una de las razones por las que una
 moneda stable puede negociarse por debajo de la par en el mercado
-secundario (véase Lyons y Ganesh Viswanath-Natraj, 2020). Este fue
+secundario~\cite[véase][]{Lyons}. Este fue
 también historícamente el caso con los billetes cuando eran emitidos
 por los bancos comerciales. Tales billetes solían negociarse con
 diversos descuentos en el mercado secundario antes de que la emisión
@@ -351,8 +349,8 @@ un depósito en un banco comercial, sigue expuesta a los riesgos de
 crédito y liquidez del banco subyacente. Este riesgo se puede eliminar
 si los depósitos se mantienen en el banco central para que la moneda
 estable esté respaldada por las reservas del banco central. Tales
-monedas estables han sido llamadas ``CBDC sintéticas'' (Adrian y
-Mancini-Griffoli 2019). Es importante señalar, sin embargo, que tales
+monedas estables han sido llamadas ``CBDC sintéticas''~\cite{Adrian}.
+Es importante señalar, sin embargo, que tales
 monedas estables no son dinero del banco central y por lo tanto no son
 CBDC, ya que no constituyen obligaciones del banco central y, por lo
 tanto, siguen expuestas al riesgo de contraparte, es decir, el riesgo de
@@ -367,7 +365,7 @@ correspondientes riesgos. El valor de la moneda dependerá del valor neto
 de los activos del fondo, pero su valor real puede desviarse. Si hay
 participantes autorizados que puedan crear y canjear monedas estables y
 así actuar como arbitristas, como en el caso de los ETF y como estaba
-previsto para Diem (Asociación Libra 2020), es probable que la
+previsto para Diem~\cite{Libra}, es probable que la
 desviación sea mínima.
 
 En general, las monedas estables tiene una mayor probabilidad de llegar
@@ -402,7 +400,7 @@ de seguridad para los billetes.
 
 Ha habido sugerencias de que la distinción entre los sistemas basados en
 cuentas y los sistemas basados en tokens no es aplicable a las monedas
-digitales (Garratt et al. 2020). Nosotros tenemos una opinión diferente
+digitales~\cite{Garratt}. Nosotros tenemos una opinión diferente
 porque creemos que hay una diferencia significativa. La distinción
 fundamental es la información contenida en el activo. En un sistema
 basado en cuentas, los activos (las cuentas) se asocian con los
@@ -434,9 +432,9 @@ autenticación del ciudadano es algo que probablemente en la actualidad
 los bancos no estén preparados para hacer a gran escala, cualquier CBDC
 basada en cuentas requeriría que el banco central delegara estas
 verificaciones. Todo el servicio y mantenimiento de tales cuentas podría
-asignarse a proveedores externos (Blindseil 2020), o la legislación
+asignarse a proveedores externos~\cite{Bindseil}, o la legislación
 podría obligar a los bancos comerciales a abrir cuentas bancarias en el
-banco central para sus clientes (Berentsen y Schär 2018).
+banco central para sus clientes~\cite{Berentsen}.
 
 Tal CBDC basada en cuentas daría potencialmente a un banco central mucha
 información. Una posible preocupación podría ser que esto permitiera a
@@ -458,25 +456,24 @@ también en competición directa con los bancos comerciales. Esta
 competición implicaría dos riesgos. Primero, podría amenazar la base de
 depósitos de los bancos y, en el extremo, desintermediar el sector
 bancario. Esto podría afectar de manera adversa la disponibilidad de
-crédito para el sector privado y, como resultado, la actividad económica
-(Agur et al. 2019). La desintermediación de los bancos también podría
+crédito para el sector privado y, como resultado, la actividad
+económica~\cite{Agur}. La desintermediación de los bancos también podría
 conducir a la centralización del proceso de asignación de crédito dentro
 del banco central, lo que afectaría negativamente la productividad y el
 crecimiento económico. En segundo lugar, permitir que la gente traslade
 sus depósitos al refugio seguro de un banco central podría acelerar las
 caídas bancarias durante crisis financieras.
 
-Existen sin embargo argumentos contrarios. Brunnermeier y Niepelt (2019)
-argumentan que la transferencia de fondos desde un depósito hacia una
-cuenta de CBDC conduciría a una sustitución automática de la
-financiación de depósitos por la financiación del banco central,
-simplemente haciendo explicita la garantía implícita del banco central
-como prestamista de última instancia. Berentsen y Schär (2018) sostienen
-que la competencia de los bancos centrales podría incluso tener un
-efecto disciplinario sobre los bancos comerciales y, por lo tanto,
-incrementar la estabilidad del sistema financiero, ya que los bancos
-comerciales tendrían que hacer sus modelos de negocio más seguros para
-evitar las caídas bancarias.
+Existen sin embargo argumentos contrarios. Brunnermeier y Niepelt
+(2019)\nocite{Brunnermeier} argumentan que la transferencia de fondos desde un
+depósito hacia una cuenta de CBDC conduciría a una sustitución automática de
+la financiación de depósitos por la financiación del banco central,
+simplemente haciendo explicita la garantía implícita del banco central como
+prestamista de última instancia. Berentsen y Schär (2018)\nocite{Berentsen}
+sostienen que la competencia de los bancos centrales podría incluso tener un
+efecto disciplinario sobre los bancos comerciales y, por lo tanto, incrementar
+la estabilidad del sistema financiero, ya que los bancos comerciales tendrían
+que hacer sus modelos de negocio más seguros para evitar las caídas bancarias.
 
 También hay propuestas para mitigar el riesgo de la desintermediación
 que tienen como objetivo limitar o desincentivar el uso de CBDC como
@@ -486,8 +483,8 @@ ajustable a las cuentas de CBDC, de manera que la remuneración esté
 siempre lo bastante por debajo de la remuneración de las cuentas de los
 bancos comerciales (posiblemente incluyendo un rendimiento negativo)
 para hacer que las CBDC resulten menos atractivas como depósitos de
-valor (Kumhof y Noone 2018, Bindseil 2020). Además, para disuadir las
-caídas bancarias, Kumhof y Noone (2018) sugieren que las CBDC no
+valor~\cite{Kumhof,Bindseil}. Además, para disuadir las
+caídas bancarias, Kumhof y Noone (2018)\nocite{Kumhof} sugieren que las CBDC no
 deberían ser emitidas contra depósitos bancarios, sino solo contra
 valores tales como bonos del Estado. En general, una CBDC basada en
 cuentas requeriría un análisis más profundo de estas cuestiones.
@@ -497,17 +494,15 @@ cuentas requeriría un análisis más profundo de estas cuestiones.
 \label{cbdc-basada-en-tokens-y-dependiente-del-hardware}}
 
 Un banco central podría también emitir tokens electrónicos en lugar de
-cuentas. Técnicamente esto requiere de un sistema para asegurar que los
-tokens electrónicos no se puedan copiar fácilmente. Las funciones
-físicamente imposibles de clonar (véase Katzenbeisser et al. 2012) y las
-zonas seguras en el hardware (véase Alves y Felton 2004, Pinto y Santos
-2019) son dos tecnologías potenciales para la prevención de la copia
-digital. Las funciones físicas imposibles de clonar, sin embargo, no se
-pueden intercambiar a través de Internet (eliminando así el uso
-principal de las CBDC), y anteriores funciones de seguridad en el
-hardware para la prevención de copias se han visto comprometidas
-repetidamente (véase p. ej. Wojtczuk y Rutkowska 2009, Johnston 2010,
-Lapid and Wool 2019).
+cuentas. Técnicamente esto requiere de un sistema para asegurar que los tokens
+electrónicos no se puedan copiar fácilmente. Las funciones físicamente
+imposibles de clonar (véase Katzenbeisser et al. 2012) y las zonas seguras en
+el hardware~\cite[véase][]{Alves,Pinto} son dos tecnologías potenciales para
+la prevención de la copia digital. Las funciones físicas imposibles de clonar,
+sin embargo, no se pueden intercambiar a través de Internet (eliminando así el
+uso principal de las CBDC), y anteriores funciones de seguridad en el hardware
+para la prevención de copias se han visto comprometidas
+repetidamente~\cite[véase p. ej.][]{Wojtczuk,Johnston,Lapid}.
 
 Una ventaja fundamental de las CBDC basadas en tokens sobre las basadas
 en cuentas del banco central es que los sistemas basados en tokens
@@ -521,15 +516,14 @@ parte de delincuentes.
 
 Las tarjetas SIM son actualmente las candidatas más extensivamente
 disponibles para un sistema de pago seguro basado en hardware, pero
-estas también conllevan riesgos. La experiencia (véase p. ej. Soukup y
-Muff 2007, Garcia et. al. 2008, Kasper et. al. 2010, CCC 2017) sugiere
+estas también conllevan riesgos. La experiencia~\cite[véase p. ej.][]{Soukup,Garcia,Kasper,CCC} sugiere
 que cualquier dispositivo económicamente producible que almacene tokens
 con un valor monetario en posesión de una persona, y que permita
 transacciones sin conexión -- y por tanto el robo de la información que
 contiene -- será el objetivo de ataques de falsificación exitosos tan
 pronto como el valor económico del ataque fuera los suficientemente
-elevado. Tales ataques incluyen usuarios que atacan su propio hardware
-(véase también Allen et al. 2020). Los sistemas de pago con tarjeta que
+elevado. Tales ataques incluyen usuarios que atacan su propio
+hardware~\cite[véase también]{Allen}. Los sistemas de pago con tarjeta que
 se han desplegado previamente dependen de la resistencia a la
 manipulación en combinación con la detección del fraude para limitar el
 impacto de una situación de peligro. Sin embargo, la detección del
@@ -549,15 +543,15 @@ Taler. Taler es parte del Proyecto GNU, cuyo fundador, Richard Stallman,
 acuñó el término \emph{Software Libre}, actualmente denominado \emph{Software
 Libre y de Código Abierto} (Free/Libre Open Source Software --
 FLOSS).\footnote{Para más información sobre GNU, véase
-\url{https://www.gnu.org} y Stallman (1985). GNU Taler se publica
+\url{https://www.gnu.org} y Stallman (1985)\nocite{Stallman}. GNU Taler se publica
 gratuitamente bajo la Licencia Pública General Affero del Proyecto
 GNU. Otros programas del Proyecto GNU populares entre los economistas
 son «R» y ``GNU Regression, Econometrics and Time-series Library''
 (GRETL). Un análisis de los beneficios del FLOSS en comparación con el
 software privativo en el campo de la investigación puede consultarse
-en Baiocchi y Distaso (2003), Yalta y Lucchetti (2008) y Yalta y Yalta
-(2010). Sobre el licenciamiento de código abierto véase Lerner y
-Tirole (2005).} Un programa se considera "Software Libre" si la licencia
+en Baiocchi y Distaso (2003)\nocite{Baiocchi}, Yalta y Lucchetti (2008)\nocite{Yalta2008} y Yalta y Yalta
+(2010)\nocite{Yalta2010}. Sobre el licenciamiento de código abierto véase Lerner y
+Tirole (2005)\nocite{Lerner}.} Un programa se considera "Software Libre" si la licencia
 otorga a los usuarios cuatro libertades esenciales: la libertad
 de ejecutar el programa como deseen, la libertad de estudiar el programa
 y modificarlo, la libertad de redistribuir copias del programa y la
@@ -602,7 +596,7 @@ retiran CBDC y a los comerciantes/beneficiarios cuando reciben CBDC,
 pero cuando gastan CBDC, los clientes/pagadores solo tienen que
 autorizar sus transacciones y no necesitan identificarse. Esto hace que
 los pagos resulten más baratos, fáciles y rápidos, y evita una fácil
-interferencia con la privacidad (Dold 2019). Además, autenticar a los
+interferencia con la privacidad~\cite{Dold}. Además, autenticar a los
 clientes cuando retiran CBDC y a los comerciantes/beneficiarios cuando
 reciben CBDC garantiza el cumplimiento del KYC, AML y CFT.
 
@@ -632,7 +626,7 @@ verdadero instrumento digital al portador.
 
 En el análisis que sigue proporcionamos una introducción de alto nivel a
 la tecnología y demostramos cómo se puede integrar con el sistema
-bancario existente para crear una CBDC. Dold (2019) describe detalles
+bancario existente para crear una CBDC. Dold (2019)\nocite{Dold} describe detalles
 adicionales.
 
 \hypertarget{componentes-fundamentales}{%
@@ -651,19 +645,19 @@ esquema de firma con clave pública es que el propietario de una clave
 privada es el único que puede firmar un mensaje, mientras que la clave
 pública permite a cualquiera verificar la validez de la
 firma.\footnote{La criptografía de clave pública fué introducida por
-Diffie y Hellman (1976), y la primera implentación de firmas digitales
-fué introducida por Rivest, Shamir y Adleman (1978).} El resultado de
+Diffie y Hellman (1976)\nocite{Diffie}, y la primera implentación de firmas digitales
+fué introducida por Rivest, Shamir y Adleman (1978)\nocite{Rivest}.} El resultado de
 la función de verificación es la declaración binaria "verdadero" o
 "falso". Si el mensaje está firmado con la clave privada que pertenece a
 la clave pública de verificación, el resultado es verdadero, de lo
 contrario es falso. En nuestra propuesta, el mensaje es una "moneda" o
 "billete" con un número de serie, y la firma del banco central confirma
-su validez. Si bien GNU Taler usa por defecto firmas EdDSA modernas
-(véase Bernstein et al. 2012), presentamos un esquema de firma
+su validez. Si bien GNU Taler usa por defecto firmas EdDSA
+modernas~\cite[véase][]{Bernstein2012}, presentamos un esquema de firma
 criptográfica simple basado en el bien estudiado sistema criptográfico
-RSA (Rivest et al. 1978).\footnote{Para un análisis de la larga historia
+RSA~\cite{Rivest}.\footnote{Para un análisis de la larga historia
 del criptosistema RSA y un estudio de los ataques al criptosistema RSA,
-consulte Boneh (1999).} Sin embargo, en principio se puede utilizar
+consulte Boneh (1999)\nocite{Boneh}.} Sin embargo, en principio se puede utilizar
 cualquier esquema de firma criptográfica (DSA, ECDSA, EdDSA, RSA, etc.).
 
 Para generar las claves RSA, el firmante elige primero dos grandes e
@@ -701,14 +695,14 @@ relativamente cortas.\footnote{En el caso del criptosistema RSA el
 límite de la longitud es $\log_{2}n$ bits.}
 
 \emph{Firmas ciegas.} Usamos firmas ciegas, introducidas por Chaum
-(1983), para proteger la privacidad de los compradores. Una firma ciega
+(1983)\nocite{Chaum1983}, para proteger la privacidad de los compradores. Una firma ciega
 se usa para crear una firma criptográfica para un mensaje sin que el
 firmante conozca el contenido del mensaje que se firma. En nuestra
 propuesta, esto evita que los bancos comerciales y el banco central
 puedan rastrear las compras identificando a los compradores. Nuestra
 propuesta funciona en principio con cualquier esquema de firma ciega,
 pero la mejor solución es la variante basada en RSA descrita por Chaum
-(1983).
+(1983)\nocite{Chaum1983}.
 
 El cegamiento lo realizan los clientes, quienes ciegan sus monedas antes
 de transmitirlas al banco central para ser firmadas. Los clientes por
@@ -800,7 +794,7 @@ intercambios atómicos de los protocolos \emph{interledger} o al
 intercambio justo en sistemas tradicionales de efectivo electrónico.
 
 La construcción matemática más común para un protocolo de intercambio de
-claves es la construcción Diffie-Hellman (Diffie y Hellman 1976). Esta
+claves es la construcción Diffie-Hellman~\cite{Diffie}. Esta
 permite que dos partes puedan derivar una clave secreta compartida. Para
 hacerlo, comparten dos parámetros del dominio $p$ y $g$, que
 pueden ser públicos, donde $p$ es un número primo grande y $g$
@@ -810,7 +804,7 @@ algún entero $k$ para el cual
 $g^k \equiv a \mod p$.
 En la práctica, $g$ deberia ser tal raíz primitiva $p-1$, que se
 llama también generador, para prevenir ataques de subgrupo tales como ataques
-Pohlig-Hellman (véase Lim y Pil, 1997).} Ahora, las dos partes eligen sus claves
+Pohlig-Hellman~\cite[véase][]{Lim}.} Ahora, las dos partes eligen sus claves
 privadas \emph{a} y \emph{b}, que son dos números enteros grandes. Con estas claves
 privadas y los parámetros del dominio, generan sus respectivas claves
 públicas $A \equiv g^{a} \mod p$ y $B \equiv g^{b} \mod p$.
@@ -981,7 +975,7 @@ línea y una base de datos de alta disponibilidad. Debido a que los
 usuarios pueden copiar las monedas electrónicas, solo los controles en
 línea pueden prevenir eficientemente el doble gasto. Si bien existen
 soluciones teóricas para identificar de manera retroactiva a usuarios
-que se dediquen al doble gasto (véase Chaum et al. 1990), tales
+que se dediquen al doble gasto~\cite[véase][]{Chaum1990}, tales
 soluciones crean un riesgo económico tanto para los usuarios como para
 el banco central, debido al retraso en la identificación de
 transacciones fraudulentas. La detección del doble gasto en línea
@@ -1030,14 +1024,13 @@ consistente, las adiciones de hardware no tienen por qué ser
 disruptivas. Se puede utilizar cualquier tecnología de base de datos
 subyacente.
 
-Más concretamente, la lógica del front-end en el banco central solo
-tiene que realizar unas cuantas operaciones de firma, y un único
-procesador puede hacer miles de operaciones por segundo (véase Bernstein
-y Lange 2020). Si un solo sistema es insuficiente, es fácil desplegar
-servidores front-end adicionales y solicitar a los varios bancos
-comerciales que balanceen sus peticiones en la granja de servidores o
-que utilicen un balanceador de carga para distribuir las peticiones
-dentro de la infraestructura del banco central.
+Más concretamente, la lógica del front-end en el banco central solo tiene que
+realizar unas cuantas operaciones de firma, y un único procesador puede hacer
+miles de operaciones por segundo~\cite[véase][]{Bernstein2020}. Si un solo
+sistema es insuficiente, es fácil desplegar servidores front-end adicionales y
+solicitar a los varios bancos comerciales que balanceen sus peticiones en la
+granja de servidores o que utilicen un balanceador de carga para distribuir
+las peticiones dentro de la infraestructura del banco central.
 
 Los servidores front-end deben comunicarse con una base de datos para
 hacer transacciones y prevenir el doble gasto. Un solo servidor moderno
@@ -1064,7 +1057,7 @@ años sea el costo predominante del sistema. Utilizando los precios de
 Amazon Web Services, experimentamos con un prototipo anterior de GNU
 Taler y descubrimos que el costo del sistema (almacenamiento, ancho de
 banda y computación) a escala estaría por debajo de USD 0,0001 por
-transacción (para obtener detalles sobre los datos, consulte Dold 2019).
+transacción (para obtener detalles sobre los datos, consulte Dold 2019\nocite{Dold}).
 
 \hypertarget{consideraciones-normativas-y-poluxedticas}{%
 \section{Consideraciones normativas y políticas}\label{5.-consideraciones-normativas-y-poluxedticas}}
@@ -1126,24 +1119,24 @@ acaparamiento significativamente mayor que en el caso del efectivo
 físico.
 
 Sin embargo, si el acaparamiento o la conversión masiva a CBDC de dinero
-proveniente de depósitos bancarios se convirtieran en un problema, los
-bancos centrales tendrían varias opciones. Como se señaló, en el diseño
-propuesto los bancos centrales configuran una fecha de vencimiento para
-todas las claves de firma, lo que implica que en una fecha establecida
-las monedas firmadas con esas claves dejan de ser válidas. Cuando las
-claves de denominación caducan y los clientes tienen que cambiar monedas
-firmadas con claves de denominación antiguas por monedas nuevas, el
-regulador podría fácilmente imponer un límite de conversión por cliente
-para hacer cumplir un límite estricto a la cantidad de CBDC que
-cualquier individuo puede acumular. Además, los bancos centrales podrían
-cobrar una tarifa si fuera necesario. Una tarifa de actualización de
-este tipo, cuando las monedas están programadas para caducar, implicaría
-de hecho tasas de interés negativas en la CBDC, y haría que la CBDC
-resultara menos atractiva como depósito de valor, tal como sugiere
-Bindseil (2020). De hecho, sería la implementación directa de la idea de
-Silvio Gesell de aplicar un ``impuesto de posesión'' sobre la moneda, al
-que hace célebremente referencia Keynes (1936), y reviven Goodfriend
-(2000), Buiter y Panigirtzoglou (2003) y Agarwal y Kimball (2019).
+proveniente de depósitos bancarios se convirtieran en un problema, los bancos
+centrales tendrían varias opciones. Como se señaló, en el diseño propuesto los
+bancos centrales configuran una fecha de vencimiento para todas las claves de
+firma, lo que implica que en una fecha establecida las monedas firmadas con
+esas claves dejan de ser válidas. Cuando las claves de denominación caducan y
+los clientes tienen que cambiar monedas firmadas con claves de denominación
+antiguas por monedas nuevas, el regulador podría fácilmente imponer un límite
+de conversión por cliente para hacer cumplir un límite estricto a la cantidad
+de CBDC que cualquier individuo puede acumular. Además, los bancos centrales
+podrían cobrar una tarifa si fuera necesario. Una tarifa de actualización de
+este tipo, cuando las monedas están programadas para caducar, implicaría de
+hecho tasas de interés negativas en la CBDC, y haría que la CBDC resultara
+menos atractiva como depósito de valor, tal como sugiere Bindseil (2020). De
+hecho, sería la implementación directa de la idea de Silvio Gesell de aplicar
+un ``impuesto de posesión'' sobre la moneda, al que hace célebremente
+referencia Keynes (1936)\nocite{Keynes}, y reviven Goodfriend
+(2000)\nocite{Goodfriend}, Buiter y Panigirtzoglou (2003)\nocite{Buiter} y
+Agarwal y Kimball (2019)\nocite{Agarwal}.
 
 En cuanto a las posibles implicaciones para las políticas monetarias, no
 anticipamos efectos materiales porque nuestra CBDC está diseñada para
@@ -1165,14 +1158,15 @@ la investigación se ha centrado en tres cuestiones principales. Primero,
 en la propuesta original de Chaum las monedas tenían un valor fijo y
 solo podían gastarse en su totalidad. Pagar grandes cantidades con
 monedas denominadas en centavos sería ineficiente, por lo que Okamoto
-(1995), Camenisch (2005), Canard y Gouget (2007) y Dold (2019) idearon
+(1995)\nocite{Okamoto}, Camenisch (2005)\nocite{Camenisch2005},
+Canard y Gouget (2007)\nocite{Canard} y Dold (2019)\nocite{Dold} idearon
 formas de abordar este problema. Estas soluciones involucran protocolos
 para dar cambio o para posibilitar la divisibilidad de las monedas.
 
 Una segunda cuestión es que las transacciones a veces fallan debido a
 caídas de la red, por ejemplo. En este caso, el sistema debe permitir
 que los fondos permanezcan con el consumidor sin impacto negativo sobre
-privacidad. Camenisch et al. (2007) y Dold (2019) abordan este tema en
+privacidad. Camenisch et al. (2007)\nocite{Camenisch2007} y Dold (2019)\nocite{Dold} abordan este tema en
 su propuesta de dinero electrónico respaldado. Varias de las soluciones
 anteriores violan las garantías de privacidad para los clientes que
 utilizan estas funciones, y todas, excepto Taler, violan el requisito de
@@ -1180,7 +1174,7 @@ transparencia de ingresos.
 
 La tercera cuestión importante, a menudo desatendida, es conservar la
 transparencia de los ingresos y, por lo tanto, el cumplimiento del AML y
-KYC. Fuchsbauer y col. (2009) diseñaron deliberadamente un sistema que
+KYC. Fuchsbauer y col. (2009)\nocite{Fuchsbauer} diseñaron deliberadamente un sistema que
 posibilita la desintermediación para proporcionar una semántica más
 similar al efectivo. Sin embargo, la desintermediación ilimitada
 generalmente no concuerda con las regulaciones del AML y KYC, ya que no
@@ -1190,11 +1184,11 @@ sobre el pagador, el beneficiario y el monto de la transacción, siendo
 por lo tanto el sistema de pago perfecto para la delincuencia en línea.
 Solo Taler ofrece tanto la privacidad constante del cliente como la
 transparencia de los ingresos, al mismo tiempo que proporciona un cambio
-eficiente, intercambios atómicos (consulte Camenisch 2007) y la
+eficiente, intercambios atómicos~\cite[consulte][]{Camenisch2007} y la
 capacidad de restaurar billeteras desde una copia de seguridad.
 
 Con respecto a los sistemas de pago para las CBDC, Danezis y Meiklejohn
-(2016) diseñaron un libro mayor escalable con RSCoin. Básicamente es un
+(2016)\nocite{Danezis} diseñaron un libro mayor escalable con RSCoin. Básicamente es un
 sistema RTGS que es protegido utilizando la misma criptografía que se
 usa en Bitcoin. Al igual que Taler, el diseño utiliza la fragmentación
 de la base de datos para lograr una escalabilidad lineal. Sin embargo,
@@ -1202,7 +1196,7 @@ el diseño de Danezis y Meiklejohn no tiene ninguna disposición para la
 privacidad y carece de consideraciones sobre cómo integrar prácticamente
 el diseño con los sistemas y procesos bancarios existentes.
 
-La EUROchain del Banco Central Europeo (véase ECB 2019) es otro
+La EUROchain del Banco Central Europeo\cite[véase][]{ECB} es otro
 prototipo para CBDC con libro mayor distribuido. Similar a la
 arquitectura propuesta en el presente documento, la EUROchain utiliza
 una arquitectura de dos niveles donde los bancos comerciales actúan como
@@ -1277,8 +1271,8 @@ digitalización.
 
 
 \newpage
-REFERENCIAS
+%REFERENCIAS
 \bibliographystyle{agsm}
-\bibliography{cbdc,rfc}
+\bibliography{cbdc}
 
 \end{document}
