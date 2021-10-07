@@ -71,7 +71,7 @@ necesariamente los puntos de vista del Banco Nacional de Suiza (BNS). El
 BNS no asume ninguna responsabilidad por errores u omisiones ni por la
 exactitud de la información contenida en este documento.
 
-Traducción: Javier Sepulveda y Dora Scilipoti (verano 2021)
+Traducción: Javier Sepulveda \& Dora Scilipoti (verano 2021)
 
 
 \newpage
@@ -83,10 +83,10 @@ Desde la aparición de los ordenadores personales en los años ochenta, y
 especialmente desde que en 1991 la National Science Foundation quitara
 las restricciones al uso de Internet para propósitos comerciales, se ha
 buscado crear dinero digital para realizar pagos en línea. La primera
-propuesta la realizó Chaum en 1983. A pesar de que tales métodos fueron
+propuesta la realizó~\citet{Chaum1983}. A pesar de que tales métodos fueron
 implementados, no prosperaron. Fueron en cambio los sistemas con tarjeta
 de crédito los que se convirtieron en el método dominante para pagos en
-línea. La propuesta de Nakamoto en 2008~\cite{Nakamoto} para un sistema P2P de dinero
+línea. La propuesta de~\citet{Nakamoto} para un sistema P2P de dinero
 digital y el posterior lanzamiento exitoso de Bitcoin desataron una
 nueva era de investigación sobre el tema y desarrollo de dinero digital.
 CoinMarketCap enumera más de 5.000 criptomonedas. Recientemente los
@@ -116,7 +116,7 @@ central a disposición del público, podría ser más disruptiva para el
 sistema actual, dependiendo de su diseño. Cuanto más compita una CBDC de
 este tipo con los depósitos bancarios comerciales, mayor será la amenaza
 para la financiación bancaria, con un posible impacto adverso en el
-crédito bancario y la actividad económica (véase Agur et al. 2019). Sin
+crédito bancario y la actividad económica~\cite[véase][]{Agur}. Sin
 embargo, una CBDC al por menor podría también tener
 beneficios~\cite[véase][]{Bordo,Berentsen,Bindseil,Niepelt,Riksbank,BoE}.
 Poner a disposición de
@@ -292,7 +292,7 @@ valor en una de las dos maneras siguientes: o bien imitando a los bancos
 centrales (monedas estables algorítmicas) o bien imitando a los bancos
 comerciales o a los medios de inversión (monedas estables con respaldo
 de activos).\footnote{Para más detalles sobre la taxonomia y descripción
-de las monedas stables véase Bullman et al. (2019).\nocite{Bullmann}}
+de las monedas stables véase~\citet{Bullmann}.}
 
 Las ``monedas estables algorítmicas'' dependen de algoritmos para
 regular su suministro. En otras palabras, intentan alcanzar la
@@ -380,7 +380,7 @@ Como se ha señalado, una CBDC sería una obligación del banco central.
 Dos posibles diseños que se analizan en la literatura son: (a) una CBDC
 basada en cuentas y (b) una CBDC basada en tokens (o basada en valor).
 Estos diseños corresponden a los dos tipos existentes de dinero de un
-banco central y sus correspondientes sistemas de pago (Kahn y Roberds
+banco central y sus correspondientes sistemas de pago (Kahn \& Roberds
 2008): las reservas de un banco central (en un sistema basado en
 cuentas) y billetes (en un sistema basado en tokens). Un pago se produce
 si un activo monetario se transfiere de un pagador a un beneficiario. En
@@ -464,12 +464,12 @@ crecimiento económico. En segundo lugar, permitir que la gente traslade
 sus depósitos al refugio seguro de un banco central podría acelerar las
 caídas bancarias durante crisis financieras.
 
-Existen sin embargo argumentos contrarios. Brunnermeier y Niepelt
-(2019)\nocite{Brunnermeier} argumentan que la transferencia de fondos desde un
+Existen sin embargo argumentos contrarios. \citet{Brunnermeier} argumentan
+que la transferencia de fondos desde un
 depósito hacia una cuenta de CBDC conduciría a una sustitución automática de
 la financiación de depósitos por la financiación del banco central,
 simplemente haciendo explicita la garantía implícita del banco central como
-prestamista de última instancia. Berentsen y Schär (2018)\nocite{Berentsen}
+prestamista de última instancia. \citet{Berentsen}
 sostienen que la competencia de los bancos centrales podría incluso tener un
 efecto disciplinario sobre los bancos comerciales y, por lo tanto, incrementar
 la estabilidad del sistema financiero, ya que los bancos comerciales tendrían
@@ -484,7 +484,7 @@ siempre lo bastante por debajo de la remuneración de las cuentas de los
 bancos comerciales (posiblemente incluyendo un rendimiento negativo)
 para hacer que las CBDC resulten menos atractivas como depósitos de
 valor~\cite{Kumhof,Bindseil}. Además, para disuadir las
-caídas bancarias, Kumhof y Noone (2018)\nocite{Kumhof} sugieren que las CBDC no
+caídas bancarias, \citet{Kumhof} sugieren que las CBDC no
 deberían ser emitidas contra depósitos bancarios, sino solo contra
 valores tales como bonos del Estado. En general, una CBDC basada en
 cuentas requeriría un análisis más profundo de estas cuestiones.
@@ -496,7 +496,7 @@ cuentas requeriría un análisis más profundo de estas cuestiones.
 Un banco central podría también emitir tokens electrónicos en lugar de
 cuentas. Técnicamente esto requiere de un sistema para asegurar que los tokens
 electrónicos no se puedan copiar fácilmente. Las funciones físicamente
-imposibles de clonar (véase Katzenbeisser et al. 2012) y las zonas seguras en
+imposibles de clonar~\cite[véase][]{Katzenbeisser} y las zonas seguras en
 el hardware~\cite[véase][]{Alves,Pinto} son dos tecnologías potenciales para
 la prevención de la copia digital. Las funciones físicas imposibles de clonar,
 sin embargo, no se pueden intercambiar a través de Internet (eliminando así el
@@ -539,26 +539,24 @@ privacidad}
 La CBDC que se propone aquí es de tipo "solo software", simplemente una
 aplicación para teléfonos inteligentes que no requiere ningún hardware
 adicional por parte de los usuarios. La CBDC se basa en eCash y GNU
-Taler. Taler es parte del Proyecto GNU, cuyo fundador, Richard Stallman,
-acuñó el término \emph{Software Libre}, actualmente denominado \emph{Software
-Libre y de Código Abierto} (Free/Libre Open Source Software --
-FLOSS).\footnote{Para más información sobre GNU, véase
-\url{https://www.gnu.org} y Stallman (1985)\nocite{Stallman}. GNU Taler se publica
-gratuitamente bajo la Licencia Pública General Affero del Proyecto
-GNU. Otros programas del Proyecto GNU populares entre los economistas
-son «R» y ``GNU Regression, Econometrics and Time-series Library''
-(GRETL). Un análisis de los beneficios del FLOSS en comparación con el
-software privativo en el campo de la investigación puede consultarse
-en Baiocchi y Distaso (2003)\nocite{Baiocchi}, Yalta y Lucchetti (2008)\nocite{Yalta2008} y Yalta y Yalta
-(2010)\nocite{Yalta2010}. Sobre el licenciamiento de código abierto véase Lerner y
-Tirole (2005)\nocite{Lerner}.} Un programa se considera "Software Libre" si la licencia
-otorga a los usuarios cuatro libertades esenciales: la libertad
-de ejecutar el programa como deseen, la libertad de estudiar el programa
-y modificarlo, la libertad de redistribuir copias del programa y la
-libertad de distribuir copias de las versiones modificadas del programa.
-El software libre no tiene por qué ser no comercial: proporcionar
-soporte técnico para software es un modelo de negocio estándar para el
-FLOSS.
+Taler. Taler es parte del Proyecto GNU, cuyo fundador, Richard Stallman, acuñó
+el término \emph{Software Libre}, actualmente denominado \emph{Software Libre
+y de Código Abierto} (Free/Libre Open Source Software -- FLOSS).\footnote{Para
+más información sobre GNU, véase \url{https://www.gnu.org} y
+\citet{Stallman}. GNU Taler se publica gratuitamente bajo la Licencia Pública
+General Affero del Proyecto GNU. Otros programas del Proyecto GNU populares
+entre los economistas son «R» y ``GNU Regression, Econometrics and Time-series
+Library'' (GRETL). Un análisis de los beneficios del FLOSS en comparación con
+el software privativo en el campo de la investigación puede consultarse
+en~\citet{Baiocchi}, \citet{Yalta2008} y \citet{Yalta2010}. Sobre el
+licenciamiento de código abierto véase \citet{Lerner}.} Un programa se
+considera "Software Libre" si la licencia otorga a los usuarios cuatro
+libertades esenciales: la libertad de ejecutar el programa como deseen, la
+libertad de estudiar el programa y modificarlo, la libertad de redistribuir
+copias del programa y la libertad de distribuir copias de las versiones
+modificadas del programa.  El software libre no tiene por qué ser no
+comercial: proporcionar soporte técnico para software es un modelo de negocio
+estándar para el FLOSS.
 
 Dado el gran número de partes interesadas involucradas en una CBDC al
 por menor (el banco central, el sector financiero, comerciantes y
@@ -626,7 +624,7 @@ verdadero instrumento digital al portador.
 
 En el análisis que sigue proporcionamos una introducción de alto nivel a
 la tecnología y demostramos cómo se puede integrar con el sistema
-bancario existente para crear una CBDC. Dold (2019)\nocite{Dold} describe detalles
+bancario existente para crear una CBDC. \citet{Dold} describe detalles
 adicionales.
 
 \hypertarget{componentes-fundamentales}{%
@@ -640,25 +638,23 @@ alternativos y equivalentes para cada componente, y simplemente
 presentamos los diseños seguros más sencillos de los que tenemos
 conocimiento.
 
-\emph{Firmas digitales.} La idea básica de las firmas digitales en un
-esquema de firma con clave pública es que el propietario de una clave
-privada es el único que puede firmar un mensaje, mientras que la clave
-pública permite a cualquiera verificar la validez de la
-firma.\footnote{La criptografía de clave pública fué introducida por
-Diffie y Hellman (1976)\nocite{Diffie}, y la primera implentación de firmas digitales
-fué introducida por Rivest, Shamir y Adleman (1978)\nocite{Rivest}.} El resultado de
-la función de verificación es la declaración binaria "verdadero" o
-"falso". Si el mensaje está firmado con la clave privada que pertenece a
-la clave pública de verificación, el resultado es verdadero, de lo
-contrario es falso. En nuestra propuesta, el mensaje es una "moneda" o
-"billete" con un número de serie, y la firma del banco central confirma
-su validez. Si bien GNU Taler usa por defecto firmas EdDSA
-modernas~\cite[véase][]{Bernstein2012}, presentamos un esquema de firma
-criptográfica simple basado en el bien estudiado sistema criptográfico
-RSA~\cite{Rivest}.\footnote{Para un análisis de la larga historia
-del criptosistema RSA y un estudio de los ataques al criptosistema RSA,
-consulte Boneh (1999)\nocite{Boneh}.} Sin embargo, en principio se puede utilizar
-cualquier esquema de firma criptográfica (DSA, ECDSA, EdDSA, RSA, etc.).
+\emph{Firmas digitales.} La idea básica de las firmas digitales en un esquema
+de firma con clave pública es que el propietario de una clave privada es el
+único que puede firmar un mensaje, mientras que la clave pública permite a
+cualquiera verificar la validez de la firma.\footnote{La criptografía de clave
+pública fué introducida por~\citet{Diffie}, y la primera implentación de
+firmas digitales fué introducida por~\citet{Rivest}.} El resultado de la
+función de verificación es la declaración binaria "verdadero" o "falso". Si el
+mensaje está firmado con la clave privada que pertenece a la clave pública de
+verificación, el resultado es verdadero, de lo contrario es falso. En nuestra
+propuesta, el mensaje es una "moneda" o "billete" con un número de serie, y la
+firma del banco central confirma su validez. Si bien GNU Taler usa por defecto
+firmas EdDSA modernas~\cite[véase][]{Bernstein2012}, presentamos un esquema de
+firma criptográfica simple basado en el bien estudiado sistema criptográfico
+RSA~\cite{Rivest}.\footnote{Para un análisis de la larga historia del
+criptosistema RSA y un estudio de los ataques al criptosistema RSA,
+consulte~\citet{Boneh}.} Sin embargo, en principio se puede utilizar cualquier
+esquema de firma criptográfica (DSA, ECDSA, EdDSA, RSA, etc.).
 
 Para generar las claves RSA, el firmante elige primero dos grandes e
 independientes números primos $p$ y $q$ y calcula $n = \emph{pq}$
@@ -694,15 +690,14 @@ la mayoría de los algoritmos de firma solo funcionan con entradas
 relativamente cortas.\footnote{En el caso del criptosistema RSA el
 límite de la longitud es $\log_{2}n$ bits.}
 
-\emph{Firmas ciegas.} Usamos firmas ciegas, introducidas por Chaum
-(1983)\nocite{Chaum1983}, para proteger la privacidad de los compradores. Una firma ciega
-se usa para crear una firma criptográfica para un mensaje sin que el
-firmante conozca el contenido del mensaje que se firma. En nuestra
-propuesta, esto evita que los bancos comerciales y el banco central
-puedan rastrear las compras identificando a los compradores. Nuestra
-propuesta funciona en principio con cualquier esquema de firma ciega,
-pero la mejor solución es la variante basada en RSA descrita por Chaum
-(1983)\nocite{Chaum1983}.
+\emph{Firmas ciegas.} Usamos firmas ciegas, introducidas
+por~\citet{Chaum1983}, para proteger la privacidad de los compradores. Una
+firma ciega se usa para crear una firma criptográfica para un mensaje sin que
+el firmante conozca el contenido del mensaje que se firma. En nuestra
+propuesta, esto evita que los bancos comerciales y el banco central puedan
+rastrear las compras identificando a los compradores. Nuestra propuesta
+funciona en principio con cualquier esquema de firma ciega, pero la mejor
+solución es la variante basada en RSA descrita por~\citet{Chaum1983}.
 
 El cegamiento lo realizan los clientes, quienes ciegan sus monedas antes
 de transmitirlas al banco central para ser firmadas. Los clientes por
@@ -910,9 +905,13 @@ banco comercial como intermediario. Desde el punto de vista del cliente,
 el proceso es análogo a retirar dinero efectivo desde un cajero
 automático. La transacción entre el banco comercial del usuario y el
 banco central tiene lugar en segundo plano. El procedimiento para
-retirar CBDC sería como se muestra en la Figura 1.
+retirar CBDC sería como se muestra en la Figura~\ref{fig:fig1}.
 
-\includegraphics[width=\textwidth]{taler_figure_1_dora_SPANISH.jpg}
+\begin{figure}[h!]
+  \includegraphics[width=\textwidth]{retirada.pdf}
+  \caption{CBDC Retirada}
+  \label{fig:fig1}
+\end{figure}
 
 Un cliente (1) proporciona autenticación a su banco comercial usando la
 autenticación respectiva del banco comercial y los procedimientos de
@@ -939,7 +938,7 @@ moneda recién acuñada $(c, s)$.
 Cuando se gastan CBDC, el proceso es análogo a pagar al vendedor en
 efectivo. Sin embargo, para asegurar el acuerdo, el vendedor debe
 depositar las monedas. El procedimiento para gastar CBDC se indica en la
-Figura 2.
+Figura~\ref{fig:fig2}.
 
 Un cliente y un vendedor negocian un contrato comercial, y (1) el
 cliente usa una moneda electrónica para firmar el contrato o factura de
@@ -964,7 +963,11 @@ continuación, (7) el banco comercial acredita la cuenta del vendedor e
 (8) informa al vendedor. El vendedor (9) entrega el producto o servicio
 al cliente. Todo el proceso dura solo unos pocos milisegundos.
 
-\includegraphics[width=\textwidth]{taler_figure_2_dora_SPANISH.jpg}.
+\begin{figure}[h!]
+  \includegraphics[width=\textwidth]{deposito.pdf}
+  \caption{CBDC Depósito}
+  \label{fig:fig2}
+\end{figure}
 
 \hypertarget{consideraciones-acerca-de-la-seguridad}{%
 \subsection{Consideraciones acerca de la Seguridad}
@@ -1057,7 +1060,7 @@ años sea el costo predominante del sistema. Utilizando los precios de
 Amazon Web Services, experimentamos con un prototipo anterior de GNU
 Taler y descubrimos que el costo del sistema (almacenamiento, ancho de
 banda y computación) a escala estaría por debajo de USD 0,0001 por
-transacción (para obtener detalles sobre los datos, consulte Dold 2019\nocite{Dold}).
+transacción (para obtener detalles sobre los datos, consulte~\citet{Dold}).
 
 \hypertarget{consideraciones-normativas-y-poluxedticas}{%
 \section{Consideraciones normativas y políticas}\label{5.-consideraciones-normativas-y-poluxedticas}}
@@ -1134,9 +1137,8 @@ hecho tasas de interés negativas en la CBDC, y haría que la CBDC resultara
 menos atractiva como depósito de valor, tal como sugiere Bindseil (2020). De
 hecho, sería la implementación directa de la idea de Silvio Gesell de aplicar
 un ``impuesto de posesión'' sobre la moneda, al que hace célebremente
-referencia Keynes (1936)\nocite{Keynes}, y reviven Goodfriend
-(2000)\nocite{Goodfriend}, Buiter y Panigirtzoglou (2003)\nocite{Buiter} y
-Agarwal y Kimball (2019)\nocite{Agarwal}.
+referencia~\citet{Keynes}, y reviven~\citet{Goodfriend}, \citet{Buiter}
+y~\citet{Agarwal}.
 
 En cuanto a las posibles implicaciones para las políticas monetarias, no
 anticipamos efectos materiales porque nuestra CBDC está diseñada para
@@ -1149,24 +1151,22 @@ pero esto no sería un problema material para las políticas monetarias.
 \hypertarget{trabajos-relacionados}{%
 \section{Trabajos relacionados}\label{6.-trabajos-relacionados}}
 
-Como se señaló anteriormente, la CBDC propuesta en el presente documento
-se basa en eCash y GNU Taler.\footnote{La implementación de eCash por la
-compañía DigiCash en los años noventa está documentada en
-\url{https://www.chaum.com/ecash}.} A
-partir de la propuesta original de Chaum para el efectivo electrónico,
-la investigación se ha centrado en tres cuestiones principales. Primero,
-en la propuesta original de Chaum las monedas tenían un valor fijo y
-solo podían gastarse en su totalidad. Pagar grandes cantidades con
-monedas denominadas en centavos sería ineficiente, por lo que Okamoto
-(1995)\nocite{Okamoto}, Camenisch (2005)\nocite{Camenisch2005},
-Canard y Gouget (2007)\nocite{Canard} y Dold (2019)\nocite{Dold} idearon
-formas de abordar este problema. Estas soluciones involucran protocolos
-para dar cambio o para posibilitar la divisibilidad de las monedas.
+Como se señaló anteriormente, la CBDC propuesta en el presente documento se
+basa en eCash y GNU Taler.\footnote{La implementación de eCash por la compañía
+DigiCash en los años noventa está documentada en
+\url{https://www.chaum.com/ecash}.} A partir de la propuesta original de Chaum
+para el efectivo electrónico, la investigación se ha centrado en tres
+cuestiones principales. Primero, en la propuesta original de Chaum las monedas
+tenían un valor fijo y solo podían gastarse en su totalidad. Pagar grandes
+cantidades con monedas denominadas en centavos sería ineficiente, por lo
+que~\citet{Okamoto}, \citet{Camenisch2005}, \citet{Canard} y~\citet{Dold}
+idearon formas de abordar este problema. Estas soluciones involucran
+protocolos para dar cambio o para posibilitar la divisibilidad de las monedas.
 
 Una segunda cuestión es que las transacciones a veces fallan debido a
 caídas de la red, por ejemplo. En este caso, el sistema debe permitir
 que los fondos permanezcan con el consumidor sin impacto negativo sobre
-privacidad. Camenisch et al. (2007)\nocite{Camenisch2007} y Dold (2019)\nocite{Dold} abordan este tema en
+privacidad. \citet{Camenisch2007} y~\citet{Dold} abordan este tema en
 su propuesta de dinero electrónico respaldado. Varias de las soluciones
 anteriores violan las garantías de privacidad para los clientes que
 utilizan estas funciones, y todas, excepto Taler, violan el requisito de
@@ -1174,7 +1174,7 @@ transparencia de ingresos.
 
 La tercera cuestión importante, a menudo desatendida, es conservar la
 transparencia de los ingresos y, por lo tanto, el cumplimiento del AML y
-KYC. Fuchsbauer y col. (2009)\nocite{Fuchsbauer} diseñaron deliberadamente un sistema que
+KYC. \citet{Fuchsbauer} diseñaron deliberadamente un sistema que
 posibilita la desintermediación para proporcionar una semántica más
 similar al efectivo. Sin embargo, la desintermediación ilimitada
 generalmente no concuerda con las regulaciones del AML y KYC, ya que no
@@ -1187,14 +1187,14 @@ transparencia de los ingresos, al mismo tiempo que proporciona un cambio
 eficiente, intercambios atómicos~\cite[consulte][]{Camenisch2007} y la
 capacidad de restaurar billeteras desde una copia de seguridad.
 
-Con respecto a los sistemas de pago para las CBDC, Danezis y Meiklejohn
-(2016)\nocite{Danezis} diseñaron un libro mayor escalable con RSCoin. Básicamente es un
-sistema RTGS que es protegido utilizando la misma criptografía que se
-usa en Bitcoin. Al igual que Taler, el diseño utiliza la fragmentación
-de la base de datos para lograr una escalabilidad lineal. Sin embargo,
-el diseño de Danezis y Meiklejohn no tiene ninguna disposición para la
-privacidad y carece de consideraciones sobre cómo integrar prácticamente
-el diseño con los sistemas y procesos bancarios existentes.
+Con respecto a los sistemas de pago para las CBDC, \citet{Danezis} diseñaron
+un libro mayor escalable con RSCoin. Básicamente es un sistema RTGS que es
+protegido utilizando la misma criptografía que se usa en Bitcoin. Al igual que
+Taler, el diseño utiliza la fragmentación de la base de datos para lograr una
+escalabilidad lineal. Sin embargo, el diseño de~\citet{Danezis} no tiene
+ninguna disposición para la privacidad y carece de consideraciones sobre cómo
+integrar prácticamente el diseño con los sistemas y procesos bancarios
+existentes.
 
 La EUROchain del Banco Central Europeo\cite[véase][]{ECB} es otro
 prototipo para CBDC con libro mayor distribuido. Similar a la
