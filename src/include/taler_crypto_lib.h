@@ -359,6 +359,20 @@ struct TALER_ClaimTokenP
 };
 
 
+/**
+ * Salt used to hash a merchant's payto:// URI to
+ * compute the "h_wire" (say for deposit requests).
+ */
+struct TALER_WireSalt
+{
+  /**
+   * Actual salt value.
+   * FIXME: #7032: change to 16 byte value!
+   */
+  struct GNUNET_HashCode data;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 
@@ -1658,7 +1672,7 @@ TALER_exchange_wire_signature_make (
  */
 void
 TALER_merchant_wire_signature_hash (const char *payto_uri,
-                                    const char *salt,
+                                    const struct TALER_WireSalt *salt,
                                     struct GNUNET_HashCode *hc);
 
 
@@ -1674,7 +1688,7 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
 enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
   const char *payto_uri,
-  const char *salt,
+  const struct TALER_WireSalt *salt,
   const struct TALER_MerchantPublicKeyP *merch_pub,
   const struct TALER_MerchantSignatureP *merch_sig);
 
@@ -1690,7 +1704,7 @@ TALER_merchant_wire_signature_check (
 void
 TALER_merchant_wire_signature_make (
   const char *payto_uri,
-  const char *salt,
+  const struct TALER_WireSalt *salt,
   const struct TALER_MerchantPrivateKeyP *merch_priv,
   struct TALER_MerchantSignatureP *merch_sig);
 

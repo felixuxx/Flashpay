@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -37,13 +37,12 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
                                          struct GNUNET_HashCode *hc)
 {
   const char *payto_uri;
-  const char *salt;
-  /* Current merchant backend will always make the salt
-     a `struct GNUNET_HashCode`, but *we* do not insist
-     on that. */
+  struct TALER_WireSalt salt;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri", &payto_uri),
-    GNUNET_JSON_spec_string ("salt", &salt),
+    GNUNET_JSON_spec_string ("payto_uri",
+                             &payto_uri),
+    GNUNET_JSON_spec_fixed_auto ("salt",
+                                 &salt),
     GNUNET_JSON_spec_end ()
   };
 
@@ -73,7 +72,7 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
     }
   }
   TALER_merchant_wire_signature_hash (payto_uri,
-                                      salt,
+                                      &salt,
                                       hc);
   return GNUNET_OK;
 }
@@ -95,8 +94,10 @@ TALER_JSON_exchange_wire_signature_check (
   const char *payto_uri;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_string ("payto_uri", &payto_uri),
-    GNUNET_JSON_spec_fixed_auto ("master_sig", &master_sig),
+    GNUNET_JSON_spec_string ("payto_uri",
+                             &payto_uri),
+    GNUNET_JSON_spec_fixed_auto ("master_sig",
+                                 &master_sig),
     GNUNET_JSON_spec_end ()
   };
 

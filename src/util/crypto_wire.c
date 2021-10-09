@@ -110,19 +110,39 @@ TALER_exchange_wire_signature_make (
  */
 void
 TALER_merchant_wire_signature_hash (const char *payto_uri,
-                                    const char *salt,
+                                    const struct TALER_WireSalt *salt,
                                     struct GNUNET_HashCode *hc)
 {
+#if FIXED_7032
+  /* new logic to use once #7032 is being addressed */
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (hc,
                                     sizeof (*hc),
                                     salt,
-                                    strlen (salt) + 1,
+                                    sizeof (*salt),
                                     payto_uri,
                                     strlen (payto_uri) + 1,
                                     "merchant-wire-signature",
                                     strlen ("merchant-wire-signature"),
                                     NULL, 0));
+#else
+  /* compatibility logic to avoid protocol breakage... */
+  char *sstr;
+
+  sstr = GNUNET_STRINGS_data_to_string_alloc (salt,
+                                              sizeof (*salt));
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (hc,
+                                    sizeof (*hc),
+                                    sstr,
+                                    strlen (sstr) + 1,
+                                    payto_uri,
+                                    strlen (payto_uri) + 1,
+                                    "merchant-wire-signature",
+                                    strlen ("merchant-wire-signature"),
+                                    NULL, 0));
+  GNUNET_free (sstr);
+#endif
 }
 
 
@@ -146,7 +166,7 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
 enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
   const char *payto_uri,
-  const char *salt,
+  const struct TALER_WireSalt *salt,
   const struct TALER_MerchantPublicKeyP *merch_pub,
   const struct TALER_MerchantSignatureP *merch_sig)
 {
@@ -176,7 +196,7 @@ TALER_merchant_wire_signature_check (
 void
 TALER_merchant_wire_signature_make (
   const char *payto_uri,
-  const char *salt,
+  const struct TALER_WireSalt *salt,
   const struct TALER_MerchantPrivateKeyP *merch_priv,
   struct TALER_MerchantSignatureP *merch_sig)
 {
