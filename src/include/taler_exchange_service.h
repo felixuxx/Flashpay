@@ -1899,6 +1899,110 @@ void
 TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph);
 
 
+/* *********************  /kyc* *********************** */
+
+/**
+ * Handle for a ``/kyc-check`` operation.
+ */
+struct TALER_EXCHANGE_KycCheckHandle;
+
+
+/**
+ * KYC status response details.
+ */
+struct TALER_EXCHANGE_KycStatus
+{
+  /**
+   * HTTP status code returned by the exchange.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, if any.
+   */
+  enum TALER_ErrorCode ec;
+
+  union
+  {
+
+    /**
+     * KYC is OK, affirmation returned by the exchange.
+     */
+    struct
+    {
+
+      /**
+       * Time of the affirmation.
+       */
+      struct GNUNET_TIME_Absolute timestamp;
+
+      /**
+       * The signing public key used for @e exchange_sig.
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
+
+      /**
+       * Signature of purpose
+       * #TALER_SIGNATURE_ACCOUNT_SETUP_SUCCESS affirming
+       * the successful KYC process.
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
+
+    } kyc_ok;
+
+    /**
+     * URL the user should open in a browser if
+     * the KYC process is to be run. Returned if
+     * @e http_status is #MHD_HTTP_ACCEPTED.
+     */
+    const char *kyc_url;
+
+  } details;
+
+};
+
+/**
+ * Function called with the result of a KYC check.
+ *
+ * @param cls closure
+ * @param ks the account's KYC status details
+ */
+typedef void
+(*TALER_EXCHANGE_KycStatusCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_KycStatus *ks);
+
+
+/**
+ * Run interaction with exchange to check KYC status
+ * of a merchant.
+ *
+ * @param eh exchange handle to use
+ * @param payment_target number identifying the target
+ * @param h_payto hash of the payto:// URI at @a payment_target
+ * @param timeout how long to wait for a positive KYC status
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return NULL on error
+ */
+struct TALER_EXCHANGE_KycCheckHandle *
+TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *eh,
+                          uint64_t payment_target,
+                          const struct GNUNET_HashCode *h_wire,
+                          struct GNUNET_TIME_Relative timeout,
+                          TALER_EXCHANGE_KycStatusCallback cb,
+                          void *cb_cls);
+
+
+/**
+ * Cancel KYC check operation.
+ *
+ * @param kyc handle for operation to cancel
+ */
+void
+TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kyc);
+
+
 /* *********************  /management *********************** */
 
 

@@ -27,6 +27,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_handle.c exchange_api_handle.h \
   exchange_api_deposit.c \
   exchange_api_deposits_get.c \
+  exchange_api_kyc_check.c \
   exchange_api_link.c \
   exchange_api_management_auditor_disable.c \
   exchange_api_management_auditor_enable.c \
