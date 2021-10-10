@@ -229,7 +229,7 @@ TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h);
  * @param h the exchange handle to query
  * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
  */
-int
+enum GNUNET_GenericReturnValue
 TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
 
 /**
@@ -238,7 +238,7 @@ TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
  * @param h the exchange handle to query
  * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
  */
-int
+enum GNUNET_GenericReturnValue
 TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h);
 
 

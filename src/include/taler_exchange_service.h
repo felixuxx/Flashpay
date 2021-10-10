@@ -1810,7 +1810,7 @@ TALER_EXCHANGE_verify_coin_history (
  *         were set,
  *         #GNUNET_SYSERR if there was a protocol violation in @a history
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
   struct TALER_EXCHANGE_Handle *exchange,
   const json_t *history,
@@ -1988,7 +1988,7 @@ typedef void
 struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *eh,
                           uint64_t payment_target,
-                          const struct GNUNET_HashCode *h_wire,
+                          const struct GNUNET_HashCode *h_payto,
                           struct GNUNET_TIME_Relative timeout,
                           TALER_EXCHANGE_KycStatusCallback cb,
                           void *cb_cls);

@@ -188,7 +188,7 @@ auditor_cb (void *cls,
  * @param[out] exchange_pub set to the exchange's public key
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
                              const json_t *json,
                              struct TALER_ExchangeSignatureP *exchange_sig,
@@ -245,7 +245,7 @@ verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
  * @param json json reply with the signature(s) and transaction history
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_deposit_signature_conflict (
   const struct TALER_EXCHANGE_DepositHandle *dh,
   const json_t *json)
@@ -441,7 +441,7 @@ handle_deposit_finished (void *cls,
  * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_DEPOSIT made by the customer with the coin’s private key.
  * @return #GNUNET_OK if signatures are OK, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_Amount *amount,
                    const struct GNUNET_HashCode *h_wire,

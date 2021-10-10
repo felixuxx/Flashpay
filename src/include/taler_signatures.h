@@ -167,6 +167,12 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_EXPIRED 1043
 
+/**
+ * Signature by which an exchange affirms that an account
+ * successfully passed the KYC checks.
+ */
+#define TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS 1044
+
 
 /**********************/
 /* Auditor signatures */
@@ -815,6 +821,31 @@ struct TALER_ExchangeKeySetPS
    * Hash over the various denomination signing keys returned.
    */
   struct GNUNET_HashCode hc GNUNET_PACKED;
+};
+
+
+/**
+ * @brief Signature by which an exchange affirms that an account
+ * successfully passed the KYC checks.
+ */
+struct TALER_ExchangeAccountSetupSuccessPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS.  Signed by a
+   * `struct TALER_ExchangePublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Hash over the payto for which the signature was
+   * made.
+   */
+  struct GNUNET_HashCode h_payto;
+
+  /**
+   * When was the signature made.
+   */
+  struct GNUNET_TIME_AbsoluteNBO timestamp;
 };
 
 

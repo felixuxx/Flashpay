@@ -257,7 +257,7 @@ free_keys_request (struct KeysRequest *kr)
  * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
  *        invalid or the json malformed.
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
                     int check_sigs,
                     json_t *sign_key_obj,
@@ -317,7 +317,7 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
  * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
  *        invalid or the json malformed.
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                      int check_sigs,
                      json_t *denom_key_obj,
@@ -402,7 +402,7 @@ EXITIF_exit:
  * @return #GNUNET_OK if all is fine, #GNUNET_SYSERR if the signature is
  *        invalid or the json malformed.
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
                     int check_sigs,
                     json_t *auditor_obj,
@@ -670,7 +670,7 @@ denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  * (malformed JSON)
  */
-static int
+static enum GNUNET_GenericReturnValue
 decode_keys_json (const json_t *resp_obj,
                   bool check_sig,
                   struct TALER_EXCHANGE_Keys *key_data,
@@ -1314,7 +1314,7 @@ TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
  * @param h the exchange handle to query
  * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
  */
-int
+enum GNUNET_GenericReturnValue
 TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
 {
   return (MHS_CERT == h->state) ? GNUNET_YES : GNUNET_NO;
@@ -1352,7 +1352,7 @@ TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  * @param at where to write the result
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_date_string (const char *dateline,
                    struct GNUNET_TIME_Absolute *at)
 {

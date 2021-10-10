@@ -42,7 +42,7 @@
  *         were set,
  *         #GNUNET_SYSERR if there was a protocol violation in @a history
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
   struct TALER_EXCHANGE_Handle *exchange,
   const json_t *history,

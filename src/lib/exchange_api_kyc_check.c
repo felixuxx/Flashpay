@@ -61,6 +61,10 @@ struct TALER_EXCHANGE_KycCheckHandle
    */
   void *cb_cls;
 
+  /**
+   * Hash of the payto:// URL that is being KYC'ed.
+   */
+  struct GNUNET_HashCode h_payto;
 };
 
 
@@ -90,30 +94,104 @@ handle_kyc_check_finished (void *cls,
     ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
-    GNUNET_break (0); // FIXME
-    TALER_EXCHANGE_kyc_check_cancel (kch);
-    return;
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &ks.details.kyc_ok.exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &ks.details.kyc_ok.exchange_pub),
+        TALER_JSON_spec_absolute_time ("now",
+                                       &ks.details.kyc_ok.timestamp),
+        GNUNET_JSON_spec_end ()
+      };
+      const struct TALER_EXCHANGE_Keys *key_state;
+      struct TALER_ExchangeAccountSetupSuccessPS kyc_purpose = {
+        .purpose.size = htonl (sizeof (kyc_purpose)),
+        .purpose.purpose = htonl (
+          TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
+        .h_payto = kch->h_payto
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        ks.http_status = 0;
+        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        break;
+      }
+      kyc_purpose.timestamp = GNUNET_TIME_absolute_hton (
+        ks.details.kyc_ok.timestamp);
+      key_state = TALER_EXCHANGE_get_keys (kch->exchange);
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_test_signing_key (key_state,
+                                           &ks.details.kyc_ok.exchange_pub))
+      {
+        GNUNET_break_op (0);
+        ks.http_status = 0;
+        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        GNUNET_JSON_parse_free (spec);
+        break;
+      }
+
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (
+            TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS,
+            &kyc_purpose,
+            &ks.details.kyc_ok.exchange_sig.eddsa_signature,
+            &ks.details.kyc_ok.exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        ks.http_status = 0;
+        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        GNUNET_JSON_parse_free (spec);
+        break;
+      }
+      kch->cb (kch->cb_cls,
+               &ks);
+      GNUNET_JSON_parse_free (spec);
+      TALER_EXCHANGE_kyc_check_cancel (kch);
+      return;
+    }
   case MHD_HTTP_ACCEPTED:
-    GNUNET_break (0); // FIXME
-    TALER_EXCHANGE_kyc_check_cancel (kch);
-    return;
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_string ("kyc_url",
+                                 &ks.details.kyc_url),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        ks.http_status = 0;
+        ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+        break;
+      }
+      kch->cb (kch->cb_cls,
+               &ks);
+      GNUNET_JSON_parse_free (spec);
+      TALER_EXCHANGE_kyc_check_cancel (kch);
+      return;
+    }
   case MHD_HTTP_NO_CONTENT:
-    GNUNET_break (0); // FIXME
-    TALER_EXCHANGE_kyc_check_cancel (kch);
-    return;
+    break;
   case MHD_HTTP_BAD_REQUEST:
     ks.ec = TALER_JSON_get_error_code (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_UNAUTHORIZED:
-    GNUNET_break (0); // FIXME
-    TALER_EXCHANGE_kyc_check_cancel (kch);
-    return;
+    ks.ec = TALER_JSON_get_error_code (j);
+    break;
   case MHD_HTTP_NOT_FOUND:
     ks.ec = TALER_JSON_get_error_code (j);
-    TALER_EXCHANGE_kyc_check_cancel (kch);
-    return;
+    break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     ks.ec = TALER_JSON_get_error_code (j);
     /* Server had an internal issue; we should retry, but this API
@@ -129,27 +207,16 @@ handle_kyc_check_finished (void *cls,
                 (int) ks.ec);
     break;
   }
+  kch->cb (kch->cb_cls,
+           &ks);
   TALER_EXCHANGE_kyc_check_cancel (kch);
 }
 
 
-/**
- * Submit a kyc_check request to the exchange and get the exchange's response.
- *
- * This API is typically not used by anyone, it is more a threat against those
- * trying to receive a funds transfer by abusing the refresh protocol.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param coin_priv private key to request kyc_check data for
- * @param kyc_check_cb the callback to call with the useful result of the
- *        refresh operation the @a coin_priv was involved in (if any)
- * @param kyc_check_cb_cls closure for @a kyc_check_cb
- * @return a handle for this request
- */
 struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
                           uint64_t payment_target,
-                          const struct GNUNET_HashCode *h_wire,
+                          const struct GNUNET_HashCode *h_payto,
                           struct GNUNET_TIME_Relative timeout,
                           TALER_EXCHANGE_KycStatusCallback cb,
                           void *cb_cls)
@@ -157,6 +224,7 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
   struct TALER_EXCHANGE_KycCheckHandle *kch;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
+  char *arg_str;
 
   if (GNUNET_YES !=
       TEAH_handle_is_ready (exchange))
@@ -164,13 +232,33 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
+  {
+    char payto_str[sizeof (*h_payto) * 2];
+    char *end;
+    unsigned long long timeout_ms;
 
+    end = GNUNET_STRINGS_data_to_string (
+      h_payto,
+      sizeof (*h_payto),
+      payto_str,
+      sizeof (payto_str) - 1);
+    *end = '\0';
+    timeout_ms = timeout.rel_value_us
+                 / GNUNET_TIME_UNIT_MILLISECONDS.rel_value_us;
+    GNUNET_asprintf (&arg_str,
+                     "/kyc-check/%llu?h_payto=%s&timeout_ms=%llu",
+                     (unsigned long long) payment_target,
+                     payto_str,
+                     timeout_ms);
+  }
   kch = GNUNET_new (struct TALER_EXCHANGE_KycCheckHandle);
   kch->exchange = exchange;
+  kch->h_payto = *h_payto;
   kch->cb = cb;
   kch->cb_cls = cb_cls;
   kch->url = TEAH_path_to_url (exchange,
-                               "FIXME");
+                               arg_str);
+  GNUNET_free (arg_str);
   if (NULL == kch->url)
   {
     GNUNET_free (kch);
@@ -193,12 +281,6 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Cancel a kyc_check request.  This function cannot be used
- * on a request handle if the callback was already invoked.
- *
- * @param kch the kyc_check handle
- */
 void
 TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kch)
 {
