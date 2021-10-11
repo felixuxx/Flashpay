@@ -144,7 +144,7 @@ static struct TALER_Amount currency_round_unit;
 
 /**
  * What is the base URL of this exchange?  Used in the
- * wire transfer subjects to that merchants and governments
+ * wire transfer subjects so that merchants and governments
  * can ask for the list of aggregated deposits.
  */
 static char *exchange_base_url;
