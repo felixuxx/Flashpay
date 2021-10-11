@@ -441,7 +441,11 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
 
   try_connect (dh);
   if (-1 == dh->sock)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Cannot poll denom helper: socket down\n");
     return; /* give up */
+  }
   while (1)
   {
     ret = recv (dh->sock,
@@ -464,10 +468,18 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
                       "Restarting connection to RSA helper, did not come up properly\n");
           do_disconnect (dh);
           if (0 == retry_limit)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                        "Cannot poll denom helper: retry limit reached\n");
             return; /* give up */
+          }
           try_connect (dh);
           if (-1 == dh->sock)
+          {
+            GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                        "Cannot poll denom helper: failed to connect\n");
             return; /* give up */
+          }
           retry_limit--;
           flag = MSG_DONTWAIT;
         }

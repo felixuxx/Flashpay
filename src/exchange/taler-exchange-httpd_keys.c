@@ -2504,6 +2504,21 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
       .signkeys = json_array ()
     };
 
+    if (GNUNET_is_zero (&denom_sm_pub))
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_GATEWAY,
+                                         TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE,
+                                         NULL);
+    }
+    if (GNUNET_is_zero (&esign_sm_pub))
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_GATEWAY,
+                                         TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE,
+                                         NULL);
+    }
+    // then a secmod helper is not yet running and we should return an MHD_HTTP_BAD_GATEWAY!
     GNUNET_assert (NULL != fbc.denoms);
     GNUNET_assert (NULL != fbc.signkeys);
     GNUNET_CONTAINER_multihashmap_iterate (ksh->helpers->denom_keys,
