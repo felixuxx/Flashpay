@@ -1,44 +1,49 @@
-\documentclass[10pt,spanish]{article}
-\usepackage[a4paper,
-top=2cm,
+\documentclass[a4paper,10pt]{article} %tamaño de papel y letra ``base''
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[top=2cm,
 bottom=2cm,
 includefoot,
 left=3cm,
 right=2cm,
 footskip=1cm]{geometry}
 \usepackage{url}
-\usepackage[spanish]{babel}
 \IfFileExists{lmodern.sty}{\usepackage{lmodern}}{}
 \usepackage{graphicx}
 \usepackage{mathpazo}
 \usepackage{amsmath}
 \usepackage{mathptmx}
+\usepackage{color}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{color}
 \usepackage[hidelinks]{hyperref}
-\usepackage{natbib,har2nat}
-
+    %\usepackage{natbib,har2nat}
+\usepackage{natbib}
+\usepackage[spanish]{babel}
 \input{eshyphexh.tex}
+    %\renewcommand{\abstractname}{Resumen}
+    %\renewcommand{\refname}{Referencias}
+    % de estas cosas se ocupa \usepackage[spanish]{babel}
 
-\begin{document}
 
 \title{Cómo Emitir una Moneda Digital del Banco Central}
 \author{David Chaum\footnote{david@chaum.com} \\
   xx Network \and
   Christian Grothoff\footnote{christian.grothoff@bfh.ch} \\
   BFH\footnote{Universidad de Ciencias Aplicadas de Berna}
-  ~y Proyecto GNU \and
+  \quad y Proyecto GNU \and
   Thomas Moser\footnote{thomas.moser@snb.ch}\\
   Banco Nacional de Suiza}
 \date{Primera versión: mayo 2020 \\
       Verano: 2021}
+
+
+
+\begin{document}
+
 \maketitle
 
-\renewcommand{\abstractname}{Resumen}
-\renewcommand{\refname}{Referencias}
-
-\begin{abstract}% [Resumen]
+\begin{abstract}
 Con la aparición de Bitcoin y monedas estables propuestas recientemente
 por grandes empresas tecnológicas como Diem (antes Libra), los bancos
 centrales se enfrentan a la creciente competencia de particulares que
@@ -61,9 +66,8 @@ JEL: E42, E51, E52, E58, G2
 Keywords: Monedas digitales, banco central, CBDC, firmas ciegas, monedas
 estables
 \end{abstract}
-\vspace{20pt}
-\vspace{20pt}
 
+\vspace{40pt}
 
 \section*{Agradecimientos}
 Agradecemos a Michael Barczay, Roman Baumann, Morten Bech, Nicolas Cuche,
@@ -80,9 +84,10 @@ Traducción: Javier Sepulveda \& Dora Scilipoti
 
 
 \newpage
-\hypertarget{introducciuxf3n}{%
-\section{Introducción}
-\label{1.-introducciuxf3n}}
+
+%\tableofcontents
+
+\section{Introducción}\label{1.-introducciuxf3n}
 
 Desde la aparición de los ordenadores personales en los años ochenta, y
 especialmente desde que en 1991 la National Science Foundation quitara
@@ -198,8 +203,9 @@ de proponer nuestro diseño en la sección 4. Luego comentamos
 consideraciones políticas y normativas (5) y trabajos relacionados (6);
 en fin, concluimos (7).
 
-\hypertarget{quuxe9-es-el-dinero-del-banco-central}{%
-\section{¿Qué es el dinero del banco central?} \label{2.-quuxe9-es-el-dinero-del-banco-central}}
+
+\section{¿Qué es el dinero del banco central?}
+        \label{2.-quuxe9-es-el-dinero-del-banco-central}
 
 El dinero es un activo que puede ser usado para comprar bienes y
 servicios. Para ser considerado dinero, este activo debe ser aceptado
@@ -215,9 +221,9 @@ ocurrir, sin embargo, si el valor del medio de intercambio carece de
 estabilidad en relación a los bienes y servicios
 comercializados.\footnote{Esto puede ocurrir espontáneamente en un entorno
 de alta-inflación, p. ej. cuando los precios se fijan en USD pero los pagos
-se realizan en divisa local. Lo mismo es ciertopara los pagos en Bitcoin,
+se realizan en divisa local. Lo mismo es cierto para los pagos en Bitcoin,
 donde los precios usualmente se fijan en USA u otras divisas locales debido a
-la alta volatilidad de Bitcoin. Una eparación también puede ocurrir por el
+la alta volatilidad de Bitcoin. Una separación también puede ocurrir por el
 diseño, p. ej. en la Unidad de Fomento (UF) de Chile o la Special Drawing Right
 (SDR) del fondo monetario internacional (IMF). Sin embargo, también entonces el
 propósito es tener una unidad de cuenta más estable.} El dinero debe también ser
@@ -296,8 +302,8 @@ estables. Las monedas estables generalmente intentan estabilizar su
 valor en una de las dos maneras siguientes: o bien imitando a los bancos
 centrales (monedas estables algorítmicas) o bien imitando a los bancos
 comerciales o a los medios de inversión (monedas estables con respaldo
-de activos).\footnote{Para más detalles sobre la taxonomia y descripción
-de las monedas stables véase~\citet{Bullmann}.}
+de activos).\footnote{Para más detalles sobre la taxonomía y descripción
+de las monedas estables véase~\citet{Bullmann}.}
 
 Las ``monedas estables algorítmicas'' dependen de algoritmos para
 regular su suministro. En otras palabras, intentan alcanzar la
@@ -337,9 +343,9 @@ para economizar su tenencia de activos y trasladarse hacia un sistema de
 reserva fraccionado, tal como lo hicieron los bancos comerciales.\footnote
 {La incertidumbre sobre si un moneda estable está
 totalmente garantizada puede ser una de las razones por las que una
-moneda stable puede negociarse por debajo de la par en el mercado
+moneda estable puede negociarse por debajo de la par en el mercado
 secundario~\cite[véase][]{Lyons}. Este fue
-también historícamente el caso con los billetes cuando eran emitidos
+también históricamente el caso con los billetes cuando eran emitidos
 por los bancos comerciales. Tales billetes solían negociarse con
 diversos descuentos en el mercado secundario antes de que la emisión
 de billetes fuera nacionalizada y transferida al monopolio de los
@@ -378,8 +384,7 @@ a convertirse en dinero que las criptomonedas, especialmente si se
 regulan adecuadamente. Sin embargo, la disponibilidad de CBDC limitaría
 significativamente su utilidad.
 
-\hypertarget{diseuxf1os-simplistas-de-cbdc}{%
-\section{Diseños simplistas de CBDC} \label{3.-diseuxf1os-simplistas-de-cbdc}}
+\section{Diseños simplistas de CBDC} \label{3.-diseuxf1os-simplistas-de-cbdc}
 
 Como se ha señalado, una CBDC sería una obligación del banco central.
 Dos posibles diseños que se analizan en la literatura son: (a) una CBDC
@@ -415,14 +420,13 @@ activos (tokens) incluyen información acerca de su valor y de la entidad
 que emitió el token. Por tanto, la única posibilidad de lograr la
 propiedad de privacidad de la transacción como la que se obtiene con el
 dinero efectivo reside en los sistemas basados en tokens.\footnote
-{Si bien el término "Bitcoin" sugiere el uso de tokens, Bitcoin es un
+{Si bien el término ``Bitcoin'' sugiere el uso de tokens, Bitcoin es un
 sistema basado en cuentas. La única diferencia entre un sistema
 tradicional basado en cuentas y una blockchain es que las cuentas no
 se guardan en una base de datos central, sino en una base de datos
-descentralizada del tipo "solo por anexión".}
+descentralizada del tipo ``solo por anexión''.}
 
-\hypertarget{cbdc-basada-en-cuentas}{%
-\subsection{CBDC basada en cuentas}\label{cbdc-basada-en-cuentas}}
+\subsection{CBDC basada en cuentas}\label{cbdc-basada-en-cuentas}
 
 La forma más simple de lanzar una CBDC sería permitir que el público
 tenga cuentas de depósito en el banco central. Esto implica que el banco
@@ -494,9 +498,9 @@ deberían ser emitidas contra depósitos bancarios, sino solo contra
 valores tales como bonos del Estado. En general, una CBDC basada en
 cuentas requeriría un análisis más profundo de estas cuestiones.
 
-\hypertarget{cbdc-basada-en-tokens-y-dependiente-del-hardware}{%
+
 \subsection{CBDC basada en tokens y dependiente del hardware}
-\label{cbdc-basada-en-tokens-y-dependiente-del-hardware}}
+\label{cbdc-basada-en-tokens-y-dependiente-del-hardware}
 
 Un banco central podría también emitir tokens electrónicos en lugar de
 cuentas. Técnicamente esto requiere de un sistema para asegurar que los tokens
@@ -536,12 +540,11 @@ fraude requiere la habilidad de identificar a los pagadores y seguir la
 pista de los clientes, lo cual no es compatible con la privacidad de la
 transacción.
 
-\hypertarget{diseuxf1o-de-cbdc-basado-en-tokens-para-salvaguardar-la-privacidad}{%
 \section{Diseño de CBDC basado en tokens para salvaguardar la
 privacidad}
-\label{4.-diseuxf1o-de-cbdc-basado-en-tokens-para-salvaguardar-la-privacidad}}
+\label{4.-diseuxf1o-de-cbdc-basado-en-tokens-para-salvaguardar-la-privacidad}
 
-La CBDC que se propone aquí es de tipo "solo software", simplemente una
+La CBDC que se propone aquí es de tipo ``solo software'', simplemente una
 aplicación para teléfonos inteligentes que no requiere ningún hardware
 adicional por parte de los usuarios. La CBDC se basa en eCash y GNU
 Taler. Taler es parte del Proyecto GNU, cuyo fundador, Richard Stallman, acuñó
@@ -555,7 +558,7 @@ Library'' (GRETL). Un análisis de los beneficios del FLOSS en comparación con
 el software privativo en el campo de la investigación puede consultarse
 en~\citet{Baiocchi}, \citet{Yalta2008} y \citet{Yalta2010}. Sobre el
 licenciamiento de código abierto véase \citet{Lerner}.} Un programa se
-considera "Software Libre" si la licencia otorga a los usuarios cuatro
+considera ``Software Libre'' si la licencia otorga a los usuarios cuatro
 libertades esenciales: la libertad de ejecutar el programa como deseen, la
 libertad de estudiar el programa y modificarlo, la libertad de redistribuir
 copias del programa y la libertad de distribuir copias de las versiones
@@ -610,16 +613,16 @@ teléfono inteligente con un cifrado especial. En el sistema real, una
 moneda es un par de claves pública / privada, y la clave privada solo la
 conoce el propietario de la moneda.\footnote{En Bitcoin, que es un
 sistema basado en cuentas, el par de claves es una cuenta, siendo la
-clave pública la "dirección" de la cuenta y por tanto un tipo de
-"identidad'', incluso si se trata de un pseudónimo.} La moneda deriva
+clave pública la ``dirección'' de la cuenta y por tanto un tipo de
+``identidad'', incluso si se trata de un pseudónimo.} La moneda deriva
 su valor financiero de la firma del banco central en la clave pública de
 la moneda. El banco central hace la firma con su clave privada y dispone
 de múltiples pares de claves de denominación para la firma ciega de
 monedas de diferentes valores. Un comerciante puede utilizar la
-correspondiente "clave pública" del banco central para verificar la
+correspondiente ``clave pública'' del banco central para verificar la
 firma. Sin embargo, para asegurarse de que la moneda no haya sido
 copiada y ya canjeada por otro beneficiario (es decir, que no se haya
-"gastado dos veces"), el comerciante debe depositar la moneda para que
+``gastado dos veces''), el comerciante debe depositar la moneda para que
 el banco central pueda comparar la moneda con un archivo de monedas
 canjeadas. Debido a que ni el banco comercial ni el banco central ven el
 número de la moneda durante el retiro, más tarde, cuando el comerciante
@@ -632,8 +635,7 @@ la tecnología y demostramos cómo se puede integrar con el sistema
 bancario existente para crear una CBDC. \citet{Dold} describe detalles
 adicionales.
 
-\hypertarget{componentes-fundamentales}{%
-\subsection{Componentes fundamentales}\label{componentes-fundamentales}}
+\subsection{Componentes fundamentales}\label{componentes-fundamentales}
 
 A continuación describimos los principales componentes del protocolo,
 incluido el trasfondo matemático para una posible instanciación de las
@@ -647,12 +649,12 @@ conocimiento.
 de firma con clave pública es que el propietario de una clave privada es el
 único que puede firmar un mensaje, mientras que la clave pública permite a
 cualquiera verificar la validez de la firma.\footnote{La criptografía de clave
-pública fué introducida por~\citet{Diffie}, y la primera implentación de
-firmas digitales fué introducida por~\citet{Rivest}.} El resultado de la
-función de verificación es la declaración binaria "verdadero" o "falso". Si el
+pública fue introducida por~\citet{Diffie}, y la primera implementación de
+firmas digitales fue introducida por~\citet{Rivest}.} El resultado de la
+función de verificación es la declaración binaria ``verdadero'' o ``falso''. Si el
 mensaje está firmado con la clave privada que pertenece a la clave pública de
 verificación, el resultado es verdadero, de lo contrario es falso. En nuestra
-propuesta, el mensaje es una "moneda" o "billete" con un número de serie, y la
+propuesta, el mensaje es una ``moneda'' o ``billete'' con un número de serie, y la
 firma del banco central confirma su validez. Si bien GNU Taler usa por defecto
 firmas EdDSA modernas~\cite[véase][]{Bernstein2012}, presentamos un esquema de
 firma criptográfica simple basado en el bien estudiado sistema criptográfico
@@ -668,7 +670,7 @@ $\phi(n) = (p - 1)(q - 1)$.
 Entonces, cualquier $e$ con $1 < e < \phi(n)$ y
 $\gcd(e, \phi(n)) = 1$ se puede usar para
 definir una clave pública $(e,n)$. La condición de que el
-mayor común divisor (greatest common divisor - $\gcd$) de $e$ y
+máximo común divisor (greatest common divisor - $\gcd$) de $e$ y
 $\phi(n)$ tiene que ser 1 (p. ej., que deben ser
 relativamente primos) asegura que la inversa de
 $e \mod \phi(n)$ existe.
@@ -758,10 +760,10 @@ generalmente permanecen en circulación durante décadas en vez de por
 unos pocos meses o años.\footnote{En Suiza, por ejemplo, el Swiss
 National Bank empezó la eliminación paulatina la serie octava de
 billetes en abril de 2016. Estos billetes fueron puestos en
-circulación al final de los 90. A partir del dia 1 de enero de 2020,
+circulación al final de los 90. A partir del día 1 de enero de 2020,
 sin embargo, todos los billetes que empiezan por la serie sexta
 emitidos en 1976, así como cualquier futura serie, permanecen válidas
-y se pueden cambiar por billetes actuales de forma indefenida.}
+y se pueden cambiar por billetes actuales de forma indefinida.}
 
 Desde un punto de vista técnico, una fecha de vencimiento tiene dos
 ventajas. Primero, mejora la eficiencia del sistema porque el banco
@@ -802,7 +804,7 @@ es una raíz primitiva módulo $p$.\footnote{Un entero $g$ es una raíz
 primitiva módulo $p$ si para cada entero $a$ coprimo a $p$ hay
 algún entero $k$ para el cual
 $g^k \equiv a \mod p$.
-En la práctica, $g$ deberia ser tal raíz primitiva $p-1$, que se
+En la práctica, $g$ debería ser tal raíz primitiva $p-1$, que se
 llama también generador, para prevenir ataques de subgrupo tales como ataques
 Pohlig-Hellman~\cite[véase][]{Lim}.} Ahora, las dos partes eligen sus claves
 privadas \emph{a} y \emph{b}, que son dos números enteros grandes. Con estas claves
@@ -1009,8 +1011,7 @@ Para detectar un posible compromiso de esta clave, el banco central
 puede monitorear la base de datos en busca de casos de depósitos que
 superen los retiros.
 
-\hypertarget{escalabilidad-y-costes}{%
-\subsection{Escalabilidad y Costes}\label{escalabilidad-y-costes}}
+\subsection{Escalabilidad y Costes}\label{escalabilidad-y-costes}
 
 El esquema que proponemos sería tan eficiente y rentable como los
 modernos sistemas RTGS que utilizan actualmente los bancos centrales.
@@ -1055,7 +1056,7 @@ alta para un solo sistema.
 Los front-end también deben comunicarse con los back-end mediante una
 interconexión. Las interconexiones puede soportar grandes cantidades de
 transacciones por segundo. El tamaño de una transacción individual suele
-ser de 1-10 kilobytes aproximadamente. Asi, las interconexiones de un
+ser de 1-10 kilobytes aproximadamente. Así, las interconexiones de un
 centro de datos moderno, con velocidades de conmutación de 400 Gbit/s,
 pueden soportar millones de transacciones por segundo.
 
@@ -1067,8 +1068,9 @@ Taler y descubrimos que el costo del sistema (almacenamiento, ancho de
 banda y computación) a escala estaría por debajo de USD 0,0001 por
 transacción (para obtener detalles sobre los datos, consulte~\citet{Dold}).
 
-\hypertarget{consideraciones-normativas-y-poluxedticas}{%
-\section{Consideraciones normativas y políticas}\label{5.-consideraciones-normativas-y-poluxedticas}}
+
+\section{Consideraciones normativas y políticas}
+    \label{5.-consideraciones-normativas-y-poluxedticas}
 
 En el esquema propuesto, los bancos centrales no conocen la identidad de
 los consumidores o comerciantes ni los montos totales de las
@@ -1210,12 +1212,12 @@ intentan combinar la privacidad y el cumplimiento del AML. En nuestro
 diseño, los reguladores podrían imponer un límite a la cantidad de
 efectivo electrónico que el titular de una cuenta bancaria puede retirar
 durante un cierto tiempo, mientras que la EUROchain emite un número
-limitado de "vales de anonimato" que conceden al receptor un número
+limitado de ``vales de anonimato'' que conceden al receptor un número
 limitado de transacciones sin verificación del AML. Como estos vales
 parecen no tener ninguna relación con ningún token de valor, no queda
 claro de qué manera el diseño evitaría la aparición de un mercado negro
 de ``vales de anonimato''. Además, la noción de anonimato de la
-EUROchain es muy diferente, ya que sus "vales de anonimato" simplemente
+EUROchain es muy diferente, ya que sus ``vales de anonimato'' simplemente
 eliminan ciertas verificaciones del AML, al mismo tiempo que preservan
 la capacidad de los bancos comerciales de ver cómo los consumidores
 gastan el efectivo electrónico. Mientras que los pagadores usuarios de
@@ -1229,9 +1231,7 @@ CBDC que el banco central mantiene efectivamente en custodia. Por lo
 tanto, no está claro qué ventajas de privacidad, rendimiento o seguridad
 tiene la EUROchain sobre el dinero existente en depósito.
 
-\hypertarget{conclusiuxf3n}{%
-\section{Conclusión}
-\label{7.-conclusiuxf3n}}
+\section{Conclusión}\label{7.-conclusiuxf3n}
 
 Con la aparición de Bitcoin y monedas digitales recientemente propuestas
 por grandes empresas tecnológicas como Diem (antes Libra), los bancos
