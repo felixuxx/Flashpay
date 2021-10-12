@@ -1,3 +1,7 @@
+taler-exchange (0.8.5-3) unstable; urgency=low
+
+  * Updating to latest Git with minor bugfixes and improvements.
+
 taler-exchange (0.8.5-2) unstable; urgency=low
 
   * Updating to latest Git with minor bugfixes and improvements.
