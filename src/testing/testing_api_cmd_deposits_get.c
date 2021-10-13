@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -80,38 +80,36 @@ struct TrackTransactionState
  * line matches our expectations.
  *
  * @param cls closure.
- * @param hr HTTP response details
- * @param dd data about the wire transfer associated with the deposit
+ * @param dr GET deposit response details
  */
 static void
 deposit_wtid_cb (void *cls,
-                 const struct TALER_EXCHANGE_HttpResponse *hr,
-                 const struct TALER_EXCHANGE_DepositData *dd)
+                 const struct TALER_EXCHANGE_GetDepositResponse *dr)
 {
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Interpreter *is = tts->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
 
   tts->tth = NULL;
-  if (tts->expected_response_code != hr->http_status)
+  if (tts->expected_response_code != dr->hr.http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
+                dr->hr.http_status,
+                (int) dr->hr.ec,
                 cmd->label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (hr->reply,
+    json_dumpf (dr->hr.reply,
                 stderr,
                 0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  switch (hr->http_status)
+  switch (dr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    tts->wtid = dd->wtid;
+    tts->wtid = dr->details.success.wtid;
     if (NULL != tts->bank_transfer_reference)
     {
       const struct TALER_TESTING_Command *bank_transfer_cmd;
@@ -139,7 +137,7 @@ deposit_wtid_cb (void *cls,
       }
 
       /* Compare that expected and gotten subjects match.  */
-      if (0 != GNUNET_memcmp (&dd->wtid,
+      if (0 != GNUNET_memcmp (&dr->details.success.wtid,
                               wtid_want))
       {
         GNUNET_break (0);
@@ -147,8 +145,6 @@ deposit_wtid_cb (void *cls,
         return;
       }
     }
-
-
     break;
   case MHD_HTTP_ACCEPTED:
     /* allowed, nothing to check here */

@@ -324,19 +324,17 @@ handle_deposit_finished (void *cls,
   struct TALER_EXCHANGE_DepositHandle *dh = cls;
   struct TALER_ExchangeSignatureP exchange_sig;
   struct TALER_ExchangePublicKeyP exchange_pub;
-  struct TALER_ExchangeSignatureP *es = NULL;
-  struct TALER_ExchangePublicKeyP *ep = NULL;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_DepositResult dr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   dh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    dr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -346,31 +344,35 @@ handle_deposit_finished (void *cls,
                                      &exchange_pub))
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+      dr.hr.http_status = 0;
+      dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     else
     {
-      es = &exchange_sig;
-      ep = &exchange_pub;
+      dr.details.success.exchange_sig = &exchange_sig;
+      dr.details.success.exchange_pub = &exchange_pub;
+      dr.details.success.deposit_timestamp
+        = GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp);
+      dr.details.success.transaction_base_url; // FIXME
+      dr.details.success.payment_target_uuid; // FIXME
     }
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, this should never
      happen, we should pass the JSON reply to the application */
     break;
@@ -381,13 +383,13 @@ handle_deposit_finished (void *cls,
                                            j))
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+      dr.hr.http_status = 0;
+      dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
     }
     else
     {
-      hr.ec = TALER_JSON_get_error_code (j);
-      hr.hint = TALER_JSON_get_error_hint (j);
+      dr.hr.ec = TALER_JSON_get_error_code (j);
+      dr.hr.hint = TALER_JSON_get_error_hint (j);
     }
     break;
   case MHD_HTTP_GONE:
@@ -395,31 +397,28 @@ handle_deposit_finished (void *cls,
     /* Note: one might want to check /keys for revocation
        signature here, alas tricky in case our /keys
        is outdated => left to clients */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange deposit\n",
                 (unsigned int) response_code,
-                hr.ec);
+                dr.hr.ec);
     GNUNET_break_op (0);
     break;
   }
   dh->cb (dh->cb_cls,
-          &hr,
-          GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp),
-          es,
-          ep);
+          &dr);
   TALER_EXCHANGE_deposit_cancel (dh);
 }
 

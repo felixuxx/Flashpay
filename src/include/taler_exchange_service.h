@@ -794,22 +794,77 @@ struct TALER_EXCHANGE_DepositHandle;
 
 
 /**
+ * Structure with information about a deposit
+ * operation's result.
+ */
+struct TALER_EXCHANGE_DepositResult
+{
+  /**
+   * HTTP response data
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  union
+  {
+
+    /**
+     * Information returned if the HTTP status is
+     * #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Time when the exchange generated the deposit confirmation
+       */
+      struct GNUNET_TIME_Absolute deposit_timestamp;
+
+      /**
+       * signature provided by the exchange
+       */
+      const struct TALER_ExchangeSignatureP *exchange_sig;
+
+      /**
+       * exchange key used to sign @a exchange_sig.
+       */
+      const struct TALER_ExchangePublicKeyP *exchange_pub;
+
+      /**
+       * Base URL for looking up wire transfers, or
+       * NULL to use the default base URL.
+       */
+      const char *transaction_base_url;
+
+      /**
+       * Payment target that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t payment_target_uuid;
+    } success;
+
+    /**
+     * Information returned if the HTTP status is
+     * #MHD_HTTP_CONFLICT.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } conflict;
+
+  } details;
+};
+
+
+/**
  * Callbacks of this type are used to serve the result of submitting a
  * deposit permission request to a exchange.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param deposit_timestamp time when the exchange generated the deposit confirmation
- * @param exchange_sig signature provided by the exchange
- * @param exchange_pub exchange key used to sign @a obj, or NULL
+ * @param dr deposit response details
  */
 typedef void
 (*TALER_EXCHANGE_DepositResultCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  struct GNUNET_TIME_Absolute deposit_timestamp,
-  const struct TALER_ExchangeSignatureP *exchange_sig,
-  const struct TALER_ExchangePublicKeyP *exchange_pub);
+  const struct TALER_EXCHANGE_DepositResult *dr);
 
 
 /**
@@ -1201,18 +1256,74 @@ struct TALER_EXCHANGE_WithdrawHandle;
 
 
 /**
+ * Details about a response for a withdraw request.
+ */
+struct TALER_EXCHANGE_WithdrawResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details about the response.
+   */
+  union
+  {
+    /**
+     * Details if the status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Signature over the coin.
+       */
+      struct TALER_DenominationSignature sig;
+    } success;
+
+    /**
+     * Details if the status is #MHD_HTTP_ACCEPTED.
+     */
+    struct
+    {
+      /**
+       * Payment target that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t payment_target_uuid;
+    } accepted;
+
+    /**
+     * Details if the status is #MHD_HTTP_CONFLICT.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } conflict;
+
+    /**
+     * Details if the status is #MHD_HTTP_GONE.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } gone;
+
+  } details;
+};
+
+
+/**
  * Callbacks of this type are used to serve the result of submitting a
  * withdraw request to a exchange.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param sig signature over the coin, NULL on error
+ * @param wr response details
  */
 typedef void
 (*TALER_EXCHANGE_WithdrawCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_DenominationSignature *sig);
+  const struct TALER_EXCHANGE_WithdrawResponse *wr);
 
 
 /**
@@ -1684,41 +1795,82 @@ struct TALER_EXCHANGE_DepositGetHandle;
 
 
 /**
- * Data returned for a successful GET /deposits/ request.  Note that
- * most fields are only set if the status is #MHD_HTTP_OK.  Only
- * the @e execution_time is available if the status is #MHD_HTTP_ACCEPTED.
+ * Data returned for a successful GET /deposits/ request.
  */
-struct TALER_EXCHANGE_DepositData
+struct TALER_EXCHANGE_GetDepositResponse
 {
 
   /**
-   * exchange key used to sign, all zeros if exchange did not
-   * yet execute the transaction
+   * HTTP response data.
    */
-  struct TALER_ExchangePublicKeyP exchange_pub;
+  struct TALER_EXCHANGE_HttpResponse hr;
 
   /**
-   * signature from the exchange over the deposit data, all zeros if exchange did not
-   * yet execute the transaction
+   * Details about the response.
    */
-  struct TALER_ExchangeSignatureP exchange_sig;
+  union
+  {
 
-  /**
-   * wire transfer identifier used by the exchange, all zeros if exchange did not
-   * yet execute the transaction
-   */
-  struct TALER_WireTransferIdentifierRawP wtid;
+    /**
+     * Response if the status was #MHD_HTTP_OK
+     */
+    struct TALER_EXCHANGE_DepositData
+    {
+      /**
+       * exchange key used to sign, all zeros if exchange did not
+       * yet execute the transaction
+       */
+      struct TALER_ExchangePublicKeyP exchange_pub;
 
-  /**
-   * actual or planned execution time for the wire transfer
-   */
-  struct GNUNET_TIME_Absolute execution_time;
+      /**
+       * signature from the exchange over the deposit data, all zeros if exchange did not
+       * yet execute the transaction
+       */
+      struct TALER_ExchangeSignatureP exchange_sig;
 
-  /**
-   * contribution to the total amount by this coin, all zeros if exchange did not
-   * yet execute the transaction
-   */
-  struct TALER_Amount coin_contribution;
+      /**
+       * wire transfer identifier used by the exchange, all zeros if exchange did not
+       * yet execute the transaction
+       */
+      struct TALER_WireTransferIdentifierRawP wtid;
+
+      /**
+       * actual execution time for the wire transfer
+       */
+      struct GNUNET_TIME_Absolute execution_time;
+
+      /**
+       * contribution to the total amount by this coin, all zeros if exchange did not
+       * yet execute the transaction
+       */
+      struct TALER_Amount coin_contribution;
+
+      /**
+       * Payment target that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t payment_target_uuid;
+    } success;
+
+    /**
+     * Response if the status was #MHD_HTTP_ACCEPTED
+     */
+    struct
+    {
+
+      /**
+       * planned execution time for the wire transfer
+       */
+      struct GNUNET_TIME_Absolute execution_time;
+
+      /**
+       * Payment target that the merchant should use
+       * to check for its KYC status.
+       */
+      uint64_t payment_target_uuid;
+    } accepted;
+
+  } details;
 };
 
 
@@ -1732,8 +1884,7 @@ struct TALER_EXCHANGE_DepositData
 typedef void
 (*TALER_EXCHANGE_DepositGetCallback)(
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_EXCHANGE_DepositData *dd);
+  const struct TALER_EXCHANGE_GetDepositResponse *dr);
 
 
 /**

@@ -1303,12 +1303,16 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
      putting in the WTID into the wire_out table */
   {
     json_t *wire_out_account;
+    struct TALER_WireSalt salt;
 
+    memset (&salt,
+            44,
+            sizeof (salt));
     wire_out_account = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_string ("payto_uri",
                                "payto://x-taler-bank/localhost:8080/1"),
-      GNUNET_JSON_pack_string ("salt",
-                               "this-is-my-salt"));
+      GNUNET_JSON_pack_data_auto ("salt",
+                                  &salt));
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         plugin->store_wire_transfer_out (plugin->cls,
                                          wire_out_date,
@@ -1513,15 +1517,19 @@ run (void *cls)
   uint64_t rr;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
+  struct TALER_WireSalt salt;
 
   dkp = NULL;
   rh = NULL;
   deposit.coin.denom_sig.rsa_signature = NULL;
+  memset (&salt,
+          45,
+          sizeof (salt));
   wire = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("payto_uri",
                              "payto://iban/DE67830654080004822650?receiver-name=Test"),
-    GNUNET_JSON_pack_string ("salt",
-                             "this-is-a-salt-value"));
+    GNUNET_JSON_pack_data_auto ("salt",
+                                &salt));
   ZR_BLK (&cbc);
   ZR_BLK (&cbc2);
   if (NULL ==

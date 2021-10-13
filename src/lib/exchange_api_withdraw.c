@@ -91,44 +91,41 @@ handle_reserve_withdraw_finished (
   const struct GNUNET_CRYPTO_RsaSignature *blind_sig)
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh = cls;
+  struct TALER_EXCHANGE_WithdrawResponse wr = {
+    .hr = *hr
+  };
 
   wh->wh2 = NULL;
-  if (MHD_HTTP_OK != hr->http_status)
+  switch (hr->http_status)
   {
-    wh->cb (wh->cb_cls,
-            hr,
-            NULL);
-  }
-  else
-  {
-    struct TALER_FreshCoin fc;
-
-    if (GNUNET_OK !=
-        TALER_planchet_to_coin (&wh->pk.key,
-                                blind_sig,
-                                &wh->ps,
-                                &wh->c_hash,
-                                &fc))
+  case MHD_HTTP_OK:
     {
-      struct TALER_EXCHANGE_HttpResponse hrx = {
-        .reply = hr->reply,
-        .http_status = 0,
-        .ec = TALER_EC_EXCHANGE_WITHDRAW_UNBLIND_FAILURE
-      };
+      struct TALER_FreshCoin fc;
 
-      wh->cb (wh->cb_cls,
-              &hrx,
-              NULL);
+      if (GNUNET_OK !=
+          TALER_planchet_to_coin (&wh->pk.key,
+                                  blind_sig,
+                                  &wh->ps,
+                                  &wh->c_hash,
+                                  &fc))
+      {
+        wr.hr.http_status = 0;
+        wr.hr.ec = TALER_EC_EXCHANGE_WITHDRAW_UNBLIND_FAILURE;
+        break;
+      }
+      wr.details.success.sig = fc.sig;
+      break;
     }
-    else
-    {
-      wh->cb (wh->cb_cls,
-              hr,
-              &fc.sig);
-      GNUNET_CRYPTO_rsa_signature_free (fc.sig.rsa_signature);
-    }
-
+  case MHD_HTTP_ACCEPTED:
+    wr.details.accepted.payment_target_uuid; // FIXME
+    break;
+  default:
+    break;
   }
+  wh->cb (wh->cb_cls,
+          &wr);
+  if (MHD_HTTP_OK == hr->http_status)
+    GNUNET_CRYPTO_rsa_signature_free (wr.details.success.sig.rsa_signature);
   TALER_EXCHANGE_withdraw_cancel (wh);
 }
 

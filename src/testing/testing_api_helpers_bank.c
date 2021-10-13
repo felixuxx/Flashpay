@@ -670,11 +670,17 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
 json_t *
 TALER_TESTING_make_wire_details (const char *payto)
 {
+  struct TALER_WireSalt salt;
+
+  /* salt must be constant for aggregation tests! */
+  memset (&salt,
+          47,
+          sizeof (salt));
   return GNUNET_JSON_PACK (
     GNUNET_JSON_pack_string ("payto_uri",
                              payto),
-    GNUNET_JSON_pack_string ("salt",
-                             "test-salt (must be constant for aggregation tests)"));
+    GNUNET_JSON_pack_data_auto ("salt",
+                                &salt));
 }
 
 

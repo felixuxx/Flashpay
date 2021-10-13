@@ -472,7 +472,7 @@ echo "===========4: deposit wire target wrong================="
 # Original target bank account was 43, changing to 44
 SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
 OLD_WIRE=`echo "SELECT wire FROM deposits WHERE deposit_serial_id=${SERIAL};" | psql $DB -Aqt`
-echo "UPDATE deposits SET wire='{\"payto_uri\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE deposits SET wire='{\"payto_uri\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"9PE256FT5N3YX8H3F1QCHXVNGWAGG3MHDN4J360TSVWTA6WSSMNB8MY4GN5HQAP89TDZH8ANKEG1FB1FJZMN7ZC6NH6QRB0CDDR4TJ8\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 
@@ -1500,7 +1500,7 @@ echo "===========26: deposit wire target malformed ================="
 # Expects 'payto_uri', not 'url' (also breaks signature, but we cannot even check that).
 SERIAL=`echo "SELECT deposit_serial_id FROM deposits WHERE amount_with_fee_val=3 AND amount_with_fee_frac=0 ORDER BY deposit_serial_id LIMIT 1" | psql $DB -Aqt`
 OLD_WIRE=`echo "SELECT wire FROM deposits WHERE deposit_serial_id=${SERIAL};" | psql $DB -Aqt`
-echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"test-salt\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
+echo "UPDATE deposits SET wire='{\"url\":\"payto://x-taler-bank/localhost:8082/44\",\"salt\":\"9PE256FT5N3YX8H3F1QCHXVNGWAGG3MHDN4J360TSVWTA6WSSMNB8MY4GN5HQAP89TDZH8ANKEG1FB1FJZMN7ZC6NH6QRB0CDDR4TJ8\"}' WHERE deposit_serial_id=${SERIAL}" | psql -Aqt $DB
 
 run_audit
 

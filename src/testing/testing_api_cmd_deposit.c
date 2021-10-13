@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -207,38 +207,30 @@ do_retry (void *cls)
  * check if the response code is acceptable.
  *
  * @param cls closure.
- * @param hr HTTP response details
- * @param exchange_timestamp when did the exchange receive the deposit permission
- * @param exchange_sig signature provided by the exchange
- *        (NULL on errors)
- * @param exchange_pub public key of the exchange,
- *        used for signing the response.
+ * @param dr deposit response details
  */
 static void
 deposit_cb (void *cls,
-            const struct TALER_EXCHANGE_HttpResponse *hr,
-            const struct GNUNET_TIME_Absolute exchange_timestamp,
-            const struct TALER_ExchangeSignatureP *exchange_sig,
-            const struct TALER_ExchangePublicKeyP *exchange_pub)
+            const struct TALER_EXCHANGE_DepositResult *dr)
 {
   struct DepositState *ds = cls;
 
   ds->dh = NULL;
-  if (ds->expected_response_code != hr->http_status)
+  if (ds->expected_response_code != dr->hr.http_status)
   {
     if (0 != ds->do_retry)
     {
       ds->do_retry--;
-      if ( (0 == hr->http_status) ||
-           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
+      if ( (0 == dr->hr.http_status) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == dr->hr.ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == dr->hr.http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying deposit failed with %u/%d\n",
-                    hr->http_status,
-                    (int) hr->ec);
+                    dr->hr.http_status,
+                    (int) dr->hr.ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == dr->hr.ec)
           ds->backoff = GNUNET_TIME_UNIT_ZERO;
         else
           ds->backoff = GNUNET_TIME_randomized_backoff (ds->backoff,
@@ -253,22 +245,22 @@ deposit_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u to command %s in %s:%u\n",
-                hr->http_status,
+                dr->hr.http_status,
                 ds->is->commands[ds->is->ip].label,
                 __FILE__,
                 __LINE__);
-    json_dumpf (hr->reply,
+    json_dumpf (dr->hr.reply,
                 stderr,
                 0);
     TALER_TESTING_interpreter_fail (ds->is);
     return;
   }
-  if (MHD_HTTP_OK == hr->http_status)
+  if (MHD_HTTP_OK == dr->hr.http_status)
   {
     ds->deposit_succeeded = GNUNET_YES;
-    ds->exchange_timestamp = exchange_timestamp;
-    ds->exchange_pub = *exchange_pub;
-    ds->exchange_sig = *exchange_sig;
+    ds->exchange_timestamp = dr->details.success.deposit_timestamp;
+    ds->exchange_pub = *dr->details.success.exchange_pub;
+    ds->exchange_sig = *dr->details.success.exchange_sig;
   }
   TALER_TESTING_interpreter_next (ds->is);
 }

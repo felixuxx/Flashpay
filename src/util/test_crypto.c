@@ -158,21 +158,24 @@ static int
 test_merchant_sigs ()
 {
   const char *pt = "payto://x-taler-bank/localhost/Account";
-  const char *salt = "my test salt";
+  struct TALER_WireSalt salt;
   struct TALER_MerchantPrivateKeyP priv;
   struct TALER_MerchantPublicKeyP pub;
   struct TALER_MerchantSignatureP sig;
 
   GNUNET_CRYPTO_eddsa_key_create (&priv.eddsa_priv);
+  memset (&salt,
+          42,
+          sizeof (salt));
   TALER_merchant_wire_signature_make (pt,
-                                      salt,
+                                      &salt,
                                       &priv,
                                       &sig);
   GNUNET_CRYPTO_eddsa_key_get_public (&priv.eddsa_priv,
                                       &pub.eddsa_pub);
   if (GNUNET_OK !=
       TALER_merchant_wire_signature_check (pt,
-                                           salt,
+                                           &salt,
                                            &pub,
                                            &sig))
   {
@@ -182,16 +185,19 @@ test_merchant_sigs ()
   if (GNUNET_OK ==
       TALER_merchant_wire_signature_check (
         "payto://x-taler-bank/localhost/Other",
-        salt,
+        &salt,
         &pub,
         &sig))
   {
     GNUNET_break (0);
     return 1;
   }
+  memset (&salt,
+          43,
+          sizeof (salt));
   if (GNUNET_OK ==
       TALER_merchant_wire_signature_check (pt,
-                                           "other salt",
+                                           &salt,
                                            &pub,
                                            &sig))
   {

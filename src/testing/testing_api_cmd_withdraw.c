@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -178,38 +178,36 @@ do_retry (void *cls)
  * in the state.
  *
  * @param cls closure.
- * @param hr HTTP response details
- * @param sig signature over the coin, NULL on error.
+ * @param wr withdraw response details
  */
 static void
 reserve_withdraw_cb (void *cls,
-                     const struct TALER_EXCHANGE_HttpResponse *hr,
-                     const struct TALER_DenominationSignature *sig)
+                     const struct TALER_EXCHANGE_WithdrawResponse *wr)
 {
   struct WithdrawState *ws = cls;
   struct TALER_TESTING_Interpreter *is = ws->is;
 
   ws->wsh = NULL;
-  if (ws->expected_response_code != hr->http_status)
+  if (ws->expected_response_code != wr->hr.http_status)
   {
     if (0 != ws->do_retry)
     {
-      if (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
+      if (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN != wr->hr.ec)
         ws->do_retry--; /* we don't count reserve unknown as failures here */
-      if ( (0 == hr->http_status) ||
-           (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec) ||
-           (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS == hr->ec) ||
-           (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN == hr->ec) ||
-           (MHD_HTTP_INTERNAL_SERVER_ERROR == hr->http_status) )
+      if ( (0 == wr->hr.http_status) ||
+           (TALER_EC_GENERIC_DB_SOFT_FAILURE == wr->hr.ec) ||
+           (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS == wr->hr.ec) ||
+           (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN == wr->hr.ec) ||
+           (MHD_HTTP_INTERNAL_SERVER_ERROR == wr->hr.http_status) )
       {
         GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                     "Retrying withdraw failed with %u/%d\n",
-                    hr->http_status,
-                    (int) hr->ec);
+                    wr->hr.http_status,
+                    (int) wr->hr.ec);
         /* on DB conflicts, do not use backoff */
-        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == hr->ec)
+        if (TALER_EC_GENERIC_DB_SOFT_FAILURE == wr->hr.ec)
           ws->backoff = GNUNET_TIME_UNIT_ZERO;
-        else if (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN != hr->ec)
+        else if (TALER_EC_EXCHANGE_WITHDRAW_RESERVE_UNKNOWN != wr->hr.ec)
           ws->backoff = EXCHANGE_LIB_BACKOFF (ws->backoff);
         else
           ws->backoff = GNUNET_TIME_relative_max (UNKNOWN_MIN_BACKOFF,
@@ -227,29 +225,23 @@ reserve_withdraw_cb (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
-                hr->http_status,
-                (int) hr->ec,
+                wr->hr.http_status,
+                (int) wr->hr.ec,
                 TALER_TESTING_interpreter_get_current_label (is),
                 __FILE__,
                 __LINE__);
-    json_dumpf (hr->reply,
+    json_dumpf (wr->hr.reply,
                 stderr,
                 0);
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  switch (hr->http_status)
+  switch (wr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    if (NULL == sig)
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
     ws->sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_dup (
-      sig->rsa_signature);
+      wr->details.success.sig.rsa_signature);
     if (0 != ws->total_backoff.rel_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -259,7 +251,14 @@ reserve_withdraw_cb (void *cls,
                                                           GNUNET_YES));
     }
     break;
+  case MHD_HTTP_ACCEPTED:
+    /* nothing to check */
+    /* TODO: trait for returned uuid! */
+    break;
   case MHD_HTTP_FORBIDDEN:
+    /* nothing to check */
+    break;
+  case MHD_HTTP_NOT_FOUND:
     /* nothing to check */
     break;
   case MHD_HTTP_CONFLICT:
@@ -268,14 +267,11 @@ reserve_withdraw_cb (void *cls,
   case MHD_HTTP_GONE:
     /* theoretically could check that the key was actually */
     break;
-  case MHD_HTTP_NOT_FOUND:
-    /* nothing to check */
-    break;
   default:
     /* Unsupported status code (by test harness) */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Withdraw test command does not support status code %u\n",
-                hr->http_status);
+                wr->hr.http_status);
     GNUNET_break (0);
     break;
   }

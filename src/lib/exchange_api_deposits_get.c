@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -88,7 +88,7 @@ struct TALER_EXCHANGE_DepositGetHandle
  * @param exchange_sig the exchange's signature
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_deposit_wtid_signature_ok (
   const struct TALER_EXCHANGE_DepositGetHandle *dwh,
   const json_t *json,
@@ -133,26 +133,30 @@ handle_deposit_wtid_finished (void *cls,
 {
   struct TALER_EXCHANGE_DepositGetHandle *dwh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_GetDepositResponse dr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   dwh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    dr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
-      struct TALER_EXCHANGE_DepositData dd;
       struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("wtid", &dwh->depconf.wtid),
-        TALER_JSON_spec_absolute_time ("execution_time", &dd.execution_time),
-        TALER_JSON_spec_amount_any ("coin_contribution", &dd.coin_contribution),
-        GNUNET_JSON_spec_fixed_auto ("exchange_sig", &dd.exchange_sig),
-        GNUNET_JSON_spec_fixed_auto ("exchange_pub", &dd.exchange_pub),
+        GNUNET_JSON_spec_fixed_auto ("wtid",
+                                     &dr.details.success.wtid),
+        TALER_JSON_spec_absolute_time ("execution_time",
+                                       &dr.details.success.execution_time),
+        TALER_JSON_spec_amount_any ("coin_contribution",
+                                    &dr.details.success.coin_contribution),
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &dr.details.success.exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &dr.details.success.exchange_pub),
         GNUNET_JSON_spec_end ()
       };
 
@@ -162,41 +166,37 @@ handle_deposit_wtid_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        hr.http_status = 0;
-        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       dwh->depconf.execution_time = GNUNET_TIME_absolute_hton (
-        dd.execution_time);
+        dr.details.success.execution_time);
+      dwh->depconf.wtid = dr.details.success.wtid;
       TALER_amount_hton (&dwh->depconf.coin_contribution,
-                         &dd.coin_contribution);
+                         &dr.details.success.coin_contribution);
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
                                             j,
-                                            &dd.exchange_pub,
-                                            &dd.exchange_sig))
+                                            &dr.details.success.exchange_pub,
+                                            &dr.details.success.exchange_sig))
       {
         GNUNET_break_op (0);
-        hr.http_status = 0;
-        hr.ec = TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_SIGNATURE_BY_EXCHANGE;
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_DEPOSITS_GET_INVALID_SIGNATURE_BY_EXCHANGE;
+        break;
       }
-      else
-      {
-        dd.wtid = dwh->depconf.wtid;
-        dwh->cb (dwh->cb_cls,
-                 &hr,
-                 &dd);
-        TALER_EXCHANGE_deposits_get_cancel (dwh);
-        return;
-      }
+      dwh->cb (dwh->cb_cls,
+               &dr);
+      TALER_EXCHANGE_deposits_get_cancel (dwh);
+      return;
     }
-    break;
   case MHD_HTTP_ACCEPTED:
     {
       /* Transaction known, but not executed yet */
-      struct GNUNET_TIME_Absolute execution_time;
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_absolute_time ("execution_time", &execution_time),
+        TALER_JSON_spec_absolute_time ("execution_time",
+                                       &dr.details.accepted.execution_time),
         GNUNET_JSON_spec_end ()
       };
 
@@ -206,63 +206,54 @@ handle_deposit_wtid_finished (void *cls,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
-        hr.http_status = 0;
-        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      else
-      {
-        struct TALER_EXCHANGE_DepositData dd = {
-          .execution_time = execution_time
-        };
-
-        dwh->cb (dwh->cb_cls,
-                 &hr,
-                 &dd);
-        TALER_EXCHANGE_deposits_get_cancel (dwh);
-        return;
-      }
+      dr.details.accepted.payment_target_uuid; // FIXME
+      dwh->cb (dwh->cb_cls,
+               &dr);
+      TALER_EXCHANGE_deposits_get_cancel (dwh);
+      return;
     }
-    break;
   case MHD_HTTP_BAD_REQUEST:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_FORBIDDEN:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; as we checked them, this should never happen, we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Exchange does not know about transaction;
        we should pass the reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    dr.hr.ec = TALER_JSON_get_error_code (j);
+    dr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange GET deposits\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) dr.hr.ec);
     GNUNET_break_op (0);
     break;
   }
   dwh->cb (dwh->cb_cls,
-           &hr,
-           NULL);
+           &dr);
   TALER_EXCHANGE_deposits_get_cancel (dwh);
 }
 

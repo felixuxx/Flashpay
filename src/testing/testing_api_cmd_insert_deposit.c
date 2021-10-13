@@ -200,14 +200,18 @@ insert_deposit_run (void *cls,
                                                                      &hc);
   {
     char *str;
+    struct TALER_WireSalt salt;
 
     GNUNET_asprintf (&str,
                      "payto://x-taler-bank/localhost/%s",
                      ids->merchant_account);
+    memset (&salt,
+            46,
+            sizeof (salt));
     deposit.receiver_wire_account
       = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_string ("salt",
-                                   "this-is-a-salt-value"),
+          GNUNET_JSON_pack_data_auto ("salt",
+                                      &salt),
           GNUNET_JSON_pack_string ("payto_uri",
                                    str));
     GNUNET_free (str);
