@@ -30,6 +30,68 @@
 
 
 /**
+ * Enumeration for our KYC modes.
+ */
+enum TEH_KycMode
+{
+  /**
+   * KYC is disabled.
+   */
+  TEH_KYC_NONE = 0,
+
+  /**
+   * We use Oauth2.0.
+   */
+  TEH_KYC_OAUTH2 = 1
+};
+
+
+/**
+ * Structure describing our KYC configuration.
+ */
+struct TEH_KycOptions
+{
+  /**
+   * What KYC mode are we in?
+   */
+  enum TEH_KycMode mode;
+
+  /**
+   * Details depending on @e mode.
+   */
+  union
+  {
+
+    /**
+     * Configuration details if @e mode is #TEH_KYC_OAUTH2.
+     */
+    struct
+    {
+
+      /**
+       * URL of tue OAuth2.0 endpoint for KYC checks.
+       */
+      char *url;
+
+      /**
+       * Our client ID for OAuth2.0.
+       */
+      char *client_id;
+
+      /**
+       * Our client secret for OAuth2.0.
+       */
+      char *client_secret;
+
+    } oauth2;
+
+  } details;
+};
+
+
+extern struct TEH_KycOptions TEH_kyc_config;
+
+/**
  * How long is caching /keys allowed at most?
  */
 extern struct GNUNET_TIME_Relative TEH_max_keys_caching;

@@ -69,6 +69,11 @@ int TEH_allow_keys_timetravel;
 const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 
 /**
+ * Our KYC configuration.
+ */
+struct TEH_KycOptions TEH_kyc_config;
+
+/**
  * How long is caching /keys allowed at most? (global)
  */
 struct GNUNET_TIME_Relative TEH_max_keys_caching;
@@ -1071,6 +1076,74 @@ handle_mhd_request (void *cls,
 
 
 /**
+ * Load OAuth2.0 configuration parameters for the exchange server into the
+ * #TEH_kyc_config variable.
+ *
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_kyc_oauth_cfg (void)
+{
+  char *s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange-kyc-oauth2",
+                                             "KYC_OAUTH2_URL",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-kyc-oauth2",
+                               "KYC_OAUTH2_URL");
+    return GNUNET_SYSERR;
+  }
+  if ( (! TALER_url_valid_charset (s)) ||
+       ( (0 != strncasecmp (s,
+                            "http://",
+                            strlen ("http://"))) &&
+         (0 != strncasecmp (s,
+                            "https://",
+                            strlen ("https://"))) ) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-kyc-oauth2",
+                               "KYC_OAUTH2_URL",
+                               "not a valid URL");
+    GNUNET_free (s);
+    return GNUNET_SYSERR;
+  }
+  TEH_kyc_config.details.oauth2.url = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange-kyc-oauth2",
+                                             "KYC_OAUTH2_CLIENT_ID",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-kyc-oauth2",
+                               "KYC_OAUTH2_CLIENT_ID");
+    return GNUNET_SYSERR;
+  }
+  TEH_kyc_config.details.oauth2.client_id = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange-kyc-oauth2",
+                                             "KYC_OAUTH2_CLIENT_SECRET",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-kyc-oauth2",
+                               "KYC_OAUTH2_CLIENT_SECRET");
+    return GNUNET_SYSERR;
+  }
+  TEH_kyc_config.details.oauth2.client_secret = s;
+  return GNUNET_OK;
+}
+
+
+/**
  * Load configuration parameters for the exchange
  * server into the corresponding global variables.
  *
@@ -1079,6 +1152,47 @@ handle_mhd_request (void *cls,
 static enum GNUNET_GenericReturnValue
 exchange_serve_process_config (void)
 {
+  {
+    char *kyc_mode;
+
+    if (GNUNET_OK !=
+        GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                               "exchange",
+                                               "KYC_MODE",
+                                               &kyc_mode))
+    {
+      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "KYC_MODE");
+      return GNUNET_SYSERR;
+    }
+    if (0 == strcasecmp (kyc_mode,
+                         "NONE"))
+    {
+      TEH_kyc_config.mode = TEH_KYC_NONE;
+    }
+    else if (0 == strcasecmp (kyc_mode,
+                              "OAUTH2"))
+    {
+      TEH_kyc_config.mode = TEH_KYC_OAUTH2;
+      if (GNUNET_OK !=
+          parse_kyc_oauth_cfg ())
+      {
+        GNUNET_free (kyc_mode);
+        return GNUNET_SYSERR;
+      }
+    }
+    else
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "exchange",
+                                 "KYC_MODE",
+                                 "Must be 'NONE' or 'OAUTH2'");
+      GNUNET_free (kyc_mode);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_free (kyc_mode);
+  }
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_number (TEH_cfg,
                                              "exchange",
