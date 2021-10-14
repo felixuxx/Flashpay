@@ -136,7 +136,7 @@ TALER_b2s (const void *buf,
  * @param[out] denom set to the amount found in configuration
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
                          const char *section,
                          const char *option,
@@ -151,7 +151,7 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @param[out] currency where to write the result
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            char **currency);
 

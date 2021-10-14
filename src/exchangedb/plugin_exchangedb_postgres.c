@@ -347,6 +347,19 @@ prepare_statements (struct PostgresClosure *pg)
                             "    WHERE denom_pub_hash=$1);",
                             1),
     /* Used in #postgres_reserves_get() */
+    GNUNET_PQ_make_prepare ("reserves_get_with_kyc",
+                            "SELECT"
+                            " current_balance_val"
+                            ",current_balance_frac"
+                            ",expiration_date"
+                            ",gc_date"
+                            ",FALSE AS kyc_ok" // FIXME
+                            ",CAST (0 AS INT8) AS payment_target_uuid" // FIXME
+                            " FROM reserves"
+                            " WHERE reserve_pub=$1"
+                            " LIMIT 1;",
+                            1),
+    /* Used in #reserves_get() */
     GNUNET_PQ_make_prepare ("reserves_get",
                             "SELECT"
                             " current_balance_val"
@@ -3464,10 +3477,56 @@ postgres_iterate_auditor_denominations (
  * @param[in,out] reserve the reserve data.  The public key of the reserve should be
  *          set in this structure; it is used to query the database.  The balance
  *          and expiration are then filled accordingly.
+ * @param[out] kyc set to the KYC status of the reserve
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_reserves_get (void *cls,
+                       struct TALER_EXCHANGEDB_Reserve *reserve,
+                       struct TALER_EXCHANGEDB_KycStatus *kyc)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
+    GNUNET_PQ_query_param_end
+  };
+  uint8_t ok8;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
+                                 &reserve->balance),
+    TALER_PQ_result_spec_absolute_time ("expiration_date",
+                                        &reserve->expiry),
+    TALER_PQ_result_spec_absolute_time ("gc_date",
+                                        &reserve->gc),
+    GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
+                                  &kyc->payment_target_uuid),
+    GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
+                                          &ok8),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "reserves_get_with_kyc",
+                                                 params,
+                                                 rs);
+  kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
+  kyc->ok = (0 != ok8);
+  return qs;
+}
+
+
+/**
+ * Get the summary of a reserve.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param[in,out] reserve the reserve data.  The public key of the reserve should be
+ *          set in this structure; it is used to query the database.  The balance
+ *          and expiration are then filled accordingly.
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+reserves_get_internal (void *cls,
                        struct TALER_EXCHANGEDB_Reserve *reserve)
 {
   struct PostgresClosure *pg = cls;
@@ -3476,9 +3535,12 @@ postgres_reserves_get (void *cls,
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance", &reserve->balance),
-    TALER_PQ_result_spec_absolute_time ("expiration_date", &reserve->expiry),
-    TALER_PQ_result_spec_absolute_time ("gc_date", &reserve->gc),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
+                                 &reserve->balance),
+    TALER_PQ_result_spec_absolute_time ("expiration_date",
+                                        &reserve->expiry),
+    TALER_PQ_result_spec_absolute_time ("gc_date",
+                                        &reserve->gc),
     GNUNET_PQ_result_spec_end
   };
 
@@ -3699,7 +3761,7 @@ postgres_reserves_in_insert (void *cls,
   {
     enum GNUNET_DB_QueryStatus reserve_exists;
 
-    reserve_exists = postgres_reserves_get (pg,
+    reserve_exists = reserves_get_internal (pg,
                                             &reserve);
     switch (reserve_exists)
     {
@@ -3916,7 +3978,7 @@ postgres_insert_withdraw_info (
   /* update reserve balance */
   reserve.pub = collectable->reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      (qs = postgres_reserves_get (pg,
+      (qs = reserves_get_internal (pg,
                                    &reserve)))
   {
     /* Should have been checked before we got here... */
@@ -6875,7 +6937,7 @@ postgres_insert_reserve_closed (
   /* update reserve balance */
   reserve.pub = *reserve_pub;
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      (qs = postgres_reserves_get (cls,
+      (qs = reserves_get_internal (cls,
                                    &reserve)))
   {
     /* Existence should have been checked before we got here... */
@@ -8667,7 +8729,7 @@ postgres_insert_recoup_request (
 
   /* Update reserve balance */
   reserve.pub = *reserve_pub;
-  qs = postgres_reserves_get (pg,
+  qs = reserves_get_internal (pg,
                               &reserve);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {

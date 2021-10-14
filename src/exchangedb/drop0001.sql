@@ -22,6 +22,19 @@ BEGIN;
 -- Unlike the other SQL files, it SHOULD be updated to reflect the
 -- latest requirements for dropping tables.
 
+
+-- Drops for exchange-0003.sql
+DROP TABLE IF EXISTS revolving_work_shards CASCADE;
+
+
+-- Drops for exchange-0002.sql
+DROP TABLE IF EXISTS auditors CASCADE;
+DROP TABLE IF EXISTS auditor_denom_sigs CASCADE;
+DROP TABLE IF EXISTS exchange_sign_keys CASCADE;
+DROP TABLE IF EXISTS wire_accounts CASCADE;
+DROP TABLE IF EXISTS signkey_revocations CASCADE;
+DROP TABLE IF EXISTS work_shards CASCADE;
+
 -- Drops for 0001.sql
 DROP TABLE IF EXISTS prewire CASCADE;
 DROP TABLE IF EXISTS recoup CASCADE;
@@ -42,8 +55,15 @@ DROP TABLE IF EXISTS reserves CASCADE;
 DROP TABLE IF EXISTS denomination_revocations CASCADE;
 DROP TABLE IF EXISTS denominations CASCADE;
 
--- Unregister patch (0001.sql)
+
+-- Unregister patch (exchange-0001.sql)
 SELECT _v.unregister_patch('exchange-0001');
+
+-- Unregister patch (exchange-0002.sql)
+SELECT _v.unregister_patch('exchange-0002');
+
+-- Unregister patch (exchange-0003.sql)
+SELECT _v.unregister_patch('exchange-0003');
 
 -- And we're out of here...
 COMMIT;

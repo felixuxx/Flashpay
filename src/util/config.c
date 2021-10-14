@@ -32,7 +32,7 @@
  * @param[out] denom set to the amount found in configuration
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
                          const char *section,
                          const char *option,
@@ -59,7 +59,7 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                section,
                                option,
-                               "valid amount");
+                               "invalid amount");
     return GNUNET_SYSERR;
   }
   GNUNET_free (str);
@@ -75,7 +75,7 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @param[out] currency where to write the result
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            char **currency)
 {
@@ -92,10 +92,10 @@ TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
   }
   if (strlen (*currency) >= TALER_CURRENCY_LEN)
   {
-    fprintf (stderr,
-             "Currency `%s' longer than the allowed limit of %u characters.",
-             *currency,
-             (unsigned int) TALER_CURRENCY_LEN);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Currency `%s' longer than the allowed limit of %u characters.",
+                *currency,
+                (unsigned int) TALER_CURRENCY_LEN);
     GNUNET_free (*currency);
     *currency = NULL;
     return GNUNET_SYSERR;

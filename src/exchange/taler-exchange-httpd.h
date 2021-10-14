@@ -57,6 +57,20 @@ struct TEH_KycOptions
   enum TEH_KycMode mode;
 
   /**
+   * Maximum amount that can be withdrawn in @e withdraw_period without
+   * needing KYC.
+   * Only valid if @e mode is not #TEH_KYC_NONE and
+   * if @e withdraw_period is non-zero.
+   */
+  struct TALER_Amount withdraw_limit;
+
+  /**
+   * Time period over which @e withdraw_limit applies.
+   * Only valid if @e mode is not #TEH_KYC_NONE.
+   */
+  struct GNUNET_TIME_Relative withdraw_period;
+
+  /**
    * Details depending on @e mode.
    */
   union

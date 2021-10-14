@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -165,6 +165,7 @@ withdraw_transaction (void *cls,
   struct TALER_EXCHANGEDB_Reserve r;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_DenominationSignature denom_sig;
+  struct TALER_EXCHANGEDB_KycStatus kyc;
 
 #if OPTIMISTIC_SIGN
   /* store away optimistic signature to protect
@@ -209,7 +210,8 @@ withdraw_transaction (void *cls,
               "Trying to withdraw from reserve: %s\n",
               TALER_B2S (&r.pub));
   qs = TEH_plugin->reserves_get (TEH_plugin->cls,
-                                 &r);
+                                 &r,
+                                 &kyc);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -266,6 +268,13 @@ withdraw_transaction (void *cls,
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
     return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+
+  if ( (! kyc.ok) &&
+       (TEH_KYC_NONE != TEH_kyc_config.mode) )
+  {
+    // FIXME: check if we are above the limit
+    // for KYC, and if so, deny the transaction!
   }
 
   /* Balance is good, sign the coin! */

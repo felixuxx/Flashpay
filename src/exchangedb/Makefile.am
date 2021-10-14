@@ -19,9 +19,7 @@ sql_DATA = \
   exchange-0001.sql \
   exchange-0002.sql \
   exchange-0003.sql \
-  drop0001.sql \
-  drop0002.sql \
-  drop0003.sql
+  drop0001.sql
 
 EXTRA_DIST = \
   exchangedb.conf \

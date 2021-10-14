@@ -1076,6 +1076,48 @@ handle_mhd_request (void *cls,
 
 
 /**
+ * Load general KYC configuration parameters for the exchange server into the
+ * #TEH_kyc_config variable.
+ *
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+parse_kyc_settings (void)
+{
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
+                                           "exchange",
+                                           "KYC_WITHDRAW_PERIOD",
+                                           &TEH_kyc_config.withdraw_period))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KYC_WITHDRAW_PERIOD",
+                               "valid relative time expected");
+    return GNUNET_SYSERR;
+  }
+  if (GNUNET_TIME_relative_is_zero (TEH_kyc_config.withdraw_period))
+    return GNUNET_OK;
+  if (GNUNET_OK !=
+      TALER_config_get_amount (TEH_cfg,
+                               "exchange",
+                               "KYC_WITHDRAW_LIMIT",
+                               &TEH_kyc_config.withdraw_limit))
+    return GNUNET_SYSERR;
+  if (0 != strcasecmp (TEH_kyc_config.withdraw_limit.currency,
+                       TEH_currency))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "KYC_WITHDRAW_LIMIT",
+                               "currency mismatch");
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+/**
  * Load OAuth2.0 configuration parameters for the exchange server into the
  * #TEH_kyc_config variable.
  *
@@ -1264,6 +1306,12 @@ exchange_serve_process_config (void)
       return GNUNET_SYSERR;
     }
     GNUNET_free (master_public_key_str);
+  }
+  if (TEH_KYC_NONE != TEH_kyc_config.mode)
+  {
+    if (GNUNET_OK !=
+        parse_kyc_settings ())
+      return GNUNET_SYSERR;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Launching exchange with public key `%s'...\n",

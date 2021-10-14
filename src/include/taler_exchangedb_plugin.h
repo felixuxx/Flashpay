@@ -1533,7 +1533,7 @@ typedef void
  * @param done flag set if the deposit was already executed (or not)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_DepositCallback)(
   void *cls,
   uint64_t rowid,
@@ -1565,7 +1565,7 @@ typedef int
  * @param rc what is the commitment
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_RefreshesCallback)(
   void *cls,
   uint64_t rowid,
@@ -1585,7 +1585,7 @@ typedef int
  * @param amount_with_fee amount being refunded
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_RefundCoinCallback)(
   void *cls,
   const struct TALER_Amount *amount_with_fee);
@@ -1626,6 +1626,66 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
 
 
 /**
+ * Types of operations that require KYC checks.
+ */
+enum TALER_EXCHANGEDB_KycType
+{
+  /**
+   * KYC to be applied for simple withdraws without
+   * the involvement of wallet-to-wallet payments.
+   * Tied to the payto:// of the debited account.
+   */
+  TALER_EXCHANGEDB_KYC_WITHDRAW = 1,
+
+  /**
+   * KYC to be applied for simple deposits to a
+   * merchant's bank account.  Tied to the payto://
+   * of the credited account.
+   */
+  TALER_EXCHANGEDB_KYC_DEPOSIT = 2,
+
+  /**
+   * KYC that is self-applied by a wallet that is exceeding the amount
+   * threshold.  Tied to the reserve-account public key that identifies the
+   * funds-holding wallet.
+   */
+  TALER_EXCHANGEDB_KYC_BALANCE = 3,
+
+  /**
+   * KYC that is triggered upon wallet-to-wallet
+   * payments for the recipient of funds. Tied to the
+   * reserve public key that identifies the receiving
+   * wallet.
+   */
+  TALER_EXCHANGEDB_KYC_W2W = 4
+};
+
+
+/**
+ * Generic KYC status for some operation.
+ */
+struct TALER_EXCHANGEDB_KycStatus
+{
+  /**
+   * Number that identifies the KYC target the operation
+   * was about.
+   */
+  uint64_t payment_target_uuid;
+
+  /**
+   * What kind of KYC operation is this?
+   */
+  enum TALER_EXCHANGEDB_KycType type;
+
+  /**
+   * True if the KYC status is "satisfied".
+   */
+  bool ok;
+
+};
+
+
+/**
  * Function called with information about a refresh order.
  *
  * @param cls closure
@@ -1660,7 +1720,7 @@ typedef void
  * @param amount_with_fee amount that was deposited including fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_RefundCallback)(
   void *cls,
   uint64_t rowid,
@@ -1685,7 +1745,7 @@ typedef int
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_ReserveInCallback)(
   void *cls,
   uint64_t rowid,
@@ -1745,7 +1805,7 @@ typedef void
  * @param amount_with_fee amount that was withdrawn
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_WithdrawCallback)(
   void *cls,
   uint64_t rowid,
@@ -1838,7 +1898,7 @@ typedef void
  * @param amount amount that was wired
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_WireTransferOutCallback)(
   void *cls,
   uint64_t rowid,
@@ -1859,7 +1919,7 @@ typedef int
  * @param finished did we complete the transfer yet?
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_WirePreparationCallback)(void *cls,
                                             uint64_t rowid,
                                             const char *wire_method,
@@ -1882,7 +1942,7 @@ typedef int
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_RecoupCallback)(
   void *cls,
   uint64_t rowid,
@@ -1911,7 +1971,7 @@ typedef int
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_RecoupRefreshCallback)(
   void *cls,
   uint64_t rowid,
@@ -1939,7 +1999,7 @@ typedef int
  * @param wtid identifier used for the wire transfer
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-typedef int
+typedef enum GNUNET_GenericReturnValue
 (*TALER_EXCHANGEDB_ReserveClosedCallback)(
   void *cls,
   uint64_t rowid,
@@ -2295,11 +2355,13 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[in,out] reserve the reserve data.  The public key of the reserve should be set
    *          in this structure; it is used to query the database.  The balance
    *          and expiration are then filled accordingly.
+   * @param[out] kyc set to the KYC status of the reserve
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*reserves_get)(void *cls,
-                  struct TALER_EXCHANGEDB_Reserve *reserve);
+                  struct TALER_EXCHANGEDB_Reserve *reserve,
+                  struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 
   /**

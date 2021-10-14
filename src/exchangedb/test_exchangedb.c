@@ -154,22 +154,25 @@ drop:
  * @return #GNUNET_OK if the given reserve has the same balance and expiration
  *           as the given parameters; #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_reserve (const struct TALER_ReservePublicKeyP *pub,
                uint64_t value,
                uint32_t fraction,
                const char *currency)
 {
   struct TALER_EXCHANGEDB_Reserve reserve;
+  struct TALER_EXCHANGEDB_KycStatus kyc;
 
   reserve.pub = *pub;
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_get (plugin->cls,
-                                &reserve));
+                                &reserve,
+                                &kyc));
   FAILIF (value != reserve.balance.value);
   FAILIF (fraction != reserve.balance.fraction);
-  FAILIF (0 != strcmp (currency, reserve.balance.currency));
-
+  FAILIF (0 != strcmp (currency,
+                       reserve.balance.currency));
+  FAILIF (kyc.ok);
   return GNUNET_OK;
 drop:
   return GNUNET_SYSERR;
@@ -1692,11 +1695,13 @@ run (void *cls)
     struct TALER_EXCHANGEDB_Reserve pre_reserve;
     struct TALER_EXCHANGEDB_Reserve post_reserve;
     struct TALER_Amount delta;
+    struct TALER_EXCHANGEDB_KycStatus kyc;
 
     pre_reserve.pub = reserve_pub;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->reserves_get (plugin->cls,
-                                  &pre_reserve));
+                                  &pre_reserve,
+                                  &kyc));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->insert_recoup_request (plugin->cls,
                                            &reserve_pub,
@@ -1709,7 +1714,8 @@ run (void *cls)
     post_reserve.pub = reserve_pub;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->reserves_get (plugin->cls,
-                                  &post_reserve));
+                                  &post_reserve,
+                                  &kyc));
     FAILIF (0 >=
             TALER_amount_subtract (&delta,
                                    &post_reserve.balance,
