@@ -4389,6 +4389,126 @@ postgres_get_reserve_history (void *cls,
 
 
 /**
+ * Closure for withdraw_amount_by_account_cb()
+ */
+struct WithdrawAmountByAccountContext
+{
+  /**
+   * Function to call on each amount.
+   */
+  TALER_EXCHANGEDB_WithdrawHistoryCallback cb;
+
+  /**
+   * Closure for @e cb
+   */
+  void *cb_cls;
+
+  /**
+   * Our plugin's context.
+   */
+  struct PostgresClosure *pg;
+
+  /**
+   * Set to true on failures.
+   */
+  bool failed;
+};
+
+
+/**
+ * Helper function for #postgres_select_withdraw_amounts_by_account().
+ * To be called with the results of a SELECT statement
+ * that has returned @a num_results results.
+ *
+ * @param cls closure of type `struct WithdrawAmountByAccountContext *`
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+withdraw_amount_by_account_cb (void *cls,
+                               PGresult *result,
+                               unsigned int num_results)
+{
+  struct WithdrawAmountByAccountContext *wac = cls;
+  struct PostgresClosure *pg = wac->pg;
+
+  for (unsigned int i = 0; num_results; i++)
+  {
+    struct TALER_Amount val;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      TALER_PQ_RESULT_SPEC_AMOUNT ("val",
+                                   &val),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      wac->failed = true;
+      return;
+    }
+    wac->cb (wac->cb_cls,
+             &val);
+  }
+}
+
+
+/**
+ * Find out all of the amounts that have been withdrawn
+ * so far from the same bank account that created the
+ * given reserve.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param reserve_pub reserve to select withdrawals by
+ * @param duration how far back should we select withdrawals
+ * @param cb function to call on each amount withdrawn
+ * @param cb_cls closure for @a cb
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_withdraw_amounts_by_account (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct GNUNET_TIME_Relative duration,
+  TALER_EXCHANGEDB_WithdrawHistoryCallback cb,
+  void *cb_cls)
+{
+  struct PostgresClosure *pg = cls;
+  struct WithdrawAmountByAccountContext wac = {
+    .pg = pg,
+    .cb = cb,
+    .cb_cls = cb_cls
+  };
+  struct GNUNET_TIME_Absolute start
+    = GNUNET_TIME_absolute_subtract (GNUNET_TIME_absolute_get (),
+                                     duration);
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+    GNUNET_PQ_query_param_absolute_time (&start),
+    GNUNET_PQ_query_param_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = GNUNET_PQ_eval_prepared_multi_select (
+    pg->conn,
+    "select_XXX",
+    params,
+    &withdraw_amount_by_account_cb,
+    &wac);
+
+  if (wac.failed)
+  {
+    GNUNET_break (0);
+    qs = GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  return qs;
+}
+
+
+/**
  * Check if we have the specified deposit already in the database.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
@@ -10957,6 +11077,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
   plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
   plugin->get_reserve_history = &postgres_get_reserve_history;
+  plugin->select_withdraw_amounts_by_account
+    = &postgres_select_withdraw_amounts_by_account;
   plugin->free_reserve_history = &common_free_reserve_history;
   plugin->count_known_coins = &postgres_count_known_coins;
   plugin->ensure_coin_known = &postgres_ensure_coin_known;

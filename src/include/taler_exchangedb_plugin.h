@@ -2012,6 +2012,18 @@ typedef enum GNUNET_GenericReturnValue
 
 
 /**
+ * Function called with the amounts historically
+ * withdrawn from the same origin account.
+ *
+ * @param cls closure
+ * @param val one of the withdrawn amounts
+ */
+typedef void
+(*TALER_EXCHANGEDB_WithdrawHistoryCallback)(
+  void *cls,
+  const struct TALER_Amount *val);
+
+/**
  * Function called with details about expired reserves.
  *
  * @param cls closure
@@ -2448,6 +2460,27 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_reserve_history)(void *cls,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          struct TALER_EXCHANGEDB_ReserveHistory **rhp);
+
+
+  /**
+   * Find out all of the amounts that have been withdrawn
+   * so far from the same bank account that created the
+   * given reserve.
+   *
+   * @param cls closure
+   * @param reserve_pub reserve to select withdrawals by
+   * @param duration how far back should we select withdrawals
+   * @param cb function to call on each amount withdrawn
+   * @param cb_cls closure for @a cb
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_withdraw_amounts_by_account)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    struct GNUNET_TIME_Relative duration,
+    TALER_EXCHANGEDB_WithdrawHistoryCallback cb,
+    void *cb_cls);
 
 
   /**

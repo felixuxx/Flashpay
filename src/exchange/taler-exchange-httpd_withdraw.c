@@ -129,7 +129,42 @@ struct WithdrawContext
    */
   struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
 
+  /**
+   * KYC status for the operation.
+   */
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
+   * Set to true if the operation was denied due to
+   * failing @e kyc checks.
+   */
+  bool kyc_denied;
+
 };
+
+
+/**
+ * Function called with another amount that was
+ * already withdrawn. Accumulates all amounts in
+ * @a cls.
+ *
+ * @param[in,out] cls a `struct TALER_Amount`
+ * @param val value to add to @a cls
+ */
+static void
+accumulate_withdraws (void *cls,
+                      const struct TALER_Amount *val)
+{
+  struct TALER_Amount *acc = cls;
+
+  if (GNUNET_OK !=
+      TALER_amount_is_valid (acc))
+    return; /* ignore */
+  GNUNET_break (0 <=
+                TALER_amount_add (acc,
+                                  acc,
+                                  val));
+}
 
 
 /**
@@ -165,7 +200,6 @@ withdraw_transaction (void *cls,
   struct TALER_EXCHANGEDB_Reserve r;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_DenominationSignature denom_sig;
-  struct TALER_EXCHANGEDB_KycStatus kyc;
 
 #if OPTIMISTIC_SIGN
   /* store away optimistic signature to protect
@@ -211,7 +245,7 @@ withdraw_transaction (void *cls,
               TALER_B2S (&r.pub));
   qs = TEH_plugin->reserves_get (TEH_plugin->cls,
                                  &r,
-                                 &kyc);
+                                 &wc->kyc);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -270,11 +304,60 @@ withdraw_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  if ( (! kyc.ok) &&
-       (TEH_KYC_NONE != TEH_kyc_config.mode) )
+  if ( (! wc->kyc.ok) &&
+       (TEH_KYC_NONE != TEH_kyc_config.mode) &&
+       (TALER_EXCHANGEDB_KYC_W2W == wc->kyc.type) )
   {
-    // FIXME: check if we are above the limit
-    // for KYC, and if so, deny the transaction!
+    /* Wallet-to-wallet payments _always_ require KYC */
+    wc->kyc_denied = true;
+    return qs;
+  }
+  if ( (! wc->kyc.ok) &&
+       (TEH_KYC_NONE != TEH_kyc_config.mode) &&
+       (TALER_EXCHANGEDB_KYC_WITHDRAW == wc->kyc.type) &&
+       (! GNUNET_TIME_relative_is_zero (TEH_kyc_config.withdraw_period)) )
+  {
+    /* Withdraws require KYC if above threshold */
+    struct TALER_Amount acc;
+    enum GNUNET_DB_QueryStatus qs2;
+
+    TALER_amount_set_zero (TEH_currency,
+                           &acc);
+    accumulate_withdraws (&acc,
+                          &wc->amount_required);
+    qs2 = TEH_plugin->select_withdraw_amounts_by_account (
+      TEH_plugin->cls,
+      &wc->wsrd.reserve_pub,
+      TEH_kyc_config.withdraw_period,
+      &accumulate_withdraws,
+      &acc);
+    if (0 > qs2)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs2);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs2)
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "withdraw details");
+      return qs2;
+    }
+
+    if (GNUNET_OK !=
+        TALER_amount_is_valid (&acc))
+    {
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                          TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                          NULL);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (1 == /* 1: acc > withdraw_limit */
+        TALER_amount_cmp (&acc,
+                          &TEH_kyc_config.withdraw_limit))
+    {
+      wc->kyc_denied = true;
+      return qs;
+    }
   }
 
   /* Balance is good, sign the coin! */
@@ -338,6 +421,9 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   enum TALER_ErrorCode ec;
   struct TEH_DenominationKey *dk;
 
+  memset (&wc,
+          0,
+          sizeof (wc));
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
@@ -480,6 +566,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 #endif
 
   /* run transaction and sign (if not optimistically signed before) */
+  wc.kyc_denied = false;
   {
     MHD_RESULT mhd_ret;
 
@@ -499,8 +586,20 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     }
   }
 
-  /* Clean up and send back final (positive) response */
+  /* Clean up and send back final response */
   GNUNET_JSON_parse_free (spec);
+
+  if (wc.kyc_denied)
+  {
+    if (NULL != wc.collectable.sig.rsa_signature)
+      GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
+
+    return TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
+                               wc.kyc.payment_target_uuid));
+  }
 
   {
     MHD_RESULT ret;
