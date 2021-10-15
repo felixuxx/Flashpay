@@ -2377,6 +2377,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Get the KYC status for a bank account.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param payto_uri payto:// URI that identifies the bank account
+   * @param[out] kyc set to the KYC status of the reserve
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*get_kyc_status)(void *cls,
+                    const char *payto_uri,
+                    struct TALER_EXCHANGEDB_KycStatus *kyc);
+
+
+  /**
    * Insert a incoming transaction into reserves.  New reserves are
    * also created through this function.
    *
