@@ -685,8 +685,6 @@ decode_keys_json (const json_t *resp_obj,
                                  &sig),
     GNUNET_JSON_spec_fixed_auto ("eddsa_pub",
                                  &pub),
-    /* sig and pub must be first, as we skip those if
-       check_sig is false! */
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                  &key_data->master_pub),
     TALER_JSON_spec_absolute_time ("list_issue_date",
@@ -695,6 +693,10 @@ decode_keys_json (const json_t *resp_obj,
                                    &key_data->reserve_closing_delay),
     GNUNET_JSON_spec_string ("currency",
                              &currency),
+    GNUNET_JSON_spec_mark_optional (
+      TALER_JSON_spec_amount ("wallet_balance_limit_without_kyc",
+                              currency,
+                              &key_data->wallet_balance_limit_without_kyc)),
     GNUNET_JSON_spec_end ()
   };
 

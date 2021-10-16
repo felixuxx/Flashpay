@@ -65,6 +65,14 @@ struct TEH_KycOptions
   struct TALER_Amount withdraw_limit;
 
   /**
+   * Maximum balance a wallet can hold without
+   * needing KYC.
+   * Only valid if @e mode is not #TEH_KYC_NONE and
+   * if the amount specified is valid.
+   */
+  struct TALER_Amount wallet_balance_limit;
+
+  /**
    * Time period over which @e withdraw_limit applies.
    * Only valid if @e mode is not #TEH_KYC_NONE.
    */

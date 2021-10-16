@@ -1279,6 +1279,35 @@ exchange_serve_process_config (void)
                                "CURRENCY");
     return GNUNET_SYSERR;
   }
+  if (TEH_KYC_NONE != TEH_kyc_config.mode)
+  {
+    if (GNUNET_YES ==
+        GNUNET_CONFIGURATION_have_value (TEH_cfg,
+                                         "exchange",
+                                         "KYC_WALLET_BALANCE_LIMIT"))
+    {
+      if ( (GNUNET_OK !=
+            TALER_config_get_amount (TEH_cfg,
+                                     "exchange",
+                                     "KYC_WALLET_BALANCE_LIMIT",
+                                     &TEH_kyc_config.wallet_balance_limit)) ||
+           (0 != strcasecmp (TEH_currency,
+                             TEH_kyc_config.wallet_balance_limit.currency)) )
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange",
+                                   "KYC_WALLET_BALANCE_LIMIT",
+                                   "valid amount expected");
+        return GNUNET_SYSERR;
+      }
+    }
+    else
+    {
+      memset (&TEH_kyc_config.wallet_balance_limit,
+              0,
+              sizeof (TEH_kyc_config.wallet_balance_limit));
+    }
+  }
   {
     char *master_public_key_str;
 

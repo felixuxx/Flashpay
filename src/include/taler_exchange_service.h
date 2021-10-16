@@ -265,6 +265,12 @@ struct TALER_EXCHANGE_Keys
   struct GNUNET_TIME_Relative reserve_closing_delay;
 
   /**
+   * Maximum amount a wallet is allowed to hold from
+   * this exchange before it must undergo a KYC check.
+   */
+  struct TALER_Amount wallet_balance_limit_without_kyc;
+
+  /**
    * Timestamp indicating the /keys generation.
    */
   struct GNUNET_TIME_Absolute list_issue_date;

@@ -1473,6 +1473,18 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_JSON_pack_data_auto ("eddsa_sig",
                                 &exchange_sig));
   GNUNET_assert (NULL != keys);
+  if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
+       (GNUNET_OK ==
+        TALER_amount_is_valid (&TEH_kyc_config.wallet_balance_limit)) )
+  {
+    GNUNET_assert (
+      0 ==
+      json_object_set_new (
+        keys,
+        "wallet_balance_limit_without_kyc",
+        TALER_JSON_from_amount (
+          &TEH_kyc_config.wallet_balance_limit)));
+  }
 
   {
     char *keys_json;
