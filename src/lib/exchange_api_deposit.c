@@ -179,65 +179,6 @@ auditor_cb (void *cls,
 
 
 /**
- * Verify that the signature on the "200 OK" response
- * from the exchange is valid.
- *
- * @param dh deposit handle
- * @param json json reply with the signature
- * @param[out] exchange_sig set to the exchange's signature
- * @param[out] exchange_pub set to the exchange's public key
- * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
- */
-static enum GNUNET_GenericReturnValue
-verify_deposit_signature_ok (struct TALER_EXCHANGE_DepositHandle *dh,
-                             const json_t *json,
-                             struct TALER_ExchangeSignatureP *exchange_sig,
-                             struct TALER_ExchangePublicKeyP *exchange_pub)
-{
-  const struct TALER_EXCHANGE_Keys *key_state;
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("exchange_sig", exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
-    TALER_JSON_spec_absolute_time_nbo ("exchange_timestamp",
-                                       &dh->depconf.exchange_timestamp),
-    GNUNET_JSON_spec_end ()
-  };
-
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  key_state = TALER_EXCHANGE_get_keys (dh->exchange);
-  if (GNUNET_OK !=
-      TALER_EXCHANGE_test_signing_key (key_state,
-                                       exchange_pub))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
-                                  &dh->depconf,
-                                  &exchange_sig->eddsa_signature,
-                                  &exchange_pub->eddsa_pub))
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
-  dh->exchange_sig = *exchange_sig;
-  dh->exchange_pub = *exchange_pub;
-  TEAH_get_auditors_for_dc (dh->exchange,
-                            &auditor_cb,
-                            dh);
-  return GNUNET_OK;
-}
-
-
-/**
  * Verify that the signatures on the "403 FORBIDDEN" response from the
  * exchange demonstrating customer double-spending are valid.
  *
@@ -322,8 +263,6 @@ handle_deposit_finished (void *cls,
                          const void *response)
 {
   struct TALER_EXCHANGE_DepositHandle *dh = cls;
-  struct TALER_ExchangeSignatureP exchange_sig;
-  struct TALER_ExchangePublicKeyP exchange_pub;
   const json_t *j = response;
   struct TALER_EXCHANGE_DepositResult dr = {
     .hr.reply = j,
@@ -337,25 +276,65 @@ handle_deposit_finished (void *cls,
     dr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
-    if (GNUNET_OK !=
-        verify_deposit_signature_ok (dh,
-                                     j,
-                                     &exchange_sig,
-                                     &exchange_pub))
     {
-      GNUNET_break_op (0);
-      dr.hr.http_status = 0;
-      dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+      const struct TALER_EXCHANGE_Keys *key_state;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                     &dh->exchange_sig),
+        GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                     &dh->exchange_pub),
+        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
+                                 &dr.details.success.payment_target_uuid),
+        GNUNET_JSON_spec_mark_optional (
+          GNUNET_JSON_spec_string ("transaction_base_url",
+                                   &dr.details.success.transaction_base_url)),
+        TALER_JSON_spec_absolute_time_nbo ("exchange_timestamp",
+                                           &dh->depconf.exchange_timestamp),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (j,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+      key_state = TALER_EXCHANGE_get_keys (dh->exchange);
+      if (GNUNET_OK !=
+          TALER_EXCHANGE_test_signing_key (key_state,
+                                           &dh->exchange_pub))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+        break;
+      }
+
+      if (GNUNET_OK !=
+          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
+                                      &dh->depconf,
+                                      &dh->exchange_sig.eddsa_signature,
+                                      &dh->exchange_pub.eddsa_pub))
+      {
+        GNUNET_break_op (0);
+        dr.hr.http_status = 0;
+        dr.hr.ec = TALER_EC_EXCHANGE_DEPOSIT_INVALID_SIGNATURE_BY_EXCHANGE;
+        break;
+      }
+
+      TEAH_get_auditors_for_dc (dh->exchange,
+                                &auditor_cb,
+                                dh);
+
     }
-    else
-    {
-      dr.details.success.exchange_sig = &exchange_sig;
-      dr.details.success.exchange_pub = &exchange_pub;
-      dr.details.success.deposit_timestamp
-        = GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp);
-      dr.details.success.transaction_base_url; // FIXME
-      dr.details.success.payment_target_uuid; // FIXME
-    }
+    dr.details.success.exchange_sig = &dh->exchange_sig;
+    dr.details.success.exchange_pub = &dh->exchange_pub;
+    dr.details.success.deposit_timestamp
+      = GNUNET_TIME_absolute_ntoh (dh->depconf.exchange_timestamp);
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
