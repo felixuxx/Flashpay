@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -117,7 +117,24 @@ handle_reserve_withdraw_finished (
       break;
     }
   case MHD_HTTP_ACCEPTED:
-    wr.details.accepted.payment_target_uuid; // FIXME
+    {
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
+                                 &wr.details.accepted.payment_target_uuid),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (hr->reply,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        wr.hr.http_status = 0;
+        wr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
+    }
     break;
   default:
     break;
