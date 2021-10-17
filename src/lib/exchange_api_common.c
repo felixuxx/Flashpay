@@ -445,7 +445,7 @@ TALER_EXCHANGE_free_reserve_history (
  * @param[out] total how much of the coin has been spent according to @a history
  * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
   const char *currency,

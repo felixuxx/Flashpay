@@ -1947,7 +1947,7 @@ TALER_EXCHANGE_deposits_get_cancel (
  * @param[out] total how much of the coin has been spent according to @a history
  * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,
   const char *currency,
@@ -2164,6 +2164,75 @@ TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *eh,
  */
 void
 TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kyc);
+
+
+/**
+ * Handle for a ``/kyc-wallet`` operation.
+ */
+struct TALER_EXCHANGE_KycWalletHandle;
+
+
+/**
+ * KYC status response details.
+ */
+struct TALER_EXCHANGE_WalletKycResponse
+{
+
+  /**
+   * HTTP status code returned by the exchange.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, if any.
+   */
+  enum TALER_ErrorCode ec;
+
+  /**
+   * Wallet's payment target UUID. Only valid if
+   * @e http_status is #MHD_HTTP_OK
+   */
+  uint64_t payment_target_uuid;
+
+};
+
+/**
+ * Function called with the result for a wallet looking
+ * up its KYC payment target.
+ *
+ * @param cls closure
+ * @param ks the wallets KYC payment target details
+ */
+typedef void
+(*TALER_EXCHANGE_KycWalletCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_WalletKycResponse *ks);
+
+
+/**
+ * Run interaction with exchange to find out the wallet's KYC
+ * identifier.
+ *
+ * @param eh exchange handle to use
+ * @param reserve_priv wallet private key to check
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return NULL on error
+ */
+struct TALER_EXCHANGE_KycWalletHandle *
+TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *eh,
+                           const struct TALER_ReservePrivateKeyP *reserve_priv,
+                           TALER_EXCHANGE_KycWalletCallback cb,
+                           void *cb_cls);
+
+
+/**
+ * Cancel KYC wallet operation
+ *
+ * @param kwh handle for operation to cancel
+ */
+void
+TALER_EXCHANGE_kyc_wallet_cancel (struct TALER_EXCHANGE_KycWalletHandle *kwh);
 
 
 /* *********************  /management *********************** */
