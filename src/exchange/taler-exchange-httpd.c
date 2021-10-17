@@ -835,6 +835,25 @@ handle_mhd_request (void *cls,
       .handler.get = &TEH_handler_deposits_get,
       .nargs = 4
     },
+    /* KYC endpoints */
+    {
+      .url = "kyc-check",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_kyc_check,
+      .nargs = 1
+    },
+    {
+      .url = "kyc-proof",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_kyc_proof,
+      .nargs = 1
+    },
+    {
+      .url = "kyc-wallet",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_kyc_wallet,
+      .nargs = 0
+    },
     /* POST management endpoints */
     {
       .url = "management",

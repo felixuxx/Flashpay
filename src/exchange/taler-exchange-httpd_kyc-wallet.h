@@ -30,14 +30,16 @@
  * reserve and the signature "reserve_sig" which affirms the operation. If OK,
  * a KYC record is created (if missing) and the KYC status returned.
  *
- * @param connection request to handle
+ * @param rc request to handle
  * @param root uploaded JSON data
+ * @param args empty array
  * @return MHD result code
-  */
+ */
 MHD_RESULT
 TEH_handler_kyc_wallet (
-  struct MHD_Connection *connection,
-  const json_t *root);
+  struct TEH_RequestContext *rc,
+  const json_t *root,
+  const char *const args[]);
 
 
 #endif

@@ -67,21 +67,36 @@ proof_kyc_check (void *cls,
 
 MHD_RESULT
 TEH_handler_kyc_proof (
-  struct MHD_Connection *connection,
-  ...)
+  struct TEH_RequestContext *rc,
+  const char *const args[])
 {
   struct KycProofContext kpc;
   MHD_RESULT res;
   enum GNUNET_GenericReturnValue ret;
+  unsigned long long payment_target_uuid;
+  char dummy;
+
+  if (1 !=
+      sscanf (args[0],
+              "%llu%c",
+              &payment_target_uuid,
+              &dummy))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       "payment_target_uuid");
+  }
 
   if (1 || (TEH_KYC_NONE == TEH_kyc_config.mode))
     return TALER_MHD_reply_static (
-      connection,
+      rc->connection,
       MHD_HTTP_NO_CONTENT,
       NULL,
       NULL,
       0);
-  ret = TEH_DB_run_transaction (connection,
+  ret = TEH_DB_run_transaction (rc->connection,
                                 "check proof kyc",
                                 &res,
                                 &proof_kyc_check,
@@ -89,7 +104,7 @@ TEH_handler_kyc_proof (
   if (GNUNET_SYSERR == ret)
     return res;
   return TALER_MHD_REPLY_JSON_PACK (
-    connection,
+    rc->connection,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_uint64 ("42",
                              42));

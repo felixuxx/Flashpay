@@ -89,8 +89,9 @@ wallet_kyc_check (void *cls,
 
 MHD_RESULT
 TEH_handler_kyc_wallet (
-  struct MHD_Connection *connection,
-  const json_t *root)
+  struct TEH_RequestContext *rc,
+  const json_t *root,
+  const char *const args[])
 {
   struct TALER_ReserveSignatureP reserve_sig;
   struct KycRequestContext krc;
@@ -108,7 +109,7 @@ TEH_handler_kyc_wallet (
     .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
   };
 
-  ret = TALER_MHD_parse_json_data (connection,
+  ret = TALER_MHD_parse_json_data (rc->connection,
                                    root,
                                    spec);
   if (GNUNET_SYSERR == ret)
@@ -124,19 +125,19 @@ TEH_handler_kyc_wallet (
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
-      connection,
+      rc->connection,
       MHD_HTTP_FORBIDDEN,
       TALER_EC_EXCHANGE_KYC_WALLET_SIGNATURE_INVALID,
       NULL);
   }
   if (TEH_KYC_NONE == TEH_kyc_config.mode)
     return TALER_MHD_reply_static (
-      connection,
+      rc->connection,
       MHD_HTTP_NO_CONTENT,
       NULL,
       NULL,
       0);
-  ret = TEH_DB_run_transaction (connection,
+  ret = TEH_DB_run_transaction (rc->connection,
                                 "check wallet kyc",
                                 &res,
                                 &wallet_kyc_check,
@@ -144,7 +145,7 @@ TEH_handler_kyc_wallet (
   if (GNUNET_SYSERR == ret)
     return res;
   return TALER_MHD_REPLY_JSON_PACK (
-    connection,
+    rc->connection,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_uint64 ("payment_target_uuid",
                              krc.kyc.payment_target_uuid));

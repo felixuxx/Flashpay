@@ -28,13 +28,14 @@
 /**
  * Handle a "/kyc-proof" request.
  *
- * @param connection request to handle
+ * @param rc request to handle
+ * @param args one argument with the payment_target_uuid
  * @return MHD result code
-  */
+ */
 MHD_RESULT
 TEH_handler_kyc_proof (
-  struct MHD_Connection *connection,
-  ...);
+  struct TEH_RequestContext *rc,
+  const char *const args[]);
 
 
 #endif

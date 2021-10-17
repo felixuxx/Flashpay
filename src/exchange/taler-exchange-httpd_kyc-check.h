@@ -30,13 +30,13 @@
  * status of the given account and returns it.
  *
  * @param connection request to handle
- * @param payment_target_uuid which account are we to check
+ * @param args one argument with the payment_target_uuid
  * @return MHD result code
-  */
+ */
 MHD_RESULT
 TEH_handler_kyc_check (
-  struct MHD_Connection *connection,
-  uint64_t payment_target_uuid);
+  struct TEH_RequestContext *rc,
+  const char *const args[]);
 
 
 #endif

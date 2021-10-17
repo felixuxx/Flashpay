@@ -98,69 +98,89 @@ kyc_check (void *cls,
 
 MHD_RESULT
 TEH_handler_kyc_check (
-  struct MHD_Connection *connection,
-  uint64_t payment_target_uuid)
+  struct TEH_RequestContext *rc,
+  const char *const args[])
 {
-  struct KycCheckContext kcc = {
-    .payment_target_uuid = payment_target_uuid
-  };
+  unsigned long long payment_target_uuid;
   MHD_RESULT res;
   enum GNUNET_GenericReturnValue ret;
-  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+  char dummy;
 
-  (void) GNUNET_TIME_round_abs (&now);
+  if (1 !=
+      sscanf (args[0],
+              "%llu%c",
+              &payment_target_uuid,
+              &dummy))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_BAD_REQUEST,
+                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                       "payment_target_uuid");
+  }
+
   if (TEH_KYC_NONE == TEH_kyc_config.mode)
     return TALER_MHD_reply_static (
-      connection,
+      rc->connection,
       MHD_HTTP_NO_CONTENT,
       NULL,
       NULL,
       0);
-  ret = TEH_DB_run_transaction (connection,
-                                "kyc check",
-                                &res,
-                                &kyc_check,
-                                &kcc);
-  if (GNUNET_SYSERR == ret)
-    return res;
-  if (! kcc.kyc.ok)
   {
-    GNUNET_assert (TEH_KYC_OAUTH2 == TEH_kyc_config.mode);
-    return TALER_MHD_REPLY_JSON_PACK (
-      connection,
-      MHD_HTTP_ACCEPTED,
-      GNUNET_JSON_pack_string ("kyc_url",
-                               TEH_kyc_config.details.oauth2.url));
-  }
-  {
-    struct TALER_ExchangePublicKeyP pub;
-    struct TALER_ExchangeSignatureP sig;
-    struct TALER_ExchangeAccountSetupSuccessPS as = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
-      .purpose.size = htonl (sizeof (as)),
-      .h_payto = kcc.h_payto,
-      .timestamp = GNUNET_TIME_absolute_hton (now)
+    struct GNUNET_TIME_Absolute now;
+    struct KycCheckContext kcc = {
+      .payment_target_uuid = payment_target_uuid
     };
-    enum TALER_ErrorCode ec;
 
-    if (TALER_EC_NONE !=
-        (ec = TEH_keys_exchange_sign (&as,
-                                      &pub,
-                                      &sig)))
+    now = GNUNET_TIME_absolute_get ();
+    (void) GNUNET_TIME_round_abs (&now);
+    ret = TEH_DB_run_transaction (rc->connection,
+                                  "kyc check",
+                                  &res,
+                                  &kyc_check,
+                                  &kcc);
+    if (GNUNET_SYSERR == ret)
+      return res;
+    if (! kcc.kyc.ok)
     {
-      return TALER_MHD_reply_with_ec (connection,
-                                      ec,
-                                      NULL);
+      GNUNET_assert (TEH_KYC_OAUTH2 == TEH_kyc_config.mode);
+      return TALER_MHD_REPLY_JSON_PACK (
+        rc->connection,
+        MHD_HTTP_ACCEPTED,
+        GNUNET_JSON_pack_string ("kyc_url",
+                                 TEH_kyc_config.details.oauth2.url));
     }
-    return TALER_MHD_REPLY_JSON_PACK (
-      connection,
-      MHD_HTTP_OK,
-      GNUNET_JSON_pack_data_auto ("exchange_sig",
-                                  &sig),
-      GNUNET_JSON_pack_data_auto ("exchange_pub",
-                                  &pub),
-      GNUNET_JSON_pack_time_abs ("now",
-                                 now));
+    {
+      struct TALER_ExchangePublicKeyP pub;
+      struct TALER_ExchangeSignatureP sig;
+      struct TALER_ExchangeAccountSetupSuccessPS as = {
+        .purpose.purpose = htonl (
+          TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
+        .purpose.size = htonl (sizeof (as)),
+        .h_payto = kcc.h_payto,
+        .timestamp = GNUNET_TIME_absolute_hton (now)
+      };
+      enum TALER_ErrorCode ec;
+
+      if (TALER_EC_NONE !=
+          (ec = TEH_keys_exchange_sign (&as,
+                                        &pub,
+                                        &sig)))
+      {
+        return TALER_MHD_reply_with_ec (rc->connection,
+                                        ec,
+                                        NULL);
+      }
+      return TALER_MHD_REPLY_JSON_PACK (
+        rc->connection,
+        MHD_HTTP_OK,
+        GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                    &sig),
+        GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                    &pub),
+        GNUNET_JSON_pack_time_abs ("now",
+                                   now));
+    }
   }
 }
 
