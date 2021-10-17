@@ -948,7 +948,9 @@ prepare_statements (struct PostgresClosure *pg)
        Used in #postgres_lookup_transfer_by_deposit(). */
     GNUNET_PQ_make_prepare ("get_deposit_for_wtid",
                             "SELECT"
-                            " amount_with_fee_val"
+                            " FALSE AS kyc_ok" // FIXME
+                            ",CAST (0 AS INT8) AS payment_target_uuid" // FIXME
+                            ",amount_with_fee_val"
                             ",amount_with_fee_frac"
                             ",denom.fee_deposit_val"
                             ",denom.fee_deposit_frac"
@@ -957,9 +959,9 @@ prepare_statements (struct PostgresClosure *pg)
                             "    JOIN known_coins USING (known_coin_id)"
                             "    JOIN denominations denom USING (denominations_serial)"
                             " WHERE ((coin_pub=$1)"
-                            "    AND (merchant_pub=$2)"
-                            "    AND (h_contract_terms=$3)"
-                            "    AND (h_wire=$4)"
+                            "    AND (merchant_pub=$4)"
+                            "    AND (h_contract_terms=$2)"
+                            "    AND (h_wire=$3)"
                             " );",
                             4),
     /* Used in #postgres_get_ready_deposit() */
@@ -6686,10 +6688,16 @@ postgres_lookup_wire_transfer (
  * @param h_wire hash of merchant wire details
  * @param coin_pub public key of deposited coin
  * @param merchant_pub merchant public key
- * @param cb function to call with the result
- * @param cb_cls closure to pass to @a cb
+ * @param[out] pending set to true if the transaction is still pending
+ * @param[out] wtid wire transfer identifier, only set if @a pending is false
+ * @param[out] coin_contribution how much did the coin we asked about
+ *        contribute to the total transfer value? (deposit value including fee)
+ * @param[out] coin_fee how much did the exchange charge for the deposit fee
+ * @param[out] execution_time when was the transaction done, or
+ *         when we expect it to be done (if @a pending is false)
+ * @param[out] kyc set to the kyc status of the receiver (if @a pending)
  * @return transaction status code
- - */
+ */
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_transfer_by_deposit (
   void *cls,
@@ -6697,8 +6705,12 @@ postgres_lookup_transfer_by_deposit (
   const struct GNUNET_HashCode *h_wire,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
-  void *cb_cls)
+  bool *pending,
+  struct TALER_WireTransferIdentifierRawP *wtid,
+  struct GNUNET_TIME_Absolute *exec_time,
+  struct TALER_Amount *amount_with_fee,
+  struct TALER_Amount *deposit_fee,
+  struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -6709,39 +6721,39 @@ postgres_lookup_transfer_by_deposit (
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_end
   };
-  struct TALER_WireTransferIdentifierRawP wtid;
-  struct GNUNET_TIME_Absolute exec_time;
-  struct TALER_Amount amount_with_fee;
-  struct TALER_Amount deposit_fee;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
-                                          &wtid),
+                                          wtid),
     TALER_PQ_result_spec_absolute_time ("execution_date",
-                                        &exec_time),
+                                        exec_time),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                 &amount_with_fee),
+                                 amount_with_fee),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                 &deposit_fee),
+                                 deposit_fee),
     GNUNET_PQ_result_spec_end
   };
 
-  /* check if the melt record exists and get it */
+  /* check if the aggregation record exists and get it */
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "lookup_deposit_wtid",
                                                  params,
                                                  rs);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    cb (cb_cls,
-        &wtid,
-        &amount_with_fee,
-        &deposit_fee,
-        exec_time);
+    *pending = false;
+    memset (kyc,
+            0,
+            sizeof (*kyc));
+    kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
+    kyc->ok = true;
     return qs;
   }
   if (0 > qs)
     return qs;
-
+  *pending = true;
+  memset (wtid,
+          0,
+          sizeof (*wtid));
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "lookup_deposit_wtid returned 0 matching rows\n");
@@ -6749,38 +6761,27 @@ postgres_lookup_transfer_by_deposit (
     /* Check if transaction exists in deposits, so that we just
        do not have a WTID yet, if so, do call the CB with a NULL wtid
        and return #GNUNET_YES! */
-    struct GNUNET_PQ_QueryParam params2[] = {
-      GNUNET_PQ_query_param_auto_from_type (coin_pub),
-      GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-      GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
-      GNUNET_PQ_query_param_auto_from_type (h_wire),
-      GNUNET_PQ_query_param_end
-    };
-    struct GNUNET_TIME_Absolute exec_time;
-    struct TALER_Amount amount_with_fee;
-    struct TALER_Amount deposit_fee;
+    uint8_t ok8 = 0;
     struct GNUNET_PQ_ResultSpec rs2[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee", &amount_with_fee),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit", &deposit_fee),
-      TALER_PQ_result_spec_absolute_time ("wire_deadline", &exec_time),
+      GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
+                                    &kyc->payment_target_uuid),
+      GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
+                                            &ok8),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                   amount_with_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                   deposit_fee),
+      TALER_PQ_result_spec_absolute_time ("wire_deadline",
+                                          exec_time),
       GNUNET_PQ_result_spec_end
     };
 
     qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                    "get_deposit_for_wtid",
-                                                   params2,
+                                                   params,
                                                    rs2);
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-    {
-      /* Ok, we're aware of the transaction, but it has not yet been
-         executed */
-      cb (cb_cls,
-          NULL,
-          &amount_with_fee,
-          &deposit_fee,
-          exec_time);
-      return qs;
-    }
+    kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
+    kyc->ok = (0 != ok8);
     return qs;
   }
 }

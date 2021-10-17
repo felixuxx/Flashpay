@@ -137,58 +137,17 @@ struct DepositWtidContext
   struct TALER_Amount coin_delta;
 
   /**
+   * KYC status information for the receiving account.
+   */
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+
+  /**
    * Set to #GNUNET_YES by #handle_wtid if the wire transfer is still pending
    * (and the above were not set).
    * Set to #GNUNET_SYSERR if there was a serious error.
    */
   enum GNUNET_GenericReturnValue pending;
 };
-
-
-/**
- * Function called with the results of the lookup of the
- * wire transfer identifier information.
- *
- * @param cls our context for transmission, a `struct DepositWtidContext *`
- * @param wtid raw wire transfer identifier, NULL
- *         if the transaction was not yet done
- * @param coin_contribution how much did the coin we asked about
- *        contribute to the total transfer value? (deposit value including fee)
- * @param coin_fee how much did the exchange charge for the deposit fee
- * @param execution_time when was the transaction done, or
- *         when we expect it to be done (if @a wtid was NULL);
- *         #GNUNET_TIME_UNIT_FOREVER_ABS if the /deposit is unknown
- *         to the exchange
- */
-static void
-handle_wtid_data (void *cls,
-                  const struct TALER_WireTransferIdentifierRawP *wtid,
-                  const struct TALER_Amount *coin_contribution,
-                  const struct TALER_Amount *coin_fee,
-                  struct GNUNET_TIME_Absolute execution_time)
-{
-  struct DepositWtidContext *ctx = cls;
-
-  if (NULL == wtid)
-  {
-    ctx->pending = GNUNET_YES;
-    ctx->execution_time = execution_time;
-    return;
-  }
-  if (0 >
-      TALER_amount_subtract (&ctx->coin_delta,
-                             coin_contribution,
-                             coin_fee))
-  {
-    GNUNET_break (0);
-    ctx->pending = GNUNET_SYSERR;
-    return;
-  }
-  ctx->wtid = *wtid;
-  ctx->execution_time = execution_time;
-  ctx->coin_contribution = *coin_contribution;
-  ctx->coin_fee = *coin_fee;
-}
 
 
 /**
@@ -214,14 +173,21 @@ deposits_get_transaction (void *cls,
 {
   struct DepositWtidContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
+  bool pending;
+  struct TALER_Amount fee;
 
   qs = TEH_plugin->lookup_transfer_by_deposit (TEH_plugin->cls,
                                                &ctx->tps->h_contract_terms,
                                                &ctx->tps->h_wire,
                                                &ctx->tps->coin_pub,
                                                ctx->merchant_pub,
-                                               &handle_wtid_data,
-                                               ctx);
+
+                                               &pending,
+                                               &ctx->wtid,
+                                               &ctx->execution_time,
+                                               &ctx->coin_contribution,
+                                               &fee,
+                                               &ctx->kyc);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -242,6 +208,17 @@ deposits_get_transaction (void *cls,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
+
+  if (0 >
+      TALER_amount_subtract (&ctx->coin_delta,
+                             &ctx->coin_contribution,
+                             &fee))
+  {
+    GNUNET_break (0);
+    ctx->pending = GNUNET_SYSERR;
+    return qs;
+  }
+  ctx->pending = (pending) ? GNUNET_YES : GNUNET_NO;
   return qs;
 }
 
@@ -262,7 +239,6 @@ handle_track_transaction_request (
 {
   MHD_RESULT mhd_ret;
   struct DepositWtidContext ctx = {
-    .pending = GNUNET_NO,
     .tps = tps,
     .merchant_pub = merchant_pub
   };
@@ -274,17 +250,21 @@ handle_track_transaction_request (
                               &deposits_get_transaction,
                               &ctx))
     return mhd_ret;
-  if (GNUNET_YES == ctx.pending)
-    return TALER_MHD_REPLY_JSON_PACK (
-      connection,
-      MHD_HTTP_ACCEPTED,
-      GNUNET_JSON_pack_time_abs ("execution_time",
-                                 ctx.execution_time));
   if (GNUNET_SYSERR == ctx.pending)
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
                                        "wire fees exceed aggregate in database");
+  if (GNUNET_YES == ctx.pending)
+    return TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
+                               ctx.kyc.payment_target_uuid),
+      GNUNET_JSON_pack_bool ("kyc_ok",
+                             ctx.kyc.ok),
+      GNUNET_JSON_pack_time_abs ("execution_time",
+                                 ctx.execution_time));
   return reply_deposit_details (connection,
                                 &tps->h_contract_terms,
                                 &tps->h_wire,

@@ -1833,29 +1833,6 @@ typedef void
 
 
 /**
- * Function called with the results of the lookup of the wire transfer
- * identifier information.  Only called if we are at least aware of the
- * transaction existing.
- *
- * @param cls closure
- * @param wtid wire transfer identifier, NULL
- *         if the transaction was not yet done
- * @param coin_contribution how much did the coin we asked about
- *        contribute to the total transfer value? (deposit value including fee)
- * @param coin_fee how much did the exchange charge for the deposit fee
- * @param execution_time when was the transaction done, or
- *         when we expect it to be done (if @a wtid was NULL)
- */
-typedef void
-(*TALER_EXCHANGEDB_WireTransferByCoinCallback)(
-  void *cls,
-  const struct TALER_WireTransferIdentifierRawP *wtid,
-  const struct TALER_Amount *coin_contribution,
-  const struct TALER_Amount *coin_fee,
-  struct GNUNET_TIME_Absolute execution_time);
-
-
-/**
  * Function called with the results of the lookup of the
  * transaction data associated with a wire transfer identifier.
  *
@@ -2916,8 +2893,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @param h_wire hash of merchant wire details
    * @param coin_pub public key of deposited coin
    * @param merchant_pub merchant public key
-   * @param cb function to call with the result
-   * @param cb_cls closure to pass to @a cb
+   * @param[out] pending set to true if the transaction is still pending
+   * @param[out] wtid wire transfer identifier, only set if @a pending is false
+   * @param[out] coin_contribution how much did the coin we asked about
+   *        contribute to the total transfer value? (deposit value including fee)
+   * @param[out] coin_fee how much did the exchange charge for the deposit fee
+   * @param[out] execution_time when was the transaction done, or
+   *         when we expect it to be done (if @a pending is false)
+   * @param[out] kyc set to the kyc status of the receiver (if @a pending)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
@@ -2927,8 +2910,12 @@ struct TALER_EXCHANGEDB_Plugin
     const struct GNUNET_HashCode *h_wire,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
-    TALER_EXCHANGEDB_WireTransferByCoinCallback cb,
-    void *cb_cls);
+    bool *pending,
+    struct TALER_WireTransferIdentifierRawP *wtid,
+    struct GNUNET_TIME_Absolute *exec_time,
+    struct TALER_Amount *amount_with_fee,
+    struct TALER_Amount *deposit_fee,
+    struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 
   /**

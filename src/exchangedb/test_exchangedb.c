@@ -716,20 +716,6 @@ cb_wt_never (void *cls,
 }
 
 
-/**
- * Callback that should never be called.
- */
-static void
-cb_wtid_never (void *cls,
-               const struct TALER_WireTransferIdentifierRawP *wtid,
-               const struct TALER_Amount *coin_contribution,
-               const struct TALER_Amount *coin_fee,
-               struct GNUNET_TIME_Absolute execution_time)
-{
-  GNUNET_assert (0);
-}
-
-
 static struct TALER_MerchantPublicKeyP merchant_pub_wt;
 static struct GNUNET_HashCode h_wire_wt;
 static struct GNUNET_HashCode h_contract_terms_wt;
@@ -771,28 +757,6 @@ cb_wt_check (void *cls,
   GNUNET_assert (0 == GNUNET_memcmp (coin_pub,
                                      &coin_pub_wt));
   GNUNET_assert (0 == TALER_amount_cmp (coin_value,
-                                        &coin_value_wt));
-  GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
-                                        &coin_fee_wt));
-}
-
-
-/**
- * Callback that should be called with the WT data.
- */
-static void
-cb_wtid_check (void *cls,
-               const struct TALER_WireTransferIdentifierRawP *wtid,
-               const struct TALER_Amount *coin_contribution,
-               const struct TALER_Amount *coin_fee,
-               struct GNUNET_TIME_Absolute execution_time)
-{
-  GNUNET_assert (cls == &cb_wtid_never);
-  GNUNET_assert (0 == GNUNET_memcmp (wtid,
-                                     &wire_out_wtid));
-  GNUNET_assert (execution_time.abs_value_us ==
-                 wire_out_date.abs_value_us);
-  GNUNET_assert (0 == TALER_amount_cmp (coin_contribution,
                                         &coin_value_wt));
   GNUNET_assert (0 == TALER_amount_cmp (coin_fee,
                                         &coin_fee_wt));
@@ -1285,6 +1249,12 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
 
   {
     struct GNUNET_HashCode h_contract_terms_wt2 = h_contract_terms_wt;
+    bool pending;
+    struct TALER_WireTransferIdentifierRawP wtid2;
+    struct TALER_Amount coin_contribution2;
+    struct TALER_Amount coin_fee2;
+    struct GNUNET_TIME_Absolute execution_time2;
+    struct TALER_EXCHANGEDB_KycStatus kyc;
 
     h_contract_terms_wt2.bits[0]++;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
@@ -1293,8 +1263,12 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                                 &h_wire_wt,
                                                 &coin_pub_wt,
                                                 &merchant_pub_wt,
-                                                &cb_wtid_never,
-                                                NULL));
+                                                &pending,
+                                                &wtid2,
+                                                &execution_time2,
+                                                &coin_contribution2,
+                                                &coin_fee2,
+                                                &kyc));
   }
   /* insert WT data */
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1338,14 +1312,35 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                         &wire_out_wtid,
                                         &cb_wt_check,
                                         &cb_wt_never));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->lookup_transfer_by_deposit (plugin->cls,
-                                              &h_contract_terms_wt,
-                                              &h_wire_wt,
-                                              &coin_pub_wt,
-                                              &merchant_pub_wt,
-                                              &cb_wtid_check,
-                                              &cb_wtid_never));
+  {
+    bool pending;
+    struct TALER_WireTransferIdentifierRawP wtid2;
+    struct TALER_Amount coin_contribution2;
+    struct TALER_Amount coin_fee2;
+    struct GNUNET_TIME_Absolute execution_time2;
+    struct TALER_EXCHANGEDB_KycStatus kyc;
+
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->lookup_transfer_by_deposit (plugin->cls,
+                                                &h_contract_terms_wt,
+                                                &h_wire_wt,
+                                                &coin_pub_wt,
+                                                &merchant_pub_wt,
+                                                &pending,
+                                                &wtid2,
+                                                &execution_time2,
+                                                &coin_contribution2,
+                                                &coin_fee2,
+                                                &kyc));
+    GNUNET_assert (0 == GNUNET_memcmp (&wtid2,
+                                       &wire_out_wtid));
+    GNUNET_assert (execution_time2.abs_value_us ==
+                   wire_out_date.abs_value_us);
+    GNUNET_assert (0 == TALER_amount_cmp (&coin_contribution2,
+                                          &coin_value_wt));
+    GNUNET_assert (0 == TALER_amount_cmp (&coin_fee2,
+                                          &coin_fee_wt));
+  }
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->select_wire_out_above_serial_id (plugin->cls,
                                                    0,

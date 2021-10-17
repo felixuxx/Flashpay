@@ -1874,6 +1874,12 @@ struct TALER_EXCHANGE_GetDepositResponse
        * to check for its KYC status.
        */
       uint64_t payment_target_uuid;
+
+      /**
+       * Set to 'true' if the KYC check is already finished and
+       * the exchange is merely waiting for the @e execution_time.
+       */
+      bool kyc_ok;
     } accepted;
 
   } details;
