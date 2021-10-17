@@ -129,7 +129,13 @@ TEH_handler_kyc_wallet (
       TALER_EC_EXCHANGE_KYC_WALLET_SIGNATURE_INVALID,
       NULL);
   }
-
+  if (TEH_KYC_NONE == TEH_kyc_config.mode)
+    return TALER_MHD_reply_static (
+      connection,
+      MHD_HTTP_NO_CONTENT,
+      NULL,
+      NULL,
+      0);
   ret = TEH_DB_run_transaction (connection,
                                 "check wallet kyc",
                                 &res,
@@ -137,14 +143,11 @@ TEH_handler_kyc_wallet (
                                 &krc);
   if (GNUNET_SYSERR == ret)
     return res;
-
-  // FIXME: act on krc.kyc!
-  return TALER_MHD_reply_static (
+  return TALER_MHD_REPLY_JSON_PACK (
     connection,
-    MHD_HTTP_NO_CONTENT,
-    NULL,
-    NULL,
-    0);
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_uint64 ("payment_target_uuid",
+                             krc.kyc.payment_target_uuid));
 }
 
 
