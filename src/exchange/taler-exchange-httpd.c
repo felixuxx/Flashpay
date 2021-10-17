@@ -33,6 +33,8 @@
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_keys.h"
+#include "taler-exchange-httpd_kyc-check.h"
+#include "taler-exchange-httpd_kyc-proof.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_management.h"

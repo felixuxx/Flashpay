@@ -369,6 +369,15 @@ prepare_statements (struct PostgresClosure *pg)
                             " WHERE payto_uri=$1"
                             " LIMIT 1;",
                             1),
+    /* Used in #postgres_select_kyc_status() */
+    GNUNET_PQ_make_prepare ("select_kyc_status",
+                            "SELECT"
+                            ",kyc_ok"
+                            ",h_payto"
+                            " FROM wire_targets"
+                            " WHERE"
+                            " wire_target_serial_id=$1",
+                            1),
     /* Used in #postgres_inselect_wallet_kyc_status() */
     // FIXME: Note that this statement has not been debugged at all...
     // It just represents the _idea_.
@@ -3590,6 +3599,56 @@ postgres_get_kyc_status (void *cls,
 #endif
   kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
   kyc->ok = (0 != ok8);
+  return qs;
+}
+
+
+/**
+ * Get the @a kyc status and @a h_payto by UUID.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param payment_target_uuid which account to get the KYC status for
+ * @param[out] h_payto set to the hash of the account's payto URI (unsalted)
+ * @param[out] kyc set to the KYC status of the account
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_select_kyc_status (void *cls,
+                            uint64_t payment_target_uuid,
+                            struct GNUNET_HashCode *h_payto,
+                            struct TALER_EXCHANGEDB_KycStatus *kyc)
+{
+#if FIXME_DD23
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (payment_target_uuid),
+    GNUNET_PQ_query_param_end
+  };
+#endif
+  uint8_t ok8;
+#if FIXME_DD23
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+                                          h_payto),
+    GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
+                                          &ok8),
+    GNUNET_PQ_result_spec_end
+  };
+#endif
+  enum GNUNET_DB_QueryStatus qs;
+
+#if FIXME_DD23
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "select_kyc_status",
+                                                 params,
+                                                 rs);
+#else
+  qs = 1;
+  ok8 = 0;
+#endif
+  kyc->type = TALER_EXCHANGEDB_KYC_UNKNOWN;
+  kyc->ok = (0 != ok8);
+  kyc->payment_target_uuid = payment_target_uuid;
   return qs;
 }
 
@@ -11203,6 +11262,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     &postgres_iterate_auditor_denominations;
   plugin->reserves_get = &postgres_reserves_get;
   plugin->get_kyc_status = &postgres_get_kyc_status;
+  plugin->select_kyc_status = &postgres_select_kyc_status;
   plugin->inselect_wallet_kyc_status = &postgres_inselect_wallet_kyc_status;
   plugin->reserves_in_insert = &postgres_reserves_in_insert;
   plugin->get_latest_reserve_in_reference =

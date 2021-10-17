@@ -1630,6 +1630,13 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
  */
 enum TALER_EXCHANGEDB_KycType
 {
+
+  /**
+   * It is unclear for which type of KYC operation
+   * this information is.
+   */
+  TALER_EXCHANGEDB_KYC_UNKNOWN = 0,
+
   /**
    * KYC to be applied for simple withdraws without
    * the involvement of wallet-to-wallet payments.
@@ -2365,6 +2372,22 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_kyc_status)(void *cls,
                     const char *payto_uri,
                     struct TALER_EXCHANGEDB_KycStatus *kyc);
+
+
+  /**
+   * Get the @a kyc status and @a h_payto by UUID.
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param payment_target_uuid which account to get the KYC status for
+   * @param[out] h_payto set to the hash of the account's payto URI (unsalted)
+   * @param[out] kyc set to the KYC status of the account
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*select_kyc_status)(void *cls,
+                       uint64_t payment_target_uuid,
+                       struct GNUNET_HashCode *h_payto,
+                       struct TALER_EXCHANGEDB_KycStatus *kyc);
 
 
   /**
