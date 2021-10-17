@@ -20,3 +20,4 @@ taler-auditor/
 taler-exchange.postrm.debhelper
 *.debhelper
 *.substvars
+taler-exchange-offline

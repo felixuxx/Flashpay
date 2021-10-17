@@ -2368,6 +2368,22 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
+   * Get the KYC status for a wallet. If the status is unknown,
+   * inserts a new status record (hence INsertSELECT).
+   *
+   * @param cls the @e cls of this struct with the plugin-specific state
+   * @param reserve_pub public key of the wallet
+   * @param[out] kyc set to the KYC status of the wallet
+   * @return transaction status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*inselect_wallet_kyc_status)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    struct TALER_EXCHANGEDB_KycStatus *kyc);
+
+
+  /**
    * Insert a incoming transaction into reserves.  New reserves are
    * also created through this function.
    *
