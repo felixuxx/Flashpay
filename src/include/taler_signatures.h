@@ -253,6 +253,16 @@
  */
 #define TALER_SIGNATURE_WALLET_COIN_LINK 1204
 
+/**
+ * Signature using a reserve key by which a wallet
+ * requests a payment target UUID for itself.
+ * Signs over just a purpose (no body), as the
+ * signature only serves to demonstrate that the request
+ * comes from the wallet controlling the private key,
+ * and not some third party.
+ */
+#define TALER_SIGNATURE_WALLET_ACCOUNT_SETUP 1205
+
 
 /******************************/
 /* Security module signatures */
