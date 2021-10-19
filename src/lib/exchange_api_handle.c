@@ -694,9 +694,8 @@ decode_keys_json (const json_t *resp_obj,
     GNUNET_JSON_spec_string ("currency",
                              &currency),
     GNUNET_JSON_spec_mark_optional (
-      TALER_JSON_spec_amount ("wallet_balance_limit_without_kyc",
-                              currency,
-                              &key_data->wallet_balance_limit_without_kyc)),
+      TALER_JSON_spec_amount_any ("wallet_balance_limit_without_kyc",
+                                  &key_data->wallet_balance_limit_without_kyc)),
     GNUNET_JSON_spec_end ()
   };
 
@@ -763,6 +762,17 @@ decode_keys_json (const json_t *resp_obj,
                              (check_sig) ? mspec : &mspec[2],
                              NULL, NULL));
   key_data->currency = GNUNET_strdup (currency);
+
+  if (GNUNET_OK ==
+      TALER_amount_is_valid (&key_data->wallet_balance_limit_without_kyc))
+  {
+    if (0 != strcasecmp (currency,
+                         key_data->wallet_balance_limit_without_kyc.currency))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
   /* parse the master public key and issue date of the response */
   if (check_sig)
     hash_context = GNUNET_CRYPTO_hash_context_start ();
