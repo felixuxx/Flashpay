@@ -1345,7 +1345,7 @@ get_date_string (struct GNUNET_TIME_Absolute at,
  * @param[in,out] response the response to modify
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 setup_general_response_headers (const struct TEH_KeyStateHandle *ksh,
                                 struct MHD_Response *response)
 {

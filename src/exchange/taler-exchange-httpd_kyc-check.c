@@ -143,12 +143,31 @@ TEH_handler_kyc_check (
       return res;
     if (! kcc.kyc.ok)
     {
+      char *url;
+      char *redirect_uri;
+      char *redirect_uri_encoded;
+
       GNUNET_assert (TEH_KYC_OAUTH2 == TEH_kyc_config.mode);
-      return TALER_MHD_REPLY_JSON_PACK (
+      GNUNET_asprintf (&redirect_uri,
+                       "%s/kyc-proof/%llu",
+                       TEH_base_url,
+                       payment_target_uuid);
+      redirect_uri_encoded = TALER_urlencode (redirect_uri);
+      GNUNET_free (redirect_uri);
+      GNUNET_asprintf (&url,
+                       "%s/login?client_id=%s&redirect_uri=%s",
+                       TEH_kyc_config.details.oauth2.url,
+                       TEH_kyc_config.details.oauth2.client_id,
+                       redirect_uri_encoded);
+      GNUNET_free (redirect_uri_encoded);
+
+      res = TALER_MHD_REPLY_JSON_PACK (
         rc->connection,
         MHD_HTTP_ACCEPTED,
         GNUNET_JSON_pack_string ("kyc_url",
-                                 TEH_kyc_config.details.oauth2.url));
+                                 url));
+      GNUNET_free (url);
+      return res;
     }
     {
       struct TALER_ExchangePublicKeyP pub;

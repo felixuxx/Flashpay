@@ -360,6 +360,12 @@ prepare_statements (struct PostgresClosure *pg)
                             " LIMIT 1;",
                             1),
 #if FIXME_DD23
+    /* Used in #postgres_set_kyc_ok() */
+    GNUNET_PQ_make_prepare ("set_kyc_ok",
+                            "UPDATE wire_targets"
+                            " SET kyc_ok=TRUE"
+                            " WHERE wire_target_serial_id=$1",
+                            1),
     /* Used in #postgres_get_kyc_status() */
     GNUNET_PQ_make_prepare ("get_kyc_status",
                             "SELECT"
@@ -3552,6 +3558,31 @@ postgres_reserves_get (void *cls,
   kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
   kyc->ok = (0 != ok8);
   return qs;
+}
+
+
+/**
+ * Set the KYC status to "OK" for a bank account.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param payment_target_uuid which account has been checked
+ * @param ... possibly additional data to persist (TODO)
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_set_kyc_ok (void *cls,
+                     uint64_t payment_target_uuid,
+                     ...)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "set_kyc_ok",
+                                             params);
 }
 
 
@@ -11261,6 +11292,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->iterate_auditor_denominations =
     &postgres_iterate_auditor_denominations;
   plugin->reserves_get = &postgres_reserves_get;
+  plugin->set_kyc_ok = &postgres_set_kyc_ok;
   plugin->get_kyc_status = &postgres_get_kyc_status;
   plugin->select_kyc_status = &postgres_select_kyc_status;
   plugin->inselect_wallet_kyc_status = &postgres_inselect_wallet_kyc_status;

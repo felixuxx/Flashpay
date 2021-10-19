@@ -103,6 +103,11 @@ struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 char *TEH_currency;
 
 /**
+ * Our base URL.
+ */
+char *TEH_base_url;
+
+/**
  * Default timeout in seconds for HTTP requests.
  */
 static unsigned int connection_timeout = 30;
@@ -133,6 +138,17 @@ static unsigned long long req_count;
  * happening slowly over time.)
  */
 static unsigned long long req_max;
+
+/**
+ * Context for all CURL operations (useful to the event loop)
+ */
+struct GNUNET_CURL_Context *TEH_curl_ctx;
+
+/**
+ * Context for integrating #exchange_curl_ctx with the
+ * GNUnet event loop.
+ */
+static struct GNUNET_CURL_RescheduleContext *exchange_curl_rc;
 
 
 /**
@@ -1203,6 +1219,19 @@ parse_kyc_oauth_cfg (void)
     return GNUNET_SYSERR;
   }
   TEH_kyc_config.details.oauth2.client_secret = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange-kyc-oauth2",
+                                             "KYC_OAUTH2_POST_URL",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-kyc-oauth2",
+                               "KYC_OAUTH2_POST_URL");
+    return GNUNET_SYSERR;
+  }
+  TEH_kyc_config.details.oauth2.post_kyc_redirect_url = s;
   return GNUNET_OK;
 }
 
@@ -1301,6 +1330,26 @@ exchange_serve_process_config (void)
                                "CURRENCY");
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &TEH_base_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    return GNUNET_SYSERR;
+  }
+  if (! TALER_url_valid_charset (TEH_base_url))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL",
+                               "invalid URL");
+    return GNUNET_SYSERR;
+  }
+
   if (TEH_KYC_NONE != TEH_kyc_config.mode)
   {
     if (GNUNET_YES ==
@@ -1593,11 +1642,26 @@ do_shutdown (void *cls)
   mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
   TEH_reserves_get_cleanup ();
+  TEH_kyc_proof_cleanup ();
   if (NULL != mhd)
     MHD_stop_daemon (mhd);
   TEH_WIRE_done ();
   TEH_keys_finished ();
-  TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
+  if (NULL != TEH_plugin)
+  {
+    TALER_EXCHANGEDB_plugin_unload (TEH_plugin);
+    TEH_plugin = NULL;
+  }
+  if (NULL != TEH_curl_ctx)
+  {
+    GNUNET_CURL_fini (TEH_curl_ctx);
+    TEH_curl_ctx = NULL;
+  }
+  if (NULL != exchange_curl_rc)
+  {
+    GNUNET_CURL_gnunet_rc_destroy (exchange_curl_rc);
+    exchange_curl_rc = NULL;
+  }
 }
 
 
@@ -1655,6 +1719,17 @@ run (void *cls,
   }
 
   TEH_load_terms (TEH_cfg);
+  TEH_curl_ctx
+    = GNUNET_CURL_init (&GNUNET_CURL_gnunet_scheduler_reschedule,
+                        &exchange_curl_rc);
+  if (NULL == TEH_curl_ctx)
+  {
+    GNUNET_break (0);
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  exchange_curl_rc = GNUNET_CURL_gnunet_rc_create (TEH_curl_ctx);
   GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
                                  NULL);
   fh = TALER_MHD_bind (TEH_cfg,

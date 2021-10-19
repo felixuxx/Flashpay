@@ -123,6 +123,7 @@ taler_exchange_httpd_LDADD = \
   -lgnunetutil \
   -lgnunetjson \
   -ljansson \
+  -lcurl \
   -lz \
   $(XLIB)
 

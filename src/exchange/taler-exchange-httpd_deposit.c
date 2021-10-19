@@ -381,7 +381,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
           sizeof (deposit));
   deposit.coin.coin_pub = *coin_pub;
   {
-    int res;
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_data (connection,
                                      root,

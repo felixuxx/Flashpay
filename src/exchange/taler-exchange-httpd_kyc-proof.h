@@ -26,6 +26,14 @@
 
 
 /**
+ * Shutdown kyc-proof subsystem.  Resumes all suspended long-polling clients
+ * and cleans up data structures.
+ */
+void
+TEH_kyc_proof_cleanup (void);
+
+
+/**
  * Handle a "/kyc-proof" request.
  *
  * @param rc request to handle

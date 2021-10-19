@@ -59,7 +59,7 @@ struct TALER_CURL_PostContext
  * @param body JSON body to add to @e ctx
  * @return #GNUNET_OK on success #GNUNET_SYSERR on failure
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
                       CURL *eh,
                       const json_t *body);

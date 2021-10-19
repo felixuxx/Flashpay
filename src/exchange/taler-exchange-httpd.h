@@ -105,6 +105,12 @@ struct TEH_KycOptions
        */
       char *client_secret;
 
+      /**
+       * Where to redirect clients after the
+       * Web-based KYC process is done?
+       */
+      char *post_kyc_redirect_url;
+
     } oauth2;
 
   } details;
@@ -163,10 +169,19 @@ extern struct TALER_EXCHANGEDB_Plugin *TEH_plugin;
 extern char *TEH_currency;
 
 /**
+ * Our (externally visible) base URL.
+ */
+extern char *TEH_base_url;
+
+/**
  * Are we shutting down?
  */
 extern volatile bool MHD_terminating;
 
+/**
+ * Context for all CURL operations (useful to the event loop)
+ */
+extern struct GNUNET_CURL_Context *TEH_curl_ctx;
 
 /**
  * @brief Struct describing an URL and the handler for it.
