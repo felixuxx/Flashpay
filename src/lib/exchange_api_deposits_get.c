@@ -197,7 +197,7 @@ handle_deposit_wtid_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         TALER_JSON_spec_absolute_time ("execution_time",
                                        &dr.details.accepted.execution_time),
-        GNUNET_JSON_spec_uint64 ("execution_time",
+        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
                                  &dr.details.accepted.payment_target_uuid),
         GNUNET_JSON_spec_bool ("kyc_ok",
                                &dr.details.accepted.kyc_ok),
