@@ -268,6 +268,11 @@ TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
                                          /* Not available as MHD constant yet */
                                          "Access-Control-Allow-Methods",
                                          "*"));
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         /* Not available as MHD constant yet */
+                                         "Access-Control-Expose-Headers",
+                                         "*"));
 
   {
     MHD_RESULT ret;
