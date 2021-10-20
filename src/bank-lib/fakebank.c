@@ -425,6 +425,11 @@ struct TALER_FAKEBANK_Handle
    */
   bool in_shutdown;
 
+  /**
+   * Should we run MHD immediately again?
+   */
+  bool mhd_again;
+
 #if EPOLL_SUPPORT
   /**
    * Boxed @e mhd_fd.
@@ -474,6 +479,7 @@ lp_trigger (struct LongPoller *lp,
                                lp);
   MHD_resume_connection (lp->conn);
   GNUNET_free (lp);
+  h->mhd_again = true;
   if (NULL != h->mhd_task)
     GNUNET_SCHEDULER_cancel (h->mhd_task);
   h->mhd_task =
@@ -508,12 +514,8 @@ lp_expiration_thread (void *cls)
     {
       GNUNET_assert (lp ==
                      GNUNET_CONTAINER_heap_remove_root (h->lp_heap));
-      GNUNET_assert (0 ==
-                     pthread_mutex_lock (&h->big_lock));
       lp_trigger (lp,
                   h);
-      GNUNET_assert (0 ==
-                     pthread_mutex_unlock (&h->big_lock));
       lp = GNUNET_CONTAINER_heap_peek (h->lp_heap);
     }
     if (NULL != lp)
@@ -674,7 +676,7 @@ check_log (struct TALER_FAKEBANK_Handle *h)
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
                             const struct TALER_Amount *want_amount,
                             const char *want_debit,
@@ -722,7 +724,7 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
                              const struct TALER_Amount *want_amount,
                              const char *want_debit,
@@ -866,36 +868,6 @@ post_transaction (struct TALER_FAKEBANK_Handle *h,
                                   ca->in_tail,
                                   old);
   }
-  {
-    struct LongPoller *nxt;
-
-    for (struct LongPoller *lp = debit_acc->lp_head;
-         NULL != lp;
-         lp = nxt)
-    {
-      nxt = lp->next;
-      if (LP_DEBIT == lp->type)
-      {
-        GNUNET_assert (lp ==
-                       GNUNET_CONTAINER_heap_remove_node (lp->hn));
-        lp_trigger (lp,
-                    h);
-      }
-    }
-    for (struct LongPoller *lp = credit_acc->lp_head;
-         NULL != lp;
-         lp = nxt)
-    {
-      nxt = lp->next;
-      if (LP_CREDIT == lp->type)
-      {
-        GNUNET_assert (lp ==
-                       GNUNET_CONTAINER_heap_remove_node (lp->hn));
-        lp_trigger (lp,
-                    h);
-      }
-    }
-  }
   GNUNET_assert (0 ==
                  pthread_mutex_unlock (&h->big_lock));
   if ( (NULL != old) &&
@@ -911,6 +883,54 @@ post_transaction (struct TALER_FAKEBANK_Handle *h,
                    pthread_mutex_unlock (&h->uuid_map_lock));
   }
   GNUNET_free (old);
+}
+
+
+/**
+ * Trigger long pollers that might have been waiting
+ * for @a t.
+ *
+ * @param h fakebank handle
+ * @param t transaction to notify on
+ */
+static void
+notify_transaction (struct TALER_FAKEBANK_Handle *h,
+                    struct Transaction *t)
+{
+  struct Account *debit_acc = t->debit_account;
+  struct Account *credit_acc = t->credit_account;
+  struct LongPoller *nxt;
+
+  GNUNET_assert (0 ==
+                 pthread_mutex_lock (&h->big_lock));
+  for (struct LongPoller *lp = debit_acc->lp_head;
+       NULL != lp;
+       lp = nxt)
+  {
+    nxt = lp->next;
+    if (LP_DEBIT == lp->type)
+    {
+      GNUNET_assert (lp ==
+                     GNUNET_CONTAINER_heap_remove_node (lp->hn));
+      lp_trigger (lp,
+                  h);
+    }
+  }
+  for (struct LongPoller *lp = credit_acc->lp_head;
+       NULL != lp;
+       lp = nxt)
+  {
+    nxt = lp->next;
+    if (LP_CREDIT == lp->type)
+    {
+      GNUNET_assert (lp ==
+                     GNUNET_CONTAINER_heap_remove_node (lp->hn));
+      lp_trigger (lp,
+                  h);
+    }
+  }
+  GNUNET_assert (0 ==
+                 pthread_mutex_unlock (&h->big_lock));
 }
 
 
@@ -1030,6 +1050,8 @@ make_transfer (
               TALER_B2S (subject),
               exchange_base_url);
   *ret_row_id = t->row_id;
+  notify_transaction (h,
+                      t);
   return GNUNET_OK;
 }
 
@@ -1124,11 +1146,13 @@ make_admin_transfer (
               TALER_amount2s (amount),
               TALER_B2S (reserve_pub),
               (unsigned long long) t->row_id);
+  notify_transaction (h,
+                      t);
   return GNUNET_OK;
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h)
 {
   for (uint64_t i = 0; i<h->ram_limit; i++)
@@ -1852,6 +1876,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
                                         connection,
                                         &ha)))
   {
+    GNUNET_break_op (0);
     return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
   }
   if (&special_ptr == *con_cls)
@@ -2056,13 +2081,15 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
   enum GNUNET_GenericReturnValue ret;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Handling /history/incoming connection %p\n",
-              connection);
+              "Handling /history/incoming connection %p (%d)\n",
+              connection,
+              (*con_cls == &special_ptr));
   if (GNUNET_OK !=
       (ret = parse_history_common_args (h,
                                         connection,
                                         &ha)))
   {
+    GNUNET_break_op (0);
     return (GNUNET_SYSERR == ret) ? MHD_NO : MHD_YES;
   }
   if (&special_ptr == *con_cls)
@@ -2107,6 +2134,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     if ( (NULL == t) ||
          overflow)
     {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "No transactions available, suspending request\n");
       GNUNET_free (credit_payto);
       if (GNUNET_TIME_relative_is_zero (ha.lp_timeout) &&
           (0 < ha.delta))
@@ -2478,7 +2507,12 @@ run_mhd (void *cls)
   struct TALER_FAKEBANK_Handle *h = cls;
 
   h->mhd_task = NULL;
-  MHD_run (h->mhd_bank);
+  h->mhd_again = true;
+  while (h->mhd_again)
+  {
+    h->mhd_again = false;
+    MHD_run (h->mhd_bank);
+  }
   schedule_httpd (h);
 }
 

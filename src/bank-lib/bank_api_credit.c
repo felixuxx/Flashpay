@@ -30,6 +30,13 @@
 
 
 /**
+ * How much longer than the application-specified timeout
+ * do we wait (giving the server a chance to respond)?
+ */
+#define GRACE_PERIOD_MS 1000
+
+
+/**
  * @brief A /history/incoming Handle
  */
 struct TALER_BANK_CreditHistoryHandle
@@ -66,7 +73,7 @@ struct TALER_BANK_CreditHistoryHandle
  *         were set,
  *         #GNUNET_SYSERR if there was a protocol violation in @a history
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_account_history (struct TALER_BANK_CreditHistoryHandle *hh,
                        const json_t *history)
 {
@@ -305,7 +312,7 @@ TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (CURLE_OK ==
                   curl_easy_setopt (eh,
                                     CURLOPT_TIMEOUT_MS,
-                                    (long) tms));
+                                    (long) tms + GRACE_PERIOD_MS));
   }
   hh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,

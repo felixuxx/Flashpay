@@ -30,6 +30,13 @@
 
 
 /**
+ * How much longer than the application-specified timeout
+ * do we wait (giving the server a chance to respond)?
+ */
+#define GRACE_PERIOD_MS 1000
+
+
+/**
  * @brief A /history/outgoing Handle
  */
 struct TALER_BANK_DebitHistoryHandle
@@ -307,7 +314,7 @@ TALER_BANK_debit_history (struct GNUNET_CURL_Context *ctx,
     GNUNET_break (CURLE_OK ==
                   curl_easy_setopt (eh,
                                     CURLOPT_TIMEOUT_MS,
-                                    (long) tms));
+                                    (long) tms + GRACE_PERIOD_MS));
   }
   hh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,

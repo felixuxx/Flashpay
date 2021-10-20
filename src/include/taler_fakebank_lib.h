@@ -87,7 +87,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
  * @param h bank instance
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
 
 
@@ -109,7 +109,7 @@ TALER_FAKEBANK_check_empty (struct TALER_FAKEBANK_Handle *h);
  * @param[out] wtid set to the wire transfer identifier
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
                             const struct TALER_Amount *want_amount,
                             const char *want_debit,
@@ -133,7 +133,7 @@ TALER_FAKEBANK_check_debit (struct TALER_FAKEBANK_Handle *h,
  * @param reserve_pub reserve public key expected in wire subject
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_FAKEBANK_check_credit (struct TALER_FAKEBANK_Handle *h,
                              const struct TALER_Amount *want_amount,
                              const char *want_debit,
