@@ -29,9 +29,9 @@
 
 
 /**
- * Set if we should immediately MHD_run() again.
+ * Set to true if we should immediately MHD_run() again.
  */
-static int triggered;
+static bool triggered;
 
 /**
  * Task running the HTTP server.
@@ -63,10 +63,10 @@ run_daemon (void *cls)
 {
   mhd_task = NULL;
   do {
-    triggered = 0;
+    triggered = false;
     GNUNET_assert (MHD_YES ==
                    MHD_run (mhd));
-  } while (0 != triggered);
+  } while (triggered);
   mhd_task = prepare_daemon ();
 }
 
@@ -166,7 +166,7 @@ TALER_MHD_daemon_trigger (void)
   }
   else
   {
-    triggered = 1;
+    triggered = true;
   }
 }
 
