@@ -283,8 +283,6 @@ handle_deposit_finished (void *cls,
                                      &dh->exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &dh->exchange_pub),
-        GNUNET_JSON_spec_uint64 ("payment_target_uuid",
-                                 &dr.details.success.payment_target_uuid),
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_string ("transaction_base_url",
                                    &dr.details.success.transaction_base_url)),

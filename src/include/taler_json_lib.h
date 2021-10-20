@@ -503,7 +503,7 @@ TALER_JSON_get_error_code2 (const void *data,
  * @param[out] hc set to the hash
  * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
                                          struct GNUNET_HashCode *hc);
 
@@ -516,7 +516,7 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
  * @param master_pub master public key of the exchange
  * @return #GNUNET_OK if signature is valid
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_exchange_wire_signature_check (
   const json_t *wire_s,
   const struct TALER_MasterPublicKeyP *master_pub);

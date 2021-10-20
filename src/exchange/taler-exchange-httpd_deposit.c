@@ -45,7 +45,6 @@
  * operation with the given wiring details.
  *
  * @param connection connection to the client
- * @param kyc KYC status for the credited account
  * @param coin_pub public key of the coin
  * @param h_wire hash of wire details
  * @param h_contract_terms hash of contract details
@@ -57,7 +56,6 @@
  */
 static MHD_RESULT
 reply_deposit_success (struct MHD_Connection *connection,
-                       const struct TALER_EXCHANGEDB_KycStatus *kyc,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        const struct GNUNET_HashCode *h_wire,
                        const struct GNUNET_HashCode *h_contract_terms,
@@ -94,10 +92,6 @@ reply_deposit_success (struct MHD_Connection *connection,
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_uint64 ("payment_target_uuid",
-                             kyc->payment_target_uuid),
-    GNUNET_JSON_pack_bool ("kyc_ok",
-                           kyc->ok),
     GNUNET_JSON_pack_time_abs ("exchange_timestamp",
                                exchange_timestamp),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
@@ -128,11 +122,6 @@ struct DepositContext
   struct TALER_Amount value;
 
   /**
-   * KYC status for the receiving account.
-   */
-  struct TALER_EXCHANGEDB_KycStatus kyc;
-
-  /**
    * payto:// URI of the credited account.
    */
   char *payto_uri;
@@ -161,21 +150,6 @@ deposit_precheck (void *cls,
   struct TALER_Amount deposit_fee;
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = TEH_plugin->get_kyc_status (TEH_plugin->cls,
-                                   dc->payto_uri,
-                                   &dc->kyc);
-  if (qs < 0)
-  {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-    {
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "get_kyc_status");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    return qs;
-  }
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
                                  deposit,
                                  GNUNET_YES /* check refund deadline */,
@@ -204,7 +178,6 @@ deposit_precheck (void *cls,
                                           &deposit->amount_with_fee,
                                           &deposit_fee));
     *mhd_ret = reply_deposit_success (connection,
-                                      &dc->kyc,
                                       &deposit->coin.coin_pub,
                                       &deposit->h_wire,
                                       &deposit->h_contract_terms,
@@ -637,7 +610,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                           &deposit.amount_with_fee,
                                           &deposit.deposit_fee));
     res = reply_deposit_success (connection,
-                                 &dc.kyc,
                                  &deposit.coin.coin_pub,
                                  &deposit.h_wire,
                                  &deposit.h_contract_terms,

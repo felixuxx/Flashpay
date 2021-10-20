@@ -840,11 +840,6 @@ struct TALER_EXCHANGE_DepositResult
        */
       const char *transaction_base_url;
 
-      /**
-       * Payment target that the merchant should use
-       * to check for its KYC status.
-       */
-      uint64_t payment_target_uuid;
     } success;
 
     /**

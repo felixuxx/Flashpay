@@ -24,15 +24,7 @@
 #include "taler_json_lib.h"
 
 
-/**
- * Compute the hash of the given wire details.   The resulting
- * hash is what is put into the contract.
- *
- * @param wire_s wire details to hash
- * @param[out] hc set to the hash
- * @return #GNUNET_OK on success, #GNUNET_SYSERR if @a wire_s is malformed
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
                                          struct GNUNET_HashCode *hc)
 {
@@ -78,15 +70,7 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
 }
 
 
-/**
- * Check the signature in @a wire_s.  Also performs rudimentary
- * checks on the account data *if* supported.
- *
- * @param wire_s signed wire information of an exchange
- * @param master_pub master public key of the exchange
- * @return #GNUNET_OK if signature is valid
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_JSON_exchange_wire_signature_check (
   const json_t *wire_s,
   const struct TALER_MasterPublicKeyP *master_pub)
@@ -131,13 +115,6 @@ TALER_JSON_exchange_wire_signature_check (
 }
 
 
-/**
- * Create a signed wire statement for the given account.
- *
- * @param payto_uri account specification
- * @param master_priv private key to sign with
- * @return NULL if @a payto_uri is malformed
- */
 json_t *
 TALER_JSON_exchange_wire_signature_make (
   const char *payto_uri,
@@ -167,13 +144,6 @@ TALER_JSON_exchange_wire_signature_make (
 }
 
 
-/**
- * Obtain the wire method associated with the given
- * wire account details.  @a wire_s must contain a payto://-URL
- * under 'payto_uri'.
- *
- * @return NULL on error
- */
 char *
 TALER_JSON_wire_to_payto (const json_t *wire_s)
 {
@@ -204,13 +174,6 @@ TALER_JSON_wire_to_payto (const json_t *wire_s)
 }
 
 
-/**
- * Obtain the wire method associated with the given
- * wire account details.  @a wire_s must contain a payto://-URL
- * under 'url'.
- *
- * @return NULL on error
- */
 char *
 TALER_JSON_wire_to_method (const json_t *wire_s)
 {
