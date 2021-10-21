@@ -302,11 +302,6 @@
  */
 #define TALER_SIGNATURE_ANASTASIS_POLICY_UPLOAD 1400
 
-/**
- * EdDSA signature for a policy download.
- */
-#define TALER_SIGNATURE_ANASTASIS_POLICY_DOWNLOAD 1401
-
 
 /*******************/
 /* Sync signatures */
