@@ -563,7 +563,8 @@ struct TALER_DenominationPrivateKey
      * If we use #TALER_DENOMINATION_RSA in @a cipher.
      */
     struct GNUNET_CRYPTO_RsaPrivateKey *rsa_private_key;
-  };
+
+  } details;
 };
 
 

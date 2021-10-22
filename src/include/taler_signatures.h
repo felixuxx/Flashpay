@@ -1178,7 +1178,27 @@ struct TALER_MasterWireDetailsPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Hash over the account holder's payto:// URL and
+   * Hash over the account holder's payto:// URL.
+   */
+  struct TALER_PaytoHash h_wire_details GNUNET_PACKED;
+
+};
+
+
+/**
+ * @brief Information signed by the exchange's master
+ * key affirming the IBAN details for the exchange.
+ */
+struct TALER_MerchantWireDetailsPS
+{
+
+  /**
+   * Purpose is #TALER_SIGNATURE_MERCHANT_WIRE_DETAILS.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Salted hash over the account holder's payto:// URL and
    * the salt, as done by #TALER_exchange_wire_signature_hash().
    */
   struct TALER_MerchantWireHash h_wire_details GNUNET_PACKED;
