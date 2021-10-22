@@ -70,7 +70,7 @@ TALER_exchange_secmod_eddsa_verify (
 
 
 void
-TALER_exchange_secmod_rsa_sign (
+TALER_exchange_secmod_denom_sign (
   const struct GNUNET_HashCode *h_denom_pub,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
@@ -97,7 +97,7 @@ TALER_exchange_secmod_rsa_sign (
 
 
 enum GNUNET_GenericReturnValue
-TALER_exchange_secmod_rsa_verify (
+TALER_exchange_secmod_denom_verify (
   const struct GNUNET_HashCode *h_denom_pub,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,

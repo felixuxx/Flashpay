@@ -69,6 +69,7 @@ libtalerutil_la_SOURCES = \
   crypto_helper_denom.c \
   crypto_helper_esign.c \
   crypto_wire.c \
+  denom.c \
   getopt.c \
   lang.c \
   iban.c \

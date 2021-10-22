@@ -332,7 +332,7 @@ struct TALER_DenominationKeyAnnouncementPS
   /**
    * Hash of the denomination public key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Hash of the section name in the configuration of this denomination.
@@ -398,7 +398,7 @@ struct TALER_LinkDataPS
   /**
    * Hash of the denomination public key of the new coin.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Transfer public key (for which the private key was not revealed)
@@ -408,7 +408,7 @@ struct TALER_LinkDataPS
   /**
    * Hash of the blinded new coin.
    */
-  struct GNUNET_HashCode coin_envelope_hash;
+  struct TALER_BlindedCoinHash coin_envelope_hash;
 };
 
 
@@ -443,12 +443,12 @@ struct TALER_WithdrawRequestPS
   /**
    * Hash of the denomination public key for the coin that is withdrawn.
    */
-  struct GNUNET_HashCode h_denomination_pub GNUNET_PACKED;
+  struct TALER_DenominationHash h_denomination_pub GNUNET_PACKED;
 
   /**
    * Hash of the (blinded) message to be signed by the Exchange.
    */
-  struct GNUNET_HashCode h_coin_envelope GNUNET_PACKED;
+  struct TALER_BlindedCoinHash h_coin_envelope GNUNET_PACKED;
 };
 
 
@@ -467,17 +467,22 @@ struct TALER_DepositRequestPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
+
+  /**
+   * Hash over extension attributes shared with the exchange.
+   */
+  struct TALER_ExtensionContractHash h_extensions GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+  struct TALER_MerchantWireHash h_wire GNUNET_PACKED;
 
   /**
    * Hash over the denomination public key used to sign the coin.
    */
-  struct GNUNET_HashCode h_denom_pub GNUNET_PACKED;
+  struct TALER_DenominationHash h_denom_pub GNUNET_PACKED;
 
   /**
    * Time when this request was generated.  Used, for example, to
@@ -550,12 +555,12 @@ struct TALER_DepositConfirmationPS
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+  struct TALER_MerchantWireHash h_wire GNUNET_PACKED;
 
   /**
    * Time when this confirmation was generated / when the exchange received
@@ -609,7 +614,7 @@ struct TALER_RefundRequestPS
    * Hash over the proposal data to identify the contract
    * which is being refunded.
    */
-  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
 
   /**
    * The coin's public key.  This is the value that must have been
@@ -651,7 +656,7 @@ struct TALER_RefundConfirmationPS
    * Hash over the proposal data to identify the contract
    * which is being refunded.
    */
-  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
 
   /**
    * The coin's public key.  This is the value that must have been
@@ -698,7 +703,7 @@ struct TALER_RefreshMeltCoinAffirmationPS
   /**
    * Hash over the denomination public key used to sign the coin.
    */
-  struct GNUNET_HashCode h_denom_pub GNUNET_PACKED;
+  struct TALER_DenominationHash h_denom_pub GNUNET_PACKED;
 
   /**
    * How much of the value of the coin should be melted?  This amount
@@ -845,7 +850,7 @@ struct TALER_ExchangeAccountSetupSuccessPS
    * Hash over the payto for which the signature was
    * made.
    */
-  struct GNUNET_HashCode h_payto;
+  struct TALER_PaytoHash h_payto;
 
   /**
    * When was the signature made.
@@ -931,7 +936,7 @@ struct TALER_MasterAddWirePS
   /**
    * Hash over the exchange's payto URI.
    */
-  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+  struct TALER_PaytoHash h_payto GNUNET_PACKED;
 };
 
 
@@ -956,7 +961,7 @@ struct TALER_MasterDelWirePS
   /**
    * Hash over the exchange's payto URI.
    */
-  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+  struct TALER_PaytoHash h_payto GNUNET_PACKED;
 
 };
 
@@ -1053,7 +1058,7 @@ struct TALER_DenominationKeyValidityPS
    * Hash code of the denomination public key. (Used to avoid having
    * the variable-size RSA key in this struct.)
    */
-  struct GNUNET_HashCode denom_hash GNUNET_PACKED;
+  struct TALER_DenominationHash denom_hash GNUNET_PACKED;
 
 };
 
@@ -1155,7 +1160,7 @@ struct TALER_ExchangeKeyValidityPS
    * Hash code of the denomination public key. (Used to avoid having
    * the variable-size RSA key in this struct.)
    */
-  struct GNUNET_HashCode denom_hash GNUNET_PACKED;
+  struct TALER_DenominationHash denom_hash GNUNET_PACKED;
 
 };
 
@@ -1176,7 +1181,7 @@ struct TALER_MasterWireDetailsPS
    * Hash over the account holder's payto:// URL and
    * the salt, as done by #TALER_exchange_wire_signature_hash().
    */
-  struct GNUNET_HashCode h_wire_details GNUNET_PACKED;
+  struct TALER_MerchantWireHash h_wire_details GNUNET_PACKED;
 
 };
 
@@ -1236,7 +1241,7 @@ struct TALER_MasterDenominationKeyRevocationPS
   /**
    * Hash of the denomination key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
 };
 
@@ -1273,12 +1278,12 @@ struct TALER_DepositTrackPS
   /**
    * Hash over the proposal data of the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
 
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+  struct TALER_MerchantWireHash h_wire GNUNET_PACKED;
 
   /**
    * The Merchant's public key.  The deposit inquiry request is to be
@@ -1305,7 +1310,7 @@ struct TALER_WireDepositDetailP
   /**
    * Hash of the contract
    */
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
 
   /**
    * Time when the wire transfer was performed by the exchange.
@@ -1360,7 +1365,7 @@ struct TALER_WireDepositDataPS
   /**
    * Hash of wire details of the merchant.
    */
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
 
   /**
    * Hash of the individual deposits that were aggregated,
@@ -1403,7 +1408,7 @@ struct TALER_PaymentResponsePS
   /**
    * Hash of the proposal data associated with this confirmation
    */
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
 };
 
 
@@ -1422,12 +1427,12 @@ struct TALER_ConfirmWirePS
   /**
    * Hash over the wiring information of the merchant.
    */
-  struct GNUNET_HashCode h_wire GNUNET_PACKED;
+  struct TALER_MerchantWireHash h_wire GNUNET_PACKED;
 
   /**
    * Hash over the contract for which this deposit is made.
    */
-  struct GNUNET_HashCode h_contract_terms GNUNET_PACKED;
+  struct TALER_PrivateContractHash h_contract_terms GNUNET_PACKED;
 
   /**
    * Raw value (binary encoding) of the wire transfer subject.
@@ -1476,7 +1481,7 @@ struct TALER_RecoupRequestPS
   /**
    * Hash of the (revoked) denomination public key of the coin.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Blinding factor that was used to withdraw the coin.
@@ -1582,7 +1587,7 @@ struct TALER_DenominationUnknownAffirmationPS
   /**
    * Hash of the public denomination key we do not know.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 };
 
 
@@ -1612,7 +1617,7 @@ struct TALER_DenominationExpiredAffirmationPS
   /**
    * Hash of the public denomination key we do not know.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
 };
 
@@ -1652,7 +1657,7 @@ struct TALER_ReserveCloseConfirmationPS
   /**
    * Hash of the receiver's bank account.
    */
-  struct GNUNET_HashCode h_wire;
+  struct TALER_PaytoHash h_wire;
 
   /**
    * Wire transfer subject.

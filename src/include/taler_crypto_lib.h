@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -366,8 +366,85 @@ struct TALER_ClaimTokenP
 struct TALER_WireSalt
 {
   /**
-   * Actual salt value.
-   * FIXME: #7032: change to 16 byte value!
+   * Actual 128-bit salt value.
+   */
+  uint32_t salt[4];
+};
+
+
+/**
+ * Hash used to represent a denomination public key
+ * and associated age restrictions (if any).
+ */
+struct TALER_DenominationHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode data;
+};
+
+
+/**
+ * Hash used to represent the private part
+ * of a contract between merchant and consumer.
+ */
+struct TALER_PrivateContractHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode data;
+};
+
+
+/**
+ * Hash used to represent the "public" extensions to
+ * a contract that is shared with the exchange.
+ */
+struct TALER_ExtensionContractHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode data;
+};
+
+
+/**
+ * Hash used to represent the salted hash of a
+ * merchant's bank account.
+ */
+struct TALER_MerchantWireHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode data;
+};
+
+
+/**
+ * Hash used to represent the unsalted hash of a
+ * payto:// URI representing a bank account.
+ */
+struct TALER_PaytoHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode data;
+};
+
+
+/**
+ * Hash used to represent a commitment to a blinded
+ * coin, i.e. the hash of the envelope.
+ */
+struct TALER_BlindedCoinHash
+{
+  /**
+   * Actual hash value.
    */
   struct GNUNET_HashCode data;
 };
@@ -377,14 +454,47 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
+ * Types of public keys used for denominations in Taler.
+ */
+enum TALER_DenominationCipher
+{
+
+  /**
+   * RSA blind signature.
+   */
+  TALER_DENOMINATION_RSA = 0,
+
+  /**
+   * Clause-Schnorr blind signature.
+   */
+  // TALER_DENOMINATION_CS = 1
+};
+
+
+/**
  * @brief Type of (unblinded) coin signatures for Taler.
  */
 struct TALER_DenominationSignature
 {
+
   /**
-   * Taler uses RSA for blinding.
+   * Type of the signature.
    */
-  struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+  enum TALER_DenominationCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+
+    /**
+     * If we use #TALER_DENOMINATION_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+
+  } details;
+
 };
 
 
@@ -393,10 +503,29 @@ struct TALER_DenominationSignature
  */
 struct TALER_DenominationPublicKey
 {
+
   /**
-   * Taler uses RSA for signing coins.
+   * Type of the public key.
    */
-  struct GNUNET_CRYPTO_RsaPublicKey *rsa_public_key;
+  enum TALER_DenominationCipher cipher;
+
+  /**
+   * Age restriction mask used for the key.
+   */
+  uint32_t age_mask;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+
+    /**
+     * If we use #TALER_DENOMINATION_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaPublicKey *rsa_public_key;
+
+  } details;
 };
 
 
@@ -405,10 +534,23 @@ struct TALER_DenominationPublicKey
  */
 struct TALER_DenominationPrivateKey
 {
+
   /**
-   * Taler uses RSA for signing coins.
+   * Type of the public key.
    */
-  struct GNUNET_CRYPTO_RsaPrivateKey *rsa_private_key;
+  enum TALER_DenominationCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+
+    /**
+     * If we use #TALER_DENOMINATION_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaPrivateKey *rsa_private_key;
+  };
 };
 
 
@@ -428,7 +570,7 @@ struct TALER_CoinPublicInfo
    * Hash of the public key representing the denomination of the coin that is
    * being deposited.
    */
-  struct GNUNET_HashCode denom_pub_hash;
+  struct TALER_DenominationHash denom_pub_hash;
 
   /**
    * (Unblinded) signature over @e coin_pub with @e denom_pub,
@@ -465,6 +607,30 @@ struct TALER_TrackTransferDetails
   struct TALER_Amount coin_fee;
 
 };
+
+
+/**
+ * Compute the hash of the given @a denom_pub.
+ *
+ * @param denom_pub public key to hash
+ * @param[out] denom_hash resulting hash value
+ */
+void
+TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
+                      struct TALER_DenominationHash *denom_hash);
+
+
+/**
+ * Obtain denomination public key from a denomination private key.
+ *
+ * @param denom_priv private key to convert
+ * @param age_mask age mask to use
+ * @param[out] denom_pub where to return the public key
+ */
+void
+TALER_denom_priv_to_pub (const struct TALER_DenominationPrivateKey *denom_priv,
+                         uint32_t age_mask,
+                         struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -520,7 +686,7 @@ struct TALER_PlanchetDetail
   /**
    * Hash of the denomination public key.
    */
-  struct GNUNET_HashCode denom_pub_hash;
+  struct TALER_DenominationHash denom_pub_hash;
 
   /**
    * Blinded coin (see GNUNET_CRYPTO_rsa_blind()).  Note: is malloc()'ed!
@@ -845,7 +1011,7 @@ typedef void
   const char *section_name,
   struct GNUNET_TIME_Absolute start_time,
   struct GNUNET_TIME_Relative validity_duration,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig);
@@ -900,7 +1066,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh);
 struct TALER_DenominationSignature
 TALER_CRYPTO_helper_denom_sign (
   struct TALER_CRYPTO_DenominationHelper *dh,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const void *msg,
   size_t msg_size,
   enum TALER_ErrorCode *ec);
@@ -924,7 +1090,7 @@ TALER_CRYPTO_helper_denom_sign (
 void
 TALER_CRYPTO_helper_denom_revoke (
   struct TALER_CRYPTO_DenominationHelper *dh,
-  const struct GNUNET_HashCode *h_denom_pub);
+  const struct TALER_DenominationHash *h_denom_pub);
 
 
 /**
@@ -1090,7 +1256,7 @@ TALER_CRYPTO_helper_esign_disconnect (
  * @param[out] coin_sig resulting signature
  */
 void
-TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
+TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
                         const struct TALER_TransferPublicKeyP *transfer_pub,
                         const void *coin_ev,
                         size_t coin_ev_size,
@@ -1111,7 +1277,7 @@ TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
  */
 enum GNUNET_GenericReturnValue
 TALER_wallet_link_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_TransferPublicKeyP *transfer_pub,
   const void *coin_ev,
   size_t coin_ev_size,
@@ -1200,7 +1366,7 @@ TALER_exchange_offline_auditor_del_verify (
  */
 void
 TALER_exchange_offline_denomination_revoke_sign (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -1215,7 +1381,7 @@ TALER_exchange_offline_denomination_revoke_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denomination_revoke_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -1308,7 +1474,7 @@ TALER_exchange_offline_signkey_validity_verify (
  */
 void
 TALER_exchange_offline_denom_validity_sign (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Absolute stamp_start,
   struct GNUNET_TIME_Absolute stamp_expire_withdraw,
   struct GNUNET_TIME_Absolute stamp_expire_deposit,
@@ -1341,7 +1507,7 @@ TALER_exchange_offline_denom_validity_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denom_validity_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Absolute stamp_start,
   struct GNUNET_TIME_Absolute stamp_expire_withdraw,
   struct GNUNET_TIME_Absolute stamp_expire_deposit,
@@ -1393,9 +1559,9 @@ TALER_exchange_secmod_eddsa_verify (
 
 
 /**
- * Create security module RSA signature.
+ * Create security module denomination signature.
  *
- * @param h_denom_pub hash of the public key to validate
+ * @param h_denom_pub hash of the public key to sign
  * @param section_name name of the section in the configuration
  * @param start_sign starting point of validity for signing
  * @param duration how long will the key be in use
@@ -1403,8 +1569,8 @@ TALER_exchange_secmod_eddsa_verify (
  * @param[out] secm_sig where to write the signature
  */
 void
-TALER_exchange_secmod_rsa_sign (
-  const struct GNUNET_HashCode *h_denom_pub,
+TALER_exchange_secmod_denom_sign (
+  const struct TALER_DenominationHash *h_denom_pub,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,
@@ -1413,7 +1579,7 @@ TALER_exchange_secmod_rsa_sign (
 
 
 /**
- * Verify security module RSA signature.
+ * Verify security module denomination signature.
  *
  * @param h_denom_pub hash of the public key to validate
  * @param section_name name of the section in the configuration
@@ -1424,8 +1590,8 @@ TALER_exchange_secmod_rsa_sign (
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
-TALER_exchange_secmod_rsa_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+TALER_exchange_secmod_denom_verify (
+  const struct TALER_DenominationHash *h_denom_pub,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,
@@ -1454,7 +1620,7 @@ TALER_exchange_secmod_rsa_verify (
 void
 TALER_auditor_denom_validity_sign (
   const char *auditor_url,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Absolute stamp_start,
   struct GNUNET_TIME_Absolute stamp_expire_withdraw,
@@ -1491,7 +1657,7 @@ TALER_auditor_denom_validity_sign (
 enum GNUNET_GenericReturnValue
 TALER_auditor_denom_validity_verify (
   const char *auditor_url,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
   struct GNUNET_TIME_Absolute stamp_start,
   struct GNUNET_TIME_Absolute stamp_expire_withdraw,
@@ -1629,7 +1795,7 @@ TALER_exchange_offline_wire_del_verify (
  */
 void
 TALER_exchange_wire_signature_hash (const char *payto_uri,
-                                    struct GNUNET_HashCode *hc);
+                                    struct TALER_PaytoHash *hc);
 
 
 /**
@@ -1673,7 +1839,7 @@ TALER_exchange_wire_signature_make (
 void
 TALER_merchant_wire_signature_hash (const char *payto_uri,
                                     const struct TALER_WireSalt *salt,
-                                    struct GNUNET_HashCode *hc);
+                                    struct TALER_MerchantWireHash *hc);
 
 
 /**

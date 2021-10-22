@@ -31,7 +31,7 @@
  *          #GNUNET_NO if the MHD connection is using http,
  *          #GNUNET_SYSERR if the connection type couldn't be determined
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_mhd_is_https (struct MHD_Connection *connection)
 {
   const union MHD_ConnectionInfo *ci;
