@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -71,7 +71,7 @@ TALER_exchange_secmod_eddsa_verify (
 
 void
 TALER_exchange_secmod_denom_sign (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,
@@ -98,7 +98,7 @@ TALER_exchange_secmod_denom_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_denom_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,

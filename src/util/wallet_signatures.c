@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -24,7 +24,7 @@
 
 
 void
-TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
+TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
                         const struct TALER_TransferPublicKeyP *transfer_pub,
                         const void *coin_ev,
                         size_t coin_ev_size,
@@ -40,7 +40,7 @@ TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
 
   GNUNET_CRYPTO_hash (coin_ev,
                       coin_ev_size,
-                      &ldp.coin_envelope_hash);
+                      &ldp.coin_envelope_hash.hash);
   GNUNET_CRYPTO_eddsa_sign (&old_coin_priv->eddsa_priv,
                             &ldp,
                             &coin_sig->eddsa_signature);
@@ -49,7 +49,7 @@ TALER_wallet_link_sign (const struct GNUNET_HashCode *h_denom_pub,
 
 enum GNUNET_GenericReturnValue
 TALER_wallet_link_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_TransferPublicKeyP *transfer_pub,
   const void *coin_ev,
   size_t coin_ev_size,
@@ -65,7 +65,7 @@ TALER_wallet_link_verify (
 
   GNUNET_CRYPTO_hash (coin_ev,
                       coin_ev_size,
-                      &ldp.coin_envelope_hash);
+                      &ldp.coin_envelope_hash.hash);
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
                                 &ldp,

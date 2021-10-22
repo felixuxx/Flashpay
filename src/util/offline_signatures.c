@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -117,7 +117,7 @@ TALER_exchange_offline_auditor_del_verify (
 
 void
 TALER_exchange_offline_denomination_revoke_sign (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -135,7 +135,7 @@ TALER_exchange_offline_denomination_revoke_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denomination_revoke_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -249,7 +249,7 @@ TALER_exchange_offline_signkey_validity_verify (
 
 void
 TALER_exchange_offline_denom_validity_sign (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Absolute stamp_start,
   struct GNUNET_TIME_Absolute stamp_expire_withdraw,
   struct GNUNET_TIME_Absolute stamp_expire_deposit,
@@ -294,7 +294,7 @@ TALER_exchange_offline_denom_validity_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denom_validity_verify (
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   struct GNUNET_TIME_Absolute stamp_start,
   struct GNUNET_TIME_Absolute stamp_expire_withdraw,
   struct GNUNET_TIME_Absolute stamp_expire_deposit,
@@ -354,7 +354,7 @@ TALER_exchange_offline_wire_add_sign (
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&now));
   TALER_exchange_wire_signature_hash (payto_uri,
-                                      &kv.h_wire);
+                                      &kv.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &kv,
                             &master_sig->eddsa_signature);
@@ -375,7 +375,7 @@ TALER_exchange_offline_wire_add_verify (
   };
 
   TALER_exchange_wire_signature_hash (payto_uri,
-                                      &aw.h_wire);
+                                      &aw.h_payto);
   return
     GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_MASTER_ADD_WIRE,
@@ -401,7 +401,7 @@ TALER_exchange_offline_wire_del_sign (
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&now));
   TALER_exchange_wire_signature_hash (payto_uri,
-                                      &kv.h_wire);
+                                      &kv.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &kv,
                             &master_sig->eddsa_signature);
@@ -423,7 +423,7 @@ TALER_exchange_offline_wire_del_verify (
   };
 
   TALER_exchange_wire_signature_hash (payto_uri,
-                                      &aw.h_wire);
+                                      &aw.h_payto);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_MASTER_DEL_WIRE,
     &aw,
