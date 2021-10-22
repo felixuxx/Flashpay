@@ -73,23 +73,26 @@ enum GNUNET_GenericReturnValue
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
                        const struct TALER_DenominationPublicKey *denom_pub)
 {
-  struct GNUNET_HashCode c_hash;
+  struct TALER_CoinPubHash c_hash;
 #if ENABLE_SANITY_CHECKS
-  struct GNUNET_HashCode d_hash;
+  struct TALER_DenominationHash d_hash;
 
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
-                                     &d_hash);
+  TALER_denom_pub_hash (denom_pub,
+                        &d_hash);
   GNUNET_assert (0 ==
                  GNUNET_memcmp (&d_hash,
                                 &coin_public_info->denom_pub_hash));
 #endif
+  // FIXME-Oec: replace with function that
+  // also hashes the age vector if we have
+  // one!
   GNUNET_CRYPTO_hash (&coin_public_info->coin_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash);
+                      &c_hash.hash);
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_rsa_verify (&c_hash,
-                                coin_public_info->denom_sig.rsa_signature,
-                                denom_pub->rsa_public_key))
+      TALER_denom_pub_verify (denom_pub,
+                              &coin_public_info->denom_sig,
+                              &c_hash))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "coin signature is invalid\n");
@@ -175,28 +178,35 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
 enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
-                        struct GNUNET_HashCode *c_hash,
+                        struct TALER_CoinPubHash *c_hash,
                         struct TALER_PlanchetDetail *pd)
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
+  // FIXME-Oec: replace with function that
+  // also hashes the age vector if we have
+  // one!
   GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      c_hash);
+                      &c_hash->hash);
+  // FIXME-Gian/Lucien: this will be the bigger
+  // change, as you have the extra round trip
+  // => to be discussed!
+  GNUNET_assert (TALER_DENOMINATION_RSA == dk->cipher);
   if (GNUNET_YES !=
       TALER_rsa_blind (c_hash,
                        &ps->blinding_key.bks,
-                       dk->rsa_public_key,
+                       dk->details.rsa_public_key,
                        &pd->coin_ev,
                        &pd->coin_ev_size))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  GNUNET_CRYPTO_rsa_public_key_hash (dk->rsa_public_key,
-                                     &pd->denom_pub_hash);
+  TALER_denom_pub_hash (dk,
+                        &pd->denom_pub_hash);
   return GNUNET_OK;
 }
 
@@ -205,24 +215,30 @@ enum GNUNET_GenericReturnValue
 TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
                         const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
                         const struct TALER_PlanchetSecretsP *ps,
-                        const struct GNUNET_HashCode *c_hash,
+                        const struct TALER_CoinPubHash *c_hash,
                         struct TALER_FreshCoin *coin)
 {
-  struct GNUNET_CRYPTO_RsaSignature *sig;
+  struct TALER_DenominationSignature sig;
 
-  sig = TALER_rsa_unblind (blind_sig,
-                           &ps->blinding_key.bks,
-                           dk->rsa_public_key);
+  // FIXME-Gian/Lucien: this will be the bigger
+  // change, as you have the extra round trip
+  // => to be discussed!
+  GNUNET_assert (TALER_DENOMINATION_RSA == dk->cipher);
+  sig.cipher = TALER_DENOMINATION_RSA;
+  sig.details.rsa_signature
+    = TALER_rsa_unblind (blind_sig,
+                         &ps->blinding_key.bks,
+                         dk->details.rsa_public_key);
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_rsa_verify (c_hash,
-                                sig,
-                                dk->rsa_public_key))
+      TALER_denom_pub_verify (dk,
+                              &sig,
+                              c_hash))
   {
     GNUNET_break_op (0);
-    GNUNET_CRYPTO_rsa_signature_free (sig);
+    GNUNET_CRYPTO_rsa_signature_free (sig.details.rsa_signature);
     return GNUNET_SYSERR;
   }
-  coin->sig.rsa_signature = sig;
+  coin->sig = sig;
   coin->coin_priv = ps->coin_priv;
   return GNUNET_OK;
 }
@@ -250,19 +266,16 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
      hash_context */
   for (unsigned int i = 0; i<num_new_coins; i++)
   {
-    void *buf;
-    size_t buf_size;
+    struct TALER_DenominationHash denom_hash;
 
     /* The denomination keys should / must all be identical regardless
        of what offset we use, so we use [0]. */
     GNUNET_assert (kappa > 0); /* sanity check */
-    buf_size = GNUNET_CRYPTO_rsa_public_key_encode (
-      rcs[0].new_coins[i].dk->rsa_public_key,
-      &buf);
+    TALER_denom_pub_hash (rcs[0].new_coins[i].dk,
+                          &denom_hash);
     GNUNET_CRYPTO_hash_context_read (hash_context,
-                                     buf,
-                                     buf_size);
-    GNUNET_free (buf);
+                                     &denom_hash,
+                                     sizeof (denom_hash));
   }
 
   /* next, add public key of coin and amount being refreshed */
@@ -301,13 +314,13 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 
 
 enum GNUNET_GenericReturnValue
-TALER_rsa_blind (const struct GNUNET_HashCode *hash,
+TALER_rsa_blind (const struct TALER_CoinPubHash *hash,
                  const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
                  struct GNUNET_CRYPTO_RsaPublicKey *pkey,
                  void **buf,
                  size_t *buf_size)
 {
-  return GNUNET_CRYPTO_rsa_blind (hash,
+  return GNUNET_CRYPTO_rsa_blind (&hash->hash,
                                   bks,
                                   pkey,
                                   buf,

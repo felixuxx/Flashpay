@@ -381,7 +381,7 @@ struct TALER_DenominationHash
   /**
    * Actual hash value.
    */
-  struct GNUNET_HashCode data;
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -394,7 +394,7 @@ struct TALER_PrivateContractHash
   /**
    * Actual hash value.
    */
-  struct GNUNET_HashCode data;
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -407,7 +407,7 @@ struct TALER_ExtensionContractHash
   /**
    * Actual hash value.
    */
-  struct GNUNET_HashCode data;
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -420,7 +420,7 @@ struct TALER_MerchantWireHash
   /**
    * Actual hash value.
    */
-  struct GNUNET_HashCode data;
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -433,7 +433,7 @@ struct TALER_PaytoHash
   /**
    * Actual hash value.
    */
-  struct GNUNET_HashCode data;
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -446,7 +446,20 @@ struct TALER_BlindedCoinHash
   /**
    * Actual hash value.
    */
-  struct GNUNET_HashCode data;
+  struct GNUNET_HashCode hash;
+};
+
+
+/**
+ * Hash used to represent the hash of the public
+ * key of a coin (without blinding).
+ */
+struct TALER_CoinPubHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode hash;
 };
 
 
@@ -631,6 +644,21 @@ void
 TALER_denom_priv_to_pub (const struct TALER_DenominationPrivateKey *denom_priv,
                          uint32_t age_mask,
                          struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
+ * Verify signature made with a denomination public key
+ * over a coin.
+ *
+ * @param denom_pub public denomination key
+ * @param denom_sig signature made with the private key
+ * @param c_hash hash over the coin
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
+                        const struct TALER_DenominationSignature *denom_sig,
+                        const struct TALER_CoinPubHash *c_hash);
 
 
 /**
@@ -846,7 +874,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps);
 enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
-                        struct GNUNET_HashCode *c_hash,
+                        struct TALER_CoinPubHash *c_hash,
                         struct TALER_PlanchetDetail *pd);
 
 
@@ -865,7 +893,7 @@ enum GNUNET_GenericReturnValue
 TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
                         const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
                         const struct TALER_PlanchetSecretsP *ps,
-                        const struct GNUNET_HashCode *c_hash,
+                        const struct TALER_CoinPubHash *c_hash,
                         struct TALER_FreshCoin *coin);
 
 
@@ -1886,7 +1914,7 @@ TALER_merchant_wire_signature_make (
  * @return #GNUNET_YES if successful, #GNUNET_NO if RSA key is malicious
  */
 enum GNUNET_GenericReturnValue
-TALER_rsa_blind (const struct GNUNET_HashCode *hash,
+TALER_rsa_blind (const struct TALER_CoinPubHash *hash,
                  const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
                  struct GNUNET_CRYPTO_RsaPublicKey *pkey,
                  void **buf,
