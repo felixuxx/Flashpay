@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2020 Taler Systems SA
+  (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -62,7 +62,7 @@ struct KeyData
   /**
    * Hash of the public key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Full public key.
@@ -110,7 +110,7 @@ key_cb (void *cls,
         const char *section_name,
         struct GNUNET_TIME_Absolute start_time,
         struct GNUNET_TIME_Relative validity_duration,
-        const struct GNUNET_HashCode *h_denom_pub,
+        const struct TALER_DenominationHash *h_denom_pub,
         const struct TALER_DenominationPublicKey *denom_pub,
         const struct TALER_SecurityModulePublicKeyP *sm_pub,
         const struct TALER_SecurityModuleSignatureP *sm_sig)
@@ -119,7 +119,7 @@ key_cb (void *cls,
   (void) sm_sig;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Key notification about key %s in `%s'\n",
-              GNUNET_h2s (h_denom_pub),
+              GNUNET_h2s (&h_denom_pub->hash),
               section_name);
   if (0 == validity_duration.rel_value_us)
   {
@@ -133,8 +133,9 @@ key_cb (void *cls,
       {
         keys[i].valid = false;
         keys[i].revoked = false;
-        GNUNET_CRYPTO_rsa_public_key_free (keys[i].denom_pub.rsa_public_key);
-        keys[i].denom_pub.rsa_public_key = NULL;
+        GNUNET_CRYPTO_rsa_public_key_free (
+          keys[i].denom_pub.details.rsa_public_key);
+        keys[i].denom_pub.details.rsa_public_key = NULL;
         GNUNET_assert (num_keys > 0);
         num_keys--;
         found = true;
@@ -155,8 +156,9 @@ key_cb (void *cls,
       keys[i].h_denom_pub = *h_denom_pub;
       keys[i].start_time = start_time;
       keys[i].validity_duration = validity_duration;
-      keys[i].denom_pub.rsa_public_key
-        = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->rsa_public_key);
+      keys[i].denom_pub = *denom_pub;
+      keys[i].denom_pub.details.rsa_public_key
+        = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->details.rsa_public_key);
       num_keys++;
       return;
     }
@@ -199,7 +201,7 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
       keys[j].revoked = true;
       fprintf (stderr,
                "Revoking key %s ...",
-               GNUNET_h2s (&keys[j].h_denom_pub));
+               GNUNET_h2s (&keys[j].h_denom_pub.hash));
       TALER_CRYPTO_helper_denom_revoke (dh,
                                         &keys[j].h_denom_pub);
       for (unsigned int k = 0; k<1000; k++)
@@ -238,7 +240,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
   struct TALER_DenominationSignature ds;
   enum TALER_ErrorCode ec;
   bool success = false;
-  struct GNUNET_HashCode m_hash;
+  struct TALER_CoinPubHash m_hash;
   struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
 
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
@@ -246,7 +248,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
                               sizeof (bks));
   GNUNET_CRYPTO_hash ("Hello",
                       strlen ("Hello"),
-                      &m_hash);
+                      &m_hash.hash);
   for (unsigned int i = 0; i<MAX_KEYS; i++)
   {
     if (! keys[i].valid)
@@ -258,13 +260,13 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
       GNUNET_assert (GNUNET_YES ==
                      TALER_rsa_blind (&m_hash,
                                       &bks,
-                                      keys[i].denom_pub.rsa_public_key,
+                                      keys[i].denom_pub.details.rsa_public_key,
                                       &buf,
                                       &buf_size));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Requesting signature over %u bytes with key %s\n",
                   (unsigned int) buf_size,
-                  GNUNET_h2s (&keys[i].h_denom_pub));
+                  GNUNET_h2s (&keys[i].h_denom_pub.hash));
       ds = TALER_CRYPTO_helper_denom_sign (dh,
                                            &keys[i].h_denom_pub,
                                            buf,
@@ -290,32 +292,34 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         return 5;
       }
       {
-        struct GNUNET_CRYPTO_RsaSignature *rs;
+        struct TALER_DenominationSignature rs;
 
-        rs = TALER_rsa_unblind (ds.rsa_signature,
-                                &bks,
-                                keys[i].denom_pub.rsa_public_key);
-        if (NULL == rs)
+        rs.cipher = TALER_DENOMINATION_RSA;
+        rs.details.rsa_signature
+          = TALER_rsa_unblind (ds.details.rsa_signature,
+                               &bks,
+                               keys[i].denom_pub.details.rsa_public_key);
+        if (NULL == rs.details.rsa_signature)
         {
           GNUNET_break (0);
           return 6;
         }
-        GNUNET_CRYPTO_rsa_signature_free (ds.rsa_signature);
+        GNUNET_CRYPTO_rsa_signature_free (ds.details.rsa_signature);
         if (GNUNET_OK !=
-            GNUNET_CRYPTO_rsa_verify (&m_hash,
-                                      rs,
-                                      keys[i].denom_pub.rsa_public_key))
+            TALER_denom_pub_verify (&keys[i].denom_pub,
+                                    &rs,
+                                    &m_hash))
         {
           /* signature invalid */
           GNUNET_break (0);
-          GNUNET_CRYPTO_rsa_signature_free (rs);
+          GNUNET_CRYPTO_rsa_signature_free (rs.details.rsa_signature);
           return 7;
         }
-        GNUNET_CRYPTO_rsa_signature_free (rs);
+        GNUNET_CRYPTO_rsa_signature_free (rs.details.rsa_signature);
       }
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Received valid signature for key %s\n",
-                  GNUNET_h2s (&keys[i].h_denom_pub));
+                  GNUNET_h2s (&keys[i].h_denom_pub.hash));
       success = true;
       break;
     case TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY:
@@ -350,7 +354,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 
   /* check signing does not work if the key is unknown */
   {
-    struct GNUNET_HashCode rnd;
+    struct TALER_DenominationHash rnd;
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,
@@ -367,7 +371,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Signing with invalid key %s failed as desired\n",
-                GNUNET_h2s (&rnd));
+                GNUNET_h2s (&rnd.hash));
   }
   return 0;
 }
@@ -384,7 +388,7 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 {
   struct TALER_DenominationSignature ds;
   enum TALER_ErrorCode ec;
-  struct GNUNET_HashCode m_hash;
+  struct TALER_CoinPubHash m_hash;
   struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
   struct GNUNET_TIME_Relative duration;
 
@@ -393,7 +397,7 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
                               sizeof (bks));
   GNUNET_CRYPTO_hash ("Hello",
                       strlen ("Hello"),
-                      &m_hash);
+                      &m_hash.hash);
   duration = GNUNET_TIME_UNIT_ZERO;
   for (unsigned int j = 0; j<NUM_SIGN_TESTS;)
   {
@@ -415,7 +419,7 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         GNUNET_assert (GNUNET_YES ==
                        TALER_rsa_blind (&m_hash,
                                         &bks,
-                                        keys[i].denom_pub.rsa_public_key,
+                                        keys[i].denom_pub.details.rsa_public_key,
                                         &buf,
                                         &buf_size));
         /* use this key as long as it works */
@@ -434,7 +438,7 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
           delay = GNUNET_TIME_absolute_get_duration (start);
           duration = GNUNET_TIME_relative_add (duration,
                                                delay);
-          GNUNET_CRYPTO_rsa_signature_free (ds.rsa_signature);
+          GNUNET_CRYPTO_rsa_signature_free (ds.details.rsa_signature);
           j++;
           if (NUM_SIGN_TESTS == j)
             break;
@@ -526,8 +530,9 @@ run_test (void)
   for (unsigned int i = 0; i<MAX_KEYS; i++)
     if (keys[i].valid)
     {
-      GNUNET_CRYPTO_rsa_public_key_free (keys[i].denom_pub.rsa_public_key);
-      keys[i].denom_pub.rsa_public_key = NULL;
+      GNUNET_CRYPTO_rsa_public_key_free (
+        keys[i].denom_pub.details.rsa_public_key);
+      keys[i].denom_pub.details.rsa_public_key = NULL;
       GNUNET_assert (num_keys > 0);
       num_keys--;
     }

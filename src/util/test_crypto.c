@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015, 2020 Taler Systems SA
+  (C) 2015, 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -90,18 +90,21 @@ test_planchets (void)
   struct TALER_PlanchetDetail pd;
   struct GNUNET_CRYPTO_RsaSignature *blind_sig;
   struct TALER_FreshCoin coin;
-  struct GNUNET_HashCode c_hash;
+  struct TALER_CoinPubHash c_hash;
 
-  dk_priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (1024);
-  dk_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
-    dk_priv.rsa_private_key);
+  dk_priv.cipher = TALER_DENOMINATION_RSA;
+  dk_priv.details.rsa_private_key
+    = GNUNET_CRYPTO_rsa_private_key_create (1024);
+  TALER_denom_priv_to_pub (&dk_priv,
+                           0,
+                           &dk_pub);
   TALER_planchet_setup_random (&ps);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
                                          &ps,
                                          &c_hash,
                                          &pd));
-  blind_sig = GNUNET_CRYPTO_rsa_sign_blinded (dk_priv.rsa_private_key,
+  blind_sig = GNUNET_CRYPTO_rsa_sign_blinded (dk_priv.details.rsa_private_key,
                                               pd.coin_ev,
                                               pd.coin_ev_size);
   GNUNET_assert (NULL != blind_sig);
@@ -112,15 +115,15 @@ test_planchets (void)
                                          &c_hash,
                                          &coin));
   GNUNET_CRYPTO_rsa_signature_free (blind_sig);
-  GNUNET_CRYPTO_rsa_signature_free (coin.sig.rsa_signature);
-  GNUNET_CRYPTO_rsa_private_key_free (dk_priv.rsa_private_key);
-  GNUNET_CRYPTO_rsa_public_key_free (dk_pub.rsa_public_key);
+  GNUNET_CRYPTO_rsa_signature_free (coin.sig.details.rsa_signature);
+  GNUNET_CRYPTO_rsa_private_key_free (dk_priv.details.rsa_private_key);
+  GNUNET_CRYPTO_rsa_public_key_free (dk_pub.details.rsa_public_key);
   return 0;
 }
 
 
 static int
-test_exchange_sigs ()
+test_exchange_sigs (void)
 {
   const char *pt = "payto://x-taler-bank/localhost/Account";
   struct TALER_MasterPrivateKeyP priv;
@@ -155,7 +158,7 @@ test_exchange_sigs ()
 
 
 static int
-test_merchant_sigs ()
+test_merchant_sigs (void)
 {
   const char *pt = "payto://x-taler-bank/localhost/Account";
   struct TALER_WireSalt salt;
