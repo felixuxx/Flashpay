@@ -624,6 +624,33 @@ struct TALER_TrackTransferDetails
 
 
 /**
+ * Free internals of @a denom_pub, but not @a denom_pub itself.
+ *
+ * @param[in] denom_pub key to free
+ */
+void
+TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
+ * Free internals of @a denom_priv, but not @a denom_priv itself.
+ *
+ * @param[in] denom_priv key to free
+ */
+void
+TALER_denom_priv_free (struct TALER_DenominationPrivateKey *denom_priv);
+
+
+/**
+ * Free internals of @a denom_sig, but not @a denom_sig itself.
+ *
+ * @param[in] denom_sig signature to free
+ */
+void
+TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
+
+
+/**
  * Compute the hash of the given @a denom_pub.
  *
  * @param denom_pub public key to hash

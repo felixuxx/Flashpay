@@ -41,15 +41,40 @@ TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x);
 
 
 /**
- * Generate query parameter for a currency, consisting of the three
- * components "value", "fraction" and "currency" in this order. The
- * types must be a 64-bit integer, 32-bit integer and a
- * #TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
+ * Generate query parameter for an amount, consisting of the two
+ * components "value" and "fraction" in this order. The
+ * types must be a 64-bit integer and a 32-bit integer
+ * respectively. The currency is dropped.
  *
  * @param x pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount (const struct TALER_Amount *x);
+
+
+/**
+ * Generate query parameter for a denomination public
+ * key. Internally, the various attributes of the
+ * public key will be serialized into on variable-size
+ * BLOB.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_denom_pub (
+  const struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
+ * Generate query parameter for a denomination signature.  Internally, the
+ * various attributes of the signature will be serialized into on
+ * variable-size BLOB.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_denom_sig (
+  const struct TALER_DenominationSignature *denom_sig);
 
 
 /**
@@ -117,6 +142,30 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount (const char *name,
                              const char *currency,
                              struct TALER_Amount *amount);
+
+
+/**
+ * Denomination public key expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] denom_pub where to store the public key
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_denom_pub (const char *name,
+                                struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
+ * Denomination signature expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] denom_sig where to store the denomination signature
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_denom_sig (const char *name,
+                                struct TALER_DenominationSignature *denom_sig);
 
 
 /**

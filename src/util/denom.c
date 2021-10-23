@@ -112,4 +112,61 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
 }
 
 
+void
+TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub)
+{
+  switch (denom_pub->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    if (NULL != denom_pub->details.rsa_public_key)
+    {
+      GNUNET_CRYPTO_rsa_public_key_free (denom_pub->details.rsa_public_key);
+      denom_pub->details.rsa_public_key = NULL;
+    }
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
+void
+TALER_denom_priv_free (struct TALER_DenominationPrivateKey *denom_priv)
+{
+  switch (denom_priv->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    if (NULL != denom_priv->details.rsa_private_key)
+    {
+      GNUNET_CRYPTO_rsa_private_key_free (denom_priv->details.rsa_private_key);
+      denom_priv->details.rsa_private_key = NULL;
+    }
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
+void
+TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig)
+{
+  switch (denom_sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    if (NULL != denom_sig->details.rsa_signature)
+    {
+      GNUNET_CRYPTO_rsa_signature_free (denom_sig->details.rsa_signature);
+      denom_sig->details.rsa_signature = NULL;
+    }
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
 /* end of denom.c */

@@ -2917,7 +2917,7 @@ postgres_insert_denomination_info (
 static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_info (
   void *cls,
-  const struct GNUNET_HashCode *denom_pub_hash,
+  const struct TALER_DenominationHash *denom_pub_hash,
   struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
   struct PostgresClosure *pg = cls;
@@ -3135,7 +3135,7 @@ dominations_cb_helper (void *cls,
     struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_MasterSignatureP master_sig;
-    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_DenominationHash h_denom_pub;
     uint8_t revoked;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
@@ -3454,7 +3454,7 @@ auditor_denoms_cb_helper (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct TALER_AuditorPublicKeyP auditor_pub;
-    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_DenominationHash h_denom_pub;
     struct TALER_AuditorSignatureP auditor_sig;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("auditor_pub",
@@ -3646,7 +3646,7 @@ postgres_get_kyc_status (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_select_kyc_status (void *cls,
                             uint64_t payment_target_uuid,
-                            struct GNUNET_HashCode *h_payto,
+                            struct TALER_PaytoHash *h_payto,
                             struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
 #if FIXME_DD23
@@ -4114,7 +4114,7 @@ postgres_get_latest_reserve_in_reference (
 static enum GNUNET_DB_QueryStatus
 postgres_get_withdraw_info (
   void *cls,
-  const struct GNUNET_HashCode *h_blind,
+  const struct TALER_BlindedCoinHash *h_blind,
   struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
 {
   struct PostgresClosure *pg = cls;
@@ -4858,8 +4858,9 @@ static enum GNUNET_DB_QueryStatus
 postgres_test_deposit_done (void *cls,
                             const struct TALER_CoinSpendPublicKeyP *coin_pub,
                             const struct TALER_MerchantPublicKeyP *merchant_pub,
-                            const struct GNUNET_HashCode *h_contract_terms,
-                            const struct GNUNET_HashCode *h_wire)
+                            const struct
+                            TALER_PrivateContractHash *h_contract_terms,
+                            const struct TALER_MerchantWireHash *h_wire)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -4945,7 +4946,7 @@ postgres_get_ready_deposit (void *cls,
   };
   struct TALER_Amount amount_with_fee;
   struct TALER_Amount deposit_fee;
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   uint64_t serial_id;
@@ -5066,7 +5067,7 @@ match_deposit_cb (void *cls,
   {
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
-    struct GNUNET_HashCode h_contract_terms;
+    struct TALER_PrivateContractHash h_contract_terms;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     uint64_t serial_id;
     enum GNUNET_DB_QueryStatus qs;
@@ -5122,7 +5123,7 @@ match_deposit_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_iterate_matching_deposits (
   void *cls,
-  const struct GNUNET_HashCode *h_wire,
+  const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
   void *deposit_cb_cls,
@@ -5209,7 +5210,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_coin_denomination (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  struct GNUNET_HashCode *denom_hash)
+  struct TALER_DenominationHash *denom_hash)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
@@ -5271,7 +5272,7 @@ insert_known_coin (void *cls,
  */
 static long long
 postgres_count_known_coins (void *cls,
-                            const struct GNUNET_HashCode *denom_pub_hash)
+                            const struct TALER_DenominationHash *denom_pub_hash)
 {
   struct PostgresClosure *pg = cls;
   uint64_t count;
@@ -5309,7 +5310,7 @@ postgres_ensure_coin_known (void *cls,
 {
   struct PostgresClosure *pg = cls;
   enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_HashCode denom_pub_hash;
+  struct TALER_DenominationHash denom_pub_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin->coin_pub),
     GNUNET_PQ_query_param_end
@@ -5557,7 +5558,7 @@ postgres_select_refunds_by_coin (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct GNUNET_HashCode *h_contract,
+  const struct TALER_PrivateContractHash *h_contract,
   TALER_EXCHANGEDB_RefundCoinCallback cb,
   void *cb_cls)
 {
@@ -5731,8 +5732,8 @@ postgres_insert_refresh_reveal (
   for (uint32_t i = 0; i<num_rrcs; i++)
   {
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
-    struct GNUNET_HashCode denom_pub_hash;
-    struct GNUNET_HashCode h_coin_ev;
+    struct TALER_DenominationHash denom_pub_hash;
+    struct TALER_BlindedCoinHash h_coin_ev;
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (rc),
       GNUNET_PQ_query_param_uint32 (&i),
@@ -6752,8 +6753,8 @@ handle_wt_result (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     uint64_t rowid;
-    struct GNUNET_HashCode h_contract_terms;
-    struct GNUNET_HashCode h_wire;
+    struct TALER_PrivateContractHash h_contract_terms;
+    struct TALER_MerchantWireHash h_wire;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_MerchantPublicKeyP merchant_pub;
     struct GNUNET_TIME_Absolute exec_time;
@@ -6866,8 +6867,8 @@ postgres_lookup_wire_transfer (
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_transfer_by_deposit (
   void *cls,
-  const struct GNUNET_HashCode *h_contract_terms,
-  const struct GNUNET_HashCode *h_wire,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   bool *pending,
@@ -8315,7 +8316,7 @@ reserves_out_serial_helper_cb (void *cls,
 
   for (unsigned int i = 0; i<num_results; i++)
   {
-    struct GNUNET_HashCode h_blind_ev;
+    struct TALER_BlindedCoinHash h_blind_ev;
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_ReserveSignatureP reserve_sig;
@@ -8632,7 +8633,7 @@ recoup_serial_helper_cb (void *cls,
     struct TALER_DenominationBlindingKeyP coin_blind;
     struct TALER_Amount amount;
     struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_HashCode h_blind_ev;
+    struct TALER_BlindedCoinHash h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("recoup_uuid",
@@ -8779,9 +8780,9 @@ recoup_refresh_serial_helper_cb (void *cls,
     struct TALER_CoinSpendSignatureP coin_sig;
     struct TALER_DenominationBlindingKeyP coin_blind;
     struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_HashCode old_denom_pub_hash;
+    struct TALER_DenominationHash old_denom_pub_hash;
     struct TALER_Amount amount;
-    struct GNUNET_HashCode h_blind_ev;
+    struct TALER_BlindedCoinHash h_blind_ev;
     struct GNUNET_TIME_Absolute timestamp;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("recoup_refresh_uuid",
@@ -9040,7 +9041,7 @@ postgres_insert_recoup_request (
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_DenominationBlindingKeyP *coin_blind,
   const struct TALER_Amount *amount,
-  const struct GNUNET_HashCode *h_blind_ev,
+  const struct TALER_BlindedCoinHash *h_blind_ev,
   struct GNUNET_TIME_Absolute timestamp)
 {
   struct PostgresClosure *pg = cls;
@@ -9132,7 +9133,7 @@ postgres_insert_recoup_refresh_request (
   const struct TALER_CoinSpendSignatureP *coin_sig,
   const struct TALER_DenominationBlindingKeyP *coin_blind,
   const struct TALER_Amount *amount,
-  const struct GNUNET_HashCode *h_blind_ev,
+  const struct TALER_BlindedCoinHash *h_blind_ev,
   struct GNUNET_TIME_Absolute timestamp)
 {
   struct PostgresClosure *pg = cls;
@@ -9174,7 +9175,7 @@ postgres_insert_recoup_refresh_request (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_by_h_blind (void *cls,
-                                 const struct GNUNET_HashCode *h_blind_ev,
+                                 const struct TALER_BlindedCoinHash *h_blind_ev,
                                  struct TALER_ReservePublicKeyP *reserve_pub)
 {
   struct PostgresClosure *pg = cls;
@@ -9206,7 +9207,8 @@ postgres_get_reserve_by_h_blind (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_old_coin_by_h_blind (void *cls,
-                                  const struct GNUNET_HashCode *h_blind_ev,
+                                  const struct
+                                  TALER_BlindedCoinHash *h_blind_ev,
                                   struct TALER_CoinSpendPublicKeyP *old_coin_pub)
 {
   struct PostgresClosure *pg = cls;
@@ -9239,7 +9241,7 @@ postgres_get_old_coin_by_h_blind (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_revocation (
   void *cls,
-  const struct GNUNET_HashCode *denom_pub_hash,
+  const struct TALER_DenominationHash *denom_pub_hash,
   const struct TALER_MasterSignatureP *master_sig)
 {
   struct PostgresClosure *pg = cls;
@@ -9268,7 +9270,7 @@ postgres_insert_denomination_revocation (
 static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_revocation (
   void *cls,
-  const struct GNUNET_HashCode *denom_pub_hash,
+  const struct TALER_DenominationHash *denom_pub_hash,
   struct TALER_MasterSignatureP *master_sig,
   uint64_t *rowid)
 {
@@ -9957,7 +9959,7 @@ postgres_lookup_signkey_revocation (
 static enum GNUNET_DB_QueryStatus
 postgres_lookup_denomination_key (
   void *cls,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
   struct PostgresClosure *pg = cls;
@@ -10008,7 +10010,7 @@ postgres_lookup_denomination_key (
 static enum GNUNET_DB_QueryStatus
 postgres_add_denomination_key (
   void *cls,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
   const struct TALER_MasterSignatureP *master_sig)
@@ -10129,7 +10131,7 @@ postgres_lookup_signing_key (
 static enum GNUNET_DB_QueryStatus
 postgres_insert_auditor_denom_sig (
   void *cls,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
@@ -10159,7 +10161,7 @@ postgres_insert_auditor_denom_sig (
 static enum GNUNET_DB_QueryStatus
 postgres_select_auditor_denom_sig (
   void *cls,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   struct TALER_AuditorSignatureP *auditor_sig)
 {

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014, 2015, 2016, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -70,20 +70,16 @@ qconv_amount_nbo (void *cls,
 }
 
 
-/**
- * Generate query parameter for a currency, consisting of the three
- * components "value", "fraction" and "currency" in this order. The
- * types must be a 64-bit integer, 32-bit integer and a
- * #TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
- *
- * @param x pointer to the query parameter to pass
- * @return array entry for the query parameters to use
- */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount_nbo (const struct TALER_AmountNBO *x)
 {
-  struct GNUNET_PQ_QueryParam res =
-  { &qconv_amount_nbo, NULL, x, sizeof (*x), 2 };
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_amount_nbo,
+    .data = x,
+    .size = sizeof (*x),
+    .num_params = 2
+  };
+
   return res;
 }
 
@@ -138,20 +134,193 @@ qconv_amount (void *cls,
 }
 
 
-/**
- * Generate query parameter for a currency, consisting of the three
- * components "value", "fraction" and "currency" in this order. The
- * types must be a 64-bit integer, 32-bit integer and a
- * #TALER_CURRENCY_LEN-sized BLOB/VARCHAR respectively.
- *
- * @param x pointer to the query parameter to pass
- * @return array entry for the query parameters to use
- */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_amount (const struct TALER_Amount *x)
 {
-  struct GNUNET_PQ_QueryParam res =
-  { &qconv_amount, NULL, x, sizeof (*x), 2 };
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_amount,
+    .data = x,
+    .size = sizeof (*x),
+    .num_params = 2
+  };
+
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_denom_pub (void *cls,
+                 const void *data,
+                 size_t data_len,
+                 void *param_values[],
+                 int param_lengths[],
+                 int param_formats[],
+                 unsigned int param_length,
+                 void *scratch[],
+                 unsigned int scratch_length)
+{
+  const struct TALER_DenominationPublicKey *denom_pub = data;
+  size_t tlen;
+  size_t len;
+  uint32_t be[2];
+  char *buf;
+  void *tbuf;
+
+  (void) cls;
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (scratch_length > 0);
+  GNUNET_break (NULL == cls);
+  be[0] = htonl ((uint32_t) denom_pub->cipher);
+  be[1] = htonl (denom_pub->age_mask);
+  switch (denom_pub->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    tlen = GNUNET_CRYPTO_rsa_public_key_encode (
+      denom_pub->details.rsa_public_key,
+      &tbuf);
+    break;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+  len = tlen + sizeof (be);
+  buf = GNUNET_malloc (len);
+  memcpy (buf,
+          be,
+          sizeof (be));
+  switch (denom_pub->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    memcpy (&buf[sizeof (be)],
+            tbuf,
+            tlen);
+    GNUNET_free (tbuf);
+    break;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+
+  scratch[0] = buf;
+  param_values[0] = (void *) buf;
+  param_lengths[0] = len;
+  param_formats[0] = 1;
+  return 1;
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_denom_pub (
+  const struct TALER_DenominationPublicKey *denom_pub)
+{
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_denom_pub,
+    .data = denom_pub,
+    .num_params = 1
+  };
+
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_denom_sig (void *cls,
+                 const void *data,
+                 size_t data_len,
+                 void *param_values[],
+                 int param_lengths[],
+                 int param_formats[],
+                 unsigned int param_length,
+                 void *scratch[],
+                 unsigned int scratch_length)
+{
+  const struct TALER_DenominationSignature *denom_sig = data;
+  size_t tlen;
+  size_t len;
+  uint32_t be;
+  char *buf;
+  void *tbuf;
+
+  (void) cls;
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (scratch_length > 0);
+  GNUNET_break (NULL == cls);
+  be = htonl ((uint32_t) denom_sig->cipher);
+  switch (denom_sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    tlen = GNUNET_CRYPTO_rsa_signature_encode (
+      denom_sig->details.rsa_signature,
+      &tbuf);
+    break;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+  len = tlen + sizeof (be);
+  buf = GNUNET_malloc (len);
+  memcpy (buf,
+          &be,
+          sizeof (be));
+  switch (denom_sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    memcpy (&buf[sizeof (be)],
+            tbuf,
+            tlen);
+    GNUNET_free (tbuf);
+    break;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+
+  scratch[0] = buf;
+  param_values[0] = (void *) buf;
+  param_lengths[0] = len;
+  param_formats[0] = 1;
+  return 1;
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_denom_sig (
+  const struct TALER_DenominationSignature *denom_sig)
+{
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_denom_sig,
+    .data = denom_sig,
+    .num_params = 1
+  };
+
   return res;
 }
 
@@ -199,17 +368,15 @@ qconv_json (void *cls,
 }
 
 
-/**
- * Generate query parameter for a JSON object (stored as a string
- * in the DB).
- *
- * @param x pointer to the json object to pass
- */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_json (const json_t *x)
 {
-  struct GNUNET_PQ_QueryParam res =
-  { &qconv_json, NULL, x, 0, 1 };
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_json,
+    .data = x,
+    .num_params = 1
+  };
+
   return res;
 }
 
@@ -261,21 +428,16 @@ qconv_round_time (void *cls,
 }
 
 
-/**
- * Generate query parameter for an absolute time value.
- * In contrast to
- * #GNUNET_PQ_query_param_absolute_time(), this function
- * will abort (!) if the time given is not rounded!
- * The database must store a 64-bit integer.
- *
- * @param x pointer to the query parameter to pass
- * @return array entry for the query parameters to use
- */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x)
 {
-  struct GNUNET_PQ_QueryParam res =
-  { &qconv_round_time, NULL, x, sizeof (*x), 1 };
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_round_time,
+    .data = x,
+    .size = sizeof (*x),
+    .num_params = 1
+  };
+
   return res;
 }
 
@@ -324,20 +486,16 @@ qconv_round_time_abs (void *cls,
 }
 
 
-/**
- * Generate query parameter for an absolute time value.
- * In contrast to
- * #GNUNET_PQ_query_param_absolute_time(), this function
- * will abort (!) if the time given is not rounded!
- * The database must store a 64-bit integer.
- *
- * @param x pointer to the query parameter to pass
- */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_absolute_time_nbo (const struct GNUNET_TIME_AbsoluteNBO *x)
 {
-  struct GNUNET_PQ_QueryParam res =
-  { &qconv_round_time_abs, NULL, x, sizeof (*x), 1 };
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_round_time_abs,
+    .data = x,
+    .size = sizeof (*x),
+    .num_params = 1
+  };
+
   return res;
 }
 

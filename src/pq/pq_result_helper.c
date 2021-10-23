@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014, 2015, 2016, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -156,14 +156,6 @@ extract_amount_nbo (void *cls,
 }
 
 
-/**
- * Currency amount expected.
- *
- * @param name name of the field in the table
- * @param currency the currency to use for @a amount
- * @param[out] amount where to store the result
- * @return array entry for the result specification to use
- */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount_nbo (const char *name,
                                  const char *currency,
@@ -240,14 +232,6 @@ extract_amount (void *cls,
 }
 
 
-/**
- * Currency amount expected.
- *
- * @param name name of the field in the table
- * @param currency the currency to use for @a amount
- * @param[out] amount where to store the result
- * @return array entry for the result specification to use
- */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_amount (const char *name,
                              const char *currency,
@@ -353,13 +337,6 @@ clean_json (void *cls,
 }
 
 
-/**
- * json_t expected.
- *
- * @param name name of the field in the table
- * @param[out] jp where to store the result
- * @return array entry for the result specification to use
- */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_json (const char *name,
                            json_t **jp)
@@ -430,16 +407,6 @@ extract_round_time (void *cls,
 }
 
 
-/**
- * Rounded absolute time expected.
- * In contrast to #GNUNET_PQ_query_param_absolute_time_nbo(),
- * this function ensures that the result is rounded and can
- * be converted to JSON.
- *
- * @param name name of the field in the table
- * @param[out] at where to store the result
- * @return array entry for the result specification to use
- */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_absolute_time (const char *name,
                                     struct GNUNET_TIME_Absolute *at)
@@ -510,16 +477,6 @@ extract_round_time_nbo (void *cls,
 }
 
 
-/**
- * Rounded absolute time in network byte order expected.
- * In contrast to #GNUNET_PQ_query_param_absolute_time_nbo(),
- * this function ensures that the result is rounded and can
- * be converted to JSON.
- *
- * @param name name of the field in the table
- * @param[out] at where to store the result
- * @return array entry for the result specification to use
- */
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_absolute_time_nbo (const char *name,
                                         struct GNUNET_TIME_AbsoluteNBO *at)
@@ -528,6 +485,231 @@ TALER_PQ_result_spec_absolute_time_nbo (const char *name,
     .conv = &extract_round_time_nbo,
     .dst = (void *) at,
     .dst_size = sizeof (struct GNUNET_TIME_AbsoluteNBO),
+    .fname = name
+  };
+
+  return res;
+}
+
+
+/**
+ * Extract data from a Postgres database @a result at row @a row.
+ *
+ * @param cls closure
+ * @param result where to extract data from
+ * @param int row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
+ */
+static enum GNUNET_GenericReturnValue
+extract_denom_pub (void *cls,
+                   PGresult *result,
+                   int row,
+                   const char *fname,
+                   size_t *dst_size,
+                   void *dst)
+{
+  struct TALER_DenominationPublicKey *pk = dst;
+  size_t len;
+  const char *res;
+  int fnum;
+  uint32_t be[2];
+
+  (void) cls;
+  fnum = PQfnumber (result,
+                    fname);
+  if (fnum < 0)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (PQgetisnull (result,
+                   row,
+                   fnum))
+    return GNUNET_NO;
+
+  /* if a field is null, continue but
+   * remember that we now return a different result */
+  len = PQgetlength (result,
+                     row,
+                     fnum);
+  res = PQgetvalue (result,
+                    row,
+                    fnum);
+  if (len < sizeof (be))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  memcpy (be,
+          res,
+          sizeof (be));
+  res += sizeof (be);
+  len -= sizeof (be);
+  pk->cipher = ntohl (be[0]);
+  pk->age_mask = ntohl (be[1]);
+  switch (pk->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    pk->details.rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_decode (res,
+                                             len);
+    if (NULL == pk->details.rsa_public_key)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  // FIXME: add CS case!
+  default:
+    GNUNET_break (0);
+  }
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called to clean up memory allocated
+ * by a #GNUNET_PQ_ResultConverter.
+ *
+ * @param cls closure
+ * @param rd result data to clean up
+ */
+static void
+clean_denom_pub (void *cls,
+                 void *rd)
+{
+  struct TALER_DenominationPublicKey *denom_pub = rd;
+
+  (void) cls;
+  TALER_denom_pub_free (denom_pub);
+}
+
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_denom_pub (const char *name,
+                                struct TALER_DenominationPublicKey *denom_pub)
+{
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_denom_pub,
+    .cleaner = &clean_denom_pub,
+    .dst = (void *) denom_pub,
+    .fname = name
+  };
+
+  return res;
+}
+
+
+/**
+ * Extract data from a Postgres database @a result at row @a row.
+ *
+ * @param cls closure
+ * @param result where to extract data from
+ * @param int row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
+ */
+static enum GNUNET_GenericReturnValue
+extract_denom_sig (void *cls,
+                   PGresult *result,
+                   int row,
+                   const char *fname,
+                   size_t *dst_size,
+                   void *dst)
+{
+  struct TALER_DenominationSignature *sig = dst;
+  size_t len;
+  const char *res;
+  int fnum;
+  uint32_t be;
+
+  (void) cls;
+  fnum = PQfnumber (result,
+                    fname);
+  if (fnum < 0)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (PQgetisnull (result,
+                   row,
+                   fnum))
+    return GNUNET_NO;
+
+  /* if a field is null, continue but
+   * remember that we now return a different result */
+  len = PQgetlength (result,
+                     row,
+                     fnum);
+  res = PQgetvalue (result,
+                    row,
+                    fnum);
+  if (len < sizeof (be))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  memcpy (&be,
+          res,
+          sizeof (be));
+  res += sizeof (be);
+  len -= sizeof (be);
+  sig->cipher = ntohl (be);
+  switch (sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    sig->details.rsa_signature
+      = GNUNET_CRYPTO_rsa_signature_decode (res,
+                                            len);
+    if (NULL == sig->details.rsa_signature)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  // FIXME: add CS case!
+  default:
+    GNUNET_break (0);
+  }
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called to clean up memory allocated
+ * by a #GNUNET_PQ_ResultConverter.
+ *
+ * @param cls closure
+ * @param rd result data to clean up
+ */
+static void
+clean_denom_sig (void *cls,
+                 void *rd)
+{
+  struct TALER_DenominationSignature *denom_sig = rd;
+
+  (void) cls;
+  TALER_denom_sig_free (denom_sig);
+}
+
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_denom_sig (const char *name,
+                                struct TALER_DenominationSignature *denom_sig)
+{
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_denom_sig,
+    .cleaner = &clean_denom_sig,
+    .dst = (void *) denom_sig,
     .fname = name
   };
 

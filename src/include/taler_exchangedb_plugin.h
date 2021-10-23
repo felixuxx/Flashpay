@@ -1969,7 +1969,7 @@ typedef enum GNUNET_GenericReturnValue
   struct GNUNET_TIME_Absolute timestamp,
   const struct TALER_Amount *amount,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
-  const struct TLAER_DenominationHash *old_denom_pub_hash,
+  const struct TALER_DenominationHash *old_denom_pub_hash,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,

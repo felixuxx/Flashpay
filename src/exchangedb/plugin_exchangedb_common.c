@@ -49,7 +49,7 @@ common_free_reserve_history (void *cls,
         struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
 
         cbc = rh->details.withdraw;
-        GNUNET_CRYPTO_rsa_signature_free (cbc->sig.rsa_signature);
+        TALER_denom_sig_free (&cbc->sig);
         GNUNET_free (cbc);
         break;
       }
@@ -58,7 +58,7 @@ common_free_reserve_history (void *cls,
         struct TALER_EXCHANGEDB_Recoup *recoup;
 
         recoup = rh->details.recoup;
-        GNUNET_CRYPTO_rsa_signature_free (recoup->coin.denom_sig.rsa_signature);
+        TALER_denom_sig_free (&recoup->coin.denom_sig);
         GNUNET_free (recoup);
         break;
       }
@@ -116,8 +116,7 @@ common_free_coin_transaction_list (void *cls,
         struct TALER_EXCHANGEDB_RecoupRefreshListEntry *rr;
 
         rr = tl->details.old_coin_recoup;
-        if (NULL != rr->coin.denom_sig.rsa_signature)
-          GNUNET_CRYPTO_rsa_signature_free (rr->coin.denom_sig.rsa_signature);
+        TALER_denom_sig_free (&rr->coin.denom_sig);
         GNUNET_free (rr);
         break;
       }
@@ -132,8 +131,7 @@ common_free_coin_transaction_list (void *cls,
         struct TALER_EXCHANGEDB_RecoupRefreshListEntry *rr;
 
         rr = tl->details.recoup_refresh;
-        if (NULL != rr->coin.denom_sig.rsa_signature)
-          GNUNET_CRYPTO_rsa_signature_free (rr->coin.denom_sig.rsa_signature);
+        TALER_denom_sig_free (&rr->coin.denom_sig);
         GNUNET_free (rr);
         break;
       }
