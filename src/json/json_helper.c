@@ -425,12 +425,176 @@ TALER_JSON_spec_relative_time (const char *name,
 }
 
 
+/**
+ * Parse given JSON object to denomination public key.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static int
+parse_denom_pub (void *cls,
+                 json_t *root,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
+  uint32_t cipher;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_uint32 ("cipher",
+                             &cipher),
+    GNUNET_JSON_spec_uint32 ("age_mask",
+                             &denom_pub->age_mask),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  denom_pub->cipher = (enum TALER_DenominationCipher) cipher;
+  switch (denom_pub->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_rsa_public_key (
+          "rsa_public_key",
+          &denom_pub->details.rsa_public_key),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
+  default:
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+}
+
+
+/**
+ * Cleanup data left from parsing denomination public key.
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_denom_pub (void *cls,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
+
+  TALER_denom_pub_free (denom_pub);
+}
+
+
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denomination_public_key (const char *field,
                                          struct TALER_DenominationPublicKey *pk)
 {
-  return GNUNET_JSON_spec_rsa_public_key (field,
-                                          &pk->rsa_public_key);
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_denom_pub,
+    .cleaner = &clean_denom_pub,
+    .field = field,
+    .ptr = pk
+  };
+
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to denomination signature.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static int
+parse_denom_sig (void *cls,
+                 json_t *root,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_DenominationSignature *denom_sig = spec->ptr;
+  uint32_t cipher;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_uint32 ("cipher",
+                             &cipher),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  denom_sig->cipher = (enum TALER_DenominationCipher) cipher;
+  switch (denom_sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_rsa_signature (
+          "rsa_signature",
+          &denom_sig->details.rsa_signature),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
+  default:
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+}
+
+
+/**
+ * Cleanup data left from parsing denomination public key.
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_denom_sig (void *cls,
+                 struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_DenominationSignature *denom_sig = spec->ptr;
+
+  TALER_denom_sig_free (denom_sig);
 }
 
 
@@ -438,8 +602,14 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_denomination_signature (const char *field,
                                         struct TALER_DenominationSignature *sig)
 {
-  return GNUNET_JSON_spec_rsa_signature (field,
-                                         &sig->rsa_signature);
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_denom_sig,
+    .cleaner = &clean_denom_sig,
+    .field = field,
+    .ptr = sig
+  };
+
+  return ret;
 }
 
 
