@@ -529,7 +529,7 @@ test_melting (void)
   GNUNET_assert (NULL != dkp);
   /* initialize refresh session melt data */
   {
-    struct GNUNET_HashCode hc;
+    struct TALER_BlindedCoinHash hc;
 
     RND_BLK (&refresh_session.coin.coin_pub);
     GNUNET_CRYPTO_hash (&refresh_session.coin.coin_pub,
@@ -538,7 +538,8 @@ test_melting (void)
     refresh_session.coin.denom_sig.rsa_signature =
       GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
                                   &hc);
-    GNUNET_assert (NULL != refresh_session.coin.denom_sig.rsa_signature);
+    GNUNET_assert (NULL !=
+                   refresh_session.coin.denom_sig.rsa_signature);
     GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
                                        &refresh_session.coin.denom_pub_hash);
     refresh_session.amount_with_fee = amount_with_fee;
@@ -599,7 +600,7 @@ test_melting (void)
   for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
-    struct GNUNET_HashCode hc;
+    struct TALER_BlindedCoinHash hc;
     struct GNUNET_TIME_Absolute now;
 
     now = GNUNET_TIME_absolute_get ();
@@ -703,10 +704,10 @@ static void
 cb_wt_never (void *cls,
              uint64_t serial_id,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
-             const struct GNUNET_HashCode *h_wire,
+             const struct TALER_MerchantWireHash *h_wire,
              const json_t *wire,
              struct GNUNET_TIME_Absolute exec_time,
-             const struct GNUNET_HashCode *h_contract_terms,
+             const struct TALER_PrivateContractHash *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
@@ -717,8 +718,8 @@ cb_wt_never (void *cls,
 
 
 static struct TALER_MerchantPublicKeyP merchant_pub_wt;
-static struct GNUNET_HashCode h_wire_wt;
-static struct GNUNET_HashCode h_contract_terms_wt;
+static struct TALER_MerchantWireHash h_wire_wt;
+static struct TALER_PrivateContractHash h_contract_terms_wt;
 static struct TALER_CoinSpendPublicKeyP coin_pub_wt;
 static struct TALER_Amount coin_value_wt;
 static struct TALER_Amount coin_fee_wt;
@@ -734,10 +735,10 @@ static void
 cb_wt_check (void *cls,
              uint64_t rowid,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
-             const struct GNUNET_HashCode *h_wire,
+             const struct TALER_MerchantWireHash *h_wire,
              const json_t *wire,
              struct GNUNET_TIME_Absolute exec_time,
-             const struct GNUNET_HashCode *h_contract_terms,
+             const struct TALER_PrivateContractHash *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
              const struct TALER_Amount *coin_value,
@@ -792,11 +793,11 @@ deposit_cb (void *cls,
             const struct TALER_CoinSpendPublicKeyP *coin_pub,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
-            const struct GNUNET_HashCode *h_contract_terms,
+            const struct TALER_PrivateContractHash *h_contract_terms,
             const json_t *wire)
 {
   struct TALER_EXCHANGEDB_Deposit *deposit = cls;
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
 
   deposit_rowid = rowid;
   GNUNET_assert (GNUNET_OK ==
@@ -844,7 +845,7 @@ matching_deposit_cb (void *cls,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const struct TALER_Amount *amount_with_fee,
                      const struct TALER_Amount *deposit_fee,
-                     const struct GNUNET_HashCode *h_contract_terms)
+                     const struct TALER_PrivateContractHash *h_contract_terms)
 {
   struct TALER_EXCHANGEDB_Deposit *deposit = cls;
 
@@ -855,9 +856,8 @@ matching_deposit_cb (void *cls,
                                &deposit->deposit_fee)) ||
        (0 != GNUNET_memcmp (h_contract_terms,
                             &deposit->h_contract_terms)) ||
-       (0 != memcmp (coin_pub,
-                     &deposit->coin.coin_pub,
-                     sizeof (struct TALER_CoinSpendPublicKeyP))) )
+       (0 != GNUNET_memcmp (coin_pub,
+                            &deposit->coin.coin_pub)) )
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -898,7 +898,7 @@ audit_deposit_cb (void *cls,
                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
                   const struct TALER_CoinSpendSignatureP *coin_sig,
                   const struct TALER_Amount *amount_with_fee,
-                  const struct GNUNET_HashCode *h_contract_terms,
+                  const struct TALER_PrivateContractHash *h_contract_terms,
                   struct GNUNET_TIME_Absolute refund_deadline,
                   struct GNUNET_TIME_Absolute wire_deadline,
                   const json_t *receiver_wire_account,
@@ -932,7 +932,7 @@ audit_refund_cb (void *cls,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_MerchantPublicKeyP *merchant_pub,
                  const struct TALER_MerchantSignatureP *merchant_sig,
-                 const struct GNUNET_HashCode *h_contract_terms,
+                 const struct TALER_PrivateContractHash *h_contract_terms,
                  uint64_t rtransaction_id,
                  const struct TALER_Amount *amount_with_fee)
 {
@@ -999,7 +999,7 @@ audit_reserve_in_cb (void *cls,
 static int
 audit_reserve_out_cb (void *cls,
                       uint64_t rowid,
-                      const struct GNUNET_HashCode *h_blind_ev,
+                      const struct TALER_BlindedCoinHash *h_blind_ev,
                       const struct TALER_DenominationPublicKey *denom_pub,
                       const struct TALER_ReservePublicKeyP *reserve_pub,
                       const struct TALER_ReserveSignatureP *reserve_sig,
@@ -1031,7 +1031,7 @@ test_gc (void)
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute past;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
-  struct GNUNET_HashCode denom_hash;
+  struct TALER_DenominationHash denom_hash;
 
   now = GNUNET_TIME_absolute_get ();
   GNUNET_TIME_round_abs (&now);
@@ -1495,7 +1495,7 @@ run (void *cls)
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReservePublicKeyP reserve_pub2;
   struct DenomKeyPair *dkp;
-  struct GNUNET_HashCode dkp_pub_hash;
+  struct TALER_DenominationHash dkp_pub_hash;
   struct TALER_MasterSignatureP master_sig;
   struct TALER_EXCHANGEDB_CollectableBlindcoin cbc;
   struct TALER_EXCHANGEDB_CollectableBlindcoin cbc2;
@@ -1761,9 +1761,9 @@ run (void *cls)
     {
     case TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE:
       bt = rh_head->details.bank;
-      FAILIF (0 != memcmp (&bt->reserve_pub,
-                           &reserve_pub,
-                           sizeof (reserve_pub)));
+      FAILIF (0 !=
+              GNUNET_memcmp (&bt->reserve_pub,
+                             &reserve_pub));
       /* this is the amount we transferred twice*/
       FAILIF (1 != bt->amount.value);
       FAILIF (1000 != bt->amount.fraction);
@@ -1772,31 +1772,32 @@ run (void *cls)
       break;
     case TALER_EXCHANGEDB_RO_WITHDRAW_COIN:
       withdraw = rh_head->details.withdraw;
-      FAILIF (0 != memcmp (&withdraw->reserve_pub,
-                           &reserve_pub,
-                           sizeof (reserve_pub)));
-      FAILIF (0 != memcmp (&withdraw->h_coin_envelope,
-                           &cbc.h_coin_envelope,
-                           sizeof (cbc.h_coin_envelope)));
+      FAILIF (0 !=
+              GNUNET_memcmp (&withdraw->reserve_pub,
+                             &reserve_pub));
+      FAILIF (0 !=
+              GNUNET_memcmp (&withdraw->h_coin_envelope,
+                             &cbc.h_coin_envelope));
       break;
     case TALER_EXCHANGEDB_RO_RECOUP_COIN:
       {
         struct TALER_EXCHANGEDB_Recoup *recoup = rh_head->details.recoup;
 
-        FAILIF (0 != memcmp (&recoup->coin_sig,
-                             &coin_sig,
-                             sizeof (coin_sig)));
-        FAILIF (0 != memcmp (&recoup->coin_blind,
-                             &coin_blind,
-                             sizeof (coin_blind)));
-        FAILIF (0 != memcmp (&recoup->reserve_pub,
-                             &reserve_pub,
-                             sizeof (reserve_pub)));
-        FAILIF (0 != memcmp (&recoup->coin.coin_pub,
-                             &deposit.coin.coin_pub,
-                             sizeof (deposit.coin.coin_pub)));
-        FAILIF (0 != TALER_amount_cmp (&recoup->value,
-                                       &value));
+        FAILIF (0 !=
+                GNUNET_memcmp (&recoup->coin_sig,
+                               &coin_sig));
+        FAILIF (0 !=
+                GNUNET_memcmp (&recoup->coin_blind,
+                               &coin_blind));
+        FAILIF (0 !=
+                GNUNET_memcmp (&recoup->reserve_pub,
+                               &reserve_pub));
+        FAILIF (0 !=
+                GNUNET_memcmp (&recoup->coin.coin_pub,
+                               &deposit.coin.coin_pub));
+        FAILIF (0 !=
+                TALER_amount_cmp (&recoup->value,
+                                  &value));
       }
       break;
     case TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK:
@@ -1804,9 +1805,9 @@ run (void *cls)
         struct TALER_EXCHANGEDB_ClosingTransfer *closing
           = rh_head->details.closing;
 
-        FAILIF (0 != memcmp (&closing->reserve_pub,
-                             &reserve_pub,
-                             sizeof (reserve_pub)));
+        FAILIF (0 !=
+                GNUNET_memcmp (&closing->reserve_pub,
+                               &reserve_pub));
         FAILIF (0 != TALER_amount_cmp (&closing->amount,
                                        &amount_with_fee));
         FAILIF (0 != TALER_amount_cmp (&closing->closing_fee,
@@ -2078,18 +2079,18 @@ run (void *cls)
         /* Note: we're not comparing the denomination keys, as there is
            still the question of whether we should even bother exporting
            them here. */
-        FAILIF (0 != memcmp (&have->csig,
-                             &deposit.csig,
-                             sizeof (struct TALER_CoinSpendSignatureP)));
-        FAILIF (0 != memcmp (&have->merchant_pub,
-                             &deposit.merchant_pub,
-                             sizeof (struct TALER_MerchantPublicKeyP)));
-        FAILIF (0 != memcmp (&have->h_contract_terms,
-                             &deposit.h_contract_terms,
-                             sizeof (struct GNUNET_HashCode)));
-        FAILIF (0 != memcmp (&have->h_wire,
-                             &deposit.h_wire,
-                             sizeof (struct GNUNET_HashCode)));
+        FAILIF (0 !=
+                GNUNET_memcmp (&have->csig,
+                               &deposit.csig));
+        FAILIF (0 !=
+                GNUNET_memcmp (&have->merchant_pub,
+                               &deposit.merchant_pub));
+        FAILIF (0 !=
+                GNUNET_memcmp (&have->h_contract_terms,
+                               &deposit.h_contract_terms));
+        FAILIF (0 !=
+                GNUNET_memcmp (&have->h_wire,
+                               &deposit.h_wire));
         /* Note: not comparing 'wire', seems truly redundant and would be tricky */
         FAILIF (have->timestamp.abs_value_us != deposit.timestamp.abs_value_us);
         FAILIF (have->refund_deadline.abs_value_us !=
@@ -2106,9 +2107,9 @@ run (void *cls)
 #if 0
     /* this coin pub was actually never melted... */
     case TALER_EXCHANGEDB_TT_MELT:
-      FAILIF (0 != memcmp (&melt,
-                           &tlp->details.melt,
-                           sizeof (struct TALER_EXCHANGEDB_Melt)));
+      FAILIF (0 !=
+              GNUNET_memcmp (&melt,
+                             &tlp->details.melt));
       matched |= 2;
       break;
 #endif
