@@ -88,22 +88,58 @@ TALER_JSON_pack_time_rel_nbo (const char *name,
 
 
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_denomination_public_key (const char *name,
-                                         const struct
-                                         TALER_DenominationPublicKey *pk)
+TALER_JSON_pack_denomination_public_key (
+  const char *name,
+  const struct TALER_DenominationPublicKey *pk)
 {
-  return GNUNET_JSON_pack_rsa_public_key (name,
-                                          pk->rsa_public_key);
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  switch (pk->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    ps.object
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_uint32 ("cipher",
+                                   TALER_DENOMINATION_RSA),
+          GNUNET_JSON_pack_uint32 ("age_mask",
+                                   pk->age_mask),
+          GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
+                                           pk->details.rsa_public_key));
+    break;
+  default:
+    GNUNET_assert (0);
+    return GNUNET_SYSERR;
+  }
+  return ps;
 }
 
 
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_denomination_signature (const char *name,
-                                        const struct
-                                        TALER_DenominationSignature *sig)
+TALER_JSON_pack_denomination_signature (
+  const char *name,
+  const struct TALER_DenominationSignature *sig)
 {
-  return GNUNET_JSON_pack_rsa_signature (name,
-                                         sig->rsa_signature);
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  switch (sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    ps.object
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_uint32 ("cipher",
+                                   TALER_DENOMINATION_RSA),
+          GNUNET_JSON_pack_rsa_signature ("rsa_signature",
+                                          sig->details.rsa_signature));
+    break;
+  default:
+    GNUNET_assert (0);
+    return GNUNET_SYSERR;
+  }
+  return ps;
 }
 
 
@@ -114,8 +150,8 @@ TALER_JSON_pack_amount (const char *name,
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
     .object = (NULL != amount)
-    ? TALER_JSON_from_amount (amount)
-    : NULL
+              ? TALER_JSON_from_amount (amount)
+              : NULL
   };
 
   return ps;
@@ -129,8 +165,8 @@ TALER_JSON_pack_amount_nbo (const char *name,
   struct GNUNET_JSON_PackSpec ps = {
     .field_name = name,
     .object = (NULL != amount)
-    ? TALER_JSON_from_amount_nbo (amount)
-    : NULL
+              ? TALER_JSON_from_amount_nbo (amount)
+              : NULL
   };
 
   return ps;
