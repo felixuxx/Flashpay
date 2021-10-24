@@ -278,8 +278,8 @@ struct TALER_EXCHANGE_DepositGetHandle *
 TALER_EXCHANGE_deposits_get (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_MerchantPrivateKeyP *merchant_priv,
-  const struct GNUNET_HashCode *h_wire,
-  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_MerchantWireHash *h_wire,
+  const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   TALER_EXCHANGE_DepositGetCallback cb,
   void *cb_cls)
@@ -290,9 +290,9 @@ TALER_EXCHANGE_deposits_get (
   struct GNUNET_CURL_Context *ctx;
   CURL *eh;
   char arg_str[(sizeof (struct TALER_CoinSpendPublicKeyP)
-                + sizeof (struct GNUNET_HashCode)
+                + sizeof (struct TALER_MerchantWireHash)
                 + sizeof (struct TALER_MerchantPublicKeyP)
-                + sizeof (struct GNUNET_HashCode)
+                + sizeof (struct TALER_PrivateContractHash)
                 + sizeof (struct TALER_MerchantSignatureP)) * 2 + 48];
 
   if (GNUNET_YES !=
@@ -316,37 +316,32 @@ TALER_EXCHANGE_deposits_get (
     char cpub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char mpub_str[sizeof (struct TALER_MerchantPublicKeyP) * 2];
     char msig_str[sizeof (struct TALER_MerchantSignatureP) * 2];
-    char chash_str[sizeof (struct GNUNET_HashCode) * 2];
-    char whash_str[sizeof (struct GNUNET_HashCode) * 2];
+    char chash_str[sizeof (struct TALER_PrivateContractHash) * 2];
+    char whash_str[sizeof (struct TALER_MerchantWireHash) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (h_wire,
-                                         sizeof (struct
-                                                 GNUNET_HashCode),
+                                         sizeof (*h_wire),
                                          whash_str,
                                          sizeof (whash_str));
     *end = '\0';
     end = GNUNET_STRINGS_data_to_string (&dtp.merchant,
-                                         sizeof (struct
-                                                 TALER_MerchantPublicKeyP),
+                                         sizeof (dtp.merchant),
                                          mpub_str,
                                          sizeof (mpub_str));
     *end = '\0';
     end = GNUNET_STRINGS_data_to_string (h_contract_terms,
-                                         sizeof (struct
-                                                 GNUNET_HashCode),
+                                         sizeof (*h_contract_terms),
                                          chash_str,
                                          sizeof (chash_str));
     *end = '\0';
     end = GNUNET_STRINGS_data_to_string (coin_pub,
-                                         sizeof (struct
-                                                 TALER_CoinSpendPublicKeyP),
+                                         sizeof (*coin_pub),
                                          cpub_str,
                                          sizeof (cpub_str));
     *end = '\0';
     end = GNUNET_STRINGS_data_to_string (&merchant_sig,
-                                         sizeof (struct
-                                                 TALER_MerchantSignatureP),
+                                         sizeof (merchant_sig),
                                          msig_str,
                                          sizeof (msig_str));
     *end = '\0';

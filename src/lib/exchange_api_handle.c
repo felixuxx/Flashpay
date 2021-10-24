@@ -445,7 +445,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
   off = 0;
   json_array_foreach (keys, i, key) {
     struct TALER_AuditorSignatureP auditor_sig;
-    struct GNUNET_HashCode denom_h;
+    struct TALER_DenominationHash denom_h;
     const struct TALER_EXCHANGE_DenomPublicKey *dk;
     unsigned int dk_off;
     struct GNUNET_JSON_Specification kspec[] = {
@@ -2010,7 +2010,7 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
  * @param pub claimed current online signing key for the exchange
  * @return #GNUNET_OK if @a pub is (according to /keys) a current signing key
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
                                  const struct TALER_ExchangePublicKeyP *pub)
 {
@@ -2114,7 +2114,7 @@ TALER_EXCHANGE_destroy_denomination_key (
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key_by_hash (
   const struct TALER_EXCHANGE_Keys *keys,
-  const struct GNUNET_HashCode *hc)
+  const struct TALER_DenominationHash *hc)
 {
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
     if (0 == GNUNET_memcmp (hc,

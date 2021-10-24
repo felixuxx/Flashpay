@@ -420,12 +420,12 @@ handle_deposit_finished (void *cls,
 static enum GNUNET_GenericReturnValue
 verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_Amount *amount,
-                   const struct GNUNET_HashCode *h_wire,
-                   const struct GNUNET_HashCode *h_contract_terms,
+                   const struct TALER_MerchantWireHash *h_wire,
+                   const struct TALER_PrivateContractHash *h_contract_terms,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
-                   const struct GNUNET_HashCode *denom_pub_hash,
+                   const struct TALER_DenominationHash *denom_pub_hash,
                    struct GNUNET_TIME_Absolute timestamp,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                    struct GNUNET_TIME_Absolute refund_deadline,
@@ -500,9 +500,9 @@ void
 TALER_EXCHANGE_deposit_permission_sign (
   const struct TALER_Amount *amount,
   const struct TALER_Amount *deposit_fee,
-  const struct GNUNET_HashCode *h_wire,
-  const struct GNUNET_HashCode *h_contract_terms,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_MerchantWireHash *h_wire,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct GNUNET_TIME_Absolute wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -510,10 +510,8 @@ TALER_EXCHANGE_deposit_permission_sign (
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
   struct TALER_DepositRequestPS dr = {
-    .purpose.size = htonl
-                      (sizeof (dr)),
-    .purpose.purpose = htonl
-                         (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+    .purpose.size = htonl (sizeof (dr)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
     .h_contract_terms = *h_contract_terms,
     .h_wire = *h_wire,
     .h_denom_pub = *h_denom_pub,
@@ -543,7 +541,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
                         const struct TALER_Amount *amount,
                         struct GNUNET_TIME_Absolute wire_deadline,
                         json_t *wire_details,
-                        const struct GNUNET_HashCode *h_contract_terms,
+                        const struct
+                        TALER_PrivateContractHash *h_contract_terms,
                         const struct TALER_CoinSpendPublicKeyP *coin_pub,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_DenominationPublicKey *denom_pub,
@@ -561,8 +560,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   json_t *deposit_obj;
   CURL *eh;
-  struct GNUNET_HashCode h_wire;
-  struct GNUNET_HashCode denom_pub_hash;
+  struct TALER_MerchantWireHash h_wire;
+  struct TALER_DenominationHash denom_pub_hash;
   struct TALER_Amount amount_without_fee;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
@@ -678,10 +677,10 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
     json_decref (deposit_obj);
     return NULL;
   }
-  dh->depconf.purpose.size = htonl (sizeof (struct
-                                            TALER_DepositConfirmationPS));
-  dh->depconf.purpose.purpose = htonl (
-    TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
+  dh->depconf.purpose.size
+    = htonl (sizeof (struct TALER_DepositConfirmationPS));
+  dh->depconf.purpose.purpose
+    = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT);
   dh->depconf.h_contract_terms = *h_contract_terms;
   dh->depconf.h_wire = h_wire;
   /* dh->depconf.exchange_timestamp; -- initialized later from exchange reply! */

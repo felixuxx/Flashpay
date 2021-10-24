@@ -217,7 +217,7 @@ expired_reserve_cb (void *cls,
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount closing_fee;
-  int ret;
+  enum TALER_AmountArithmeticResult ret;
   enum GNUNET_DB_QueryStatus qs;
   const struct TALER_EXCHANGEDB_AccountInfo *wa;
 
@@ -273,8 +273,8 @@ expired_reserve_cb (void *cls,
   ret = TALER_amount_subtract (&amount_without_fee,
                                left,
                                &closing_fee);
-  if ( (GNUNET_SYSERR == ret) ||
-       (GNUNET_NO == ret) )
+  if ( (TALER_AAR_INVALID_NEGATIVE_RESULT == ret) ||
+       (TALER_AAR_RESULT_ZERO == ret) )
   {
     /* Closing fee higher than or equal to remaining balance, close
        without wire transfer. */
@@ -283,6 +283,7 @@ expired_reserve_cb (void *cls,
                    TALER_amount_set_zero (left->currency,
                                           &amount_without_fee));
   }
+  GNUNET_assert (TALER_AAR_RESULT_POSITIVE == ret);
   /* round down to enable transfer */
   if (GNUNET_SYSERR ==
       TALER_amount_round_down (&amount_without_fee,

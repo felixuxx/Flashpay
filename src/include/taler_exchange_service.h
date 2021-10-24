@@ -558,7 +558,7 @@ TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange);
  * @param pub claimed current online signing key for the exchange
  * @return #GNUNET_OK if @a pub is (according to /keys) a current signing key
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
                                  const struct TALER_ExchangePublicKeyP *pub);
 

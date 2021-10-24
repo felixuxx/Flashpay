@@ -122,9 +122,9 @@ handle_exchanges_finished (void *cls,
     }
     {
       struct TALER_AUDITOR_ExchangeInfo ei[ja_len];
-      int ok;
+      bool ok;
 
-      ok = GNUNET_YES;
+      ok = true;
       for (unsigned int i = 0; i<ja_len; i++)
       {
         struct GNUNET_JSON_Specification spec[] = {
@@ -140,13 +140,13 @@ handle_exchanges_finished (void *cls,
                                NULL, NULL))
         {
           GNUNET_break_op (0);
-          ok = GNUNET_NO;
+          ok = false;
           hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
           hr.http_status = 0;
           break;
         }
       }
-      if (GNUNET_YES != ok)
+      if (! ok)
         break;
       leh->cb (leh->cb_cls,
                &hr,
@@ -220,7 +220,8 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
   leh->auditor = auditor;
   leh->cb = cb;
   leh->cb_cls = cb_cls;
-  leh->url = TALER_AUDITOR_path_to_url_ (auditor, "/exchanges");
+  leh->url = TALER_AUDITOR_path_to_url_ (auditor,
+                                         "/exchanges");
   if (NULL == leh->url)
   {
     GNUNET_free (leh);
@@ -253,8 +254,8 @@ TALER_AUDITOR_list_exchanges (struct TALER_AUDITOR_Handle *auditor,
  * @param leh the list exchanges request handle
  */
 void
-TALER_AUDITOR_list_exchanges_cancel (struct
-                                     TALER_AUDITOR_ListExchangesHandle *leh)
+TALER_AUDITOR_list_exchanges_cancel (
+  struct TALER_AUDITOR_ListExchangesHandle *leh)
 {
   if (NULL != leh->job)
   {

@@ -141,8 +141,8 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
 
   /* verify signature by exchange */
   confirm.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT);
-  confirm.purpose.size = htonl (sizeof (struct
-                                        TALER_RefreshMeltConfirmationPS));
+  confirm.purpose.size
+    = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
   confirm.rc = mh->md->rc;
   confirm.noreveal_index = htonl (*noreveal_index);
   if (GNUNET_OK !=
@@ -167,14 +167,14 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
  * @param json json reply with the signature(s) and transaction history
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_melt_signature_denom_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
                                       const json_t *json)
 
 {
   json_t *history;
   struct TALER_Amount total;
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   memset (&h_denom_pub,
           0,
