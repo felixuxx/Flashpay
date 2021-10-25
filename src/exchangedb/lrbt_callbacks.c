@@ -48,9 +48,9 @@ lrbt_cb_table_denominations (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
-      GNUNET_PQ_result_spec_rsa_public_key (
+      TALER_PQ_result_spec_denom_pub (
         "denom_pub",
-        &td.details.denominations.denom_pub.rsa_public_key),
+        &td.details.denominations.denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &td.details.denominations.master_sig),
       TALER_PQ_result_spec_absolute_time ("valid_from",
@@ -329,9 +329,9 @@ lrbt_cb_table_reserves_out (void *cls,
                                     &td.serial),
       GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
                                             &td.details.reserves_out.h_blind_ev),
-      GNUNET_PQ_result_spec_rsa_signature (
+      TALER_PQ_result_spec_denom_sig (
         "denom_sig",
-        &td.details.reserves_out.denom_sig.rsa_signature),
+        &td.details.reserves_out.denom_sig),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                             &td.details.reserves_out.reserve_sig),
       TALER_PQ_result_spec_absolute_time (
@@ -593,9 +593,9 @@ lrbt_cb_table_known_coins (void *cls,
                                     &td.serial),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &td.details.known_coins.coin_pub),
-      GNUNET_PQ_result_spec_rsa_signature (
+      TALER_PQ_result_spec_denom_sig (
         "denom_sig",
-        &td.details.known_coins.denom_sig.rsa_signature),
+        &td.details.known_coins.denom_sig),
       GNUNET_PQ_result_spec_uint64 ("denominations_serial",
                                     &td.details.known_coins.denominations_serial),
       GNUNET_PQ_result_spec_end
@@ -708,9 +708,9 @@ lrbt_cb_table_refresh_revealed_coins (void *cls,
         "coin_ev",
         (void **) &td.details.refresh_revealed_coins.coin_ev,
         &td.details.refresh_revealed_coins.coin_ev_size),
-      GNUNET_PQ_result_spec_rsa_signature (
+      TALER_PQ_result_spec_denom_sig (
         "ev_sig",
-        &td.details.refresh_revealed_coins.ev_sig.rsa_signature),
+        &td.details.refresh_revealed_coins.ev_sig),
       GNUNET_PQ_result_spec_uint64 (
         "denominations_serial",
         &td.details.refresh_revealed_coins.denominations_serial),

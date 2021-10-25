@@ -35,12 +35,12 @@ static enum GNUNET_DB_QueryStatus
 irbt_cb_table_denominations (struct PostgresClosure *pg,
                              const struct TALER_EXCHANGEDB_TableData *td)
 {
-  struct GNUNET_HashCode denom_hash;
+  struct TALER_DenominationHash denom_hash;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&denom_hash),
-    GNUNET_PQ_query_param_rsa_public_key (
-      td->details.denominations.denom_pub.rsa_public_key),
+    TALER_PQ_query_param_denom_pub (
+      &td->details.denominations.denom_pub),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.denominations.master_sig),
     TALER_PQ_query_param_absolute_time (
@@ -63,8 +63,8 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_end
   };
 
-  GNUNET_CRYPTO_rsa_public_key_hash (
-    td->details.denominations.denom_pub.rsa_public_key,
+  TALER_denom_pub_hash (
+    &td->details.denominations.denom_pub,
     &denom_hash);
 
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
@@ -196,8 +196,8 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.reserves_out.h_blind_ev),
-    GNUNET_PQ_query_param_rsa_signature (
-      td->details.reserves_out.denom_sig.rsa_signature),
+    TALER_PQ_query_param_denom_sig (
+      &td->details.reserves_out.denom_sig),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_out.reserve_sig),
     TALER_PQ_query_param_absolute_time (
@@ -336,8 +336,8 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.known_coins.coin_pub),
-    GNUNET_PQ_query_param_rsa_signature (
-      td->details.known_coins.denom_sig.rsa_signature),
+    TALER_PQ_query_param_denom_sig (
+      &td->details.known_coins.denom_sig),
     GNUNET_PQ_query_param_uint64 (
       &td->details.known_coins.denominations_serial),
     GNUNET_PQ_query_param_end
@@ -402,8 +402,8 @@ irbt_cb_table_refresh_revealed_coins (
       td->details.refresh_revealed_coins.
       coin_ev_size),
     GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
-    GNUNET_PQ_query_param_rsa_signature (
-      td->details.refresh_revealed_coins.ev_sig.rsa_signature),
+    TALER_PQ_query_param_denom_sig (
+      &td->details.refresh_revealed_coins.ev_sig),
     GNUNET_PQ_query_param_uint64 (
       &td->details.refresh_revealed_coins.denominations_serial),
     GNUNET_PQ_query_param_uint64 (
@@ -462,7 +462,7 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
 {
   uint8_t tiny = td->details.deposits.tiny ? 1 : 0;
   uint8_t done = td->details.deposits.done ? 1 : 0;
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     TALER_PQ_query_param_amount (&td->details.deposits.amount_with_fee),

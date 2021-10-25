@@ -2864,7 +2864,7 @@ postgres_insert_denomination_info (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&issue->properties.denom_hash),
-    GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    TALER_PQ_query_param_denom_pub (denom_pub),
     GNUNET_PQ_query_param_auto_from_type (&issue->signature),
     TALER_PQ_query_param_absolute_time_nbo (&issue->properties.start),
     TALER_PQ_query_param_absolute_time_nbo (&issue->properties.expire_withdraw),
@@ -3031,8 +3031,8 @@ domination_cb_helper (void *cls,
                                        &issue.properties.fee_refresh),
       TALER_PQ_RESULT_SPEC_AMOUNT_NBO ("fee_refund",
                                        &issue.properties.fee_refund),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3051,12 +3051,12 @@ domination_cb_helper (void *cls,
       = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
     issue.properties.purpose.purpose
       = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &issue.properties.denom_hash);
+    TALER_denom_pub_hash (&denom_pub,
+                          &issue.properties.denom_hash);
     dic->cb (dic->cb_cls,
              &denom_pub,
              &issue);
-    GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
+    TALER_denom_pub_free (&denom_pub);
   }
 }
 
@@ -3160,8 +3160,8 @@ dominations_cb_helper (void *cls,
                                    &meta.fee_refresh),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
                                    &meta.fee_refund),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3173,8 +3173,8 @@ dominations_cb_helper (void *cls,
       GNUNET_break (0);
       return;
     }
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &h_denom_pub);
+    TALER_denom_pub_hash (&denom_pub,
+                          &h_denom_pub);
     dic->cb (dic->cb_cls,
              &denom_pub,
              &h_denom_pub,
@@ -4125,8 +4125,8 @@ postgres_get_withdraw_info (
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                           &collectable->denom_pub_hash),
-    GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                         &collectable->sig.rsa_signature),
+    TALER_PQ_result_spec_denom_sig ("denom_sig",
+                                    &collectable->sig),
     GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                           &collectable->reserve_sig),
     GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
@@ -4177,7 +4177,7 @@ postgres_insert_withdraw_info (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
     GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
-    GNUNET_PQ_query_param_rsa_signature (collectable->sig.rsa_signature),
+    TALER_PQ_query_param_denom_sig (&collectable->sig),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
     TALER_PQ_query_param_absolute_time (&now),
@@ -4381,8 +4381,8 @@ add_withdraw_coin (void *cls,
                                               &cbc->h_coin_envelope),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                               &cbc->denom_pub_hash),
-        GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                             &cbc->sig.rsa_signature),
+        TALER_PQ_result_spec_denom_sig ("denom_sig",
+                                        &cbc->sig),
         GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
                                               &cbc->reserve_sig),
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -4446,9 +4446,9 @@ add_recoup (void *cls,
                                             &recoup->timestamp),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                               &recoup->coin.denom_pub_hash),
-        GNUNET_PQ_result_spec_rsa_signature (
+        TALER_PQ_result_spec_denom_sig (
           "denom_sig",
-          &recoup->coin.denom_sig.rsa_signature),
+          &recoup->coin.denom_sig),
         GNUNET_PQ_result_spec_end
       };
 
@@ -5182,8 +5182,8 @@ postgres_get_known_coin (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                           &coin_info->denom_pub_hash),
-    GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                         &coin_info->denom_sig.rsa_signature),
+    TALER_PQ_result_spec_denom_sig ("denom_sig",
+                                    &coin_info->denom_sig),
     GNUNET_PQ_result_spec_end
   };
 
@@ -5250,7 +5250,7 @@ insert_known_coin (void *cls,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&coin_info->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&coin_info->denom_pub_hash),
-    GNUNET_PQ_query_param_rsa_signature (coin_info->denom_sig.rsa_signature),
+    TALER_PQ_query_param_denom_sig (&coin_info->denom_sig),
     GNUNET_PQ_query_param_end
   };
 
@@ -5626,7 +5626,9 @@ postgres_get_melt (void *cls,
   };
   enum GNUNET_DB_QueryStatus qs;
 
-  melt->session.coin.denom_sig.rsa_signature = NULL;
+  memset (&melt->session.coin.denom_sig,
+          0,
+          sizeof (melt->session.coin.denom_sig));
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_melt",
                                                  params,
@@ -5742,16 +5744,16 @@ postgres_insert_refresh_reveal (
       GNUNET_PQ_query_param_fixed_size (rrc->coin_ev,
                                         rrc->coin_ev_size),
       GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
-      GNUNET_PQ_query_param_rsa_signature (rrc->coin_sig.rsa_signature),
+      TALER_PQ_query_param_denom_sig (&rrc->coin_sig),
       GNUNET_PQ_query_param_end
     };
     enum GNUNET_DB_QueryStatus qs;
 
-    GNUNET_CRYPTO_rsa_public_key_hash (rrc->denom_pub.rsa_public_key,
-                                       &denom_pub_hash);
+    TALER_denom_pub_hash (&rrc->denom_pub,
+                          &denom_pub_hash);
     GNUNET_CRYPTO_hash (rrc->coin_ev,
                         rrc->coin_ev_size,
-                        &h_coin_ev);
+                        &h_coin_ev.hash);
     qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_refresh_revealed_coin",
                                              params);
@@ -5827,15 +5829,15 @@ add_revealed_coins (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint32 ("freshcoin_index",
                                     &off),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &rrc->denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &rrc->denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("link_sig",
                                             &rrc->orig_coin_link_sig),
       GNUNET_PQ_result_spec_variable_size ("coin_ev",
                                            (void **) &rrc->coin_ev,
                                            &rrc->coin_ev_size),
-      GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
-                                           &rrc->coin_sig.rsa_signature),
+      TALER_PQ_result_spec_denom_sig ("ev_sig",
+                                      &rrc->coin_sig),
       GNUNET_PQ_result_spec_end
     };
 
@@ -5962,10 +5964,8 @@ cleanup:
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &grctx.rrcs[i];
 
-    if (NULL != rrc->denom_pub.rsa_public_key)
-      GNUNET_CRYPTO_rsa_public_key_free (rrc->denom_pub.rsa_public_key);
-    if (NULL != rrc->coin_sig.rsa_signature)
-      GNUNET_CRYPTO_rsa_signature_free (rrc->coin_sig.rsa_signature);
+    TALER_denom_pub_free (&rrc->denom_pub);
+    TALER_denom_sig_free (&rrc->coin_sig);
     GNUNET_free (rrc->coin_ev);
   }
   GNUNET_free (grctx.rrcs);
@@ -6022,10 +6022,8 @@ free_link_data_list (void *cls,
   while (NULL != ldl)
   {
     next = ldl->next;
-    if (NULL != ldl->denom_pub.rsa_public_key)
-      GNUNET_CRYPTO_rsa_public_key_free (ldl->denom_pub.rsa_public_key);
-    if (NULL != ldl->ev_sig.rsa_signature)
-      GNUNET_CRYPTO_rsa_signature_free (ldl->ev_sig.rsa_signature);
+    TALER_denom_pub_free (&ldl->denom_pub);
+    TALER_denom_sig_free (&ldl->ev_sig);
     GNUNET_free (ldl);
     ldl = next;
   }
@@ -6059,10 +6057,10 @@ add_ldl (void *cls,
                                               &transfer_pub),
         GNUNET_PQ_result_spec_auto_from_type ("link_sig",
                                               &pos->orig_coin_link_sig),
-        GNUNET_PQ_result_spec_rsa_signature ("ev_sig",
-                                             &pos->ev_sig.rsa_signature),
-        GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                              &pos->denom_pub.rsa_public_key),
+        TALER_PQ_result_spec_denom_sig ("ev_sig",
+                                        &pos->ev_sig),
+        TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                        &pos->denom_pub),
         GNUNET_PQ_result_spec_end
       };
 
@@ -6430,9 +6428,8 @@ add_old_coin_recoup (void *cls,
                                             &recoup->timestamp),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                               &recoup->coin.denom_pub_hash),
-        GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                             &recoup->coin.denom_sig.
-                                             rsa_signature),
+        TALER_PQ_result_spec_denom_sig ("denom_sig",
+                                        &recoup->coin.denom_sig),
         GNUNET_PQ_result_spec_uint64 ("recoup_refresh_uuid",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
@@ -6560,9 +6557,8 @@ add_coin_recoup_refresh (void *cls,
                                             &recoup->timestamp),
         GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                               &recoup->coin.denom_pub_hash),
-        GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                             &recoup->coin.denom_sig.
-                                             rsa_signature),
+        TALER_PQ_result_spec_denom_sig ("denom_sig",
+                                        &recoup->coin.denom_sig),
         GNUNET_PQ_result_spec_uint64 ("recoup_refresh_uuid",
                                       &serial_id),
         GNUNET_PQ_result_spec_end
@@ -6766,15 +6762,22 @@ handle_wt_result (void *cls,
       GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id", &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &h_contract_terms),
-      TALER_PQ_result_spec_json ("wire", &wire),
-      GNUNET_PQ_result_spec_auto_from_type ("h_wire", &h_wire),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub", &coin_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub", &merchant_pub),
-      TALER_PQ_result_spec_absolute_time ("execution_date", &exec_time),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee", &amount_with_fee),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit", &deposit_fee),
+      TALER_PQ_result_spec_json ("wire",
+                                 &wire),
+      GNUNET_PQ_result_spec_auto_from_type ("h_wire",
+                                            &h_wire),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
+                                            &coin_pub),
+      GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
+                                            &merchant_pub),
+      TALER_PQ_result_spec_absolute_time ("execution_date",
+                                          &exec_time),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                   &amount_with_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                   &deposit_fee),
       GNUNET_PQ_result_spec_end
     };
 
@@ -7727,8 +7730,8 @@ deposit_serial_helper_cb (void *cls,
                                           &exchange_timestamp),
       GNUNET_PQ_result_spec_auto_from_type ("merchant_pub",
                                             &deposit.merchant_pub),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &deposit.coin.coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
@@ -7874,8 +7877,8 @@ refreshs_serial_helper_cb (void *cls,
     uint64_t rowid;
     struct TALER_RefreshCommitmentP rc;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_pub",
                                             &coin_pub),
       GNUNET_PQ_result_spec_auto_from_type ("old_coin_sig",
@@ -8015,8 +8018,8 @@ refunds_serial_helper_cb (void *cls,
                                             &refund.details.h_contract_terms),
       GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
                                     &refund.details.rtransaction_id),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &refund.coin.coin_pub),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -8326,8 +8329,8 @@ reserves_out_serial_helper_cb (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
                                             &h_blind_ev),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
                                             &reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type ("reserve_sig",
@@ -8644,8 +8647,8 @@ recoup_serial_helper_cb (void *cls,
                                             &reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                             &coin.coin_pub),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                             &coin_sig),
       GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
@@ -8654,8 +8657,8 @@ recoup_serial_helper_cb (void *cls,
                                             &h_blind_ev),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &coin.denom_pub_hash),
-      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                           &coin.denom_sig.rsa_signature),
+      TALER_PQ_result_spec_denom_sig ("denom_sig",
+                                      &coin.denom_sig),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &amount),
       GNUNET_PQ_result_spec_end
@@ -8799,14 +8802,14 @@ recoup_refresh_serial_helper_cb (void *cls,
                                             &coin_sig),
       GNUNET_PQ_result_spec_auto_from_type ("coin_blind",
                                             &coin_blind),
-      GNUNET_PQ_result_spec_rsa_public_key ("denom_pub",
-                                            &denom_pub.rsa_public_key),
+      TALER_PQ_result_spec_denom_pub ("denom_pub",
+                                      &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("h_blind_ev",
                                             &h_blind_ev),
       GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
                                             &coin.denom_pub_hash),
-      GNUNET_PQ_result_spec_rsa_signature ("denom_sig",
-                                           &coin.denom_sig.rsa_signature),
+      TALER_PQ_result_spec_denom_sig ("denom_sig",
+                                      &coin.denom_sig),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &amount),
       GNUNET_PQ_result_spec_end
@@ -10018,7 +10021,7 @@ postgres_add_denomination_key (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam iparams[] = {
     GNUNET_PQ_query_param_auto_from_type (h_denom_pub),
-    GNUNET_PQ_query_param_rsa_public_key (denom_pub->rsa_public_key),
+    TALER_PQ_query_param_denom_pub (denom_pub),
     GNUNET_PQ_query_param_auto_from_type (master_sig),
     TALER_PQ_query_param_absolute_time (&meta->start),
     TALER_PQ_query_param_absolute_time (&meta->expire_withdraw),
