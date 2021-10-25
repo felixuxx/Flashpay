@@ -60,7 +60,7 @@ struct AggregationUnit
   /**
    * Hash of @e wire.
    */
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
 
   /**
    * Wire transfer identifier we use.
