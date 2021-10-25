@@ -340,10 +340,8 @@ TALER_EXCHANGE_parse_reserve_history (
       }
       TALER_amount_hton (&rcc.closing_amount,
                          &amount);
-      GNUNET_CRYPTO_hash (
-        rh->details.close_details.receiver_account_details,
-        strlen (rh->details.close_details.receiver_account_details) + 1,
-        &rcc.h_wire);
+      TALER_payto_hash (rh->details.close_details.receiver_account_details,
+                        &rcc.h_payto);
       rcc.wtid = rh->details.close_details.wtid;
       rcc.purpose.size = htonl (sizeof (rcc));
       rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);

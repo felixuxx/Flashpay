@@ -254,3 +254,13 @@ TALER_payto_validate (const char *payto_uri)
 
   return NULL;
 }
+
+
+void
+TALER_payto_hash (const char *payto,
+                  struct TALER_PaytoHash *h_payto)
+{
+  GNUNET_CRYPTO_hash (payto,
+                      strlen (payto) + 1,
+                      &h_payto->hash);
+}

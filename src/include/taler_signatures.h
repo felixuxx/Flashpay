@@ -1677,7 +1677,7 @@ struct TALER_ReserveCloseConfirmationPS
   /**
    * Hash of the receiver's bank account.
    */
-  struct TALER_PaytoHash h_wire;
+  struct TALER_PaytoHash h_payto;
 
   /**
    * Wire transfer subject.

@@ -179,8 +179,8 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                      &denom_key->expire_deposit),
       TALER_JSON_spec_absolute_time ("stamp_expire_legal",
                                      &denom_key->expire_legal),
-      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                       &denom_key->key.rsa_public_key),
+      TALER_JSON_spec_denomination_public_key ("denom_pub",
+                                               &denom_key->key),
       TALER_JSON_spec_amount_any ("fee_withdraw",
                                   &denom_key->fee_withdraw),
       TALER_JSON_spec_amount_any ("fee_deposit",
@@ -212,20 +212,20 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     }
 
     {
+      struct TALER_DenominationHash h_denom_pub;
       struct GNUNET_TIME_Relative duration
         = GNUNET_TIME_absolute_get_difference (denom_key->valid_from,
                                                denom_key->withdraw_valid_until);
-      struct GNUNET_HashCode h_denom_pub;
 
-      GNUNET_CRYPTO_rsa_public_key_hash (denom_key->key.rsa_public_key,
-                                         &h_denom_pub);
+      TALER_denom_pub_hash (&denom_key->key,
+                            &h_denom_pub);
       if (GNUNET_OK !=
-          TALER_exchange_secmod_rsa_verify (&h_denom_pub,
-                                            section_name,
-                                            denom_key->valid_from,
-                                            duration,
-                                            &fk.denom_secmod_public_key,
-                                            &denom_key->denom_secmod_sig))
+          TALER_exchange_secmod_denom_verify (&h_denom_pub,
+                                              section_name,
+                                              denom_key->valid_from,
+                                              duration,
+                                              &fk.denom_secmod_public_key,
+                                              &denom_key->denom_secmod_sig))
       {
         GNUNET_break_op (0);
         ok = false;
@@ -246,14 +246,7 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
             &fk);
   }
   for (unsigned int i = 0; i<fk.num_denom_keys; i++)
-  {
-    if (NULL != fk.denom_keys[i].key.rsa_public_key)
-    {
-      GNUNET_CRYPTO_rsa_public_key_free (
-        fk.denom_keys[i].key.rsa_public_key);
-      fk.denom_keys[i].key.rsa_public_key = NULL;
-    }
-  }
+    TALER_denom_pub_free (&fk.denom_keys[i].key);
   GNUNET_free (fk.sign_keys);
   GNUNET_free (fk.denom_keys);
   GNUNET_JSON_parse_free (spec);

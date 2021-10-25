@@ -502,6 +502,7 @@ TALER_EXCHANGE_deposit_permission_sign (
   const struct TALER_Amount *deposit_fee,
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct GNUNET_TIME_Absolute wallet_timestamp,
@@ -520,6 +521,7 @@ TALER_EXCHANGE_deposit_permission_sign (
     .merchant = *merchant_pub
   };
 
+  // FIXME: sign also over h_extensions!
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&wallet_timestamp));
   GNUNET_assert (GNUNET_OK ==
@@ -541,8 +543,9 @@ TALER_EXCHANGE_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_Amount *amount,
   struct GNUNET_TIME_Absolute wire_deadline,
-  json_t *wire_details,
+  const json_t *wire_details,
   const struct TALER_PrivateContractHash *h_contract_terms,
+  const json_t *extension_details,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -642,7 +645,7 @@ TALER_EXCHANGE_deposit (
     TALER_JSON_pack_amount ("contribution",
                             amount),
     GNUNET_JSON_pack_object_incref ("wire",
-                                    wire_details),
+                                    (json_t *) wire_details),
     GNUNET_JSON_pack_data_auto ("h_wire",
                                 &h_wire),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",

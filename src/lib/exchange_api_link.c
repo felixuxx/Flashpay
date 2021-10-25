@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -92,12 +92,15 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                  struct TALER_DenominationPublicKey *pub)
 {
   struct GNUNET_CRYPTO_RsaSignature *bsig;
-  struct GNUNET_CRYPTO_RsaPublicKey *rpub;
+  struct TALER_DenominationPublicKey rpub;
   struct TALER_CoinSpendSignatureP link_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_rsa_public_key ("denom_pub", &rpub),
-    GNUNET_JSON_spec_rsa_signature ("ev_sig", &bsig),
-    GNUNET_JSON_spec_fixed_auto ("link_sig", &link_sig),
+    TALER_JSON_spec_denomination_public_key ("denom_pub",
+                                             &rpub),
+    GNUNET_JSON_spec_rsa_signature ("ev_sig",
+                                    &bsig),
+    GNUNET_JSON_spec_fixed_auto ("link_sig",
+                                 &link_sig),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
@@ -121,21 +124,21 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
 
   /* extract coin and signature */
   *coin_priv = fc.coin_priv;
-  sig->rsa_signature
+  sig->cipher = TALER_DENOMINATION_RSA;
+  sig->details.rsa_signature
     = TALER_rsa_unblind (bsig,
                          &fc.blinding_key.bks,
-                         rpub);
+                         rpub.details.rsa_public_key);
   /* verify link_sig */
   {
     struct TALER_PlanchetDetail pd;
-    struct GNUNET_HashCode c_hash;
+    struct TALER_CoinPubHash c_hash;
     struct TALER_CoinSpendPublicKeyP old_coin_pub;
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);
-    pub->rsa_public_key = rpub;
     if (GNUNET_OK !=
-        TALER_planchet_prepare (pub,
+        TALER_planchet_prepare (&rpub,
                                 &fc,
                                 &c_hash,
                                 &pd))
@@ -161,7 +164,8 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   }
 
   /* clean up */
-  pub->rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (rpub);
+  TALER_denom_pub_deep_copy (pub,
+                             &rpub);
   GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
@@ -323,10 +327,8 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_assert (off_coin <= num_coins);
     for (i = 0; i<off_coin; i++)
     {
-      if (NULL != sigs[i].rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
-      if (NULL != pubs[i].rsa_public_key)
-        GNUNET_CRYPTO_rsa_public_key_free (pubs[i].rsa_public_key);
+      TALER_denom_sig_free (&sigs[i]);
+      TALER_denom_pub_free (&pubs[i]);
     }
   }
   return ret;

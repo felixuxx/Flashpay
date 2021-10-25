@@ -64,7 +64,7 @@ struct TALER_EXCHANGE_KycCheckHandle
   /**
    * Hash of the payto:// URL that is being KYC'ed.
    */
-  struct GNUNET_HashCode h_payto;
+  struct TALER_PaytoHash h_payto;
 };
 
 
@@ -216,7 +216,7 @@ handle_kyc_check_finished (void *cls,
 struct TALER_EXCHANGE_KycCheckHandle *
 TALER_EXCHANGE_kyc_check (struct TALER_EXCHANGE_Handle *exchange,
                           uint64_t payment_target,
-                          const struct GNUNET_HashCode *h_payto,
+                          const struct TALER_PaytoHash *h_payto,
                           struct GNUNET_TIME_Relative timeout,
                           TALER_EXCHANGE_KycStatusCallback cb,
                           void *cb_cls)
