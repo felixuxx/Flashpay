@@ -47,8 +47,8 @@
  */
 static MHD_RESULT
 reply_deposit_details (struct MHD_Connection *connection,
-                       const struct GNUNET_HashCode *h_contract_terms,
-                       const struct GNUNET_HashCode *h_wire,
+                       const struct TALER_PrivateContractHash *h_contract_terms,
+                       const struct TALER_MerchantWireHash *h_wire,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        const struct TALER_Amount *coin_contribution,
                        const struct TALER_WireTransferIdentifierRawP *wtid,

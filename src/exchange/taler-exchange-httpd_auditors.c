@@ -45,7 +45,7 @@ struct AddAuditorDenomContext
   /**
    * Denomination this is about.
    */
-  const struct GNUNET_HashCode *h_denom_pub;
+  const struct TALER_DenominationHash *h_denom_pub;
 
   /**
    * Auditor this is about.
@@ -101,7 +101,7 @@ add_auditor_denom_sig (void *cls,
       connection,
       MHD_HTTP_NOT_FOUND,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-      GNUNET_h2s (awc->h_denom_pub));
+      GNUNET_h2s (&awc->h_denom_pub->hash));
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
@@ -192,7 +192,7 @@ MHD_RESULT
 TEH_handler_auditors (
   struct MHD_Connection *connection,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const json_t *root)
 {
   struct AddAuditorDenomContext awc = {

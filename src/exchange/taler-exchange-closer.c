@@ -294,10 +294,6 @@ expired_reserve_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if ( (0 == amount_without_fee.value) &&
-       (0 == amount_without_fee.fraction) )
-    ret = GNUNET_NO;
-
   /* NOTE: sizeof (*reserve_pub) == sizeof (wtid) right now, but to
      be future-compatible, we use the memset + min construction */
   memset (&wtid,
@@ -307,7 +303,7 @@ expired_reserve_cb (void *cls,
           reserve_pub,
           GNUNET_MIN (sizeof (wtid),
                       sizeof (*reserve_pub)));
-  if (GNUNET_SYSERR != ret)
+  if (TALER_AAR_INVALID_NEGATIVE_RESULT != ret)
     qs = db_plugin->insert_reserve_closed (db_plugin->cls,
                                            reserve_pub,
                                            now,
@@ -321,10 +317,10 @@ expired_reserve_cb (void *cls,
               "Closing reserve %s over %s (%d, %d)\n",
               TALER_B2S (reserve_pub),
               TALER_amount2s (left),
-              ret,
+              (int) ret,
               qs);
   /* Check for hard failure */
-  if ( (GNUNET_SYSERR == ret) ||
+  if ( (TALER_AAR_INVALID_NEGATIVE_RESULT == ret) ||
        (GNUNET_DB_STATUS_HARD_ERROR == qs) )
   {
     GNUNET_break (0);
@@ -332,10 +328,10 @@ expired_reserve_cb (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if ( (GNUNET_OK != ret) ||
+  if ( (TALER_AAR_RESULT_ZERO == ret) ||
        (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs) )
   {
-    /* Reserve balance was almost zero OR soft error */
+    /* Reserve balance was zero OR soft error */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Reserve was virtually empty, moving on\n");
     (void) commit_or_warn ();

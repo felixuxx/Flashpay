@@ -39,7 +39,7 @@ MHD_RESULT
 TEH_handler_auditors (
   struct MHD_Connection *connection,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const json_t *root);
 
 

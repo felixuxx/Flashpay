@@ -353,8 +353,8 @@ TALER_exchange_offline_wire_add_sign (
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&now));
-  TALER_exchange_wire_signature_hash (payto_uri,
-                                      &kv.h_payto);
+  TALER_payto_hash (payto_uri,
+                    &kv.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &kv,
                             &master_sig->eddsa_signature);
@@ -374,8 +374,8 @@ TALER_exchange_offline_wire_add_verify (
     .start_date = GNUNET_TIME_absolute_hton (sign_time),
   };
 
-  TALER_exchange_wire_signature_hash (payto_uri,
-                                      &aw.h_payto);
+  TALER_payto_hash (payto_uri,
+                    &aw.h_payto);
   return
     GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_MASTER_ADD_WIRE,
@@ -400,8 +400,8 @@ TALER_exchange_offline_wire_del_sign (
 
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&now));
-  TALER_exchange_wire_signature_hash (payto_uri,
-                                      &kv.h_payto);
+  TALER_payto_hash (payto_uri,
+                    &kv.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &kv,
                             &master_sig->eddsa_signature);
@@ -422,8 +422,8 @@ TALER_exchange_offline_wire_del_verify (
     .end_date = GNUNET_TIME_absolute_hton (sign_time),
   };
 
-  TALER_exchange_wire_signature_hash (payto_uri,
-                                      &aw.h_payto);
+  TALER_payto_hash (payto_uri,
+                    &aw.h_payto);
   return GNUNET_CRYPTO_eddsa_verify (
     TALER_SIGNATURE_MASTER_DEL_WIRE,
     &aw,
