@@ -187,7 +187,7 @@ handle_recoup_finished (void *cls,
       /* Insufficient funds, proof attached */
       json_t *history;
       struct TALER_Amount total;
-      struct GNUNET_HashCode h_denom_pub;
+      struct TALER_DenominationHash h_denom_pub;
       const struct TALER_EXCHANGE_DenomPublicKey *dki;
       enum TALER_ErrorCode ec;
 
@@ -313,7 +313,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct TALER_RecoupRequestPS pr;
   struct TALER_CoinSpendSignatureP coin_sig;
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
   json_t *recoup_obj;
   CURL *eh;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
@@ -324,8 +324,8 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   pr.purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS));
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &pr.coin_pub.eddsa_pub);
-  GNUNET_CRYPTO_rsa_public_key_hash (pk->key.rsa_public_key,
-                                     &h_denom_pub);
+  TALER_denom_pub_hash (&pk->key,
+                        &h_denom_pub);
   pr.h_denom_pub = pk->h_key;
   pr.coin_blind = ps->blinding_key;
   GNUNET_CRYPTO_eddsa_sign (&ps->coin_priv.eddsa_priv,
@@ -362,7 +362,9 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   ph->coin_pub = pr.coin_pub;
   ph->exchange = exchange;
   ph->pk = *pk;
-  ph->pk.key.rsa_public_key = NULL; /* zero out, as lifetime cannot be warranted */
+  memset (&ph->pk.key,
+          0,
+          sizeof (ph->pk.key)); /* zero out, as lifetime cannot be warranted */
   ph->cb = recoup_cb;
   ph->cb_cls = recoup_cb_cls;
   ph->url = TEAH_path_to_url (exchange,

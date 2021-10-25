@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -32,10 +32,8 @@
 static void
 free_melted_coin (struct MeltedCoin *mc)
 {
-  if (NULL != mc->pub_key.rsa_public_key)
-    GNUNET_CRYPTO_rsa_public_key_free (mc->pub_key.rsa_public_key);
-  if (NULL != mc->sig.rsa_signature)
-    GNUNET_CRYPTO_rsa_signature_free (mc->sig.rsa_signature);
+  TALER_denom_pub_free (&mc->pub_key);
+  TALER_denom_sig_free (&mc->sig);
 }
 
 

@@ -339,4 +339,25 @@ TALER_rsa_unblind (const struct GNUNET_CRYPTO_RsaSignature *sig,
 }
 
 
+void
+TALER_coin_ev_hash (const void *coin_ev,
+                    size_t coin_ev_size,
+                    struct TALER_BlindedCoinHash *bch)
+{
+  GNUNET_CRYPTO_hash (coin_ev,
+                      coin_ev_size,
+                      &bch->hash);
+}
+
+
+void
+TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     struct TALER_CoinPubHash *coin_h)
+{
+  GNUNET_CRYPTO_hash (&coin_pub->eddsa_pub,
+                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
+                      &coin_h->hash);
+}
+
+
 /* end of crypto.c */

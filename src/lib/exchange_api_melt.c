@@ -226,7 +226,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   };
   const struct MeltedCoin *mc;
   enum TALER_ErrorCode ec;
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /* parse JSON reply */
   if (GNUNET_OK !=
@@ -486,8 +486,8 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                      &md->melted_coin.fee_melt);
   GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
                                       &melt.coin_pub.eddsa_pub);
-  GNUNET_CRYPTO_rsa_public_key_hash (md->melted_coin.pub_key.rsa_public_key,
-                                     &melt.h_denom_pub);
+  TALER_denom_pub_hash (&md->melted_coin.pub_key,
+                        &melt.h_denom_pub);
   GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
                             &melt,
                             &confirm_sig.eddsa_signature);
@@ -529,8 +529,10 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->exchange = exchange;
   mh->coin_pub = melt.coin_pub;
   mh->dki = *dki;
-  mh->dki.key.rsa_public_key = NULL; /* lifetime not warranted, so better
-                                         not copy the pointer */
+  memset (&mh->dki.key,
+          0,
+          sizeof (mh->dki.key)); /* lifetime not warranted, so better
+                                    not copy the pointers */
   mh->melt_cb = melt_cb;
   mh->melt_cb_cls = melt_cb_cls;
   mh->md = md;

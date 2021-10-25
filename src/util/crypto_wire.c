@@ -19,7 +19,7 @@
  * @author Christian Grothoff <christian@grothoff.org>
  */
 #include "platform.h"
-#include "taler_crypto_lib.h"
+#include "taler_util.h"
 #include "taler_signatures.h"
 
 

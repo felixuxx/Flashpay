@@ -603,7 +603,7 @@ struct TALER_TrackTransferDetails
   /**
    * Hash of the proposal data.
    */
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
 
   /**
    * Which coin was deposited?
@@ -726,6 +726,31 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
 enum GNUNET_GenericReturnValue
 TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
                        const struct TALER_DenominationPublicKey *denom_pub);
+
+
+/**
+ * Compute the hash of a blinded coin.
+ *
+ * @param coin_ev blinded coin
+ * @param coin_ev_size number of bytes in @a coin_ev
+ * @param[out] bch where to write the hash
+ */
+void
+TALER_coin_ev_hash (const void *coin_ev,
+                    size_t coin_ev_size,
+                    struct TALER_BlindedCoinHash *bch);
+
+
+/**
+ * Compute the hash of a coin.
+ * FIXME-Oec: add age restriction hash here!
+ *
+ * @param coin_pub public key of the coin
+ * @param[out] coin_h where to write the hash
+ */
+void
+TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     struct TALER_CoinPubHash *coin_h);
 
 
 GNUNET_NETWORK_STRUCT_BEGIN

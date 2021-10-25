@@ -98,14 +98,15 @@ struct TALER_EXCHANGE_RefreshesRevealHandle
  * @param[out] sigs array of length `num_fresh_coins`, initialized to contain RSA signatures
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
-static int
+static enum GNUNET_GenericReturnValue
 refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                    const json_t *json,
                    struct TALER_DenominationSignature *sigs)
 {
   json_t *jsona;
   struct GNUNET_JSON_Specification outer_spec[] = {
-    GNUNET_JSON_spec_json ("ev_sigs", &jsona),
+    GNUNET_JSON_spec_json ("ev_sigs",
+                           &jsona),
     GNUNET_JSON_spec_end ()
   };
 
@@ -138,9 +139,10 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     json_t *jsonai;
     struct GNUNET_CRYPTO_RsaSignature *blind_sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
-    struct GNUNET_HashCode coin_hash;
+    struct TALER_CoinPubHash coin_hash;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_rsa_signature ("ev_sig", &blind_sig),
+      GNUNET_JSON_spec_rsa_signature ("ev_sig",
+                                      &blind_sig),
       GNUNET_JSON_spec_end ()
     };
     struct TALER_FreshCoin coin;
@@ -164,9 +166,8 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
        hence recomputing it here... */
     GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
-    GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
-                        sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                        &coin_hash);
+    TALER_coin_pub_hash (&coin_pub,
+                         &coin_hash);
     if (GNUNET_OK !=
         TALER_planchet_to_coin (pk,
                                 blind_sig,
@@ -218,7 +219,9 @@ handle_refresh_reveal_finished (void *cls,
       struct TALER_DenominationSignature sigs[rrh->md->num_fresh_coins];
       int ret;
 
-      memset (sigs, 0, sizeof (sigs));
+      memset (sigs,
+              0,
+              sizeof (sigs));
       ret = refresh_reveal_ok (rrh,
                                j,
                                sigs);
@@ -237,8 +240,7 @@ handle_refresh_reveal_finished (void *cls,
         rrh->reveal_cb = NULL;
       }
       for (unsigned int i = 0; i<rrh->md->num_fresh_coins; i++)
-        if (NULL != sigs[i].rsa_signature)
-          GNUNET_CRYPTO_rsa_signature_free (sigs[i].rsa_signature);
+        TALER_denom_sig_free (&sigs[i]);
       TALER_EXCHANGE_refreshes_reveal_cancel (rrh);
       return;
     }
@@ -342,12 +344,12 @@ TALER_EXCHANGE_refreshes_reveal (
   GNUNET_assert (NULL != (link_sigs = json_array ()));
   for (unsigned int i = 0; i<md->num_fresh_coins; i++)
   {
-    struct GNUNET_HashCode denom_hash;
+    struct TALER_DenominationHash denom_hash;
     struct TALER_PlanchetDetail pd;
-    struct GNUNET_HashCode c_hash;
+    struct TALER_CoinPubHash c_hash;
 
-    GNUNET_CRYPTO_rsa_public_key_hash (md->fresh_pks[i].rsa_public_key,
-                                       &denom_hash);
+    TALER_denom_pub_hash (&md->fresh_pks[i],
+                          &denom_hash);
     GNUNET_assert (0 ==
                    json_array_append_new (new_denoms_h,
                                           GNUNET_JSON_from_data_auto (

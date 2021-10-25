@@ -71,7 +71,7 @@ struct TALER_EXCHANGE_WithdrawHandle
   /**
    * Hash of the public key of the coin we are signing.
    */
-  struct GNUNET_HashCode c_hash;
+  struct TALER_CoinPubHash c_hash;
 
 };
 
@@ -142,7 +142,7 @@ handle_reserve_withdraw_finished (
   wh->cb (wh->cb_cls,
           &wr);
   if (MHD_HTTP_OK == hr->http_status)
-    GNUNET_CRYPTO_rsa_signature_free (wr.details.success.sig.rsa_signature);
+    TALER_denom_sig_free (&wr.details.success.sig);
   TALER_EXCHANGE_withdraw_cancel (wh);
 }
 
@@ -193,8 +193,8 @@ TALER_EXCHANGE_withdraw (
     GNUNET_free (wh);
     return NULL;
   }
-  wh->pk.key.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_dup (pk->key.rsa_public_key);
+  TALER_denom_pub_deep_copy (&wh->pk.key,
+                             &pk->key);
   wh->wh2 = TALER_EXCHANGE_withdraw2 (exchange,
                                       &pd,
                                       reserve_priv,
@@ -205,12 +205,6 @@ TALER_EXCHANGE_withdraw (
 }
 
 
-/**
- * Cancel a withdraw status request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param wh the withdraw sign request handle
- */
 void
 TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh)
 {
@@ -219,6 +213,6 @@ TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh)
     TALER_EXCHANGE_withdraw2_cancel (wh->wh2);
     wh->wh2 = NULL;
   }
-  GNUNET_CRYPTO_rsa_public_key_free (wh->pk.key.rsa_public_key);
+  TALER_denom_pub_free (&wh->pk.key);
   GNUNET_free (wh);
 }
