@@ -24,28 +24,6 @@
 
 
 /**
- * Compute the hash of the given wire details. The resulting
- * hash is what is signed by the master key.
- *
- * @param payto_uri bank account
- * @param[out] hc set to the hash
- */
-void
-TALER_exchange_wire_signature_hash (const char *payto_uri,
-                                    struct TALER_PaytoHash *hc)
-{
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_kdf (hc,
-                                    sizeof (*hc),
-                                    payto_uri,
-                                    strlen (payto_uri) + 1,
-                                    "exchange-wire-signature",
-                                    strlen ("exchange-wire-signature"),
-                                    NULL, 0));
-}
-
-
-/**
  * Check the signature in @a master_sig.
  *
  * @param payto_uri URL that is signed
@@ -64,8 +42,8 @@ TALER_exchange_wire_signature_check (
     .purpose.size = htonl (sizeof (wd))
   };
 
-  TALER_exchange_wire_signature_hash (payto_uri,
-                                      &wd.h_wire_details);
+  TALER_payto_hash (payto_uri,
+                    &wd.h_wire_details);
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_WIRE_DETAILS,
                                      &wd,
                                      &master_sig->eddsa_signature,
@@ -91,8 +69,8 @@ TALER_exchange_wire_signature_make (
     .purpose.size = htonl (sizeof (wd))
   };
 
-  TALER_exchange_wire_signature_hash (payto_uri,
-                                      &wd.h_wire_details);
+  TALER_payto_hash (payto_uri,
+                    &wd.h_wire_details);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &wd,
                             &master_sig->eddsa_signature);

@@ -753,6 +753,17 @@ TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      struct TALER_CoinPubHash *coin_h);
 
 
+/**
+ * Compute the hash of a payto URI.
+ *
+ * @param payto URI to hash
+ * @param[out] h_payto where to write the hash
+ */
+void
+TALER_payto_hash (const char *payto,
+                  struct TALER_PaytoHash *h_payto);
+
+
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
@@ -1889,18 +1900,6 @@ TALER_exchange_offline_wire_del_verify (
   struct GNUNET_TIME_Absolute sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
-
-
-/**
- * Compute the hash of the given wire details.   The resulting
- * hash is what is signed by the master key.
- *
- * @param payto_uri bank account
- * @param[out] hc set to the hash
- */
-void
-TALER_exchange_wire_signature_hash (const char *payto_uri,
-                                    struct TALER_PaytoHash *hc);
 
 
 /**

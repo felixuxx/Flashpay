@@ -51,7 +51,7 @@ struct AggregatedDepositDetail
   /**
    * Hash of the contract terms.
    */
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
 
   /**
    * Coin's public key of the deposited coin.
@@ -87,7 +87,7 @@ static MHD_RESULT
 reply_transfer_details (struct MHD_Connection *connection,
                         const struct TALER_Amount *total,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
-                        const struct GNUNET_HashCode *h_wire,
+                        const struct TALER_MerchantWireHash *h_wire,
                         const struct TALER_Amount *wire_fee,
                         struct GNUNET_TIME_Absolute exec_time,
                         const struct AggregatedDepositDetail *wdd_head)
@@ -214,7 +214,7 @@ struct WtidTransactionContext
    * Hash of the wire details of the merchant (identical for all
    * deposits), only valid if @e is_valid is #GNUNET_YES.
    */
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
 
   /**
    * Wire fee applicable at @e exec_time.
@@ -278,10 +278,10 @@ static void
 handle_deposit_data (void *cls,
                      uint64_t rowid,
                      const struct TALER_MerchantPublicKeyP *merchant_pub,
-                     const struct GNUNET_HashCode *h_wire,
+                     const struct TALER_MerchantWireHash *h_wire,
                      const json_t *wire,
                      struct GNUNET_TIME_Absolute exec_time,
-                     const struct GNUNET_HashCode *h_contract_terms,
+                     const struct TALER_PrivateContractHash *h_contract_terms,
                      const struct TALER_DenominationPublicKey *denom_pub,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const struct TALER_Amount *deposit_value,

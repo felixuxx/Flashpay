@@ -41,7 +41,7 @@ struct RecoupContext
   /**
    * Hash of the blinded coin.
    */
-  struct GNUNET_HashCode h_blind;
+  struct TALER_BlindedCoinHash h_blind;
 
   /**
    * Full value of the coin.
@@ -179,7 +179,7 @@ recoup_transaction (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Recoup requested for unknown envelope %s\n",
-                GNUNET_h2s (&pc->h_blind));
+                GNUNET_h2s (&pc->h_blind.hash));
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
                                            TALER_EC_EXCHANGE_RECOUP_WITHDRAW_NOT_FOUND,
@@ -342,16 +342,16 @@ recoup_transaction (void *cls,
  * @return MHD result code
  */
 static MHD_RESULT
-verify_and_execute_recoup (struct MHD_Connection *connection,
-                           const struct TALER_CoinPublicInfo *coin,
-                           const struct
-                           TALER_DenominationBlindingKeyP *coin_bks,
-                           const struct TALER_CoinSpendSignatureP *coin_sig,
-                           int refreshed)
+verify_and_execute_recoup (
+  struct MHD_Connection *connection,
+  const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  int refreshed)
 {
   struct RecoupContext pc;
   const struct TEH_DenominationKey *dk;
-  struct GNUNET_HashCode c_hash;
+  struct TALER_CoinPubHash c_hash;
   void *coin_ev;
   size_t coin_ev_size;
   MHD_RESULT mret;
@@ -423,7 +423,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
   {
     struct TALER_RecoupRequestPS pr = {
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
-      .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
+      .purpose.size = htonl (sizeof (pr)),
       .coin_pub = coin->coin_pub,
       .h_denom_pub = coin->denom_pub_hash,
       .coin_blind = *coin_bks
@@ -442,13 +442,14 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                                          NULL);
     }
   }
-  GNUNET_CRYPTO_hash (&coin->coin_pub.eddsa_pub,
-                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash);
+  TALER_coin_pub_hash (&coin->coin_pub,
+                       &c_hash);
+  GNUNET_assert (dk->denom_pub.cipher ==
+                 TALER_DENOMINATION_RSA);
   if (GNUNET_YES !=
       TALER_rsa_blind (&c_hash,
                        &coin_bks->bks,
-                       dk->denom_pub.rsa_public_key,
+                       dk->denom_pub.details.rsa_public_key,
                        &coin_ev,
                        &coin_ev_size))
   {
@@ -458,7 +459,7 @@ verify_and_execute_recoup (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
                                        NULL);
   }
-  GNUNET_CRYPTO_hash (coin_ev,
+  TALER_coin_ev_hash (coin_ev,
                       coin_ev_size,
                       &pc.h_blind);
   GNUNET_free (coin_ev);

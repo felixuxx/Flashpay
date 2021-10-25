@@ -57,8 +57,8 @@
 static MHD_RESULT
 reply_deposit_success (struct MHD_Connection *connection,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       const struct GNUNET_HashCode *h_wire,
-                       const struct GNUNET_HashCode *h_contract_terms,
+                       const struct TALER_MerchantWireHash *h_wire,
+                       const struct TALER_PrivateContractHash *h_contract_terms,
                        struct GNUNET_TIME_Absolute exchange_timestamp,
                        struct GNUNET_TIME_Absolute refund_deadline,
                        const struct TALER_MerchantPublicKeyP *merchant,
@@ -321,9 +321,10 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   json_t *wire;
   struct DepositContext dc;
   struct TALER_EXCHANGEDB_Deposit deposit;
-  struct GNUNET_HashCode my_h_wire;
+  struct TALER_MerchantWireHash my_h_wire;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("wire", &wire),
+    GNUNET_JSON_spec_json ("wire",
+                           &wire),
     TALER_JSON_spec_amount ("contribution",
                             TEH_currency,
                             &deposit.amount_with_fee),

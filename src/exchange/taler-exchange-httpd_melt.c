@@ -494,7 +494,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
   if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
   {
     /* We are past deposit expiration time, but maybe this is a zombie? */
-    struct GNUNET_HashCode denom_hash;
+    struct TALER_DenominationHash denom_hash;
     enum GNUNET_DB_QueryStatus qs;
 
     /* Check that the coin is dirty (we have seen it before), as we will

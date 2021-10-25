@@ -59,7 +59,7 @@ TEH_RESPONSE_compile_reserve_history (
 MHD_RESULT
 TEH_RESPONSE_reply_unknown_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *dph);
+  const struct TALER_DenominationHash *dph);
 
 
 /**
@@ -76,7 +76,7 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *dph,
+  const struct TALER_DenominationHash *dph,
   struct GNUNET_TIME_Absolute now,
   enum TALER_ErrorCode ec,
   const char *oper);

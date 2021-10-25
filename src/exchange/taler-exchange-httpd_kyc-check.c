@@ -51,7 +51,7 @@ struct KycCheckContext
    * Hash of the payto:// URI we are confirming to
    * have finished the KYC for.
    */
-  struct GNUNET_HashCode h_payto;
+  struct TALER_PaytoHash h_payto;
 };
 
 

@@ -2153,7 +2153,7 @@ postgres_get_wire_fee_summary (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_insert_denomination_balance (
   void *cls,
-  const struct GNUNET_HashCode *denom_pub_hash,
+  const struct TALER_DenominationHash *denom_pub_hash,
   const struct TALER_Amount *denom_balance,
   const struct TALER_Amount *denom_loss,
   const struct TALER_Amount *denom_risk,
@@ -2193,7 +2193,7 @@ postgres_insert_denomination_balance (
 static enum GNUNET_DB_QueryStatus
 postgres_update_denomination_balance (
   void *cls,
-  const struct GNUNET_HashCode *denom_pub_hash,
+  const struct TALER_DenominationHash *denom_pub_hash,
   const struct TALER_Amount *denom_balance,
   const struct TALER_Amount *denom_loss,
   const struct TALER_Amount *denom_risk,
@@ -2231,7 +2231,8 @@ postgres_update_denomination_balance (
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_denomination_balance (void *cls,
-                                   const struct GNUNET_HashCode *denom_pub_hash,
+                                   const struct
+                                   TALER_DenominationHash *denom_pub_hash,
                                    struct TALER_Amount *denom_balance,
                                    struct TALER_Amount *denom_loss,
                                    struct TALER_Amount *denom_risk,
@@ -2428,7 +2429,7 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_historic_denom_revenue (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  const struct GNUNET_HashCode *denom_pub_hash,
+  const struct TALER_DenominationHash *denom_pub_hash,
   struct GNUNET_TIME_Absolute revenue_timestamp,
   const struct TALER_Amount *revenue_balance,
   const struct TALER_Amount *loss_balance)
@@ -2495,7 +2496,7 @@ historic_denom_revenue_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    struct GNUNET_HashCode denom_pub_hash;
+    struct TALER_DenominationHash denom_pub_hash;
     struct GNUNET_TIME_Absolute revenue_timestamp;
     struct TALER_Amount revenue_balance;
     struct TALER_Amount loss;

@@ -73,7 +73,7 @@ struct HelperDenomination
   /**
    * Hash of the denomination key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Signature over this key from the security module's key.
@@ -635,7 +635,7 @@ helper_denom_cb (
   const char *section_name,
   struct GNUNET_TIME_Absolute start_time,
   struct GNUNET_TIME_Relative validity_duration,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig)
@@ -965,7 +965,7 @@ static void
 denomination_info_cb (
   void *cls,
   const struct TALER_DenominationPublicKey *denom_pub,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta,
   const struct TALER_MasterSignatureP *master_sig,
   bool recoup_possible)
@@ -1139,7 +1139,7 @@ static void
 auditor_denom_cb (
   void *cls,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_AuditorSignatureP *auditor_sig)
 {
   struct TEH_KeyStateHandle *ksh = cls;
@@ -1397,7 +1397,7 @@ setup_general_response_headers (const struct TEH_KeyStateHandle *ksh,
  */
 static enum GNUNET_GenericReturnValue
 create_krd (struct TEH_KeyStateHandle *ksh,
-            const struct GNUNET_HashCode *denom_keys_hash,
+            const struct TALER_DenominationHash *denom_keys_hash,
             struct GNUNET_TIME_Absolute last_cpd,
             json_t *signkeys,
             json_t *recoup,
@@ -1875,7 +1875,7 @@ TEH_keys_get_state (void)
 
 
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
+TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
                                struct MHD_Connection *conn,
                                MHD_RESULT *mret)
 {
@@ -1899,7 +1899,8 @@ TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
 
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
-                                const struct GNUNET_HashCode *h_denom_pub,
+                                const struct
+                                TALER_DenominationHash *h_denom_pub,
                                 struct MHD_Connection *conn,
                                 MHD_RESULT *mret)
 {
@@ -1918,7 +1919,7 @@ TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
 
 
 struct TALER_DenominationSignature
-TEH_keys_denomination_sign (const struct GNUNET_HashCode *h_denom_pub,
+TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
                             const void *msg,
                             size_t msg_size,
                             enum TALER_ErrorCode *ec)
@@ -1941,7 +1942,7 @@ TEH_keys_denomination_sign (const struct GNUNET_HashCode *h_denom_pub,
 
 
 void
-TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub)
+TEH_keys_denomination_revoke (const struct TALER_DenominationHash *h_denom_pub)
 {
   struct TEH_KeyStateHandle *ksh;
 
@@ -2284,7 +2285,7 @@ load_fees (const char *section_name,
 
 
 enum GNUNET_GenericReturnValue
-TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
+TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {

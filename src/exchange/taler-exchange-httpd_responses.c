@@ -419,7 +419,7 @@ TEH_RESPONSE_compile_transaction_history (
 MHD_RESULT
 TEH_RESPONSE_reply_unknown_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *dph)
+  const struct TALER_DenominationHash *dph)
 {
   struct TALER_ExchangePublicKeyP epub;
   struct TALER_ExchangeSignatureP esig;
@@ -466,7 +466,7 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *dph,
+  const struct TALER_DenominationHash *dph,
   struct GNUNET_TIME_Absolute now,
   enum TALER_ErrorCode ec,
   const char *oper)

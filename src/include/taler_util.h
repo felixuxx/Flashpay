@@ -328,17 +328,6 @@ TALER_payto_get_method (const char *payto_uri);
 
 
 /**
- * Compute the hash of a payto URI.
- *
- * @param payto URI to hash
- * @param[out] h_payto where to write the hash
- */
-void
-TALER_payto_hash (const char *payto,
-                  struct TALER_PaytoHash *h_payto);
-
-
-/**
  * Obtain the account name from a payto URL.
  *
  * @param payto an x-taler-bank payto URL

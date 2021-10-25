@@ -50,7 +50,7 @@ struct TEH_DenominationKey
   /**
    * Hash code of the denomination public key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Meta data about the type of the denomination, such as fees and validity
@@ -135,7 +135,7 @@ TEH_keys_update_states (void);
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
+TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
                                struct MHD_Connection *conn,
                                MHD_RESULT *mret);
 
@@ -155,7 +155,8 @@ TEH_keys_denomination_by_hash (const struct GNUNET_HashCode *h_denom_pub,
  */
 struct TEH_DenominationKey *
 TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
-                                const struct GNUNET_HashCode *h_denom_pub,
+                                const struct
+                                TALER_DenominationHash *h_denom_pub,
                                 struct MHD_Connection *conn,
                                 MHD_RESULT *mret);
 
@@ -171,7 +172,7 @@ TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
  *         see @a ec for details about the failure
  */
 struct TALER_DenominationSignature
-TEH_keys_denomination_sign (const struct GNUNET_HashCode *h_denom_pub,
+TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
                             const void *msg,
                             size_t msg_size,
                             enum TALER_ErrorCode *ec);
@@ -189,7 +190,7 @@ TEH_keys_denomination_sign (const struct GNUNET_HashCode *h_denom_pub,
  * @param h_denom_pub hash of the public key to revoke
  */
 void
-TEH_keys_denomination_revoke (const struct GNUNET_HashCode *h_denom_pub);
+TEH_keys_denomination_revoke (const struct TALER_DenominationHash *h_denom_pub);
 
 
 /**
@@ -366,7 +367,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
  *         #GNUNET_SYSERR on hard errors
  */
 enum GNUNET_GenericReturnValue
-TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
+TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
                     struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta);
 
@@ -378,7 +379,7 @@ TEH_keys_load_fees (const struct GNUNET_HashCode *h_denom_pub,
  * @param[out] meta set to meta data about the key
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
                      struct TALER_EXCHANGEDB_SignkeyMetaData *meta);
 

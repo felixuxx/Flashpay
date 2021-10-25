@@ -260,7 +260,22 @@ void
 TALER_payto_hash (const char *payto,
                   struct TALER_PaytoHash *h_payto)
 {
+  /* FIXME: 0.8 had TWO WAYS to hash a payto!
+     one for the exchange, the other
+     for merchants (i.e. reserve closing).
+     I think we should unify... */
+#if OLD_EXCHANGE_WAY
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (hc,
+                                    sizeof (*hc),
+                                    payto_uri,
+                                    strlen (payto_uri) + 1,
+                                    "exchange-wire-signature",
+                                    strlen ("exchange-wire-signature"),
+                                    NULL, 0));
+#else
   GNUNET_CRYPTO_hash (payto,
                       strlen (payto) + 1,
                       &h_payto->hash);
+#endif
 }
