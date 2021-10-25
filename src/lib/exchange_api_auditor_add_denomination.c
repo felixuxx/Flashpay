@@ -141,7 +141,7 @@ struct TALER_EXCHANGE_AuditorAddDenominationHandle *
 TALER_EXCHANGE_add_auditor_denomination (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const struct TALER_AuditorSignatureP *auditor_sig,
   TALER_EXCHANGE_AuditorAddDenominationCallback cb,

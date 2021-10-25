@@ -194,7 +194,7 @@ verify_deposit_signature_conflict (
   json_t *history;
   struct TALER_Amount total;
   enum TALER_ErrorCode ec;
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   memset (&h_denom_pub,
           0,
@@ -537,22 +537,22 @@ TALER_EXCHANGE_deposit_permission_sign (
 
 
 struct TALER_EXCHANGE_DepositHandle *
-TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
-                        const struct TALER_Amount *amount,
-                        struct GNUNET_TIME_Absolute wire_deadline,
-                        json_t *wire_details,
-                        const struct
-                        TALER_PrivateContractHash *h_contract_terms,
-                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                        const struct TALER_DenominationSignature *denom_sig,
-                        const struct TALER_DenominationPublicKey *denom_pub,
-                        struct GNUNET_TIME_Absolute timestamp,
-                        const struct TALER_MerchantPublicKeyP *merchant_pub,
-                        struct GNUNET_TIME_Absolute refund_deadline,
-                        const struct TALER_CoinSpendSignatureP *coin_sig,
-                        TALER_EXCHANGE_DepositResultCallback cb,
-                        void *cb_cls,
-                        enum TALER_ErrorCode *ec)
+TALER_EXCHANGE_deposit (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_Amount *amount,
+  struct GNUNET_TIME_Absolute wire_deadline,
+  json_t *wire_details,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  struct GNUNET_TIME_Absolute timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  const struct TALER_CoinSpendSignatureP *coin_sig,
+  TALER_EXCHANGE_DepositResultCallback cb,
+  void *cb_cls,
+  enum TALER_ErrorCode *ec)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
@@ -617,8 +617,8 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break_op (0);
     return NULL;
   }
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
-                                     &denom_pub_hash);
+  TALER_denom_pub_hash (denom_pub,
+                        &denom_pub_hash);
   if (GNUNET_OK !=
       verify_signatures (dki,
                          amount,
@@ -691,8 +691,10 @@ TALER_EXCHANGE_deposit (struct TALER_EXCHANGE_Handle *exchange,
   dh->depconf.merchant = *merchant_pub;
   dh->amount_with_fee = *amount;
   dh->dki = *dki;
-  dh->dki.key.rsa_public_key = NULL; /* lifetime not warranted, so better
-                                        not copy the pointer */
+  memset (&dh->dki.key,
+          0,
+          sizeof (dh->dki.key)); /* lifetime not warranted, so better
+                                    not copy the contents! */
 
   eh = TALER_EXCHANGE_curl_easy_get_ (dh->url);
   if ( (NULL == eh) ||

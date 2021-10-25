@@ -169,4 +169,58 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig)
 }
 
 
+/**
+ * Make a (deep) copy of the given @a denom_src to
+ * @a denom_dst.
+ *
+ * @param[out] denom_dst target to copy to
+ * @param denom_str public key to copy
+ */
+void
+TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
+                           const struct TALER_DenominationPublicKey *denom_src)
+{
+  *denom_dst = *denom_src; /* shallow copy */
+  switch (denom_src->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    denom_dst->details.rsa_public_key
+      = GNUNET_CRYPTO_rsa_public_key_dup (
+          denom_src->details.rsa_public_key);
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
+/**
+ * Compare two denomination public keys.
+ *
+ * @param denom1 first key
+ * @param denom2 second key
+ * @return 0 if the keys are equal, otherwise -1 or 1
+ */
+int
+TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
+                     const struct TALER_DenominationPublicKey *denom2)
+{
+  if (denom1->cipher != denom2->cipher)
+    return (denom1->cipher > denom2->cipher) ? 1 : -1;
+  if (denom1->age_mask != denom2->age_mask)
+    return (denom1->age_mask > denom2->age_mask) ? 1 : -1;
+  switch (denom1->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    return GNUNET_CRYPTO_rsa_public_key_cmp (denom1->details.rsa_public_key,
+                                             denom2->details.rsa_public_key);
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+  return -2;
+}
+
+
 /* end of denom.c */

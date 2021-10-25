@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2020 Taler Systems SA
+  Copyright (C) 2014-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -254,8 +254,8 @@ typedef void
 struct TALER_AUDITOR_DepositConfirmationHandle *
 TALER_AUDITOR_deposit_confirmation (
   struct TALER_AUDITOR_Handle *auditor,
-  const struct GNUNET_HashCode *h_wire,
-  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_MerchantWireHash *h_wire,
+  const struct TALER_PrivateContractHash *h_contract_terms,
   struct GNUNET_TIME_Absolute timestamp,
   struct GNUNET_TIME_Absolute refund_deadline,
   const struct TALER_Amount *amount_without_fee,

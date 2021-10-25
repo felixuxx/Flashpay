@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -451,7 +451,7 @@ TALER_EXCHANGE_verify_coin_history (
   const char *currency,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   json_t *history,
-  struct GNUNET_HashCode *h_denom_pub,
+  struct TALER_DenominationHash *h_denom_pub,
   struct TALER_Amount *total)
 {
   size_t len;

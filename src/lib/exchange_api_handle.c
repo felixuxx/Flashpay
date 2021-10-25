@@ -345,8 +345,8 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                                 &denom_key->fee_refresh),
     TALER_JSON_spec_amount_any ("fee_refund",
                                 &denom_key->fee_refund),
-    GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                     &denom_key->key.rsa_public_key),
+    TALER_JSON_spec_denomination_public_key ("denom_pub",
+                                             &denom_key->key),
     GNUNET_JSON_spec_end ()
   };
 
@@ -359,8 +359,8 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
     return GNUNET_SYSERR;
   }
 
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_key->key.rsa_public_key,
-                                     &denom_key->h_key);
+  TALER_denom_pub_hash (&denom_key->key,
+                        &denom_key->h_key);
   if (NULL != hash_context)
     GNUNET_CRYPTO_hash_context_read (hash_context,
                                      &denom_key->h_key,
@@ -480,7 +480,7 @@ parse_json_auditor (struct TALER_EXCHANGE_AuditorInformation *auditor,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Auditor signed denomination %s, which we do not know. Ignoring signature.\n",
-                  GNUNET_h2s (&denom_h));
+                  GNUNET_h2s (&denom_h.hash));
       continue;
     }
     if (check_sigs)
@@ -626,36 +626,28 @@ update_auditors (struct TALER_EXCHANGE_Handle *exchange)
  *  the same object), 1 otherwise.
  */
 static unsigned int
-denoms_cmp (struct TALER_EXCHANGE_DenomPublicKey *denom1,
-            struct TALER_EXCHANGE_DenomPublicKey *denom2)
+denoms_cmp (const struct TALER_EXCHANGE_DenomPublicKey *denom1,
+            const struct TALER_EXCHANGE_DenomPublicKey *denom2)
 {
-  struct GNUNET_CRYPTO_RsaPublicKey *tmp1;
-  struct GNUNET_CRYPTO_RsaPublicKey *tmp2;
-  int r1;
-  int r2;
-  int ret;
+  struct TALER_EXCHANGE_DenomPublicKey tmp1;
+  struct TALER_EXCHANGE_DenomPublicKey tmp2;
 
-  /* First check if pub is the same.  */
-  if (0 != GNUNET_CRYPTO_rsa_public_key_cmp
-        (denom1->key.rsa_public_key,
-        denom2->key.rsa_public_key))
+  if (0 !=
+      TALER_denom_pub_cmp (&denom1->key,
+                           &denom2->key))
     return 1;
-
-  tmp1 = denom1->key.rsa_public_key;
-  tmp2 = denom2->key.rsa_public_key;
-  r1 = denom1->revoked;
-  r2 = denom2->revoked;
-
-  denom1->key.rsa_public_key = NULL;
-  denom2->key.rsa_public_key = NULL;
-  /* Then proceed with the rest of the object.  */
-  ret = GNUNET_memcmp (denom1,
-                       denom2);
-  denom1->revoked = r1;
-  denom2->revoked = r2;
-  denom1->key.rsa_public_key = tmp1;
-  denom2->key.rsa_public_key = tmp2;
-  return ret;
+  tmp1 = *denom1;
+  tmp2 = *denom2;
+  tmp1.revoked = false;
+  tmp2.revoked = false;
+  memset (&tmp1.key,
+          0,
+          sizeof (tmp1.key));
+  memset (&tmp2.key,
+          0,
+          sizeof (tmp2.key));
+  return GNUNET_memcmp (&tmp1,
+                        &tmp2);
 }
 
 
@@ -844,7 +836,7 @@ decode_keys_json (const json_t *resp_obj,
       {
         /* 0:0:0 did not support /keys cherry picking */
         TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
-        GNUNET_CRYPTO_rsa_public_key_free (dk.key.rsa_public_key);
+        TALER_denom_pub_free (&dk.key);
         continue;
       }
       if (key_data->denom_keys_size == key_data->num_denom_keys)
@@ -951,7 +943,7 @@ decode_keys_json (const json_t *resp_obj,
       EXITIF (JSON_ARRAY != json_typeof (recoup_array));
 
       json_array_foreach (recoup_array, index, recoup_info) {
-        struct GNUNET_HashCode h_denom_pub;
+        struct TALER_DenominationHash h_denom_pub;
         struct GNUNET_JSON_Specification spec[] = {
           GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                        &h_denom_pub),
@@ -1019,8 +1011,7 @@ free_key_data (struct TALER_EXCHANGE_Keys *key_data)
                      key_data->num_sign_keys,
                      0);
   for (unsigned int i = 0; i<key_data->num_denom_keys; i++)
-    GNUNET_CRYPTO_rsa_public_key_free (
-      key_data->denom_keys[i].key.rsa_public_key);
+    TALER_denom_pub_free (&key_data->denom_keys[i].key);
 
   GNUNET_array_grow (key_data->denom_keys,
                      key_data->denom_keys_size,
@@ -1167,9 +1158,8 @@ keys_completed_cb (void *cls,
                                             TALER_EXCHANGE_DenomPublicKey));
 
     for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
-      kd.denom_keys[i].key.rsa_public_key
-        = GNUNET_CRYPTO_rsa_public_key_dup (
-            kd_old.denom_keys[i].key.rsa_public_key);
+      TALER_denom_pub_deep_copy (&kd.denom_keys[i].key,
+                                 &kd_old.denom_keys[i].key);
 
     kd.num_auditors = kd_old.num_auditors;
     kd.auditors = GNUNET_new_array (kd.num_auditors,
@@ -1216,7 +1206,7 @@ keys_completed_cb (void *cls,
       kd.auditors = NULL;
       kd.num_auditors = 0;
       for (unsigned int i = 0; i<kd_old.num_denom_keys; i++)
-        GNUNET_CRYPTO_rsa_public_key_free (kd.denom_keys[i].key.rsa_public_key);
+        TALER_denom_pub_free (&kd.denom_keys[i].key);
       GNUNET_array_grow (kd.denom_keys,
                          kd.denom_keys_size,
                          0);
@@ -2060,9 +2050,9 @@ TALER_EXCHANGE_get_denomination_key (
   const struct TALER_DenominationPublicKey *pk)
 {
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
-    if (0 == GNUNET_CRYPTO_rsa_public_key_cmp (pk->rsa_public_key,
-                                               keys->denom_keys[i].key.
-                                               rsa_public_key))
+    if (0 ==
+        TALER_denom_pub_cmp (pk,
+                             &keys->denom_keys[i].key))
       return &keys->denom_keys[i];
   return NULL;
 }
@@ -2082,9 +2072,8 @@ TALER_EXCHANGE_copy_denomination_key (
 
   copy = GNUNET_new (struct TALER_EXCHANGE_DenomPublicKey);
   *copy = *key;
-  copy->key.rsa_public_key = GNUNET_CRYPTO_rsa_public_key_dup (
-    key->key.rsa_public_key);
-
+  TALER_denom_pub_deep_copy (&copy->key,
+                             &key->key);
   return copy;
 }
 
@@ -2099,7 +2088,7 @@ void
 TALER_EXCHANGE_destroy_denomination_key (
   struct TALER_EXCHANGE_DenomPublicKey *key)
 {
-  GNUNET_CRYPTO_rsa_public_key_free (key->key.rsa_public_key);;
+  TALER_denom_pub_free (&key->key);
   GNUNET_free (key);
 }
 

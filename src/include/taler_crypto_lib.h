@@ -662,6 +662,30 @@ TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
 
 
 /**
+ * Make a (deep) copy of the given @a denom_src to
+ * @a denom_dst.
+ *
+ * @param[out] denom_dst target to copy to
+ * @param denom_str public key to copy
+ */
+void
+TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
+                           const struct TALER_DenominationPublicKey *denom_src);
+
+
+/**
+ * Compare two denomination public keys.
+ *
+ * @param denom1 first key
+ * @param denom2 second key
+ * @return 0 if the keys are equal, otherwise -1 or 1
+ */
+int
+TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
+                     const struct TALER_DenominationPublicKey *denom2);
+
+
+/**
  * Obtain denomination public key from a denomination private key.
  *
  * @param denom_priv private key to convert
