@@ -430,7 +430,7 @@ upload_denomination_add (const char *exchange_url,
                          const json_t *value)
 {
   struct TALER_AuditorSignatureP auditor_sig;
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
   struct DenominationAddRequest *dar;
   const char *err_name;
   unsigned int err_line;
@@ -760,8 +760,8 @@ show_denomkeys (const json_t *denomkeys)
     struct TALER_Amount fee_refund;
     struct TALER_MasterSignatureP master_sig;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                       &denom_pub.rsa_public_key),
+      TALER_JSON_spec_denomination_public_key ("denom_pub",
+                                               &denom_pub),
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),
@@ -790,7 +790,7 @@ show_denomkeys (const json_t *denomkeys)
       GNUNET_JSON_spec_end ()
     };
     struct GNUNET_TIME_Relative duration;
-    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_DenominationHash h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -810,8 +810,8 @@ show_denomkeys (const json_t *denomkeys)
     }
     duration = GNUNET_TIME_absolute_get_difference (stamp_start,
                                                     stamp_expire_withdraw);
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &h_denom_pub);
+    TALER_denom_pub_hash (&denom_pub,
+                          &h_denom_pub);
     if (GNUNET_OK !=
         TALER_exchange_offline_denom_validity_verify (
           &h_denom_pub,
@@ -1060,8 +1060,8 @@ sign_denomkeys (const json_t *denomkeys)
     struct TALER_Amount fee_refund;
     struct TALER_MasterSignatureP master_sig;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                       &denom_pub.rsa_public_key),
+      TALER_JSON_spec_denomination_public_key ("denom_pub",
+                                               &denom_pub),
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),
@@ -1089,7 +1089,7 @@ sign_denomkeys (const json_t *denomkeys)
                                    &master_sig),
       GNUNET_JSON_spec_end ()
     };
-    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_DenominationHash h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -1107,8 +1107,8 @@ sign_denomkeys (const json_t *denomkeys)
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &h_denom_pub);
+    TALER_denom_pub_hash (&denom_pub,
+                          &h_denom_pub);
     if (GNUNET_OK !=
         TALER_exchange_offline_denom_validity_verify (
           &h_denom_pub,

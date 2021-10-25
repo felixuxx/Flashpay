@@ -2660,12 +2660,12 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
                                        &h_denom_pub);
     if (GNUNET_OK !=
-        TALER_exchange_secmod_rsa_verify (&h_denom_pub,
-                                          section_name,
-                                          stamp_start,
-                                          duration,
-                                          secm_pub,
-                                          &secm_sig))
+        TALER_exchange_secmod_denom_verify (&h_denom_pub,
+                                            section_name,
+                                            stamp_start,
+                                            duration,
+                                            secm_pub,
+                                            &secm_sig))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid security module signature for denomination key %s (aborting)\n",
@@ -3079,12 +3079,12 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
                                        &h_denom_pub);
     if (GNUNET_OK !=
-        TALER_exchange_secmod_rsa_verify (&h_denom_pub,
-                                          section_name,
-                                          stamp_start,
-                                          duration,
-                                          secm_pub,
-                                          &secm_sig))
+        TALER_exchange_secmod_denom_verify (&h_denom_pub,
+                                            section_name,
+                                            stamp_start,
+                                            duration,
+                                            secm_pub,
+                                            &secm_sig))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid security module signature for denomination key %s (aborting)\n",
