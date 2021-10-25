@@ -505,7 +505,7 @@ TALER_JSON_get_error_code2 (const void *data,
  */
 enum GNUNET_GenericReturnValue
 TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
-                                         struct GNUNET_HashCode *hc);
+                                         struct TALER_MerchantWireHash *hc);
 
 
 /**

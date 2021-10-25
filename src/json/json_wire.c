@@ -26,7 +26,7 @@
 
 enum GNUNET_GenericReturnValue
 TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
-                                         struct GNUNET_HashCode *hc)
+                                         struct TALER_MerchantWireHash *hc)
 {
   const char *payto_uri;
   struct TALER_WireSalt salt;

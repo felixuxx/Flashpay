@@ -101,16 +101,15 @@ TALER_JSON_pack_denomination_public_key (
   case TALER_DENOMINATION_RSA:
     ps.object
       = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_uint32 ("cipher",
+          GNUNET_JSON_pack_uint64 ("cipher",
                                    TALER_DENOMINATION_RSA),
-          GNUNET_JSON_pack_uint32 ("age_mask",
+          GNUNET_JSON_pack_uint64 ("age_mask",
                                    pk->age_mask),
           GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
                                            pk->details.rsa_public_key));
     break;
   default:
     GNUNET_assert (0);
-    return GNUNET_SYSERR;
   }
   return ps;
 }
@@ -130,14 +129,13 @@ TALER_JSON_pack_denomination_signature (
   case TALER_DENOMINATION_RSA:
     ps.object
       = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_uint32 ("cipher",
+          GNUNET_JSON_pack_uint64 ("cipher",
                                    TALER_DENOMINATION_RSA),
           GNUNET_JSON_pack_rsa_signature ("rsa_signature",
                                           sig->details.rsa_signature));
     break;
   default:
     GNUNET_assert (0);
-    return GNUNET_SYSERR;
   }
   return ps;
 }
