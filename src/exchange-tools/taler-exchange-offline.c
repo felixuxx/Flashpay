@@ -852,7 +852,7 @@ upload_denom_revocation (const char *exchange_url,
                          const json_t *value)
 {
   struct TALER_MasterSignatureP master_sig;
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
   struct DenomRevocationRequest *drr;
   const char *err_name;
   unsigned int err_line;
@@ -1824,7 +1824,7 @@ do_upload (char *const *args)
 static void
 do_revoke_denomination_key (char *const *args)
 {
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
   struct TALER_MasterSignatureP master_sig;
 
   if (NULL != in)
@@ -2604,8 +2604,8 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("section_name",
                                &section_name),
-      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                       &denom_pub.rsa_public_key),
+      TALER_JSON_spec_denomination_public_key ("denom_pub",
+                                               &denom_pub),
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),
@@ -2634,7 +2634,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_JSON_spec_end ()
     };
     struct GNUNET_TIME_Relative duration;
-    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_DenominationHash h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -2657,8 +2657,8 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     }
     duration = GNUNET_TIME_absolute_get_difference (stamp_start,
                                                     stamp_expire_withdraw);
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &h_denom_pub);
+    TALER_denom_pub_hash (&denom_pub,
+                          &h_denom_pub);
     if (GNUNET_OK !=
         TALER_exchange_secmod_denom_verify (&h_denom_pub,
                                             section_name,
@@ -3023,8 +3023,8 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_string ("section_name",
                                &section_name),
-      GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                       &denom_pub.rsa_public_key),
+      TALER_JSON_spec_denomination_public_key ("denom_pub",
+                                               &denom_pub),
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),
@@ -3053,7 +3053,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       GNUNET_JSON_spec_end ()
     };
     struct GNUNET_TIME_Relative duration;
-    struct GNUNET_HashCode h_denom_pub;
+    struct TALER_DenominationHash h_denom_pub;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -3076,8 +3076,8 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     }
     duration = GNUNET_TIME_absolute_get_difference (stamp_start,
                                                     stamp_expire_withdraw);
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key,
-                                       &h_denom_pub);
+    TALER_denom_pub_hash (&denom_pub,
+                          &h_denom_pub);
     if (GNUNET_OK !=
         TALER_exchange_secmod_denom_verify (&h_denom_pub,
                                             section_name,
