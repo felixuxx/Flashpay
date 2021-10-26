@@ -549,7 +549,7 @@ free_denom_cb (void *cls,
 
   (void) cls;
   (void) h_denom_pub;
-  GNUNET_CRYPTO_rsa_public_key_free (hd->denom_pub.rsa_public_key);
+  TALER_denom_pub_free (&hd->denom_pub);
   GNUNET_free (hd->section_name);
   GNUNET_free (hd);
   return GNUNET_OK;
@@ -645,14 +645,14 @@ helper_denom_cb (
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "RSA helper announces key %s for denomination type %s with validity %s\n",
-              GNUNET_h2s (h_denom_pub),
+              GNUNET_h2s (&h_denom_pub->hash),
               section_name,
               GNUNET_STRINGS_relative_time_to_string (validity_duration,
                                                       GNUNET_NO));
   key_generation++;
   TEH_resume_keys_requests (false);
   hd = GNUNET_CONTAINER_multihashmap_get (hs->denom_keys,
-                                          h_denom_pub);
+                                          &h_denom_pub->hash);
   if (NULL != hd)
   {
     /* should be just an update (revocation!), so update existing entry */
@@ -666,14 +666,14 @@ helper_denom_cb (
   hd->validity_duration = validity_duration;
   hd->h_denom_pub = *h_denom_pub;
   hd->sm_sig = *sm_sig;
-  hd->denom_pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->rsa_public_key);
+  TALER_denom_pub_deep_copy (&hd->denom_pub,
+                             denom_pub);
   hd->section_name = GNUNET_strdup (section_name);
   GNUNET_assert (
     GNUNET_OK ==
     GNUNET_CONTAINER_multihashmap_put (
       hs->denom_keys,
-      &hd->h_denom_pub,
+      &hd->h_denom_pub.hash,
       hd,
       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 }
@@ -807,7 +807,7 @@ clear_denomination_cb (void *cls,
 
   (void) cls;
   (void) h_denom_pub;
-  GNUNET_CRYPTO_rsa_public_key_free (dk->denom_pub.rsa_public_key);
+  TALER_denom_pub_free (&dk->denom_pub);
   while (NULL != (as = dk->as_head))
   {
     GNUNET_CONTAINER_DLL_remove (dk->as_head,
@@ -980,12 +980,12 @@ denomination_info_cb (
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Database contains invalid denomination key %s\n",
-                GNUNET_h2s (h_denom_pub));
+                GNUNET_h2s (&h_denom_pub->hash));
     return;
   }
   dk = GNUNET_new (struct TEH_DenominationKey);
-  dk->denom_pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->rsa_public_key);
+  TALER_denom_pub_deep_copy (&dk->denom_pub,
+                             denom_pub);
   dk->h_denom_pub = *h_denom_pub;
   dk->meta = *meta;
   dk->master_sig = *master_sig;
@@ -993,7 +993,7 @@ denomination_info_cb (
   GNUNET_assert (
     GNUNET_OK ==
     GNUNET_CONTAINER_multihashmap_put (ksh->denomkey_map,
-                                       &dk->h_denom_pub,
+                                       &dk->h_denom_pub.hash,
                                        dk,
                                        GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 }
@@ -1147,7 +1147,7 @@ auditor_denom_cb (
   struct TEH_AuditorSignature *as;
 
   dk = GNUNET_CONTAINER_multihashmap_get (ksh->denomkey_map,
-                                          h_denom_pub);
+                                          &h_denom_pub->hash);
   if (NULL == dk)
   {
     /* Odd, this should be impossible as per foreign key
@@ -1397,7 +1397,7 @@ setup_general_response_headers (const struct TEH_KeyStateHandle *ksh,
  */
 static enum GNUNET_GenericReturnValue
 create_krd (struct TEH_KeyStateHandle *ksh,
-            const struct TALER_DenominationHash *denom_keys_hash,
+            const struct GNUNET_HashCode *denom_keys_hash,
             struct GNUNET_TIME_Absolute last_cpd,
             json_t *signkeys,
             json_t *recoup,
@@ -1639,8 +1639,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                                        dk->meta.expire_deposit),
             GNUNET_JSON_pack_time_abs ("stamp_expire_legal",
                                        dk->meta.expire_legal),
-            GNUNET_JSON_pack_rsa_public_key ("denom_pub",
-                                             dk->denom_pub.rsa_public_key),
+            TALER_JSON_pack_denomination_public_key ("denom_pub",
+                                                     &dk->denom_pub),
             TALER_JSON_pack_amount ("value",
                                     &dk->meta.value),
             TALER_JSON_pack_amount ("fee_withdraw",
@@ -1898,16 +1898,16 @@ TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
 
 
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
-                                const struct
-                                TALER_DenominationHash *h_denom_pub,
-                                struct MHD_Connection *conn,
-                                MHD_RESULT *mret)
+TEH_keys_denomination_by_hash2 (
+  struct TEH_KeyStateHandle *ksh,
+  const struct TALER_DenominationHash *h_denom_pub,
+  struct MHD_Connection *conn,
+  MHD_RESULT *mret)
 {
   struct TEH_DenominationKey *dk;
 
   dk = GNUNET_CONTAINER_multihashmap_get (ksh->denomkey_map,
-                                          h_denom_pub);
+                                          &h_denom_pub->hash);
   if (NULL == dk)
   {
     *mret = TEH_RESPONSE_reply_unknown_denom_pub_hash (conn,
@@ -1925,8 +1925,11 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
                             enum TALER_ErrorCode *ec)
 {
   struct TEH_KeyStateHandle *ksh;
-  struct TALER_DenominationSignature none = { NULL };
+  struct TALER_DenominationSignature none;
 
+  memset (&none,
+          0,
+          sizeof (none));
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
@@ -2301,12 +2304,12 @@ TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
   }
 
   hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
-                                          h_denom_pub);
+                                          &h_denom_pub->hash);
   if (NULL == hd)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Denomination %s not known\n",
-                GNUNET_h2s (h_denom_pub));
+                GNUNET_h2s (&h_denom_pub->hash));
     return GNUNET_NO;
   }
   meta->start = hd->start_time;
@@ -2315,15 +2318,17 @@ TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
   ok = load_fees (hd->section_name,
                   meta);
   if (GNUNET_OK == ok)
-    denom_pub->rsa_public_key
-      = GNUNET_CRYPTO_rsa_public_key_dup (hd->denom_pub.rsa_public_key);
+    TALER_denom_pub_deep_copy (denom_pub,
+                               &hd->denom_pub);
   else
-    denom_pub->rsa_public_key = NULL;
+    memset (denom_pub,
+            0,
+            sizeof (*denom_pub));
   return ok;
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
                      struct TALER_EXCHANGEDB_SignkeyMetaData *meta)
 {
@@ -2425,8 +2430,8 @@ add_future_denomkey_cb (void *cls,
                                    meta.expire_deposit),
         GNUNET_JSON_pack_time_abs ("stamp_expire_legal",
                                    meta.expire_legal),
-        GNUNET_JSON_pack_rsa_public_key ("denom_pub",
-                                         hd->denom_pub.rsa_public_key),
+        TALER_JSON_pack_denomination_public_key ("denom_pub",
+                                                 &hd->denom_pub),
         TALER_JSON_pack_amount ("fee_withdraw",
                                 &meta.fee_withdraw),
         TALER_JSON_pack_amount ("fee_deposit",
