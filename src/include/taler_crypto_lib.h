@@ -674,6 +674,18 @@ TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
 
 
 /**
+ * Make a (deep) copy of the given @a denom_src to
+ * @a denom_dst.
+ *
+ * @param[out] denom_dst target to copy to
+ * @param denom_str public key to copy
+ */
+void
+TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
+                           const struct TALER_DenominationSignature *denom_src);
+
+
+/**
  * Compare two denomination public keys.
  *
  * @param denom1 first key

@@ -195,6 +195,25 @@ TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
 }
 
 
+void
+TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
+                           const struct TALER_DenominationSignature *denom_src)
+{
+  *denom_dst = *denom_src; /* shallow copy */
+  switch (denom_src->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    denom_dst->details.rsa_signature
+      = GNUNET_CRYPTO_rsa_signature_dup (
+          denom_src->details.rsa_signature);
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
 /**
  * Compare two denomination public keys.
  *

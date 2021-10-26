@@ -107,7 +107,7 @@ struct WithdrawContext
   /**
    * Hash of the denomination public key.
    */
-  struct GNUNET_HashCode denom_pub_hash;
+  struct TALER_DenominationHash denom_pub_hash;
 
   /**
    * Signature over the request.
@@ -205,7 +205,9 @@ withdraw_transaction (void *cls,
   /* store away optimistic signature to protect
      it from being overwritten by get_withdraw_info */
   denom_sig = wc->collectable.sig;
-  wc->collectable.sig.rsa_signature = NULL;
+  memset (&wc->collectable.sig,
+          0,
+          sizeof (wc->collectable.sig));
 #endif
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
                                       &wc->wsrd.h_coin_envelope,
@@ -229,7 +231,7 @@ withdraw_transaction (void *cls,
        optimization trade-off loses in this case: we unnecessarily computed
        a signature :-( */
 #if OPTIMISTIC_SIGN
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
+    TALER_denom_sig_free (&denom_sig);
 #endif
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
@@ -364,14 +366,14 @@ withdraw_transaction (void *cls,
 #if ! OPTIMISTIC_SIGN
   if (NULL == wc->collectable.sig.rsa_signature)
   {
-    enum TALER_ErrorCode ec;
+    enum TALER_ErrorCode ec = TALER_EC_NONE;
 
     wc->collectable.sig
       = TEH_keys_denomination_sign (&wc->denom_pub_hash,
                                     wc->blinded_msg,
                                     wc->blinded_msg_len,
                                     &ec);
-    if (NULL == wc->collectable.sig.rsa_signature)
+    if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
       *mhd_ret = TALER_MHD_reply_with_ec (connection,
@@ -530,7 +532,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
   wc.wsrd.h_denomination_pub
     = wc.denom_pub_hash;
-  GNUNET_CRYPTO_hash (wc.blinded_msg,
+  TALER_coin_ev_hash (wc.blinded_msg,
                       wc.blinded_msg_len,
                       &wc.wsrd.h_coin_envelope);
   if (GNUNET_OK !=
@@ -550,12 +552,13 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
 #if OPTIMISTIC_SIGN
   /* Sign before transaction! */
+  ec = TALER_EC_NONE;
   wc.collectable.sig
     = TEH_keys_denomination_sign (&wc.denom_pub_hash,
                                   wc.blinded_msg,
                                   wc.blinded_msg_len,
                                   &ec);
-  if (NULL == wc.collectable.sig.rsa_signature)
+  if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
@@ -579,8 +582,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     {
       /* Even if #withdraw_transaction() failed, it may have created a signature
          (or we might have done it optimistically above). */
-      if (NULL != wc.collectable.sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
+      TALER_denom_sig_free (&wc.collectable.sig);
       GNUNET_JSON_parse_free (spec);
       return mhd_ret;
     }
@@ -591,9 +593,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   if (wc.kyc_denied)
   {
-    if (NULL != wc.collectable.sig.rsa_signature)
-      GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
-
+    TALER_denom_sig_free (&wc.collectable.sig);
     return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_ACCEPTED,
@@ -607,9 +607,9 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     ret = TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_OK,
-      GNUNET_JSON_pack_rsa_signature ("ev_sig",
-                                      wc.collectable.sig.rsa_signature));
-    GNUNET_CRYPTO_rsa_signature_free (wc.collectable.sig.rsa_signature);
+      TALER_JSON_pack_denomination_signature ("ev_sig",
+                                              &wc.collectable.sig));
+    TALER_denom_sig_free (&wc.collectable.sig);
     return ret;
   }
 }

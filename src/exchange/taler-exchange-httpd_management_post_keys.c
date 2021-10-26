@@ -40,7 +40,7 @@ struct DenomSig
   /**
    * Hash of a denomination public key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Master signature for the @e h_denom_pub.
@@ -156,14 +156,14 @@ add_keys (void *cls,
           connection,
           MHD_HTTP_INTERNAL_SERVER_ERROR,
           TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
         return GNUNET_DB_STATUS_HARD_ERROR;
       case GNUNET_NO:
         *mhd_ret = TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_NOT_FOUND,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
         return GNUNET_DB_STATUS_HARD_ERROR;
       case GNUNET_OK:
         break;
@@ -196,7 +196,7 @@ add_keys (void *cls,
           connection,
           MHD_HTTP_FORBIDDEN,
           TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
@@ -208,7 +208,7 @@ add_keys (void *cls,
       &denom_pub,
       &meta,
       &akc->d_sigs[i].master_sig);
-    GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
+    TALER_denom_pub_free (&denom_pub);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -222,7 +222,7 @@ add_keys (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Added offline signature for denomination `%s'\n",
-                GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+                GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
     GNUNET_assert (0 != qs);
   }
 
@@ -284,7 +284,7 @@ add_keys (void *cls,
           connection,
           MHD_HTTP_FORBIDDEN,
           TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_ADD_SIGNATURE_INVALID,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub));
+          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }

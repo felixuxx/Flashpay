@@ -68,8 +68,8 @@ reply_refreshes_reveal_success (struct MHD_Connection *connection,
     json_t *obj;
 
     obj = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_rsa_signature ("ev_sig",
-                                      sigs[freshcoin_index].rsa_signature));
+      TALER_JSON_pack_denomination_signature ("ev_sig",
+                                              &sigs[freshcoin_index]));
     GNUNET_assert (0 ==
                    json_array_append_new (list,
                                           obj));
@@ -189,8 +189,8 @@ check_exists_cb (void *cls,
     rctx->ev_sigs = GNUNET_new_array (num_freshcoins,
                                       struct TALER_DenominationSignature);
     for (unsigned int i = 0; i<num_freshcoins; i++)
-      rctx->ev_sigs[i].rsa_signature
-        = GNUNET_CRYPTO_rsa_signature_dup (rrcs[i].coin_sig.rsa_signature);
+      TALER_denom_sig_deep_copy (&rctx->ev_sigs[i],
+                                 &rrcs[i].coin_sig);
   }
 }
 
@@ -334,7 +334,7 @@ refreshes_reveal_transaction (void *cls,
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
           struct TALER_PlanchetSecretsP ps;
           struct TALER_PlanchetDetail pd;
-          struct GNUNET_HashCode c_hash;
+          struct TALER_CoinPubHash c_hash;
 
           rcd->dk = &rctx->dks[j]->denom_pub;
           TALER_planchet_setup_refresh (&ts,
@@ -500,7 +500,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   /* We know num_fresh_coins is bounded by #MAX_FRESH_COINS, so this is safe */
   const struct TEH_DenominationKey *dks[num_fresh_coins];
-  struct GNUNET_HashCode dk_h[num_fresh_coins];
+  struct TALER_DenominationHash dk_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
   struct TALER_EXCHANGEDB_Melt melt;
@@ -686,7 +686,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                     struct TALER_DenominationSignature);
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
-    enum TALER_ErrorCode ec;
+    enum TALER_ErrorCode ec = TALER_EC_NONE;
 
     rctx->ev_sigs[i]
       = TEH_keys_denomination_sign (
@@ -694,7 +694,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
           rctx->rcds[i].coin_ev,
           rctx->rcds[i].coin_ev_size,
           &ec);
-    if (NULL == rctx->ev_sigs[i].rsa_signature)
+    if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);
       ret = TALER_MHD_reply_with_ec (connection,
@@ -769,8 +769,7 @@ cleanup:
   if (NULL != rctx->ev_sigs)
   {
     for (unsigned int i = 0; i<num_fresh_coins; i++)
-      if (NULL != rctx->ev_sigs[i].rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (rctx->ev_sigs[i].rsa_signature);
+      TALER_denom_sig_free (&rctx->ev_sigs[i]);
     GNUNET_free (rctx->ev_sigs);
     rctx->ev_sigs = NULL; /* just to be safe... */
   }

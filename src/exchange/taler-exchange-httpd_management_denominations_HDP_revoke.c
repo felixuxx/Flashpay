@@ -34,7 +34,7 @@
 MHD_RESULT
 TEH_handler_management_denominations_HDP_revoke (
   struct MHD_Connection *connection,
-  const struct GNUNET_HashCode *h_denom_pub,
+  const struct TALER_DenominationHash *h_denom_pub,
   const json_t *root)
 {
   struct TALER_MasterSignatureP master_sig;

@@ -779,9 +779,8 @@ TEH_RESPONSE_compile_reserve_history (
                              &value);
           TALER_amount_hton (&rcc.closing_fee,
                              &closing->closing_fee);
-          GNUNET_CRYPTO_hash (closing->receiver_account_details,
-                              strlen (closing->receiver_account_details) + 1,
-                              &rcc.h_wire);
+          TALER_payto_hash (closing->receiver_account_details,
+                            &rcc.h_payto);
           if (TALER_EC_NONE !=
               TEH_keys_exchange_sign (&rcc,
                                       &pub,
