@@ -53,8 +53,7 @@ TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
   if (NULL != md->fresh_pks)
   {
     for (unsigned int i = 0; i<md->num_fresh_coins; i++)
-      if (NULL != md->fresh_pks[i].rsa_public_key)
-        GNUNET_CRYPTO_rsa_public_key_free (md->fresh_pks[i].rsa_public_key);
+      TALER_denom_pub_free (&md->fresh_pks[i]);
     GNUNET_free (md->fresh_pks);
   }
 
@@ -521,16 +520,16 @@ TALER_EXCHANGE_refresh_prepare (
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (melt_amount->currency,
                                         &total));
-  md.melted_coin.pub_key.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_dup (melt_pk->key.rsa_public_key);
-  md.melted_coin.sig.rsa_signature
-    = GNUNET_CRYPTO_rsa_signature_dup (melt_sig->rsa_signature);
+  TALER_denom_pub_deep_copy (&md.melted_coin.pub_key,
+                             &melt_pk->key);
+  TALER_denom_sig_deep_copy (&md.melted_coin.sig,
+                             melt_sig);
   md.fresh_pks = GNUNET_new_array (fresh_pks_len,
                                    struct TALER_DenominationPublicKey);
   for (unsigned int i = 0; i<fresh_pks_len; i++)
   {
-    md.fresh_pks[i].rsa_public_key
-      = GNUNET_CRYPTO_rsa_public_key_dup (fresh_pks[i].key.rsa_public_key);
+    TALER_denom_pub_deep_copy (&md.fresh_pks[i],
+                               &fresh_pks[i].key);
     if ( (0 >
           TALER_amount_add (&total,
                             &total,
