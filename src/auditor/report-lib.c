@@ -141,7 +141,7 @@ add_denomination (
   (void) denom_pub;
   if (NULL !=
       GNUNET_CONTAINER_multihashmap_get (denominations,
-                                         &issue->denom_hash))
+                                         &issue->denom_hash.hash))
     return; /* value already known */
 #if GNUNET_EXTRA_LOGGING >= 1
   {
@@ -176,7 +176,7 @@ add_denomination (
     i->master = TALER_ARL_master_pub;
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_CONTAINER_multihashmap_put (denominations,
-                                                      &issue->denom_hash,
+                                                      &issue->denom_hash.hash,
                                                       i,
                                                       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
   }
@@ -193,7 +193,7 @@ add_denomination (
  */
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info_by_hash (
-  const struct GNUNET_HashCode *dh,
+  const struct TALER_DenominationHash *dh,
   const struct TALER_DenominationKeyValidityPS **issue)
 {
   enum GNUNET_DB_QueryStatus qs;
@@ -215,7 +215,7 @@ TALER_ARL_get_denomination_info_by_hash (
     const struct TALER_DenominationKeyValidityPS *i;
 
     i = GNUNET_CONTAINER_multihashmap_get (denominations,
-                                           dh);
+                                           &dh->hash);
     if (NULL != i)
     {
       /* cache hit */
@@ -246,7 +246,7 @@ TALER_ARL_get_denomination_info_by_hash (
     const struct TALER_DenominationKeyValidityPS *i;
 
     i = GNUNET_CONTAINER_multihashmap_get (denominations,
-                                           dh);
+                                           &dh->hash);
     if (NULL != i)
     {
       /* cache hit */
@@ -275,14 +275,14 @@ enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info (
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_DenominationKeyValidityPS **issue,
-  struct GNUNET_HashCode *dh)
+  struct TALER_DenominationHash *dh)
 {
-  struct GNUNET_HashCode hc;
+  struct TALER_DenominationHash hc;
 
   if (NULL == dh)
     dh = &hc;
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub->rsa_public_key,
-                                     dh);
+  TALER_denom_pub_hash (denom_pub,
+                        dh);
   return TALER_ARL_get_denomination_info_by_hash (dh,
                                                   issue);
 }

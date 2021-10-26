@@ -131,7 +131,7 @@ test_dc (void *cls,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                   "Found deposit %s in exchange database\n",
-                  GNUNET_h2s (&dc->h_contract_terms));
+                  GNUNET_h2s (&dc->h_contract_terms.hash));
       if (TALER_ARL_do_abort ())
         return GNUNET_SYSERR;
       return GNUNET_OK; /* found, all good */

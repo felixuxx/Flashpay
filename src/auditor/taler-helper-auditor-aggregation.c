@@ -360,7 +360,7 @@ struct WireCheckContext
   /**
    * Hash of the wire transfer details of the receiver.
    */
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
 
   /**
    * Execution time of the wire transfer.
@@ -393,7 +393,7 @@ struct WireCheckContext
 static int
 check_transaction_history_for_deposit (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_DenominationKeyValidityPS *issue,
   const struct TALER_EXCHANGEDB_TransactionList *tl_head,
@@ -441,7 +441,7 @@ check_transaction_history_for_deposit (
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       /* check wire and h_wire are consistent */
       {
-        struct GNUNET_HashCode hw;
+        struct TALER_MerchantWireHash hw;
 
         if (GNUNET_OK !=
             TALER_JSON_merchant_wire_signature_hash (
@@ -691,7 +691,7 @@ check_transaction_history_for_deposit (
               "Coin %s contributes %s to contract %s\n",
               TALER_B2S (coin_pub),
               TALER_amount2s (merchant_gain),
-              GNUNET_h2s (h_contract_terms));
+              GNUNET_h2s (&h_contract_terms->hash));
   return GNUNET_OK;
 }
 
@@ -719,10 +719,10 @@ wire_transfer_information_cb (
   void *cls,
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct GNUNET_HashCode *h_wire,
+  const struct TALER_MerchantWireHash *h_wire,
   const json_t *account_details,
   struct GNUNET_TIME_Absolute exec_time,
-  const struct GNUNET_HashCode *h_contract_terms,
+  const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *coin_value,
@@ -735,7 +735,7 @@ wire_transfer_information_cb (
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_HashCode hw;
+  struct TALER_MerchantWireHash hw;
 
   if (GNUNET_OK !=
       TALER_JSON_merchant_wire_signature_hash (account_details,
@@ -788,7 +788,7 @@ wire_transfer_information_cb (
                                                 &issue);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
-    GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
+    TALER_denom_sig_free (&coin.denom_sig);
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
     if (0 == qs)
@@ -819,7 +819,7 @@ wire_transfer_information_cb (
     TALER_ARL_amount_add (&total_bad_sig_loss,
                           &total_bad_sig_loss,
                           coin_value);
-    GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
+    TALER_denom_sig_free (&coin.denom_sig);
     TALER_ARL_edb->free_coin_transaction_list (TALER_ARL_edb->cls,
                                                tl);
     report_row_inconsistency ("deposit",
@@ -827,8 +827,7 @@ wire_transfer_information_cb (
                               "coin denomination signature invalid");
     return;
   }
-  GNUNET_CRYPTO_rsa_signature_free (coin.denom_sig.rsa_signature);
-  coin.denom_sig.rsa_signature = NULL; /* just to be sure */
+  TALER_denom_sig_free (&coin.denom_sig);
   GNUNET_assert (NULL != issue); /* mostly to help static analysis */
   /* Check transaction history to see if it supports aggregate
      valuation */

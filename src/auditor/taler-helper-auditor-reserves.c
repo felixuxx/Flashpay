@@ -487,10 +487,10 @@ handle_reserve_in (void *cls,
  * @param amount_with_fee amount that was withdrawn
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 handle_reserve_out (void *cls,
                     uint64_t rowid,
-                    const struct GNUNET_HashCode *h_blind_ev,
+                    const struct TALER_BlindedCoinHash *h_blind_ev,
                     const struct TALER_DenominationPublicKey *denom_pub,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_ReserveSignatureP *reserve_sig,
@@ -739,7 +739,7 @@ handle_recoup_by_reserve (
 
   /* check that the coin was eligible for recoup!*/
   rev = GNUNET_CONTAINER_multihashmap_get (rc->revoked,
-                                           &coin->denom_pub_hash);
+                                           &coin->denom_pub_hash.hash);
   if (NULL == rev)
   {
     qs = TALER_ARL_edb->get_denomination_revocation (TALER_ARL_edb->cls,
@@ -777,7 +777,8 @@ handle_recoup_by_reserve (
       }
       GNUNET_assert (GNUNET_OK ==
                      GNUNET_CONTAINER_multihashmap_put (rc->revoked,
-                                                        &coin->denom_pub_hash,
+                                                        &coin->denom_pub_hash.
+                                                        hash,
                                                         (void *) rev,
                                                         GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
     }
