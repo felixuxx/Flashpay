@@ -2669,7 +2669,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid security module signature for denomination key %s (aborting)\n",
-                  GNUNET_h2s (&h_denom_pub));
+                  GNUNET_h2s (&h_denom_pub.hash));
       global_ret = EXIT_FAILURE;
       test_shutdown ();
       return GNUNET_SYSERR;
@@ -3088,7 +3088,7 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid security module signature for denomination key %s (aborting)\n",
-                  GNUNET_h2s (&h_denom_pub));
+                  GNUNET_h2s (&h_denom_pub.hash));
       global_ret = EXIT_FAILURE;
       test_shutdown ();
       GNUNET_JSON_parse_free (spec);
