@@ -66,7 +66,7 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
 
     if (TALER_TESTING_cmd_is_batch (cmd))
     {
-      struct TALER_TESTING_Command *batch;
+      struct TALER_TESTING_Command **batch;
       struct TALER_TESTING_Command *current;
       struct TALER_TESTING_Command *icmd;
       const struct TALER_TESTING_Command *match;
@@ -78,7 +78,7 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
       /* We must do the loop forward, but we can find the last match */
       match = NULL;
       for (unsigned int j = 0;
-           NULL != (icmd = &batch[j])->label;
+           NULL != (icmd = &(*batch)[j])->label;
            j++)
       {
         if (current == icmd)
@@ -381,7 +381,6 @@ maint_child_death (void *cls)
                                        sizeof (c)));
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_process (cmd,
-                                       0,
                                        &processp))
   {
     GNUNET_break (0);

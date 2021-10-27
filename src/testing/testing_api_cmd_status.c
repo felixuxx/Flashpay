@@ -156,7 +156,7 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
     struct TALER_TESTING_Command *cur;
-    struct TALER_TESTING_Command *bcmd;
+    struct TALER_TESTING_Command **bcmd;
 
     cur = TALER_TESTING_cmd_batch_get_current (cmd);
     if (GNUNET_OK !=
@@ -166,9 +166,9 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
       GNUNET_break (0);
       return GNUNET_SYSERR;
     }
-    for (unsigned int i = 0; NULL != bcmd[i].label; i++)
+    for (unsigned int i = 0; NULL != (*bcmd)[i].label; i++)
     {
-      struct TALER_TESTING_Command *step = &bcmd[i];
+      struct TALER_TESTING_Command *step = &(*bcmd)[i];
 
       if (step == cur)
         break; /* if *we* are in a batch, make sure not to analyze commands past 'now' */
@@ -189,7 +189,6 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
 
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_reserve_pub (cmd,
-                                             0,
                                              &rp))
       return GNUNET_OK; /* command does nothing for reserves */
     if (0 !=
@@ -198,7 +197,6 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
       return GNUNET_OK; /* command affects some _other_ reserve */
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_reserve_history (cmd,
-                                                 0,
                                                  &he))
     {
       /* NOTE: only for debugging... */
@@ -344,7 +342,6 @@ status_run (void *cls,
   }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_pub (create_reserve,
-                                           0,
                                            &ss->reserve_pubp))
   {
     GNUNET_break (0);

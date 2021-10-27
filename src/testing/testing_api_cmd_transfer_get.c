@@ -79,11 +79,6 @@ struct TrackTransferState
    */
   unsigned int expected_response_code;
 
-  /**
-   * Index to the WTID to pick, in case @a wtid_reference has
-   * many on offer.
-   */
-  unsigned int index;
 };
 
 
@@ -219,11 +214,12 @@ track_transfer_cb (void *cls,
      * or any operation that could provide wire-details.  (2)
      * Total amount for this transfer matches the one from any
      * referenced command that could provide one.
-     */if (NULL != tts->wire_details_reference)
+     */
+    if (NULL != tts->wire_details_reference)
     {
       const struct TALER_TESTING_Command *wire_details_cmd;
       const json_t *wire_details;
-      struct GNUNET_HashCode h_wire_details;
+      struct TALER_MerchantWireHash h_wire_details;
 
       wire_details_cmd
         = TALER_TESTING_interpreter_lookup_command (is,
@@ -236,7 +232,6 @@ track_transfer_cb (void *cls,
       }
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_wire_details (wire_details_cmd,
-                                                0,
                                                 &wire_details))
       {
         GNUNET_break (0);
@@ -274,9 +269,8 @@ track_transfer_cb (void *cls,
         return;
       }
       if (GNUNET_OK !=
-          TALER_TESTING_get_trait_amount_obj (total_amount_cmd,
-                                              0,
-                                              &total_amount_from_reference))
+          TALER_TESTING_get_trait_amount (total_amount_cmd,
+                                          &total_amount_from_reference))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
@@ -319,7 +313,9 @@ track_transfer_run (void *cls,
 
   /* If no reference is given, we'll use a all-zeros
    * WTID */
-  memset (&wtid, 0, sizeof (wtid));
+  memset (&wtid,
+          0,
+          sizeof (wtid));
   wtid_ptr = &wtid;
 
   tts->is = is;
@@ -327,9 +323,8 @@ track_transfer_run (void *cls,
   {
     const struct TALER_TESTING_Command *wtid_cmd;
 
-    wtid_cmd = TALER_TESTING_interpreter_lookup_command
-                 (tts->is, tts->wtid_reference);
-
+    wtid_cmd = TALER_TESTING_interpreter_lookup_command (tts->is,
+                                                         tts->wtid_reference);
     if (NULL == wtid_cmd)
     {
       GNUNET_break (0);
@@ -337,8 +332,9 @@ track_transfer_run (void *cls,
       return;
     }
 
-    if (GNUNET_OK != TALER_TESTING_get_trait_wtid
-          (wtid_cmd, tts->index, &wtid_ptr))
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_wtid (wtid_cmd,
+                                      &wtid_ptr))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (tts->is);
@@ -354,33 +350,15 @@ track_transfer_run (void *cls,
 }
 
 
-/**
- * Make a "track transfer" CMD where no "expected"-arguments,
- * except the HTTP response code, are given.  The best use case
- * is when what matters to check is the HTTP response code, e.g.
- * when a bogus WTID was passed.
- *
- * @param label the command label
- * @param wtid_reference reference to any command which can provide
- *        a wtid.  If NULL is given, then a all zeroed WTID is
- *        used that will at 99.9999% probability NOT match any
- *        existing WTID known to the exchange.
- * @param index index number of the WTID to track, in case there
- *        are multiple on offer.
- * @param expected_response_code expected HTTP response code.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer_empty (const char *label,
                                         const char *wtid_reference,
-                                        unsigned int index,
                                         unsigned int expected_response_code)
 {
   struct TrackTransferState *tts;
 
   tts = GNUNET_new (struct TrackTransferState);
   tts->wtid_reference = wtid_reference;
-  tts->index = index;
   tts->expected_response_code = expected_response_code;
   {
     struct TALER_TESTING_Command cmd = {
@@ -395,25 +373,9 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
 }
 
 
-/**
- * Make a "track transfer" command, specifying which amount and
- * wire fee are expected.
- *
- * @param label the command label.
- * @param wtid_reference reference to any command which can provide
- *        a wtid.  Will be the one tracked.
- * @param index in case there are multiple WTID offered, this
- *        parameter selects a particular one.
- * @param expected_response_code expected HTTP response code.
- * @param expected_total_amount how much money we expect being moved
- *        with this wire-transfer.
- * @param expected_wire_fee expected wire fee.
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer (const char *label,
                                   const char *wtid_reference,
-                                  unsigned int index,
                                   unsigned int expected_response_code,
                                   const char *expected_total_amount,
                                   const char *expected_wire_fee)
@@ -422,7 +384,6 @@ TALER_TESTING_cmd_track_transfer (const char *label,
 
   tts = GNUNET_new (struct TrackTransferState);
   tts->wtid_reference = wtid_reference;
-  tts->index = index;
   tts->expected_response_code = expected_response_code;
   tts->expected_total_amount = expected_total_amount;
   tts->expected_wire_fee = expected_wire_fee;

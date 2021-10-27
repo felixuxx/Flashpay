@@ -83,7 +83,7 @@ do_stat (struct TALER_TESTING_Timer *timings,
 {
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
-    struct TALER_TESTING_Command *bcmd;
+    struct TALER_TESTING_Command **bcmd;
 
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_batch_cmds (cmd,
@@ -94,10 +94,10 @@ do_stat (struct TALER_TESTING_Timer *timings,
     }
 
     for (unsigned int j = 0;
-         NULL != bcmd[j].label;
+         NULL != (*bcmd)[j].label;
          j++)
       do_stat (timings,
-               &bcmd[j]);
+               &(*bcmd)[j]);
   }
   else
   {

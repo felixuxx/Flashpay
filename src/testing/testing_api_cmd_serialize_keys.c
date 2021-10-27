@@ -131,7 +131,7 @@ serialize_keys_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 serialize_keys_traits (void *cls,
                        const void **ret,
                        const char *trait,
@@ -139,9 +139,9 @@ serialize_keys_traits (void *cls,
 {
   struct SerializeKeysState *sks = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_exchange_keys (0, sks->keys),
-    TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BASE_URL,
-                                  sks->exchange_url),
+    TALER_TESTING_make_trait_exchange_keys (sks->keys),
+    TALER_TESTING_make_trait_exchange_url (
+      (const char **) &sks->exchange_url),
     TALER_TESTING_trait_end ()
   };
 
@@ -167,7 +167,7 @@ connect_with_state_run (void *cls,
   struct ConnectWithStateState *cwss = cls;
   const struct TALER_TESTING_Command *state_cmd;
   const json_t *serialized_keys;
-  const char *exchange_url;
+  const char **exchange_url;
 
   /* This command usually gets rescheduled after serialized
    * reconnection.  */
@@ -178,8 +178,8 @@ connect_with_state_run (void *cls,
   }
 
   cwss->is = is;
-  state_cmd = TALER_TESTING_interpreter_lookup_command
-                (is, cwss->state_reference);
+  state_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                        cwss->state_reference);
 
   /* Command providing serialized keys not found.  */
   if (NULL == state_cmd)
@@ -191,7 +191,6 @@ connect_with_state_run (void *cls,
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_exchange_keys (state_cmd,
-                                                        0,
                                                         &serialized_keys));
   {
     char *dump;
@@ -204,11 +203,10 @@ connect_with_state_run (void *cls,
   }
 
   GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_url (state_cmd,
-                                              TALER_TESTING_UT_EXCHANGE_BASE_URL,
-                                              &exchange_url));
+                 TALER_TESTING_get_trait_exchange_url (state_cmd,
+                                                       &exchange_url));
   is->exchange = TALER_EXCHANGE_connect (is->ctx,
-                                         exchange_url,
+                                         *exchange_url,
                                          &TALER_TESTING_cert_cb,
                                          cwss,
                                          TALER_EXCHANGE_OPTION_DATA,

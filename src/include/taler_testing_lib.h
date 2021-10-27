@@ -1555,7 +1555,6 @@ TALER_TESTING_cmd_refresh_link_with_retry (struct TALER_TESTING_Command cmd);
  * @param bank_transfer_reference reference to a command that
  *        can offer a WTID so as to check that against what WTID
  *        the tracked operation has.  Set as NULL if not needed.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1576,15 +1575,12 @@ TALER_TESTING_cmd_track_transaction (const char *label,
  *        a wtid.  If NULL is given, then a all zeroed WTID is
  *        used that will at 99.9999% probability NOT match any
  *        existing WTID known to the exchange.
- * @param index index number of the WTID to track, in case there
- *        are multiple on offer.
  * @param expected_response_code expected HTTP response code.
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer_empty (const char *label,
                                         const char *wtid_reference,
-                                        unsigned int index,
                                         unsigned int expected_response_code);
 
 
@@ -1595,8 +1591,6 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
  * @param label the command label.
  * @param wtid_reference reference to any command which can provide
  *        a wtid.  Will be the one tracked.
- * @param index in case there are multiple WTID offered, this
- *        parameter selects a particular one.
  * @param expected_response_code expected HTTP response code.
  * @param expected_total_amount how much money we expect being moved
  *        with this wire-transfer.
@@ -1606,10 +1600,10 @@ TALER_TESTING_cmd_track_transfer_empty (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transfer (const char *label,
                                   const char *wtid_reference,
-                                  unsigned int index,
                                   unsigned int expected_response_code,
                                   const char *expected_total_amount,
                                   const char *expected_wire_fee);
+
 
 /**
  * Make a "bank check" CMD.  It checks whether a particular wire transfer from
@@ -2283,7 +2277,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   }                                                      \
   struct TALER_TESTING_Trait                             \
     TALER_TESTING_make_trait_ ## name (                  \
-    const type * value)                                  \
+    type * value)                                        \
   {                                                      \
     struct TALER_TESTING_Trait ret = {                   \
       .trait_name = TALER_S (name),                      \

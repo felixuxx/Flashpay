@@ -240,8 +240,8 @@ reserve_withdraw_cb (void *cls,
   switch (wr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    ws->sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_dup (
-      wr->details.success.sig.rsa_signature);
+    TALER_denom_sig_deep_copy (&ws->sig,
+                               &wr->details.success.sig);
     if (0 != ws->total_backoff.rel_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -349,7 +349,6 @@ withdraw_run (void *cls,
   }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_priv (create_reserve,
-                                            0,
                                             &rp))
   {
     GNUNET_break (0);
@@ -451,11 +450,7 @@ withdraw_cleanup (void *cls,
     GNUNET_SCHEDULER_cancel (ws->retry_task);
     ws->retry_task = NULL;
   }
-  if (NULL != ws->sig.rsa_signature)
-  {
-    GNUNET_CRYPTO_rsa_signature_free (ws->sig.rsa_signature);
-    ws->sig.rsa_signature = NULL;
-  }
+  TALER_denom_sig_free (&ws->sig);
   if (NULL != ws->pk)
   {
     TALER_EXCHANGE_destroy_denomination_key (ws->pk);
@@ -476,7 +471,7 @@ withdraw_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 withdraw_traits (void *cls,
                  const void **ret,
                  const char *trait,
@@ -501,7 +496,6 @@ withdraw_traits (void *cls,
 
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_priv (reserve_cmd,
-                                            0,
                                             &reserve_priv))
   {
     GNUNET_break (0);
@@ -510,7 +504,6 @@ withdraw_traits (void *cls,
   }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_pub (reserve_cmd,
-                                           0,
                                            &reserve_pub))
   {
     GNUNET_break (0);
@@ -523,8 +516,7 @@ withdraw_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       /* history entry MUST be first due to response code logic below! */
-      TALER_TESTING_make_trait_reserve_history (0,
-                                                &ws->reserve_history),
+      TALER_TESTING_make_trait_reserve_history (&ws->reserve_history),
       TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
                                           &ws->ps.coin_priv),
       TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
@@ -533,14 +525,11 @@ withdraw_traits (void *cls,
                                           ws->pk),
       TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
                                           &ws->sig),
-      TALER_TESTING_make_trait_reserve_priv (0,
-                                             reserve_priv),
-      TALER_TESTING_make_trait_reserve_pub (0,
-                                            reserve_pub),
-      TALER_TESTING_make_trait_amount_obj (0,
-                                           &ws->amount),
-      TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BASE_URL,
-                                    ws->exchange_url),
+      TALER_TESTING_make_trait_reserve_priv (reserve_priv),
+      TALER_TESTING_make_trait_reserve_pub (reserve_pub),
+      TALER_TESTING_make_trait_amount (&ws->amount),
+      TALER_TESTING_make_trait_exchange_url (
+        (const char **) &ws->exchange_url),
       TALER_TESTING_trait_end ()
     };
 

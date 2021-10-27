@@ -194,7 +194,7 @@ hack_response_code_cleanup
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 hack_response_code_traits (void *cls,
                            const void **ret,
                            const char *trait,
@@ -203,7 +203,7 @@ hack_response_code_traits (void *cls,
 
   struct HackResponseCodeState *hrcs = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &hrcs->proc),
+    TALER_TESTING_make_trait_process (&hrcs->proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -251,16 +251,6 @@ hack_response_code_run (void *cls,
 }
 
 
-/**
- * Define a "hack response code" CMD.  This causes the next
- * response code (from the service proxied by the twister) to
- * be substituted with @a http_status.
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @param http_status new response code to use
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_hack_response_code (const char *label,
                                       const char *config_filename,
@@ -271,16 +261,17 @@ TALER_TESTING_cmd_hack_response_code (const char *label,
   hrcs = GNUNET_new (struct HackResponseCodeState);
   hrcs->http_status = http_status;
   hrcs->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &hack_response_code_run,
+      .cleanup = &hack_response_code_cleanup,
+      .traits = &hack_response_code_traits,
+      .cls = hrcs
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &hack_response_code_run,
-    .cleanup = &hack_response_code_cleanup,
-    .traits = &hack_response_code_traits,
-    .cls = hrcs
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -320,7 +311,7 @@ delete_object_cleanup
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 delete_object_traits (void *cls,
                       const void **ret,
                       const char *trait,
@@ -329,7 +320,7 @@ delete_object_traits (void *cls,
 
   struct DeleteObjectState *dos = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &dos->proc),
+    TALER_TESTING_make_trait_process (&dos->proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -379,9 +370,8 @@ delete_object_run (void *cls,
  * @param cmd the command being cleaned up.
  */
 static void
-modify_object_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
+modify_object_cleanup (void *cls,
+                       const struct TALER_TESTING_Command *cmd)
 {
   struct ModifyObjectState *mos = cls;
 
@@ -407,7 +397,7 @@ modify_object_cleanup
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 modify_object_traits (void *cls,
                       const void **ret,
                       const char *trait,
@@ -416,7 +406,7 @@ modify_object_traits (void *cls,
 
   struct ModifyObjectState *mos = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &mos->proc),
+    TALER_TESTING_make_trait_process (&mos->proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -523,16 +513,6 @@ modify_header_dl_run (void *cls,
 }
 
 
-/**
- * Create a "delete object" CMD.  This command deletes
- * the JSON object pointed by @a path.
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @param path object-like path notation to point the object
- *        to delete.
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_delete_object (const char *label,
                                  const char *config_filename,
@@ -598,10 +578,9 @@ flip_object_traits (void *cls,
                     const char *trait,
                     unsigned int index)
 {
-
   struct FlipObjectState *fos = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &fos->proc),
+    TALER_TESTING_make_trait_process (&fos->proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -674,15 +653,6 @@ flip_download_run (void *cls,
 }
 
 
-/**
- * Define a "flip object" command, for objects to upload.
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @param path object-like path notation to point the object
- *        to flip.
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_flip_upload (const char *label,
                                const char *config_filename,
@@ -693,28 +663,20 @@ TALER_TESTING_cmd_flip_upload (const char *label,
   dos = GNUNET_new (struct FlipObjectState);
   dos->path = path;
   dos->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &flip_upload_run,
+      .cleanup = &flip_object_cleanup,
+      .traits = &flip_object_traits,
+      .cls = dos
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &flip_upload_run,
-    .cleanup = &flip_object_cleanup,
-    .traits = &flip_object_traits,
-    .cls = dos
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
-/**
- * Define a "flip object" command, for objects to download.
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @param path object-like path notation to point the object
- *        to flip.
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_flip_download (const char *label,
                                  const char *config_filename,
@@ -725,16 +687,17 @@ TALER_TESTING_cmd_flip_download (const char *label,
   dos = GNUNET_new (struct FlipObjectState);
   dos->path = path;
   dos->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &flip_download_run,
+      .cleanup = &flip_object_cleanup,
+      .traits = &flip_object_traits,
+      .cls = dos
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &flip_download_run,
-    .cleanup = &flip_object_cleanup,
-    .traits = &flip_object_traits,
-    .cls = dos
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
@@ -773,7 +736,7 @@ malform_request_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 malform_request_traits (void *cls,
                         const void **ret,
                         const char *trait,
@@ -781,7 +744,7 @@ malform_request_traits (void *cls,
 {
   struct MalformRequestState *mrs = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &mrs->proc),
+    TALER_TESTING_make_trait_process (&mrs->proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -831,9 +794,8 @@ malform_request_run (void *cls,
  * @param cmd the command being cleaned up.
  */
 static void
-malform_response_cleanup
-  (void *cls,
-  const struct TALER_TESTING_Command *cmd)
+malform_response_cleanup (void *cls,
+                          const struct TALER_TESTING_Command *cmd)
 {
   struct MalformResponseState *mrs = cls;
 
@@ -859,7 +821,7 @@ malform_response_cleanup
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 malform_response_traits (void *cls,
                          const void **ret,
                          const char *trait,
@@ -867,7 +829,7 @@ malform_response_traits (void *cls,
 {
   struct MalformResponseState *mrs = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &mrs->proc),
+    TALER_TESTING_make_trait_process (&mrs->proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -909,14 +871,6 @@ malform_response_run (void *cls,
 }
 
 
-/**
- * Create a "malform request" CMD.  This command makes the
- * next request randomly malformed (by truncating it).
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_malform_request (const char *label,
                                    const char *config_filename)
@@ -925,28 +879,20 @@ TALER_TESTING_cmd_malform_request (const char *label,
 
   mrs = GNUNET_new (struct MalformRequestState);
   mrs->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &malform_request_run,
+      .cleanup = &malform_request_cleanup,
+      .traits = &malform_request_traits,
+      .cls = mrs
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &malform_request_run,
-    .cleanup = &malform_request_cleanup,
-    .traits = &malform_request_traits,
-    .cls = mrs
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
-/**
- * Create a "malform response" CMD.  This command makes
- * the next response randomly malformed (by truncating it).
- *
- * @param label command label
- * @param config_filename configuration filename.
- *
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_malform_response (const char *label,
                                     const char *config_filename)
@@ -969,19 +915,6 @@ TALER_TESTING_cmd_malform_response (const char *label,
 }
 
 
-/**
- * Create a "modify object" CMD.  This command instructs
- * the twister to modify the next object that is downloaded
- * from the proxied service.
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @param path object-like path notation to point the object
- *        to modify.
- * @param value value to put as the object's.
- *
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_modify_object_dl (const char *label,
                                     const char *config_filename,
@@ -994,31 +927,20 @@ TALER_TESTING_cmd_modify_object_dl (const char *label,
   mos->path = path;
   mos->value = value;
   mos->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &modify_object_dl_run,
+      .cleanup = &modify_object_cleanup,
+      .traits = &modify_object_traits,
+      .cls = mos
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &modify_object_dl_run,
-    .cleanup = &modify_object_cleanup,
-    .traits = &modify_object_traits,
-    .cls = mos
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
-/**
- * Create a "modify object" CMD.  This command instructs
- * the twister to modify the next object that will be uploaded
- * to the proxied service.
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @param path object-like path notation pointing the object
- *        to modify.
- * @param value value to put as the object's.
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_modify_object_ul (const char *label,
                                     const char *config_filename,
@@ -1031,29 +953,20 @@ TALER_TESTING_cmd_modify_object_ul (const char *label,
   mos->path = path;
   mos->value = value;
   mos->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &modify_object_ul_run,
+      .cleanup = &modify_object_cleanup,
+      .traits = &modify_object_traits,
+      .cls = mos
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &modify_object_ul_run,
-    .cleanup = &modify_object_cleanup,
-    .traits = &modify_object_traits,
-    .cls = mos
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
-/**
- * Create a "modify header" CMD.  This command instructs
- * the twister to modify a header in the next HTTP response.
- *
- * @param label command label
- * @param config_filename configuration filename.
- * @param path identifies the location to modify
- * @param value value to set the header to.
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_modify_header_dl (const char *label,
                                     const char *config_filename,
@@ -1066,16 +979,17 @@ TALER_TESTING_cmd_modify_header_dl (const char *label,
   mos->path = path;
   mos->value = value;
   mos->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .label = label,
+      .run = &modify_header_dl_run,
+      .cleanup = &modify_object_cleanup,
+      .traits = &modify_object_traits,
+      .cls = mos
+    };
 
-  struct TALER_TESTING_Command cmd = {
-    .label = label,
-    .run = &modify_header_dl_run,
-    .cleanup = &modify_object_cleanup,
-    .traits = &modify_object_traits,
-    .cls = mos
-  };
-
-  return cmd;
+    return cmd;
+  }
 }
 
 
