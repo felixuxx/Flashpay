@@ -127,7 +127,7 @@ refund_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   struct TALER_CoinSpendPublicKeyP coin;
   const json_t *contract_terms;
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
   struct TALER_Amount refund_amount;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
   const struct TALER_TESTING_Command *coin_cmd;
@@ -157,7 +157,6 @@ refund_run (void *cls,
   }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_contract_terms (coin_cmd,
-                                              0,
                                               &contract_terms))
   {
     GNUNET_break (0);
@@ -183,7 +182,6 @@ refund_run (void *cls,
                                       &coin.eddsa_pub);
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_merchant_priv (coin_cmd,
-                                             0,
                                              &merchant_priv))
   {
     GNUNET_break (0);
@@ -228,17 +226,6 @@ refund_cleanup (void *cls,
 }
 
 
-/**
- * Create a "refund" command.
- *
- * @param label command label.
- * @param expected_response_code expected HTTP status code.
- * @param refund_amount the amount to ask a refund for.
- * @param coin_reference reference to a command that can
- *        provide a coin to be refunded.
- *
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund (const char *label,
                           unsigned int expected_response_code,
@@ -265,23 +252,9 @@ TALER_TESTING_cmd_refund (const char *label,
 }
 
 
-/**
- * Create a "refund" command, allow to specify refund transaction
- * id.  Mainly used to create conflicting requests.
- *
- * @param label command label.
- * @param expected_response_code expected HTTP status code.
- * @param refund_amount the amount to ask a refund for.
- * @param coin_reference reference to a command that can
- *        provide a coin to be refunded.
- * @param refund_transaction_id transaction id to use
- *        in the request.
- *
- * @return the command.
- */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_refund_with_id
-  (const char *label,
+TALER_TESTING_cmd_refund_with_id (
+  const char *label,
   unsigned int expected_response_code,
   const char *refund_amount,
   const char *coin_reference,

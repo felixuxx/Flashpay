@@ -2358,7 +2358,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (exchange_bank_account_url, const char *)                     \
   op (taler_uri, const char *)                                     \
   op (payto_uri, const char *)                                     \
-  op (row, const uint64_t)                                     \
+  op (row, const uint64_t)                                         \
+  op (array_length, const unsigned int)                            \
   op (credit_payto_uri, const char *)                              \
   op (debit_payto_uri, const char *)                               \
   op (order_id, const char *)                                      \
@@ -2367,6 +2368,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (deposit_fee_amount, const struct TALER_Amount)                           \
   op (batch_cmds, struct TALER_TESTING_Command *)                  \
   op (uuid, const struct GNUNET_Uuid)                              \
+  op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)            \
   op (claim_token, const struct TALER_ClaimTokenP)                 \
   op (relative_time, const struct GNUNET_TIME_Relative)            \
   op (process, struct GNUNET_OS_Process *)
@@ -2380,7 +2382,6 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (denom_sig, const struct TALER_DenominationSignature) \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
   op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \
-  op (fresh_coin, const struct TALER_TESTING_FreshCoinData)            \
   op (absolute_time, const struct GNUNET_TIME_Absolute)                \
   op (exchange_pub, const struct TALER_ExchangePublicKeyP)             \
   op (exchange_sig, const struct TALER_ExchangeSignatureP)             \

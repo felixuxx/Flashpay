@@ -134,7 +134,7 @@ offlinesign_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 offlinesign_traits (void *cls,
                     const void **ret,
                     const char *trait,
@@ -142,8 +142,7 @@ offlinesign_traits (void *cls,
 {
   struct OfflineSignState *ks = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0,
-                                      &ks->offlinesign_proc),
+    TALER_TESTING_make_trait_process (&ks->offlinesign_proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -154,15 +153,6 @@ offlinesign_traits (void *cls,
 }
 
 
-/**
- * Sign a wire fee.
- *
- * @param label command label.
- * @param config_filename configuration filename.
- * @param wire_fee the wire fee to affirm (for the current year)
- * @param closing_fee the closing fee to affirm (for the current year)
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_offline_sign_fees (const char *label,
                                           const char *config_filename,

@@ -289,8 +289,9 @@ do_shutdown (void *cls)
   for (unsigned int j = 0;
        NULL != (cmd = &is->commands[j])->label;
        j++)
-    cmd->cleanup (cmd->cls,
-                  cmd);
+    if (NULL != cmd->cleanup)
+      cmd->cleanup (cmd->cls,
+                    cmd);
 
   if (NULL != is->exchange)
   {

@@ -47,18 +47,6 @@ struct RewindIpState
 
 
 /**
- * Only defined to respect the API.
- */
-static void
-rewind_ip_cleanup (void *cls,
-                   const struct TALER_TESTING_Command *cmd)
-{
-  (void) cls;
-  (void) cmd;
-}
-
-
-/**
  * Seek for the @a target command in @a batch (and rewind to it
  * if successful).
  *
@@ -74,10 +62,10 @@ seek_batch (struct TALER_TESTING_Interpreter *is,
             const struct TALER_TESTING_Command *target)
 {
   unsigned int new_ip;
-  struct TALER_TESTING_Command *batch;
+  struct TALER_TESTING_Command **batch;
   struct TALER_TESTING_Command *current;
   struct TALER_TESTING_Command *icmd;
-  const struct TALER_TESTING_Command *match;
+  struct TALER_TESTING_Command *match;
 
   current = TALER_TESTING_cmd_batch_get_current (cmd);
   GNUNET_assert (GNUNET_OK ==
@@ -85,7 +73,7 @@ seek_batch (struct TALER_TESTING_Interpreter *is,
                                                      &batch));
   match = NULL;
   for (new_ip = 0;
-       NULL != (icmd = &batch[new_ip]);
+       NULL != (icmd = &(*batch)[new_ip]);
        new_ip++)
   {
     if (current == target)
@@ -201,8 +189,7 @@ TALER_TESTING_cmd_rewind_ip (const char *label,
     struct TALER_TESTING_Command cmd = {
       .cls = ris,
       .label = label,
-      .run = &rewind_ip_run,
-      .cleanup = &rewind_ip_cleanup
+      .run = &rewind_ip_run
     };
 
     return cmd;

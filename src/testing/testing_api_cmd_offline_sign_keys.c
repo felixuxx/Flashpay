@@ -121,7 +121,7 @@ offlinesign_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 offlinesign_traits (void *cls,
                     const void **ret,
                     const char *trait,
@@ -129,8 +129,7 @@ offlinesign_traits (void *cls,
 {
   struct OfflineSignState *ks = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0,
-                                      &ks->offlinesign_proc),
+    TALER_TESTING_make_trait_process (&ks->offlinesign_proc),
     TALER_TESTING_trait_end ()
   };
 

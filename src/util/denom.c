@@ -242,4 +242,23 @@ TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
 }
 
 
+int
+TALER_denom_sig_cmp (const struct TALER_DenominationSignature *sig1,
+                     const struct TALER_DenominationSignature *sig2)
+{
+  if (sig1->cipher != sig2->cipher)
+    return (sig1->cipher > sig2->cipher) ? 1 : -1;
+  switch (sig1->cipher)
+  {
+  case TALER_SIGINATION_RSA:
+    return GNUNET_CRYPTO_rsa_signature_cmp (sig1->details.rsa_signature,
+                                            sig2->details.rsa_signature);
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+  return -2;
+}
+
+
 /* end of denom.c */

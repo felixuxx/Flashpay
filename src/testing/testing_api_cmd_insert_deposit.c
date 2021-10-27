@@ -136,16 +136,19 @@ insert_deposit_run (void *cls,
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_MerchantPrivateKeyP merchant_priv;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
-  struct TALER_DenominationPublicKey dpk;
+  struct TALER_DenominationPublicKey dpk = {
+    .cipher = TALER_DENOMINATION_RSA
+  };
   struct GNUNET_CRYPTO_RsaPrivateKey *denom_priv;
   struct GNUNET_HashCode hc;
 
   // prepare and store issue first.
   fake_issue (&issue);
   denom_priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
-  dpk.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (denom_priv);
-  GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
-                                     &issue.properties.denom_hash);
+  dpk.details.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
+    denom_priv);
+  TALER_denom_pub_hash (&dpk,
+                        &issue.properties.denom_hash);
 
   if ( (GNUNET_OK !=
         ids->dbc->plugin->start (ids->dbc->plugin->cls,
@@ -177,7 +180,7 @@ insert_deposit_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv.eddsa_priv,
                                       &deposit.merchant_pub.eddsa_pub);
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &deposit.h_contract_terms);
+                                    &deposit.h_contract_terms.hash);
   if ( (GNUNET_OK !=
         TALER_string_to_amount (ids->amount_with_fee,
                                 &deposit.amount_with_fee)) ||
@@ -189,15 +192,17 @@ insert_deposit_run (void *cls,
     return;
   }
 
-  GNUNET_CRYPTO_rsa_public_key_hash (dpk.rsa_public_key,
-                                     &deposit.coin.denom_pub_hash);
+  TALER_denom_pub_hash (&dpk,
+                        &deposit.coin.denom_pub_hash);
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &deposit.coin.coin_pub,
                               sizeof (deposit.coin.coin_pub));
   GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
                                     &hc);
-  deposit.coin.denom_sig.rsa_signature = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv,
-                                                                     &hc);
+  deposit.coin.denom_sig.cipher = TALER_DENOMINATION_RSA;
+  deposit.coin.denom_sig.details.rsa_signature
+    = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv,
+                                  &hc);
   {
     char *str;
     struct TALER_WireSalt salt;
@@ -245,8 +250,8 @@ insert_deposit_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
   }
 
-  GNUNET_CRYPTO_rsa_signature_free (deposit.coin.denom_sig.rsa_signature);
-  GNUNET_CRYPTO_rsa_public_key_free (dpk.rsa_public_key);
+  TALER_denom_sig_free (&deposit.coin.denom_sig);
+  TALER_denom_pub_free (&dpk);
   GNUNET_CRYPTO_rsa_private_key_free (denom_priv);
   json_decref (deposit.receiver_wire_account);
 
@@ -271,43 +276,6 @@ insert_deposit_cleanup (void *cls,
 }
 
 
-/**
- * Offer "insert-deposit" CMD internal data to other commands.
- *
- * @param cls closure.
- * @param[out] ret result
- * @param trait name of the trait.
- * @param index index number of the object to offer.
- * @return #GNUNET_OK on success.
- */
-static int
-insert_deposit_traits (void *cls,
-                       const void **ret,
-                       const char *trait,
-                       unsigned int index)
-{
-  (void) cls;
-  (void) ret;
-  (void) trait;
-  (void) index;
-  return GNUNET_NO;
-}
-
-
-/**
- * Make the "insert-deposit" CMD.
- *
- * @param label command label.
- * @param dbc collects database plugin
- * @param merchant_name Human-readable name of the merchant.
- * @param merchant_account merchant's account name (NOT a payto:// URI)
- * @param exchange_timestamp when did the exchange receive the deposit
- * @param wire_deadline point in time where the aggregator should have
- *        wired money to the merchant.
- * @param amount_with_fee amount to deposit (inclusive of deposit fee)
- * @param deposit_fee deposit fee
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_insert_deposit (
   const char *label,
@@ -336,8 +304,7 @@ TALER_TESTING_cmd_insert_deposit (
       .cls = ids,
       .label = label,
       .run = &insert_deposit_run,
-      .cleanup = &insert_deposit_cleanup,
-      .traits = &insert_deposit_traits
+      .cleanup = &insert_deposit_cleanup
     };
 
     return cmd;

@@ -698,6 +698,18 @@ TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
 
 
 /**
+ * Compare two denomination signatures.
+ *
+ * @param sig1 first signature
+ * @param sig2 second signature
+ * @return 0 if the keys are equal, otherwise -1 or 1
+ */
+int
+TALER_denom_sig_cmp (const struct TALER_DenominationSignature *sig1,
+                     const struct TALER_DenominationSignature *sig2);
+
+
+/**
  * Obtain denomination public key from a denomination private key.
  *
  * @param denom_priv private key to convert

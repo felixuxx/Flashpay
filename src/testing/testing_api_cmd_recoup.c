@@ -81,7 +81,7 @@ struct RecoupState
  * @param[out] idx where we set $INDEX
  * @return #GNUNET_SYSERR if $INDEX is present but not numeric
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_coin_reference (const char *coin_reference,
                       char **cref,
                       unsigned int *idx)
@@ -198,7 +198,7 @@ recoup_cb (void *cls,
       }
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_coin_priv (melt_cmd,
-                                             0,
+                                             idx,
                                              &dirty_priv))
       {
         GNUNET_break (0);
@@ -227,7 +227,6 @@ recoup_cb (void *cls,
       }
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_priv (reserve_cmd,
-                                                idx,
                                                 &reserve_priv))
       {
         GNUNET_break (0);
@@ -398,7 +397,7 @@ recoup_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 recoup_traits (void *cls,
                const void **ret,
                const char *trait,
@@ -410,10 +409,8 @@ recoup_traits (void *cls,
     return GNUNET_SYSERR; /* no traits */
   {
     struct TALER_TESTING_Trait traits[] = {
-      TALER_TESTING_make_trait_reserve_pub (0,
-                                            &ps->reserve_pub),
-      TALER_TESTING_make_trait_reserve_history (0,
-                                                &ps->reserve_history),
+      TALER_TESTING_make_trait_reserve_pub (&ps->reserve_pub),
+      TALER_TESTING_make_trait_reserve_history (&ps->reserve_history),
       TALER_TESTING_trait_end ()
     };
 
@@ -425,17 +422,6 @@ recoup_traits (void *cls,
 }
 
 
-/**
- * Make a "recoup" command.
- *
- * @param label the command label
- * @param expected_response_code expected HTTP status code
- * @param coin_reference reference to any command which
- *        offers a coin & reserve private key.
- * @param melt_reference NULL if coin was not refreshed
- * @param amount how much do we expect to recoup?
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_recoup (const char *label,
                           unsigned int expected_response_code,

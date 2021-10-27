@@ -100,7 +100,7 @@ revoke_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 revoke_traits (void *cls,
                const void **ret,
                const char *trait,
@@ -110,8 +110,7 @@ revoke_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     /* Needed by the handler which waits the proc'
      * death and calls the next command */
-    TALER_TESTING_make_trait_process (0,
-                                      &rs->revoke_proc),
+    TALER_TESTING_make_trait_process (&rs->revoke_proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -183,16 +182,6 @@ revoke_run (void *cls,
 }
 
 
-/**
- * Make a "revoke" command.
- *
- * @param label the command label.
- * @param expected_response_code expected HTTP status code.
- * @param coin_reference reference to a CMD that will offer the
- *        denomination to revoke.
- * @param config_filename configuration file name.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_revoke (const char *label,
                           unsigned int expected_response_code,

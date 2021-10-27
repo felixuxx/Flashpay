@@ -93,7 +93,7 @@ struct RefreshMeltState
   /**
    * "Crypto data" used in the refresh operation.
    */
-  char *refresh_data;
+  json_t *refresh_data;
 
   /**
    * Reference to a previous melt command.
@@ -135,11 +135,6 @@ struct RefreshMeltState
    * How long did we wait in total for retries?
    */
   struct GNUNET_TIME_Relative total_backoff;
-
-  /**
-   * Number of bytes in @e refresh_data.
-   */
-  size_t refresh_data_length;
 
   /**
    * Amounts to be generated during melt.
@@ -419,8 +414,8 @@ reveal_cb (void *cls,
       }
       fc->coin_priv = coin_privs[i].coin_priv;
       fc->blinding_key = coin_privs[i].blinding_key;
-      fc->sig.rsa_signature = GNUNET_CRYPTO_rsa_signature_dup
-                                (sigs[i].rsa_signature);
+      TALER_denom_sig_deep_copy (&fc->sig,
+                                 &sigs[i]);
     }
     if (0 != rrs->total_backoff.rel_value_us)
     {
@@ -468,7 +463,6 @@ refresh_reveal_run (void *cls,
   }
   rms = melt_cmd->cls;
   rrs->rrh = TALER_EXCHANGE_refreshes_reveal (is->exchange,
-                                              rms->refresh_data_length,
                                               rms->refresh_data,
                                               rms->noreveal_index,
                                               &reveal_cb,
@@ -512,7 +506,7 @@ refresh_reveal_cleanup (void *cls,
   }
 
   for (unsigned int j = 0; j < rrs->num_fresh_coins; j++)
-    GNUNET_CRYPTO_rsa_signature_free (rrs->fresh_coins[j].sig.rsa_signature);
+    TALER_denom_sig_free (&rrs->fresh_coins[j].sig);
 
   GNUNET_free (rrs->fresh_coins);
   rrs->fresh_coins = NULL;
@@ -641,9 +635,8 @@ link_cb (void *cls,
   case MHD_HTTP_OK:
     /* check that number of coins returned matches */
     if (GNUNET_OK !=
-        TALER_TESTING_get_trait_uint (reveal_cmd,
-                                      0,
-                                      &num_fresh_coins))
+        TALER_TESTING_get_trait_array_length (reveal_cmd,
+                                              &num_fresh_coins))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rls->is);
@@ -672,11 +665,10 @@ link_cb (void *cls,
 
     /* Will point to the pointer inside the cmd state. */
     {
-      const struct TALER_TESTING_FreshCoinData *fc = NULL;
+      const struct TALER_TESTING_FreshCoinData **fc = NULL;
 
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_fresh_coins (reveal_cmd,
-                                               0,
                                                &fc))
       {
         GNUNET_break (0);
@@ -689,13 +681,13 @@ link_cb (void *cls,
         {
           if ( (0 ==
                 GNUNET_memcmp (&coin_privs[i],
-                               &fc[j].coin_priv)) &&
+                               &(*fc)[j].coin_priv)) &&
                (0 ==
-                GNUNET_CRYPTO_rsa_signature_cmp (fc[i].sig.rsa_signature,
-                                                 sigs[j].rsa_signature)) &&
+                TALER_denom_sig_cmp (&(*fc)[i].sig,
+                                     &sigs[j])) &&
                (0 ==
-                GNUNET_CRYPTO_rsa_public_key_cmp (fc[i].pk->key.rsa_public_key,
-                                                  pubs[j].rsa_public_key)) )
+                TALER_denom_pub_cmp (&(*fc)[i].pk->key,
+                                     &pubs[j])) )
           {
             found++;
             break;
@@ -944,7 +936,6 @@ melt_cb (void *cls,
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->is->commands[rms->is->ip].label);
     rms->rmh = TALER_EXCHANGE_melt (rms->is->exchange,
-                                    rms->refresh_data_length,
                                     rms->refresh_data,
                                     &melt_cb,
                                     rms);
@@ -1063,8 +1054,8 @@ melt_run (void *cls,
                                        &fresh_pk->fee_withdraw));
       rms->fresh_pks[i] = *fresh_pk;
       /* Make a deep copy of the RSA key */
-      rms->fresh_pks[i].key.rsa_public_key
-        = GNUNET_CRYPTO_rsa_public_key_dup (fresh_pk->key.rsa_public_key);
+      TALER_denom_pub_deep_copy (&rms->fresh_pks[i].key,
+                                 &fresh_pk->key);
     }
     rms->refresh_data
       = TALER_EXCHANGE_refresh_prepare (rms->melt_priv,
@@ -1072,9 +1063,7 @@ melt_run (void *cls,
                                         melt_sig,
                                         melt_denom_pub,
                                         num_fresh_coins,
-                                        rms->fresh_pks,
-                                        &rms->refresh_data_length);
-
+                                        rms->fresh_pks);
     if (NULL == rms->refresh_data)
     {
       GNUNET_break (0);
@@ -1082,7 +1071,6 @@ melt_run (void *cls,
       return;
     }
     rms->rmh = TALER_EXCHANGE_melt (is->exchange,
-                                    rms->refresh_data_length,
                                     rms->refresh_data,
                                     &melt_cb,
                                     rms);
@@ -1126,13 +1114,12 @@ melt_cleanup (void *cls,
   if (NULL != rms->fresh_pks)
   {
     for (unsigned int i = 0; i < rms->num_fresh_coins; i++)
-      GNUNET_CRYPTO_rsa_public_key_free (rms->fresh_pks[i].key.rsa_public_key);
+      TALER_denom_pub_free (&rms->fresh_pks[i].key);
   }
   GNUNET_free (rms->fresh_pks);
   rms->fresh_pks = NULL;
-  GNUNET_free (rms->refresh_data);
+  json_decref (rms->refresh_data);
   rms->refresh_data = NULL;
-  rms->refresh_data_length = 0;
   GNUNET_free (rms->melt_fresh_amounts);
   GNUNET_free (rms);
 }
@@ -1335,7 +1322,7 @@ TALER_TESTING_cmd_melt_with_retry (struct TALER_TESTING_Command cmd)
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 refresh_reveal_traits (void *cls,
                        const void **ret,
                        const char *trait,
@@ -1348,33 +1335,39 @@ refresh_reveal_traits (void *cls,
 
   /* Making coin privs traits */
   for (unsigned int i = 0; i<num_coins; i++)
-    traits[i] = TALER_TESTING_make_trait_coin_priv
-                  (i, &rrs->fresh_coins[i].coin_priv);
+    traits[i] = TALER_TESTING_make_trait_coin_priv (
+      i,
+      &rrs->fresh_coins[i].coin_priv);
 
   /* Making denom pubs traits */
   for (unsigned int i = 0; i<num_coins; i++)
     traits[num_coins + i]
-      = TALER_TESTING_make_trait_denom_pub
-          (i, rrs->fresh_coins[i].pk);
+      = TALER_TESTING_make_trait_denom_pub (
+          i,
+          rrs->fresh_coins[i].pk);
 
   /* Making denom sigs traits */
   for (unsigned int i = 0; i<num_coins; i++)
     traits[(num_coins * 2) + i]
-      = TALER_TESTING_make_trait_denom_sig
-          (i, &rrs->fresh_coins[i].sig);
+      = TALER_TESTING_make_trait_denom_sig (
+          i,
+          &rrs->fresh_coins[i].sig);
   /* blinding key traits */
   for (unsigned int i = 0; i<num_coins; i++)
     traits[(num_coins * 3) + i]
-      = TALER_TESTING_make_trait_blinding_key (i,
-                                               &rrs->fresh_coins[i].blinding_key),
+      = TALER_TESTING_make_trait_blinding_key (
+          i,
+          &rrs->fresh_coins[i].blinding_key);
 
-    /* number of fresh coins */
-    traits[(num_coins * 4)] = TALER_TESTING_make_trait_uint
-                                (0, &rrs->num_fresh_coins);
+  /* number of fresh coins */
+  traits[(num_coins * 4)]
+    = TALER_TESTING_make_trait_array_length (
+        &rrs->num_fresh_coins);
 
   /* whole array of fresh coins */
   traits[(num_coins * 4) + 1]
-    = TALER_TESTING_make_trait_fresh_coins (0, rrs->fresh_coins),
+    = TALER_TESTING_make_trait_fresh_coins (
+        (const struct TALER_TESTING_FreshCoinData **) &rrs->fresh_coins),
 
   /* end of traits */
   traits[(num_coins * 4) + 2] = TALER_TESTING_trait_end ();
@@ -1386,14 +1379,6 @@ refresh_reveal_traits (void *cls,
 }
 
 
-/**
- * Create a "refresh reveal" command.
- *
- * @param label command label.
- * @param melt_reference reference to a "refresh melt" command.
- * @param expected_response_code expected HTTP response code.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_reveal (const char *label,
                                   const char *melt_reference,
@@ -1418,12 +1403,6 @@ TALER_TESTING_cmd_refresh_reveal (const char *label,
 }
 
 
-/**
- * Modify a "refresh reveal" command to enable retries.
- *
- * @param cmd command
- * @return modified command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
 {
@@ -1436,14 +1415,6 @@ TALER_TESTING_cmd_refresh_reveal_with_retry (struct TALER_TESTING_Command cmd)
 }
 
 
-/**
- * Create a "refresh link" command.
- *
- * @param label command label.
- * @param reveal_reference reference to a "refresh reveal" CMD.
- * @param expected_response_code expected HTTP response code
- * @return the "refresh link" command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_link (const char *label,
                                 const char *reveal_reference,
@@ -1467,12 +1438,6 @@ TALER_TESTING_cmd_refresh_link (const char *label,
 }
 
 
-/**
- * Modify a "refresh link" command to enable retries.
- *
- * @param cmd command
- * @return modified command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refresh_link_with_retry (struct TALER_TESTING_Command cmd)
 {
