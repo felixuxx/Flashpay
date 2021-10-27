@@ -81,7 +81,7 @@ static struct GNUNET_SCHEDULER_Task *task;
 /**
  * Hash of the denomination.
  */
-static struct GNUNET_HashCode h_denom_pub;
+static struct TALER_DenominationHash h_denom_pub;
 
 /**
  * "signature" to use for the coin(s).
@@ -212,11 +212,7 @@ do_shutdown (void *cls)
     GNUNET_SCHEDULER_cancel (task);
     task = NULL;
   }
-  if (NULL !=denom_sig.rsa_signature)
-  {
-    GNUNET_CRYPTO_rsa_signature_free (denom_sig.rsa_signature);
-    denom_sig.rsa_signature = NULL;
-  }
+  TALER_denom_sig_free (&denom_sig);
   if (NULL != json_wire)
   {
     json_decref (json_wire);
@@ -240,7 +236,7 @@ struct Merchant
    * the exchange from the detailed wire data provided by the
    * merchant.
    */
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
 
 };
 
@@ -256,7 +252,7 @@ struct Deposit
    * Hash over the proposal data between merchant and customer
    * (remains unknown to the Exchange).
    */
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
 
 };
 
@@ -498,14 +494,16 @@ run (void *cls,
     struct GNUNET_CRYPTO_RsaPrivateKey *pk;
     struct GNUNET_CRYPTO_RsaPublicKey *pub;
     struct GNUNET_HashCode hc;
-    struct TALER_DenominationPublicKey denom_pub;
+    struct TALER_DenominationPublicKey denom_pub = {
+      .cipher = TALER_DENOMINATION_RSA
+    };
 
     RANDOMIZE (&hc);
     pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
     pub = GNUNET_CRYPTO_rsa_private_key_get_public (pk);
-    denom_pub.rsa_public_key = pub;
-    GNUNET_CRYPTO_rsa_public_key_hash (pub,
-                                       &h_denom_pub);
+    denom_pub.details.rsa_public_key = pub;
+    TALER_denom_pub_hash (&denom_pub,
+                          &h_denom_pub);
     make_amountN (2, 0, &issue.properties.value);
     make_amountN (0, 5, &issue.properties.fee_withdraw);
     make_amountN (0, 5, &issue.properties.fee_deposit);
@@ -522,8 +520,8 @@ run (void *cls,
       global_ret = EXIT_FAILURE;
       return;
     }
-
-    denom_sig.rsa_signature
+    denom_sig.cipher = TALER_DENOMINATION_RSA;
+    denom_sig.details.rsa_signature
       = GNUNET_CRYPTO_rsa_sign_fdh (pk,
                                     &hc);
     GNUNET_CRYPTO_rsa_public_key_free (pub);
