@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -310,7 +310,7 @@ transfer_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 transfer_traits (void *cls,
                  const void **ret,
                  const char *trait,
@@ -318,17 +318,16 @@ transfer_traits (void *cls,
 {
   struct TransferState *fts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BASE_URL,
-                                  fts->exchange_base_url),
+    TALER_TESTING_make_trait_exchange_url (
+      (const char **) &fts->exchange_base_url),
     TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-    TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
-                                    fts->payto_credit_account),
-    TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
-                                    fts->payto_debit_account),
-    TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
+    TALER_TESTING_make_trait_credit_payto_uri (
+      (const char **) &fts->payto_credit_account),
+    TALER_TESTING_make_trait_debit_payto_uri (
+      (const char **) &fts->payto_debit_account),
+    TALER_TESTING_make_trait_amount (&fts->amount),
     TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
-    TALER_TESTING_make_trait_wtid (0,
-                                   &fts->wtid),
+    TALER_TESTING_make_trait_wtid (&fts->wtid),
     TALER_TESTING_trait_end ()
   };
 
@@ -339,18 +338,6 @@ transfer_traits (void *cls,
 }
 
 
-/**
- * Create transfer command.
- *
- * @param label command label.
- * @param amount amount to transfer.
- * @param auth authentication data to use
- * @param payto_debit_account which account sends money.
- * @param payto_credit_account which account receives money.
- * @param wtid wire transfer identifier to use
- * @param exchange_base_url exchange URL to use
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_transfer (const char *label,
                             const char *amount,
@@ -394,13 +381,6 @@ TALER_TESTING_cmd_transfer (const char *label,
 }
 
 
-/**
- * Modify a transfer command to enable retries when the reserve is not yet
- * full or we get other transient errors from the bank.
- *
- * @param cmd a fakebank transfer command
- * @return the command with retries enabled
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_transfer_retry (struct TALER_TESTING_Command cmd)
 {

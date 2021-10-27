@@ -116,7 +116,7 @@ transfer_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 transfer_traits (void *cls,
                  const void **ret,
                  const char *trait,
@@ -124,7 +124,7 @@ transfer_traits (void *cls,
 {
   struct TransferState *as = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &as->transfer_proc),
+    TALER_TESTING_make_trait_process (&as->transfer_proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -135,14 +135,6 @@ transfer_traits (void *cls,
 }
 
 
-/**
- * Make a "transfer" CMD.
- *
- * @param label command label.
- * @param config_filename configuration file for the
- *                        transfer to use.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_transfer (const char *label,
                                  const char *config_filename)

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -201,8 +201,8 @@ deposit_confirmation_run (void *cls,
 {
   struct DepositConfirmationState *dcs = cls;
   const struct TALER_TESTING_Command *deposit_cmd;
-  struct GNUNET_HashCode h_wire;
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_MerchantWireHash h_wire;
+  struct TALER_PrivateContractHash h_contract_terms;
   const struct GNUNET_TIME_Absolute *exchange_timestamp = NULL;
   struct GNUNET_TIME_Absolute timestamp;
   struct GNUNET_TIME_Absolute refund_deadline;
@@ -251,7 +251,6 @@ deposit_confirmation_run (void *cls,
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_contract_terms (deposit_cmd,
-                                                         dcs->coin_index,
                                                          &contract_terms));
   /* Very unlikely to fail */
   GNUNET_assert (NULL != contract_terms);
@@ -260,7 +259,6 @@ deposit_confirmation_run (void *cls,
                                            &h_contract_terms));
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_wire_details (deposit_cmd,
-                                                       dcs->coin_index,
                                                        &wire_details));
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_merchant_wire_signature_hash (wire_details,
@@ -273,7 +271,6 @@ deposit_confirmation_run (void *cls,
                                       &coin_pub.eddsa_pub);
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_merchant_priv (deposit_cmd,
-                                                        dcs->coin_index,
                                                         &merchant_priv));
   GNUNET_CRYPTO_eddsa_key_get_public (&merchant_priv->eddsa_priv,
                                       &merchant_pub.eddsa_pub);
@@ -371,47 +368,6 @@ deposit_confirmation_cleanup (void *cls,
 }
 
 
-/**
- * Offer internal data to other commands.
- *
- * @param cls closure.
- * @param[out] ret set to the wanted data.
- * @param trait name of the trait.
- * @param index index number of the traits to be returned.
- *
- * @return #GNUNET_OK on success
- */
-static int
-deposit_confirmation_traits (void *cls,
-                             const void **ret,
-                             const char *trait,
-                             unsigned int index)
-{
-  (void) cls;
-  (void) ret;
-  (void) trait;
-  (void) index;
-  /* Must define this function because some callbacks
-   * look for certain traits on _all_ the commands. */
-  return GNUNET_SYSERR;
-}
-
-
-/**
- * Create a "deposit-confirmation" command.
- *
- * @param label command label.
- * @param auditor auditor connection.
- * @param deposit_reference reference to any operation that can
- *        provide a coin.
- * @param coin_index if @a deposit_reference offers an array of
- *        coins, this parameter selects which one in that array.
- *        This value is currently ignored, as only one-coin
- *        deposits are implemented.
- * @param amount_without_fee deposited amount without the fee
- * @param expected_response_code expected HTTP response code.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation (const char *label,
                                         struct TALER_AUDITOR_Handle *auditor,
@@ -434,8 +390,7 @@ TALER_TESTING_cmd_deposit_confirmation (const char *label,
       .cls = dcs,
       .label = label,
       .run = &deposit_confirmation_run,
-      .cleanup = &deposit_confirmation_cleanup,
-      .traits = &deposit_confirmation_traits
+      .cleanup = &deposit_confirmation_cleanup
     };
 
     return cmd;
@@ -443,13 +398,6 @@ TALER_TESTING_cmd_deposit_confirmation (const char *label,
 }
 
 
-/**
- * Modify a deposit confirmation command to enable retries when we get
- * transient errors from the auditor.
- *
- * @param cmd a deposit confirmation command
- * @return the command with retries enabled
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_confirmation_with_retry (
   struct TALER_TESTING_Command cmd)

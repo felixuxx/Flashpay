@@ -65,7 +65,7 @@ struct CloserState
   /**
    * Do we expect the command to actually close a reserve?
    */
-  int expect_close;
+  bool expect_close;
 };
 
 
@@ -93,7 +93,6 @@ closer_run (void *cls,
                                                      as->reserve_ref);
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_reserve_pub (rcmd,
-                                             0,
                                              &reserve_pubp))
     {
       GNUNET_break (0);
@@ -156,7 +155,7 @@ closer_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 closer_traits (void *cls,
                const void **ret,
                const char *trait,
@@ -164,15 +163,13 @@ closer_traits (void *cls,
 {
   struct CloserState *as = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &as->closer_proc),
+    TALER_TESTING_make_trait_process (&as->closer_proc),
     TALER_TESTING_trait_end ()
   };
   struct TALER_TESTING_Trait xtraits[] = {
-    TALER_TESTING_make_trait_process (0, &as->closer_proc),
-    TALER_TESTING_make_trait_reserve_pub (0,
-                                          &as->reserve_pub),
-    TALER_TESTING_make_trait_reserve_history (0,
-                                              &as->reserve_history),
+    TALER_TESTING_make_trait_process (&as->closer_proc),
+    TALER_TESTING_make_trait_reserve_pub (&as->reserve_pub),
+    TALER_TESTING_make_trait_reserve_history (&as->reserve_history),
     TALER_TESTING_trait_end ()
   };
 
@@ -185,22 +182,6 @@ closer_traits (void *cls,
 }
 
 
-/**
- * Make a "closer" CMD.  Note that it is right now not supported to run the
- * closer to close multiple reserves in combination with a subsequent reserve
- * status call, as we cannot generate the traits necessary for multiple closed
- * reserves.  You can work around this by using multiple closer commands, one
- * per reserve that is being closed.
- *
- * @param label command label.
- * @param config_filename configuration file for the
- *                        closer to use.
- * @param expected_amount amount we expect to see wired from a @a expected_reserve_ref
- * @param expected_fee closing fee we expect to see
- * @param expected_reserve_ref reference to a reserve we expect the closer to drain;
- *          NULL if we do not expect the closer to do anything
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_closer (const char *label,
                                const char *config_filename,
@@ -214,7 +195,7 @@ TALER_TESTING_cmd_exec_closer (const char *label,
   as->config_filename = config_filename;
   if (NULL != expected_reserve_ref)
   {
-    as->expect_close = GNUNET_YES;
+    as->expect_close = true;
     as->reserve_ref = expected_reserve_ref;
     if (GNUNET_OK !=
         TALER_string_to_amount (expected_amount,

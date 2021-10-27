@@ -1871,7 +1871,7 @@ TALER_TESTING_cmd_batch (const char *label,
  *
  * @return false if not, true if it is a batch command
  */
-int
+bool
 TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd);
 
 /**
@@ -2259,10 +2259,10 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   enum GNUNET_GenericReturnValue                          \
     TALER_TESTING_get_trait_ ## name (                    \
     const struct TALER_TESTING_Command *cmd,              \
-    const type **ret);                                    \
+    type **ret);                                          \
   struct TALER_TESTING_Trait                              \
     TALER_TESTING_make_trait_ ## name (                   \
-    const type * value);
+    type * value);
 
 
 /**
@@ -2273,8 +2273,9 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   enum GNUNET_GenericReturnValue                         \
     TALER_TESTING_get_trait_ ## name (                   \
     const struct TALER_TESTING_Command *cmd,             \
-    const type **ret)                                    \
+    type **ret)                                          \
   {                                                      \
+    if (NULL == cmd->traits) return GNUNET_SYSERR;       \
     return cmd->traits (cmd->cls,                        \
                         (const void **) ret,             \
                         TALER_S (name),                  \
@@ -2301,11 +2302,11 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
     TALER_TESTING_get_trait_ ## name (                    \
     const struct TALER_TESTING_Command *cmd,              \
     unsigned int index,                                   \
-    const type **ret);                                    \
+    type **ret);                                          \
   struct TALER_TESTING_Trait                              \
     TALER_TESTING_make_trait_ ## name (                   \
     unsigned int index,                                   \
-    const type * value);
+    type * value);
 
 
 /**
@@ -2317,8 +2318,9 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
     TALER_TESTING_get_trait_ ## name (                   \
     const struct TALER_TESTING_Command *cmd,             \
     unsigned int index,                                  \
-    const type **ret)                                    \
+    type **ret)                                          \
   {                                                      \
+    if (NULL == cmd->traits) return GNUNET_SYSERR;       \
     return cmd->traits (cmd->cls,                        \
                         (const void **) ret,             \
                         TALER_S (name),                  \
@@ -2327,7 +2329,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   struct TALER_TESTING_Trait                             \
     TALER_TESTING_make_trait_ ## name (                  \
     unsigned int index,                                  \
-    const type * value)                                  \
+    type * value)                                        \
   {                                                      \
     struct TALER_TESTING_Trait ret = {                   \
       .index = index,                                    \
@@ -2342,45 +2344,47 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
  * Call #op on all simple traits.
  */
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
-  op (exchange_pub, struct TALER_ExchangePublicKeyP)         \
-  op (bank_row, uint64_t)                                    \
-  op (reserve_priv, struct TALER_ReservePrivateKeyP) \
-  op (reserve_pub, struct TALER_ReservePublicKeyP)   \
-  op (exchange_sig, struct TALER_ExchangeSignatureP)         \
-  op (exchange_pub, struct TALER_ExchangePublicKeyP)         \
-  op (merchant_priv, struct TALER_MerchantPrivateKeyP)       \
-  op (merchant_pub, struct TALER_MerchantPublicKeyP)         \
-  op (wtid, struct TALER_WireTransferIdentifierRawP)         \
-  op (contract_terms, json_t)                                \
-  op (wire_details, json_t)                                  \
-  op (exchange_keys, json_t)                                 \
-  op (reserve_history, struct TALER_EXCHANGE_ReserveHistory) \
-  op (exchange_url, char *)                                  \
-  op (exchange_bank_account_url, char *)                     \
-  op (taler_uri, char *)                                     \
-  op (payto_uri, char *)                                     \
-  op (credit_payto_uri, char *)                              \
-  op (debit_payto_uri, char *)                               \
-  op (order_id, char *)                                      \
-  op (amount, struct TALER_Amount)                           \
-  op (cmd, struct TALER_TESTING_Command)                     \
-  op (uuid, struct GNUNET_Uuid)                              \
-  op (claim_token, struct TALER_ClaimTokenP)                 \
-  op (absolute_time, struct GNUNET_TIME_Absolute)            \
-  op (relative_time, struct GNUNET_TIME_Relative)            \
+  op (bank_row, const uint64_t)                                    \
+  op (reserve_priv, const struct TALER_ReservePrivateKeyP) \
+  op (reserve_pub, const struct TALER_ReservePublicKeyP)   \
+  op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
+  op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
+  op (wtid, const struct TALER_WireTransferIdentifierRawP)         \
+  op (contract_terms, const json_t)                                \
+  op (wire_details, const json_t)                                  \
+  op (exchange_keys, const json_t)                                 \
+  op (reserve_history, const struct TALER_EXCHANGE_ReserveHistory) \
+  op (exchange_url, const char *)                                  \
+  op (exchange_bank_account_url, const char *)                     \
+  op (taler_uri, const char *)                                     \
+  op (payto_uri, const char *)                                     \
+  op (row, const uint64_t)                                     \
+  op (credit_payto_uri, const char *)                              \
+  op (debit_payto_uri, const char *)                               \
+  op (order_id, const char *)                                      \
+  op (amount, const struct TALER_Amount)                           \
+  op (deposit_amount, const struct TALER_Amount)                           \
+  op (deposit_fee_amount, const struct TALER_Amount)                           \
+  op (batch_cmds, struct TALER_TESTING_Command *)                  \
+  op (uuid, const struct GNUNET_Uuid)                              \
+  op (claim_token, const struct TALER_ClaimTokenP)                 \
+  op (relative_time, const struct GNUNET_TIME_Relative)            \
   op (process, struct GNUNET_OS_Process *)
 
 
 /**
  * Call #op on all indexed traits.
  */
-#define TALER_TESTING_INDEXED_TRAITS(op)                          \
-  op (denom_pub, struct TALER_EXCHANGE_DenomPublicKey)         \
-  op (denom_sig, struct TALER_EXCHANGE_DenominationKeySignature)  \
-  op (coin_priv, struct TALER_CoinSpendPrivateKeyP)            \
-  op (coin_pub, struct TALER_CoinSpendPublicKeyP)              \
-  op (fresh_coin, struct TALER_TESTING_FreshCoinData)          \
-  op (blinding_key, struct TALER_DenominationBlindingKeyP)
+#define TALER_TESTING_INDEXED_TRAITS(op)                         \
+  op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
+  op (denom_sig, const struct TALER_DenominationSignature) \
+  op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
+  op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \
+  op (fresh_coin, const struct TALER_TESTING_FreshCoinData)            \
+  op (absolute_time, const struct GNUNET_TIME_Absolute)                \
+  op (exchange_pub, const struct TALER_ExchangePublicKeyP)             \
+  op (exchange_sig, const struct TALER_ExchangeSignatureP)             \
+  op (blinding_key, const struct TALER_DenominationBlindingKeyP)
 
 
 TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)

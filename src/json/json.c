@@ -325,7 +325,7 @@ forget (const json_t *in,
 
 enum GNUNET_GenericReturnValue
 TALER_JSON_contract_hash (const json_t *json,
-                          struct GNUNET_HashCode *hc)
+                          struct TALER_PrivateContractHash *hc)
 {
   enum GNUNET_GenericReturnValue ret;
   json_t *cjson;
@@ -339,7 +339,7 @@ TALER_JSON_contract_hash (const json_t *json,
     return ret;
   ret = dump_and_hash (cjson,
                        NULL,
-                       hc);
+                       &hc->hash);
   json_decref (cjson);
   return ret;
 }

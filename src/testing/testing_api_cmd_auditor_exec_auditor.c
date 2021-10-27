@@ -115,7 +115,7 @@ auditor_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 auditor_traits (void *cls,
                 const void **ret,
                 const char *trait,
@@ -123,7 +123,7 @@ auditor_traits (void *cls,
 {
   struct AuditorState *ks = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &ks->auditor_proc),
+    TALER_TESTING_make_trait_process (&ks->auditor_proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -134,13 +134,6 @@ auditor_traits (void *cls,
 }
 
 
-/**
- * Make the "exec-auditor" CMD.
- *
- * @param label command label.
- * @param config_filename configuration filename.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_auditor (const char *label,
                                 const char *config_filename)

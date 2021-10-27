@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -116,32 +116,6 @@ struct HistoryState
 
 
 /**
- * Offer internal data to other commands.
- *
- * @param cls closure.
- * @param[out] ret set to the wanted data.
- * @param trait name of the trait.
- * @param index index number of the traits to be returned.
- *
- * @return #GNUNET_OK on success
- */
-static int
-history_traits (void *cls,
-                const void **ret,
-                const char *trait,
-                unsigned int index)
-{
-  (void) cls;
-  (void) ret;
-  (void) trait;
-  (void) index;
-  /* Must define this function because some callbacks
-   * look for certain traits on _all_ the commands. */
-  return GNUNET_SYSERR;
-}
-
-
-/**
  * Log which history we expected.  Called when an error occurs.
  *
  * @param h what we expected.
@@ -207,13 +181,13 @@ build_history (struct TALER_TESTING_Interpreter *is,
       ("`%s': start row given via reference `%s'\n",
       TALER_TESTING_interpreter_get_current_label  (is),
       hs->start_row_reference);
-    add_incoming_cmd = TALER_TESTING_interpreter_lookup_command
-                         (is, hs->start_row_reference);
+    add_incoming_cmd = TALER_TESTING_interpreter_lookup_command (
+      is,
+      hs->start_row_reference);
     GNUNET_assert (NULL != add_incoming_cmd);
     GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_uint64 (add_incoming_cmd,
-                                                   0,
-                                                   &row_id_start));
+                   TALER_TESTING_get_trait_row (add_incoming_cmd,
+                                                &row_id_start));
   }
 
   GNUNET_assert (0 != hs->num_results);
@@ -255,11 +229,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
   {
     const struct TALER_TESTING_Command *cmd = &is->commands[off];
     const uint64_t *row_id;
-    const char *debit_account;
-    const char *credit_account;
+    const char **debit_account;
+    const char **credit_account;
     const struct TALER_Amount *amount;
     const struct TALER_WireTransferIdentifierRawP *wtid;
-    const char *exchange_base_url;
+    const char **exchange_base_url;
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Checking if command %s is relevant for debit history\n",
@@ -268,25 +242,20 @@ build_history (struct TALER_TESTING_Interpreter *is,
           TALER_TESTING_get_trait_bank_row (cmd,
                                             &row_id)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_payto (cmd,
-                                         TALER_TESTING_PT_DEBIT,
-                                         &debit_account)) ||
+          TALER_TESTING_get_trait_debit_payto_uri (cmd,
+                                                   &debit_account)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_payto (cmd,
-                                         TALER_TESTING_PT_CREDIT,
-                                         &credit_account)) ||
+          TALER_TESTING_get_trait_credit_payto_uri (cmd,
+                                                    &credit_account)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_amount_obj (cmd,
-                                              0,
-                                              &amount)) ||
+          TALER_TESTING_get_trait_amount (cmd,
+                                          &amount)) ||
          (GNUNET_OK !=
           TALER_TESTING_get_trait_wtid (cmd,
-                                        0,
                                         &wtid)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_url (cmd,
-                                       TALER_TESTING_UT_EXCHANGE_BASE_URL,
-                                       &exchange_base_url)) )
+          TALER_TESTING_get_trait_exchange_url (cmd,
+                                                &exchange_base_url)) )
       continue; /* not an event we care about */
     /* Seek "/history/outgoing" starting row.  */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -310,22 +279,22 @@ build_history (struct TALER_TESTING_Interpreter *is,
       break;
     }
     TALER_LOG_INFO ("Found history: %s->%s for account %s\n",
-                    debit_account,
-                    credit_account,
+                    *debit_account,
+                    *credit_account,
                     hs->account_url);
     /* found matching record, make sure we have room */
     if (pos == total)
       GNUNET_array_grow (h,
                          total,
                          pos * 2);
-    h[pos].c_url = GNUNET_strdup (credit_account);
-    h[pos].d_url = GNUNET_strdup (debit_account);
+    h[pos].c_url = GNUNET_strdup (*credit_account);
+    h[pos].d_url = GNUNET_strdup (*debit_account);
     h[pos].details.credit_account_uri = h[pos].c_url;
     h[pos].details.debit_account_uri = h[pos].d_url;
     h[pos].details.amount = *amount;
     h[pos].row_id = *row_id;
     h[pos].details.wtid = *wtid;
-    h[pos].details.exchange_base_url = exchange_base_url;
+    h[pos].details.exchange_base_url = *exchange_base_url;
     pos++;
   }
   GNUNET_assert (GNUNET_YES == ok);
@@ -350,7 +319,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
  * @param details the expected transaction details.
  * @return #GNUNET_OK if the transaction is what we expect.
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_result (struct History *h,
               uint64_t total,
               unsigned int off,
@@ -407,7 +376,7 @@ check_result (struct History *h,
  *        reply was not in JSON.
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 history_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
@@ -508,9 +477,8 @@ history_run (void *cls,
     if (NULL == history_cmd)
       TALER_TESTING_FAIL (is);
     if (GNUNET_OK !=
-        TALER_TESTING_get_trait_uint64 (history_cmd,
-                                        0,
-                                        &row_ptr))
+        TALER_TESTING_get_trait_row (history_cmd,
+                                     &row_ptr))
       TALER_TESTING_FAIL (is);
     else
       row_id = *row_ptr;
@@ -558,17 +526,6 @@ history_cleanup (void *cls,
 }
 
 
-/**
- * Make a "history" CMD.
- *
- * @param label command label.
- * @param auth login data to use
- * @param start_row_reference reference to a command that can
- *        offer a row identifier, to be used as the starting row
- *        to accept in the result.
- * @param num_results how many rows we want in the result.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_bank_debits (const char *label,
                                const struct TALER_BANK_AuthenticationData *auth,
@@ -588,8 +545,7 @@ TALER_TESTING_cmd_bank_debits (const char *label,
       .label = label,
       .cls = hs,
       .run = &history_run,
-      .cleanup = &history_cleanup,
-      .traits = &history_traits
+      .cleanup = &history_cleanup
     };
 
     return cmd;

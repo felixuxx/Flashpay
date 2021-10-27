@@ -383,7 +383,7 @@ TALER_JSON_spec_i18n_str (const char *name,
  */
 enum GNUNET_GenericReturnValue
 TALER_JSON_contract_hash (const json_t *json,
-                          struct GNUNET_HashCode *hc);
+                          struct TALER_PrivateContractHash *hc);
 
 
 /**

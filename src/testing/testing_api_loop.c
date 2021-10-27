@@ -66,7 +66,6 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
 
     if (TALER_TESTING_cmd_is_batch (cmd))
     {
-#define BATCH_INDEX 1
       struct TALER_TESTING_Command *batch;
       struct TALER_TESTING_Command *current;
       struct TALER_TESTING_Command *icmd;
@@ -74,9 +73,8 @@ TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
 
       current = TALER_TESTING_cmd_batch_get_current (cmd);
       GNUNET_assert (GNUNET_OK ==
-                     TALER_TESTING_get_trait_cmd (cmd,
-                                                  BATCH_INDEX,
-                                                  &batch));
+                     TALER_TESTING_get_trait_batch_cmds (cmd,
+                                                         &batch));
       /* We must do the loop forward, but we can find the last match */
       match = NULL;
       for (unsigned int j = 0;
@@ -120,15 +118,6 @@ TALER_TESTING_interpreter_get_fakebank (struct TALER_TESTING_Interpreter *is)
 }
 
 
-/**
- * Run tests starting the "fakebank" first.  The "fakebank"
- * is a C minimalist version of the human-oriented Python bank,
- * which is also part of the Taler project.
- *
- * @param is pointer to the interpreter state
- * @param commands the list of commands to execute
- * @param bank_url the url the fakebank is supposed to run on
- */
 void
 TALER_TESTING_run_with_fakebank (struct TALER_TESTING_Interpreter *is,
                                  struct TALER_TESTING_Command *commands,
@@ -166,9 +155,6 @@ static void
 interpreter_run (void *cls);
 
 
-/**
- * Current command is done, run the next one.
- */
 void
 TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
 {
@@ -203,11 +189,6 @@ TALER_TESTING_interpreter_next (struct TALER_TESTING_Interpreter *is)
 }
 
 
-/**
- * Current command failed, clean up and fail the test case.
- *
- * @param is interpreter of the test
- */
 void
 TALER_TESTING_interpreter_fail (struct TALER_TESTING_Interpreter *is)
 {
@@ -228,11 +209,6 @@ TALER_TESTING_interpreter_fail (struct TALER_TESTING_Interpreter *is)
 }
 
 
-/**
- * Create command array terminator.
- *
- * @return a end-command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_end (void)
 {
@@ -243,9 +219,6 @@ TALER_TESTING_cmd_end (void)
 }
 
 
-/**
- * Obtain current label.
- */
 const char *
 TALER_TESTING_interpreter_get_current_label (struct
                                              TALER_TESTING_Interpreter *is)
@@ -393,17 +366,8 @@ maint_child_death (void *cls)
   enum GNUNET_OS_ProcessStatusType type;
   unsigned long code;
 
-  if (TALER_TESTING_cmd_is_batch (cmd))
-  {
-    struct TALER_TESTING_Command *batch_cmd;
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_cmd (cmd,
-                                                0,
-                                                &batch_cmd));
-    cmd = batch_cmd;
-  }
-
+  while (TALER_TESTING_cmd_is_batch (cmd))
+    cmd = TALER_TESTING_cmd_batch_get_current (cmd);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Got SIGCHLD for `%s'.\n",
               cmd->label);
@@ -469,12 +433,6 @@ maint_child_death (void *cls)
 }
 
 
-/**
- * Wait until we receive SIGCHLD signal.
- * Then obtain the process trait of the current
- * command, wait on the the zombie and continue
- * with the next command.
- */
 void
 TALER_TESTING_wait_for_sigchld (struct TALER_TESTING_Interpreter *is)
 {
@@ -491,16 +449,6 @@ TALER_TESTING_wait_for_sigchld (struct TALER_TESTING_Interpreter *is)
 }
 
 
-/**
- * Run the testsuite.  Note, CMDs are copied into
- * the interpreter state because they are _usually_
- * defined into the "run" method that returns after
- * having scheduled the test interpreter.
- *
- * @param is the interpreter state
- * @param commands the list of command to execute
- * @param timeout how long to wait
- */
 void
 TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
                     struct TALER_TESTING_Command *commands,
@@ -530,15 +478,6 @@ TALER_TESTING_run2 (struct TALER_TESTING_Interpreter *is,
 }
 
 
-/**
- * Run the testsuite.  Note, CMDs are copied into
- * the interpreter state because they are _usually_
- * defined into the "run" method that returns after
- * having scheduled the test interpreter.
- *
- * @param is the interpreter state
- * @param commands the list of command to execute
- */
 void
 TALER_TESTING_run (struct TALER_TESTING_Interpreter *is,
                    struct TALER_TESTING_Command *commands)
@@ -597,16 +536,6 @@ sighandler_child_death (void)
 }
 
 
-/**
- * "Canonical" cert_cb used when we are connecting to the
- * Exchange.
- *
- * @param cls closure, typically, the "run" method containing
- *        all the commands to be run, and a closure for it.
- * @param hr HTTP response details
- * @param keys the exchange's keys.
- * @param compat protocol compatibility information.
- */
 void
 TALER_TESTING_cert_cb (void *cls,
                        const struct TALER_EXCHANGE_HttpResponse *hr,
@@ -875,25 +804,6 @@ load_urls (struct TALER_TESTING_Interpreter *is)
 }
 
 
-/**
- * Install signal handlers plus schedules the main wrapper
- * around the "run" method.
- *
- * @param main_cb the "run" method which contains all the
- *        commands.
- * @param main_cb_cls a closure for "run", typically NULL.
- * @param cfg configuration to use
- * @param exchanged exchange process handle: will be put in the
- *        state as some commands - e.g. revoke - need to send
- *        signal to it, for example to let it know to reload the
- *        key state.. if NULL, the interpreter will run without
- *        trying to connect to the exchange first.
- * @param exchange_connect #GNUNET_YES if the test should connect
- *        to the exchange, #GNUNET_NO otherwise
- * @return #GNUNET_OK if all is okay, != #GNUNET_OK otherwise.
- *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
- *         times.
- */
 int
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls,

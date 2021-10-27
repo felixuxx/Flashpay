@@ -28,46 +28,6 @@
 
 
 /**
- * Cleanup the state from a "stat service" CMD.
- *
- * @param cls closure.
- * @param cmd the command which is being cleaned up.
- */
-static void
-stat_cleanup (void *cls,
-              const struct TALER_TESTING_Command *cmd)
-{
-  (void) cls;
-  (void) cmd;
-  /* nothing to clean.  */
-}
-
-
-/**
- * No traits to offer, just provide a stub to be called when
- * some CMDs iterates through the list of all the commands.
- *
- * @param cls closure.
- * @param[out] ret result.
- * @param trait name of the trait.
- * @param index index number of the trait to return.
- * @return #GNUNET_OK on success.
- */
-static int
-stat_traits (void *cls,
-             const void **ret,
-             const char *trait,
-             unsigned int index)
-{
-  (void) cls;
-  (void) ret;
-  (void) trait;
-  (void) index;
-  return GNUNET_NO;
-}
-
-
-/**
  * Add the time @a cmd took to the respective duration in @a timings.
  *
  * @param timings where to add up times
@@ -123,19 +83,19 @@ do_stat (struct TALER_TESTING_Timer *timings,
 {
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
-#define BATCH_INDEX 1
     struct TALER_TESTING_Command *bcmd;
 
     if (GNUNET_OK !=
-        TALER_TESTING_get_trait_cmd (cmd,
-                                     BATCH_INDEX,
-                                     &bcmd))
+        TALER_TESTING_get_trait_batch_cmds (cmd,
+                                            &bcmd))
     {
       GNUNET_break (0);
       return;
     }
 
-    for (unsigned int j = 0; NULL != bcmd[j].label; j++)
+    for (unsigned int j = 0;
+         NULL != bcmd[j].label;
+         j++)
       do_stat (timings,
                &bcmd[j]);
   }
@@ -172,20 +132,12 @@ stat_run (void *cls,
 }
 
 
-/**
- * Obtain performance data from the interpreter.
- *
- * @param timers what commands (by label) to obtain runtimes for
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_stat (struct TALER_TESTING_Timer *timers)
 {
   struct TALER_TESTING_Command cmd = {
     .label = "stat",
     .run = stat_run,
-    .cleanup = stat_cleanup,
-    .traits = stat_traits,
     .cls = (void *) timers
   };
 

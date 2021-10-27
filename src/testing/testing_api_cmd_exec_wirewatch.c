@@ -46,6 +46,7 @@ struct WirewatchState
   const char *config_filename;
 };
 
+
 /**
  * Run the command; use the `taler-exchange-wirewatch' program.
  *
@@ -115,7 +116,7 @@ wirewatch_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 wirewatch_traits (void *cls,
                   const void **ret,
                   const char *trait,
@@ -123,8 +124,7 @@ wirewatch_traits (void *cls,
 {
   struct WirewatchState *ws = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0,
-                                      &ws->wirewatch_proc),
+    TALER_TESTING_make_trait_process (&ws->wirewatch_proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -135,13 +135,6 @@ wirewatch_traits (void *cls,
 }
 
 
-/**
- * Make a "wirewatch" CMD.
- *
- * @param label command label.
- * @param config_filename configuration filename.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_wirewatch (const char *label,
                                   const char *config_filename)

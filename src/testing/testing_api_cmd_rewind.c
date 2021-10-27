@@ -68,13 +68,12 @@ rewind_ip_cleanup (void *cls,
  * @return #GNUNET_OK on success, #GNUNET_NO if target was not found,
  *         #GNUNET_SYSERR if target is in the future and we failed
  */
-static int
+static enum GNUNET_GenericReturnValue
 seek_batch (struct TALER_TESTING_Interpreter *is,
             const struct TALER_TESTING_Command *cmd,
             const struct TALER_TESTING_Command *target)
 {
   unsigned int new_ip;
-#define BATCH_INDEX 1
   struct TALER_TESTING_Command *batch;
   struct TALER_TESTING_Command *current;
   struct TALER_TESTING_Command *icmd;
@@ -82,9 +81,8 @@ seek_batch (struct TALER_TESTING_Interpreter *is,
 
   current = TALER_TESTING_cmd_batch_get_current (cmd);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_cmd (cmd,
-                                              BATCH_INDEX,
-                                              &batch));
+                 TALER_TESTING_get_trait_batch_cmds (cmd,
+                                                     &batch));
   match = NULL;
   for (new_ip = 0;
        NULL != (icmd = &batch[new_ip]);
@@ -189,15 +187,6 @@ rewind_ip_run (void *cls,
 }
 
 
-/**
- * Make the instruction pointer point to @a new_ip
- * only if @a counter is greater than zero.
- *
- * @param label command label
- * @param target_label label of the new instruction pointer's destination after the jump;
- *                     must be before the current instruction
- * @param counter counts how many times the rewinding is to happen.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_rewind_ip (const char *label,
                              const char *target_label,

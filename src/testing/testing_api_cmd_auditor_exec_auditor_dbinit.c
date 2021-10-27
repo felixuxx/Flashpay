@@ -124,7 +124,7 @@ auditor_dbinit_traits (void *cls,
 {
   struct AuditorDbinitState *ks = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_process (0, &ks->auditor_dbinit_proc),
+    TALER_TESTING_make_trait_process (&ks->auditor_dbinit_proc),
     TALER_TESTING_trait_end ()
   };
 
@@ -135,13 +135,6 @@ auditor_dbinit_traits (void *cls,
 }
 
 
-/**
- * Make the "exec-auditor-dbinit" CMD.
- *
- * @param label command label.
- * @param config_filename configuration filename.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_auditor_dbinit (const char *label,
                                        const char *config_filename)

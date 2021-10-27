@@ -128,7 +128,6 @@ deposit_wtid_cb (void *cls,
 
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_wtid (bank_transfer_cmd,
-                                        0,
                                         &wtid_want))
       {
         GNUNET_break (0);
@@ -178,8 +177,8 @@ track_transaction_run (void *cls,
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const json_t *contract_terms;
   const json_t *wire_details;
-  struct GNUNET_HashCode h_wire_details;
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_MerchantWireHash h_wire_details;
+  struct TALER_PrivateContractHash h_contract_terms;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
 
   (void) cmd;
@@ -210,7 +209,6 @@ track_transaction_run (void *cls,
   /* Get the strings.. */
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_wire_details (transaction_cmd,
-                                            0,
                                             &wire_details))
   {
     GNUNET_break (0);
@@ -220,7 +218,6 @@ track_transaction_run (void *cls,
 
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_contract_terms (transaction_cmd,
-                                              0,
                                               &contract_terms))
   {
     GNUNET_break (0);
@@ -247,7 +244,6 @@ track_transaction_run (void *cls,
 
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_merchant_priv (transaction_cmd,
-                                             0,
                                              &merchant_priv))
   {
     GNUNET_break (0);
@@ -301,7 +297,7 @@ track_transaction_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 track_transaction_traits (void *cls,
                           const void **ret,
                           const char *trait,
@@ -309,7 +305,7 @@ track_transaction_traits (void *cls,
 {
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_wtid (0, &tts->wtid),
+    TALER_TESTING_make_trait_wtid (&tts->wtid),
     TALER_TESTING_trait_end ()
   };
 

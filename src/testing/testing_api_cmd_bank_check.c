@@ -74,6 +74,7 @@ struct BankCheckState
   const char *deposit_reference;
 };
 
+
 /**
  * Run the command.
  *
@@ -90,17 +91,17 @@ check_bank_transfer_run (void *cls,
   struct TALER_Amount amount;
   char *debit_account;
   char *credit_account;
-  const char *exchange_base_url;
-  const char *debit_payto;
-  const char *credit_payto;
+  const char **exchange_base_url;
+  const char **debit_payto;
+  const char **credit_payto;
 
   (void) cmd;
   if (NULL == bcs->deposit_reference)
   {
     TALER_LOG_INFO ("Deposit reference NOT given\n");
-    debit_payto = bcs->debit_payto;
-    credit_payto = bcs->credit_payto;
-    exchange_base_url = bcs->exchange_base_url;
+    debit_payto = &bcs->debit_payto;
+    credit_payto = &bcs->credit_payto;
+    exchange_base_url = &bcs->exchange_base_url;
 
     if (GNUNET_OK !=
         TALER_string_to_amount (bcs->amount,
@@ -130,37 +131,33 @@ check_bank_transfer_run (void *cls,
     if (NULL == deposit_cmd)
       TALER_TESTING_FAIL (is);
     if ( (GNUNET_OK !=
-          TALER_TESTING_get_trait_amount_obj (deposit_cmd,
-                                              0,
-                                              &amount_ptr)) ||
+          TALER_TESTING_get_trait_amount (deposit_cmd,
+                                          &amount_ptr)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_payto (deposit_cmd,
-                                         TALER_TESTING_PT_DEBIT,
-                                         &debit_payto)) ||
+          TALER_TESTING_get_trait_debit_payto_uri (deposit_cmd,
+                                                   &debit_payto)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_payto (deposit_cmd,
-                                         TALER_TESTING_PT_CREDIT,
-                                         &credit_payto)) ||
+          TALER_TESTING_get_trait_credit_payto_uri (deposit_cmd,
+                                                    &credit_payto)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_url (deposit_cmd,
-                                       TALER_TESTING_UT_EXCHANGE_BASE_URL,
-                                       &exchange_base_url)) )
+          TALER_TESTING_get_trait_exchange_url (deposit_cmd,
+                                                &exchange_base_url)) )
       TALER_TESTING_FAIL (is);
     amount = *amount_ptr;
   }
 
 
-  debit_account = TALER_xtalerbank_account_from_payto (debit_payto);
-  credit_account = TALER_xtalerbank_account_from_payto (credit_payto);
+  debit_account = TALER_xtalerbank_account_from_payto (*debit_payto);
+  credit_account = TALER_xtalerbank_account_from_payto (*credit_payto);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "converted debit_payto (%s) to debit_account (%s)\n",
-              debit_payto,
+              *debit_payto,
               debit_account);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "converted credit_payto (%s) to credit_account (%s)\n",
-              credit_payto,
+              *credit_payto,
               credit_account);
 
   if (GNUNET_OK !=
@@ -168,7 +165,7 @@ check_bank_transfer_run (void *cls,
                                   &amount,
                                   debit_account,
                                   credit_account,
-                                  exchange_base_url,
+                                  *exchange_base_url,
                                   &bcs->wtid))
   {
     GNUNET_break (0);
@@ -209,7 +206,7 @@ check_bank_transfer_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_bank_transfer_traits (void *cls,
                             const void **ret,
                             const char *trait,
@@ -218,10 +215,9 @@ check_bank_transfer_traits (void *cls,
   struct BankCheckState *bcs = cls;
   struct TALER_WireTransferIdentifierRawP *wtid_ptr = &bcs->wtid;
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_wtid (0,
-                                   wtid_ptr),
-    TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BASE_URL,
-                                  bcs->exchange_base_url),
+    TALER_TESTING_make_trait_wtid (wtid_ptr),
+    TALER_TESTING_make_trait_exchange_url (
+      &bcs->exchange_base_url),
     TALER_TESTING_trait_end ()
   };
 

@@ -146,7 +146,7 @@ history_entry_cmp (const struct TALER_EXCHANGE_ReserveHistory *h1,
  * @param[in,out] found array to update
  * @return #GNUNET_OK if @a cmd action on reserve was found in @a history
  */
-static int
+static enum GNUNET_GenericReturnValue
 analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
                  const struct TALER_TESTING_Command *cmd,
                  unsigned int history_length,
@@ -155,15 +155,13 @@ analyze_command (const struct TALER_ReservePublicKeyP *reserve_pub,
 {
   if (TALER_TESTING_cmd_is_batch (cmd))
   {
-#define BATCH_INDEX 1
     struct TALER_TESTING_Command *cur;
     struct TALER_TESTING_Command *bcmd;
 
     cur = TALER_TESTING_cmd_batch_get_current (cmd);
     if (GNUNET_OK !=
-        TALER_TESTING_get_trait_cmd (cmd,
-                                     BATCH_INDEX,
-                                     &bcmd))
+        TALER_TESTING_get_trait_batch_cmds (cmd,
+                                            &bcmd))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -388,16 +386,6 @@ status_cleanup (void *cls,
 }
 
 
-/**
- * Create a "reserve status" command.
- *
- * @param label the command label.
- * @param reserve_reference reference to the reserve to check.
- * @param expected_balance expected balance for the reserve.
- * @param expected_response_code expected HTTP response code.
- *
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_status (const char *label,
                           const char *reserve_reference,

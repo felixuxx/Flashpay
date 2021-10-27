@@ -95,7 +95,6 @@ check_bank_admin_transfer_run (void *cls,
   }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_reserve_pub (cmd_ref,
-                                           0,
                                            &reserve_pub))
   {
     GNUNET_break (0);
@@ -160,33 +159,6 @@ check_bank_admin_transfer_cleanup (void *cls,
 
 
 /**
- * Offer internal data from a "bank admin check" CMD state.
- *
- * @param cls closure.
- * @param[out] ret result.
- * @param trait name of the trait.
- * @param index index number of the object to offer.
- * @return #GNUNET_OK on success.
- */
-static int
-check_bank_admin_transfer_traits (void *cls,
-                                  const void **ret,
-                                  const char *trait,
-                                  unsigned int index)
-{
-  struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_trait_end ()
-  };
-
-  (void) cls;
-  return TALER_TESTING_get_trait (traits,
-                                  ret,
-                                  trait,
-                                  index);
-}
-
-
-/**
  * Make a "bank check" CMD.  It checks whether a particular wire transfer to
  * the exchange (credit) has been made or not.
  *
@@ -217,8 +189,7 @@ TALER_TESTING_cmd_check_bank_admin_transfer
       .label = label,
       .cls = bcs,
       .run = &check_bank_admin_transfer_run,
-      .cleanup = &check_bank_admin_transfer_cleanup,
-      .traits = &check_bank_admin_transfer_traits
+      .cleanup = &check_bank_admin_transfer_cleanup
     };
 
     return cmd;

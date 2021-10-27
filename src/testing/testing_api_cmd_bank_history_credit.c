@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -93,10 +93,10 @@ struct HistoryState
   uint64_t results_obtained;
 
   /**
-   * Set to GNUNET_YES if the callback detects something
+   * Set to true if the callback detects something
    * unexpected.
    */
-  int failed;
+  bool failed;
 
   /**
    * Expected history.
@@ -109,32 +109,6 @@ struct HistoryState
   unsigned int total;
 
 };
-
-
-/**
- * Offer internal data to other commands.
- *
- * @param cls closure.
- * @param[out] ret set to the wanted data.
- * @param trait name of the trait.
- * @param index index number of the traits to be returned.
- *
- * @return #GNUNET_OK on success
- */
-static int
-history_traits (void *cls,
-                const void **ret,
-                const char *trait,
-                unsigned int index)
-{
-  (void) cls;
-  (void) ret;
-  (void) trait;
-  (void) index;
-  /* Must define this function because some callbacks
-   * look for certain traits on _all_ the commands. */
-  return GNUNET_SYSERR;
-}
 
 
 /**
@@ -210,9 +184,8 @@ build_history (struct TALER_TESTING_Interpreter *is,
                                                   hs->start_row_reference);
     GNUNET_assert (NULL != add_incoming_cmd);
     GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_uint64 (add_incoming_cmd,
-                                                   0,
-                                                   &row_id_start));
+                   TALER_TESTING_get_trait_row (add_incoming_cmd,
+                                                &row_id_start));
   }
 
   GNUNET_assert (0 != hs->num_results);
@@ -249,11 +222,11 @@ build_history (struct TALER_TESTING_Interpreter *is,
   {
     const struct TALER_TESTING_Command *cmd = &is->commands[off];
     const uint64_t *row_id;
-    const char *credit_account;
-    const char *debit_account;
+    const char **credit_account;
+    const char **debit_account;
     const struct TALER_Amount *amount;
     const struct TALER_ReservePublicKeyP *reserve_pub;
-    const char *exchange_credit_url;
+    const char **exchange_credit_url;
 
     /* The following command allows us to skip over those CMDs
      * that do not offer a "row_id" trait.  Such skipped CMDs are
@@ -262,25 +235,21 @@ build_history (struct TALER_TESTING_Interpreter *is,
           TALER_TESTING_get_trait_bank_row (cmd,
                                             &row_id)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_payto (cmd,
-                                         TALER_TESTING_PT_CREDIT,
-                                         &credit_account)) ||
+          TALER_TESTING_get_trait_credit_payto_uri (cmd,
+                                                    &credit_account)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_payto (cmd,
-                                         TALER_TESTING_PT_DEBIT,
-                                         &debit_account)) ||
+          TALER_TESTING_get_trait_debit_payto_uri (cmd,
+                                                   &debit_account)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_amount_obj (cmd,
-                                              0,
-                                              &amount)) ||
+          TALER_TESTING_get_trait_amount (cmd,
+                                          &amount)) ||
          (GNUNET_OK !=
           TALER_TESTING_get_trait_reserve_pub (cmd,
-                                               0,
                                                &reserve_pub)) ||
          (GNUNET_OK !=
-          TALER_TESTING_get_trait_url (cmd,
-                                       TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
-                                       &exchange_credit_url)) )
+          TALER_TESTING_get_trait_exchange_bank_account_url (
+            cmd,
+            &exchange_credit_url)) )
       continue; /* not an interesting event */
     /* Seek "/history/incoming" starting row.  */
     if ( (NULL != row_id_start) &&
@@ -295,7 +264,7 @@ build_history (struct TALER_TESTING_Interpreter *is,
     if (GNUNET_NO == ok)
       continue; /* skip until we find the marker */
     if (0 != strcasecmp (hs->account_url,
-                         exchange_credit_url))
+                         *exchange_credit_url))
       continue; /* account mismatch */
     if (total >= GNUNET_MAX (hs->num_results,
                              -hs->num_results) )
@@ -304,20 +273,20 @@ build_history (struct TALER_TESTING_Interpreter *is,
       break;
     }
     TALER_LOG_INFO ("Found history: %s->%s for account %s\n",
-                    debit_account,
-                    credit_account,
+                    *debit_account,
+                    *credit_account,
                     hs->account_url);
     /* found matching record, make sure we have room */
     if (pos == total)
       GNUNET_array_grow (h,
                          total,
                          pos * 2);
-    h[pos].url = GNUNET_strdup (debit_account);
+    h[pos].url = GNUNET_strdup (*debit_account);
     h[pos].details.debit_account_uri = h[pos].url;
     h[pos].details.amount = *amount;
     h[pos].row_id = *row_id;
     h[pos].details.reserve_pub = *reserve_pub;
-    h[pos].details.credit_account_uri = exchange_credit_url;
+    h[pos].details.credit_account_uri = *exchange_credit_url;
     pos++;
   }
   GNUNET_assert (GNUNET_YES == ok);
@@ -405,7 +374,7 @@ check_result (struct History *h,
  *        reply was not in JSON.
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 history_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
@@ -421,7 +390,7 @@ history_cb (void *cls,
   {
     hs->hh = NULL;
     if ( (hs->results_obtained != hs->total) ||
-         (GNUNET_YES == hs->failed) ||
+         (hs->failed) ||
          (MHD_HTTP_NO_CONTENT != http_status) )
     {
       GNUNET_break (0);
@@ -432,7 +401,7 @@ history_cb (void *cls,
                   (unsigned long long) hs->results_obtained,
                   http_status,
                   (int) ec,
-                  hs->failed);
+                  hs->failed ? 1 : 0);
       print_expected (hs->h,
                       hs->total,
                       UINT_MAX);
@@ -469,7 +438,7 @@ history_cb (void *cls,
                 acc);
     if (NULL != acc)
       free (acc);
-    hs->failed = GNUNET_YES;
+    hs->failed = true;
     return GNUNET_SYSERR;
   }
   hs->results_obtained++;
@@ -499,16 +468,15 @@ history_run (void *cls,
   {
     const struct TALER_TESTING_Command *history_cmd;
 
-    history_cmd = TALER_TESTING_interpreter_lookup_command
-                    (is, hs->start_row_reference);
-
+    history_cmd = TALER_TESTING_interpreter_lookup_command (
+      is,
+      hs->start_row_reference);
     if (NULL == history_cmd)
       TALER_TESTING_FAIL (is);
 
     if (GNUNET_OK !=
-        TALER_TESTING_get_trait_uint64 (history_cmd,
-                                        0,
-                                        &row_ptr))
+        TALER_TESTING_get_trait_row (history_cmd,
+                                     &row_ptr))
       TALER_TESTING_FAIL (is);
     else
       row_id = *row_ptr;
@@ -574,8 +542,7 @@ TALER_TESTING_cmd_bank_credits (
       .label = label,
       .cls = hs,
       .run = &history_run,
-      .cleanup = &history_cleanup,
-      .traits = &history_traits
+      .cleanup = &history_cleanup
     };
 
     return cmd;

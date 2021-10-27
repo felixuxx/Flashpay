@@ -108,7 +108,7 @@ auditor_add_run (void *cls,
 {
   struct AuditorAddDenomSigState *ds = cls;
   struct TALER_AuditorSignatureP auditor_sig;
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
 
   (void) cmd;
@@ -202,26 +202,6 @@ auditor_add_cleanup (void *cls,
 }
 
 
-/**
- * Offer internal data from a "auditor_add" CMD, to other commands.
- *
- * @param cls closure.
- * @param[out] ret result.
- * @param trait name of the trait.
- * @param index index number of the object to offer.
- *
- * @return #GNUNET_OK on success.
- */
-static int
-auditor_add_traits (void *cls,
-                    const void **ret,
-                    const char *trait,
-                    unsigned int index)
-{
-  return GNUNET_NO;
-}
-
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
                                          unsigned int expected_http_status,
@@ -239,8 +219,7 @@ TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
       .cls = ds,
       .label = label,
       .run = &auditor_add_run,
-      .cleanup = &auditor_add_cleanup,
-      .traits = &auditor_add_traits
+      .cleanup = &auditor_add_cleanup
     };
 
     return cmd;

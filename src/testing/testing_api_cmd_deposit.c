@@ -287,7 +287,7 @@ deposit_run (void *cls,
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_TIME_Absolute wire_deadline;
   struct TALER_MerchantPublicKeyP merchant_pub;
-  struct GNUNET_HashCode h_contract_terms;
+  struct TALER_PrivateContractHash h_contract_terms;
   enum TALER_ErrorCode ec;
 
   (void) cmd;
@@ -333,7 +333,6 @@ deposit_run (void *cls,
     }
     if ( (GNUNET_OK !=
           TALER_TESTING_get_trait_merchant_priv (cmd,
-                                                 0,
                                                  &merchant_priv)) )
     {
       GNUNET_break (0);
@@ -393,7 +392,7 @@ deposit_run (void *cls,
                                       &merchant_pub.eddsa_pub);
   (void) GNUNET_TIME_round_abs (&wire_deadline);
   {
-    struct GNUNET_HashCode h_wire;
+    struct TALER_MerchantWireHash h_wire;
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
@@ -402,6 +401,7 @@ deposit_run (void *cls,
                                             &denom_pub->fee_deposit,
                                             &h_wire,
                                             &h_contract_terms,
+                                            NULL, /* FIXME: extension hash! */
                                             &denom_pub->h_key,
                                             coin_priv,
                                             ds->wallet_timestamp,
@@ -414,6 +414,7 @@ deposit_run (void *cls,
                                    wire_deadline,
                                    ds->wire_details,
                                    &h_contract_terms,
+                                   NULL, /* FIXME: extension object */
                                    &coin_pub,
                                    denom_pub_sig,
                                    &denom_pub->key,
@@ -476,10 +477,9 @@ deposit_cleanup (void *cls,
  * @param[out] ret result.
  * @param trait name of the trait.
  * @param index index number of the object to offer.
- *
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 deposit_traits (void *cls,
                 const void **ret,
                 const char *trait,
@@ -519,25 +519,16 @@ deposit_traits (void *cls,
     struct TALER_TESTING_Trait traits[] = {
       /* First two traits are only available if
          ds->traits is #GNUNET_YES */
-      TALER_TESTING_make_trait_exchange_pub (0,
-                                             &ds->exchange_pub),
-      TALER_TESTING_make_trait_exchange_sig (0,
-                                             &ds->exchange_sig),
+      TALER_TESTING_make_trait_exchange_pub (0, &ds->exchange_pub),
+      TALER_TESTING_make_trait_exchange_sig (0, &ds->exchange_sig),
       /* These traits are always available */
       TALER_TESTING_make_trait_coin_priv (0,
                                           coin_spent_priv),
-      TALER_TESTING_make_trait_wire_details (0,
-                                             ds->wire_details),
-      TALER_TESTING_make_trait_contract_terms (0,
-                                               ds->contract_terms),
-      TALER_TESTING_make_trait_merchant_priv (0,
-                                              &ds->merchant_priv),
-      TALER_TESTING_make_trait_amount_obj (
-        TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_VALUE,
-        &ds->amount),
-      TALER_TESTING_make_trait_amount_obj (
-        TALER_TESTING_CMD_DEPOSIT_TRAIT_IDX_DEPOSIT_FEE,
-        &ds->deposit_fee),
+      TALER_TESTING_make_trait_wire_details (ds->wire_details),
+      TALER_TESTING_make_trait_contract_terms (ds->contract_terms),
+      TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),
+      TALER_TESTING_make_trait_deposit_amount (&ds->amount),
+      TALER_TESTING_make_trait_deposit_fee_amount (&ds->deposit_fee),
       TALER_TESTING_make_trait_absolute_time (0,
                                               &ds->exchange_timestamp),
       TALER_TESTING_trait_end ()

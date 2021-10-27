@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018-2020 Taler Systems SA
+  Copyright (C) 2018-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it
   under the terms of the GNU General Public License as published by
@@ -326,11 +326,9 @@ admin_add_incoming_run (void *cls,
     }
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_reserve_priv (ref,
-                                              0,
                                               &reserve_priv))
     {
       if (GNUNET_OK != TALER_TESTING_get_trait_reserve_pub (ref,
-                                                            0,
                                                             &reserve_pub))
       {
         GNUNET_break (0);
@@ -420,13 +418,14 @@ admin_add_incoming_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 admin_add_incoming_traits (void *cls,
                            const void **ret,
                            const char *trait,
                            unsigned int index)
 {
   struct AdminAddIncomingState *fts = cls;
+  static const char *void_uri = "payto://void/the-exchange";
 
   if (MHD_HTTP_OK !=
       fts->expected_http_status)
@@ -435,21 +434,16 @@ admin_add_incoming_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
-                                      fts->payto_debit_account),
+      TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
       /* Used as a marker, content does not matter */
-      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
-                                      "payto://void/the-exchange"),
-      TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
-                                    fts->exchange_credit_url),
-      TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
+      TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
+      TALER_TESTING_make_trait_exchange_bank_account_url (
+        &fts->exchange_credit_url),
+      TALER_TESTING_make_trait_amount (&fts->amount),
       TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
-      TALER_TESTING_make_trait_reserve_priv (0,
-                                             &fts->reserve_priv),
-      TALER_TESTING_make_trait_reserve_pub (0,
-                                            &fts->reserve_pub),
-      TALER_TESTING_make_trait_reserve_history (0,
-                                                &fts->reserve_history),
+      TALER_TESTING_make_trait_reserve_priv (&fts->reserve_priv),
+      TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
+      TALER_TESTING_make_trait_reserve_history (&fts->reserve_history),
       TALER_TESTING_trait_end ()
     };
 
@@ -462,19 +456,15 @@ admin_add_incoming_traits (void *cls,
   {
     struct TALER_TESTING_Trait traits[] = {
       TALER_TESTING_make_trait_bank_row (&fts->serial_id),
-      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_DEBIT,
-                                      fts->payto_debit_account),
+      TALER_TESTING_make_trait_debit_payto_uri (&fts->payto_debit_account),
       /* Used as a marker, content does not matter */
-      TALER_TESTING_make_trait_payto (TALER_TESTING_PT_CREDIT,
-                                      "payto://void/the-exchange"),
-      TALER_TESTING_make_trait_url (TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL,
-                                    fts->exchange_credit_url),
-      TALER_TESTING_make_trait_amount_obj (0, &fts->amount),
+      TALER_TESTING_make_trait_credit_payto_uri (&void_uri),
+      TALER_TESTING_make_trait_exchange_bank_account_url (
+        &fts->exchange_credit_url),
+      TALER_TESTING_make_trait_amount (&fts->amount),
       TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
-      TALER_TESTING_make_trait_reserve_pub (0,
-                                            &fts->reserve_pub),
-      TALER_TESTING_make_trait_reserve_history (0,
-                                                &fts->reserve_history),
+      TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
+      TALER_TESTING_make_trait_reserve_history (&fts->reserve_history),
       TALER_TESTING_trait_end ()
     };
 
@@ -543,11 +533,11 @@ make_command (const char *label,
 
 
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_admin_add_incoming (const char *label,
-                                      const char *amount,
-                                      const struct
-                                      TALER_BANK_AuthenticationData *auth,
-                                      const char *payto_debit_account)
+TALER_TESTING_cmd_admin_add_incoming (
+  const char *label,
+  const char *amount,
+  const struct TALER_BANK_AuthenticationData *auth,
+  const char *payto_debit_account)
 {
   return make_command (label,
                        make_fts (amount,
