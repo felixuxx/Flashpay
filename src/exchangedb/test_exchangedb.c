@@ -194,8 +194,8 @@ struct DenomKeyPair
 static void
 destroy_denom_key_pair (struct DenomKeyPair *dkp)
 {
-  GNUNET_CRYPTO_rsa_public_key_free (dkp->pub.rsa_public_key);
-  GNUNET_CRYPTO_rsa_private_key_free (dkp->priv.rsa_private_key);
+  TALER_denom_pub_free (&dkp->pub);
+  TALER_denom_priv_free (&dkp->priv);
   GNUNET_free (dkp);
 }
 
@@ -225,10 +225,13 @@ create_denom_key_pair (unsigned int size,
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
 
   dkp = GNUNET_new (struct DenomKeyPair);
-  dkp->priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (size);
-  GNUNET_assert (NULL != dkp->priv.rsa_private_key);
-  dkp->pub.rsa_public_key
-    = GNUNET_CRYPTO_rsa_private_key_get_public (dkp->priv.rsa_private_key);
+  dkp->priv.cipher = TALER_DENOMINATION_RSA;
+  dkp->priv.details.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (
+    size);
+  GNUNET_assert (NULL != dkp->priv.details.rsa_private_key);
+  TALER_denom_priv_to_pub (&dkp->priv,
+                           0, /* age mask */
+                           &dkp->pub);
 
   /* Using memset() as fields like master key and signature
      are not properly initialized for this test. */
@@ -256,8 +259,8 @@ create_denom_key_pair (unsigned int size,
   TALER_amount_hton (&dki.issue.properties.fee_deposit, fee_deposit);
   TALER_amount_hton (&dki.issue.properties.fee_refresh, fee_refresh);
   TALER_amount_hton (&dki.issue.properties.fee_refund, fee_refund);
-  GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
-                                     &dki.issue.properties.denom_hash);
+  TALER_denom_pub_hash (&dkp->pub,
+                        &dki.issue.properties.denom_hash);
 
   dki.issue.properties.purpose.size = htonl (sizeof (struct
                                                      TALER_DenominationKeyValidityPS));
@@ -387,10 +390,8 @@ check_refresh_reveal_cb (
                    GNUNET_memcmp (acoin->coin_ev,
                                   bcoin->coin_ev));
     GNUNET_assert (0 ==
-                   GNUNET_CRYPTO_rsa_public_key_cmp (
-                     acoin->denom_pub.rsa_public_key,
-                     bcoin->denom_pub.
-                     rsa_public_key));
+                   TALER_denom_pub_cmp (&acoin->denom_pub,
+                                        &bcoin->denom_pub));
   }
   GNUNET_assert (0 == GNUNET_memcmp (&tpub, tpr));
   GNUNET_assert (0 == memcmp (tprivs, tprivsr,
@@ -474,15 +475,12 @@ handle_link_data_cb (void *cls,
     found = GNUNET_NO;
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
     {
-      GNUNET_assert (NULL != ldlp->ev_sig.rsa_signature);
       if ( (0 ==
-            GNUNET_CRYPTO_rsa_public_key_cmp (ldlp->denom_pub.rsa_public_key,
-                                              new_dkp[cnt]->pub.rsa_public_key))
-           &&
+            TALER_denom_pub_cmp (&ldlp->denom_pub,
+                                 &new_dkp[cnt]->pub)) &&
            (0 ==
-            GNUNET_CRYPTO_rsa_signature_cmp (ldlp->ev_sig.rsa_signature,
-                                             revealed_coins[cnt].coin_sig.
-                                             rsa_signature)) )
+            TALER_denom_sig_cmp (&ldlp->ev_sig,
+                                 &revealed_coins[cnt].coin_sig)) )
       {
         found = GNUNET_YES;
         break;
@@ -529,19 +527,19 @@ test_melting (void)
   GNUNET_assert (NULL != dkp);
   /* initialize refresh session melt data */
   {
-    struct TALER_BlindedCoinHash hc;
+    struct TALER_CoinPubHash hc;
 
     RND_BLK (&refresh_session.coin.coin_pub);
-    GNUNET_CRYPTO_hash (&refresh_session.coin.coin_pub,
-                        sizeof (refresh_session.coin.coin_pub),
-                        &hc);
-    refresh_session.coin.denom_sig.rsa_signature =
-      GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
-                                  &hc);
+    TALER_coin_pub_hash (&refresh_session.coin.coin_pub,
+                         &hc);
+    refresh_session.coin.denom_sig.cipher = TALER_DENOMINATION_RSA;
+    refresh_session.coin.denom_sig.details.rsa_signature =
+      GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.details.rsa_private_key,
+                                  &hc.hash);
     GNUNET_assert (NULL !=
-                   refresh_session.coin.denom_sig.rsa_signature);
-    GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
-                                       &refresh_session.coin.denom_pub_hash);
+                   refresh_session.coin.denom_sig.details.rsa_signature);
+    TALER_denom_pub_hash (&dkp->pub,
+                          &refresh_session.coin.denom_pub_hash);
     refresh_session.amount_with_fee = amount_with_fee;
   }
 
@@ -573,7 +571,7 @@ test_melting (void)
   FAILIF (0 != GNUNET_memcmp (&refresh_session.coin_sig,
                               &ret_refresh_session.session.coin_sig));
   FAILIF (NULL !=
-          ret_refresh_session.session.coin.denom_sig.rsa_signature);
+          ret_refresh_session.session.coin.denom_sig.details.rsa_signature);
   FAILIF (0 != memcmp (&refresh_session.coin.coin_pub,
                        &ret_refresh_session.session.coin.coin_pub,
                        sizeof (refresh_session.coin.coin_pub)));
@@ -624,9 +622,10 @@ test_melting (void)
                                 ccoin->coin_ev_size);
     RND_BLK (&hc);
     ccoin->denom_pub = new_dkp[cnt]->pub;
-    ccoin->coin_sig.rsa_signature
-      = GNUNET_CRYPTO_rsa_sign_fdh (new_dkp[cnt]->priv.rsa_private_key,
-                                    &hc);
+    ccoin->coin_sig.cipher = TALER_DENOMINATION_RSA;
+    ccoin->coin_sig.details.rsa_signature
+      = GNUNET_CRYPTO_rsa_sign_fdh (new_dkp[cnt]->priv.details.rsa_private_key,
+                                    &hc.hash);
   }
   RND_BLK (&tprivs);
   RND_BLK (&tpub);
@@ -676,17 +675,14 @@ drop:
   {
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
     {
-      if (NULL != revealed_coins[cnt].coin_sig.rsa_signature)
-        GNUNET_CRYPTO_rsa_signature_free (
-          revealed_coins[cnt].coin_sig.rsa_signature);
+      TALER_denom_sig_free (&revealed_coins[cnt].coin_sig);
       GNUNET_free (revealed_coins[cnt].coin_ev);
     }
     GNUNET_free (revealed_coins);
     revealed_coins = NULL;
   }
   destroy_denom_key_pair (dkp);
-  GNUNET_CRYPTO_rsa_signature_free (
-    refresh_session.coin.denom_sig.rsa_signature);
+  TALER_denom_sig_free (&refresh_session.coin.denom_sig);
   GNUNET_free (new_denom_pubs);
   for (unsigned int cnt = 0;
        (NULL != new_dkp) && (cnt < MELT_NEW_COINS) && (NULL != new_dkp[cnt]);
@@ -1054,8 +1050,8 @@ test_gc (void)
     destroy_denom_key_pair (dkp);
     return GNUNET_SYSERR;
   }
-  GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
-                                     &denom_hash);
+  TALER_denom_pub_hash (&dkp->pub,
+                        &denom_hash);
 
   if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
       plugin->get_denomination_info (plugin->cls,
@@ -1248,7 +1244,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                         NULL));
 
   {
-    struct GNUNET_HashCode h_contract_terms_wt2 = h_contract_terms_wt;
+    struct TALER_PrivateContractHash h_contract_terms_wt2 = h_contract_terms_wt;
     bool pending;
     struct TALER_WireTransferIdentifierRawP wtid2;
     struct TALER_Amount coin_contribution2;
@@ -1256,7 +1252,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
     struct GNUNET_TIME_Absolute execution_time2;
     struct TALER_EXCHANGEDB_KycStatus kyc;
 
-    h_contract_terms_wt2.bits[0]++;
+    h_contract_terms_wt2.hash.bits[0]++;
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->lookup_transfer_by_deposit (plugin->cls,
                                                 &h_contract_terms_wt2,
@@ -1414,7 +1410,7 @@ wire_missing_cb (void *cls,
                  /* bool? */ int done)
 {
   const struct TALER_EXCHANGEDB_Deposit *deposit = cls;
-  struct GNUNET_HashCode h_wire;
+  struct TALER_MerchantWireHash h_wire;
 
   (void) done;
   if (NULL != wire)
@@ -1519,7 +1515,9 @@ run (void *cls)
 
   dkp = NULL;
   rh = NULL;
-  deposit.coin.denom_sig.rsa_signature = NULL;
+  memset (&deposit.coin.denom_sig,
+          0,
+          sizeof (deposit.coin.denom_sig));
   memset (&salt,
           45,
           sizeof (salt));
@@ -1634,14 +1632,15 @@ run (void *cls)
                                &fee_refresh,
                                &fee_refund);
   GNUNET_assert (NULL != dkp);
-  GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
-                                     &dkp_pub_hash);
+  TALER_denom_pub_hash (&dkp->pub,
+                        &dkp_pub_hash);
   RND_BLK (&cbc.h_coin_envelope);
   RND_BLK (&cbc.reserve_sig);
   cbc.denom_pub_hash = dkp_pub_hash;
-  cbc.sig.rsa_signature
-    = GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.rsa_private_key,
-                                  &cbc.h_coin_envelope);
+  cbc.sig.cipher = TALER_DENOMINATION_RSA;
+  cbc.sig.details.rsa_signature
+    = GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.details.rsa_private_key,
+                                  &cbc.h_coin_envelope.hash);
   cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
@@ -1670,16 +1669,16 @@ run (void *cls)
   FAILIF (0 != GNUNET_memcmp (&cbc2.reserve_pub, &cbc.reserve_pub));
   result = 6;
   FAILIF (GNUNET_OK !=
-          GNUNET_CRYPTO_rsa_verify (&cbc.h_coin_envelope,
-                                    cbc2.sig.rsa_signature,
-                                    dkp->pub.rsa_public_key));
+          GNUNET_CRYPTO_rsa_verify (&cbc.h_coin_envelope.hash,
+                                    cbc2.sig.details.rsa_signature,
+                                    dkp->pub.details.rsa_public_key));
 
 
   RND_BLK (&coin_sig);
   RND_BLK (&coin_blind);
   RND_BLK (&deposit.coin.coin_pub);
-  GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
-                                     &deposit.coin.denom_pub_hash);
+  TALER_denom_pub_hash (&dkp->pub,
+                        &deposit.coin.denom_pub_hash);
   deposit.coin.denom_sig = cbc.sig;
   deadline = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&deadline);
@@ -1836,8 +1835,8 @@ run (void *cls)
           0,
           sizeof (deposit));
   RND_BLK (&deposit.coin.coin_pub);
-  GNUNET_CRYPTO_rsa_public_key_hash (dkp->pub.rsa_public_key,
-                                     &deposit.coin.denom_pub_hash);
+  TALER_denom_pub_hash (&dkp->pub,
+                        &deposit.coin.denom_pub_hash);
   deposit.coin.denom_sig = cbc.sig;
   RND_BLK (&deposit.csig);
   RND_BLK (&deposit.merchant_pub);
@@ -2185,10 +2184,8 @@ drop:
                 plugin->drop_tables (plugin->cls));
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
-  if (NULL != cbc.sig.rsa_signature)
-    GNUNET_CRYPTO_rsa_signature_free (cbc.sig.rsa_signature);
-  if (NULL != cbc2.sig.rsa_signature)
-    GNUNET_CRYPTO_rsa_signature_free (cbc2.sig.rsa_signature);
+  TALER_denom_sig_free (&cbc.sig);
+  TALER_denom_sig_free (&cbc2.sig);
   dkp = NULL;
   json_decref (wire);
   TALER_EXCHANGEDB_plugin_unload (plugin);
