@@ -91,8 +91,8 @@ path_cb (void *cls,
 static int
 test_contract (void)
 {
-  struct GNUNET_HashCode h1;
-  struct GNUNET_HashCode h2;
+  struct TALER_PrivateContractHash h1;
+  struct TALER_PrivateContractHash h2;
   json_t *c1;
   json_t *c2;
   json_t *c3;
