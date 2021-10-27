@@ -574,6 +574,7 @@ const struct TALER_TESTING_Command *
 TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
                                           const char *label);
 
+
 /**
  * Obtain main execution context for the main loop.
  *
@@ -2190,6 +2191,14 @@ TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
 
 /* *** Generic trait logic for implementing traits ********* */
 
+
+/**
+ * Opaque handle to fresh coins generated during refresh.
+ * Details are internal to the refresh logic.
+ */
+struct TALER_TESTING_FreshCoinData;
+
+
 /**
  * A trait.
  */
@@ -2232,7 +2241,7 @@ TALER_TESTING_trait_end (void);
  * @param index index number of the trait to extract.
  * @return #GNUNET_OK when the trait is found.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
                          const void **ret,
                          const char *trait,
@@ -2243,991 +2252,140 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 
 
 /**
- * Obtain a bank transaction row value from @a cmd.
- *
- * @param cmd command to extract the number from.
- * @param[out] row set to the number coming from @a cmd.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_bank_row (const struct TALER_TESTING_Command *cmd,
-                                  const uint64_t **row);
-
-
-/**
- * Offer bank transaction row trait.
- *
- * @param row number to offer.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_bank_row (const uint64_t *row);
-
-
-/**
- * Offer a reserve private key.
- *
- * @param index reserve priv's index number.
- * @param reserve_priv reserve private key to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_reserve_priv (
-  unsigned int index,
-  const struct TALER_ReservePrivateKeyP *reserve_priv);
-
-
-/**
- * Obtain a reserve private key from a @a cmd.
- *
- * @param cmd command to extract the reserve priv from.
- * @param index reserve priv's index number.
- * @param[out] reserve_priv set to the reserve priv.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_reserve_priv (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_ReservePrivateKeyP **reserve_priv);
-
-
-/**
- * Offer a reserve public key.
- *
- * @param index reserve pubs's index number.
- * @param reserve_pub reserve public key to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_reserve_pub (
-  unsigned int index,
-  const struct TALER_ReservePublicKeyP *reserve_pub);
-
-
-/**
- * Obtain a reserve public key from a @a cmd.
- *
- * @param cmd command to extract the reserve pub from.
- * @param index reserve pub's index number.
- * @param[out] reserve_pub set to the reserve pub.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_reserve_pub (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_ReservePublicKeyP **reserve_pub);
-
-
-/**
- * Offer a reserve history entry.
- *
- * @param index reserve pubs's index number.
- * @param rh reserve history entry to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_reserve_history (
-  unsigned int index,
-  const struct TALER_EXCHANGE_ReserveHistory *rh);
-
-
-/**
- * Obtain a reserve history entry from a @a cmd.
- *
- * @param cmd command to extract the reserve history from.
- * @param index reserve history's index number.
- * @param[out] rhp set to the reserve history.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_reserve_history (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_EXCHANGE_ReserveHistory **rhp);
-
-
-/**
- * Make a trait for a exchange signature.
- *
- * @param index index number to associate to the offered exchange pub.
- * @param exchange_sig exchange signature to offer with this trait.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_exchange_sig (
-  unsigned int index,
-  const struct TALER_ExchangeSignatureP *exchange_sig);
-
-
-/**
- * Obtain a exchange signature (online sig) from a @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index index number of the exchange to obtain.
- * @param[out] exchange_sig set to the offered exchange signature.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_exchange_sig (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_ExchangeSignatureP **exchange_sig);
-
-
-/**
- * Make a trait for a exchange public key.
- *
- * @param index index number to associate to the offered exchange pub.
- * @param exchange_pub exchange pub to offer with this trait.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_exchange_pub (
-  unsigned int index,
-  const struct TALER_ExchangePublicKeyP *exchange_pub);
-
-
-/**
- * Obtain a exchange public key from a @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index index number of the exchange to obtain.
- * @param[out] exchange_pub set to the offered exchange pub.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_exchange_pub (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_ExchangePublicKeyP **exchange_pub);
-
-
-/**
- * Obtain location where a command stores a pointer to a process.
- *
- * @param cmd command to extract trait from.
- * @param index which process to pick if @a cmd
- *        has multiple on offer.
- * @param[out] processp set to the address of the pointer to the
- *        process.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_process (const struct TALER_TESTING_Command *cmd,
-                                 unsigned int index,
-                                 struct GNUNET_OS_Process ***processp);
-
-
-/**
- * Offer location where a command stores a pointer to a process.
- *
- * @param index offered location index number, in case there are
- *        multiple on offer.
- * @param processp process location to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_process (unsigned int index,
-                                  struct GNUNET_OS_Process **processp);
-
-
-/**
- * Offer coin private key.
- *
- * @param index index number to associate with offered coin priv.
- * @param coin_priv coin private key to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_coin_priv (
-  unsigned int index,
-  const struct TALER_CoinSpendPrivateKeyP *coin_priv);
-
-/**
- * Obtain a coin private key from a @a cmd.
- *
- * @param cmd command to extract trait from.
- * @param index index of the coin priv to obtain.
- * @param[out] coin_priv set to the private key of the coin.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_coin_priv (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_CoinSpendPrivateKeyP **coin_priv);
-
-
-/**
- * Offer blinding key.
- *
- * @param index index number to associate to the offered key.
- * @param blinding_key blinding key to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_blinding_key (
-  unsigned int index,
-  const struct TALER_DenominationBlindingKeyP *blinding_key);
-
-
-/**
- * Obtain a blinding key from a @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index which coin to pick if @a cmd has multiple on offer.
- * @param[out] blinding_key set to the offered blinding key.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_blinding_key (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_DenominationBlindingKeyP **blinding_key);
-
-
-/**
- * Make a trait for a denomination public key.
- *
- * @param index index number to associate to the offered denom pub.
- * @param denom_pub denom pub to offer with this trait.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_pub (
-  unsigned int index,
-  const struct TALER_EXCHANGE_DenomPublicKey *dpk);
-
-
-/**
- * Obtain a denomination public key from a @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index index number of the denom to obtain.
- * @param[out] denom_pub set to the offered denom pub.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_denom_pub (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_EXCHANGE_DenomPublicKey **dpk);
-
-
-/**
- * Obtain a denomination signature from a @a cmd.
- *
- * @param cmd command to extract the denom sig from.
- * @param index index number associated with the denom sig.
- * @param[out] denom_sig set to the offered signature.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_denom_sig (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_DenominationSignature **dpk);
-
-
-/**
- * Offer denom sig.
- *
- * @param index index number to associate to the signature on
- *        offer.
- * @param denom_sig the denom sig on offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_denom_sig (
-  unsigned int index,
-  const struct TALER_DenominationSignature *sig);
-
-
-/**
- * Offer number trait, 32-bit version.
- *
- * @param index the number's index number.
- * @param n number to offer.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_uint32 (unsigned int index,
-                                 const uint32_t *n);
-
-
-/**
- * Obtain a "number" value from @a cmd, 32-bit version.
- *
- * @param cmd command to extract the number from.
- * @param index the number's index number.
- * @param[out] n set to the number coming from @a cmd.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_uint32 (const struct TALER_TESTING_Command *cmd,
-                                unsigned int index,
-                                const uint32_t **n);
-
-
-/**
- * Offer number trait, 64-bit version.
- *
- * @param index the number's index number.
- * @param n number to offer.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_uint64 (unsigned int index,
-                                 const uint64_t *n);
-
-
-/**
- * Obtain a "number" value from @a cmd, 64-bit version.
- *
- * @param cmd command to extract the number from.
- * @param index the number's index number.
- * @param[out] n set to the number coming from @a cmd.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_uint64 (const struct TALER_TESTING_Command *cmd,
-                                unsigned int index,
-                                const uint64_t **n);
-
-
-/**
- * Offer number trait, 64-bit signed version.
- *
- * @param index the number's index number.
- * @param n number to offer.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_int64 (unsigned int index,
-                                const int64_t *n);
-
-
-/**
- * Obtain a "number" value from @a cmd, 64-bit signed version.
- *
- * @param cmd command to extract the number from.
- * @param index the number's index number.
- * @param[out] n set to the number coming from @a cmd.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_int64 (const struct TALER_TESTING_Command *cmd,
-                               unsigned int index,
-                               const int64_t **n);
-
-
-/**
- * Offer a number.
- *
- * @param index the number's index number.
- * @param n the number to offer.
- * @return #GNUNET_OK on success.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_uint (unsigned int index,
-                               const unsigned int *i);
-
-
-/**
- * Obtain a number from @a cmd.
- *
- * @param cmd command to extract the number from.
- * @param index the number's index number.
- * @param[out] n set to the number coming from @a cmd.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_uint (const struct TALER_TESTING_Command *cmd,
-                              unsigned int index,
-                              const unsigned int **n);
-
-
-/**
- * Opaque handle to fresh coins generated during refresh.
- * Details are internal to the refresh logic.
- */
-struct TALER_TESTING_FreshCoinData;
-
-
-/**
- * Offer a _array_ of fresh coins.
- *
- * @param index which array of fresh coins to offer,
- *        if there are multiple on offer.  Typically passed as
- *        zero.
- * @param fresh_coins the array of fresh coins to offer
- * @return the trait,
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_fresh_coins (
-  unsigned int index,
-  const struct TALER_TESTING_FreshCoinData *fresh_coins);
-
-
-/**
- * Get a array of fresh coins.
- *
- * @param cmd command to extract the fresh coin from.
- * @param index which array to pick if @a cmd has multiple
- *        on offer.
- * @param[out] fresh_coins will point to the offered array.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_fresh_coins (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_TESTING_FreshCoinData **fresh_coins);
-
-
-/**
- * Obtain contract terms from @a cmd.
- *
- * @param cmd command to extract the contract terms from.
- * @param index contract terms index number.
- * @param[out] contract_terms where to write the contract
- *        terms.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_contract_terms (const struct TALER_TESTING_Command *cmd,
-                                        unsigned int index,
-                                        const json_t **contract_terms);
-
-
-/**
- * Offer contract terms.
- *
- * @param index contract terms index number.
- * @param contract_terms contract terms to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_contract_terms (unsigned int index,
-                                         const json_t *contract_terms);
-
+ * Create headers for a trait with name @a name for
+ * statically allocated data of type @a type.
+ */
+#define TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT(name,type)   \
+  enum GNUNET_GenericReturnValue                          \
+    TALER_TESTING_get_trait_ ## name (                    \
+    const struct TALER_TESTING_Command *cmd,              \
+    const type **ret);                                    \
+  struct TALER_TESTING_Trait                              \
+    TALER_TESTING_make_trait_ ## name (                   \
+    const type * value);
+
+
+/**
+ * Create C implementation for a trait with name @a name for statically
+ * allocated data of type @a type.
+ */
+#define TALER_TESTING_MAKE_IMPL_SIMPLE_TRAIT(name,type)  \
+  enum GNUNET_GenericReturnValue                         \
+    TALER_TESTING_get_trait_ ## name (                   \
+    const struct TALER_TESTING_Command *cmd,             \
+    const type **ret)                                    \
+  {                                                      \
+    return cmd->traits (cmd->cls,                        \
+                        (const void **) ret,             \
+                        TALER_S (name),                  \
+                        0);                              \
+  }                                                      \
+  struct TALER_TESTING_Trait                             \
+    TALER_TESTING_make_trait_ ## name (                  \
+    const type * value)                                  \
+  {                                                      \
+    struct TALER_TESTING_Trait ret = {                   \
+      .trait_name = TALER_S (name),                      \
+      .ptr = (const void *) value                        \
+    };                                                   \
+    return ret;                                          \
+  }
+
+
+/**
+ * Create headers for a trait with name @a name for
+ * statically allocated data of type @a type.
+ */
+#define TALER_TESTING_MAKE_DECL_INDEXED_TRAIT(name,type)  \
+  enum GNUNET_GenericReturnValue                          \
+    TALER_TESTING_get_trait_ ## name (                    \
+    const struct TALER_TESTING_Command *cmd,              \
+    unsigned int index,                                   \
+    const type **ret);                                    \
+  struct TALER_TESTING_Trait                              \
+    TALER_TESTING_make_trait_ ## name (                   \
+    unsigned int index,                                   \
+    const type * value);
+
+
+/**
+ * Create C implementation for a trait with name @a name for statically
+ * allocated data of type @a type.
+ */
+#define TALER_TESTING_MAKE_IMPL_INDEXED_TRAIT(name,type) \
+  enum GNUNET_GenericReturnValue                         \
+    TALER_TESTING_get_trait_ ## name (                   \
+    const struct TALER_TESTING_Command *cmd,             \
+    unsigned int index,                                  \
+    const type **ret)                                    \
+  {                                                      \
+    return cmd->traits (cmd->cls,                        \
+                        (const void **) ret,             \
+                        TALER_S (name),                  \
+                        index);                          \
+  }                                                      \
+  struct TALER_TESTING_Trait                             \
+    TALER_TESTING_make_trait_ ## name (                  \
+    unsigned int index,                                  \
+    const type * value)                                  \
+  {                                                      \
+    struct TALER_TESTING_Trait ret = {                   \
+      .index = index,                                    \
+      .trait_name = TALER_S (name),                      \
+      .ptr = (const void *) value                        \
+    };                                                   \
+    return ret;                                          \
+  }
+
+
+/**
+ * Call #op on all simple traits.
+ */
+#define TALER_TESTING_SIMPLE_TRAITS(op) \
+  op (exchange_pub, struct TALER_ExchangePublicKeyP)         \
+  op (bank_row, uint64_t)                                    \
+  op (reserve_priv, struct TALER_ReservePrivateKeyP) \
+  op (reserve_pub, struct TALER_ReservePublicKeyP)   \
+  op (exchange_sig, struct TALER_ExchangeSignatureP)         \
+  op (exchange_pub, struct TALER_ExchangePublicKeyP)         \
+  op (merchant_priv, struct TALER_MerchantPrivateKeyP)       \
+  op (merchant_pub, struct TALER_MerchantPublicKeyP)         \
+  op (wtid, struct TALER_WireTransferIdentifierRawP)         \
+  op (contract_terms, json_t)                                \
+  op (wire_details, json_t)                                  \
+  op (exchange_keys, json_t)                                 \
+  op (reserve_history, struct TALER_EXCHANGE_ReserveHistory) \
+  op (exchange_url, char *)                                  \
+  op (exchange_bank_account_url, char *)                     \
+  op (taler_uri, char *)                                     \
+  op (payto_uri, char *)                                     \
+  op (credit_payto_uri, char *)                              \
+  op (debit_payto_uri, char *)                               \
+  op (order_id, char *)                                      \
+  op (amount, struct TALER_Amount)                           \
+  op (cmd, struct TALER_TESTING_Command)                     \
+  op (uuid, struct GNUNET_Uuid)                              \
+  op (claim_token, struct TALER_ClaimTokenP)                 \
+  op (absolute_time, struct GNUNET_TIME_Absolute)            \
+  op (relative_time, struct GNUNET_TIME_Relative)            \
+  op (process, struct GNUNET_OS_Process *)
+
+
+/**
+ * Call #op on all indexed traits.
+ */
+#define TALER_TESTING_INDEXED_TRAITS(op)                          \
+  op (denom_pub, struct TALER_EXCHANGE_DenomPublicKey)         \
+  op (denom_sig, struct TALER_EXCHANGE_DenominationKeySignature)  \
+  op (coin_priv, struct TALER_CoinSpendPrivateKeyP)            \
+  op (coin_pub, struct TALER_CoinSpendPublicKeyP)              \
+  op (fresh_coin, struct TALER_TESTING_FreshCoinData)          \
+  op (blinding_key, struct TALER_DenominationBlindingKeyP)
+
+
+TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)
+
+TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_DECL_INDEXED_TRAIT)
 
-/**
- * Obtain wire details from @a cmd.
- *
- * @param cmd command to extract the wire details from.
- * @param index index number associate with the wire details
- *        on offer; usually zero, as one command sticks to
- *        one bank account.
- * @param[out] wire_details where to write the wire details.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_wire_details (const struct TALER_TESTING_Command *cmd,
-                                      unsigned int index,
-                                      const json_t **wire_details);
-
-
-/**
- * Offer wire details in a trait.
- *
- * @param index index number associate with the wire details
- *        on offer; usually zero, as one command sticks to
- *        one bank account.
- * @param wire_details wire details to offer.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_wire_details (unsigned int index,
-                                       const json_t *wire_details);
-
-
-/**
- * Obtain serialized exchange keys from @a cmd.
- *
- * @param cmd command to extract the keys from.
- * @param index index number associate with the keys on offer.
- * @param[out] keys where to write the serialized keys.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_exchange_keys (const struct TALER_TESTING_Command *cmd,
-                                       unsigned int index,
-                                       const json_t **keys);
-
-
-/**
- * Offer serialized keys in a trait.
- *
- * @param index index number associate with the serial keys
- *        on offer.
- * @param keys serialized keys to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_exchange_keys (unsigned int index,
-                                        const json_t *keys);
-
-
-/**
- * Obtain json from @a cmd.
- *
- * @param cmd command to extract the json from.
- * @param index index number associate with the json on offer.
- * @param[out] json where to write the json.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_json (const struct TALER_TESTING_Command *cmd,
-                              unsigned int index,
-                              const json_t **json);
-
-
-/**
- * Offer json in a trait.
- *
- * @param index index number associate with the json
- *        on offer.
- * @param json json to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_json (unsigned int index,
-                               const json_t *json);
-
-
-/**
- * Obtain a private key from a "merchant".  Used e.g. to obtain
- * a merchant's priv to sign a /track request.
- *
- * @param cmd command that is offering the key.
- * @param index (typically zero) which key to return if there
- *        are multiple on offer.
- * @param[out] priv set to the key coming from @a cmd.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_merchant_priv (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_MerchantPrivateKeyP **priv);
-
-
-/**
- * Offer private key of a merchant, typically done when CMD_1 needs it to
- * sign a request.
- *
- * @param index (typically zero) which key to return if there are
- *        multiple on offer.
- * @param priv which object should be offered.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_merchant_priv (
-  unsigned int index,
-  const struct TALER_MerchantPrivateKeyP *priv);
-
-
-/**
- * Obtain a public key from a "merchant".  Used e.g. to obtain
- * a merchant's public key to use backend's API.
- *
- * @param cmd command offering the key.
- * @param index (typically zero) which key to return if there
- *        are multiple on offer.
- * @param[out] pub set to the key coming from @a cmd.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_merchant_pub (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_MerchantPublicKeyP **pub);
-
-
-/**
- * Offer public key.
- *
- * @param index (typically zero) which key to return if there
- *        are multiple on offer.  NOTE: if one key is offered, it
- *        is mandatory to set this as zero.
- * @param pub which object should be returned.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_merchant_pub (
-  unsigned int index,
-  const struct TALER_MerchantPublicKeyP *pub);
-
-
-/**
- * Obtain a string from @a cmd.
- *
- * @param cmd command to extract the subject from.
- * @param index index number associated with the transfer
- *        subject to offer.
- * @param[out] s where to write the offered
- *        string.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_string (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const char **s);
-
-
-/**
- * Offer string subject.
- *
- * @param index index number associated with the transfer
- *        subject being offered.
- * @param s string to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_string (unsigned int index,
-                                 const char *s);
-
-
-/**
- * Obtain a WTID value from @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index which WTID to pick if @a cmd has multiple on
- *        offer
- * @param[out] wtid set to the wanted WTID.
- * @return #GNUNET_OK on success
- */
-int
-TALER_TESTING_get_trait_wtid (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct TALER_WireTransferIdentifierRawP **wtid);
-
-
-/**
- * Offer a WTID.
- *
- * @param index associate the WTID with this index.
- * @param wtid pointer to the WTID to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_wtid (
-  unsigned int index,
-  const struct TALER_WireTransferIdentifierRawP *wtid);
-
-
-/**
- * Different types of URLs that appear in traits.
- */
-enum TALER_TESTING_URL_Type
-{
-  /**
-   * Category of last resort. Should not be used.
-   */
-  TALER_TESTING_UT_UNDEFINED = 0,
-
-  /**
-   * HTTP base URL of an exchange (API), as for example
-   * given in wire transfers subjects made by the aggregator.
-   */
-  TALER_TESTING_UT_EXCHANGE_BASE_URL = 1,
-
-  /**
-   * HTTP URL of the exchange's bank account at the bank.
-   */
-  TALER_TESTING_UT_EXCHANGE_BANK_ACCOUNT_URL = 2,
-
-  /**
-   * A taler://-URL.
-   */
-  TALER_TESTING_UT_TALER_URL = 3
-};
-
-
-/**
- * Offer HTTP url in a trait.
- *
- * @param index which url is to be picked,
- *        in case multiple are offered.
- * @param url the url to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_url (enum TALER_TESTING_URL_Type index,
-                              const char *url);
-
-
-/**
- * Obtain a HTTP url from @a cmd.
- *
- * @param cmd command to extract the url from.
- * @param index which url is to be picked, in case
- *        multiple are offered.
- * @param[out] url where to write the url.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_url (const struct TALER_TESTING_Command *cmd,
-                             enum TALER_TESTING_URL_Type index,
-                             const char **url);
-
-
-/**
- * Used as the "index" in payto traits, to identify what kind of
- * payto URL we are returning.
- */
-enum TALER_TESTING_PaytoType
-{
-  /**
-   * We don't know / not credit or debit.
-   */
-  TALER_TESTING_PT_NEUTRAL,
-  /**
-   * Credit side of a transaction.
-   */
-  TALER_TESTING_PT_CREDIT,
-  /**
-   * Debit side of a transaction.
-   */
-  TALER_TESTING_PT_DEBIT
-};
-
-
-/**
- * Offer a payto uri in a trait.
- *
- * @param pt which url is to be picked,
- *        in case multiple are offered.
- * @param payto_uri the uri to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_payto (enum TALER_TESTING_PaytoType pt,
-                                const char *payto_uri);
-
-
-/**
- * Obtain a PAYTO url from @a cmd.
- *
- * @param cmd command to extract the url from.
- * @param pt which url is to be picked, in case
- *        multiple are offered.
- * @param[out] url where to write the url.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_payto (const struct TALER_TESTING_Command *cmd,
-                               enum TALER_TESTING_PaytoType pt,
-                               const char **url);
-
-
-/**
- * Obtain a order id from @a cmd.
- *
- * @param cmd command to extract the order id from.
- * @param index which order id is to be picked, in case
- *        multiple are offered.
- * @param[out] order_id where to write the order id.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_order_id (const struct TALER_TESTING_Command *cmd,
-                                  unsigned int index,
-                                  const char **order_id);
-
-
-/**
- * Offer order id in a trait.
- *
- * @param index which order id is to be offered,
- *        in case multiple are offered.
- * @param order_id the order id to offer.
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_order_id (unsigned int index,
-                                   const char *order_id);
-
-
-/**
- * Obtain an amount from a @a cmd.
- *
- * @param cmd command to extract the amount from.
- * @param index which amount to pick if @a cmd has multiple
- *        on offer
- * @param[out] amount set to the amount.
- * @return #GNUNET_OK on success
- */
-int
-TALER_TESTING_get_trait_amount_obj (const struct TALER_TESTING_Command *cmd,
-                                    unsigned int index,
-                                    const struct TALER_Amount **amount);
-
-
-/**
- * Offer amount.
- *
- * @param index which amount to offer, in case there are
- *        multiple available.
- * @param amount the amount to offer.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_amount_obj (unsigned int index,
-                                     const struct TALER_Amount *amount);
-
-
-/**
- * Offer a command in a trait.
- *
- * @param index always zero.  Commands offering this
- *        kind of traits do not need this index.  For
- *        example, a "meta" CMD returns always the
- *        CMD currently being executed.
- * @param cmd wire details to offer.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_cmd (unsigned int index,
-                              const struct TALER_TESTING_Command *cmd);
-
-
-/**
- * Obtain a command from @a cmd.
- *
- * @param cmd command to extract the command from.
- * @param index always zero.  Commands offering this
- *        kind of traits do not need this index.  For
- *        example, a "meta" CMD returns always the
- *        CMD currently being executed.
- * @param[out] _cmd where to write the wire details.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_cmd (const struct TALER_TESTING_Command *cmd,
-                             unsigned int index,
-                             struct TALER_TESTING_Command **_cmd);
-
-
-/**
- * Obtain a uuid from @a cmd.
- *
- * @param cmd command to extract the uuid from.
- * @param index which amount to pick if @a cmd has multiple
- *        on offer
- * @param[out] uuid where to write the uuid.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_uuid (const struct TALER_TESTING_Command *cmd,
-                              unsigned int index,
-                              struct GNUNET_Uuid **uuid);
-
-
-/**
- * Offer a uuid in a trait.
- *
- * @param index which uuid to offer, in case there are
- *        multiple available.
- * @param uuid the uuid to offer.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_uuid (unsigned int index,
-                               const struct GNUNET_Uuid *uuid);
-
-
-/**
- * Obtain a claim token from @a cmd.
- *
- * @param cmd command to extract the token from.
- * @param index which amount to pick if @a cmd has multiple
- *        on offer
- * @param[out] ct where to write the token.
- * @return #GNUNET_OK on success.
- */
-int
-TALER_TESTING_get_trait_claim_token (const struct TALER_TESTING_Command *cmd,
-                                     unsigned int index,
-                                     const struct TALER_ClaimTokenP **ct);
-
-
-/**
- * Offer a claim token in a trait.
- *
- * @param index which token to offer, in case there are
- *        multiple available.
- * @param ct the token to offer.
- *
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_claim_token (unsigned int index,
-                                      const struct TALER_ClaimTokenP *ct);
-
-
-/**
- * Obtain a absolute time from @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index which time stamp to pick if
- *        @a cmd has multiple on offer.
- * @param[out] time set to the wanted WTID.
- * @return #GNUNET_OK on success
- */
-int
-TALER_TESTING_get_trait_absolute_time (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct GNUNET_TIME_Absolute **time);
-
-
-/**
- * Offer a absolute time.
- *
- * @param index associate the object with this index
- * @param time which object should be returned
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_absolute_time (
-  unsigned int index,
-  const struct GNUNET_TIME_Absolute *time);
-
-
-/**
- * Obtain a relative time from @a cmd.
- *
- * @param cmd command to extract trait from
- * @param index which time to pick if
- *        @a cmd has multiple on offer.
- * @param[out] time set to the wanted WTID.
- * @return #GNUNET_OK on success
- */
-int
-TALER_TESTING_get_trait_relative_time (
-  const struct TALER_TESTING_Command *cmd,
-  unsigned int index,
-  const struct GNUNET_TIME_Relative **time);
-
-
-/**
- * Offer a relative time.
- *
- * @param index associate the object with this index
- * @param time which object should be returned
- * @return the trait.
- */
-struct TALER_TESTING_Trait
-TALER_TESTING_make_trait_relative_time (
-  unsigned int index,
-  const struct GNUNET_TIME_Relative *time);
 
 #endif

@@ -86,28 +86,7 @@ libtalertesting_la_SOURCES = \
   testing_api_helpers_bank.c \
   testing_api_helpers_exchange.c \
   testing_api_loop.c \
-  testing_api_traits.c \
-  testing_api_trait_amount.c \
-  testing_api_trait_blinding_key.c \
-  testing_api_trait_cmd.c \
-  testing_api_trait_coin_priv.c \
-  testing_api_trait_contract.c \
-  testing_api_trait_denom_pub.c \
-  testing_api_trait_denom_sig.c \
-  testing_api_trait_exchange_pub.c \
-  testing_api_trait_exchange_sig.c \
-  testing_api_trait_fresh_coin.c \
-  testing_api_trait_json.c \
-  testing_api_trait_merchant_key.c \
-  testing_api_trait_number.c \
-  testing_api_trait_process.c \
-  testing_api_trait_reserve_history.c \
-  testing_api_trait_reserve_pub.c \
-  testing_api_trait_reserve_priv.c \
-  testing_api_trait_string.c \
-  testing_api_trait_time.c \
-  testing_api_trait_uuid.c \
-  testing_api_trait_wtid.c
+  testing_api_traits.c
 libtalertesting_la_LIBADD = \
   $(top_builddir)/src/lib/libtalerauditor.la \
   $(top_builddir)/src/lib/libtalerexchange.la \

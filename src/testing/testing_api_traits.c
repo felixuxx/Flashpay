@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2018 Taler Systems SA
+  Copyright (C) 2018, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -29,6 +29,11 @@
 #include "taler_testing_lib.h"
 
 
+TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_IMPL_SIMPLE_TRAIT)
+
+TALER_TESTING_INDEXED_TRAITS (TALER_TESTING_MAKE_IMPL_INDEXED_TRAIT)
+
+
 /**
  * End a trait array.  Usually, commands offer several traits,
  * and put them in arrays.
@@ -46,16 +51,7 @@ TALER_TESTING_trait_end ()
 }
 
 
-/**
- * Pick the chosen trait from the traits array.
- *
- * @param traits the traits array.
- * @param ret where to store the result.
- * @param trait type of the trait to extract.
- * @param index index number of the object to extract.
- * @return #GNUNET_OK if no error occurred, #GNUNET_SYSERR otherwise.
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
                          const void **ret,
                          const char *trait,
@@ -63,7 +59,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 {
   for (unsigned int i = 0; NULL != traits[i].trait_name; i++)
   {
-    if ( (0 == strcmp (trait, traits[i].trait_name)) &&
+    if ( (0 == strcmp (trait,
+                       traits[i].trait_name)) &&
          (index == traits[i].index) )
     {
       *ret = (void *) traits[i].ptr;
@@ -72,8 +69,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trait %s/%u not found.\n",
-              trait, index);
-
+              trait,
+              index);
   return GNUNET_SYSERR;
 }
 
