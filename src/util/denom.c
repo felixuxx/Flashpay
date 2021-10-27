@@ -250,7 +250,7 @@ TALER_denom_sig_cmp (const struct TALER_DenominationSignature *sig1,
     return (sig1->cipher > sig2->cipher) ? 1 : -1;
   switch (sig1->cipher)
   {
-  case TALER_SIGINATION_RSA:
+  case TALER_DENOMINATION_RSA:
     return GNUNET_CRYPTO_rsa_signature_cmp (sig1->details.rsa_signature,
                                             sig2->details.rsa_signature);
   // TODO: add case for Clause-Schnorr
