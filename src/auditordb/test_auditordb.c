@@ -130,23 +130,29 @@ run (void *cls)
 
   struct TALER_MasterPublicKeyP master_pub;
   struct TALER_ReservePublicKeyP reserve_pub;
-  struct GNUNET_HashCode rnd_hash;
+  struct TALER_DenominationHash rnd_hash;
+  struct TALER_DenominationPrivateKey denom_priv;
+  struct TALER_DenominationPublicKey denom_pub;
+  struct TALER_DenominationHash denom_pub_hash;
+  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute past;
+  struct GNUNET_TIME_Absolute future;
+  struct GNUNET_TIME_Absolute date;
+
   RND_BLK (&master_pub);
   RND_BLK (&reserve_pub);
   RND_BLK (&rnd_hash);
+  denom_priv.cipher = TALER_DENOMINATION_RSA;
+  denom_priv.details.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (
+    1024);
+  TALER_denom_priv_to_pub (&denom_priv,
+                           0, /* age mask */
+                           &denom_pub);
+  TALER_denom_pub_hash (&denom_pub,
+                        &denom_pub_hash);
+  TALER_denom_priv_free (&denom_priv);
+  TALER_denom_pub_free (&denom_pub);
 
-  struct TALER_DenominationPrivateKey denom_priv;
-  struct TALER_DenominationPublicKey denom_pub;
-  struct GNUNET_HashCode denom_pub_hash;
-
-  denom_priv.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (1024);
-  denom_pub.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
-    denom_priv.rsa_private_key);
-  GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.rsa_public_key, &denom_pub_hash);
-  GNUNET_CRYPTO_rsa_private_key_free (denom_priv.rsa_private_key);
-  GNUNET_CRYPTO_rsa_public_key_free (denom_pub.rsa_public_key);
-
-  struct GNUNET_TIME_Absolute now, past, future, date;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
   past = GNUNET_TIME_absolute_subtract (now,
@@ -480,14 +486,12 @@ run (void *cls)
               "Test: select_historic_denom_revenue\n");
 
   int
-  select_historic_denom_revenue_result (void *cls,
-                                        const struct
-                                        GNUNET_HashCode *denom_pub_hash2,
-                                        struct GNUNET_TIME_Absolute
-                                        revenue_timestamp2,
-                                        const struct
-                                        TALER_Amount *revenue_balance2,
-                                        const struct TALER_Amount *loss2)
+  select_historic_denom_revenue_result (
+    void *cls,
+    const struct TALER_DenominationHash *denom_pub_hash2,
+    struct GNUNET_TIME_Absolute revenue_timestamp2,
+    const struct TALER_Amount *revenue_balance2,
+    const struct TALER_Amount *loss2)
   {
     static int n = 0;
 
