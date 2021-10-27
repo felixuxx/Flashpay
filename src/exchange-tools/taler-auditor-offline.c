@@ -760,8 +760,8 @@ show_denomkeys (const json_t *denomkeys)
     struct TALER_Amount fee_refund;
     struct TALER_MasterSignatureP master_sig;
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                               &denom_pub),
+      TALER_JSON_spec_denom_pub ("denom_pub",
+                                 &denom_pub),
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),
@@ -1060,8 +1060,8 @@ sign_denomkeys (const json_t *denomkeys)
     struct TALER_Amount fee_refund;
     struct TALER_MasterSignatureP master_sig;
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                               &denom_pub),
+      TALER_JSON_spec_denom_pub ("denom_pub",
+                                 &denom_pub),
       TALER_JSON_spec_amount ("value",
                               currency,
                               &coin_value),

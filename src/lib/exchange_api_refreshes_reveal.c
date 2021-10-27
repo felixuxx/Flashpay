@@ -292,8 +292,7 @@ handle_refresh_reveal_finished (void *cls,
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
-  size_t refresh_data_length,
-  const char *refresh_data,
+  const json_t *refresh_data,
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls)
@@ -326,7 +325,7 @@ TALER_EXCHANGE_refreshes_reveal (
     return NULL;
   }
   md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data,
-                                              refresh_data_length);
+                                              exchange->key_data.currency);
   if (NULL == md)
   {
     GNUNET_break (0);

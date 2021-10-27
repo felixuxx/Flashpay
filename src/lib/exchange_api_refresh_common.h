@@ -27,97 +27,6 @@
 #include "taler_signatures.h"
 
 
-/* structures for committing refresh data to disk before doing the
-   network interaction(s) */
-
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * Header of serialized information about a coin we are melting.
- */
-struct MeltedCoinP
-{
-  /**
-   * Private key of the coin.
-   */
-  struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-  /**
-   * Amount this coin contributes to the melt, including fee.
-   */
-  struct TALER_AmountNBO melt_amount_with_fee;
-
-  /**
-   * The applicable fee for withdrawing a coin of this denomination
-   */
-  struct TALER_AmountNBO fee_melt;
-
-  /**
-   * The original value of the coin.
-   */
-  struct TALER_AmountNBO original_value;
-
-  /**
-   * Transfer private keys for each cut-and-choose dimension.
-   */
-  struct TALER_TransferPrivateKeyP transfer_priv[TALER_CNC_KAPPA];
-
-  /**
-   * Timestamp indicating when coins of this denomination become invalid.
-   */
-  struct GNUNET_TIME_AbsoluteNBO expire_deposit;
-
-  /**
-   * Size of the encoded public key that follows.
-   */
-  uint16_t pbuf_size;
-
-  /**
-   * Size of the encoded signature that follows.
-   */
-  uint16_t sbuf_size;
-
-  /* Followed by serializations of:
-     1) struct TALER_DenominationPublicKey pub_key;
-     2) struct TALER_DenominationSignature sig;
-  */
-};
-
-
-/**
- * Header of serialized data about a melt operation, suitable for
- * persisting it on disk.
- */
-struct MeltDataP
-{
-
-  /**
-   * Hash over the melting session.
-   */
-  struct TALER_RefreshCommitmentP rc;
-
-  /**
-   * Number of coins we are melting, in NBO
-   */
-  uint16_t num_melted_coins GNUNET_PACKED;
-
-  /**
-   * Number of coins we are creating, in NBO
-   */
-  uint16_t num_fresh_coins GNUNET_PACKED;
-
-  /* Followed by serializations of:
-     1) struct MeltedCoinP melted_coins[num_melted_coins];
-     2) struct TALER_EXCHANGE_DenomPublicKey fresh_pks[num_fresh_coins];
-     3) TALER_CNC_KAPPA times:
-        3a) struct TALER_PlanchetSecretsP fresh_coins[num_fresh_coins];
-  */
-};
-
-
-GNUNET_NETWORK_STRUCT_END
-
-
 /**
  * Information about a coin we are melting.
  */
@@ -205,10 +114,12 @@ struct MeltData
  * Deserialize melt data.
  *
  * @param data json data to deserialize
+ * @param currency expected currency for the coins
  * @return deserialized melt data, NULL on error
  */
 struct MeltData *
-TALER_EXCHANGE_deserialize_melt_data_ (const json_t *data);
+TALER_EXCHANGE_deserialize_melt_data_ (const json_t *data,
+                                       const char *currency);
 
 
 /**

@@ -26,22 +26,6 @@
 #include "taler_signatures.h"
 
 
-/**
- * Parse history given in JSON format and return it in binary
- * format.
- *
- * @param exchange connection to the exchange we can use
- * @param history JSON array with the history
- * @param reserve_pub public key of the reserve to inspect
- * @param currency currency we expect the balance to be in
- * @param[out] balance final balance
- * @param history_length number of entries in @a history
- * @param[out] rhistory array of length @a history_length, set to the
- *             parsed history entries
- * @return #GNUNET_OK if history was valid and @a rhistory and @a balance
- *         were set,
- *         #GNUNET_SYSERR if there was a protocol violation in @a history
- */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_parse_reserve_history (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -954,14 +938,6 @@ TALER_EXCHANGE_verify_coin_history (
 }
 
 
-/**
- * Obtain meta data about an exchange (online) signing
- * key.
- *
- * @param keys from where to obtain the meta data
- * @param exchange_pub public key to lookup
- * @return NULL on error (@a exchange_pub not known)
- */
 const struct TALER_EXCHANGE_SigningPublicKey *
 TALER_EXCHANGE_get_signing_key_info (
   const struct TALER_EXCHANGE_Keys *keys,

@@ -345,8 +345,8 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                                 &denom_key->fee_refresh),
     TALER_JSON_spec_amount_any ("fee_refund",
                                 &denom_key->fee_refund),
-    TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                             &denom_key->key),
+    TALER_JSON_spec_denom_pub ("denom_pub",
+                               &denom_key->key),
     GNUNET_JSON_spec_end ()
   };
 

@@ -311,8 +311,8 @@ TALER_JSON_spec_relative_time (const char *name,
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_denomination_public_key (const char *field,
-                                         struct TALER_DenominationPublicKey *pk);
+TALER_JSON_spec_denom_pub (const char *field,
+                           struct TALER_DenominationPublicKey *pk);
 
 
 /**
@@ -323,8 +323,8 @@ TALER_JSON_spec_denomination_public_key (const char *field,
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
-TALER_JSON_spec_denomination_signature (const char *field,
-                                        struct TALER_DenominationSignature *sig);
+TALER_JSON_spec_denom_sig (const char *field,
+                           struct TALER_DenominationSignature *sig);
 
 
 /**

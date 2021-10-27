@@ -95,8 +95,8 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_DenominationPublicKey rpub;
   struct TALER_CoinSpendSignatureP link_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_denomination_public_key ("denom_pub",
-                                             &rpub),
+    TALER_JSON_spec_denom_pub ("denom_pub",
+                               &rpub),
     GNUNET_JSON_spec_rsa_signature ("ev_sig",
                                     &bsig),
     GNUNET_JSON_spec_fixed_auto ("link_sig",

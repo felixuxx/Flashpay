@@ -1590,8 +1590,6 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  * prior to calling this function.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param refresh_data_length size of the @a refresh_data (returned
- *        in the `res_size` argument from #TALER_EXCHANGE_refresh_prepare())
  * @param refresh_data the refresh data as returned from
           #TALER_EXCHANGE_refresh_prepare())
  * @param noreveal_index response from the exchange to the
@@ -1605,8 +1603,7 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
-  size_t refresh_data_length,
-  const char *refresh_data,
+  const json_t *refresh_data,
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls);

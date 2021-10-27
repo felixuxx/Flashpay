@@ -471,7 +471,8 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
-  md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data);
+  md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data,
+                                              exchange->key_data.currency);
   if (NULL == md)
   {
     GNUNET_break (0);

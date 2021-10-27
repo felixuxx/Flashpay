@@ -590,8 +590,8 @@ TEH_handler_melt (struct MHD_Connection *connection,
   enum GNUNET_GenericReturnValue ret;
   MHD_RESULT res;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_denomination_signature ("denom_sig",
-                                            &rmc.refresh_session.coin.denom_sig),
+    TALER_JSON_spec_denom_sig ("denom_sig",
+                               &rmc.refresh_session.coin.denom_sig),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &rmc.refresh_session.coin.denom_pub_hash),
     GNUNET_JSON_spec_fixed_auto ("confirm_sig",

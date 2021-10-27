@@ -100,11 +100,13 @@ serialize_melted_coin (const struct MeltedCoin *mc)
  * Deserialize information about a coin we are melting.
  *
  * @param[out] mc information to deserialize
+ * @param currency expected currency
  * @param in JSON object to read data from
  * @return #GNUNET_NO to report errors
  */
 static enum GNUNET_GenericReturnValue
 deserialize_melted_coin (struct MeltedCoin *mc,
+                         const char *currency,
                          const json_t *in)
 {
   json_t *trans_privs;
@@ -116,15 +118,18 @@ deserialize_melted_coin (struct MeltedCoin *mc,
     TALER_JSON_spec_denom_pub ("denom_pub",
                                &mc->pub_key),
     TALER_JSON_spec_amount ("melt_amount_with_fee",
+                            currency,
                             &mc->melt_amount_with_fee),
     TALER_JSON_spec_amount ("original_value",
+                            currency,
                             &mc->original_value),
     TALER_JSON_spec_amount ("melt_fee",
-                            &mc->melt_fee),
+                            currency,
+                            &mc->fee_melt),
     TALER_JSON_spec_absolute_time ("expire_deposit",
                                    &mc->expire_deposit),
-    TALER_JSON_spec_json ("transfer_privs",
-                          &trans_privs),
+    GNUNET_JSON_spec_json ("transfer_privs",
+                           &trans_privs),
     GNUNET_JSON_spec_end ()
   };
 
@@ -190,33 +195,35 @@ serialize_melt_data (const struct MeltData *md)
       json_t *ps;
 
       ps = GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_fixed_auto ("ps",
-                                     &md->fresh_coins[i][j]));
+        GNUNET_JSON_pack_data_auto ("ps",
+                                    &md->fresh_coins[i][j]));
       GNUNET_assert (0 ==
                      json_array_append (planchet_secrets,
                                         ps));
     }
     GNUNET_assert (0 ==
                    json_array_append (
+                     fresh_coins,
                      GNUNET_JSON_PACK (
                        TALER_JSON_pack_denom_pub ("denom_pub",
                                                   &md->fresh_pks[i]),
-                       TALER_JSON_pack_array_steal ("planchet_secrets",
-                                                    ps)))
+                       GNUNET_JSON_pack_array_steal ("planchet_secrets",
+                                                     planchet_secrets)))
                    );
   }
   return GNUNET_JSON_PACK (
-    TALER_JSON_pack_array_steal ("fresh_coins",
-                                 fresh_coins),
-    TALER_JSON_pack_object_steal ("melted_coin",
-                                  serialize_melted_coin (&mc->melted_coin)),
-    GNUNET_JSON_pack_fixed_auto ("rc",
-                                 &md->rc));
+    GNUNET_JSON_pack_array_steal ("fresh_coins",
+                                  fresh_coins),
+    GNUNET_JSON_pack_object_steal ("melted_coin",
+                                   serialize_melted_coin (&md->melted_coin)),
+    GNUNET_JSON_pack_data_auto ("rc",
+                                &md->rc));
 }
 
 
 struct MeltData *
-TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data)
+TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data,
+                                       const char *currency)
 {
   struct MeltData *md = GNUNET_new (struct MeltData);
   json_t *fresh_coins;
@@ -250,7 +257,8 @@ TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data)
     return NULL;
   }
   if (GNUNET_OK !=
-      deserialize_melted_coin (&md->mc,
+      deserialize_melted_coin (&md->melted_coin,
+                               currency,
                                melted_coin))
   {
     GNUNET_break (0);
@@ -278,8 +286,8 @@ TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data)
     };
 
     if (GNUNET_OK !=
-        GNUNET_JSON_parse (melt_data,
-                           spec,
+        GNUNET_JSON_parse (ji,
+                           ispec,
                            NULL, NULL))
     {
       GNUNET_break (0);
@@ -296,8 +304,8 @@ TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data)
     for (unsigned int j = 0; j<TALER_CNC_KAPPA; j++)
     {
       struct GNUNET_JSON_Specification jspec[] = {
-        GNUNET_JSON_spec_data_auto ("ps",
-                                    &md->fresh_coins[i][j]),
+        GNUNET_JSON_spec_fixed_auto ("ps",
+                                     &md->fresh_coins[i][j]),
         GNUNET_JSON_spec_end ()
       };
 
@@ -451,5 +459,5 @@ TALER_EXCHANGE_refresh_prepare (
     GNUNET_free (rce[i].new_coins);
   }
   TALER_EXCHANGE_free_melt_data_ (&md);
-  return buf;
+  return ret;
 }
