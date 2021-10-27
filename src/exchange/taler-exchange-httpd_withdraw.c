@@ -607,8 +607,8 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     ret = TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_OK,
-      TALER_JSON_pack_denomination_signature ("ev_sig",
-                                              &wc.collectable.sig));
+      TALER_JSON_pack_denom_sig ("ev_sig",
+                                 &wc.collectable.sig));
     TALER_denom_sig_free (&wc.collectable.sig);
     return ret;
   }

@@ -1469,22 +1469,20 @@ TALER_EXCHANGE_withdraw2_cancel (struct TALER_EXCHANGE_Withdraw2Handle *wh);
  *                   validity of the keys
  * @param fresh_pks_len length of the @a pks array
  * @param fresh_pks array of @a pks_len denominations of fresh coins to create
- * @param[out] res_size set to the size of the return value, or 0 on error
  * @return NULL
  *         if the inputs are invalid (i.e. denomination key not with this exchange).
- *         Otherwise, pointer to a buffer of @a res_size to store persistently
+ *         Otherwise, JSON data structure to store persistently
  *         before proceeding to #TALER_EXCHANGE_melt().
  *         Non-null results should be freed using GNUNET_free().
  */
-char *
+json_t *
 TALER_EXCHANGE_refresh_prepare (
   const struct TALER_CoinSpendPrivateKeyP *melt_priv,
   const struct TALER_Amount *melt_amount,
   const struct TALER_DenominationSignature *melt_sig,
   const struct TALER_EXCHANGE_DenomPublicKey *melt_pk,
   unsigned int fresh_pks_len,
-  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks,
-  size_t *res_size);
+  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks);
 
 
 /* ********************* /coins/$COIN_PUB/melt ***************************** */
@@ -1526,8 +1524,6 @@ typedef void
  * prior to calling this function.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param refresh_data_length size of the @a refresh_data (returned
- *        in the `res_size` argument from #TALER_EXCHANGE_refresh_prepare())
  * @param refresh_data the refresh data as returned from
           #TALER_EXCHANGE_refresh_prepare())
  * @param melt_cb the callback to call with the result
@@ -1537,8 +1533,7 @@ typedef void
  */
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     size_t refresh_data_length,
-                     const char *refresh_data,
+                     const json_t *refresh_data,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls);
 

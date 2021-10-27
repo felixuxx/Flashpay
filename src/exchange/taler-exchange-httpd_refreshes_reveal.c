@@ -68,8 +68,8 @@ reply_refreshes_reveal_success (struct MHD_Connection *connection,
     json_t *obj;
 
     obj = GNUNET_JSON_PACK (
-      TALER_JSON_pack_denomination_signature ("ev_sig",
-                                              &sigs[freshcoin_index]));
+      TALER_JSON_pack_denom_sig ("ev_sig",
+                                 &sigs[freshcoin_index]));
     GNUNET_assert (0 ==
                    json_array_append_new (list,
                                           obj));

@@ -204,13 +204,11 @@ struct MeltData
 /**
  * Deserialize melt data.
  *
- * @param buf serialized data
- * @param buf_size size of @a buf
+ * @param data json data to deserialize
  * @return deserialized melt data, NULL on error
  */
 struct MeltData *
-TALER_EXCHANGE_deserialize_melt_data_ (const char *buf,
-                                       size_t buf_size);
+TALER_EXCHANGE_deserialize_melt_data_ (const json_t *data);
 
 
 /**
@@ -219,7 +217,7 @@ TALER_EXCHANGE_deserialize_melt_data_ (const char *buf,
  * as we use this function also when freeing melt data that was not
  * fully initialized (i.e. due to failures in #TALER_EXCHANGE_deserialize_melt_data_()).
  *
- * @param md melting data to release, the pointer itself is NOT
+ * @param[in] md melting data to release, the pointer itself is NOT
  *           freed (as it is typically not allocated by itself)
  */
 void

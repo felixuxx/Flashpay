@@ -139,7 +139,7 @@ TALER_JSON_pack_time_rel_nbo (const char *name,
  * @return json pack specification
  */
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_denomination_public_key (
+TALER_JSON_pack_denom_pub (
   const char *name,
   const struct TALER_DenominationPublicKey *pk);
 
@@ -153,7 +153,7 @@ TALER_JSON_pack_denomination_public_key (
  * @return json pack specification
  */
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_denomination_signature (
+TALER_JSON_pack_denom_sig (
   const char *name,
   const struct TALER_DenominationSignature *sig);
 

@@ -1673,8 +1673,8 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
                               &dk->fee_refund),
       GNUNET_JSON_pack_data_auto ("master_sig",
                                   &dk->master_sig),
-      TALER_JSON_pack_denomination_public_key ("denom_pub",
-                                               &dk->key));
+      TALER_JSON_pack_denom_pub ("denom_pub",
+                                 &dk->key));
     GNUNET_assert (0 ==
                    json_array_append_new (denoms,
                                           denom));

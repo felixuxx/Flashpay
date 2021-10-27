@@ -37,15 +37,6 @@ free_melted_coin (struct MeltedCoin *mc)
 }
 
 
-/**
- * Free all information associated with a melting session.  Note
- * that we allow the melting session to be only partially initialized,
- * as we use this function also when freeing melt data that was not
- * fully initialized (i.e. due to failures in #TALER_EXCHANGE_deserialize_melt_data_()).
- *
- * @param md melting data to release, the pointer itself is NOT
- *           freed (as it is typically not allocated by itself)
- */
 void
 TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
 {
@@ -56,7 +47,6 @@ TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
       TALER_denom_pub_free (&md->fresh_pks[i]);
     GNUNET_free (md->fresh_pks);
   }
-
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
     GNUNET_free (md->fresh_coins[i]);
   /* Finally, clean up a bit... */
@@ -69,63 +59,40 @@ TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
  * Serialize information about a coin we are melting.
  *
  * @param mc information to serialize
- * @param buf buffer to write data in, NULL to just compute
- *            required size
- * @param off offeset at @a buf to use
- * @return number of bytes written to @a buf at @a off, or if
- *        @a buf is NULL, number of bytes required; 0 on error
+ * @return NULL on error
  */
-static size_t
-serialize_melted_coin (const struct MeltedCoin *mc,
-                       char *buf,
-                       size_t off)
+static json_t *
+serialize_melted_coin (const struct MeltedCoin *mc)
 {
-  struct MeltedCoinP mcp;
-  void *pbuf;
-  size_t pbuf_size;
-  void *sbuf;
-  size_t sbuf_size;
+  json_t *tprivs;
 
-  sbuf_size = GNUNET_CRYPTO_rsa_signature_encode (mc->sig.rsa_signature,
-                                                  &sbuf);
-  pbuf_size = GNUNET_CRYPTO_rsa_public_key_encode (mc->pub_key.rsa_public_key,
-                                                   &pbuf);
-  if (NULL == buf)
-  {
-    GNUNET_free (sbuf);
-    GNUNET_free (pbuf);
-    return sizeof (struct MeltedCoinP) + sbuf_size + pbuf_size;
-  }
-  if ( (sbuf_size > UINT16_MAX) ||
-       (pbuf_size > UINT16_MAX) )
-  {
-    GNUNET_break (0);
-    return 0;
-  }
-  mcp.coin_priv = mc->coin_priv;
-  TALER_amount_hton (&mcp.melt_amount_with_fee,
-                     &mc->melt_amount_with_fee);
-  TALER_amount_hton (&mcp.fee_melt,
-                     &mc->fee_melt);
-  TALER_amount_hton (&mcp.original_value,
-                     &mc->original_value);
+  tprivs = json_array ();
+  GNUNET_assert (NULL != tprivs);
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
-    mcp.transfer_priv[i] = mc->transfer_priv[i];
-  mcp.expire_deposit = GNUNET_TIME_absolute_hton (mc->expire_deposit);
-  mcp.pbuf_size = htons ((uint16_t) pbuf_size);
-  mcp.sbuf_size = htons ((uint16_t) sbuf_size);
-  memcpy (&buf[off],
-          &mcp,
-          sizeof (struct MeltedCoinP));
-  memcpy (&buf[off + sizeof (struct MeltedCoinP)],
-          pbuf,
-          pbuf_size);
-  memcpy (&buf[off + sizeof (struct MeltedCoinP) + pbuf_size],
-          sbuf,
-          sbuf_size);
-  GNUNET_free (sbuf);
-  GNUNET_free (pbuf);
-  return sizeof (struct MeltedCoinP) + sbuf_size + pbuf_size;
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     tprivs,
+                     GNUNET_JSON_PACK (
+                       GNUNET_JSON_pack_data_auto (
+                         "transfer_priv",
+                         &mc->transfer_priv[i]))));
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_data_auto ("coin_priv",
+                                &mc->coin_priv),
+    TALER_JSON_pack_denom_sig ("denom_sig",
+                               &mc->sig),
+    TALER_JSON_pack_denom_pub ("denom_pub",
+                               &mc->pub_key),
+    TALER_JSON_pack_amount ("melt_amount_with_fee",
+                            &mc->melt_amount_with_fee),
+    TALER_JSON_pack_amount ("original_value",
+                            &mc->original_value),
+    TALER_JSON_pack_amount ("melt_fee",
+                            &mc->fee_melt),
+    GNUNET_JSON_pack_time_abs ("expire_deposit",
+                               mc->expire_deposit),
+    GNUNET_JSON_pack_array_steal ("transfer_privs",
+                                  tprivs));
 }
 
 
@@ -133,204 +100,69 @@ serialize_melted_coin (const struct MeltedCoin *mc,
  * Deserialize information about a coin we are melting.
  *
  * @param[out] mc information to deserialize
- * @param buf buffer to read data from
- * @param size number of bytes available at @a buf to use
- * @param[out] ok set to #GNUNET_NO to report errors
- * @return number of bytes read from @a buf, 0 on error
+ * @param in JSON object to read data from
+ * @return #GNUNET_NO to report errors
  */
-static size_t
+static enum GNUNET_GenericReturnValue
 deserialize_melted_coin (struct MeltedCoin *mc,
-                         const char *buf,
-                         size_t size,
-                         int *ok)
+                         const json_t *in)
 {
-  struct MeltedCoinP mcp;
-  size_t pbuf_size;
-  size_t sbuf_size;
-  size_t off;
+  json_t *trans_privs;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("coin_priv",
+                                 &mc->coin_priv),
+    TALER_JSON_spec_denom_sig ("denom_sig",
+                               &mc->sig),
+    TALER_JSON_spec_denom_pub ("denom_pub",
+                               &mc->pub_key),
+    TALER_JSON_spec_amount ("melt_amount_with_fee",
+                            &mc->melt_amount_with_fee),
+    TALER_JSON_spec_amount ("original_value",
+                            &mc->original_value),
+    TALER_JSON_spec_amount ("melt_fee",
+                            &mc->melt_fee),
+    TALER_JSON_spec_absolute_time ("expire_deposit",
+                                   &mc->expire_deposit),
+    TALER_JSON_spec_json ("transfer_privs",
+                          &trans_privs),
+    GNUNET_JSON_spec_end ()
+  };
 
-  if (size < sizeof (struct MeltedCoinP))
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (in,
+                         spec,
+                         NULL, NULL))
   {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
+    GNUNET_break_op (0);
+    return GNUNET_NO;
   }
-  memcpy (&mcp,
-          buf,
-          sizeof (struct MeltedCoinP));
-  pbuf_size = ntohs (mcp.pbuf_size);
-  sbuf_size = ntohs (mcp.sbuf_size);
-  if (size < sizeof (struct MeltedCoinP) + pbuf_size + sbuf_size)
+  if (TALER_CNC_KAPPA != json_array_size (trans_privs))
   {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
+    GNUNET_JSON_parse_free (spec);
+    GNUNET_break_op (0);
+    return GNUNET_NO;
   }
-  off = sizeof (struct MeltedCoinP);
-  mc->pub_key.rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_decode (&buf[off],
-                                           pbuf_size);
-  off += pbuf_size;
-  mc->sig.rsa_signature
-    = GNUNET_CRYPTO_rsa_signature_decode (&buf[off],
-                                          sbuf_size);
-  off += sbuf_size;
-  if ( (NULL == mc->pub_key.rsa_public_key) ||
-       (NULL == mc->sig.rsa_signature) )
-  {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
-  }
-
-  mc->coin_priv = mcp.coin_priv;
-  TALER_amount_ntoh (&mc->melt_amount_with_fee,
-                     &mcp.melt_amount_with_fee);
-  TALER_amount_ntoh (&mc->fee_melt,
-                     &mcp.fee_melt);
-  TALER_amount_ntoh (&mc->original_value,
-                     &mcp.original_value);
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
-    mc->transfer_priv[i] = mcp.transfer_priv[i];
-  mc->expire_deposit = GNUNET_TIME_absolute_ntoh (mcp.expire_deposit);
-  return off;
-}
-
-
-/**
- * Serialize information about a denomination key.
- *
- * @param dk information to serialize
- * @param buf buffer to write data in, NULL to just compute
- *            required size
- * @param off offset at @a buf to use
- * @return number of bytes written to @a buf at @a off (in addition to @a off itself), or if
- *        @a buf is NULL, number of bytes required, excluding @a off
- */
-static size_t
-serialize_denomination_key (const struct TALER_DenominationPublicKey *dk,
-                            char *buf,
-                            size_t off)
-{
-  void *pbuf;
-  size_t pbuf_size;
-  uint32_t be;
-
-  pbuf_size = GNUNET_CRYPTO_rsa_public_key_encode (dk->rsa_public_key,
-                                                   &pbuf);
-  if (NULL == buf)
   {
-    GNUNET_free (pbuf);
-    return pbuf_size + sizeof (uint32_t);
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed_auto ("transfer_priv",
+                                   &mc->transfer_priv[i]),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (json_array_get (trans_privs,
+                                           i),
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
+      return GNUNET_NO;
+    }
   }
-  be = htonl ((uint32_t) pbuf_size);
-  memcpy (&buf[off],
-          &be,
-          sizeof (uint32_t));
-  memcpy (&buf[off + sizeof (uint32_t)],
-          pbuf,
-          pbuf_size);
-  GNUNET_free (pbuf);
-  return pbuf_size + sizeof (uint32_t);
-}
-
-
-/**
- * Deserialize information about a denomination key.
- *
- * @param[out] dk information to deserialize
- * @param buf buffer to read data from
- * @param size number of bytes available at @a buf to use
- * @param[out] ok set to #GNUNET_NO to report errors
- * @return number of bytes read from @a buf, 0 on error
- */
-static size_t
-deserialize_denomination_key (struct TALER_DenominationPublicKey *dk,
-                              const char *buf,
-                              size_t size,
-                              int *ok)
-{
-  size_t pbuf_size;
-  uint32_t be;
-
-  if (size < sizeof (uint32_t))
-  {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
-  }
-  memcpy (&be,
-          buf,
-          sizeof (uint32_t));
-  pbuf_size = ntohl (be);
-  if ( (size < sizeof (uint32_t) + pbuf_size) ||
-       (sizeof (uint32_t) + pbuf_size < pbuf_size) )
-  {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
-  }
-  dk->rsa_public_key
-    = GNUNET_CRYPTO_rsa_public_key_decode (&buf[sizeof (uint32_t)],
-                                           pbuf_size);
-  if (NULL == dk->rsa_public_key)
-  {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
-  }
-  return sizeof (uint32_t) + pbuf_size;
-}
-
-
-/**
- * Serialize information about a fresh coin we are generating.
- *
- * @param fc information to serialize
- * @param buf buffer to write data in, NULL to just compute
- *            required size
- * @param off offeset at @a buf to use
- * @return number of bytes written to @a buf at @a off, or if
- *        @a buf is NULL, number of bytes required
- */
-static size_t
-serialize_fresh_coin (const struct TALER_PlanchetSecretsP *fc,
-                      char *buf,
-                      size_t off)
-{
-  if (NULL != buf)
-    memcpy (&buf[off],
-            fc,
-            sizeof (struct TALER_PlanchetSecretsP));
-  return sizeof (struct TALER_PlanchetSecretsP);
-}
-
-
-/**
- * Deserialize information about a fresh coin we are generating.
- *
- * @param[out] fc information to deserialize
- * @param buf buffer to read data from
- * @param size number of bytes available at @a buf to use
- * @param[out] ok set to #GNUNET_NO to report errors
- * @return number of bytes read from @a buf, 0 on error
- */
-static size_t
-deserialize_fresh_coin (struct TALER_PlanchetSecretsP *fc,
-                        const char *buf,
-                        size_t size,
-                        int *ok)
-{
-  if (size < sizeof (struct TALER_PlanchetSecretsP))
-  {
-    GNUNET_break (0);
-    *ok = GNUNET_NO;
-    return 0;
-  }
-  memcpy (fc,
-          buf,
-          sizeof (struct TALER_PlanchetSecretsP));
-  return sizeof (struct TALER_PlanchetSecretsP);
+  json_decref (trans_privs);
+  return GNUNET_OK;
 }
 
 
@@ -338,110 +170,153 @@ deserialize_fresh_coin (struct TALER_PlanchetSecretsP *fc,
  * Serialize melt data.
  *
  * @param md data to serialize
- * @param[out] res_size size of buffer returned
  * @return serialized melt data
  */
-static char *
-serialize_melt_data (const struct MeltData *md,
-                     size_t *res_size)
+static json_t *
+serialize_melt_data (const struct MeltData *md)
 {
-  size_t size;
-  size_t asize;
-  char *buf;
+  json_t *fresh_coins;
 
-  size = 0;
-  asize = (size_t) -1; /* make the compiler happy */
-  buf = NULL;
-  /* we do 2 iterations, #1 to determine total size, #2 to
-     actually construct the buffer */
-  do {
-    if (0 == size)
-    {
-      size = sizeof (struct MeltDataP);
-    }
-    else
-    {
-      struct MeltDataP *mdp;
+  fresh_coins = json_array ();
+  GNUNET_assert (NULL != fresh_coins);
+  for (int i = 0; i<md->num_fresh_coins; i++)
+  {
+    json_t *planchet_secrets;
 
-      buf = GNUNET_malloc (size);
-      asize = size; /* just for invariant check later */
-      size = sizeof (struct MeltDataP);
-      mdp = (struct MeltDataP *) buf;
-      mdp->rc = md->rc;
-      mdp->num_fresh_coins = htons (md->num_fresh_coins);
+    planchet_secrets = json_array ();
+    GNUNET_assert (NULL != planchet_secrets);
+    for (unsigned int j = 0; j<TALER_CNC_KAPPA; j++)
+    {
+      json_t *ps;
+
+      ps = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_fixed_auto ("ps",
+                                     &md->fresh_coins[i][j]));
+      GNUNET_assert (0 ==
+                     json_array_append (planchet_secrets,
+                                        ps));
     }
-    size += serialize_melted_coin (&md->melted_coin,
-                                   buf,
-                                   size);
-    for (unsigned int i = 0; i<md->num_fresh_coins; i++)
-      size += serialize_denomination_key (&md->fresh_pks[i],
-                                          buf,
-                                          size);
-    for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
-      for (unsigned int j = 0; j<md->num_fresh_coins; j++)
-        size += serialize_fresh_coin (&md->fresh_coins[i][j],
-                                      buf,
-                                      size);
-  } while (NULL == buf);
-  GNUNET_assert (size == asize);
-  *res_size = size;
-  return buf;
+    GNUNET_assert (0 ==
+                   json_array_append (
+                     GNUNET_JSON_PACK (
+                       TALER_JSON_pack_denom_pub ("denom_pub",
+                                                  &md->fresh_pks[i]),
+                       TALER_JSON_pack_array_steal ("planchet_secrets",
+                                                    ps)))
+                   );
+  }
+  return GNUNET_JSON_PACK (
+    TALER_JSON_pack_array_steal ("fresh_coins",
+                                 fresh_coins),
+    TALER_JSON_pack_object_steal ("melted_coin",
+                                  serialize_melted_coin (&mc->melted_coin)),
+    GNUNET_JSON_pack_fixed_auto ("rc",
+                                 &md->rc));
 }
 
 
-/**
- * Deserialize melt data.
- *
- * @param buf serialized data
- * @param buf_size size of @a buf
- * @return deserialized melt data, NULL on error
- */
 struct MeltData *
-TALER_EXCHANGE_deserialize_melt_data_ (const char *buf,
-                                       size_t buf_size)
+TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data)
 {
-  struct MeltData *md;
-  struct MeltDataP mdp;
-  size_t off;
-  int ok;
+  struct MeltData *md = GNUNET_new (struct MeltData);
+  json_t *fresh_coins;
+  json_t *melted_coin;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_fixed_auto ("rc",
+                                 &md->rc),
+    GNUNET_JSON_spec_json ("melted_coin",
+                           &melted_coin),
+    GNUNET_JSON_spec_json ("fresh_coins",
+                           &fresh_coins),
+    GNUNET_JSON_spec_end ()
+  };
+  bool ok;
 
-  if (buf_size < sizeof (struct MeltDataP))
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (melt_data,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    GNUNET_free (md);
     return NULL;
-  memcpy (&mdp,
-          buf,
-          sizeof (struct MeltDataP));
-  md = GNUNET_new (struct MeltData);
-  md->rc = mdp.rc;
-  md->num_fresh_coins = ntohs (mdp.num_fresh_coins);
+  }
+  if (! (json_is_array (fresh_coins) &&
+         json_is_object (melted_coin)) )
+  {
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    return NULL;
+  }
+  if (GNUNET_OK !=
+      deserialize_melted_coin (&md->mc,
+                               melted_coin))
+  {
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    return NULL;
+  }
+  md->num_fresh_coins = json_array_size (fresh_coins);
   md->fresh_pks = GNUNET_new_array (md->num_fresh_coins,
                                     struct TALER_DenominationPublicKey);
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
     md->fresh_coins[i] = GNUNET_new_array (md->num_fresh_coins,
                                            struct TALER_PlanchetSecretsP);
-  off = sizeof (struct MeltDataP);
-  ok = GNUNET_YES;
-  off += deserialize_melted_coin (&md->melted_coin,
-                                  &buf[off],
-                                  buf_size - off,
-                                  &ok);
-  for (unsigned int i = 0; (i<md->num_fresh_coins) && (GNUNET_YES == ok); i++)
-    off += deserialize_denomination_key (&md->fresh_pks[i],
-                                         &buf[off],
-                                         buf_size - off,
-                                         &ok);
-
-  for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
-    for (unsigned int j = 0; (j<md->num_fresh_coins) && (GNUNET_YES == ok); j++)
-      off += deserialize_fresh_coin (&md->fresh_coins[i][j],
-                                     &buf[off],
-                                     buf_size - off,
-                                     &ok);
-  if (off != buf_size)
+  ok = true;
+  for (unsigned int i = 0; i<md->num_fresh_coins; i++)
   {
-    GNUNET_break (0);
-    ok = GNUNET_NO;
+    const json_t *ji = json_array_get (fresh_coins,
+                                       i);
+    json_t *planchet_secrets;
+    struct GNUNET_JSON_Specification ispec[] = {
+      GNUNET_JSON_spec_json ("planchet_secrets",
+                             &planchet_secrets),
+      TALER_JSON_spec_denom_pub ("denom_pub",
+                                 &md->fresh_pks[i]),
+      GNUNET_JSON_spec_end ()
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (melt_data,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break (0);
+      ok = false;
+      break;
+    }
+    if ( (! json_is_array (planchet_secrets)) ||
+         (TALER_CNC_KAPPA != json_array_size (planchet_secrets)) )
+    {
+      GNUNET_break (0);
+      ok = false;
+      break;
+    }
+    for (unsigned int j = 0; j<TALER_CNC_KAPPA; j++)
+    {
+      struct GNUNET_JSON_Specification jspec[] = {
+        GNUNET_JSON_spec_data_auto ("ps",
+                                    &md->fresh_coins[i][j]),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (json_array_get (planchet_secrets,
+                                             j),
+                             jspec,
+                             NULL, NULL))
+      {
+        GNUNET_break (0);
+        ok = false;
+        break;
+      }
+    }
+    if (! ok)
+      break;
   }
-  if (GNUNET_YES != ok)
+
+  if (! ok)
   {
     TALER_EXCHANGE_free_melt_data_ (md);
     GNUNET_free (md);
@@ -451,56 +326,17 @@ TALER_EXCHANGE_deserialize_melt_data_ (const char *buf,
 }
 
 
-/**
- * Melt (partially spent) coins to obtain fresh coins that are
- * unlinkable to the original coin(s).  Note that melting more
- * than one coin in a single request will make those coins linkable,
- * so the safest operation only melts one coin at a time.
- *
- * This API is typically used by a wallet.  Note that to ensure that
- * no money is lost in case of hardware failures, this operation does
- * not actually initiate the request. Instead, it generates a buffer
- * which the caller must store before proceeding with the actual call
- * to #TALER_EXCHANGE_melt() that will generate the request.
- *
- * This function does verify that the given request data is internally
- * consistent.  However, the @a melts_sigs are NOT verified.
- *
- * Aside from some non-trivial cryptographic operations that might
- * take a bit of CPU time to complete, this function returns
- * its result immediately and does not start any asynchronous
- * processing.  This function is also thread-safe.
- *
- * @param melt_priv private key of the coin to melt
- * @param melt_amount amount specifying how much
- *                     the coin will contribute to the melt (including fee)
- * @param melt_sig signature affirming the
- *                   validity of the public keys corresponding to the
- *                   @a melt_priv private key
- * @param melt_pk denomination key information
- *                   record corresponding to the @a melt_sig
- *                   validity of the keys
- * @param fresh_pks_len length of the @a pks array
- * @param fresh_pks array of @a pks_len denominations of fresh coins to create
- * @param[out] res_size set to the size of the return value, or 0 on error
- * @return NULL
- *         if the inputs are invalid (i.e. denomination key not with this exchange).
- *         Otherwise, pointer to a buffer of @a res_size to store persistently
- *         before proceeding to #TALER_EXCHANGE_melt().
- *         Non-null results should be freed using GNUNET_free().
- */
-char *
+json_t *
 TALER_EXCHANGE_refresh_prepare (
   const struct TALER_CoinSpendPrivateKeyP *melt_priv,
   const struct TALER_Amount *melt_amount,
   const struct TALER_DenominationSignature *melt_sig,
   const struct TALER_EXCHANGE_DenomPublicKey *melt_pk,
   unsigned int fresh_pks_len,
-  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks,
-  size_t *res_size)
+  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks)
 {
   struct MeltData md;
-  char *buf;
+  json_t *ret;
   struct TALER_Amount total;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_TransferSecretP trans_sec[TALER_CNC_KAPPA];
@@ -509,7 +345,9 @@ TALER_EXCHANGE_refresh_prepare (
   GNUNET_CRYPTO_eddsa_key_get_public (&melt_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
   /* build up melt data structure */
-  memset (&md, 0, sizeof (md));
+  memset (&md,
+          0,
+          sizeof (md));
   md.num_fresh_coins = fresh_pks_len;
   md.melted_coin.coin_priv = *melt_priv;
   md.melted_coin.melt_amount_with_fee = *melt_amount;
@@ -605,8 +443,7 @@ TALER_EXCHANGE_refresh_prepare (
                                 &coin_pub,
                                 melt_amount);
   /* finally, serialize everything */
-  buf = serialize_melt_data (&md,
-                             res_size);
+  ret = serialize_melt_data (&md);
   for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
   {
     for (unsigned int j = 0; j < fresh_pks_len; j++)

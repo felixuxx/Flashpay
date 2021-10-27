@@ -451,8 +451,7 @@ handle_melt_finished (void *cls,
 
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     size_t refresh_data_length,
-                     const char *refresh_data,
+                     const json_t *refresh_data,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls)
 {
@@ -472,8 +471,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
-  md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data,
-                                              refresh_data_length);
+  md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data);
   if (NULL == md)
   {
     GNUNET_break (0);
@@ -496,8 +494,8 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                                 &melt.coin_pub),
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &melt.h_denom_pub),
-    TALER_JSON_pack_denomination_signature ("denom_sig",
-                                            &md->melted_coin.sig),
+    TALER_JSON_pack_denom_sig ("denom_sig",
+                               &md->melted_coin.sig),
     GNUNET_JSON_pack_data_auto ("confirm_sig",
                                 &confirm_sig),
     TALER_JSON_pack_amount ("value_with_fee",
