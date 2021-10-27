@@ -949,7 +949,7 @@ notify_transaction (struct TALER_FAKEBANK_Handle *h,
  * @return #GNUNET_YES if the transfer was successful,
  *         #GNUNET_SYSERR if the request_uid was reused for a different transfer
  */
-static int
+static enum GNUNET_GenericReturnValue
 make_transfer (
   struct TALER_FAKEBANK_Handle *h,
   const char *debit_account,
@@ -968,6 +968,8 @@ make_transfer (
 
   GNUNET_assert (0 == strcasecmp (amount->currency,
                                   h->currency));
+  GNUNET_assert (NULL != debit_account);
+  GNUNET_assert (NULL != credit_account);
   GNUNET_break (0 != strncasecmp ("payto://",
                                   debit_account,
                                   strlen ("payto://")));
@@ -2307,8 +2309,9 @@ serve (struct TALER_FAKEBANK_Handle *h,
   else if (0 == strcasecmp (method,
                             MHD_HTTP_METHOD_POST))
   {
-    if (0 == strcmp (url,
-                     "/admin/add-incoming"))
+    if ( (0 == strcmp (url,
+                       "/admin/add-incoming")) &&
+         (NULL != account) )
       return handle_admin_add_incoming (h,
                                         connection,
                                         account,
