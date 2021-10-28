@@ -2343,6 +2343,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (reserve_pub, const struct TALER_ReservePublicKeyP)   \
   op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
   op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
+  op (merchant_sig, const struct TALER_MerchantSignatureP)         \
   op (wtid, const struct TALER_WireTransferIdentifierRawP)         \
   op (contract_terms, const json_t)                                \
   op (wire_details, const json_t)                                  \

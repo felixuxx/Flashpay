@@ -1410,7 +1410,7 @@ struct TALER_ProposalDataPS
    * Hash of the JSON contract in UTF-8 including 0-termination,
    * using JSON_COMPACT | JSON_SORT_KEYS
    */
-  struct GNUNET_HashCode hash;
+  struct TALER_PrivateContractHash hash;
 };
 
 /**
