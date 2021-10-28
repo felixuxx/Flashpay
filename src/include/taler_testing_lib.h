@@ -2359,6 +2359,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (debit_payto_uri, const char *)                               \
   op (order_id, const char *)                                      \
   op (amount, const struct TALER_Amount)                           \
+  op (amount_with_fee, const struct TALER_Amount)                        \
   op (deposit_amount, const struct TALER_Amount)                           \
   op (deposit_fee_amount, const struct TALER_Amount)                           \
   op (batch_cmds, struct TALER_TESTING_Command *)                  \
