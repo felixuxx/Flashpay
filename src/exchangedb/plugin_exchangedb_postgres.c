@@ -3694,12 +3694,30 @@ postgres_inselect_wallet_kyc_status (
 
   {
     char *rps;
+    unsigned int skip;
+    const char *extra = "";
+    int url_len;
 
     rps = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
                                                sizeof (*reserve_pub));
+    skip = 0;
+    if (0 == strncasecmp (pg->exchange_url,
+                          "http://",
+                          strlen ("http://")))
+      skip = strlen ("http://");
+    if (0 == strncasecmp (pg->exchange_url,
+                          "https://",
+                          strlen ("https://")))
+      skip = strlen ("https://");
+    url_len = strlen (pg->exchange_url);
+    if ('/' == pg->exchange_url[url_len - 1])
+      url_len--;
+    url_len -= skip;
     GNUNET_asprintf (&payto_uri,
-                     "taler://reserve/%s/%s",
-                     pg->exchange_url,
+                     "taler%s://reserve/%.*s/%s",
+                     extra,
+                     url_len,
+                     pg->exchange_url + skip,
                      rps);
     GNUNET_free (rps);
   }
