@@ -121,6 +121,11 @@ struct PostgresClosure
   char *currency;
 
   /**
+   * Our base URL.
+   */
+  char *exchange_url;
+
+  /**
    * Postgres connection handle.
    */
   struct GNUNET_PQ_Context *conn;
@@ -353,13 +358,14 @@ prepare_statements (struct PostgresClosure *pg)
                             ",current_balance_frac"
                             ",expiration_date"
                             ",gc_date"
-                            ",FALSE AS kyc_ok" // FIXME
-                            ",CAST (0 AS INT8) AS payment_target_uuid" // FIXME
+                            ",kyc_ok"
+                            ",wire_target_serial_id AS payment_target_uuid"
                             " FROM reserves"
+                            " JOIN reserves_in USING (reserve_uuid)"
+                            " JOIN wire_targets USING (wire_target_serial_id)"
                             " WHERE reserve_pub=$1"
                             " LIMIT 1;",
                             1),
-#if FIXME_DD23
     /* Used in #postgres_set_kyc_ok() */
     GNUNET_PQ_make_prepare ("set_kyc_ok",
                             "UPDATE wire_targets"
@@ -389,7 +395,8 @@ prepare_statements (struct PostgresClosure *pg)
     // It just represents the _idea_.
     GNUNET_PQ_make_prepare ("inselect_wallet_kyc_status",
                             "INSERT INTO wire_targets"
-                            "(payto_uri"
+                            "(h_payto"
+                            ",payto_uri"
                             ") VALUES "
                             "($1)"
                             " ON CONFLICT (wire_target_serial_id) DO "
@@ -401,7 +408,6 @@ prepare_statements (struct PostgresClosure *pg)
                             "   FALSE AS kyc_ok"
                             "   wire_target_serial_id;",
                             1),
-#endif
     /* Used in #reserves_get() */
     GNUNET_PQ_make_prepare ("reserves_get",
                             "SELECT"
@@ -980,14 +986,15 @@ prepare_statements (struct PostgresClosure *pg)
        Used in #postgres_lookup_transfer_by_deposit(). */
     GNUNET_PQ_make_prepare ("get_deposit_for_wtid",
                             "SELECT"
-                            " FALSE AS kyc_ok" // FIXME
-                            ",CAST (0 AS INT8) AS payment_target_uuid" // FIXME
+                            " kyc_ok"
+                            ",wire_target_serial_id AS payment_target_uuid"
                             ",amount_with_fee_val"
                             ",amount_with_fee_frac"
                             ",denom.fee_deposit_val"
                             ",denom.fee_deposit_frac"
                             ",wire_deadline"
                             " FROM deposits"
+                            "    JOIN wire_targets USING (wire_target_serial_id)"
                             "    JOIN known_coins USING (known_coin_id)"
                             "    JOIN denominations denom USING (denominations_serial)"
                             " WHERE ((coin_pub=$1)"
@@ -3599,15 +3606,12 @@ postgres_get_kyc_status (void *cls,
                          const char *payto_uri,
                          struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
-#if FIXME_DD23
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_end
   };
-#endif
   uint8_t ok8;
-#if FIXME_DD23
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
                                   &kyc->payment_target_uuid),
@@ -3615,19 +3619,12 @@ postgres_get_kyc_status (void *cls,
                                           &ok8),
     GNUNET_PQ_result_spec_end
   };
-#endif
   enum GNUNET_DB_QueryStatus qs;
 
-#if FIXME_DD23
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_kyc_status",
                                                  params,
                                                  rs);
-#else
-  qs = 1;
-  ok8 = 0;
-  kyc->payment_target_uuid = 0;
-#endif
   kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
   kyc->ok = (0 != ok8);
   return qs;
@@ -3649,15 +3646,12 @@ postgres_select_kyc_status (void *cls,
                             struct TALER_PaytoHash *h_payto,
                             struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
-#if FIXME_DD23
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (payment_target_uuid),
+    GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
     GNUNET_PQ_query_param_end
   };
-#endif
   uint8_t ok8;
-#if FIXME_DD23
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("h_payto",
                                           h_payto),
@@ -3665,18 +3659,12 @@ postgres_select_kyc_status (void *cls,
                                           &ok8),
     GNUNET_PQ_result_spec_end
   };
-#endif
   enum GNUNET_DB_QueryStatus qs;
 
-#if FIXME_DD23
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "select_kyc_status",
                                                  params,
                                                  rs);
-#else
-  qs = 1;
-  ok8 = 0;
-#endif
   kyc->type = TALER_EXCHANGEDB_KYC_UNKNOWN;
   kyc->ok = (0 != ok8);
   kyc->payment_target_uuid = payment_target_uuid;
@@ -3699,41 +3687,47 @@ postgres_inselect_wallet_kyc_status (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
-#if FIXME_DD23
   struct PostgresClosure *pg = cls;
-  /* FIXME: maybe prepared statement will take
-     a payto:// URI instead of the reserve public key?
-     => figure out once DB schema is stable! */
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("reserve_pub",
-                                          reserve_pub),
-    GNUNET_PQ_query_param_end
-  };
-#endif
-  uint8_t ok8;
-#if FIXME_DD23
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
-                                  &kyc->payment_target_uuid),
-    GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                          &ok8),
-    GNUNET_PQ_result_spec_end
-  };
-#endif
+  char *payto_uri;
+  struct TALER_PaytoHash h_payto;
   enum GNUNET_DB_QueryStatus qs;
 
-#if FIXME_DD23
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "inselect_wallet_kyc_status",
-                                                 params,
-                                                 rs);
-#else
-  qs = 1;
-  ok8 = 0;
-  kyc->payment_target_uuid = 0;
-#endif
+  {
+    char *rps;
+
+    rps = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
+                                               sizeof (*reserve_pub));
+    GNUNET_asprintf (&payto_uri,
+                     "taler://reserve/%s/%s",
+                     pg->exchange_url,
+                     rps);
+    GNUNET_free (rps);
+  }
+  TALER_payto_hash (payto_uri,
+                    &h_payto);
+  {
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&h_payto),
+      GNUNET_PQ_query_param_string (payto_uri),
+      GNUNET_PQ_query_param_end
+    };
+    uint8_t ok8 = 0;
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
+                                    &kyc->payment_target_uuid),
+      GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
+                                            &ok8),
+      GNUNET_PQ_result_spec_end
+    };
+
+    qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "inselect_wallet_kyc_status",
+                                                   params,
+                                                   rs);
+    kyc->ok = (0 != ok8);
+  }
+  GNUNET_free (payto_uri);
   kyc->type = TALER_EXCHANGEDB_KYC_BALANCE;
-  kyc->ok = (0 != ok8);
   return qs;
 }
 
@@ -11239,6 +11233,19 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_free (pg);
     return NULL;
   }
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (cfg,
+                                             "exchange",
+                                             "BASE_URL",
+                                             &pg->exchange_url))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange",
+                               "BASE_URL");
+    GNUNET_free (pg->sql_dir);
+    GNUNET_free (pg);
+    return NULL;
+  }
   if ( (GNUNET_OK !=
         GNUNET_CONFIGURATION_get_value_time (cfg,
                                              "exchangedb",
@@ -11254,6 +11261,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
                                "exchangedb",
                                "LEGAL/IDLE_RESERVE_EXPIRATION_TIME");
+    GNUNET_free (pg->exchange_url);
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
@@ -11262,6 +11270,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
       TALER_config_get_currency (cfg,
                                  &pg->currency))
   {
+    GNUNET_free (pg->exchange_url);
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
     return NULL;
@@ -11270,6 +11279,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
       internal_setup (pg,
                       true))
   {
+    GNUNET_free (pg->exchange_url);
     GNUNET_free (pg->currency);
     GNUNET_free (pg->sql_dir);
     GNUNET_free (pg);
@@ -11453,6 +11463,7 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
 
   if (NULL != pg->conn)
     GNUNET_PQ_disconnect (pg->conn);
+  GNUNET_free (pg->exchange_url);
   GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);
   GNUNET_free (pg);
