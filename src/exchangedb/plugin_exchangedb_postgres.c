@@ -361,8 +361,9 @@ prepare_statements (struct PostgresClosure *pg)
                             ",kyc_ok"
                             ",wire_target_serial_id AS payment_target_uuid"
                             " FROM reserves"
-                            " JOIN reserves_in USING (reserve_uuid)"
-                            " JOIN wire_targets USING (wire_target_serial_id)"
+                            " JOIN reserves_in ri USING (reserve_uuid)"
+                            " JOIN wire_targets wt "
+                            "  ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
                             " WHERE reserve_pub=$1"
                             " LIMIT 1;",
                             1),
@@ -375,7 +376,7 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_get_kyc_status() */
     GNUNET_PQ_make_prepare ("get_kyc_status",
                             "SELECT"
-                            ",kyc_ok"
+                            " kyc_ok"
                             ",wire_target_serial_id AS payment_target_uuid"
                             " FROM wire_targets"
                             " WHERE payto_uri=$1"
@@ -384,7 +385,7 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_select_kyc_status() */
     GNUNET_PQ_make_prepare ("select_kyc_status",
                             "SELECT"
-                            ",kyc_ok"
+                            " kyc_ok"
                             ",h_payto"
                             " FROM wire_targets"
                             " WHERE"
@@ -400,10 +401,10 @@ prepare_statements (struct PostgresClosure *pg)
                             ") VALUES "
                             "($1)"
                             " ON CONFLICT (wire_target_serial_id) DO "
-                            " (SELECT "
+                            "(SELECT "
                             "  kyc_ok"
                             " ,wire_target_serial_id"
-                            " )"
+                            ")"
                             " RETURNING "
                             "   FALSE AS kyc_ok"
                             "   wire_target_serial_id;",
