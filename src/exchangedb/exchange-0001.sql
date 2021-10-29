@@ -49,8 +49,6 @@ COMMENT ON COLUMN denominations.denom_type
   IS 'determines cipher type for blind signatures used with this denomination; 0 is for RSA';
 COMMENT ON COLUMN denominations.age_restrictions
   IS 'bitmask with the age restrictions that are being used for this denomination; 0 if denomination does not support the use of age restrictions';
-COMMENT ON COLUMN denominations.denom_options
-  IS 'additional options being hashed into the denom hash of age restrictions';
 COMMENT ON COLUMN denominations.denominations_serial
   IS 'needed for exchange-auditor replication logic';
 
@@ -70,11 +68,11 @@ COMMENT ON TABLE denomination_revocations
 
 CREATE TABLE IF NOT EXISTS wire_targets
 (wire_target_serial_id BIGSERIAL UNIQUE
-,h_payto BYTEA NOT NULL CHECK (LENGTH(h_payto)=64),
-,payto_uri STRING NOT NULL
+,h_payto BYTEA NOT NULL CHECK (LENGTH(h_payto)=64)
+,payto_uri VARCHAR NOT NULL
 ,kyc_ok BOOLEAN NOT NULL DEFAULT (false)
-,oauth_username STRING NOT NULL
-,PRIMARY KEY (h_wire)
+,oauth_username VARCHAR NOT NULL
+,PRIMARY KEY (h_payto)
 );
 COMMENT ON TABLE wire_targets
   IS 'All recipients of money via the exchange';
@@ -152,7 +150,7 @@ CREATE TABLE IF NOT EXISTS reserves_close
   ,reserve_uuid INT8 NOT NULL REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
   ,execution_date INT8 NOT NULL
   ,wtid BYTEA NOT NULL CHECK (LENGTH(wtid)=32)
-  ,wire_target_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id),
+  ,wire_target_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id)
   ,amount_val INT8 NOT NULL
   ,amount_frac INT4 NOT NULL
   ,closing_fee_val INT8 NOT NULL
@@ -316,7 +314,7 @@ CREATE TABLE IF NOT EXISTS deposits
   ,tiny BOOLEAN NOT NULL DEFAULT FALSE
   ,done BOOLEAN NOT NULL DEFAULT FALSE
   ,extension_blocked BOOLEAN NOT NULL DEFAULT FALSE
-  ,extension_options STRING NOT NULL
+  ,extension_options VARCHAR NOT NULL
   ,UNIQUE (known_coin_id, merchant_pub, h_contract_terms)
   );
 COMMENT ON TABLE deposits
@@ -348,7 +346,7 @@ CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   (shard
   ,tiny
   ,done
-  ,extension_blocked,
+  ,extension_blocked
   ,wire_deadline
   ,refund_deadline
   );
@@ -357,7 +355,7 @@ COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
 CREATE INDEX IF NOT EXISTS deposits_iterate_matching_index
   ON deposits
   (merchant_pub
-  ,h_wire
+  ,wire_target_serial_id
   ,done
   ,extension_blocked
   ,wire_deadline
