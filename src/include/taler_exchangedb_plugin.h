@@ -1478,8 +1478,8 @@ typedef enum GNUNET_DB_QueryStatus
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param receiver_wire_account wire details for the merchant, includes
- *        'url' in payto://-format;
+ * @param wire_target unique ID of the receiver account
+ * @param payto_uri how to pay the merchant, URI in payto://-format;
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 typedef enum GNUNET_DB_QueryStatus
@@ -1491,7 +1491,8 @@ typedef enum GNUNET_DB_QueryStatus
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *deposit_fee,
   const struct TALER_PrivateContractHash *h_contract_terms,
-  const json_t *receiver_wire_account);
+  uint64_t wire_target,
+  const char *payto_uri);
 
 
 /**
@@ -2796,7 +2797,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*iterate_matching_deposits)(
     void *cls,
-    const struct TALER_MerchantWireHash *h_wire,
+    uint64_t wire_target,
     const struct TALER_MerchantPublicKeyP *merchant_pub,
     TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
     void *deposit_cb_cls,
@@ -3178,7 +3179,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     struct GNUNET_TIME_Absolute date,
     const struct TALER_WireTransferIdentifierRawP *wtid,
-    const json_t *wire_account,
+    uint64_t wire_target,
     const char *exchange_account_section,
     const struct TALER_Amount *amount);
 

@@ -1023,12 +1023,17 @@ prepare_statements (struct PostgresClosure *pg)
                             ",denom.fee_deposit_val"
                             ",denom.fee_deposit_frac"
                             ",h_contract_terms"
-                            ",wire"
+                            ",payto_uri"
+                            ",wire_target_serial_id"
                             ",merchant_pub"
                             ",kc.coin_pub"
                             " FROM deposits"
-                            "    JOIN known_coins kc USING (known_coin_id)"
-                            "    JOIN denominations denom USING (denominations_serial)"
+                            "  JOIN wire_targets "
+                            "    USING (wire_target_serial_id)"
+                            "  JOIN known_coins kc"
+                            "    USING (known_coin_id)"
+                            "  JOIN denominations denom"
+                            "    USING (denominations_serial)"
                             " WHERE "
                             "       shard >= $2"
                             "   AND shard <= $3"
@@ -1056,7 +1061,7 @@ prepare_statements (struct PostgresClosure *pg)
                             "    JOIN denominations denom USING (denominations_serial)"
                             " WHERE"
                             "     merchant_pub=$1 AND"
-                            "     h_wire=$2 AND"
+                            "     wire_target_serial_id=$2 AND"
                             "     done=FALSE"
                             " ORDER BY wire_deadline ASC"
                             " LIMIT "
@@ -1225,7 +1230,7 @@ prepare_statements (struct PostgresClosure *pg)
                             "INSERT INTO wire_out "
                             "(execution_date"
                             ",wtid_raw"
-                            ",wire_target"
+                            ",wire_target_serial_id"
                             ",exchange_account_section"
                             ",amount_val"
                             ",amount_frac"
@@ -5109,10 +5114,13 @@ postgres_get_ready_deposit (void *cls,
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   uint64_t serial_id;
-  json_t *wire;
+  uint64_t wire_target;
+  char *payto_uri;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
                                   &serial_id),
+    GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
+                                  &wire_target),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                  &amount_with_fee),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
@@ -5123,8 +5131,8 @@ postgres_get_ready_deposit (void *cls,
                                           &merchant_pub),
     GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
                                           &coin_pub),
-    TALER_PQ_result_spec_json ("wire",
-                               &wire),
+    GNUNET_PQ_result_spec_string ("payto_uri",
+                                  &payto_uri),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -5151,7 +5159,8 @@ postgres_get_ready_deposit (void *cls,
                    &amount_with_fee,
                    &deposit_fee,
                    &h_contract_terms,
-                   wire);
+                   wire_target,
+                   payto_uri);
   GNUNET_PQ_cleanup_result (rs);
   return qs;
 }
@@ -5271,7 +5280,7 @@ match_deposit_cb (void *cls,
  * destination.  Those deposits must not already be "done".
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param h_wire destination of the wire transfer
+ * @param wire_target destination of the wire transfer
  * @param merchant_pub public key of the merchant
  * @param deposit_cb function to call for each deposit
  * @param deposit_cb_cls closure for @a deposit_cb
@@ -5282,7 +5291,7 @@ match_deposit_cb (void *cls,
 static enum GNUNET_DB_QueryStatus
 postgres_iterate_matching_deposits (
   void *cls,
-  const struct TALER_MerchantWireHash *h_wire,
+  uint64_t wire_target,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   TALER_EXCHANGEDB_MatchingDepositIterator deposit_cb,
   void *deposit_cb_cls,
@@ -5291,7 +5300,7 @@ postgres_iterate_matching_deposits (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (h_wire),
+    GNUNET_PQ_query_param_uint64 (&wire_target),
     GNUNET_PQ_query_param_end
   };
   struct MatchingDepositContext mdc = {
@@ -7733,7 +7742,7 @@ postgres_start_deferred_wire_out (void *cls)
  * @param cls closure
  * @param date time of the wire transfer
  * @param wtid subject of the wire transfer
- * @param wire_account details about the receiver account of the wire transfer
+ * @param wire_target identifies the receiver account of the wire transfer
  * @param exchange_account_section configuration section of the exchange specifying the
  *        exchange's bank account being used
  * @param amount amount that was transmitted
@@ -7744,7 +7753,7 @@ postgres_store_wire_transfer_out (
   void *cls,
   struct GNUNET_TIME_Absolute date,
   const struct TALER_WireTransferIdentifierRawP *wtid,
-  const json_t *wire_account,
+  uint64_t wire_target,
   const char *exchange_account_section,
   const struct TALER_Amount *amount)
 {
@@ -7752,7 +7761,7 @@ postgres_store_wire_transfer_out (
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&date),
     GNUNET_PQ_query_param_auto_from_type (wtid),
-    TALER_PQ_query_param_json (wire_account),
+    GNUNET_PQ_query_param_uint64 (&wire_target),
     GNUNET_PQ_query_param_string (exchange_account_section),
     TALER_PQ_query_param_amount (amount),
     GNUNET_PQ_query_param_end

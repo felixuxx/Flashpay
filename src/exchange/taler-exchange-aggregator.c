@@ -58,11 +58,6 @@ struct AggregationUnit
   struct TALER_Amount wire_fee;
 
   /**
-   * Hash of @e wire.
-   */
-  struct TALER_MerchantWireHash h_wire;
-
-  /**
    * Wire transfer identifier we use.
    */
   struct TALER_WireTransferIdentifierRawP wtid;
@@ -81,7 +76,12 @@ struct AggregationUnit
   /**
    * Wire details of the merchant.
    */
-  json_t *wire;
+  char *payto_uri;
+
+  /**
+   * Selected wire target for the aggregation.
+   */
+  uint64_t wire_target;
 
   /**
    * Exchange wire account to be used for the preparation and
@@ -216,8 +216,7 @@ static void
 cleanup_au (struct AggregationUnit *au)
 {
   GNUNET_assert (NULL != au);
-  if (NULL != au->wire)
-    json_decref (au->wire);
+  GNUNET_free (au->payto_uri);
   memset (au,
           0,
           sizeof (*au));
@@ -353,7 +352,8 @@ refund_by_coin_cb (void *cls,
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire target account for the wire transfer
+ * @param wire_target target account for the wire transfer
+ * @param payto_uri URI of the target account
  * @return transaction status code,  #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 static enum GNUNET_DB_QueryStatus
@@ -364,7 +364,8 @@ deposit_cb (void *cls,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
             const struct TALER_PrivateContractHash *h_contract_terms,
-            const json_t *wire)
+            uint64_t wire_target,
+            const char *payto_uri)
 {
   struct AggregationUnit *au = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -416,21 +417,9 @@ deposit_cb (void *cls,
     }
   }
 
-  GNUNET_assert (NULL == au->wire);
-  if (NULL == (au->wire = json_incref ((json_t *) wire)))
-  {
-    GNUNET_break (0);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (GNUNET_OK !=
-      TALER_JSON_merchant_wire_signature_hash (wire,
-                                               &au->h_wire))
-  {
-    GNUNET_break (0);
-    json_decref (au->wire);
-    au->wire = NULL;
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
+  GNUNET_assert (NULL == au->payto_uri);
+  au->payto_uri = GNUNET_strdup (payto_uri);
+  au->wire_target = wire_target;
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                               &au->wtid,
                               sizeof (au->wtid));
@@ -439,20 +428,13 @@ deposit_cb (void *cls,
               TALER_B2S (&au->wtid),
               TALER_amount2s (amount_with_fee),
               (unsigned long long) row_id);
+  au->wa = TALER_EXCHANGEDB_find_account_by_payto_uri (payto_uri);
+  if (NULL == au->wa)
   {
-    char *url;
-
-    url = TALER_JSON_wire_to_payto (au->wire);
-    au->wa = TALER_EXCHANGEDB_find_account_by_payto_uri (url);
-    if (NULL == au->wa)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "No exchange account configured for `%s', please fix your setup to continue!\n",
-                  url);
-      GNUNET_free (url);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    GNUNET_free (url);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "No exchange account configured for `%s', please fix your setup to continue!\n",
+                payto_uri);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
   /* make sure we have current fees */
@@ -789,7 +771,7 @@ run_aggregation (void *cls)
               "Found ready deposit for %s, aggregating\n",
               TALER_B2S (&au_active.merchant_pub));
   qs = db_plugin->iterate_matching_deposits (db_plugin->cls,
-                                             &au_active.h_wire,
+                                             au_active.wire_target,
                                              &au_active.merchant_pub,
                                              &aggregate_cb,
                                              &au_active,
@@ -908,19 +890,12 @@ run_aggregation (void *cls)
     void *buf;
     size_t buf_size;
 
-    {
-      char *url;
-
-      url = TALER_JSON_wire_to_payto (au_active.wire);
-      TALER_BANK_prepare_transfer (url,
-                                   &au_active.final_amount,
-                                   exchange_base_url,
-                                   &au_active.wtid,
-                                   &buf,
-                                   &buf_size);
-      GNUNET_free (url);
-    }
-
+    TALER_BANK_prepare_transfer (au_active.payto_uri,
+                                 &au_active.final_amount,
+                                 exchange_base_url,
+                                 &au_active.wtid,
+                                 &buf,
+                                 &buf_size);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Storing %u bytes of wire prepare data\n",
                 (unsigned int) buf_size);
@@ -937,7 +912,7 @@ run_aggregation (void *cls)
     qs = db_plugin->store_wire_transfer_out (db_plugin->cls,
                                              au_active.execution_time,
                                              &au_active.wtid,
-                                             au_active.wire,
+                                             au_active.wire_target,
                                              au_active.wa->section_name,
                                              &au_active.final_amount);
   cleanup_au (&au_active);
