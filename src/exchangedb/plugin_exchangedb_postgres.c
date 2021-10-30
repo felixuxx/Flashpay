@@ -395,20 +395,20 @@ prepare_statements (struct PostgresClosure *pg)
     // FIXME: Note that this statement has not been debugged at all...
     // It just represents the _idea_.
     GNUNET_PQ_make_prepare ("inselect_wallet_kyc_status",
-                            "INSERT INTO wire_targets"
-                            "(h_payto"
-                            ",payto_uri"
-                            ") VALUES "
-                            "($1)"
-                            " ON CONFLICT (wire_target_serial_id) DO "
-                            "(SELECT "
-                            "  kyc_ok"
-                            " ,wire_target_serial_id"
-                            ")"
-                            " RETURNING "
-                            "   FALSE AS kyc_ok"
-                            "   wire_target_serial_id;",
-                            1),
+                            "WITH cte AS ("
+                            "  INSERT INTO wire_targets"
+                            "  (h_payto"
+                            "  ,payto_uri"
+                            "  ) VALUES "
+                            "  ($1, $2)"
+                            "  ON CONFLICT (wire_target_serial_id) DO NOTHING"
+                            ") "
+                            "SELECT "
+                            " kyc_ok"
+                            ",wire_target_serial_id"
+                            " FROM wire_targets"
+                            " WHERE h_payto=$1;",
+                            2),
     /* Used in #reserves_get() */
     GNUNET_PQ_make_prepare ("reserves_get",
                             "SELECT"
@@ -439,7 +439,7 @@ prepare_statements (struct PostgresClosure *pg)
                             "(reserve_uuid"
                             ",execution_date"
                             ",wtid"
-                            ",receiver_account"
+                            ",wire_target_serial_id"
                             ",amount_val"
                             ",amount_frac"
                             ",closing_fee_val"
@@ -466,7 +466,7 @@ prepare_statements (struct PostgresClosure *pg)
                             ",credit_val"
                             ",credit_frac"
                             ",exchange_account_section"
-                            ",sender_account_details"
+                            ",wire_source_serial_id"
                             ",execution_date"
                             ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7"
                             "  FROM reserves"
@@ -481,7 +481,7 @@ prepare_statements (struct PostgresClosure *pg)
                             ",credit_val"
                             ",credit_frac"
                             ",exchange_account_section"
-                            ",sender_account_details"
+                            ",wire_source_serial_id"
                             ",execution_date"
                             ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
                             " ON CONFLICT DO NOTHING;",
@@ -505,11 +505,13 @@ prepare_statements (struct PostgresClosure *pg)
                             ",credit_val"
                             ",credit_frac"
                             ",execution_date"
-                            ",sender_account_details"
+                            ",payto_uri AS sender_account_details"
                             ",reserve_in_serial_id"
                             " FROM reserves_in"
                             " JOIN reserves"
                             "   USING (reserve_uuid)"
+                            " JOIN wire_targets"
+                            "   ON (wire_source_serial_id = wire_target_serial_id)"
                             " WHERE reserve_in_serial_id>=$1"
                             " ORDER BY reserve_in_serial_id;",
                             1),
@@ -523,11 +525,13 @@ prepare_statements (struct PostgresClosure *pg)
       ",credit_val"
       ",credit_frac"
       ",execution_date"
-      ",sender_account_details"
+      ",payto_uri AS sender_account_details"
       ",reserve_in_serial_id"
       " FROM reserves_in"
       " JOIN reserves "
       "   USING (reserve_uuid)"
+      " JOIN wire_targets"
+      "   ON (wire_source_serial_id = wire_target_serial_id)"
       " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
       " ORDER BY reserve_in_serial_id;",
       2),
@@ -539,8 +543,10 @@ prepare_statements (struct PostgresClosure *pg)
                             ",credit_val"
                             ",credit_frac"
                             ",execution_date"
-                            ",sender_account_details"
+                            ",payto_uri AS sender_account_details"
                             " FROM reserves_in"
+                            " JOIN wire_targets"
+                            "   ON (wire_source_serial_id = wire_target_serial_id)"
                             " WHERE reserve_uuid="
                             " (SELECT reserve_uuid "
                             "   FROM reserves"
@@ -3678,50 +3684,20 @@ postgres_select_kyc_status (void *cls,
  * inserts a new status record (hence INsertSELECT).
  *
  * @param cls the @e cls of this struct with the plugin-specific state
- * @param reserve_pub public key of the wallet
+ * @param payto_uri the payto URI to check
  * @param[out] kyc set to the KYC status of the wallet
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_inselect_wallet_kyc_status (
-  void *cls,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
+inselect_account_kyc_status (
+  struct PostgresClosure *pg,
+  const char *payto_uri,
   struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
-  struct PostgresClosure *pg = cls;
-  char *payto_uri;
+
   struct TALER_PaytoHash h_payto;
   enum GNUNET_DB_QueryStatus qs;
 
-  {
-    char *rps;
-    unsigned int skip;
-    const char *extra = "";
-    int url_len;
-
-    rps = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
-                                               sizeof (*reserve_pub));
-    skip = 0;
-    if (0 == strncasecmp (pg->exchange_url,
-                          "http://",
-                          strlen ("http://")))
-      skip = strlen ("http://");
-    if (0 == strncasecmp (pg->exchange_url,
-                          "https://",
-                          strlen ("https://")))
-      skip = strlen ("https://");
-    url_len = strlen (pg->exchange_url);
-    if ('/' == pg->exchange_url[url_len - 1])
-      url_len--;
-    url_len -= skip;
-    GNUNET_asprintf (&payto_uri,
-                     "taler%s://reserve/%.*s/%s",
-                     extra,
-                     url_len,
-                     pg->exchange_url + skip,
-                     rps);
-    GNUNET_free (rps);
-  }
   TALER_payto_hash (payto_uri,
                     &h_payto);
   {
@@ -3745,9 +3721,64 @@ postgres_inselect_wallet_kyc_status (
                                                    rs);
     kyc->ok = (0 != ok8);
   }
-  GNUNET_free (payto_uri);
   kyc->type = TALER_EXCHANGEDB_KYC_BALANCE;
   return qs;
+}
+
+
+/**
+ * Get the KYC status for a wallet. If the status is unknown,
+ * inserts a new status record (hence INsertSELECT).
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param reserve_pub public key of the wallet
+ * @param[out] kyc set to the KYC status of the wallet
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_inselect_wallet_kyc_status (
+  void *cls,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  struct TALER_EXCHANGEDB_KycStatus *kyc)
+{
+  struct PostgresClosure *pg = cls;
+  char *payto_uri;
+  char *rps;
+  unsigned int skip;
+  const char *extra = "";
+  int url_len;
+
+  rps = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
+                                             sizeof (*reserve_pub));
+  skip = 0;
+  if (0 == strncasecmp (pg->exchange_url,
+                        "http://",
+                        strlen ("http://")))
+    skip = strlen ("http://");
+  if (0 == strncasecmp (pg->exchange_url,
+                        "https://",
+                        strlen ("https://")))
+    skip = strlen ("https://");
+  url_len = strlen (pg->exchange_url);
+  if ('/' == pg->exchange_url[url_len - 1])
+    url_len--;
+  url_len -= skip;
+  GNUNET_asprintf (&payto_uri,
+                   "taler%s://reserve/%.*s/%s",
+                   extra,
+                   url_len,
+                   pg->exchange_url + skip,
+                   rps);
+  GNUNET_free (rps);
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = inselect_account_kyc_status (pg,
+                                      payto_uri,
+                                      kyc);
+    GNUNET_free (payto_uri);
+    return qs;
+  }
 }
 
 
@@ -3919,7 +3950,18 @@ postgres_reserves_in_insert (void *cls,
      is again used to guard against duplicates. */
   {
     enum GNUNET_DB_QueryStatus qs2;
+    struct TALER_EXCHANGEDB_KycStatus kyc;
+    enum GNUNET_DB_QueryStatus qs3;
 
+    qs3 = inselect_account_kyc_status (pg,
+                                       sender_account_details,
+                                       &kyc);
+    if (qs3 <= 0)
+    {
+      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs3);
+      GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs3);
+      return qs3;
+    }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs1)
     {
       struct GNUNET_PQ_QueryParam params[] = {
@@ -3927,7 +3969,7 @@ postgres_reserves_in_insert (void *cls,
         GNUNET_PQ_query_param_uint64 (&wire_ref),
         TALER_PQ_query_param_amount (balance),
         GNUNET_PQ_query_param_string (exchange_account_section),
-        GNUNET_PQ_query_param_string (sender_account_details),
+        GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
         TALER_PQ_query_param_absolute_time (&execution_time),
         GNUNET_PQ_query_param_end
       };
@@ -3943,7 +3985,7 @@ postgres_reserves_in_insert (void *cls,
         GNUNET_PQ_query_param_uint64 (&wire_ref),
         TALER_PQ_query_param_amount (balance),
         GNUNET_PQ_query_param_string (exchange_account_section),
-        GNUNET_PQ_query_param_string (sender_account_details),
+        GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
         TALER_PQ_query_param_absolute_time (&execution_time),
         GNUNET_PQ_query_param_end
       };
@@ -7274,21 +7316,33 @@ postgres_insert_reserve_closed (
 {
   struct PostgresClosure *pg = cls;
   struct TALER_EXCHANGEDB_Reserve reserve;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-    TALER_PQ_query_param_absolute_time (&execution_date),
-    GNUNET_PQ_query_param_auto_from_type (wtid),
-    GNUNET_PQ_query_param_string (receiver_account),
-    TALER_PQ_query_param_amount (amount_with_fee),
-    TALER_PQ_query_param_amount (closing_fee),
-    GNUNET_PQ_query_param_end
-  };
-  enum TALER_AmountArithmeticResult ret;
+  struct TALER_EXCHANGEDB_KycStatus kyc;
   enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                           "reserves_close_insert",
-                                           params);
+  qs = inselect_account_kyc_status (pg,
+                                    receiver_account,
+                                    &kyc);
+  if (qs <= 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  {
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (reserve_pub),
+      TALER_PQ_query_param_absolute_time (&execution_date),
+      GNUNET_PQ_query_param_auto_from_type (wtid),
+      GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
+      TALER_PQ_query_param_amount (amount_with_fee),
+      TALER_PQ_query_param_amount (closing_fee),
+      GNUNET_PQ_query_param_end
+    };
+
+    qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "reserves_close_insert",
+                                             params);
+  }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     return qs;
 
@@ -7304,20 +7358,24 @@ postgres_insert_reserve_closed (
       qs = GNUNET_DB_STATUS_HARD_ERROR;
     return qs;
   }
-  ret = TALER_amount_subtract (&reserve.balance,
-                               &reserve.balance,
-                               amount_with_fee);
-  if (ret < 0)
   {
-    /* The reserve history was checked to make sure there is enough of a balance
-       left before we tried this; however, concurrent operations may have changed
-       the situation by now.  We should re-try the transaction.  */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Closing of reserve `%s' refused due to balance mismatch. Retrying.\n",
-                TALER_B2S (reserve_pub));
-    return GNUNET_DB_STATUS_HARD_ERROR;
+    enum TALER_AmountArithmeticResult ret;
+
+    ret = TALER_amount_subtract (&reserve.balance,
+                                 &reserve.balance,
+                                 amount_with_fee);
+    if (ret < 0)
+    {
+      /* The reserve history was checked to make sure there is enough of a balance
+         left before we tried this; however, concurrent operations may have changed
+         the situation by now.  We should re-try the transaction.  */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Closing of reserve `%s' refused due to balance mismatch. Retrying.\n",
+                  TALER_B2S (reserve_pub));
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    GNUNET_break (TALER_AAR_RESULT_ZERO == ret);
   }
-  GNUNET_break (TALER_AAR_RESULT_ZERO == ret);
   return reserves_update (cls,
                           &reserve);
 }
