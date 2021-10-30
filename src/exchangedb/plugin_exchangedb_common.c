@@ -103,8 +103,7 @@ common_free_coin_transaction_list (void *cls,
         struct TALER_EXCHANGEDB_DepositListEntry *deposit;
 
         deposit = tl->details.deposit;
-        if (NULL != deposit->receiver_wire_account)
-          json_decref (deposit->receiver_wire_account);
+        GNUNET_free (deposit->receiver_wire_account);
         GNUNET_free (deposit);
         break;
       }

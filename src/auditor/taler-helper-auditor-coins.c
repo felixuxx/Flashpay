@@ -1556,18 +1556,8 @@ refresh_session_cb (void *cls,
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
  * @param exchange_timestamp when did the exchange get the deposit
- * @param wallet_timestamp when did the contract signing happen
- * @param merchant_pub public key of the merchant
+ * @param deposit deposit details
  * @param denom_pub denomination public key of @a coin_pub
- * @param coin_pub public key of the coin
- * @param coin_sig signature from the coin
- * @param amount_with_fee amount that was deposited including fee
- * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param refund_deadline by which the merchant advised that he might want
- *        to get a refund
- * @param wire_deadline by which the merchant advised that he would like the
- *        wire transfer to be executed
- * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
  * @param done flag set if the deposit was already executed (or not)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -1575,17 +1565,9 @@ static enum GNUNET_GenericReturnValue
 deposit_cb (void *cls,
             uint64_t rowid,
             struct GNUNET_TIME_Absolute exchange_timestamp,
-            struct GNUNET_TIME_Absolute wallet_timestamp,
-            const struct TALER_MerchantPublicKeyP *merchant_pub,
+            const struct TALER_EXCHANGEDB_Deposit *deposit,
             const struct TALER_DenominationPublicKey *denom_pub,
-            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-            const struct TALER_CoinSpendSignatureP *coin_sig,
-            const struct TALER_Amount *amount_with_fee,
-            const struct TALER_PrivateContractHash *h_contract_terms,
-            struct GNUNET_TIME_Absolute refund_deadline,
-            struct GNUNET_TIME_Absolute wire_deadline,
-            const json_t *receiver_wire_account,
-            int done)
+            bool done)
 {
   struct CoinContext *cc = cls;
   const struct TALER_DenominationKeyValidityPS *issue;
@@ -1608,8 +1590,8 @@ deposit_cb (void *cls,
       return GNUNET_SYSERR;
     return GNUNET_OK;
   }
-  if (refund_deadline.abs_value_us >
-      wire_deadline.abs_value_us)
+  if (deposit->refund_deadline.abs_value_us >
+      deposit->wire_deadline.abs_value_us)
   {
     report_row_inconsistency ("deposits",
                               rowid,
@@ -1625,9 +1607,9 @@ deposit_cb (void *cls,
   qs = check_known_coin ("deposit",
                          issue,
                          rowid,
-                         coin_pub,
+                         &deposit->coin.coin_pub,
                          denom_pub,
-                         amount_with_fee);
+                         &deposit->amount_with_fee);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -1640,47 +1622,29 @@ deposit_cb (void *cls,
     struct TALER_DepositRequestPS dr = {
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
       .purpose.size = htonl (sizeof (dr)),
-      .h_contract_terms = *h_contract_terms,
-      .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
-      .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+      .h_contract_terms = deposit->h_contract_terms,
+      .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
+      .refund_deadline = GNUNET_TIME_absolute_hton (deposit->refund_deadline),
       .deposit_fee = issue->fee_deposit,
-      .merchant = *merchant_pub,
-      .coin_pub = *coin_pub
+      .merchant = deposit->merchant_pub,
+      .coin_pub = deposit->coin.coin_pub
     };
 
     TALER_denom_pub_hash (denom_pub,
                           &dr.h_denom_pub);
-    if (GNUNET_OK !=
-        TALER_JSON_merchant_wire_signature_hash (receiver_wire_account,
-                                                 &dr.h_wire))
-    {
-      TALER_ARL_report (report_bad_sig_losses,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_string ("operation",
-                                                   "deposit"),
-                          GNUNET_JSON_pack_uint64 ("row",
-                                                   rowid),
-                          TALER_JSON_pack_amount ("loss",
-                                                  amount_with_fee),
-                          GNUNET_JSON_pack_data_auto ("coin_pub",
-                                                      coin_pub)));
-      TALER_ARL_amount_add (&total_bad_sig_loss,
-                            &total_bad_sig_loss,
-                            amount_with_fee);
-      if (TALER_ARL_do_abort ())
-        return GNUNET_SYSERR;
-      return GNUNET_OK;
-    }
+    TALER_merchant_wire_signature_hash (deposit->receiver_wire_account,
+                                        &deposit->wire_salt,
+                                        &dr.h_wire);
     TALER_amount_hton (&dr.amount_with_fee,
-                       amount_with_fee);
+                       &deposit->amount_with_fee);
     /* NOTE: This is one of the operations we might eventually
        want to do in parallel in the background to improve
        auditor performance! */
     if (GNUNET_OK !=
         GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
                                     &dr,
-                                    &coin_sig->eddsa_signature,
-                                    &coin_pub->eddsa_pub))
+                                    &deposit->csig.eddsa_signature,
+                                    &deposit->coin.coin_pub.eddsa_pub))
     {
       TALER_ARL_report (report_bad_sig_losses,
                         GNUNET_JSON_PACK (
@@ -1689,12 +1653,12 @@ deposit_cb (void *cls,
                           GNUNET_JSON_pack_uint64 ("row",
                                                    rowid),
                           TALER_JSON_pack_amount ("loss",
-                                                  amount_with_fee),
+                                                  &deposit->amount_with_fee),
                           GNUNET_JSON_pack_data_auto ("coin_pub",
-                                                      coin_pub)));
+                                                      &deposit->coin.coin_pub)));
       TALER_ARL_amount_add (&total_bad_sig_loss,
                             &total_bad_sig_loss,
-                            amount_with_fee);
+                            &deposit->amount_with_fee);
       if (TALER_ARL_do_abort ())
         return GNUNET_SYSERR;
       return GNUNET_OK;
@@ -1702,9 +1666,9 @@ deposit_cb (void *cls,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Deposited coin %s in denomination `%s' of value %s\n",
-              TALER_B2S (coin_pub),
+              TALER_B2S (&deposit->coin.coin_pub),
               GNUNET_h2s (&issue->denom_hash.hash),
-              TALER_amount2s (amount_with_fee));
+              TALER_amount2s (&deposit->amount_with_fee));
 
   /* update old coin's denomination balance */
   ds = get_denomination_summary (cc,
@@ -1723,11 +1687,11 @@ deposit_cb (void *cls,
     if (TALER_ARL_SR_INVALID_NEGATIVE ==
         TALER_ARL_amount_subtract_neg (&tmp,
                                        &ds->denom_balance,
-                                       amount_with_fee))
+                                       &deposit->amount_with_fee))
     {
       TALER_ARL_amount_add (&ds->denom_loss,
                             &ds->denom_loss,
-                            amount_with_fee);
+                            &deposit->amount_with_fee);
       ds->report_emergency = GNUNET_YES;
     }
     else
@@ -1736,7 +1700,7 @@ deposit_cb (void *cls,
     }
 
     if (-1 == TALER_amount_cmp (&total_escrow_balance,
-                                amount_with_fee))
+                                &deposit->amount_with_fee))
     {
       /* This can theoretically happen if for example the exchange
          never issued any coins (i.e. escrow balance is zero), but
@@ -1748,14 +1712,14 @@ deposit_cb (void *cls,
         "subtracting deposit fee from escrow balance",
         rowid,
         &total_escrow_balance,
-        amount_with_fee,
+        &deposit->amount_with_fee,
         0);
     }
     else
     {
       TALER_ARL_amount_subtract (&total_escrow_balance,
                                  &total_escrow_balance,
-                                 amount_with_fee);
+                                 &deposit->amount_with_fee);
     }
 
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,

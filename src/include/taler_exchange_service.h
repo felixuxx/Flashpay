@@ -889,7 +889,8 @@ typedef void
  * @param amount the amount to be deposited
  * @param wire_deadline execution date, until which the merchant would like the exchange to settle the balance (advisory, the exchange cannot be
  *        forced to settle in the past or upon very short notice, but of course a well-behaved exchange will limit aggregation based on the advice received)
- * @param wire_details the merchant’s account details, in a format supported by the exchange
+ * @param merchant_payto_uri the merchant’s account details, in the payto://-format supported by the exchange
+ * @param wire_salt salt used to hash the @a merchant_payto_uri
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param extension_details extension-specific details about the deposit relevant to the exchange
  * @param coin_pub coin’s public key
@@ -910,7 +911,8 @@ TALER_EXCHANGE_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_Amount *amount,
   struct GNUNET_TIME_Absolute wire_deadline,
-  const json_t *wire_details,
+  const char *merchant_payto_uri,
+  const struct TALER_WireSalt *wire_salt,
   const struct TALER_PrivateContractHash *h_contract_terms,
   const json_t *extension_details,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,

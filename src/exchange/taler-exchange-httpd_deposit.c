@@ -117,6 +117,11 @@ struct DepositContext
   struct GNUNET_TIME_Absolute exchange_timestamp;
 
   /**
+   * Calculated hash over the wire details.
+   */
+  struct TALER_MerchantWireHash h_wire;
+
+  /**
    * Value of the coin.
    */
   struct TALER_Amount value;
@@ -124,7 +129,7 @@ struct DepositContext
   /**
    * payto:// URI of the credited account.
    */
-  char *payto_uri;
+  const char *payto_uri;
 };
 
 
@@ -152,7 +157,6 @@ deposit_precheck (void *cls,
 
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
                                  deposit,
-                                 GNUNET_YES /* check refund deadline */,
                                  &deposit_fee,
                                  &dc->exchange_timestamp);
   if (qs < 0)
@@ -179,7 +183,7 @@ deposit_precheck (void *cls,
                                           &deposit_fee));
     *mhd_ret = reply_deposit_success (connection,
                                       &deposit->coin.coin_pub,
-                                      &deposit->h_wire,
+                                      &dc->h_wire,
                                       &deposit->h_contract_terms,
                                       dc->exchange_timestamp,
                                       deposit->refund_deadline,
@@ -318,13 +322,13 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      const json_t *root)
 {
-  json_t *wire;
   struct DepositContext dc;
   struct TALER_EXCHANGEDB_Deposit deposit;
-  struct TALER_MerchantWireHash my_h_wire;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("wire",
-                           &wire),
+    GNUNET_JSON_spec_string ("merchant_payto_uri",
+                             &dc.payto_uri),
+    GNUNET_JSON_spec_fixed_auto ("wire_salt",
+                                 &deposit.wire_salt),
     TALER_JSON_spec_amount ("contribution",
                             TEH_currency,
                             &deposit.amount_with_fee),
@@ -336,8 +340,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                  &deposit.merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &deposit.h_contract_terms),
-    GNUNET_JSON_spec_fixed_auto ("h_wire",
-                                 &deposit.h_wire),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &deposit.csig),
     TALER_JSON_spec_absolute_time ("timestamp",
@@ -375,16 +377,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   {
     char *emsg;
 
-    dc.payto_uri = TALER_JSON_wire_to_payto (wire);
-    if (NULL == dc.payto_uri)
-    {
-      GNUNET_break_op (0);
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                         "wire");
-    }
     emsg = TALER_payto_validate (dc.payto_uri);
     if (NULL != emsg)
     {
@@ -397,46 +389,22 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                         emsg);
       GNUNET_free (emsg);
-      GNUNET_free (dc.payto_uri);
       return ret;
     }
   }
-  deposit.receiver_wire_account = wire;
+  deposit.receiver_wire_account = (char *) dc.payto_uri;
   if (deposit.refund_deadline.abs_value_us > deposit.wire_deadline.abs_value_us)
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    GNUNET_free (dc.payto_uri);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
                                        NULL);
   }
-  if (GNUNET_OK !=
-      TALER_JSON_merchant_wire_signature_hash (wire,
-                                               &my_h_wire))
-  {
-    TALER_LOG_WARNING (
-      "Failed to parse JSON wire format specification for /deposit request\n");
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (dc.payto_uri);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_DEPOSIT_INVALID_WIRE_FORMAT_JSON,
-                                       NULL);
-  }
-  if (0 != GNUNET_memcmp (&deposit.h_wire,
-                          &my_h_wire))
-  {
-    /* Client hashed wire details differently than we did, reject */
-    GNUNET_JSON_parse_free (spec);
-    GNUNET_free (dc.payto_uri);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_EXCHANGE_DEPOSIT_INVALID_WIRE_FORMAT_CONTRACT_HASH_CONFLICT,
-                                       NULL);
-  }
-
+  TALER_merchant_wire_signature_hash (dc.payto_uri,
+                                      &deposit.wire_salt,
+                                      &dc.h_wire);
   /* Check for idempotency: did we get this request before? */
   dc.deposit = &deposit;
   {
@@ -450,7 +418,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                 &dc))
     {
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return mhd_ret;
     }
   }
@@ -469,7 +436,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (NULL == dk)
     {
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return mret;
     }
     if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
@@ -480,7 +446,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       now = GNUNET_TIME_absolute_get ();
       (void) GNUNET_TIME_round_abs (&now);
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &deposit.coin.denom_pub_hash,
@@ -496,7 +461,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       now = GNUNET_TIME_absolute_get ();
       (void) GNUNET_TIME_round_abs (&now);
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &deposit.coin.denom_pub_hash,
@@ -512,7 +476,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       (void) GNUNET_TIME_round_abs (&now);
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &deposit.coin.denom_pub_hash,
@@ -529,7 +492,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     {
       TALER_LOG_WARNING ("Invalid coin passed for /deposit\n");
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_UNAUTHORIZED,
                                          TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
@@ -542,7 +504,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
-    GNUNET_free (dc.payto_uri);
     return TALER_MHD_reply_with_error (connection,
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_EXCHANGE_DEPOSIT_NEGATIVE_VALUE_AFTER_FEE,
@@ -555,7 +516,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
       .purpose.size = htonl (sizeof (dr)),
       .h_contract_terms = deposit.h_contract_terms,
-      .h_wire = deposit.h_wire,
+      .h_wire = dc.h_wire,
       .h_denom_pub = deposit.coin.denom_pub_hash,
       .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit.timestamp),
       .refund_deadline = GNUNET_TIME_absolute_hton (deposit.refund_deadline),
@@ -575,7 +536,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     {
       TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_UNAUTHORIZED,
                                          TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
@@ -595,11 +555,9 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                 &dc))
     {
       GNUNET_JSON_parse_free (spec);
-      GNUNET_free (dc.payto_uri);
       return mhd_ret;
     }
   }
-  GNUNET_free (dc.payto_uri);
 
   /* generate regular response */
   {
@@ -612,7 +570,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                           &deposit.deposit_fee));
     res = reply_deposit_success (connection,
                                  &deposit.coin.coin_pub,
-                                 &deposit.h_wire,
+                                 &dc.h_wire,
                                  &deposit.h_contract_terms,
                                  dc.exchange_timestamp,
                                  deposit.refund_deadline,

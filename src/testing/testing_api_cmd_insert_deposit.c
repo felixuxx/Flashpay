@@ -203,29 +203,12 @@ insert_deposit_run (void *cls,
   deposit.coin.denom_sig.details.rsa_signature
     = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv,
                                   &hc);
-  {
-    char *str;
-    struct TALER_WireSalt salt;
-
-    GNUNET_asprintf (&str,
-                     "payto://x-taler-bank/localhost/%s",
-                     ids->merchant_account);
-    memset (&salt,
-            46,
-            sizeof (salt));
-    deposit.receiver_wire_account
-      = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_data_auto ("salt",
-                                      &salt),
-          GNUNET_JSON_pack_string ("payto_uri",
-                                   str));
-    GNUNET_free (str);
-  }
-
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_merchant_wire_signature_hash (
-                   deposit.receiver_wire_account,
-                   &deposit.h_wire));
+  GNUNET_asprintf (&deposit.receiver_wire_account,
+                   "payto://x-taler-bank/localhost/%s",
+                   ids->merchant_account);
+  memset (&deposit.wire_salt,
+          46,
+          sizeof (deposit.wire_salt));
   deposit.timestamp = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&deposit.timestamp);
   deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (ids->wire_deadline);
@@ -247,14 +230,15 @@ insert_deposit_run (void *cls,
   {
     GNUNET_break (0);
     ids->dbc->plugin->rollback (ids->dbc->plugin->cls);
+    GNUNET_free (deposit.receiver_wire_account);
     TALER_TESTING_interpreter_fail (is);
+    return;
   }
 
   TALER_denom_sig_free (&deposit.coin.denom_sig);
   TALER_denom_pub_free (&dpk);
   GNUNET_CRYPTO_rsa_private_key_free (denom_priv);
-  json_decref (deposit.receiver_wire_account);
-
+  GNUNET_free (deposit.receiver_wire_account);
   TALER_TESTING_interpreter_next (is);
 }
 

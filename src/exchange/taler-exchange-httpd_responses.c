@@ -65,7 +65,6 @@ TEH_RESPONSE_compile_transaction_history (
           .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
           .purpose.size = htonl (sizeof (dr)),
           .h_contract_terms = deposit->h_contract_terms,
-          .h_wire = deposit->h_wire,
           .h_denom_pub = deposit->h_denom_pub,
           .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
           .refund_deadline = GNUNET_TIME_absolute_hton (
@@ -73,6 +72,10 @@ TEH_RESPONSE_compile_transaction_history (
           .merchant = deposit->merchant_pub,
           .coin_pub = *coin_pub
         };
+
+        TALER_merchant_wire_signature_hash (deposit->receiver_wire_account,
+                                            &deposit->wire_salt,
+                                            &dr.h_wire);
 
         TALER_amount_hton (&dr.amount_with_fee,
                            &deposit->amount_with_fee);
@@ -111,7 +114,7 @@ TEH_RESPONSE_compile_transaction_history (
                 GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                             &deposit->h_contract_terms),
                 GNUNET_JSON_pack_data_auto ("h_wire",
-                                            &deposit->h_wire),
+                                            &dr.h_wire),
                 GNUNET_JSON_pack_data_auto ("h_denom_pub",
                                             &deposit->h_denom_pub),
                 GNUNET_JSON_pack_data_auto ("coin_sig",

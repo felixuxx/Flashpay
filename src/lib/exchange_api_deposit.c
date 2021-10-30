@@ -543,7 +543,8 @@ TALER_EXCHANGE_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_Amount *amount,
   struct GNUNET_TIME_Absolute wire_deadline,
-  const json_t *wire_details,
+  const char *merchant_payto_uri,
+  const struct TALER_WireSalt *wire_salt,
   const struct TALER_PrivateContractHash *h_contract_terms,
   const json_t *extension_details,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -594,14 +595,9 @@ TALER_EXCHANGE_deposit (
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
   /* initialize h_wire */
-  if (GNUNET_OK !=
-      TALER_JSON_merchant_wire_signature_hash (wire_details,
-                                               &h_wire))
-  {
-    GNUNET_break (0);
-    *ec = TALER_EC_GENERIC_FAILED_COMPUTE_JSON_HASH;
-    return NULL;
-  }
+  TALER_merchant_wire_signature_hash (merchant_payto_uri,
+                                      wire_salt,
+                                      &h_wire);
   key_state = TALER_EXCHANGE_get_keys (exchange);
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
                                              denom_pub);
@@ -644,10 +640,10 @@ TALER_EXCHANGE_deposit (
   deposit_obj = GNUNET_JSON_PACK (
     TALER_JSON_pack_amount ("contribution",
                             amount),
-    GNUNET_JSON_pack_object_incref ("wire",
-                                    (json_t *) wire_details),
-    GNUNET_JSON_pack_data_auto ("h_wire",
-                                &h_wire),
+    GNUNET_JSON_pack_string ("merchant_payto_uri",
+                             merchant_payto_uri),
+    GNUNET_JSON_pack_data_auto ("wire_salt",
+                                wire_salt),
     GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                 h_contract_terms),
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",

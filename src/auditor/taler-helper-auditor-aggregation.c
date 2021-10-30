@@ -440,27 +440,6 @@ check_transaction_history_for_deposit (
     {
     case TALER_EXCHANGEDB_TT_DEPOSIT:
       /* check wire and h_wire are consistent */
-      {
-        struct TALER_MerchantWireHash hw;
-
-        if (GNUNET_OK !=
-            TALER_JSON_merchant_wire_signature_hash (
-              tl->details.deposit->receiver_wire_account,
-              &hw))
-        {
-          report_row_inconsistency ("deposits",
-                                    tl->serial_id,
-                                    "wire account given is malformed");
-        }
-        else if (0 !=
-                 GNUNET_memcmp (&hw,
-                                &tl->details.deposit->h_wire))
-        {
-          report_row_inconsistency ("deposits",
-                                    tl->serial_id,
-                                    "h(wire) does not match wire");
-        }
-      }
       amount_with_fee = &tl->details.deposit->amount_with_fee; /* according to exchange*/
       fee_claimed = &tl->details.deposit->deposit_fee; /* Fee according to exchange DB */
       TALER_ARL_amount_add (&expenditures,

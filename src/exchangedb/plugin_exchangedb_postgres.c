@@ -933,9 +933,9 @@ prepare_statements (struct PostgresClosure *pg)
                             ",wire_deadline"
                             ",merchant_pub"
                             ",h_contract_terms"
-                            ",h_wire"
+                            ",wire_salt"
+                            ",wire_target_serial_id"
                             ",coin_sig"
-                            ",wire"
                             ",exchange_timestamp"
                             ",shard"
                             ") SELECT known_coin_id, $2, $3, $4, $5, $6, "
@@ -956,10 +956,12 @@ prepare_statements (struct PostgresClosure *pg)
                             ",refund_deadline"
                             ",wire_deadline"
                             ",h_contract_terms"
-                            ",h_wire"
+                            ",wire_salt"
+                            ",payto_uri AS receiver_wire_account"
                             " FROM deposits"
                             " JOIN known_coins USING (known_coin_id)"
                             " JOIN denominations USING (denominations_serial)"
+                            " JOIN wire_targets USING (wire_target_serial_id)"
                             " WHERE ((coin_pub=$1)"
                             "    AND (merchant_pub=$3)"
                             "    AND (h_contract_terms=$2));",
@@ -978,10 +980,12 @@ prepare_statements (struct PostgresClosure *pg)
                             ",refund_deadline"
                             ",wire_deadline"
                             ",h_contract_terms"
-                            ",wire"
+                            ",wire_salt"
+                            ",payto_uri AS receiver_wire_account"
                             ",done"
                             ",deposit_serial_id"
                             " FROM deposits"
+                            "    JOIN wire_targets USING (wire_target_serial_id)"
                             "    JOIN known_coins kc USING (known_coin_id)"
                             "    JOIN denominations denom USING (denominations_serial)"
                             " WHERE ("
@@ -1095,12 +1099,14 @@ prepare_statements (struct PostgresClosure *pg)
                             ",wire_deadline"
                             ",merchant_pub"
                             ",h_contract_terms"
-                            ",h_wire"
-                            ",wire"
+                            ",wire_salt"
+                            ",payto_uri"
                             ",coin_sig"
                             ",deposit_serial_id"
                             ",done"
                             " FROM deposits"
+                            "    JOIN wire_targets"
+                            "      USING (wire_target_serial_id)"
                             "    JOIN known_coins kc"
                             "      USING (known_coin_id)"
                             "    JOIN denominations denoms"
@@ -4790,7 +4796,6 @@ postgres_select_withdraw_amounts_by_account (
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param deposit deposit to search for
- * @param check_extras whether to check extra fields match or not
  * @param[out] deposit_fee set to the deposit fee the exchange charged
  * @param[out] exchange_timestamp set to the time when the exchange received the deposit
  * @return 1 if we know this operation,
@@ -4800,7 +4805,6 @@ postgres_select_withdraw_amounts_by_account (
 static enum GNUNET_DB_QueryStatus
 postgres_have_deposit (void *cls,
                        const struct TALER_EXCHANGEDB_Deposit *deposit,
-                       int check_extras,
                        struct TALER_Amount *deposit_fee,
                        struct GNUNET_TIME_Absolute *exchange_timestamp)
 {
@@ -4825,8 +4829,10 @@ postgres_have_deposit (void *cls,
                                         &deposit2.wire_deadline),
     TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
                                  deposit_fee),
-    GNUNET_PQ_result_spec_auto_from_type ("h_wire",
-                                          &deposit2.h_wire),
+    GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
+                                          &deposit2.wire_salt),
+    GNUNET_PQ_result_spec_string ("receiver_wire_account",
+                                  &deposit2.receiver_wire_account),
     GNUNET_PQ_result_spec_end
   };
   enum GNUNET_DB_QueryStatus qs;
@@ -4851,23 +4857,121 @@ postgres_have_deposit (void *cls,
     return qs;
   /* Now we check that the other information in @a deposit
      also matches, and if not report inconsistencies. */
-  if ( ( (check_extras) &&
-         ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
-                                   &deposit2.amount_with_fee)) ||
-           (deposit->timestamp.abs_value_us !=
-            deposit2.timestamp.abs_value_us) ) ) ||
+  if ( (0 != TALER_amount_cmp (&deposit->amount_with_fee,
+                               &deposit2.amount_with_fee)) ||
+       (deposit->timestamp.abs_value_us !=
+        deposit2.timestamp.abs_value_us) ||
        (deposit->refund_deadline.abs_value_us !=
         deposit2.refund_deadline.abs_value_us) ||
-       (0 != GNUNET_memcmp (&deposit->h_wire,
-                            &deposit2.h_wire) ) )
+       (0 != strcmp (deposit->receiver_wire_account,
+                     deposit2.receiver_wire_account)) ||
+       (0 != GNUNET_memcmp (&deposit->wire_salt,
+                            &deposit2.wire_salt) ) )
+  {
+    GNUNET_free (deposit2.receiver_wire_account);
+    /* Inconsistencies detected! Does not match!  (We might want to
+       expand the API with a 'get_deposit' function to return the
+       original transaction details to be used for an error message
+       in the future!) FIXME #3838 */
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+  }
+  GNUNET_free (deposit2.receiver_wire_account);
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+}
+
+
+/**
+ * Check if we have the specified deposit already in the database.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param h_contract_terms contract to check for
+ * @param h_wire wire hash to check for
+ * @param coin_pub public key of the coin to check for
+ * @param merchant merchant public key to check for
+ * @param refund_deadline expected refund deadline
+ * @param[out] deposit_fee set to the deposit fee the exchange charged
+ * @param[out] exchange_timestamp set to the time when the exchange received the deposit
+ * @return 1 if we know this operation,
+ *         0 if this exact deposit is unknown to us,
+ *         otherwise transaction error status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_have_deposit2 (
+  void *cls,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_MerchantWireHash *h_wire,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  struct TALER_Amount *deposit_fee,
+  struct GNUNET_TIME_Absolute *exchange_timestamp)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
+    GNUNET_PQ_query_param_auto_from_type (merchant),
+    GNUNET_PQ_query_param_end
+  };
+  struct TALER_EXCHANGEDB_Deposit deposit2;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
+                                 &deposit2.amount_with_fee),
+    TALER_PQ_result_spec_absolute_time ("wallet_timestamp",
+                                        &deposit2.timestamp),
+    TALER_PQ_result_spec_absolute_time ("exchange_timestamp",
+                                        exchange_timestamp),
+    TALER_PQ_result_spec_absolute_time ("refund_deadline",
+                                        &deposit2.refund_deadline),
+    TALER_PQ_result_spec_absolute_time ("wire_deadline",
+                                        &deposit2.wire_deadline),
+    TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
+                                 deposit_fee),
+    GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
+                                          &deposit2.wire_salt),
+    GNUNET_PQ_result_spec_string ("receiver_wire_account",
+                                  &deposit2.receiver_wire_account),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
+  struct TALER_MerchantWireHash h_wire2;
+#if EXPLICIT_LOCKS
+  struct GNUNET_PQ_QueryParam no_params[] = {
+    GNUNET_PQ_query_param_end
+  };
+
+  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                                    "lock_deposit",
+                                                    no_params)))
+    return qs;
+#endif
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Getting deposits for coin %s\n",
+              TALER_B2S (coin_pub));
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "get_deposit",
+                                                 params,
+                                                 rs);
+  if (0 >= qs)
+    return qs;
+  TALER_merchant_wire_signature_hash (deposit2.receiver_wire_account,
+                                      &deposit2.wire_salt,
+                                      &h_wire2);
+  GNUNET_free (deposit2.receiver_wire_account);
+  /* Now we check that the other information in @a deposit
+     also matches, and if not report inconsistencies. */
+  if ( (refund_deadline.abs_value_us !=
+        deposit2.refund_deadline.abs_value_us) ||
+       (0 != GNUNET_memcmp (h_wire,
+                            &h_wire2) ) )
   {
     /* Inconsistencies detected! Does not match!  (We might want to
        expand the API with a 'get_deposit' function to return the
        original transaction details to be used for an error message
-       in the future!) #3838 */
-    return 0;   /* Counts as if the transaction was not there */
+       in the future!) FIXME #3838 */
+    return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
-  return 1;
+  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
 
@@ -5439,10 +5543,12 @@ compute_shard (const struct TALER_EXCHANGEDB_Deposit *deposit)
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (&res,
                                     sizeof (res),
-                                    &deposit->h_wire,
-                                    sizeof (deposit->h_wire),
+                                    &deposit->wire_salt,
+                                    sizeof (deposit->wire_salt),
                                     &deposit->merchant_pub,
                                     sizeof (deposit->merchant_pub),
+                                    deposit->receiver_wire_account,
+                                    strlen (deposit->receiver_wire_account),
                                     NULL, 0));
   /* interpret hash result as NBO for platform independence,
      convert to HBO and map to [0..2^31-1] range */
@@ -5468,32 +5574,46 @@ postgres_insert_deposit (void *cls,
                          const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   struct PostgresClosure *pg = cls;
-  uint32_t shard = compute_shard (deposit);
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
-    TALER_PQ_query_param_amount (&deposit->amount_with_fee),
-    TALER_PQ_query_param_absolute_time (&deposit->timestamp),
-    TALER_PQ_query_param_absolute_time (&deposit->refund_deadline),
-    TALER_PQ_query_param_absolute_time (&deposit->wire_deadline),
-    GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
-    GNUNET_PQ_query_param_auto_from_type (&deposit->h_wire),
-    GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
-    TALER_PQ_query_param_json (deposit->receiver_wire_account),
-    TALER_PQ_query_param_absolute_time (&exchange_timestamp),
-    GNUNET_PQ_query_param_uint32 (&shard),
-    GNUNET_PQ_query_param_end
-  };
+  struct TALER_EXCHANGEDB_KycStatus kyc;
+  enum GNUNET_DB_QueryStatus qs;
 
-  GNUNET_assert (shard <= INT32_MAX);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Inserting deposit to be executed at %s (%llu/%llu)\n",
-              GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),
-              (unsigned long long) deposit->wire_deadline.abs_value_us,
-              (unsigned long long) deposit->refund_deadline.abs_value_us);
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "insert_deposit",
-                                             params);
+  qs = inselect_account_kyc_status (pg,
+                                    deposit->receiver_wire_account,
+                                    &kyc);
+  if (qs <= 0)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    return qs;
+  }
+  {
+    uint32_t shard = compute_shard (deposit);
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
+      TALER_PQ_query_param_amount (&deposit->amount_with_fee),
+      TALER_PQ_query_param_absolute_time (&deposit->timestamp),
+      TALER_PQ_query_param_absolute_time (&deposit->refund_deadline),
+      TALER_PQ_query_param_absolute_time (&deposit->wire_deadline),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->merchant_pub),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->h_contract_terms),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->wire_salt),
+      GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
+      GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
+      TALER_PQ_query_param_absolute_time (&exchange_timestamp),
+      GNUNET_PQ_query_param_uint32 (&shard),
+      GNUNET_PQ_query_param_end
+    };
+
+    GNUNET_assert (shard <= INT32_MAX);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Inserting deposit to be executed at %s (%llu/%llu)\n",
+                GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),
+                (unsigned long long) deposit->wire_deadline.abs_value_us,
+                (unsigned long long) deposit->refund_deadline.abs_value_us);
+    return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                               "insert_deposit",
+                                               params);
+  }
 }
 
 
@@ -6285,10 +6405,10 @@ add_coin_deposit (void *cls,
                                               &deposit->merchant_pub),
         GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                               &deposit->h_contract_terms),
-        GNUNET_PQ_result_spec_auto_from_type ("h_wire",
-                                              &deposit->h_wire),
-        TALER_PQ_result_spec_json ("wire",
-                                   &deposit->receiver_wire_account),
+        GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
+                                              &deposit->wire_salt),
+        GNUNET_PQ_result_spec_string ("payto_uri",
+                                      &deposit->receiver_wire_account),
         GNUNET_PQ_result_spec_auto_from_type ("coin_sig",
                                               &deposit->csig),
         GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
@@ -7813,8 +7933,10 @@ deposit_serial_helper_cb (void *cls,
                                           &deposit.wire_deadline),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &deposit.h_contract_terms),
-      TALER_PQ_result_spec_json ("wire",
-                                 &deposit.receiver_wire_account),
+      GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
+                                            &deposit.wire_salt),
+      GNUNET_PQ_result_spec_string ("receiver_wire_account",
+                                    &deposit.receiver_wire_account),
       GNUNET_PQ_result_spec_auto_from_type ("done",
                                             &done),
       GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
@@ -7835,17 +7957,9 @@ deposit_serial_helper_cb (void *cls,
     ret = dsc->cb (dsc->cb_cls,
                    rowid,
                    exchange_timestamp,
-                   deposit.timestamp,
-                   &deposit.merchant_pub,
+                   &deposit,
                    &denom_pub,
-                   &deposit.coin.coin_pub,
-                   &deposit.csig,
-                   &deposit.amount_with_fee,
-                   &deposit.h_contract_terms,
-                   deposit.refund_deadline,
-                   deposit.wire_deadline,
-                   deposit.receiver_wire_account,
-                   done);
+                   (0 != done) ? true : false);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
       break;
@@ -11402,6 +11516,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_known_coin = &postgres_get_known_coin;
   plugin->get_coin_denomination = &postgres_get_coin_denomination;
   plugin->have_deposit = &postgres_have_deposit;
+  plugin->have_deposit2 = &postgres_have_deposit2;
   plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
   plugin->test_deposit_done = &postgres_test_deposit_done;
   plugin->mark_deposit_done = &postgres_mark_deposit_done;

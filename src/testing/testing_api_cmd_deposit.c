@@ -289,7 +289,25 @@ deposit_run (void *cls,
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_PrivateContractHash h_contract_terms;
   enum TALER_ErrorCode ec;
+  struct TALER_WireSalt wire_salt;
+  const char *payto_uri;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("payto_uri",
+                             &payto_uri),
+    GNUNET_JSON_spec_fixed_auto ("salt",
+                                 &wire_salt),
+    GNUNET_JSON_spec_end ()
+  };
 
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (ds->wire_details,
+                         spec,
+                         NULL, NULL))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   (void) cmd;
   ds->is = is;
   if (NULL != ds->deposit_reference)
@@ -412,7 +430,8 @@ deposit_run (void *cls,
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,
                                    wire_deadline,
-                                   ds->wire_details,
+                                   payto_uri,
+                                   &wire_salt,
                                    &h_contract_terms,
                                    NULL, /* FIXME: extension object */
                                    &coin_pub,

@@ -112,21 +112,17 @@ test_dc (void *cls,
   dcc->last_seen_coin_serial = serial_id;
   {
     enum GNUNET_DB_QueryStatus qs;
-    struct TALER_EXCHANGEDB_Deposit dep = {
-      .coin.coin_pub = dc->coin_pub,
-      .h_contract_terms = dc->h_contract_terms,
-      .merchant_pub = dc->merchant,
-      .h_wire = dc->h_wire,
-      .refund_deadline = dc->refund_deadline
-    };
     struct GNUNET_TIME_Absolute exchange_timestamp;
     struct TALER_Amount deposit_fee;
 
-    qs = TALER_ARL_edb->have_deposit (TALER_ARL_edb->cls,
-                                      &dep,
-                                      GNUNET_NO /* do not check refund deadline */,
-                                      &deposit_fee,
-                                      &exchange_timestamp);
+    qs = TALER_ARL_edb->have_deposit2 (TALER_ARL_edb->cls,
+                                       &dc->h_contract_terms,
+                                       &dc->h_wire,
+                                       &dc->coin_pub,
+                                       &dc->merchant,
+                                       dc->refund_deadline,
+                                       &deposit_fee,
+                                       &exchange_timestamp);
     if (qs > 0)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,

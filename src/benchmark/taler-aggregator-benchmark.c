@@ -59,11 +59,6 @@ static unsigned int refund_rate = 0;
 static char *currency;
 
 /**
- * Merchant JSON wire details.
- */
-static json_t *json_wire;
-
-/**
  * Configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -213,11 +208,6 @@ do_shutdown (void *cls)
     task = NULL;
   }
   TALER_denom_sig_free (&denom_sig);
-  if (NULL != json_wire)
-  {
-    json_decref (json_wire);
-    json_wire = NULL;
-  }
 }
 
 
@@ -237,6 +227,16 @@ struct Merchant
    * merchant.
    */
   struct TALER_MerchantWireHash h_wire;
+
+  /**
+   * Salt used when computing @e h_wire.
+   */
+  struct TALER_WireSalt wire_salt;
+
+  /**
+   * Account information for the merchant.
+   */
+  char *payto_uri;
 
 };
 
@@ -320,9 +320,8 @@ add_deposit (const struct Merchant *m)
   RANDOMIZE (&deposit.csig);
   deposit.merchant_pub = m->merchant_pub;
   deposit.h_contract_terms = d.h_contract_terms;
-  deposit.h_wire = m->h_wire;
-  deposit.receiver_wire_account
-    = json_wire;
+  deposit.wire_salt = m->wire_salt;
+  deposit.receiver_wire_account = m->payto_uri;
   deposit.timestamp = random_time ();
   deposit.refund_deadline = random_time ();
   deposit.wire_deadline = random_time ();
@@ -355,7 +354,6 @@ static void
 work (void *cls)
 {
   struct Merchant m;
-  char *acc;
   uint64_t rnd1;
   uint64_t rnd2;
 
@@ -365,33 +363,22 @@ work (void *cls)
                                    UINT64_MAX);
   rnd2 = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_NONCE,
                                    UINT64_MAX);
-  GNUNET_asprintf (&acc,
+  GNUNET_asprintf (&m.payto_uri,
                    "payto://x-taler-bank/localhost:8082/account-%llX-%llX",
                    (unsigned long long) rnd1,
                    (unsigned long long) rnd2);
-  json_wire = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string ("payto_uri",
-                             acc),
-    GNUNET_JSON_pack_string ("salt",
-                             "thesalty"));
-  GNUNET_free (acc);
   RANDOMIZE (&m.merchant_pub);
-  if (GNUNET_OK !=
-      TALER_JSON_merchant_wire_signature_hash (json_wire,
-                                               &m.h_wire))
-  {
-    GNUNET_break (0);
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
-  }
-
+  RANDOMIZE (&m.wire_salt);
+  TALER_merchant_wire_signature_hash (m.payto_uri,
+                                      &m.wire_salt,
+                                      &m.h_wire);
   if (GNUNET_OK !=
       plugin->start (plugin->cls,
                      "aggregator-benchmark-fill"))
   {
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;
+    GNUNET_free (m.payto_uri);
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
@@ -401,6 +388,7 @@ work (void *cls)
     {
       global_ret = EXIT_FAILURE;
       GNUNET_SCHEDULER_shutdown ();
+      GNUNET_free (m.payto_uri);
       return;
     }
   }
@@ -410,6 +398,7 @@ work (void *cls)
     if (0 == --howmany_merchants)
     {
       GNUNET_SCHEDULER_shutdown ();
+      GNUNET_free (m.payto_uri);
       return;
     }
   }
@@ -418,8 +407,7 @@ work (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to commit, will try again\n");
   }
-  json_decref (json_wire);
-  json_wire = NULL;
+  GNUNET_free (m.payto_uri);
   task = GNUNET_SCHEDULER_add_now (&work,
                                    NULL);
 }
