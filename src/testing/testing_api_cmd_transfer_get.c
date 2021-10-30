@@ -218,8 +218,8 @@ track_transfer_cb (void *cls,
     if (NULL != tts->wire_details_reference)
     {
       const struct TALER_TESTING_Command *wire_details_cmd;
-      const json_t *wire_details;
-      struct TALER_MerchantWireHash h_wire_details;
+      const char **payto_uri;
+      struct TALER_PaytoHash h_payto;
 
       wire_details_cmd
         = TALER_TESTING_interpreter_lookup_command (is,
@@ -231,18 +231,17 @@ track_transfer_cb (void *cls,
         return;
       }
       if (GNUNET_OK !=
-          TALER_TESTING_get_trait_wire_details (wire_details_cmd,
-                                                &wire_details))
+          TALER_TESTING_get_trait_payto_uri (wire_details_cmd,
+                                             &payto_uri))
       {
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
       }
-      GNUNET_assert (GNUNET_OK ==
-                     TALER_JSON_merchant_wire_signature_hash (wire_details,
-                                                              &h_wire_details));
-      if (0 != GNUNET_memcmp (&h_wire_details,
-                              &ta->h_wire))
+      TALER_payto_hash (*payto_uri,
+                        &h_payto);
+      if (0 != GNUNET_memcmp (&h_payto,
+                              &ta->h_payto))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Wire hash missmath to command %s\n",
