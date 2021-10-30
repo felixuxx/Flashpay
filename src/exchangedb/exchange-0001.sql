@@ -89,7 +89,6 @@ COMMENT ON COLUMN wire_targets.oauth_username
 CREATE TABLE IF NOT EXISTS reserves
   (reserve_uuid BIGSERIAL UNIQUE
   ,reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)
-  ,account_details TEXT NOT NULL
   ,current_balance_val INT8 NOT NULL
   ,current_balance_frac INT4 NOT NULL
   ,expiration_date INT8 NOT NULL
@@ -198,6 +197,73 @@ CREATE INDEX IF NOT EXISTS reserves_out_for_get_withdraw_info
   (denominations_serial
   ,h_blind_ev
   );
+
+CREATE TABLE IF NOT EXISTS auditors
+  (auditor_uuid BIGSERIAL UNIQUE
+  ,auditor_pub BYTEA PRIMARY KEY CHECK (LENGTH(auditor_pub)=32)
+  ,auditor_name VARCHAR NOT NULL
+  ,auditor_url VARCHAR NOT NULL
+  ,is_active BOOLEAN NOT NULL
+  ,last_change INT8 NOT NULL
+  );
+COMMENT ON TABLE auditors
+  IS 'Table with auditors the exchange uses or has used in the past. Entries never expire as we need to remember the last_change column indefinitely.';
+COMMENT ON COLUMN auditors.auditor_pub
+  IS 'Public key of the auditor.';
+COMMENT ON COLUMN auditors.auditor_url
+  IS 'The base URL of the auditor.';
+COMMENT ON COLUMN auditors.is_active
+  IS 'true if we are currently supporting the use of this auditor.';
+COMMENT ON COLUMN auditors.last_change
+  IS 'Latest time when active status changed. Used to detect replays of old messages.';
+
+
+CREATE TABLE IF NOT EXISTS auditor_denom_sigs
+  (auditor_denom_serial BIGSERIAL UNIQUE
+  ,auditor_uuid INT8 NOT NULL REFERENCES auditors (auditor_uuid) ON DELETE CASCADE
+  ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
+  ,auditor_sig BYTEA CHECK (LENGTH(auditor_sig)=64)
+  ,PRIMARY KEY (denominations_serial, auditor_uuid)
+  );
+COMMENT ON TABLE auditor_denom_sigs
+  IS 'Table with auditor signatures on exchange denomination keys.';
+COMMENT ON COLUMN auditor_denom_sigs.auditor_uuid
+  IS 'Identifies the auditor.';
+COMMENT ON COLUMN auditor_denom_sigs.denominations_serial
+  IS 'Denomination the signature is for.';
+COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
+  IS 'Signature of the auditor, of purpose TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS.';
+
+
+CREATE TABLE IF NOT EXISTS exchange_sign_keys
+  (esk_serial BIGSERIAL UNIQUE
+  ,exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
+  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
+  ,valid_from INT8 NOT NULL
+  ,expire_sign INT8 NOT NULL
+  ,expire_legal INT8 NOT NULL
+  );
+COMMENT ON TABLE exchange_sign_keys
+  IS 'Table with master public key signatures on exchange online signing keys.';
+COMMENT ON COLUMN exchange_sign_keys.exchange_pub
+  IS 'Public online signing key of the exchange.';
+COMMENT ON COLUMN exchange_sign_keys.master_sig
+  IS 'Signature affirming the validity of the signing key of purpose TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.';
+COMMENT ON COLUMN exchange_sign_keys.valid_from
+  IS 'Time when this online signing key will first be used to sign messages.';
+COMMENT ON COLUMN exchange_sign_keys.expire_sign
+  IS 'Time when this online signing key will no longer be used to sign.';
+COMMENT ON COLUMN exchange_sign_keys.expire_legal
+  IS 'Time when this online signing key legally expires.';
+
+
+CREATE TABLE IF NOT EXISTS signkey_revocations
+  (signkey_revocations_serial_id BIGSERIAL UNIQUE
+  ,esk_serial INT8 PRIMARY KEY REFERENCES exchange_sign_keys (esk_serial) ON DELETE CASCADE
+  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
+  );
+COMMENT ON TABLE signkey_revocations
+  IS 'remembering which online signing keys have been revoked';
 
 
 CREATE TABLE IF NOT EXISTS known_coins
@@ -517,65 +583,6 @@ COMMENT ON INDEX prepare_get_index
   IS 'for wire_prepare_data_get';
 
 
-CREATE TABLE IF NOT EXISTS auditors
-  (auditor_uuid BIGSERIAL UNIQUE
-  ,auditor_pub BYTEA PRIMARY KEY CHECK (LENGTH(auditor_pub)=32)
-  ,auditor_name VARCHAR NOT NULL
-  ,auditor_url VARCHAR NOT NULL
-  ,is_active BOOLEAN NOT NULL
-  ,last_change INT8 NOT NULL
-  );
-COMMENT ON TABLE auditors
-  IS 'Table with auditors the exchange uses or has used in the past. Entries never expire as we need to remember the last_change column indefinitely.';
-COMMENT ON COLUMN auditors.auditor_pub
-  IS 'Public key of the auditor.';
-COMMENT ON COLUMN auditors.auditor_url
-  IS 'The base URL of the auditor.';
-COMMENT ON COLUMN auditors.is_active
-  IS 'true if we are currently supporting the use of this auditor.';
-COMMENT ON COLUMN auditors.last_change
-  IS 'Latest time when active status changed. Used to detect replays of old messages.';
-
-
-CREATE TABLE IF NOT EXISTS auditor_denom_sigs
-  (auditor_denom_serial BIGSERIAL UNIQUE
-  ,auditor_uuid INT8 NOT NULL REFERENCES auditors (auditor_uuid) ON DELETE CASCADE
-  ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
-  ,auditor_sig BYTEA CHECK (LENGTH(auditor_sig)=64)
-  ,PRIMARY KEY (denominations_serial, auditor_uuid)
-  );
-COMMENT ON TABLE auditor_denom_sigs
-  IS 'Table with auditor signatures on exchange denomination keys.';
-COMMENT ON COLUMN auditor_denom_sigs.auditor_uuid
-  IS 'Identifies the auditor.';
-COMMENT ON COLUMN auditor_denom_sigs.denominations_serial
-  IS 'Denomination the signature is for.';
-COMMENT ON COLUMN auditor_denom_sigs.auditor_sig
-  IS 'Signature of the auditor, of purpose TALER_SIGNATURE_AUDITOR_EXCHANGE_KEYS.';
-
-
-CREATE TABLE IF NOT EXISTS exchange_sign_keys
-  (esk_serial BIGSERIAL UNIQUE
-  ,exchange_pub BYTEA PRIMARY KEY CHECK (LENGTH(exchange_pub)=32)
-  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  ,valid_from INT8 NOT NULL
-  ,expire_sign INT8 NOT NULL
-  ,expire_legal INT8 NOT NULL
-  );
-COMMENT ON TABLE exchange_sign_keys
-  IS 'Table with master public key signatures on exchange online signing keys.';
-COMMENT ON COLUMN exchange_sign_keys.exchange_pub
-  IS 'Public online signing key of the exchange.';
-COMMENT ON COLUMN exchange_sign_keys.master_sig
-  IS 'Signature affirming the validity of the signing key of purpose TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY.';
-COMMENT ON COLUMN exchange_sign_keys.valid_from
-  IS 'Time when this online signing key will first be used to sign messages.';
-COMMENT ON COLUMN exchange_sign_keys.expire_sign
-  IS 'Time when this online signing key will no longer be used to sign.';
-COMMENT ON COLUMN exchange_sign_keys.expire_legal
-  IS 'Time when this online signing key legally expires.';
-
-
 CREATE TABLE IF NOT EXISTS wire_accounts
   (payto_uri VARCHAR PRIMARY KEY
   ,master_sig BYTEA CHECK (LENGTH(master_sig)=64)
@@ -594,15 +601,6 @@ COMMENT ON COLUMN wire_accounts.last_change
   IS 'Latest time when active status changed. Used to detect replays of old messages.';
 -- "wire_accounts" has no BIGSERIAL because it is a 'mutable' table
 --            and is of no concern to the auditor
-
-
-CREATE TABLE IF NOT EXISTS signkey_revocations
-  (signkey_revocations_serial_id BIGSERIAL UNIQUE
-  ,esk_serial INT8 PRIMARY KEY REFERENCES exchange_sign_keys (esk_serial) ON DELETE CASCADE
-  ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
-  );
-COMMENT ON TABLE signkey_revocations
-  IS 'remembering which online signing keys have been revoked';
 
 
 CREATE TABLE IF NOT EXISTS work_shards

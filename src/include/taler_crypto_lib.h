@@ -347,6 +347,18 @@ struct TALER_RefreshCommitmentP
 
 
 /**
+ * Age restriction commitment of a coin.
+ */
+struct TALER_AgeHash
+{
+  /**
+   * The commitment is a SHA-256 hash code.
+   */
+  struct GNUNET_ShortHashCode shash;
+};
+
+
+/**
  * Token used for access control to the merchant's unclaimed
  * orders.
  */

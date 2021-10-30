@@ -775,7 +775,7 @@ commit (enum GNUNET_DB_QueryStatus qs)
  * @param rowid deposit table row of the coin's deposit
  * @param coin_pub public key of the coin
  * @param amount value of the deposit, including fee
- * @param wire where should the funds be wired
+ * @param payto_uri where should the funds be wired
  * @param deadline what was the requested wire transfer deadline
  * @param tiny did the exchange defer this transfer because it is too small?
  *             NOTE: only valid in internal audit mode!
@@ -787,7 +787,7 @@ wire_missing_cb (void *cls,
                  uint64_t rowid,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_Amount *amount,
-                 const json_t *wire,
+                 const char *payto_uri,
                  struct GNUNET_TIME_Absolute deadline,
                  /* bool? */ int tiny,
                  /* bool? */ int done)
@@ -824,8 +824,8 @@ wire_missing_cb (void *cls,
                                     deadline),
     GNUNET_JSON_pack_data_auto ("coin_pub",
                                 coin_pub),
-    GNUNET_JSON_pack_object_incref ("account",
-                                    (json_t *) wire));
+    GNUNET_JSON_pack_string ("account",
+                             payto_uri));
   if (internal_checks)
   {
     /* the 'done' bit is only useful in 'internal' mode */

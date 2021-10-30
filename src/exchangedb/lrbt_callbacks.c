@@ -48,6 +48,10 @@ lrbt_cb_table_denominations (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
+      GNUNET_PQ_result_spec_uint32 ("denom_type",
+                                    &td.details.denominations.denom_type),
+      GNUNET_PQ_result_spec_uint32 ("age_restrictions",
+                                    &td.details.denominations.age_restrictions),
       TALER_PQ_result_spec_denom_pub (
         "denom_pub",
         &td.details.denominations.denom_pub),
@@ -120,6 +124,54 @@ lrbt_cb_table_denomination_revocations (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "master_sig",
         &td.details.denomination_revocations.master_sig),
+      GNUNET_PQ_result_spec_end
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_PQ_extract_result (result,
+                                  rs,
+                                  i))
+    {
+      GNUNET_break (0);
+      ctx->error = true;
+      return;
+    }
+    ctx->cb (ctx->cb_cls,
+             &td);
+    GNUNET_PQ_cleanup_result (rs);
+  }
+}
+
+
+/**
+ * Function called with wire_targets table entries.
+ *
+ * @param cls closure
+ * @param result the postgres result
+ * @param num_results the number of results in @a result
+ */
+static void
+lrbt_cb_table_wire_targets (void *cls,
+                            PGresult *result,
+                            unsigned int num_results)
+{
+  struct LookupRecordsByTableContext *ctx = cls;
+  struct PostgresClosure *pg = ctx->pg;
+  struct TALER_EXCHANGEDB_TableData td = {
+    .table = TALER_EXCHANGEDB_RT_WIRE_TARGETS
+  };
+
+  for (unsigned int i = 0; i<num_results; i++)
+  {
+    struct GNUNET_PQ_ResultSpec rs[] = {
+      GNUNET_PQ_result_spec_uint64 ("serial",
+                                    &td.serial),
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &td.details.wire_targets.payto_uri),
+      GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
+                                            &td.details.wire_targets.kyc_ok),
+      GNUNET_PQ_result_spec_string ("oauth_username",
+                                    &td.details.wire_targets.oauth_username),
       GNUNET_PQ_result_spec_end
     };
 
@@ -828,6 +880,9 @@ lrbt_cb_table_deposits (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "serial",
         &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "shard",
+        &td.details.deposits.shard),
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "amount_with_fee",
         &td.details.deposits.amount_with_fee),
@@ -852,9 +907,15 @@ lrbt_cb_table_deposits (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "coin_sig",
         &td.details.deposits.coin_sig),
-      TALER_PQ_result_spec_json (
-        "wire",
-        &td.details.deposits.wire),
+      GNUNET_PQ_result_spec_uint64 (
+        "wire_target_serial_id",
+        &td.details.deposits.wire_target_serial_id),
+      GNUNET_PQ_result_spec_json (
+        "extension_options",
+        &td.details.deposits.extension_options),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "extension_blocked",
+        &td.details.deposits.extension_blocked),
       GNUNET_PQ_result_spec_auto_from_type (
         "tiny",
         &td.details.deposits.tiny),

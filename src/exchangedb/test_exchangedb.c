@@ -779,7 +779,8 @@ static uint64_t deposit_rowid;
  * @param amount_with_fee amount that was deposited including fee
  * @param deposit_fee amount the exchange gets to keep as transaction fees
  * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param wire wire details for the merchant
+ * @param wire_target unique ID of the receiver account
+ * @param payto_uri how to pay the merchant, URI in payto://-format;
  * @return transaction status code, #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT to continue to iterate
  */
 static enum GNUNET_DB_QueryStatus
@@ -790,15 +791,12 @@ deposit_cb (void *cls,
             const struct TALER_Amount *amount_with_fee,
             const struct TALER_Amount *deposit_fee,
             const struct TALER_PrivateContractHash *h_contract_terms,
-            const json_t *wire)
+            uint64_t wire_target,
+            const char *payto_uri)
 {
   struct TALER_EXCHANGEDB_Deposit *deposit = cls;
-  struct TALER_MerchantWireHash h_wire;
 
   deposit_rowid = rowid;
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_JSON_merchant_wire_signature_hash (wire,
-                                                          &h_wire));
   if ( (0 != GNUNET_memcmp (merchant_pub,
                             &deposit->merchant_pub)) ||
        (0 != TALER_amount_cmp (amount_with_fee,
@@ -810,8 +808,8 @@ deposit_cb (void *cls,
        (0 != memcmp (coin_pub,
                      &deposit->coin.coin_pub,
                      sizeof (struct TALER_CoinSpendPublicKeyP))) ||
-       (0 != GNUNET_memcmp (&h_wire,
-                            &deposit->h_wire)) )
+       (0 != strcmp (payto_uri,
+                     deposit->receiver_wire_account)) )
   {
     GNUNET_break (0);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -869,36 +867,18 @@ matching_deposit_cb (void *cls,
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
  * @param exchange_timestamp when did the deposit happen
- * @param wallet_timestamp when did the wallet sign the contract
- * @param merchant_pub public key of the merchant
+ * @param deposit deposit details
  * @param denom_pub denomination of the @a coin_pub
- * @param coin_pub public key of the coin
- * @param coin_sig signature from the coin
- * @param amount_with_fee amount that was deposited including fee
- * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param refund_deadline by which the merchant advised that he might want
- *        to get a refund
- * @param wire_deadline by which the merchant advised that he would like the
- *        wire transfer to be executed
- * @param receiver_wire_account wire details for the merchant, NULL from iterate_matching_deposits()
  * @param done flag set if the deposit was already executed (or not)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 audit_deposit_cb (void *cls,
                   uint64_t rowid,
                   struct GNUNET_TIME_Absolute exchange_timestamp,
-                  struct GNUNET_TIME_Absolute wallet_timestamp,
-                  const struct TALER_MerchantPublicKeyP *merchant_pub,
+                  const struct TALER_EXCHANGEDB_Deposit *deposit,
                   const struct TALER_DenominationPublicKey *denom_pub,
-                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                  const struct TALER_CoinSpendSignatureP *coin_sig,
-                  const struct TALER_Amount *amount_with_fee,
-                  const struct TALER_PrivateContractHash *h_contract_terms,
-                  struct GNUNET_TIME_Absolute refund_deadline,
-                  struct GNUNET_TIME_Absolute wire_deadline,
-                  const json_t *receiver_wire_account,
-                  int done)
+                  bool done)
 {
   auditor_row_cnt++;
   return GNUNET_OK;
@@ -1227,7 +1207,6 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
 
   /* setup values for wire transfer aggregation data */
   merchant_pub_wt = deposit->merchant_pub;
-  h_wire_wt = deposit->h_wire;
   h_contract_terms_wt = deposit->h_contract_terms;
   coin_pub_wt = deposit->coin.coin_pub;
 
@@ -1394,7 +1373,7 @@ drop:
  * @param rowid deposit table row of the coin's deposit
  * @param coin_pub public key of the coin
  * @param amount value of the deposit, including fee
- * @param wire where should the funds be wired
+ * @param payto_uri where should the funds be wired
  * @param deadline what was the requested wire transfer deadline
  * @param tiny did the exchange defer this transfer because it is too small?
  * @param done did the exchange claim that it made a transfer?
@@ -1404,7 +1383,7 @@ wire_missing_cb (void *cls,
                  uint64_t rowid,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_Amount *amount,
-                 const json_t *wire,
+                 const char *payto_uri,
                  struct GNUNET_TIME_Absolute deadline,
                  /* bool? */ int tiny,
                  /* bool? */ int done)
@@ -1413,14 +1392,6 @@ wire_missing_cb (void *cls,
   struct TALER_MerchantWireHash h_wire;
 
   (void) done;
-  if (NULL != wire)
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_JSON_merchant_wire_signature_hash (wire,
-                                                            &h_wire));
-  else
-    memset (&h_wire,
-            0,
-            sizeof (h_wire));
   if (GNUNET_NO != tiny)
   {
     GNUNET_break (0);
@@ -1443,8 +1414,8 @@ wire_missing_cb (void *cls,
     GNUNET_break (0);
     result = 66;
   }
-  if (0 != GNUNET_memcmp (&h_wire,
-                          &deposit->h_wire))
+  if (0 != strcmp (payto_uri,
+                   &deposit->receiver_wire_account))
   {
     GNUNET_break (0);
     result = 66;
@@ -1868,7 +1839,6 @@ run (void *cls)
     FAILIF (1 !=
             plugin->have_deposit (plugin->cls,
                                   &deposit,
-                                  GNUNET_YES,
                                   &deposit_fee,
                                   &r));
     FAILIF (now.abs_value_us != r.abs_value_us);
@@ -1966,7 +1936,6 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->have_deposit (plugin->cls,
                                   &deposit2,
-                                  GNUNET_YES,
                                   &deposit_fee,
                                   &r));
     deposit2.merchant_pub = deposit.merchant_pub;
@@ -1974,7 +1943,6 @@ run (void *cls)
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
             plugin->have_deposit (plugin->cls,
                                   &deposit2,
-                                  GNUNET_YES,
                                   &deposit_fee,
                                   &r));
   }

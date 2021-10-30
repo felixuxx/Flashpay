@@ -127,6 +127,7 @@ enum TALER_EXCHANGEDB_ReplicatedTable
 {
   TALER_EXCHANGEDB_RT_DENOMINATIONS,
   TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS,
+  TALER_EXCHANGEDB_RT_WIRE_TARGETS,
   TALER_EXCHANGEDB_RT_RESERVES,
   TALER_EXCHANGEDB_RT_RESERVES_IN,
   TALER_EXCHANGEDB_RT_RESERVES_CLOSE,
@@ -175,6 +176,8 @@ struct TALER_EXCHANGEDB_TableData
      */
     struct
     {
+      uint32_t denom_type;
+      uint32_t age_restrictions;
       struct TALER_DenominationPublicKey denom_pub;
       struct TALER_MasterSignatureP master_sig;
       struct GNUNET_TIME_Absolute valid_from;
@@ -196,8 +199,14 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
+      char *payto_uri;
+      bool kyc_ok;
+      char *oauth_username;
+    } wire_targets;
+
+    struct
+    {
       struct TALER_ReservePublicKeyP reserve_pub;
-      char *account_details;
       /**
        * Note: not useful for auditor, because not UPDATEd!
        */
@@ -210,7 +219,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       uint64_t wire_reference;
       struct TALER_Amount credit;
-      char *sender_account_details;
+      uint64_t sender_account;
       char *exchange_account_section;
       struct GNUNET_TIME_Absolute execution_date;
       uint64_t reserve_uuid;
@@ -218,23 +227,23 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
+      uint64_t reserve_uuid;
       struct GNUNET_TIME_Absolute execution_date;
       struct TALER_WireTransferIdentifierRawP wtid;
-      char *receiver_account;
+      uint64_t receiver_account;
       struct TALER_Amount amount;
       struct TALER_Amount closing_fee;
-      uint64_t reserve_uuid;
     } reserves_close;
 
     struct
     {
       struct TALER_BlindedCoinHash h_blind_ev;
+      uint64_t denominations_serial;
       struct TALER_DenominationSignature denom_sig;
+      uint64_t reserve_uuid;
       struct TALER_ReserveSignatureP reserve_sig;
       struct GNUNET_TIME_Absolute execution_date;
       struct TALER_Amount amount_with_fee;
-      uint64_t reserve_uuid;
-      uint64_t denominations_serial;
     } reserves_out;
 
     struct
@@ -269,40 +278,43 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_CoinSpendPublicKeyP coin_pub;
-      struct TALER_DenominationSignature denom_sig;
+      struct TALER_AgeHash age_hash;
       uint64_t denominations_serial;
+      struct TALER_DenominationSignature denom_sig;
     } known_coins;
 
     struct
     {
       struct TALER_RefreshCommitmentP rc;
+      uint64_t old_known_coin_id;
       struct TALER_CoinSpendSignatureP old_coin_sig;
       struct TALER_Amount amount_with_fee;
       uint32_t noreveal_index;
-      uint64_t old_known_coin_id;
     } refresh_commitments;
 
     struct
     {
+      uint64_t melt_serial_id;
       uint32_t freshcoin_index;
       struct TALER_CoinSpendSignatureP link_sig;
+      uint64_t denominations_serial;
       void *coin_ev;
       size_t coin_ev_size;
       // h_coin_ev omitted, to be recomputed!
       struct TALER_DenominationSignature ev_sig;
-      uint64_t denominations_serial;
-      uint64_t melt_serial_id;
     } refresh_revealed_coins;
 
     struct
     {
+      uint64_t melt_serial_id;
       struct TALER_TransferPublicKeyP tp;
       struct TALER_TransferPrivateKeyP tprivs[TALER_CNC_KAPPA - 1];
-      uint64_t melt_serial_id;
     } refresh_transfer_keys;
 
     struct
     {
+      uint64_t shard;
+      uint64_t known_coin_id;
       struct TALER_Amount amount_with_fee;
       struct GNUNET_TIME_Absolute wallet_timestamp;
       struct GNUNET_TIME_Absolute exchange_timestamp;
@@ -310,28 +322,28 @@ struct TALER_EXCHANGEDB_TableData
       struct GNUNET_TIME_Absolute wire_deadline;
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct TALER_PrivateContractHash h_contract_terms;
-      // h_wire omitted, to be recomputed!
       struct TALER_CoinSpendSignatureP coin_sig;
-      json_t *wire;
-      json_t *extensions;
+      struct TALER_WireSalt wire_salt;
+      uint64_t wire_target_serial_id;
       bool tiny;
       bool done;
-      uint64_t known_coin_id;
+      bool extension_blocked;
+      json_t *extension_options;
     } deposits;
 
     struct
     {
+      uint64_t deposit_serial_id;
       struct TALER_MerchantSignatureP merchant_sig;
       uint64_t rtransaction_id;
       struct TALER_Amount amount_with_fee;
-      uint64_t deposit_serial_id;
     } refunds;
 
     struct
     {
       struct GNUNET_TIME_Absolute execution_date;
       struct TALER_WireTransferIdentifierRawP wtid_raw;
-      json_t *wire_target;
+      uint64_t wire_target_serial_id;
       char *exchange_account_section;
       struct TALER_Amount amount;
     } wire_out;
@@ -354,21 +366,21 @@ struct TALER_EXCHANGEDB_TableData
 
     struct
     {
+      uint64_t known_coin_id;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_DenominationBlindingKeyP coin_blind;
       struct TALER_Amount amount;
       struct GNUNET_TIME_Absolute timestamp;
-      uint64_t known_coin_id;
       uint64_t reserve_out_serial_id;
     } recoup;
 
     struct
     {
+      uint64_t known_coin_id;
       struct TALER_CoinSpendSignatureP coin_sig;
       struct TALER_DenominationBlindingKeyP coin_blind;
       struct TALER_Amount amount;
       struct GNUNET_TIME_Absolute timestamp;
-      uint64_t known_coin_id;
       uint64_t rrc_serial;
     } recoup_refresh;
 
@@ -1519,19 +1531,8 @@ typedef void
  * @param cls closure
  * @param rowid unique serial ID for the deposit in our DB
  * @param exchange_timestamp when did the deposit happen
- * @param wallet_timestamp when did the contract happen
- * @param merchant_pub public key of the merchant
+ * @param deposit deposit details
  * @param denom_pub denomination public key of @a coin_pub
- * @param coin_pub public key of the coin
- * @param coin_sig signature from the coin
- * @param amount_with_fee amount that was deposited including fee
- * @param h_contract_terms hash of the proposal data known to merchant and customer
- * @param refund_deadline by which the merchant advised that he might want
- *        to get a refund
- * @param wire_deadline by which the merchant advised that he would like the
- *        wire transfer to be executed
- * @param receiver_wire_account wire details for the merchant including 'url' in payto://-format;
- *        NULL from iterate_matching_deposits()
  * @param done flag set if the deposit was already executed (or not)
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
@@ -1841,7 +1842,7 @@ typedef void
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
  * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
- * @param account_details which account did the transfer go to?
+ * @param account_payto_uri which account did the transfer go to?
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param denom_pub denomination of @a coin_pub
@@ -1854,8 +1855,7 @@ typedef void
   void *cls,
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_MerchantWireHash *h_wire,
-  const json_t *account_details,
+  const char *account_payto_uri,
   struct GNUNET_TIME_Absolute exec_time,
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -1872,7 +1872,7 @@ typedef void
  * @param rowid identifier of the respective row in the database
  * @param date timestamp of the wire transfer (roughly)
  * @param wtid wire transfer subject
- * @param wire wire transfer details of the receiver, including "url" in payto://-format
+ * @param payto_uri details of the receiver, URI in payto://-format
  * @param amount amount that was wired
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
@@ -1882,7 +1882,7 @@ typedef enum GNUNET_GenericReturnValue
   uint64_t rowid,
   struct GNUNET_TIME_Absolute date,
   const struct TALER_WireTransferIdentifierRawP *wtid,
-  const json_t *wire,
+  const char *payto_uri,
   const struct TALER_Amount *amount);
 
 
@@ -2051,7 +2051,7 @@ typedef void
  * @param rowid deposit table row of the coin's deposit
  * @param coin_pub public key of the coin
  * @param amount value of the deposit, including fee
- * @param wire where should the funds be wired, including 'url' in payto://-format
+ * @param payto_uri where should the funds be wired; URI in payto://-format
  * @param deadline what was the requested wire transfer deadline
  * @param tiny did the exchange defer this transfer because it is too small?
  * @param done did the exchange claim that it made a transfer?
@@ -2062,7 +2062,7 @@ typedef void
   uint64_t rowid,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_Amount *amount,
-  const json_t *wire,
+  const char *payto_uri,
   struct GNUNET_TIME_Absolute deadline,
   /* bool? */ int tiny,
   /* bool? */ int done);

@@ -1144,8 +1144,7 @@ prepare_statements (struct PostgresClosure *pg)
                             "SELECT"
                             " aggregation_serial_id"
                             ",deposits.h_contract_terms"
-                            ",deposits.wire"
-                            ",deposits.h_wire"
+                            ",payto_uri"
                             ",kc.coin_pub"
                             ",deposits.merchant_pub"
                             ",wire_out.execution_date"
@@ -1157,6 +1156,8 @@ prepare_statements (struct PostgresClosure *pg)
                             " FROM aggregation_tracking"
                             "    JOIN deposits"
                             "      USING (deposit_serial_id)"
+                            "    JOIN wire_targets"
+                            "      USING (wire_target_serial_id)"
                             "    JOIN known_coins kc"
                             "      USING (known_coin_id)"
                             "    JOIN denominations denom"
@@ -1172,9 +1173,13 @@ prepare_statements (struct PostgresClosure *pg)
                             ",wire_out.execution_date"
                             ",amount_with_fee_val"
                             ",amount_with_fee_frac"
+                            ",wire_salt"
+                            ",payto_uri"
                             ",denom.fee_deposit_val"
                             ",denom.fee_deposit_frac"
                             " FROM deposits"
+                            "    JOIN wire_targets"
+                            "      USING (wire_target_serial_id)"
                             "    JOIN aggregation_tracking"
                             "      USING (deposit_serial_id)"
                             "    JOIN known_coins"
@@ -1184,10 +1189,9 @@ prepare_statements (struct PostgresClosure *pg)
                             "    JOIN wire_out"
                             "      USING (wtid_raw)"
                             " WHERE coin_pub=$1"
-                            "  AND h_contract_terms=$2"
-                            "  AND h_wire=$3"
-                            "  AND merchant_pub=$4;",
-                            4),
+                            "  AND merchant_pub=$3"
+                            "  AND h_contract_terms=$2",
+                            3),
     /* Used in #postgres_insert_aggregation_tracking */
     GNUNET_PQ_make_prepare ("insert_aggregation_tracking",
                             "INSERT INTO aggregation_tracking "
@@ -1278,12 +1282,15 @@ prepare_statements (struct PostgresClosure *pg)
                             ",coin_pub"
                             ",amount_with_fee_val"
                             ",amount_with_fee_frac"
-                            ",wire"
+                            ",payto_uri"
                             ",wire_deadline"
                             ",tiny"
                             ",done"
                             " FROM deposits d"
-                            " JOIN known_coins USING (known_coin_id)"
+                            "   JOIN known_coins"
+                            "     USING (known_coin_id)"
+                            "   JOIN wire_targets"
+                            "     USING (wire_target_serial_id)"
                             " WHERE wire_deadline >= $1"
                             " AND wire_deadline < $2"
                             " AND NOT (EXISTS (SELECT 1"
@@ -1314,11 +1321,15 @@ prepare_statements (struct PostgresClosure *pg)
                             " wireout_uuid"
                             ",execution_date"
                             ",wtid_raw"
-                            ",wire_target"
+                            ",payto_uri"
                             ",amount_val"
                             ",amount_frac"
                             " FROM wire_out"
-                            " WHERE wireout_uuid>=$1 AND exchange_account_section=$2"
+                            "   JOIN wire_targets"
+                            "     USING (wire_target_serial_id)"
+                            " WHERE "
+                            "      wireout_uuid>=$1 "
+                            "  AND exchange_account_section=$2"
                             " ORDER BY wireout_uuid ASC;",
                             2),
     /* Used in #postgres_insert_recoup_request() to store recoup
@@ -6934,22 +6945,19 @@ handle_wt_result (void *cls,
   {
     uint64_t rowid;
     struct TALER_PrivateContractHash h_contract_terms;
-    struct TALER_MerchantWireHash h_wire;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_MerchantPublicKeyP merchant_pub;
     struct GNUNET_TIME_Absolute exec_time;
     struct TALER_Amount amount_with_fee;
     struct TALER_Amount deposit_fee;
     struct TALER_DenominationPublicKey denom_pub;
-    json_t *wire;
+    char *payto_uri;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("aggregation_serial_id", &rowid),
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &h_contract_terms),
-      TALER_PQ_result_spec_json ("wire",
-                                 &wire),
-      GNUNET_PQ_result_spec_auto_from_type ("h_wire",
-                                            &h_wire),
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &payto_uri),
       TALER_PQ_result_spec_denom_pub ("denom_pub",
                                       &denom_pub),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
@@ -6977,8 +6985,7 @@ handle_wt_result (void *cls,
     ctx->cb (ctx->cb_cls,
              rowid,
              &merchant_pub,
-             &h_wire,
-             wire,
+             payto_uri,
              exec_time,
              &h_contract_terms,
              &denom_pub,
@@ -7070,13 +7077,18 @@ postgres_lookup_transfer_by_deposit (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
-    GNUNET_PQ_query_param_auto_from_type (h_wire),
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_end
   };
+  char *payto_uri;
+  struct TALER_WireSalt wire_salt;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
                                           wtid),
+    GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
+                                          &wire_salt),
+    GNUNET_PQ_result_spec_string ("payto_uri",
+                                  &payto_uri),
     TALER_PQ_result_spec_absolute_time ("execution_date",
                                         exec_time),
     TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -7093,13 +7105,24 @@ postgres_lookup_transfer_by_deposit (
                                                  rs);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
-    *pending = false;
-    memset (kyc,
-            0,
-            sizeof (*kyc));
-    kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
-    kyc->ok = true;
-    return qs;
+    struct TALER_MerchantWireHash wh;
+
+    TALER_merchant_wire_signature_hash (payto_uri,
+                                        &wire_salt,
+                                        &wh);
+    GNUNET_PQ_cleanup_result (rs);
+    if (0 ==
+        GNUNET_memcmp (&wh,
+                       h_wire))
+    {
+      *pending = false;
+      memset (kyc,
+              0,
+              sizeof (*kyc));
+      kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
+      kyc->ok = true;
+      return qs;
+    }
   }
   if (0 > qs)
     return qs;
@@ -8653,7 +8676,7 @@ wire_out_serial_helper_cb (void *cls,
     uint64_t rowid;
     struct GNUNET_TIME_Absolute date;
     struct TALER_WireTransferIdentifierRawP wtid;
-    json_t *wire;
+    char *payto_uri;
     struct TALER_Amount amount;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("wireout_uuid",
@@ -8662,8 +8685,8 @@ wire_out_serial_helper_cb (void *cls,
                                           &date),
       GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
                                             &wtid),
-      TALER_PQ_result_spec_json ("wire_target",
-                                 &wire),
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &payto_uri),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &amount),
       GNUNET_PQ_result_spec_end
@@ -8683,7 +8706,7 @@ wire_out_serial_helper_cb (void *cls,
                     rowid,
                     date,
                     &wtid,
-                    wire,
+                    payto_uri,
                     &amount);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
@@ -9536,7 +9559,7 @@ missing_wire_cb (void *cls,
     uint64_t rowid;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_Amount amount;
-    json_t *wire;
+    char *payto_uri;
     struct GNUNET_TIME_Absolute deadline;
     uint8_t tiny;
     uint8_t done;
@@ -9547,8 +9570,8 @@ missing_wire_cb (void *cls,
                                             &coin_pub),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    &amount),
-      TALER_PQ_result_spec_json ("wire",
-                                 &wire),
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &payto_uri),
       TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                           &deadline),
       GNUNET_PQ_result_spec_auto_from_type ("tiny",
@@ -9571,7 +9594,7 @@ missing_wire_cb (void *cls,
              rowid,
              &coin_pub,
              &amount,
-             wire,
+             payto_uri,
              deadline,
              tiny,
              done);
