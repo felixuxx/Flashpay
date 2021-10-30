@@ -358,9 +358,9 @@ struct WireCheckContext
   struct TALER_Amount total_deposits;
 
   /**
-   * Hash of the wire transfer details of the receiver.
+   * Target account details of the receiver.
    */
-  struct TALER_MerchantWireHash h_wire;
+  const char *payto_uri;
 
   /**
    * Execution time of the wire transfer.
@@ -682,8 +682,7 @@ check_transaction_history_for_deposit (
  * @param[in,out] cls a `struct WireCheckContext`
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
- * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
- * @param account_details where did we transfer the funds?
+ * @param account_pay_uri where did we transfer the funds?
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param denom_pub denomination of @a coin_pub
@@ -698,8 +697,7 @@ wire_transfer_information_cb (
   void *cls,
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_MerchantWireHash *h_wire,
-  const json_t *account_details,
+  const char *account_pay_uri,
   struct GNUNET_TIME_Absolute exec_time,
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -714,24 +712,6 @@ wire_transfer_information_cb (
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_CoinPublicInfo coin;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_MerchantWireHash hw;
-
-  if (GNUNET_OK !=
-      TALER_JSON_merchant_wire_signature_hash (account_details,
-                                               &hw))
-  {
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "failed to compute hash of given wire data");
-  }
-  else if (0 !=
-           GNUNET_memcmp (&hw,
-                          h_wire))
-  {
-    report_row_inconsistency ("aggregation",
-                              rowid,
-                              "database contains wrong hash code for wire details");
-  }
 
   /* Obtain coin's transaction history */
   qs = TALER_ARL_edb->get_coin_transactions (TALER_ARL_edb->cls,
@@ -857,14 +837,13 @@ wire_transfer_information_cb (
         "aggregation (contribution)",
         rowid,
         &coin_value_without_fee,
-        &
-        total_deposit_without_refunds,
+        &total_deposit_without_refunds,
         -1);
     }
   }
   /* Check other details of wire transfer match */
-  if (0 != GNUNET_memcmp (h_wire,
-                          &wcc->h_wire))
+  if (0 != strcmp (account_pay_uri,
+                   wcc->payto_uri))
   {
     report_row_inconsistency ("aggregation",
                               rowid,
@@ -1007,16 +986,16 @@ get_wire_fee (struct AggregationContext *ac,
  * @param rowid identifier of the respective row in the database
  * @param date timestamp of the wire transfer (roughly)
  * @param wtid wire transfer subject
- * @param wire wire transfer details of the receiver
+ * @param payto_uri bank account details of the receiver
  * @param amount amount that was wired
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_wire_out_cb (void *cls,
                    uint64_t rowid,
                    struct GNUNET_TIME_Absolute date,
                    const struct TALER_WireTransferIdentifierRawP *wtid,
-                   const json_t *wire,
+                   const char *payto_uri,
                    const struct TALER_Amount *amount)
 {
   struct AggregationContext *ac = cls;
@@ -1035,7 +1014,7 @@ check_wire_out_cb (void *cls,
               TALER_B2S (wtid),
               TALER_amount2s (amount),
               GNUNET_STRINGS_absolute_time_to_string (date));
-  if (NULL == (method = TALER_JSON_wire_to_method (wire)))
+  if (NULL == (method = TALER_payto_get_method (payto_uri)))
   {
     report_row_inconsistency ("wire_out",
                               rowid,
@@ -1049,14 +1028,7 @@ check_wire_out_cb (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_amount_set_zero (amount->currency,
                                         &wcc.total_deposits));
-  if (GNUNET_OK !=
-      TALER_JSON_merchant_wire_signature_hash (wire,
-                                               &wcc.h_wire))
-  {
-    GNUNET_break (0);
-    GNUNET_free (method);
-    return GNUNET_SYSERR;
-  }
+  wcc.payto_uri = payto_uri;
   qs = TALER_ARL_edb->lookup_wire_transfer (TALER_ARL_edb->cls,
                                             wtid,
                                             &wire_transfer_information_cb,
@@ -1156,8 +1128,8 @@ check_wire_out_cb (void *cls,
 
     TALER_ARL_report (report_wire_out_inconsistencies,
                       GNUNET_JSON_PACK (
-                        GNUNET_JSON_pack_object_incref ("destination_account",
-                                                        (json_t *) wire),
+                        GNUNET_JSON_pack_string ("destination_account",
+                                                 payto_uri),
                         GNUNET_JSON_pack_uint64 ("rowid",
                                                  rowid),
                         TALER_JSON_pack_amount ("expected",

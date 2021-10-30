@@ -77,7 +77,7 @@ struct AggregatedDepositDetail
  * @param connection connection to the client
  * @param total total amount that was transferred
  * @param merchant_pub public key of the merchant
- * @param h_wire destination account
+ * @param payto_uri destination account
  * @param wire_fee wire fee that was charged
  * @param exec_time execution time of the wire transfer
  * @param wdd_head linked list with details about the combined deposits
@@ -87,7 +87,7 @@ static MHD_RESULT
 reply_transfer_details (struct MHD_Connection *connection,
                         const struct TALER_Amount *total,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
-                        const struct TALER_MerchantWireHash *h_wire,
+                        const char *payto_uri,
                         const struct TALER_Amount *wire_fee,
                         struct GNUNET_TIME_Absolute exec_time,
                         const struct AggregatedDepositDetail *wdd_head)
@@ -145,7 +145,8 @@ reply_transfer_details (struct MHD_Connection *connection,
   TALER_amount_hton (&wdp.wire_fee,
                      wire_fee);
   wdp.merchant_pub = *merchant_pub;
-  wdp.h_wire = *h_wire;
+  TALER_payto_hash (payto_uri,
+                    &wdp.h_payto);
   GNUNET_CRYPTO_hash_context_finish (hash_context,
                                      &wdp.h_details);
   {
@@ -172,8 +173,8 @@ reply_transfer_details (struct MHD_Connection *connection,
                             wire_fee),
     GNUNET_JSON_pack_data_auto ("merchant_pub",
                                 merchant_pub),
-    GNUNET_JSON_pack_data_auto ("h_wire",
-                                h_wire),
+    GNUNET_JSON_pack_data_auto ("h_payto",
+                                &wdp.h_payto),
     GNUNET_JSON_pack_time_abs ("execution_time",
                                exec_time),
     GNUNET_JSON_pack_array_steal ("deposits",
@@ -211,12 +212,6 @@ struct WtidTransactionContext
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Hash of the wire details of the merchant (identical for all
-   * deposits), only valid if @e is_valid is #GNUNET_YES.
-   */
-  struct TALER_MerchantWireHash h_wire;
-
-  /**
    * Wire fee applicable at @e exec_time.
    */
   struct TALER_Amount wire_fee;
@@ -237,9 +232,9 @@ struct WtidTransactionContext
   struct AggregatedDepositDetail *wdd_tail;
 
   /**
-   * Which method was used to wire the funds?
+   * Where were the funds wired?
    */
-  char *wire_method;
+  char *payto_uri;
 
   /**
    * JSON array with details about the individual deposits.
@@ -253,7 +248,7 @@ struct WtidTransactionContext
    * (as they should).  Set to #GNUNET_SYSERR if we encountered an
    * internal error.
    */
-  int is_valid;
+  enum GNUNET_GenericReturnValue is_valid;
 
 };
 
@@ -265,8 +260,7 @@ struct WtidTransactionContext
  * @param cls our context for transmission
  * @param rowid which row in the DB is the information from (for diagnostics), ignored
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
- * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
- * @param wire where the funds were sent
+ * @param account_payto_uri where the funds were sent
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about
  * @param denom_pub denomination public key of the @a coin_pub (ignored)
@@ -278,8 +272,7 @@ static void
 handle_deposit_data (void *cls,
                      uint64_t rowid,
                      const struct TALER_MerchantPublicKeyP *merchant_pub,
-                     const struct TALER_MerchantWireHash *h_wire,
-                     const json_t *wire,
+                     const char *account_payto_uri,
                      struct GNUNET_TIME_Absolute exec_time,
                      const struct TALER_PrivateContractHash *h_contract_terms,
                      const struct TALER_DenominationPublicKey *denom_pub,
@@ -288,25 +281,17 @@ handle_deposit_data (void *cls,
                      const struct TALER_Amount *deposit_fee)
 {
   struct WtidTransactionContext *ctx = cls;
-  char *wire_method;
 
   (void) rowid;
   (void) denom_pub;
   if (GNUNET_SYSERR == ctx->is_valid)
     return;
-  if (NULL == (wire_method = TALER_JSON_wire_to_method (wire)))
-  {
-    GNUNET_break (0);
-    ctx->is_valid = GNUNET_SYSERR;
-    return;
-  }
   if (GNUNET_NO == ctx->is_valid)
   {
     /* First one we encounter, setup general information in 'ctx' */
     ctx->merchant_pub = *merchant_pub;
-    ctx->h_wire = *h_wire;
+    ctx->payto_uri = GNUNET_strdup (account_payto_uri);
     ctx->exec_time = exec_time;
-    ctx->wire_method = wire_method; /* captures the reference */
     ctx->is_valid = GNUNET_YES;
     if (0 >
         TALER_amount_subtract (&ctx->total,
@@ -326,17 +311,13 @@ handle_deposit_data (void *cls,
        (it should, otherwise the deposits should not have been aggregated) */
     if ( (0 != GNUNET_memcmp (&ctx->merchant_pub,
                               merchant_pub)) ||
-         (0 != strcmp (wire_method,
-                       ctx->wire_method)) ||
-         (0 != GNUNET_memcmp (&ctx->h_wire,
-                              h_wire)) )
+         (0 != strcmp (account_payto_uri,
+                       ctx->payto_uri)) )
     {
       GNUNET_break (0);
       ctx->is_valid = GNUNET_SYSERR;
-      GNUNET_free (wire_method);
       return;
     }
-    GNUNET_free (wire_method);
     if (0 >
         TALER_amount_subtract (&delta,
                                deposit_value,
@@ -389,8 +370,7 @@ free_ctx (struct WtidTransactionContext *ctx)
                                  wdd);
     GNUNET_free (wdd);
   }
-  GNUNET_free (ctx->wire_method);
-  ctx->wire_method = NULL;
+  GNUNET_free (ctx->payto_uri);
 }
 
 
@@ -458,14 +438,29 @@ get_transfer_deposits (void *cls,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  qs = TEH_plugin->get_wire_fee (TEH_plugin->cls,
-                                 ctx->wire_method,
-                                 ctx->exec_time,
-                                 &wire_fee_start_date,
-                                 &wire_fee_end_date,
-                                 &ctx->wire_fee,
-                                 &closing_fee,
-                                 &wire_fee_master_sig);
+  {
+    char *wire_method;
+
+    wire_method = TALER_payto_get_method (ctx->payto_uri);
+    if (NULL == wire_method)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+                                             "payto:// without wire method encountered");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    qs = TEH_plugin->get_wire_fee (TEH_plugin->cls,
+                                   wire_method,
+                                   ctx->exec_time,
+                                   &wire_fee_start_date,
+                                   &wire_fee_end_date,
+                                   &ctx->wire_fee,
+                                   &closing_fee,
+                                   &wire_fee_master_sig);
+    GNUNET_free (wire_method);
+  }
   if (0 >= qs)
   {
     if ( (GNUNET_DB_STATUS_HARD_ERROR == qs) ||
@@ -530,7 +525,7 @@ TEH_handler_transfers_get (struct TEH_RequestContext *rc,
   mhd_ret = reply_transfer_details (rc->connection,
                                     &ctx.total,
                                     &ctx.merchant_pub,
-                                    &ctx.h_wire,
+                                    ctx.payto_uri,
                                     &ctx.wire_fee,
                                     ctx.exec_time,
                                     ctx.wdd_head);

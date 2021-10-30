@@ -1,6 +1,6 @@
 /*
    This file is part of GNUnet
-   Copyright (C) 2020 Taler Systems SA
+   Copyright (C) 2020, 2021 Taler Systems SA
 
    GNUnet is free software: you can redistribute it and/or modify it
    under the terms of the GNU Affero General Public License as published
@@ -100,6 +100,37 @@ irbt_cb_table_denomination_revocations (
 
 
 /**
+ * Function called with denominations records to insert into table.
+ *
+ * @param pg plugin context
+ * @param td record to insert
+ */
+static enum GNUNET_DB_QueryStatus
+irbt_cb_table_wire_targets (struct PostgresClosure *pg,
+                            const struct TALER_EXCHANGEDB_TableData *td)
+{
+  struct TALER_PaytoHash payto_hash;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_auto_from_type (&payto_hash),
+    GNUNET_PQ_query_param_string (
+      td->details.wire_targets.payto_uri),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.wire_targets.kyc_ok),
+    GNUNET_PQ_query_param_string (
+      td->details.wire_targets.oauth_username),
+    GNUNET_PQ_query_param_end
+  };
+
+  TALER_payto_hash (
+    td->details.wire_targets.payto_uri,
+    &payto_hash);
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "insert_into_table_wire_targets",
+                                             params);
+}
+
+
+/**
  * Function called with reserves records to insert into table.
  *
  * @param pg plugin context
@@ -112,7 +143,6 @@ irbt_cb_table_reserves (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.reserves.reserve_pub),
-    GNUNET_PQ_query_param_string (td->details.reserves.account_details),
     TALER_PQ_query_param_amount (&td->details.reserves.current_balance),
     TALER_PQ_query_param_absolute_time (&td->details.reserves.expiration_date),
     TALER_PQ_query_param_absolute_time (&td->details.reserves.gc_date),
@@ -139,8 +169,7 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.wire_reference),
     TALER_PQ_query_param_amount (&td->details.reserves_in.credit),
-    GNUNET_PQ_query_param_string (
-      td->details.reserves_in.sender_account_details),
+    GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.sender_account),
     GNUNET_PQ_query_param_string (
       td->details.reserves_in.exchange_account_section),
     TALER_PQ_query_param_absolute_time (
@@ -170,7 +199,8 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
     TALER_PQ_query_param_absolute_time (
       &td->details.reserves_close.execution_date),
     GNUNET_PQ_query_param_auto_from_type (&td->details.reserves_close.wtid),
-    GNUNET_PQ_query_param_string (td->details.reserves_close.receiver_account),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.reserves_close.wire_target_serial_id),
     TALER_PQ_query_param_amount (&td->details.reserves_close.amount),
     TALER_PQ_query_param_amount (&td->details.reserves_close.closing_fee),
     GNUNET_PQ_query_param_uint64 (&td->details.reserves_close.reserve_uuid),
@@ -462,9 +492,11 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
 {
   uint8_t tiny = td->details.deposits.tiny ? 1 : 0;
   uint8_t done = td->details.deposits.done ? 1 : 0;
-  struct TALER_MerchantWireHash h_wire;
+  uint8_t extension_blocked = td->details.deposits.extension_blocked ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
+    GNUNET_PQ_query_param_uint64 (&td->details.deposits.shard),
+    GNUNET_PQ_query_param_uint64 (&td->details.deposits.known_coin_id),
     TALER_PQ_query_param_amount (&td->details.deposits.amount_with_fee),
     TALER_PQ_query_param_absolute_time (&td->details.deposits.wallet_timestamp),
     TALER_PQ_query_param_absolute_time (
@@ -474,17 +506,16 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.deposits.h_contract_terms),
-    GNUNET_PQ_query_param_auto_from_type (&h_wire),
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.coin_sig),
-    TALER_PQ_query_param_json (td->details.deposits.wire),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.wire_salt),
+    GNUNET_PQ_query_param_uint64 (&td->details.deposits.wire_target_serial_id),
     GNUNET_PQ_query_param_auto_from_type (&tiny),
     GNUNET_PQ_query_param_auto_from_type (&done),
-    GNUNET_PQ_query_param_uint64 (&td->details.deposits.known_coin_id),
+    GNUNET_PQ_query_param_auto_from_type (&extension_blocked),
+    TALER_PQ_query_param_json (td->details.deposits.extension_options),
     GNUNET_PQ_query_param_end
   };
 
-  TALER_JSON_merchant_wire_signature_hash (td->details.deposits.wire,
-                                           &h_wire);
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_into_table_deposits",
                                              params);
@@ -530,7 +561,7 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     TALER_PQ_query_param_absolute_time (&td->details.wire_out.execution_date),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wire_out.wtid_raw),
-    TALER_PQ_query_param_json (td->details.wire_out.wire_target),
+    GNUNET_PQ_query_param_uint64 (&td->details.wire_out.wire_target_serial_id),
     GNUNET_PQ_query_param_string (
       td->details.wire_out.exchange_account_section),
     TALER_PQ_query_param_amount (&td->details.wire_out.amount),

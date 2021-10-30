@@ -79,7 +79,7 @@ struct TALER_EXCHANGE_TransfersGetHandle
  * @return #GNUNET_OK if we are done and all is well,
  *         #GNUNET_SYSERR if the response was bogus
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_transfers_get_response_ok (
   struct TALER_EXCHANGE_TransfersGetHandle *wdh,
   const json_t *json)
@@ -92,7 +92,7 @@ check_transfers_get_response_ok (
     TALER_JSON_spec_amount_any ("total", &td.total_amount),
     TALER_JSON_spec_amount_any ("wire_fee", &td.wire_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
-    GNUNET_JSON_spec_fixed_auto ("h_wire", &td.h_wire),
+    GNUNET_JSON_spec_fixed_auto ("h_payto", &td.h_payto),
     TALER_JSON_spec_absolute_time ("execution_time", &td.execution_time),
     GNUNET_JSON_spec_json ("deposits", &details_j),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &td.exchange_sig),
@@ -199,7 +199,7 @@ check_transfers_get_response_ok (
           TALER_SIGNATURE_EXCHANGE_CONFIRM_WIRE_DEPOSIT),
         .purpose.size = htonl (sizeof (wdp)),
         .merchant_pub = merchant_pub,
-        .h_wire = td.h_wire
+        .h_payto = td.h_payto
       };
 
       TALER_amount_hton (&wdp.total,

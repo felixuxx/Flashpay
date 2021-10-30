@@ -10729,6 +10729,10 @@ postgres_lookup_records_by_table (void *cls,
     statement = "select_above_serial_by_table_denomination_revocations";
     rh = &lrbt_cb_table_denomination_revocations;
     break;
+  case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
+    statement = "select_above_serial_by_table_wire_targets";
+    rh = &lrbt_cb_table_wire_targets;
+    break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     statement = "select_above_serial_by_table_reserves";
     rh = &lrbt_cb_table_reserves;
@@ -10861,6 +10865,9 @@ postgres_insert_records_by_table (void *cls,
     break;
   case TALER_EXCHANGEDB_RT_DENOMINATION_REVOCATIONS:
     rh = &irbt_cb_table_denomination_revocations;
+    break;
+  case TALER_EXCHANGEDB_RT_WIRE_TARGETS:
+    rh = &irbt_cb_table_wire_targets;
     break;
   case TALER_EXCHANGEDB_RT_RESERVES:
     rh = &irbt_cb_table_reserves;

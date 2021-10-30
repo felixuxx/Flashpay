@@ -1383,9 +1383,9 @@ struct TALER_WireDepositDataPS
   struct TALER_MerchantPublicKeyP merchant_pub;
 
   /**
-   * Hash of wire details of the merchant.
+   * Hash of bank account of the merchant.
    */
-  struct TALER_MerchantWireHash h_wire;
+  struct TALER_PaytoHash h_payto;
 
   /**
    * Hash of the individual deposits that were aggregated,

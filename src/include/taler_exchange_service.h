@@ -1709,9 +1709,9 @@ struct TALER_EXCHANGE_TransferData
   struct TALER_ExchangeSignatureP exchange_sig;
 
   /**
-   * hash of the wire transfer address the transfer went to
+   * hash of the payto:// URI the transfer went to
    */
-  struct TALER_MerchantWireHash h_wire;
+  struct TALER_PaytoHash h_wire;
 
   /**
    * time when the exchange claims to have performed the wire transfer

@@ -143,8 +143,8 @@ CREATE INDEX IF NOT EXISTS reserves_in_exchange_account_serial
   reserve_in_serial_id DESC
   );
 
-
-CREATE TABLE IF NOT EXISTS reserves_close
+qq
+CREATE TABLE IF NOT EXISTS reserves_closeq
   (close_uuid BIGSERIAL PRIMARY KEY
   ,reserve_uuid INT8 NOT NULL REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
   ,execution_date INT8 NOT NULL

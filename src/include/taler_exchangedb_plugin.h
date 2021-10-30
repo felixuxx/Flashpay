@@ -230,7 +230,7 @@ struct TALER_EXCHANGEDB_TableData
       uint64_t reserve_uuid;
       struct GNUNET_TIME_Absolute execution_date;
       struct TALER_WireTransferIdentifierRawP wtid;
-      uint64_t receiver_account;
+      uint64_t wire_target_serial_id;
       struct TALER_Amount amount;
       struct TALER_Amount closing_fee;
     } reserves_close;

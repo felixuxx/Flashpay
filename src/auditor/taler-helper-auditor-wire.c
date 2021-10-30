@@ -942,16 +942,16 @@ check_time_difference (const char *table,
  * @param rowid unique serial ID for the refresh session in our DB
  * @param date timestamp of the transfer (roughly)
  * @param wtid wire transfer subject
- * @param wire wire transfer details of the receiver
+ * @param payto_uri wire transfer details of the receiver
  * @param amount amount that was wired
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 wire_out_cb (void *cls,
              uint64_t rowid,
              struct GNUNET_TIME_Absolute date,
              const struct TALER_WireTransferIdentifierRawP *wtid,
-             const json_t *wire,
+             const char *payto_uri,
              const struct TALER_Amount *amount)
 {
   struct WireAccount *wa = cls;
@@ -997,62 +997,55 @@ wire_out_cb (void *cls,
       return GNUNET_SYSERR;
     return GNUNET_OK;
   }
+  if (0 != strcasecmp (payto_uri,
+                       roi->details.credit_account_uri))
   {
-    char *payto_uri;
-
-    payto_uri = TALER_JSON_wire_to_payto (wire);
-    if (0 != strcasecmp (payto_uri,
-                         roi->details.credit_account_uri))
-    {
-      /* Destination bank account is wrong in actual wire transfer, so
-         we should count the wire transfer as entirely spurious, and
-         additionally consider the justified wire transfer as missing. */
-      TALER_ARL_report (report_wire_out_inconsistencies,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_uint64 ("row",
-                                                   rowid),
-                          TALER_JSON_pack_amount ("amount_wired",
-                                                  &roi->details.amount),
-                          TALER_JSON_pack_amount ("amount_justified",
-                                                  &zero),
-                          GNUNET_JSON_pack_data_auto ("wtid", wtid),
-                          TALER_JSON_pack_time_abs_human ("timestamp",
-                                                          date),
-                          GNUNET_JSON_pack_string ("diagnostic",
-                                                   "receiver account mismatch"),
-                          GNUNET_JSON_pack_string ("target",
-                                                   payto_uri),
-                          GNUNET_JSON_pack_string ("account_section",
-                                                   wa->ai->section_name)));
-      TALER_ARL_amount_add (&total_bad_amount_out_plus,
-                            &total_bad_amount_out_plus,
-                            &roi->details.amount);
-      TALER_ARL_report (report_wire_out_inconsistencies,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_uint64 ("row",
-                                                   rowid),
-                          TALER_JSON_pack_amount ("amount_wired",
-                                                  &zero),
-                          TALER_JSON_pack_amount ("amount_justified",
-                                                  amount),
-                          GNUNET_JSON_pack_data_auto ("wtid",
-                                                      wtid),
-                          TALER_JSON_pack_time_abs_human ("timestamp",
-                                                          date),
-                          GNUNET_JSON_pack_string ("diagnostic",
-                                                   "receiver account mismatch"),
-                          GNUNET_JSON_pack_string ("target",
-                                                   roi->details.
-                                                   credit_account_uri),
-                          GNUNET_JSON_pack_string ("account_section",
-                                                   wa->ai->section_name)));
-      TALER_ARL_amount_add (&total_bad_amount_out_minus,
-                            &total_bad_amount_out_minus,
-                            amount);
-      GNUNET_free (payto_uri);
-      goto cleanup;
-    }
-    GNUNET_free (payto_uri);
+    /* Destination bank account is wrong in actual wire transfer, so
+       we should count the wire transfer as entirely spurious, and
+       additionally consider the justified wire transfer as missing. */
+    TALER_ARL_report (report_wire_out_inconsistencies,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("amount_wired",
+                                                &roi->details.amount),
+                        TALER_JSON_pack_amount ("amount_justified",
+                                                &zero),
+                        GNUNET_JSON_pack_data_auto ("wtid", wtid),
+                        TALER_JSON_pack_time_abs_human ("timestamp",
+                                                        date),
+                        GNUNET_JSON_pack_string ("diagnostic",
+                                                 "receiver account mismatch"),
+                        GNUNET_JSON_pack_string ("target",
+                                                 payto_uri),
+                        GNUNET_JSON_pack_string ("account_section",
+                                                 wa->ai->section_name)));
+    TALER_ARL_amount_add (&total_bad_amount_out_plus,
+                          &total_bad_amount_out_plus,
+                          &roi->details.amount);
+    TALER_ARL_report (report_wire_out_inconsistencies,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("amount_wired",
+                                                &zero),
+                        TALER_JSON_pack_amount ("amount_justified",
+                                                amount),
+                        GNUNET_JSON_pack_data_auto ("wtid",
+                                                    wtid),
+                        TALER_JSON_pack_time_abs_human ("timestamp",
+                                                        date),
+                        GNUNET_JSON_pack_string ("diagnostic",
+                                                 "receiver account mismatch"),
+                        GNUNET_JSON_pack_string ("target",
+                                                 roi->details.
+                                                 credit_account_uri),
+                        GNUNET_JSON_pack_string ("account_section",
+                                                 wa->ai->section_name)));
+    TALER_ARL_amount_add (&total_bad_amount_out_minus,
+                          &total_bad_amount_out_minus,
+                          amount);
+    goto cleanup;
   }
   if (0 != TALER_amount_cmp (&roi->details.amount,
                              amount))
