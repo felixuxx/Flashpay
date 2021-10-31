@@ -205,315 +205,337 @@ prepare_statements (struct PostgresClosure *pg)
   struct GNUNET_PQ_PreparedStatement ps[] = {
     /* Used in #postgres_insert_denomination_info() and
        #postgres_add_denomination_key() */
-    GNUNET_PQ_make_prepare ("denomination_insert",
-                            "INSERT INTO denominations "
-                            "(denom_pub_hash"
-                            ",denom_pub"
-                            ",master_sig"
-                            ",valid_from"
-                            ",expire_withdraw"
-                            ",expire_deposit"
-                            ",expire_legal"
-                            ",coin_val"                                            /* value of this denom */
-                            ",coin_frac"                                            /* fractional value of this denom */
-                            ",fee_withdraw_val"
-                            ",fee_withdraw_frac"
-                            ",fee_deposit_val"
-                            ",fee_deposit_frac"
-                            ",fee_refresh_val"
-                            ",fee_refresh_frac"
-                            ",fee_refund_val"
-                            ",fee_refund_frac"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-                            " $11, $12, $13, $14, $15, $16, $17);",
-                            17),
+    GNUNET_PQ_make_prepare (
+      "denomination_insert",
+      "INSERT INTO denominations "
+      "(denom_pub_hash"
+      ",denom_pub"
+      ",master_sig"
+      ",valid_from"
+      ",expire_withdraw"
+      ",expire_deposit"
+      ",expire_legal"
+      ",coin_val"                                                                  /* value of this denom */
+      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",fee_withdraw_val"
+      ",fee_withdraw_frac"
+      ",fee_deposit_val"
+      ",fee_deposit_frac"
+      ",fee_refresh_val"
+      ",fee_refresh_frac"
+      ",fee_refund_val"
+      ",fee_refund_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+      " $11, $12, $13, $14, $15, $16, $17);",
+      17),
     /* Used in #postgres_iterate_denomination_info() */
-    GNUNET_PQ_make_prepare ("denomination_iterate",
-                            "SELECT"
-                            " master_sig"
-                            ",valid_from"
-                            ",expire_withdraw"
-                            ",expire_deposit"
-                            ",expire_legal"
-                            ",coin_val"                                            /* value of this denom */
-                            ",coin_frac"                                            /* fractional value of this denom */
-                            ",fee_withdraw_val"
-                            ",fee_withdraw_frac"
-                            ",fee_deposit_val"
-                            ",fee_deposit_frac"
-                            ",fee_refresh_val"
-                            ",fee_refresh_frac"
-                            ",fee_refund_val"
-                            ",fee_refund_frac"
-                            ",denom_pub"
-                            " FROM denominations;",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "denomination_iterate",
+      "SELECT"
+      " master_sig"
+      ",valid_from"
+      ",expire_withdraw"
+      ",expire_deposit"
+      ",expire_legal"
+      ",coin_val"                                                                  /* value of this denom */
+      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",fee_withdraw_val"
+      ",fee_withdraw_frac"
+      ",fee_deposit_val"
+      ",fee_deposit_frac"
+      ",fee_refresh_val"
+      ",fee_refresh_frac"
+      ",fee_refund_val"
+      ",fee_refund_frac"
+      ",denom_pub"
+      " FROM denominations;",
+      0),
     /* Used in #postgres_iterate_denominations() */
-    GNUNET_PQ_make_prepare ("select_denominations",
-                            "SELECT"
-                            " denominations.master_sig"
-                            ",denom_revocations_serial_id IS NOT NULL AS revoked"
-                            ",valid_from"
-                            ",expire_withdraw"
-                            ",expire_deposit"
-                            ",expire_legal"
-                            ",coin_val"                                            /* value of this denom */
-                            ",coin_frac"                                            /* fractional value of this denom */
-                            ",fee_withdraw_val"
-                            ",fee_withdraw_frac"
-                            ",fee_deposit_val"
-                            ",fee_deposit_frac"
-                            ",fee_refresh_val"
-                            ",fee_refresh_frac"
-                            ",fee_refund_val"
-                            ",fee_refund_frac"
-                            ",denom_pub"
-                            " FROM denominations"
-                            " LEFT JOIN "
-                            "   denomination_revocations USING (denominations_serial);",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "select_denominations",
+      "SELECT"
+      " denominations.master_sig"
+      ",denom_revocations_serial_id IS NOT NULL AS revoked"
+      ",valid_from"
+      ",expire_withdraw"
+      ",expire_deposit"
+      ",expire_legal"
+      ",coin_val"                                                                  /* value of this denom */
+      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",fee_withdraw_val"
+      ",fee_withdraw_frac"
+      ",fee_deposit_val"
+      ",fee_deposit_frac"
+      ",fee_refresh_val"
+      ",fee_refresh_frac"
+      ",fee_refund_val"
+      ",fee_refund_frac"
+      ",denom_pub"
+      " FROM denominations"
+      " LEFT JOIN "
+      "   denomination_revocations USING (denominations_serial);",
+      0),
     /* Used in #postgres_iterate_active_signkeys() */
-    GNUNET_PQ_make_prepare ("select_signkeys",
-                            "SELECT"
-                            " master_sig"
-                            ",exchange_pub"
-                            ",valid_from"
-                            ",expire_sign"
-                            ",expire_legal"
-                            " FROM exchange_sign_keys esk"
-                            " WHERE"
-                            "   expire_sign > $1"
-                            " AND NOT EXISTS "
-                            "  (SELECT esk_serial "
-                            "     FROM signkey_revocations skr"
-                            "    WHERE esk.esk_serial = skr.esk_serial);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "select_signkeys",
+      "SELECT"
+      " master_sig"
+      ",exchange_pub"
+      ",valid_from"
+      ",expire_sign"
+      ",expire_legal"
+      " FROM exchange_sign_keys esk"
+      " WHERE"
+      "   expire_sign > $1"
+      " AND NOT EXISTS "
+      "  (SELECT esk_serial "
+      "     FROM signkey_revocations skr"
+      "    WHERE esk.esk_serial = skr.esk_serial);",
+      1),
     /* Used in #postgres_iterate_auditor_denominations() */
-    GNUNET_PQ_make_prepare ("select_auditor_denoms",
-                            "SELECT"
-                            " auditors.auditor_pub"
-                            ",denominations.denom_pub_hash"
-                            ",auditor_denom_sigs.auditor_sig"
-                            " FROM auditor_denom_sigs"
-                            " JOIN auditors USING (auditor_uuid)"
-                            " JOIN denominations USING (denominations_serial)"
-                            " WHERE auditors.is_active;",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "select_auditor_denoms",
+      "SELECT"
+      " auditors.auditor_pub"
+      ",denominations.denom_pub_hash"
+      ",auditor_denom_sigs.auditor_sig"
+      " FROM auditor_denom_sigs"
+      " JOIN auditors USING (auditor_uuid)"
+      " JOIN denominations USING (denominations_serial)"
+      " WHERE auditors.is_active;",
+      0),
     /* Used in #postgres_iterate_active_auditors() */
-    GNUNET_PQ_make_prepare ("select_auditors",
-                            "SELECT"
-                            " auditor_pub"
-                            ",auditor_url"
-                            ",auditor_name"
-                            " FROM auditors"
-                            " WHERE"
-                            "   is_active;",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "select_auditors",
+      "SELECT"
+      " auditor_pub"
+      ",auditor_url"
+      ",auditor_name"
+      " FROM auditors"
+      " WHERE"
+      "   is_active;",
+      0),
     /* Used in #postgres_get_denomination_info() */
-    GNUNET_PQ_make_prepare ("denomination_get",
-                            "SELECT"
-                            " master_sig"
-                            ",valid_from"
-                            ",expire_withdraw"
-                            ",expire_deposit"
-                            ",expire_legal"
-                            ",coin_val"                                            /* value of this denom */
-                            ",coin_frac"                                            /* fractional value of this denom */
-                            ",fee_withdraw_val"
-                            ",fee_withdraw_frac"
-                            ",fee_deposit_val"
-                            ",fee_deposit_frac"
-                            ",fee_refresh_val"
-                            ",fee_refresh_frac"
-                            ",fee_refund_val"
-                            ",fee_refund_frac"
-                            " FROM denominations"
-                            " WHERE denom_pub_hash=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "denomination_get",
+      "SELECT"
+      " master_sig"
+      ",valid_from"
+      ",expire_withdraw"
+      ",expire_deposit"
+      ",expire_legal"
+      ",coin_val"                                                                  /* value of this denom */
+      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",fee_withdraw_val"
+      ",fee_withdraw_frac"
+      ",fee_deposit_val"
+      ",fee_deposit_frac"
+      ",fee_refresh_val"
+      ",fee_refresh_frac"
+      ",fee_refund_val"
+      ",fee_refund_frac"
+      " FROM denominations"
+      " WHERE denom_pub_hash=$1;",
+      1),
     /* Used in #postgres_insert_denomination_revocation() */
-    GNUNET_PQ_make_prepare ("denomination_revocation_insert",
-                            "INSERT INTO denomination_revocations "
-                            "(denominations_serial"
-                            ",master_sig"
-                            ") SELECT denominations_serial,$2"
-                            "    FROM denominations"
-                            "   WHERE denom_pub_hash=$1;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "denomination_revocation_insert",
+      "INSERT INTO denomination_revocations "
+      "(denominations_serial"
+      ",master_sig"
+      ") SELECT denominations_serial,$2"
+      "    FROM denominations"
+      "   WHERE denom_pub_hash=$1;",
+      2),
     /* Used in #postgres_get_denomination_revocation() */
-    GNUNET_PQ_make_prepare ("denomination_revocation_get",
-                            "SELECT"
-                            " master_sig"
-                            ",denom_revocations_serial_id"
-                            " FROM denomination_revocations"
-                            " WHERE denominations_serial="
-                            "  (SELECT denominations_serial"
-                            "    FROM denominations"
-                            "    WHERE denom_pub_hash=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "denomination_revocation_get",
+      "SELECT"
+      " master_sig"
+      ",denom_revocations_serial_id"
+      " FROM denomination_revocations"
+      " WHERE denominations_serial="
+      "  (SELECT denominations_serial"
+      "    FROM denominations"
+      "    WHERE denom_pub_hash=$1);",
+      1),
     /* Used in #postgres_reserves_get() */
-    GNUNET_PQ_make_prepare ("reserves_get_with_kyc",
-                            "SELECT"
-                            " current_balance_val"
-                            ",current_balance_frac"
-                            ",expiration_date"
-                            ",gc_date"
-                            ",kyc_ok"
-                            ",wire_target_serial_id AS payment_target_uuid"
-                            " FROM reserves"
-                            " JOIN reserves_in ri USING (reserve_uuid)"
-                            " JOIN wire_targets wt "
-                            "  ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
-                            " WHERE reserve_pub=$1"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "reserves_get_with_kyc",
+      "SELECT"
+      " current_balance_val"
+      ",current_balance_frac"
+      ",expiration_date"
+      ",gc_date"
+      ",kyc_ok"
+      ",wire_target_serial_id AS payment_target_uuid"
+      " FROM reserves"
+      " JOIN reserves_in ri USING (reserve_uuid)"
+      " JOIN wire_targets wt "
+      "  ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
+      " WHERE reserve_pub=$1"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_set_kyc_ok() */
-    GNUNET_PQ_make_prepare ("set_kyc_ok",
-                            "UPDATE wire_targets"
-                            " SET kyc_ok=TRUE"
-                            " WHERE wire_target_serial_id=$1",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "set_kyc_ok",
+      "UPDATE wire_targets"
+      " SET kyc_ok=TRUE"
+      " WHERE wire_target_serial_id=$1",
+      1),
     /* Used in #postgres_get_kyc_status() */
-    GNUNET_PQ_make_prepare ("get_kyc_status",
-                            "SELECT"
-                            " kyc_ok"
-                            ",wire_target_serial_id AS payment_target_uuid"
-                            " FROM wire_targets"
-                            " WHERE payto_uri=$1"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_kyc_status",
+      "SELECT"
+      " kyc_ok"
+      ",wire_target_serial_id AS payment_target_uuid"
+      " FROM wire_targets"
+      " WHERE payto_uri=$1"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_select_kyc_status() */
-    GNUNET_PQ_make_prepare ("select_kyc_status",
-                            "SELECT"
-                            " kyc_ok"
-                            ",h_payto"
-                            " FROM wire_targets"
-                            " WHERE"
-                            " wire_target_serial_id=$1",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "select_kyc_status",
+      "SELECT"
+      " kyc_ok"
+      ",h_payto"
+      " FROM wire_targets"
+      " WHERE"
+      " wire_target_serial_id=$1",
+      1),
     /* Used in #postgres_inselect_wallet_kyc_status() */
     // FIXME: Note that this statement has not been debugged at all...
     // It just represents the _idea_.
-    GNUNET_PQ_make_prepare ("inselect_wallet_kyc_status",
-                            "WITH cte AS ("
-                            "  INSERT INTO wire_targets"
-                            "  (h_payto"
-                            "  ,payto_uri"
-                            "  ) VALUES "
-                            "  ($1, $2)"
-                            "  ON CONFLICT (wire_target_serial_id) DO NOTHING"
-                            ") "
-                            "SELECT "
-                            " kyc_ok"
-                            ",wire_target_serial_id"
-                            " FROM wire_targets"
-                            " WHERE h_payto=$1;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "inselect_wallet_kyc_status",
+      "WITH cte AS ("
+      "  INSERT INTO wire_targets"
+      "  (h_payto"
+      "  ,payto_uri"
+      "  ) VALUES "
+      "  ($1, $2)"
+      "  ON CONFLICT (wire_target_serial_id) DO NOTHING"
+      ") "
+      "SELECT "
+      " kyc_ok"
+      ",wire_target_serial_id"
+      " FROM wire_targets"
+      " WHERE h_payto=$1;",
+      2),
     /* Used in #reserves_get() */
-    GNUNET_PQ_make_prepare ("reserves_get",
-                            "SELECT"
-                            " current_balance_val"
-                            ",current_balance_frac"
-                            ",expiration_date"
-                            ",gc_date"
-                            " FROM reserves"
-                            " WHERE reserve_pub=$1"
-                            " LIMIT 1;",
-                            1),
-    GNUNET_PQ_make_prepare ("reserve_create",
-                            "INSERT INTO reserves "
-                            "(reserve_pub"
-                            ",current_balance_val"
-                            ",current_balance_frac"
-                            ",expiration_date"
-                            ",gc_date"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5)"
-                            " ON CONFLICT DO NOTHING"
-                            " RETURNING reserve_uuid;",
-                            5),
+    GNUNET_PQ_make_prepare (
+      "reserves_get",
+      "SELECT"
+      " current_balance_val"
+      ",current_balance_frac"
+      ",expiration_date"
+      ",gc_date"
+      " FROM reserves"
+      " WHERE reserve_pub=$1"
+      " LIMIT 1;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "reserve_create",
+      "INSERT INTO reserves "
+      "(reserve_pub"
+      ",current_balance_val"
+      ",current_balance_frac"
+      ",expiration_date"
+      ",gc_date"
+      ") VALUES "
+      "($1, $2, $3, $4, $5)"
+      " ON CONFLICT DO NOTHING"
+      " RETURNING reserve_uuid;",
+      5),
     /* Used in #postgres_insert_reserve_closed() */
-    GNUNET_PQ_make_prepare ("reserves_close_insert",
-                            "INSERT INTO reserves_close "
-                            "(reserve_uuid"
-                            ",execution_date"
-                            ",wtid"
-                            ",wire_target_serial_id"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7, $8"
-                            "  FROM reserves"
-                            "  WHERE reserve_pub=$1;",
-                            8),
+    GNUNET_PQ_make_prepare (
+      "reserves_close_insert",
+      "INSERT INTO reserves_close "
+      "(reserve_uuid"
+      ",execution_date"
+      ",wtid"
+      ",wire_target_serial_id"
+      ",amount_val"
+      ",amount_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7, $8"
+      "  FROM reserves"
+      "  WHERE reserve_pub=$1;",
+      8),
     /* Used in #reserves_update() when the reserve is updated */
-    GNUNET_PQ_make_prepare ("reserve_update",
-                            "UPDATE reserves"
-                            " SET"
-                            " expiration_date=$1"
-                            ",gc_date=$2"
-                            ",current_balance_val=$3"
-                            ",current_balance_frac=$4"
-                            " WHERE reserve_pub=$5;",
-                            5),
+    GNUNET_PQ_make_prepare (
+      "reserve_update",
+      "UPDATE reserves"
+      " SET"
+      " expiration_date=$1"
+      ",gc_date=$2"
+      ",current_balance_val=$3"
+      ",current_balance_frac=$4"
+      " WHERE reserve_pub=$5;",
+      5),
     /* Used in #postgres_reserves_in_insert() to store transaction details */
-    GNUNET_PQ_make_prepare ("reserves_in_add_transaction",
-                            "INSERT INTO reserves_in "
-                            "(reserve_uuid"
-                            ",wire_reference"
-                            ",credit_val"
-                            ",credit_frac"
-                            ",exchange_account_section"
-                            ",wire_source_serial_id"
-                            ",execution_date"
-                            ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7"
-                            "  FROM reserves"
-                            "  WHERE reserve_pub=$1"
-                            " ON CONFLICT DO NOTHING;",
-                            7),
+    GNUNET_PQ_make_prepare (
+      "reserves_in_add_transaction",
+      "INSERT INTO reserves_in "
+      "(reserve_uuid"
+      ",wire_reference"
+      ",credit_val"
+      ",credit_frac"
+      ",exchange_account_section"
+      ",wire_source_serial_id"
+      ",execution_date"
+      ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7"
+      "  FROM reserves"
+      "  WHERE reserve_pub=$1"
+      " ON CONFLICT DO NOTHING;",
+      7),
     /* Used in #postgres_reserves_in_insert() to store transaction details */
-    GNUNET_PQ_make_prepare ("reserves_in_add_by_uuid",
-                            "INSERT INTO reserves_in "
-                            "(reserve_uuid"
-                            ",wire_reference"
-                            ",credit_val"
-                            ",credit_frac"
-                            ",exchange_account_section"
-                            ",wire_source_serial_id"
-                            ",execution_date"
-                            ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
-                            " ON CONFLICT DO NOTHING;",
-                            7),
+    GNUNET_PQ_make_prepare (
+      "reserves_in_add_by_uuid",
+      "INSERT INTO reserves_in "
+      "(reserve_uuid"
+      ",wire_reference"
+      ",credit_val"
+      ",credit_frac"
+      ",exchange_account_section"
+      ",wire_source_serial_id"
+      ",execution_date"
+      ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
+      " ON CONFLICT DO NOTHING;",
+      7),
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
-    GNUNET_PQ_make_prepare ("reserves_in_get_latest_wire_reference",
-                            "SELECT"
-                            " wire_reference"
-                            " FROM reserves_in"
-                            " WHERE exchange_account_section=$1"
-                            " ORDER BY reserve_in_serial_id DESC"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "reserves_in_get_latest_wire_reference",
+      "SELECT"
+      " wire_reference"
+      " FROM reserves_in"
+      " WHERE exchange_account_section=$1"
+      " ORDER BY reserve_in_serial_id DESC"
+      " LIMIT 1;",
+      1),
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
-    GNUNET_PQ_make_prepare ("audit_reserves_in_get_transactions_incr",
-                            "SELECT"
-                            " reserves.reserve_pub"
-                            ",wire_reference"
-                            ",credit_val"
-                            ",credit_frac"
-                            ",execution_date"
-                            ",payto_uri AS sender_account_details"
-                            ",reserve_in_serial_id"
-                            " FROM reserves_in"
-                            " JOIN reserves"
-                            "   USING (reserve_uuid)"
-                            " JOIN wire_targets"
-                            "   ON (wire_source_serial_id = wire_target_serial_id)"
-                            " WHERE reserve_in_serial_id>=$1"
-                            " ORDER BY reserve_in_serial_id;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "audit_reserves_in_get_transactions_incr",
+      "SELECT"
+      " reserves.reserve_pub"
+      ",wire_reference"
+      ",credit_val"
+      ",credit_frac"
+      ",execution_date"
+      ",payto_uri AS sender_account_details"
+      ",reserve_in_serial_id"
+      " FROM reserves_in"
+      " JOIN reserves"
+      "   USING (reserve_uuid)"
+      " JOIN wire_targets"
+      "   ON (wire_source_serial_id = wire_target_serial_id)"
+      " WHERE reserve_in_serial_id>=$1"
+      " ORDER BY reserve_in_serial_id;",
+      1),
     /* Used in postgres_select_reserves_in_above_serial_id() to obtain inbound
        transactions for reserves with serial id '\geq' the given parameter */
     GNUNET_PQ_make_prepare (
@@ -536,27 +558,29 @@ prepare_statements (struct PostgresClosure *pg)
       2),
     /* Used in #postgres_get_reserve_history() to obtain inbound transactions
        for a reserve */
-    GNUNET_PQ_make_prepare ("reserves_in_get_transactions",
-                            "SELECT"
-                            " wire_reference"
-                            ",credit_val"
-                            ",credit_frac"
-                            ",execution_date"
-                            ",payto_uri AS sender_account_details"
-                            " FROM reserves_in"
-                            " JOIN wire_targets"
-                            "   ON (wire_source_serial_id = wire_target_serial_id)"
-                            " WHERE reserve_uuid="
-                            " (SELECT reserve_uuid "
-                            "   FROM reserves"
-                            "   WHERE reserve_pub=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "reserves_in_get_transactions",
+      "SELECT"
+      " wire_reference"
+      ",credit_val"
+      ",credit_frac"
+      ",execution_date"
+      ",payto_uri AS sender_account_details"
+      " FROM reserves_in"
+      " JOIN wire_targets"
+      "   ON (wire_source_serial_id = wire_target_serial_id)"
+      " WHERE reserve_uuid="
+      " (SELECT reserve_uuid "
+      "   FROM reserves"
+      "   WHERE reserve_pub=$1);",
+      1),
     /* Lock withdraw table; NOTE: we may want to eventually shard the
        deposit table to avoid this lock being the main point of
        contention limiting transaction performance. */
-    GNUNET_PQ_make_prepare ("lock_withdraw",
-                            "LOCK TABLE reserves_out;",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "lock_withdraw",
+      "LOCK TABLE reserves_out;",
+      0),
     /* Used in #postgres_insert_withdraw_info() to store
        the signature of a blinded coin with the blinded coin's
        details before returning it during /reserve/withdraw. We store
@@ -564,1402 +588,1505 @@ prepare_statements (struct PostgresClosure *pg)
        and the blinded message as well as the reserve that the coin
        is being withdrawn from and the signature of the message
        authorizing the withdrawal. */
-    GNUNET_PQ_make_prepare ("insert_withdraw_info",
-                            "WITH ds AS"
-                            " (SELECT denominations_serial"
-                            "    FROM denominations"
-                            "   WHERE denom_pub_hash=$2)"
-                            "INSERT INTO reserves_out "
-                            "(h_blind_ev"
-                            ",denominations_serial"
-                            ",denom_sig"
-                            ",reserve_uuid"
-                            ",reserve_sig"
-                            ",execution_date"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ") SELECT $1, ds.denominations_serial, $3, reserve_uuid, $5, $6, $7, $8"
-                            "    FROM reserves"
-                            "    CROSS JOIN ds"
-                            "    WHERE reserve_pub=$4;",
-                            8),
+    GNUNET_PQ_make_prepare (
+      "insert_withdraw_info",
+      "WITH ds AS"
+      " (SELECT denominations_serial"
+      "    FROM denominations"
+      "   WHERE denom_pub_hash=$2)"
+      "INSERT INTO reserves_out "
+      "(h_blind_ev"
+      ",denominations_serial"
+      ",denom_sig"
+      ",reserve_uuid"
+      ",reserve_sig"
+      ",execution_date"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ") SELECT $1, ds.denominations_serial, $3, reserve_uuid, $5, $6, $7, $8"
+      "    FROM reserves"
+      "    CROSS JOIN ds"
+      "    WHERE reserve_pub=$4;",
+      8),
     /* Used in #postgres_get_withdraw_info() to
        locate the response for a /reserve/withdraw request
        using the hash of the blinded message.  Used to
        make sure /reserve/withdraw requests are idempotent. */
-    GNUNET_PQ_make_prepare ("get_withdraw_info",
-                            "SELECT"
-                            " denom.denom_pub_hash"
-                            ",denom_sig"
-                            ",reserve_sig"
-                            ",reserves.reserve_pub"
-                            ",execution_date"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denom.fee_withdraw_val"
-                            ",denom.fee_withdraw_frac"
-                            " FROM reserves_out"
-                            "    JOIN reserves"
-                            "      USING (reserve_uuid)"
-                            "    JOIN denominations denom"
-                            "      USING (denominations_serial)"
-                            " WHERE h_blind_ev=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_withdraw_info",
+      "SELECT"
+      " denom.denom_pub_hash"
+      ",denom_sig"
+      ",reserve_sig"
+      ",reserves.reserve_pub"
+      ",execution_date"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denom.fee_withdraw_val"
+      ",denom.fee_withdraw_frac"
+      " FROM reserves_out"
+      "    JOIN reserves"
+      "      USING (reserve_uuid)"
+      "    JOIN denominations denom"
+      "      USING (denominations_serial)"
+      " WHERE h_blind_ev=$1;",
+      1),
     /* Used during #postgres_get_reserve_history() to
        obtain all of the /reserve/withdraw operations that
        have been performed on a given reserve. (i.e. to
        demonstrate double-spending) */
-    GNUNET_PQ_make_prepare ("get_reserves_out",
-                            "SELECT"
-                            " h_blind_ev"
-                            ",denom.denom_pub_hash"
-                            ",denom_sig"
-                            ",reserve_sig"
-                            ",execution_date"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denom.fee_withdraw_val"
-                            ",denom.fee_withdraw_frac"
-                            " FROM reserves_out"
-                            "    JOIN denominations denom"
-                            "      USING (denominations_serial)"
-                            " WHERE reserve_uuid="
-                            "   (SELECT reserve_uuid"
-                            "      FROM reserves"
-                            "     WHERE reserve_pub=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_reserves_out",
+      "SELECT"
+      " h_blind_ev"
+      ",denom.denom_pub_hash"
+      ",denom_sig"
+      ",reserve_sig"
+      ",execution_date"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denom.fee_withdraw_val"
+      ",denom.fee_withdraw_frac"
+      " FROM reserves_out"
+      "    JOIN denominations denom"
+      "      USING (denominations_serial)"
+      " WHERE reserve_uuid="
+      "   (SELECT reserve_uuid"
+      "      FROM reserves"
+      "     WHERE reserve_pub=$1);",
+      1),
     /* Used in #postgres_select_withdrawals_above_serial_id() */
-    GNUNET_PQ_make_prepare ("audit_get_reserves_out_incr",
-                            "SELECT"
-                            " h_blind_ev"
-                            ",denom.denom_pub"
-                            ",reserve_sig"
-                            ",reserves.reserve_pub"
-                            ",execution_date"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",reserve_out_serial_id"
-                            " FROM reserves_out"
-                            "    JOIN reserves"
-                            "      USING (reserve_uuid)"
-                            "    JOIN denominations denom"
-                            "      USING (denominations_serial)"
-                            " WHERE reserve_out_serial_id>=$1"
-                            " ORDER BY reserve_out_serial_id ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "audit_get_reserves_out_incr",
+      "SELECT"
+      " h_blind_ev"
+      ",denom.denom_pub"
+      ",reserve_sig"
+      ",reserves.reserve_pub"
+      ",execution_date"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",reserve_out_serial_id"
+      " FROM reserves_out"
+      "    JOIN reserves"
+      "      USING (reserve_uuid)"
+      "    JOIN denominations denom"
+      "      USING (denominations_serial)"
+      " WHERE reserve_out_serial_id>=$1"
+      " ORDER BY reserve_out_serial_id ASC;",
+      1),
 
     /* Used in #postgres_count_known_coins() */
-    GNUNET_PQ_make_prepare ("count_known_coins",
-                            "SELECT"
-                            " COUNT(*) AS count"
-                            " FROM known_coins"
-                            " WHERE denominations_serial="
-                            "  (SELECT denominations_serial"
-                            "    FROM denominations"
-                            "    WHERE denom_pub_hash=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "count_known_coins",
+      "SELECT"
+      " COUNT(*) AS count"
+      " FROM known_coins"
+      " WHERE denominations_serial="
+      "  (SELECT denominations_serial"
+      "    FROM denominations"
+      "    WHERE denom_pub_hash=$1);",
+      1),
     /* Used in #postgres_get_known_coin() to fetch
        the denomination public key and signature for
        a coin known to the exchange. */
-    GNUNET_PQ_make_prepare ("get_known_coin",
-                            "SELECT"
-                            " denominations.denom_pub_hash"
-                            ",denom_sig"
-                            " FROM known_coins"
-                            " JOIN denominations USING (denominations_serial)"
-                            " WHERE coin_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_known_coin",
+      "SELECT"
+      " denominations.denom_pub_hash"
+      ",denom_sig"
+      " FROM known_coins"
+      " JOIN denominations USING (denominations_serial)"
+      " WHERE coin_pub=$1;",
+      1),
     /* Used in #postgres_ensure_coin_known() */
-    GNUNET_PQ_make_prepare ("get_known_coin_dh",
-                            "SELECT"
-                            " denominations.denom_pub_hash"
-                            " FROM known_coins"
-                            " JOIN denominations USING (denominations_serial)"
-                            " WHERE coin_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_known_coin_dh",
+      "SELECT"
+      " denominations.denom_pub_hash"
+      " FROM known_coins"
+      " JOIN denominations USING (denominations_serial)"
+      " WHERE coin_pub=$1;",
+      1),
     /* Used in #postgres_get_coin_denomination() to fetch
        the denomination public key hash for
        a coin known to the exchange. */
-    GNUNET_PQ_make_prepare ("get_coin_denomination",
-                            "SELECT"
-                            " denominations.denom_pub_hash"
-                            " FROM known_coins"
-                            " JOIN denominations USING (denominations_serial)"
-                            " WHERE coin_pub=$1"
-                            " FOR SHARE;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_coin_denomination",
+      "SELECT"
+      " denominations.denom_pub_hash"
+      " FROM known_coins"
+      " JOIN denominations USING (denominations_serial)"
+      " WHERE coin_pub=$1"
+      " FOR SHARE;",
+      1),
     /* Lock deposit table; NOTE: we may want to eventually shard the
        deposit table to avoid this lock being the main point of
        contention limiting transaction performance. */
-    GNUNET_PQ_make_prepare ("lock_known_coins",
-                            "LOCK TABLE known_coins;",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "lock_known_coins",
+      "LOCK TABLE known_coins;",
+      0),
     /* Used in #postgres_insert_known_coin() to store
        the denomination public key and signature for
        a coin known to the exchange. */
-    GNUNET_PQ_make_prepare ("insert_known_coin",
-                            "INSERT INTO known_coins "
-                            "(coin_pub"
-                            ",denominations_serial"
-                            ",denom_sig"
-                            ") SELECT $1, denominations_serial, $3 "
-                            "    FROM denominations"
-                            "   WHERE denom_pub_hash=$2;",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "insert_known_coin",
+      "INSERT INTO known_coins "
+      "(coin_pub"
+      ",denominations_serial"
+      ",denom_sig"
+      ") SELECT $1, denominations_serial, $3 "
+      "    FROM denominations"
+      "   WHERE denom_pub_hash=$2;",
+      3),
 
     /* Used in #postgres_insert_melt() to store
        high-level information about a melt operation */
-    GNUNET_PQ_make_prepare ("insert_melt",
-                            "INSERT INTO refresh_commitments "
-                            "(rc "
-                            ",old_known_coin_id "
-                            ",old_coin_sig "
-                            ",amount_with_fee_val "
-                            ",amount_with_fee_frac "
-                            ",noreveal_index "
-                            ") SELECT $1, known_coin_id, $3, $4, $5, $6"
-                            "    FROM known_coins"
-                            "   WHERE coin_pub=$2",
-                            6),
+    GNUNET_PQ_make_prepare (
+      "insert_melt",
+      "INSERT INTO refresh_commitments "
+      "(rc "
+      ",old_known_coin_id "
+      ",old_coin_sig "
+      ",amount_with_fee_val "
+      ",amount_with_fee_frac "
+      ",noreveal_index "
+      ") SELECT $1, known_coin_id, $3, $4, $5, $6"
+      "    FROM known_coins"
+      "   WHERE coin_pub=$2",
+      6),
     /* Used in #postgres_get_melt() to fetch
        high-level information about a melt operation */
-    GNUNET_PQ_make_prepare ("get_melt",
-                            "SELECT"
-                            " denoms.denom_pub_hash"
-                            ",denoms.fee_refresh_val"
-                            ",denoms.fee_refresh_frac"
-                            ",kc.coin_pub AS old_coin_pub"
-                            ",old_coin_sig"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",noreveal_index"
-                            " FROM refresh_commitments"
-                            "   JOIN known_coins kc"
-                            "     ON (refresh_commitments.old_known_coin_id = kc.known_coin_id)"
-                            "   JOIN denominations denoms"
-                            "     ON (kc.denominations_serial = denoms.denominations_serial)"
-                            " WHERE rc=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_melt",
+      "SELECT"
+      " denoms.denom_pub_hash"
+      ",denoms.fee_refresh_val"
+      ",denoms.fee_refresh_frac"
+      ",kc.coin_pub AS old_coin_pub"
+      ",old_coin_sig"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",noreveal_index"
+      " FROM refresh_commitments"
+      "   JOIN known_coins kc"
+      "     ON (refresh_commitments.old_known_coin_id = kc.known_coin_id)"
+      "   JOIN denominations denoms"
+      "     ON (kc.denominations_serial = denoms.denominations_serial)"
+      " WHERE rc=$1;",
+      1),
     /* Used in #postgres_get_melt_index() to fetch
        the noreveal index from a previous melt operation */
-    GNUNET_PQ_make_prepare ("get_melt_index",
-                            "SELECT"
-                            " noreveal_index"
-                            " FROM refresh_commitments"
-                            " WHERE rc=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_melt_index",
+      "SELECT"
+      " noreveal_index"
+      " FROM refresh_commitments"
+      " WHERE rc=$1;",
+      1),
     /* Used in #postgres_select_refreshes_above_serial_id() to fetch
        refresh session with id '\geq' the given parameter */
-    GNUNET_PQ_make_prepare ("audit_get_refresh_commitments_incr",
-                            "SELECT"
-                            " denom.denom_pub"
-                            ",kc.coin_pub AS old_coin_pub"
-                            ",old_coin_sig"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",noreveal_index"
-                            ",melt_serial_id"
-                            ",rc"
-                            " FROM refresh_commitments"
-                            "   JOIN known_coins kc"
-                            "     ON (refresh_commitments.old_known_coin_id = kc.known_coin_id)"
-                            "   JOIN denominations denom"
-                            "     ON (kc.denominations_serial = denom.denominations_serial)"
-                            " WHERE melt_serial_id>=$1"
-                            " ORDER BY melt_serial_id ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "audit_get_refresh_commitments_incr",
+      "SELECT"
+      " denom.denom_pub"
+      ",kc.coin_pub AS old_coin_pub"
+      ",old_coin_sig"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",noreveal_index"
+      ",melt_serial_id"
+      ",rc"
+      " FROM refresh_commitments"
+      "   JOIN known_coins kc"
+      "     ON (refresh_commitments.old_known_coin_id = kc.known_coin_id)"
+      "   JOIN denominations denom"
+      "     ON (kc.denominations_serial = denom.denominations_serial)"
+      " WHERE melt_serial_id>=$1"
+      " ORDER BY melt_serial_id ASC;",
+      1),
     /* Query the 'refresh_commitments' by coin public key */
-    GNUNET_PQ_make_prepare ("get_refresh_session_by_coin",
-                            "SELECT"
-                            " rc"
-                            ",old_coin_sig"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denoms.denom_pub_hash"
-                            ",denoms.fee_refresh_val"
-                            ",denoms.fee_refresh_frac"
-                            ",melt_serial_id"
-                            " FROM refresh_commitments"
-                            " JOIN known_coins kc"
-                            "   ON (refresh_commitments.old_known_coin_id = kc.known_coin_id)"
-                            " JOIN denominations denoms"
-                            "   USING (denominations_serial)"
-                            " WHERE old_known_coin_id="
-                            "(SELECT known_coin_id"
-                            "   FROM known_coins"
-                            "  WHERE coin_pub=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_refresh_session_by_coin",
+      "SELECT"
+      " rc"
+      ",old_coin_sig"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denoms.denom_pub_hash"
+      ",denoms.fee_refresh_val"
+      ",denoms.fee_refresh_frac"
+      ",melt_serial_id"
+      " FROM refresh_commitments"
+      " JOIN known_coins kc"
+      "   ON (refresh_commitments.old_known_coin_id = kc.known_coin_id)"
+      " JOIN denominations denoms"
+      "   USING (denominations_serial)"
+      " WHERE old_known_coin_id="
+      "(SELECT known_coin_id"
+      "   FROM known_coins"
+      "  WHERE coin_pub=$1);",
+      1),
     /* Store information about the desired denominations for a
        refresh operation, used in #postgres_insert_refresh_reveal() */
-    GNUNET_PQ_make_prepare ("insert_refresh_revealed_coin",
-                            "WITH rcx AS"
-                            " (SELECT melt_serial_id"
-                            "    FROM refresh_commitments"
-                            "   WHERE rc=$1)"
-                            "INSERT INTO refresh_revealed_coins "
-                            "(melt_serial_id "
-                            ",freshcoin_index "
-                            ",link_sig "
-                            ",denominations_serial "
-                            ",coin_ev"
-                            ",h_coin_ev"
-                            ",ev_sig"
-                            ") SELECT rcx.melt_serial_id, $2, $3, "
-                            "         denominations_serial, $5, $6, $7"
-                            "    FROM denominations"
-                            "   CROSS JOIN rcx"
-                            "   WHERE denom_pub_hash=$4;",
-                            7),
+    GNUNET_PQ_make_prepare (
+      "insert_refresh_revealed_coin",
+      "WITH rcx AS"
+      " (SELECT melt_serial_id"
+      "    FROM refresh_commitments"
+      "   WHERE rc=$1)"
+      "INSERT INTO refresh_revealed_coins "
+      "(melt_serial_id "
+      ",freshcoin_index "
+      ",link_sig "
+      ",denominations_serial "
+      ",coin_ev"
+      ",h_coin_ev"
+      ",ev_sig"
+      ") SELECT rcx.melt_serial_id, $2, $3, "
+      "         denominations_serial, $5, $6, $7"
+      "    FROM denominations"
+      "   CROSS JOIN rcx"
+      "   WHERE denom_pub_hash=$4;",
+      7),
     /* Obtain information about the coins created in a refresh
        operation, used in #postgres_get_refresh_reveal() */
-    GNUNET_PQ_make_prepare ("get_refresh_revealed_coins",
-                            "SELECT "
-                            " freshcoin_index"
-                            ",denom.denom_pub"
-                            ",link_sig"
-                            ",coin_ev"
-                            ",ev_sig"
-                            " FROM refresh_revealed_coins"
-                            "    JOIN denominations denom "
-                            "      USING (denominations_serial)"
-                            "    JOIN refresh_commitments"
-                            "      USING (melt_serial_id)"
-                            " WHERE rc=$1"
-                            "   ORDER BY freshcoin_index ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_refresh_revealed_coins",
+      "SELECT "
+      " freshcoin_index"
+      ",denom.denom_pub"
+      ",link_sig"
+      ",coin_ev"
+      ",ev_sig"
+      " FROM refresh_revealed_coins"
+      "    JOIN denominations denom "
+      "      USING (denominations_serial)"
+      "    JOIN refresh_commitments"
+      "      USING (melt_serial_id)"
+      " WHERE rc=$1"
+      "   ORDER BY freshcoin_index ASC;",
+      1),
 
     /* Used in #postgres_insert_refresh_reveal() to store the transfer
        keys we learned */
-    GNUNET_PQ_make_prepare ("insert_refresh_transfer_keys",
-                            "INSERT INTO refresh_transfer_keys "
-                            "(melt_serial_id"
-                            ",transfer_pub"
-                            ",transfer_privs"
-                            ") SELECT melt_serial_id, $2, $3"
-                            "    FROM refresh_commitments"
-                            "   WHERE rc=$1",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "insert_refresh_transfer_keys",
+      "INSERT INTO refresh_transfer_keys "
+      "(melt_serial_id"
+      ",transfer_pub"
+      ",transfer_privs"
+      ") SELECT melt_serial_id, $2, $3"
+      "    FROM refresh_commitments"
+      "   WHERE rc=$1",
+      3),
     /* Used in #postgres_get_refresh_reveal() to retrieve transfer
        keys from /refresh/reveal */
-    GNUNET_PQ_make_prepare ("get_refresh_transfer_keys",
-                            "SELECT"
-                            " transfer_pub"
-                            ",transfer_privs"
-                            " FROM refresh_transfer_keys"
-                            " JOIN refresh_commitments"
-                            "   USING (melt_serial_id)"
-                            " WHERE rc=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_refresh_transfer_keys",
+      "SELECT"
+      " transfer_pub"
+      ",transfer_privs"
+      " FROM refresh_transfer_keys"
+      " JOIN refresh_commitments"
+      "   USING (melt_serial_id)"
+      " WHERE rc=$1;",
+      1),
     /* Used in #postgres_insert_refund() to store refund information */
-    GNUNET_PQ_make_prepare ("insert_refund",
-                            "INSERT INTO refunds "
-                            "(deposit_serial_id "
-                            ",merchant_sig "
-                            ",rtransaction_id "
-                            ",amount_with_fee_val "
-                            ",amount_with_fee_frac "
-                            ") SELECT deposit_serial_id, $3, $5, $6, $7"
-                            "    FROM deposits"
-                            "    JOIN known_coins USING (known_coin_id)"
-                            "   WHERE coin_pub=$1"
-                            "     AND h_contract_terms=$4"
-                            "     AND merchant_pub=$2",
-                            7),
+    GNUNET_PQ_make_prepare (
+      "insert_refund",
+      "INSERT INTO refunds "
+      "(deposit_serial_id "
+      ",merchant_sig "
+      ",rtransaction_id "
+      ",amount_with_fee_val "
+      ",amount_with_fee_frac "
+      ") SELECT deposit_serial_id, $3, $5, $6, $7"
+      "    FROM deposits"
+      "    JOIN known_coins USING (known_coin_id)"
+      "   WHERE coin_pub=$1"
+      "     AND h_contract_terms=$4"
+      "     AND merchant_pub=$2",
+      7),
     /* Query the 'refunds' by coin public key */
-    GNUNET_PQ_make_prepare ("get_refunds_by_coin",
-                            "SELECT"
-                            " merchant_pub"
-                            ",merchant_sig"
-                            ",h_contract_terms"
-                            ",rtransaction_id"
-                            ",refunds.amount_with_fee_val"
-                            ",refunds.amount_with_fee_frac"
-                            ",denom.fee_refund_val "
-                            ",denom.fee_refund_frac "
-                            ",refund_serial_id"
-                            " FROM refunds"
-                            " JOIN deposits USING (deposit_serial_id)"
-                            " JOIN known_coins USING (known_coin_id)"
-                            " JOIN denominations denom USING (denominations_serial)"
-                            " WHERE coin_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_refunds_by_coin",
+      "SELECT"
+      " merchant_pub"
+      ",merchant_sig"
+      ",h_contract_terms"
+      ",rtransaction_id"
+      ",refunds.amount_with_fee_val"
+      ",refunds.amount_with_fee_frac"
+      ",denom.fee_refund_val "
+      ",denom.fee_refund_frac "
+      ",refund_serial_id"
+      " FROM refunds"
+      " JOIN deposits USING (deposit_serial_id)"
+      " JOIN known_coins USING (known_coin_id)"
+      " JOIN denominations denom USING (denominations_serial)"
+      " WHERE coin_pub=$1;",
+      1),
     /* Query the 'refunds' by coin public key, merchant_pub and contract hash */
-    GNUNET_PQ_make_prepare ("get_refunds_by_coin_and_contract",
-                            "SELECT"
-                            " refunds.amount_with_fee_val"
-                            ",refunds.amount_with_fee_frac"
-                            " FROM refunds"
-                            " JOIN deposits USING (deposit_serial_id)"
-                            " JOIN known_coins USING (known_coin_id)"
-                            " WHERE coin_pub=$1"
-                            "   AND merchant_pub=$2"
-                            "   AND h_contract_terms=$3;",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "get_refunds_by_coin_and_contract",
+      "SELECT"
+      " refunds.amount_with_fee_val"
+      ",refunds.amount_with_fee_frac"
+      " FROM refunds"
+      " JOIN deposits USING (deposit_serial_id)"
+      " JOIN known_coins USING (known_coin_id)"
+      " WHERE coin_pub=$1"
+      "   AND merchant_pub=$2"
+      "   AND h_contract_terms=$3;",
+      3),
     /* Fetch refunds with rowid '\geq' the given parameter */
-    GNUNET_PQ_make_prepare ("audit_get_refunds_incr",
-                            "SELECT"
-                            " merchant_pub"
-                            ",merchant_sig"
-                            ",h_contract_terms"
-                            ",rtransaction_id"
-                            ",denom.denom_pub"
-                            ",kc.coin_pub"
-                            ",refunds.amount_with_fee_val"
-                            ",refunds.amount_with_fee_frac"
-                            ",refund_serial_id"
-                            " FROM refunds"
-                            "   JOIN deposits USING (deposit_serial_id)"
-                            "   JOIN known_coins kc USING (known_coin_id)"
-                            "   JOIN denominations denom ON (kc.denominations_serial = denom.denominations_serial)"
-                            " WHERE refund_serial_id>=$1"
-                            " ORDER BY refund_serial_id ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "audit_get_refunds_incr",
+      "SELECT"
+      " merchant_pub"
+      ",merchant_sig"
+      ",h_contract_terms"
+      ",rtransaction_id"
+      ",denom.denom_pub"
+      ",kc.coin_pub"
+      ",refunds.amount_with_fee_val"
+      ",refunds.amount_with_fee_frac"
+      ",refund_serial_id"
+      " FROM refunds"
+      "   JOIN deposits USING (deposit_serial_id)"
+      "   JOIN known_coins kc USING (known_coin_id)"
+      "   JOIN denominations denom ON (kc.denominations_serial = denom.denominations_serial)"
+      " WHERE refund_serial_id>=$1"
+      " ORDER BY refund_serial_id ASC;",
+      1),
     /* Lock deposit table; NOTE: we may want to eventually shard the
        deposit table to avoid this lock being the main point of
        contention limiting transaction performance. */
-    GNUNET_PQ_make_prepare ("lock_deposit",
-                            "LOCK TABLE deposits;",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "lock_deposit",
+      "LOCK TABLE deposits;",
+      0),
     /* Store information about a /deposit the exchange is to execute.
        Used in #postgres_insert_deposit(). */
-    GNUNET_PQ_make_prepare ("insert_deposit",
-                            "INSERT INTO deposits "
-                            "(known_coin_id"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",wallet_timestamp"
-                            ",refund_deadline"
-                            ",wire_deadline"
-                            ",merchant_pub"
-                            ",h_contract_terms"
-                            ",wire_salt"
-                            ",wire_target_serial_id"
-                            ",coin_sig"
-                            ",exchange_timestamp"
-                            ",shard"
-                            ") SELECT known_coin_id, $2, $3, $4, $5, $6, "
-                            " $7, $8, $9, $10, $11, $12, $13"
-                            "    FROM known_coins"
-                            "   WHERE coin_pub=$1;",
-                            13),
+    GNUNET_PQ_make_prepare (
+      "insert_deposit",
+      "INSERT INTO deposits "
+      "(known_coin_id"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wallet_timestamp"
+      ",refund_deadline"
+      ",wire_deadline"
+      ",merchant_pub"
+      ",h_contract_terms"
+      ",wire_salt"
+      ",wire_target_serial_id"
+      ",coin_sig"
+      ",exchange_timestamp"
+      ",shard"
+      ") SELECT known_coin_id, $2, $3, $4, $5, $6, "
+      " $7, $8, $9, $10, $11, $12, $13"
+      "    FROM known_coins"
+      "   WHERE coin_pub=$1;",
+      13),
     /* Fetch an existing deposit request, used to ensure idempotency
        during /deposit processing. Used in #postgres_have_deposit(). */
-    GNUNET_PQ_make_prepare ("get_deposit",
-                            "SELECT"
-                            " amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denominations.fee_deposit_val"
-                            ",denominations.fee_deposit_frac"
-                            ",wallet_timestamp"
-                            ",exchange_timestamp"
-                            ",refund_deadline"
-                            ",wire_deadline"
-                            ",h_contract_terms"
-                            ",wire_salt"
-                            ",payto_uri AS receiver_wire_account"
-                            " FROM deposits"
-                            " JOIN known_coins USING (known_coin_id)"
-                            " JOIN denominations USING (denominations_serial)"
-                            " JOIN wire_targets USING (wire_target_serial_id)"
-                            " WHERE ((coin_pub=$1)"
-                            "    AND (merchant_pub=$3)"
-                            "    AND (h_contract_terms=$2));",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "get_deposit",
+      "SELECT"
+      " amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denominations.fee_deposit_val"
+      ",denominations.fee_deposit_frac"
+      ",wallet_timestamp"
+      ",exchange_timestamp"
+      ",refund_deadline"
+      ",wire_deadline"
+      ",h_contract_terms"
+      ",wire_salt"
+      ",payto_uri AS receiver_wire_account"
+      " FROM deposits"
+      " JOIN known_coins USING (known_coin_id)"
+      " JOIN denominations USING (denominations_serial)"
+      " JOIN wire_targets USING (wire_target_serial_id)"
+      " WHERE ((coin_pub=$1)"
+      "    AND (merchant_pub=$3)"
+      "    AND (h_contract_terms=$2));",
+      3),
     /* Fetch deposits with rowid '\geq' the given parameter */
-    GNUNET_PQ_make_prepare ("audit_get_deposits_incr",
-                            "SELECT"
-                            " amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",wallet_timestamp"
-                            ",exchange_timestamp"
-                            ",merchant_pub"
-                            ",denom.denom_pub"
-                            ",kc.coin_pub"
-                            ",coin_sig"
-                            ",refund_deadline"
-                            ",wire_deadline"
-                            ",h_contract_terms"
-                            ",wire_salt"
-                            ",payto_uri AS receiver_wire_account"
-                            ",done"
-                            ",deposit_serial_id"
-                            " FROM deposits"
-                            "    JOIN wire_targets USING (wire_target_serial_id)"
-                            "    JOIN known_coins kc USING (known_coin_id)"
-                            "    JOIN denominations denom USING (denominations_serial)"
-                            " WHERE ("
-                            "  (deposit_serial_id>=$1)"
-                            " )"
-                            " ORDER BY deposit_serial_id ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "audit_get_deposits_incr",
+      "SELECT"
+      " amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wallet_timestamp"
+      ",exchange_timestamp"
+      ",merchant_pub"
+      ",denom.denom_pub"
+      ",kc.coin_pub"
+      ",coin_sig"
+      ",refund_deadline"
+      ",wire_deadline"
+      ",h_contract_terms"
+      ",wire_salt"
+      ",payto_uri AS receiver_wire_account"
+      ",done"
+      ",deposit_serial_id"
+      " FROM deposits"
+      "    JOIN wire_targets USING (wire_target_serial_id)"
+      "    JOIN known_coins kc USING (known_coin_id)"
+      "    JOIN denominations denom USING (denominations_serial)"
+      " WHERE ("
+      "  (deposit_serial_id>=$1)"
+      " )"
+      " ORDER BY deposit_serial_id ASC;",
+      1),
     /* Fetch an existing deposit request.
        Used in #postgres_lookup_transfer_by_deposit(). */
-    GNUNET_PQ_make_prepare ("get_deposit_for_wtid",
-                            "SELECT"
-                            " kyc_ok"
-                            ",wire_target_serial_id AS payment_target_uuid"
-                            ",wire_salt"
-                            ",payto_uri AS receiver_wire_account"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denom.fee_deposit_val"
-                            ",denom.fee_deposit_frac"
-                            ",wire_deadline"
-                            " FROM deposits"
-                            "    JOIN wire_targets USING (wire_target_serial_id)"
-                            "    JOIN known_coins USING (known_coin_id)"
-                            "    JOIN denominations denom USING (denominations_serial)"
-                            " WHERE ((coin_pub=$1)"
-                            "    AND (merchant_pub=$3)"
-                            "    AND (h_contract_terms=$2)"
-                            " );",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "get_deposit_for_wtid",
+      "SELECT"
+      " kyc_ok"
+      ",wire_target_serial_id AS payment_target_uuid"
+      ",wire_salt"
+      ",payto_uri AS receiver_wire_account"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denom.fee_deposit_val"
+      ",denom.fee_deposit_frac"
+      ",wire_deadline"
+      " FROM deposits"
+      "    JOIN wire_targets USING (wire_target_serial_id)"
+      "    JOIN known_coins USING (known_coin_id)"
+      "    JOIN denominations denom USING (denominations_serial)"
+      " WHERE ((coin_pub=$1)"
+      "    AND (merchant_pub=$3)"
+      "    AND (h_contract_terms=$2)"
+      " );",
+      3),
     /* Used in #postgres_get_ready_deposit() */
-    GNUNET_PQ_make_prepare ("deposits_get_ready",
-                            "SELECT"
-                            " deposit_serial_id"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denom.fee_deposit_val"
-                            ",denom.fee_deposit_frac"
-                            ",h_contract_terms"
-                            ",payto_uri"
-                            ",wire_target_serial_id"
-                            ",merchant_pub"
-                            ",kc.coin_pub"
-                            " FROM deposits"
-                            "  JOIN wire_targets "
-                            "    USING (wire_target_serial_id)"
-                            "  JOIN known_coins kc"
-                            "    USING (known_coin_id)"
-                            "  JOIN denominations denom"
-                            "    USING (denominations_serial)"
-                            " WHERE "
-                            "       shard >= $2"
-                            "   AND shard <= $3"
-                            "   AND tiny=FALSE"
-                            "   AND done=FALSE"
-                            "   AND wire_deadline<=$1"
-                            "   AND refund_deadline<$1"
-                            " ORDER BY "
-                            "   shard ASC"
-                            "  ,wire_deadline ASC"
-                            " LIMIT 1;",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "deposits_get_ready",
+      "SELECT"
+      " deposit_serial_id"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denom.fee_deposit_val"
+      ",denom.fee_deposit_frac"
+      ",h_contract_terms"
+      ",payto_uri"
+      ",wire_target_serial_id"
+      ",merchant_pub"
+      ",kc.coin_pub"
+      " FROM deposits"
+      "  JOIN wire_targets "
+      "    USING (wire_target_serial_id)"
+      "  JOIN known_coins kc"
+      "    USING (known_coin_id)"
+      "  JOIN denominations denom"
+      "    USING (denominations_serial)"
+      " WHERE "
+      "       shard >= $2"
+      "   AND shard <= $3"
+      "   AND tiny=FALSE"
+      "   AND done=FALSE"
+      "   AND wire_deadline<=$1"
+      "   AND refund_deadline<$1"
+      " ORDER BY "
+      "   shard ASC"
+      "  ,wire_deadline ASC"
+      " LIMIT 1;",
+      3),
     /* Used in #postgres_iterate_matching_deposits() */
-    GNUNET_PQ_make_prepare ("deposits_iterate_matching",
-                            "SELECT"
-                            " deposit_serial_id"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denom.fee_deposit_val"
-                            ",denom.fee_deposit_frac"
-                            ",h_contract_terms"
-                            ",kc.coin_pub"
-                            " FROM deposits"
-                            "    JOIN known_coins kc USING (known_coin_id)"
-                            "    JOIN denominations denom USING (denominations_serial)"
-                            " WHERE"
-                            "     merchant_pub=$1 AND"
-                            "     wire_target_serial_id=$2 AND"
-                            "     done=FALSE"
-                            " ORDER BY wire_deadline ASC"
-                            " LIMIT "
-                            TALER_QUOTE (
-                              TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) ";",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "deposits_iterate_matching",
+      "SELECT"
+      " deposit_serial_id"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denom.fee_deposit_val"
+      ",denom.fee_deposit_frac"
+      ",h_contract_terms"
+      ",kc.coin_pub"
+      " FROM deposits"
+      "    JOIN known_coins kc USING (known_coin_id)"
+      "    JOIN denominations denom USING (denominations_serial)"
+      " WHERE"
+      "     merchant_pub=$1 AND"
+      "     wire_target_serial_id=$2 AND"
+      "     done=FALSE"
+      " ORDER BY wire_deadline ASC"
+      " LIMIT "
+      TALER_QUOTE (
+        TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) ";",
+      2),
     /* Used in #postgres_mark_deposit_tiny() */
-    GNUNET_PQ_make_prepare ("mark_deposit_tiny",
-                            "UPDATE deposits"
-                            " SET tiny=TRUE"
-                            " WHERE deposit_serial_id=$1",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "mark_deposit_tiny",
+      "UPDATE deposits"
+      " SET tiny=TRUE"
+      " WHERE deposit_serial_id=$1",
+      1),
     /* Used in #postgres_mark_deposit_done() */
-    GNUNET_PQ_make_prepare ("mark_deposit_done",
-                            "UPDATE deposits"
-                            " SET done=TRUE"
-                            " WHERE deposit_serial_id=$1;",
-                            1),
-    /* Used in #postgres_test_deposit_done() */
-    GNUNET_PQ_make_prepare ("test_deposit_done",
-                            "SELECT done"
-                            " FROM deposits"
-                            " JOIN known_coins USING (known_coin_id)"
-                            " WHERE coin_pub=$1"
-                            "   AND merchant_pub=$2"
-                            "   AND h_contract_terms=$3;",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "mark_deposit_done",
+      "UPDATE deposits"
+      " SET done=TRUE"
+      " WHERE deposit_serial_id=$1;",
+      1),
     /* Used in #postgres_get_coin_transactions() to obtain information
        about how a coin has been spend with /deposit requests. */
-    GNUNET_PQ_make_prepare ("get_deposit_with_coin_pub",
-                            "SELECT"
-                            " amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",denoms.fee_deposit_val"
-                            ",denoms.fee_deposit_frac"
-                            ",denoms.denom_pub_hash"
-                            ",wallet_timestamp"
-                            ",refund_deadline"
-                            ",wire_deadline"
-                            ",merchant_pub"
-                            ",h_contract_terms"
-                            ",wire_salt"
-                            ",payto_uri"
-                            ",coin_sig"
-                            ",deposit_serial_id"
-                            ",done"
-                            " FROM deposits"
-                            "    JOIN wire_targets"
-                            "      USING (wire_target_serial_id)"
-                            "    JOIN known_coins kc"
-                            "      USING (known_coin_id)"
-                            "    JOIN denominations denoms"
-                            "      USING (denominations_serial)"
-                            " WHERE coin_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_deposit_with_coin_pub",
+      "SELECT"
+      " amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",denoms.fee_deposit_val"
+      ",denoms.fee_deposit_frac"
+      ",denoms.denom_pub_hash"
+      ",wallet_timestamp"
+      ",refund_deadline"
+      ",wire_deadline"
+      ",merchant_pub"
+      ",h_contract_terms"
+      ",wire_salt"
+      ",payto_uri"
+      ",coin_sig"
+      ",deposit_serial_id"
+      ",done"
+      " FROM deposits"
+      "    JOIN wire_targets"
+      "      USING (wire_target_serial_id)"
+      "    JOIN known_coins kc"
+      "      USING (known_coin_id)"
+      "    JOIN denominations denoms"
+      "      USING (denominations_serial)"
+      " WHERE coin_pub=$1;",
+      1),
 
     /* Used in #postgres_get_link_data(). */
-    GNUNET_PQ_make_prepare ("get_link",
-                            "SELECT "
-                            " tp.transfer_pub"
-                            ",denoms.denom_pub"
-                            ",rrc.ev_sig"
-                            ",rrc.link_sig"
-                            " FROM refresh_commitments"
-                            "     JOIN refresh_revealed_coins rrc"
-                            "       USING (melt_serial_id)"
-                            "     JOIN refresh_transfer_keys tp"
-                            "       USING (melt_serial_id)"
-                            "     JOIN denominations denoms"
-                            "       ON (rrc.denominations_serial = denoms.denominations_serial)"
-                            " WHERE old_known_coin_id="
-                            "   (SELECT known_coin_id "
-                            "      FROM known_coins"
-                            "     WHERE coin_pub=$1)"
-                            " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_link",
+      "SELECT "
+      " tp.transfer_pub"
+      ",denoms.denom_pub"
+      ",rrc.ev_sig"
+      ",rrc.link_sig"
+      " FROM refresh_commitments"
+      "     JOIN refresh_revealed_coins rrc"
+      "       USING (melt_serial_id)"
+      "     JOIN refresh_transfer_keys tp"
+      "       USING (melt_serial_id)"
+      "     JOIN denominations denoms"
+      "       ON (rrc.denominations_serial = denoms.denominations_serial)"
+      " WHERE old_known_coin_id="
+      "   (SELECT known_coin_id "
+      "      FROM known_coins"
+      "     WHERE coin_pub=$1)"
+      " ORDER BY tp.transfer_pub, rrc.freshcoin_index ASC",
+      1),
     /* Used in #postgres_lookup_wire_transfer */
-    GNUNET_PQ_make_prepare ("lookup_transactions",
-                            "SELECT"
-                            " aggregation_serial_id"
-                            ",deposits.h_contract_terms"
-                            ",payto_uri"
-                            ",kc.coin_pub"
-                            ",deposits.merchant_pub"
-                            ",wire_out.execution_date"
-                            ",deposits.amount_with_fee_val"
-                            ",deposits.amount_with_fee_frac"
-                            ",denom.fee_deposit_val"
-                            ",denom.fee_deposit_frac"
-                            ",denom.denom_pub"
-                            " FROM aggregation_tracking"
-                            "    JOIN deposits"
-                            "      USING (deposit_serial_id)"
-                            "    JOIN wire_targets"
-                            "      USING (wire_target_serial_id)"
-                            "    JOIN known_coins kc"
-                            "      USING (known_coin_id)"
-                            "    JOIN denominations denom"
-                            "      USING (denominations_serial)"
-                            "    JOIN wire_out"
-                            "      USING (wtid_raw)"
-                            " WHERE wtid_raw=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_transactions",
+      "SELECT"
+      " aggregation_serial_id"
+      ",deposits.h_contract_terms"
+      ",payto_uri"
+      ",kc.coin_pub"
+      ",deposits.merchant_pub"
+      ",wire_out.execution_date"
+      ",deposits.amount_with_fee_val"
+      ",deposits.amount_with_fee_frac"
+      ",denom.fee_deposit_val"
+      ",denom.fee_deposit_frac"
+      ",denom.denom_pub"
+      " FROM aggregation_tracking"
+      "    JOIN deposits"
+      "      USING (deposit_serial_id)"
+      "    JOIN wire_targets"
+      "      USING (wire_target_serial_id)"
+      "    JOIN known_coins kc"
+      "      USING (known_coin_id)"
+      "    JOIN denominations denom"
+      "      USING (denominations_serial)"
+      "    JOIN wire_out"
+      "      USING (wtid_raw)"
+      " WHERE wtid_raw=$1;",
+      1),
     /* Used in #postgres_lookup_transfer_by_deposit */
-    GNUNET_PQ_make_prepare ("lookup_deposit_wtid",
-                            "SELECT"
-                            " aggregation_tracking.wtid_raw"
-                            ",wire_out.execution_date"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",wire_salt"
-                            ",payto_uri"
-                            ",denom.fee_deposit_val"
-                            ",denom.fee_deposit_frac"
-                            " FROM deposits"
-                            "    JOIN wire_targets"
-                            "      USING (wire_target_serial_id)"
-                            "    JOIN aggregation_tracking"
-                            "      USING (deposit_serial_id)"
-                            "    JOIN known_coins"
-                            "      USING (known_coin_id)"
-                            "    JOIN denominations denom"
-                            "      USING (denominations_serial)"
-                            "    JOIN wire_out"
-                            "      USING (wtid_raw)"
-                            " WHERE coin_pub=$1"
-                            "  AND merchant_pub=$3"
-                            "  AND h_contract_terms=$2",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "lookup_deposit_wtid",
+      "SELECT"
+      " aggregation_tracking.wtid_raw"
+      ",wire_out.execution_date"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wire_salt"
+      ",payto_uri"
+      ",denom.fee_deposit_val"
+      ",denom.fee_deposit_frac"
+      " FROM deposits"
+      "    JOIN wire_targets"
+      "      USING (wire_target_serial_id)"
+      "    JOIN aggregation_tracking"
+      "      USING (deposit_serial_id)"
+      "    JOIN known_coins"
+      "      USING (known_coin_id)"
+      "    JOIN denominations denom"
+      "      USING (denominations_serial)"
+      "    JOIN wire_out"
+      "      USING (wtid_raw)"
+      " WHERE coin_pub=$1"
+      "  AND merchant_pub=$3"
+      "  AND h_contract_terms=$2",
+      3),
     /* Used in #postgres_insert_aggregation_tracking */
-    GNUNET_PQ_make_prepare ("insert_aggregation_tracking",
-                            "INSERT INTO aggregation_tracking "
-                            "(deposit_serial_id"
-                            ",wtid_raw"
-                            ") VALUES "
-                            "($1, $2);",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "insert_aggregation_tracking",
+      "INSERT INTO aggregation_tracking "
+      "(deposit_serial_id"
+      ",wtid_raw"
+      ") VALUES "
+      "($1, $2);",
+      2),
     /* Used in #postgres_get_wire_fee() */
-    GNUNET_PQ_make_prepare ("get_wire_fee",
-                            "SELECT "
-                            " start_date"
-                            ",end_date"
-                            ",wire_fee_val"
-                            ",wire_fee_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",master_sig"
-                            " FROM wire_fee"
-                            " WHERE wire_method=$1"
-                            "   AND start_date <= $2"
-                            "   AND end_date > $2;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "get_wire_fee",
+      "SELECT "
+      " start_date"
+      ",end_date"
+      ",wire_fee_val"
+      ",wire_fee_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ",master_sig"
+      " FROM wire_fee"
+      " WHERE wire_method=$1"
+      "   AND start_date <= $2"
+      "   AND end_date > $2;",
+      2),
     /* Used in #postgres_insert_wire_fee */
-    GNUNET_PQ_make_prepare ("insert_wire_fee",
-                            "INSERT INTO wire_fee "
-                            "(wire_method"
-                            ",start_date"
-                            ",end_date"
-                            ",wire_fee_val"
-                            ",wire_fee_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",master_sig"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8);",
-                            8),
+    GNUNET_PQ_make_prepare (
+      "insert_wire_fee",
+      "INSERT INTO wire_fee "
+      "(wire_method"
+      ",start_date"
+      ",end_date"
+      ",wire_fee_val"
+      ",wire_fee_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ",master_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
     /* Used in #postgres_store_wire_transfer_out */
-    GNUNET_PQ_make_prepare ("insert_wire_out",
-                            "INSERT INTO wire_out "
-                            "(execution_date"
-                            ",wtid_raw"
-                            ",wire_target_serial_id"
-                            ",exchange_account_section"
-                            ",amount_val"
-                            ",amount_frac"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6);",
-                            6),
+    GNUNET_PQ_make_prepare (
+      "insert_wire_out",
+      "INSERT INTO wire_out "
+      "(execution_date"
+      ",wtid_raw"
+      ",wire_target_serial_id"
+      ",exchange_account_section"
+      ",amount_val"
+      ",amount_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
     /* Used in #postgres_wire_prepare_data_insert() to store
        wire transfer information before actually committing it with the bank */
-    GNUNET_PQ_make_prepare ("wire_prepare_data_insert",
-                            "INSERT INTO prewire "
-                            "(type"
-                            ",buf"
-                            ") VALUES "
-                            "($1, $2);",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "wire_prepare_data_insert",
+      "INSERT INTO prewire "
+      "(type"
+      ",buf"
+      ") VALUES "
+      "($1, $2);",
+      2),
     /* Used in #postgres_wire_prepare_data_mark_finished() */
-    GNUNET_PQ_make_prepare ("wire_prepare_data_mark_done",
-                            "UPDATE prewire"
-                            " SET finished=TRUE"
-                            " WHERE prewire_uuid=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "wire_prepare_data_mark_done",
+      "UPDATE prewire"
+      " SET finished=TRUE"
+      " WHERE prewire_uuid=$1;",
+      1),
     /* Used in #postgres_wire_prepare_data_mark_failed() */
-    GNUNET_PQ_make_prepare ("wire_prepare_data_mark_failed",
-                            "UPDATE prewire"
-                            " SET failed=TRUE"
-                            " WHERE prewire_uuid=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "wire_prepare_data_mark_failed",
+      "UPDATE prewire"
+      " SET failed=TRUE"
+      " WHERE prewire_uuid=$1;",
+      1),
     /* Used in #postgres_wire_prepare_data_get() */
-    GNUNET_PQ_make_prepare ("wire_prepare_data_get",
-                            "SELECT"
-                            " prewire_uuid"
-                            ",type"
-                            ",buf"
-                            " FROM prewire"
-                            " WHERE prewire_uuid >= $1"
-                            "   AND finished=FALSE"
-                            "   AND failed=FALSE"
-                            " ORDER BY prewire_uuid ASC"
-                            " LIMIT $2;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "wire_prepare_data_get",
+      "SELECT"
+      " prewire_uuid"
+      ",type"
+      ",buf"
+      " FROM prewire"
+      " WHERE prewire_uuid >= $1"
+      "   AND finished=FALSE"
+      "   AND failed=FALSE"
+      " ORDER BY prewire_uuid ASC"
+      " LIMIT $2;",
+      2),
     /* Used in #postgres_select_deposits_missing_wire */
-    GNUNET_PQ_make_prepare ("deposits_get_overdue",
-                            "SELECT"
-                            " deposit_serial_id"
-                            ",coin_pub"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",payto_uri"
-                            ",wire_deadline"
-                            ",tiny"
-                            ",done"
-                            " FROM deposits d"
-                            "   JOIN known_coins"
-                            "     USING (known_coin_id)"
-                            "   JOIN wire_targets"
-                            "     USING (wire_target_serial_id)"
-                            " WHERE wire_deadline >= $1"
-                            " AND wire_deadline < $2"
-                            " AND NOT (EXISTS (SELECT 1"
-                            "            FROM refunds"
-                            "            JOIN deposits dx USING (deposit_serial_id)"
-                            "            WHERE (dx.known_coin_id = d.known_coin_id))"
-                            "       OR EXISTS (SELECT 1"
-                            "            FROM aggregation_tracking"
-                            "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
-                            " ORDER BY wire_deadline ASC",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "deposits_get_overdue",
+      "SELECT"
+      " deposit_serial_id"
+      ",coin_pub"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",payto_uri"
+      ",wire_deadline"
+      ",tiny"
+      ",done"
+      " FROM deposits d"
+      "   JOIN known_coins"
+      "     USING (known_coin_id)"
+      "   JOIN wire_targets"
+      "     USING (wire_target_serial_id)"
+      " WHERE wire_deadline >= $1"
+      " AND wire_deadline < $2"
+      " AND NOT (EXISTS (SELECT 1"
+      "            FROM refunds"
+      "            JOIN deposits dx USING (deposit_serial_id)"
+      "            WHERE (dx.known_coin_id = d.known_coin_id))"
+      "       OR EXISTS (SELECT 1"
+      "            FROM aggregation_tracking"
+      "            WHERE (aggregation_tracking.deposit_serial_id = d.deposit_serial_id)))"
+      " ORDER BY wire_deadline ASC",
+      2),
     /* Used in #postgres_select_wire_out_above_serial_id() */
-    GNUNET_PQ_make_prepare ("audit_get_wire_incr",
-                            "SELECT"
-                            " wireout_uuid"
-                            ",execution_date"
-                            ",wtid_raw"
-                            ",wire_target"
-                            ",amount_val"
-                            ",amount_frac"
-                            " FROM wire_out"
-                            " WHERE wireout_uuid>=$1"
-                            " ORDER BY wireout_uuid ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "audit_get_wire_incr",
+      "SELECT"
+      " wireout_uuid"
+      ",execution_date"
+      ",wtid_raw"
+      ",payto_uri"
+      ",amount_val"
+      ",amount_frac"
+      " FROM wire_out"
+      "   JOIN wire_targets"
+      "     USING (wire_target_serial_id)"
+      " WHERE wireout_uuid>=$1"
+      " ORDER BY wireout_uuid ASC;",
+      1),
     /* Used in #postgres_select_wire_out_above_serial_id_by_account() */
-    GNUNET_PQ_make_prepare ("audit_get_wire_incr_by_account",
-                            "SELECT"
-                            " wireout_uuid"
-                            ",execution_date"
-                            ",wtid_raw"
-                            ",payto_uri"
-                            ",amount_val"
-                            ",amount_frac"
-                            " FROM wire_out"
-                            "   JOIN wire_targets"
-                            "     USING (wire_target_serial_id)"
-                            " WHERE "
-                            "      wireout_uuid>=$1 "
-                            "  AND exchange_account_section=$2"
-                            " ORDER BY wireout_uuid ASC;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "audit_get_wire_incr_by_account",
+      "SELECT"
+      " wireout_uuid"
+      ",execution_date"
+      ",wtid_raw"
+      ",payto_uri"
+      ",amount_val"
+      ",amount_frac"
+      " FROM wire_out"
+      "   JOIN wire_targets"
+      "     USING (wire_target_serial_id)"
+      " WHERE "
+      "      wireout_uuid>=$1 "
+      "  AND exchange_account_section=$2"
+      " ORDER BY wireout_uuid ASC;",
+      2),
     /* Used in #postgres_insert_recoup_request() to store recoup
        information */
-    GNUNET_PQ_make_prepare ("recoup_insert",
-                            "WITH rx AS"
-                            " (SELECT reserve_out_serial_id"
-                            "    FROM reserves_out"
-                            "   WHERE h_blind_ev=$7)"
-                            "INSERT INTO recoup "
-                            "(known_coin_id"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",reserve_out_serial_id"
-                            ") SELECT known_coin_id, $2, $3, $4, $5, $6, rx.reserve_out_serial_id"
-                            "    FROM known_coins"
-                            "   CROSS JOIN rx"
-                            "   WHERE coin_pub=$1;",
-                            7),
+    GNUNET_PQ_make_prepare (
+      "recoup_insert",
+      "WITH rx AS"
+      " (SELECT reserve_out_serial_id"
+      "    FROM reserves_out"
+      "   WHERE h_blind_ev=$7)"
+      "INSERT INTO recoup "
+      "(known_coin_id"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",reserve_out_serial_id"
+      ") SELECT known_coin_id, $2, $3, $4, $5, $6, rx.reserve_out_serial_id"
+      "    FROM known_coins"
+      "   CROSS JOIN rx"
+      "   WHERE coin_pub=$1;",
+      7),
     /* Used in #postgres_insert_recoup_refresh_request() to store recoup-refresh
        information */
-    GNUNET_PQ_make_prepare ("recoup_refresh_insert",
-                            "WITH rrx AS"
-                            " (SELECT rrc_serial"
-                            "    FROM refresh_revealed_coins"
-                            "   WHERE h_coin_ev=$7)"
-                            "INSERT INTO recoup_refresh "
-                            "(known_coin_id"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",rrc_serial"
-                            ") SELECT known_coin_id, $2, $3, $4, $5, $6, rrx.rrc_serial"
-                            "    FROM known_coins"
-                            "   CROSS JOIN rrx"
-                            "   WHERE coin_pub=$1;",
-                            7),
+    GNUNET_PQ_make_prepare (
+      "recoup_refresh_insert",
+      "WITH rrx AS"
+      " (SELECT rrc_serial"
+      "    FROM refresh_revealed_coins"
+      "   WHERE h_coin_ev=$7)"
+      "INSERT INTO recoup_refresh "
+      "(known_coin_id"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",rrc_serial"
+      ") SELECT known_coin_id, $2, $3, $4, $5, $6, rrx.rrc_serial"
+      "    FROM known_coins"
+      "   CROSS JOIN rrx"
+      "   WHERE coin_pub=$1;",
+      7),
     /* Used in #postgres_select_recoup_above_serial_id() to obtain recoup transactions */
-    GNUNET_PQ_make_prepare ("recoup_get_incr",
-                            "SELECT"
-                            " recoup_uuid"
-                            ",timestamp"
-                            ",reserves.reserve_pub"
-                            ",coins.coin_pub"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",ro.h_blind_ev"
-                            ",denoms.denom_pub_hash"
-                            ",coins.denom_sig"
-                            ",denoms.denom_pub"
-                            ",amount_val"
-                            ",amount_frac"
-                            " FROM recoup"
-                            "    JOIN known_coins coins"
-                            "      USING (known_coin_id)"
-                            "    JOIN reserves_out ro"
-                            "      USING (reserve_out_serial_id)"
-                            "    JOIN reserves"
-                            "      USING (reserve_uuid)"
-                            "    JOIN denominations denoms"
-                            "      ON (coins.denominations_serial = denoms.denominations_serial)"
-                            " WHERE recoup_uuid>=$1"
-                            " ORDER BY recoup_uuid ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "recoup_get_incr",
+      "SELECT"
+      " recoup_uuid"
+      ",timestamp"
+      ",reserves.reserve_pub"
+      ",coins.coin_pub"
+      ",coin_sig"
+      ",coin_blind"
+      ",ro.h_blind_ev"
+      ",denoms.denom_pub_hash"
+      ",coins.denom_sig"
+      ",denoms.denom_pub"
+      ",amount_val"
+      ",amount_frac"
+      " FROM recoup"
+      "    JOIN known_coins coins"
+      "      USING (known_coin_id)"
+      "    JOIN reserves_out ro"
+      "      USING (reserve_out_serial_id)"
+      "    JOIN reserves"
+      "      USING (reserve_uuid)"
+      "    JOIN denominations denoms"
+      "      ON (coins.denominations_serial = denoms.denominations_serial)"
+      " WHERE recoup_uuid>=$1"
+      " ORDER BY recoup_uuid ASC;",
+      1),
     /* Used in #postgres_select_recoup_refresh_above_serial_id() to obtain
        recoup-refresh transactions */
-    GNUNET_PQ_make_prepare ("recoup_refresh_get_incr",
-                            "SELECT"
-                            " recoup_refresh_uuid"
-                            ",timestamp"
-                            ",old_coins.coin_pub AS old_coin_pub"
-                            ",old_denoms.denom_pub_hash AS old_denom_pub_hash"
-                            ",new_coins.coin_pub As coin_pub"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",new_denoms.denom_pub AS denom_pub"
-                            ",rrc.h_coin_ev AS h_blind_ev"
-                            ",new_denoms.denom_pub_hash"
-                            ",new_coins.denom_sig AS denom_sig"
-                            ",amount_val"
-                            ",amount_frac"
-                            " FROM recoup_refresh"
-                            "    INNER JOIN refresh_revealed_coins rrc"
-                            "      USING (rrc_serial)"
-                            "    INNER JOIN refresh_commitments rfc"
-                            "      ON (rrc.melt_serial_id = rfc.melt_serial_id)"
-                            "    INNER JOIN known_coins old_coins"
-                            "      ON (rfc.old_known_coin_id = old_coins.known_coin_id)"
-                            "    INNER JOIN known_coins new_coins"
-                            "      ON (new_coins.known_coin_id = recoup_refresh.known_coin_id)"
-                            "    INNER JOIN denominations new_denoms"
-                            "      ON (new_coins.denominations_serial = new_denoms.denominations_serial)"
-                            "    INNER JOIN denominations old_denoms"
-                            "      ON (old_coins.denominations_serial = old_denoms.denominations_serial)"
-                            " WHERE recoup_refresh_uuid>=$1"
-                            " ORDER BY recoup_refresh_uuid ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "recoup_refresh_get_incr",
+      "SELECT"
+      " recoup_refresh_uuid"
+      ",timestamp"
+      ",old_coins.coin_pub AS old_coin_pub"
+      ",old_denoms.denom_pub_hash AS old_denom_pub_hash"
+      ",new_coins.coin_pub As coin_pub"
+      ",coin_sig"
+      ",coin_blind"
+      ",new_denoms.denom_pub AS denom_pub"
+      ",rrc.h_coin_ev AS h_blind_ev"
+      ",new_denoms.denom_pub_hash"
+      ",new_coins.denom_sig AS denom_sig"
+      ",amount_val"
+      ",amount_frac"
+      " FROM recoup_refresh"
+      "    INNER JOIN refresh_revealed_coins rrc"
+      "      USING (rrc_serial)"
+      "    INNER JOIN refresh_commitments rfc"
+      "      ON (rrc.melt_serial_id = rfc.melt_serial_id)"
+      "    INNER JOIN known_coins old_coins"
+      "      ON (rfc.old_known_coin_id = old_coins.known_coin_id)"
+      "    INNER JOIN known_coins new_coins"
+      "      ON (new_coins.known_coin_id = recoup_refresh.known_coin_id)"
+      "    INNER JOIN denominations new_denoms"
+      "      ON (new_coins.denominations_serial = new_denoms.denominations_serial)"
+      "    INNER JOIN denominations old_denoms"
+      "      ON (old_coins.denominations_serial = old_denoms.denominations_serial)"
+      " WHERE recoup_refresh_uuid>=$1"
+      " ORDER BY recoup_refresh_uuid ASC;",
+      1),
     /* Used in #postgres_select_reserve_closed_above_serial_id() to
        obtain information about closed reserves */
-    GNUNET_PQ_make_prepare ("reserves_close_get_incr",
-                            "SELECT"
-                            " close_uuid"
-                            ",reserves.reserve_pub"
-                            ",execution_date"
-                            ",wtid"
-                            ",receiver_account"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            " FROM reserves_close"
-                            " JOIN reserves"
-                            "   USING (reserve_uuid)"
-                            " WHERE close_uuid>=$1"
-                            " ORDER BY close_uuid ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "reserves_close_get_incr",
+      "SELECT"
+      " close_uuid"
+      ",reserves.reserve_pub"
+      ",execution_date"
+      ",wtid"
+      ",payto_uri AS receiver_account"
+      ",amount_val"
+      ",amount_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      " FROM reserves_close"
+      "   JOIN wire_targets"
+      "     USING (wire_target_serial_id)"
+      "   JOIN reserves"
+      "     USING (reserve_uuid)"
+      " WHERE close_uuid>=$1"
+      " ORDER BY close_uuid ASC;",
+      1),
     /* Used in #postgres_get_reserve_history() to obtain recoup transactions
        for a reserve */
-    GNUNET_PQ_make_prepare ("recoup_by_reserve",
-                            "SELECT"
-                            " coins.coin_pub"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",denoms.denom_pub_hash"
-                            ",coins.denom_sig"
-                            " FROM recoup"
-                            "    JOIN known_coins coins"
-                            "      USING (known_coin_id)"
-                            "    JOIN denominations denoms"
-                            "      USING (denominations_serial)"
-                            "    JOIN reserves_out ro"
-                            "      USING (reserve_out_serial_id)"
-                            " WHERE ro.reserve_uuid="
-                            "   (SELECT reserve_uuid"
-                            "     FROM reserves"
-                            "    WHERE reserve_pub=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "recoup_by_reserve",
+      "SELECT"
+      " coins.coin_pub"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",denoms.denom_pub_hash"
+      ",coins.denom_sig"
+      " FROM recoup"
+      "    JOIN known_coins coins"
+      "      USING (known_coin_id)"
+      "    JOIN denominations denoms"
+      "      USING (denominations_serial)"
+      "    JOIN reserves_out ro"
+      "      USING (reserve_out_serial_id)"
+      " WHERE ro.reserve_uuid="
+      "   (SELECT reserve_uuid"
+      "     FROM reserves"
+      "    WHERE reserve_pub=$1);",
+      1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        affecting old coins of refreshed coins */
-    GNUNET_PQ_make_prepare ("recoup_by_old_coin",
-                            "SELECT"
-                            " coins.coin_pub"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",denoms.denom_pub_hash"
-                            ",coins.denom_sig"
-                            ",recoup_refresh_uuid"
-                            " FROM recoup_refresh"
-                            " JOIN known_coins coins"
-                            "   USING (known_coin_id)"
-                            " JOIN denominations denoms"
-                            "   USING (denominations_serial)"
-                            " WHERE rrc_serial IN"
-                            "   (SELECT rrc.rrc_serial"
-                            "    FROM refresh_commitments"
-                            "       JOIN refresh_revealed_coins rrc"
-                            "           USING (melt_serial_id)"
-                            "    WHERE old_known_coin_id="
-                            "       (SELECT known_coin_id"
-                            "          FROM known_coins"
-                            "         WHERE coin_pub=$1));",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "recoup_by_old_coin",
+      "SELECT"
+      " coins.coin_pub"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",denoms.denom_pub_hash"
+      ",coins.denom_sig"
+      ",recoup_refresh_uuid"
+      " FROM recoup_refresh"
+      " JOIN known_coins coins"
+      "   USING (known_coin_id)"
+      " JOIN denominations denoms"
+      "   USING (denominations_serial)"
+      " WHERE rrc_serial IN"
+      "   (SELECT rrc.rrc_serial"
+      "    FROM refresh_commitments"
+      "       JOIN refresh_revealed_coins rrc"
+      "           USING (melt_serial_id)"
+      "    WHERE old_known_coin_id="
+      "       (SELECT known_coin_id"
+      "          FROM known_coins"
+      "         WHERE coin_pub=$1));",
+      1),
     /* Used in #postgres_get_reserve_history() */
-    GNUNET_PQ_make_prepare ("close_by_reserve",
-                            "SELECT"
-                            " amount_val"
-                            ",amount_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",execution_date"
-                            ",receiver_account"
-                            ",wtid"
-                            " FROM reserves_close"
-                            " WHERE reserve_uuid="
-                            "   (SELECT reserve_uuid"
-                            "     FROM reserves"
-                            "    WHERE reserve_pub=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "close_by_reserve",
+      "SELECT"
+      " amount_val"
+      ",amount_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ",execution_date"
+      ",payto_uri AS receiver_account"
+      ",wtid"
+      " FROM reserves_close"
+      "   JOIN wire_targets"
+      "     USING (wire_target_serial_id)"
+      " WHERE reserve_uuid="
+      "   (SELECT reserve_uuid"
+      "     FROM reserves"
+      "    WHERE reserve_pub=$1);",
+      1),
     /* Used in #postgres_get_expired_reserves() */
-    GNUNET_PQ_make_prepare ("get_expired_reserves",
-                            "SELECT"
-                            " expiration_date"
-                            ",account_details"
-                            ",reserve_pub"
-                            ",current_balance_val"
-                            ",current_balance_frac"
-                            " FROM reserves"
-                            " WHERE expiration_date<=$1"
-                            "   AND (current_balance_val != 0 "
-                            "        OR current_balance_frac != 0)"
-                            " ORDER BY expiration_date ASC"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_expired_reserves",
+      "SELECT"
+      " expiration_date"
+      ",payto_uri AS account_details"
+      ",reserve_pub"
+      ",current_balance_val"
+      ",current_balance_frac"
+      " FROM reserves"
+      "   JOIN reserves_in ri"
+      "     USING (reserve_uuid)"
+      "   JOIN wire_targets wt"
+      "     ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
+      " WHERE expiration_date<=$1"
+      "   AND (current_balance_val != 0 "
+      "        OR current_balance_frac != 0)"
+      " ORDER BY expiration_date ASC"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        for a coin */
-    GNUNET_PQ_make_prepare ("recoup_by_coin",
-                            "SELECT"
-                            " reserves.reserve_pub"
-                            ",denoms.denom_pub_hash"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",recoup_uuid"
-                            " FROM recoup"
-                            " JOIN reserves_out ro"
-                            "   USING (reserve_out_serial_id)"
-                            " JOIN reserves"
-                            "   USING (reserve_uuid)"
-                            " JOIN known_coins coins"
-                            "   USING (known_coin_id)"
-                            " JOIN denominations denoms"
-                            "   ON (denoms.denominations_serial = coins.denominations_serial)"
-                            " WHERE coins.coin_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "recoup_by_coin",
+      "SELECT"
+      " reserves.reserve_pub"
+      ",denoms.denom_pub_hash"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",recoup_uuid"
+      " FROM recoup"
+      " JOIN reserves_out ro"
+      "   USING (reserve_out_serial_id)"
+      " JOIN reserves"
+      "   USING (reserve_uuid)"
+      " JOIN known_coins coins"
+      "   USING (known_coin_id)"
+      " JOIN denominations denoms"
+      "   ON (denoms.denominations_serial = coins.denominations_serial)"
+      " WHERE coins.coin_pub=$1;",
+      1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        for a refreshed coin */
-    GNUNET_PQ_make_prepare ("recoup_by_refreshed_coin",
-                            "SELECT"
-                            " old_coins.coin_pub AS old_coin_pub"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",denoms.denom_pub_hash"
-                            ",coins.denom_sig"
-                            ",recoup_refresh_uuid"
-                            " FROM recoup_refresh"
-                            "    JOIN refresh_revealed_coins rrc"
-                            "      USING (rrc_serial)"
-                            "    JOIN refresh_commitments rfc"
-                            "      ON (rrc.melt_serial_id = rfc.melt_serial_id)"
-                            "    JOIN known_coins old_coins"
-                            "      ON (rfc.old_known_coin_id = old_coins.known_coin_id)"
-                            "    JOIN known_coins coins"
-                            "      ON (recoup_refresh.known_coin_id = coins.known_coin_id)"
-                            "    JOIN denominations denoms"
-                            "      ON (denoms.denominations_serial = coins.denominations_serial)"
-                            " WHERE coins.coin_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "recoup_by_refreshed_coin",
+      "SELECT"
+      " old_coins.coin_pub AS old_coin_pub"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",denoms.denom_pub_hash"
+      ",coins.denom_sig"
+      ",recoup_refresh_uuid"
+      " FROM recoup_refresh"
+      "    JOIN refresh_revealed_coins rrc"
+      "      USING (rrc_serial)"
+      "    JOIN refresh_commitments rfc"
+      "      ON (rrc.melt_serial_id = rfc.melt_serial_id)"
+      "    JOIN known_coins old_coins"
+      "      ON (rfc.old_known_coin_id = old_coins.known_coin_id)"
+      "    JOIN known_coins coins"
+      "      ON (recoup_refresh.known_coin_id = coins.known_coin_id)"
+      "    JOIN denominations denoms"
+      "      ON (denoms.denominations_serial = coins.denominations_serial)"
+      " WHERE coins.coin_pub=$1;",
+      1),
     /* Used in #postgres_get_reserve_by_h_blind() */
-    GNUNET_PQ_make_prepare ("reserve_by_h_blind",
-                            "SELECT"
-                            " reserves.reserve_pub"
-                            " FROM reserves_out"
-                            " JOIN reserves"
-                            "   USING (reserve_uuid)"
-                            " WHERE h_blind_ev=$1"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "reserve_by_h_blind",
+      "SELECT"
+      " reserves.reserve_pub"
+      " FROM reserves_out"
+      " JOIN reserves"
+      "   USING (reserve_uuid)"
+      " WHERE h_blind_ev=$1"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_get_old_coin_by_h_blind() */
-    GNUNET_PQ_make_prepare ("old_coin_by_h_blind",
-                            "SELECT"
-                            " okc.coin_pub AS old_coin_pub"
-                            " FROM refresh_revealed_coins rrc"
-                            " JOIN refresh_commitments rcom USING (melt_serial_id)"
-                            " JOIN known_coins okc ON (rcom.old_known_coin_id = okc.known_coin_id)"
-                            " WHERE h_coin_ev=$1"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "old_coin_by_h_blind",
+      "SELECT"
+      " okc.coin_pub AS old_coin_pub"
+      " FROM refresh_revealed_coins rrc"
+      " JOIN refresh_commitments rcom USING (melt_serial_id)"
+      " JOIN known_coins okc ON (rcom.old_known_coin_id = okc.known_coin_id)"
+      " WHERE h_coin_ev=$1"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_lookup_auditor_timestamp() */
-    GNUNET_PQ_make_prepare ("lookup_auditor_timestamp",
-                            "SELECT"
-                            " last_change"
-                            " FROM auditors"
-                            " WHERE auditor_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_auditor_timestamp",
+      "SELECT"
+      " last_change"
+      " FROM auditors"
+      " WHERE auditor_pub=$1;",
+      1),
     /* Used in #postgres_lookup_auditor_status() */
-    GNUNET_PQ_make_prepare ("lookup_auditor_status",
-                            "SELECT"
-                            " auditor_url"
-                            ",is_active"
-                            " FROM auditors"
-                            " WHERE auditor_pub=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_auditor_status",
+      "SELECT"
+      " auditor_url"
+      ",is_active"
+      " FROM auditors"
+      " WHERE auditor_pub=$1;",
+      1),
     /* Used in #postgres_lookup_wire_timestamp() */
-    GNUNET_PQ_make_prepare ("lookup_wire_timestamp",
-                            "SELECT"
-                            " last_change"
-                            " FROM wire_accounts"
-                            " WHERE payto_uri=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_wire_timestamp",
+      "SELECT"
+      " last_change"
+      " FROM wire_accounts"
+      " WHERE payto_uri=$1;",
+      1),
     /* used in #postgres_insert_auditor() */
-    GNUNET_PQ_make_prepare ("insert_auditor",
-                            "INSERT INTO auditors "
-                            "(auditor_pub"
-                            ",auditor_name"
-                            ",auditor_url"
-                            ",is_active"
-                            ",last_change"
-                            ") VALUES "
-                            "($1, $2, $3, true, $4);",
-                            4),
+    GNUNET_PQ_make_prepare (
+      "insert_auditor",
+      "INSERT INTO auditors "
+      "(auditor_pub"
+      ",auditor_name"
+      ",auditor_url"
+      ",is_active"
+      ",last_change"
+      ") VALUES "
+      "($1, $2, $3, true, $4);",
+      4),
     /* used in #postgres_update_auditor() */
-    GNUNET_PQ_make_prepare ("update_auditor",
-                            "UPDATE auditors"
-                            " SET"
-                            "  auditor_url=$2"
-                            " ,auditor_name=$3"
-                            " ,is_active=$4"
-                            " ,last_change=$5"
-                            " WHERE auditor_pub=$1",
-                            5),
+    GNUNET_PQ_make_prepare (
+      "update_auditor",
+      "UPDATE auditors"
+      " SET"
+      "  auditor_url=$2"
+      " ,auditor_name=$3"
+      " ,is_active=$4"
+      " ,last_change=$5"
+      " WHERE auditor_pub=$1",
+      5),
     /* used in #postgres_insert_wire() */
-    GNUNET_PQ_make_prepare ("insert_wire",
-                            "INSERT INTO wire_accounts "
-                            "(payto_uri"
-                            ",master_sig"
-                            ",is_active"
-                            ",last_change"
-                            ") VALUES "
-                            "($1, $2, true, $3);",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "insert_wire",
+      "INSERT INTO wire_accounts "
+      "(payto_uri"
+      ",master_sig"
+      ",is_active"
+      ",last_change"
+      ") VALUES "
+      "($1, $2, true, $3);",
+      3),
     /* used in #postgres_update_wire() */
-    GNUNET_PQ_make_prepare ("update_wire",
-                            "UPDATE wire_accounts"
-                            " SET"
-                            "  is_active=$2"
-                            " ,last_change=$3"
-                            " WHERE payto_uri=$1",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "update_wire",
+      "UPDATE wire_accounts"
+      " SET"
+      "  is_active=$2"
+      " ,last_change=$3"
+      " WHERE payto_uri=$1",
+      3),
     /* used in #postgres_update_wire() */
-    GNUNET_PQ_make_prepare ("get_wire_accounts",
-                            "SELECT"
-                            " payto_uri"
-                            ",master_sig"
-                            " FROM wire_accounts"
-                            " WHERE is_active",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "get_wire_accounts",
+      "SELECT"
+      " payto_uri"
+      ",master_sig"
+      " FROM wire_accounts"
+      " WHERE is_active",
+      0),
     /* used in #postgres_update_wire() */
-    GNUNET_PQ_make_prepare ("get_wire_fees",
-                            "SELECT"
-                            " wire_fee_val"
-                            ",wire_fee_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",start_date"
-                            ",end_date"
-                            ",master_sig"
-                            " FROM wire_fee"
-                            " WHERE wire_method=$1",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_wire_fees",
+      "SELECT"
+      " wire_fee_val"
+      ",wire_fee_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ",start_date"
+      ",end_date"
+      ",master_sig"
+      " FROM wire_fee"
+      " WHERE wire_method=$1",
+      1),
     /* used in #postgres_insert_signkey_revocation() */
-    GNUNET_PQ_make_prepare ("insert_signkey_revocation",
-                            "INSERT INTO signkey_revocations "
-                            "(esk_serial"
-                            ",master_sig"
-                            ") SELECT esk_serial, $2 "
-                            "    FROM exchange_sign_keys"
-                            "   WHERE exchange_pub=$1;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "insert_signkey_revocation",
+      "INSERT INTO signkey_revocations "
+      "(esk_serial"
+      ",master_sig"
+      ") SELECT esk_serial, $2 "
+      "    FROM exchange_sign_keys"
+      "   WHERE exchange_pub=$1;",
+      2),
     /* used in #postgres_insert_signkey_revocation() */
-    GNUNET_PQ_make_prepare ("lookup_signkey_revocation",
-                            "SELECT "
-                            " master_sig"
-                            " FROM signkey_revocations"
-                            " WHERE esk_serial="
-                            "   (SELECT esk_serial"
-                            "      FROM exchange_sign_keys"
-                            "     WHERE exchange_pub=$1);",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_signkey_revocation",
+      "SELECT "
+      " master_sig"
+      " FROM signkey_revocations"
+      " WHERE esk_serial="
+      "   (SELECT esk_serial"
+      "      FROM exchange_sign_keys"
+      "     WHERE exchange_pub=$1);",
+      1),
     /* used in #postgres_insert_signkey() */
-    GNUNET_PQ_make_prepare ("insert_signkey",
-                            "INSERT INTO exchange_sign_keys "
-                            "(exchange_pub"
-                            ",valid_from"
-                            ",expire_sign"
-                            ",expire_legal"
-                            ",master_sig"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5);",
-                            5),
+    GNUNET_PQ_make_prepare (
+      "insert_signkey",
+      "INSERT INTO exchange_sign_keys "
+      "(exchange_pub"
+      ",valid_from"
+      ",expire_sign"
+      ",expire_legal"
+      ",master_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5);",
+      5),
     /* used in #postgres_lookup_signing_key() */
-    GNUNET_PQ_make_prepare ("lookup_signing_key",
-                            "SELECT"
-                            " valid_from"
-                            ",expire_sign"
-                            ",expire_legal"
-                            " FROM exchange_sign_keys"
-                            " WHERE exchange_pub=$1",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_signing_key",
+      "SELECT"
+      " valid_from"
+      ",expire_sign"
+      ",expire_legal"
+      " FROM exchange_sign_keys"
+      " WHERE exchange_pub=$1",
+      1),
     /* used in #postgres_lookup_denomination_key() */
-    GNUNET_PQ_make_prepare ("lookup_denomination_key",
-                            "SELECT"
-                            " valid_from"
-                            ",expire_withdraw"
-                            ",expire_deposit"
-                            ",expire_legal"
-                            ",coin_val"
-                            ",coin_frac"
-                            ",fee_withdraw_val"
-                            ",fee_withdraw_frac"
-                            ",fee_deposit_val"
-                            ",fee_deposit_frac"
-                            ",fee_refresh_val"
-                            ",fee_refresh_frac"
-                            ",fee_refund_val"
-                            ",fee_refund_frac"
-                            " FROM denominations"
-                            " WHERE denom_pub_hash=$1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_denomination_key",
+      "SELECT"
+      " valid_from"
+      ",expire_withdraw"
+      ",expire_deposit"
+      ",expire_legal"
+      ",coin_val"
+      ",coin_frac"
+      ",fee_withdraw_val"
+      ",fee_withdraw_frac"
+      ",fee_deposit_val"
+      ",fee_deposit_frac"
+      ",fee_refresh_val"
+      ",fee_refresh_frac"
+      ",fee_refund_val"
+      ",fee_refund_frac"
+      " FROM denominations"
+      " WHERE denom_pub_hash=$1;",
+      1),
     /* used in #postgres_insert_auditor_denom_sig() */
-    GNUNET_PQ_make_prepare ("insert_auditor_denom_sig",
-                            "WITH ax AS"
-                            " (SELECT auditor_uuid"
-                            "    FROM auditors"
-                            "   WHERE auditor_pub=$1)"
-                            "INSERT INTO auditor_denom_sigs "
-                            "(auditor_uuid"
-                            ",denominations_serial"
-                            ",auditor_sig"
-                            ") SELECT ax.auditor_uuid, denominations_serial, $3 "
-                            "    FROM denominations"
-                            "   CROSS JOIN ax"
-                            "   WHERE denom_pub_hash=$2;",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "insert_auditor_denom_sig",
+      "WITH ax AS"
+      " (SELECT auditor_uuid"
+      "    FROM auditors"
+      "   WHERE auditor_pub=$1)"
+      "INSERT INTO auditor_denom_sigs "
+      "(auditor_uuid"
+      ",denominations_serial"
+      ",auditor_sig"
+      ") SELECT ax.auditor_uuid, denominations_serial, $3 "
+      "    FROM denominations"
+      "   CROSS JOIN ax"
+      "   WHERE denom_pub_hash=$2;",
+      3),
     /* used in #postgres_select_auditor_denom_sig() */
-    GNUNET_PQ_make_prepare ("select_auditor_denom_sig",
-                            "SELECT"
-                            " auditor_sig"
-                            " FROM auditor_denom_sigs"
-                            " WHERE auditor_uuid="
-                            "  (SELECT auditor_uuid"
-                            "    FROM auditors"
-                            "    WHERE auditor_pub=$1)"
-                            " AND denominations_serial="
-                            "  (SELECT denominations_serial"
-                            "    FROM denominations"
-                            "    WHERE denom_pub_hash=$2);",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "select_auditor_denom_sig",
+      "SELECT"
+      " auditor_sig"
+      " FROM auditor_denom_sigs"
+      " WHERE auditor_uuid="
+      "  (SELECT auditor_uuid"
+      "    FROM auditors"
+      "    WHERE auditor_pub=$1)"
+      " AND denominations_serial="
+      "  (SELECT denominations_serial"
+      "    FROM denominations"
+      "    WHERE denom_pub_hash=$2);",
+      2),
     /* used in #postgres_lookup_wire_fee_by_time() */
-    GNUNET_PQ_make_prepare ("lookup_wire_fee_by_time",
-                            "SELECT"
-                            " wire_fee_val"
-                            ",wire_fee_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            " FROM wire_fee"
-                            " WHERE wire_method=$1"
-                            " AND end_date > $2"
-                            " AND start_date < $3;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "lookup_wire_fee_by_time",
+      "SELECT"
+      " wire_fee_val"
+      ",wire_fee_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      " FROM wire_fee"
+      " WHERE wire_method=$1"
+      " AND end_date > $2"
+      " AND start_date < $3;",
+      1),
     /* used in #postgres_commit */
-    GNUNET_PQ_make_prepare ("do_commit",
-                            "COMMIT",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "do_commit",
+      "COMMIT",
+      0),
     /* used in #postgres_lookup_serial_by_table() */
-    GNUNET_PQ_make_prepare ("select_serial_by_table_denominations",
-                            "SELECT"
-                            " denominations_serial AS serial"
-                            " FROM denominations"
-                            " ORDER BY denominations_serial DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_denomination_revocations",
-                            "SELECT"
-                            " denom_revocations_serial_id AS serial"
-                            " FROM denomination_revocations"
-                            " ORDER BY denom_revocations_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_reserves",
-                            "SELECT"
-                            " reserve_uuid AS serial"
-                            " FROM reserves"
-                            " ORDER BY reserve_uuid DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_in",
-                            "SELECT"
-                            " reserve_in_serial_id AS serial"
-                            " FROM reserves_in"
-                            " ORDER BY reserve_in_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_close",
-                            "SELECT"
-                            " close_uuid AS serial"
-                            " FROM reserves_close"
-                            " ORDER BY close_uuid DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_reserves_out",
-                            "SELECT"
-                            " reserve_out_serial_id AS serial"
-                            " FROM reserves_out"
-                            " ORDER BY reserve_out_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_auditors",
-                            "SELECT"
-                            " auditor_uuid AS serial"
-                            " FROM auditors"
-                            " ORDER BY auditor_uuid DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_auditor_denom_sigs",
-                            "SELECT"
-                            " auditor_denom_serial AS serial"
-                            " FROM auditor_denom_sigs"
-                            " ORDER BY auditor_denom_serial DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_exchange_sign_keys",
-                            "SELECT"
-                            " esk_serial AS serial"
-                            " FROM exchange_sign_keys"
-                            " ORDER BY esk_serial DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_signkey_revocations",
-                            "SELECT"
-                            " signkey_revocations_serial_id AS serial"
-                            " FROM signkey_revocations"
-                            " ORDER BY signkey_revocations_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_known_coins",
-                            "SELECT"
-                            " known_coin_id AS serial"
-                            " FROM known_coins"
-                            " ORDER BY known_coin_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_commitments",
-                            "SELECT"
-                            " melt_serial_id AS serial"
-                            " FROM refresh_commitments"
-                            " ORDER BY melt_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_revealed_coins",
-                            "SELECT"
-                            " rrc_serial AS serial"
-                            " FROM refresh_revealed_coins"
-                            " ORDER BY rrc_serial DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_refresh_transfer_keys",
-                            "SELECT"
-                            " rtc_serial AS serial"
-                            " FROM refresh_transfer_keys"
-                            " ORDER BY rtc_serial DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_deposits",
-                            "SELECT"
-                            " deposit_serial_id AS serial"
-                            " FROM deposits"
-                            " ORDER BY deposit_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_refunds",
-                            "SELECT"
-                            " refund_serial_id AS serial"
-                            " FROM refunds"
-                            " ORDER BY refund_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_wire_out",
-                            "SELECT"
-                            " wireout_uuid AS serial"
-                            " FROM wire_out"
-                            " ORDER BY wireout_uuid DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_aggregation_tracking",
-                            "SELECT"
-                            " aggregation_serial_id AS serial"
-                            " FROM aggregation_tracking"
-                            " ORDER BY aggregation_serial_id DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_wire_fee",
-                            "SELECT"
-                            " wire_fee_serial AS serial"
-                            " FROM wire_fee"
-                            " ORDER BY wire_fee_serial DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_recoup",
-                            "SELECT"
-                            " recoup_uuid AS serial"
-                            " FROM recoup"
-                            " ORDER BY recoup_uuid DESC"
-                            " LIMIT 1;",
-                            0),
-    GNUNET_PQ_make_prepare ("select_serial_by_table_recoup_refresh",
-                            "SELECT"
-                            " recoup_refresh_uuid AS serial"
-                            " FROM recoup_refresh"
-                            " ORDER BY recoup_refresh_uuid DESC"
-                            " LIMIT 1;",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_denominations",
+      "SELECT"
+      " denominations_serial AS serial"
+      " FROM denominations"
+      " ORDER BY denominations_serial DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_denomination_revocations",
+      "SELECT"
+      " denom_revocations_serial_id AS serial"
+      " FROM denomination_revocations"
+      " ORDER BY denom_revocations_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_reserves",
+      "SELECT"
+      " reserve_uuid AS serial"
+      " FROM reserves"
+      " ORDER BY reserve_uuid DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_reserves_in",
+      "SELECT"
+      " reserve_in_serial_id AS serial"
+      " FROM reserves_in"
+      " ORDER BY reserve_in_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_reserves_close",
+      "SELECT"
+      " close_uuid AS serial"
+      " FROM reserves_close"
+      " ORDER BY close_uuid DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_reserves_out",
+      "SELECT"
+      " reserve_out_serial_id AS serial"
+      " FROM reserves_out"
+      " ORDER BY reserve_out_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_auditors",
+      "SELECT"
+      " auditor_uuid AS serial"
+      " FROM auditors"
+      " ORDER BY auditor_uuid DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_auditor_denom_sigs",
+      "SELECT"
+      " auditor_denom_serial AS serial"
+      " FROM auditor_denom_sigs"
+      " ORDER BY auditor_denom_serial DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_exchange_sign_keys",
+      "SELECT"
+      " esk_serial AS serial"
+      " FROM exchange_sign_keys"
+      " ORDER BY esk_serial DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_signkey_revocations",
+      "SELECT"
+      " signkey_revocations_serial_id AS serial"
+      " FROM signkey_revocations"
+      " ORDER BY signkey_revocations_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_known_coins",
+      "SELECT"
+      " known_coin_id AS serial"
+      " FROM known_coins"
+      " ORDER BY known_coin_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_refresh_commitments",
+      "SELECT"
+      " melt_serial_id AS serial"
+      " FROM refresh_commitments"
+      " ORDER BY melt_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_refresh_revealed_coins",
+      "SELECT"
+      " rrc_serial AS serial"
+      " FROM refresh_revealed_coins"
+      " ORDER BY rrc_serial DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_refresh_transfer_keys",
+      "SELECT"
+      " rtc_serial AS serial"
+      " FROM refresh_transfer_keys"
+      " ORDER BY rtc_serial DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_deposits",
+      "SELECT"
+      " deposit_serial_id AS serial"
+      " FROM deposits"
+      " ORDER BY deposit_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_refunds",
+      "SELECT"
+      " refund_serial_id AS serial"
+      " FROM refunds"
+      " ORDER BY refund_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_wire_out",
+      "SELECT"
+      " wireout_uuid AS serial"
+      " FROM wire_out"
+      " ORDER BY wireout_uuid DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_aggregation_tracking",
+      "SELECT"
+      " aggregation_serial_id AS serial"
+      " FROM aggregation_tracking"
+      " ORDER BY aggregation_serial_id DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_wire_fee",
+      "SELECT"
+      " wire_fee_serial AS serial"
+      " FROM wire_fee"
+      " ORDER BY wire_fee_serial DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_recoup",
+      "SELECT"
+      " recoup_uuid AS serial"
+      " FROM recoup"
+      " ORDER BY recoup_uuid DESC"
+      " LIMIT 1;",
+      0),
+    GNUNET_PQ_make_prepare (
+      "select_serial_by_table_recoup_refresh",
+      "SELECT"
+      " recoup_refresh_uuid AS serial"
+      " FROM recoup_refresh"
+      " ORDER BY recoup_refresh_uuid DESC"
+      " LIMIT 1;",
+      0),
     /* For postgres_lookup_records_by_table */
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_denominations",
-                            "SELECT"
-                            " denominations_serial AS serial"
-                            ",denom_pub"
-                            ",master_sig"
-                            ",valid_from"
-                            ",expire_withdraw"
-                            ",expire_deposit"
-                            ",expire_legal"
-                            ",coin_val"
-                            ",coin_frac"
-                            ",fee_withdraw_val"
-                            ",fee_withdraw_frac"
-                            ",fee_deposit_val"
-                            ",fee_deposit_frac"
-                            ",fee_refresh_val"
-                            ",fee_refresh_frac"
-                            ",fee_refund_val"
-                            ",fee_refund_frac"
-                            " FROM denominations"
-                            " WHERE denominations_serial > $1"
-                            " ORDER BY denominations_serial ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_denominations",
+      "SELECT"
+      " denominations_serial AS serial"
+      ",denom_type"
+      ",age_restrictions"
+      ",denom_pub"
+      ",master_sig"
+      ",valid_from"
+      ",expire_withdraw"
+      ",expire_deposit"
+      ",expire_legal"
+      ",coin_val"
+      ",coin_frac"
+      ",fee_withdraw_val"
+      ",fee_withdraw_frac"
+      ",fee_deposit_val"
+      ",fee_deposit_frac"
+      ",fee_refresh_val"
+      ",fee_refresh_frac"
+      ",fee_refund_val"
+      ",fee_refund_frac"
+      " FROM denominations"
+      " WHERE denominations_serial > $1"
+      " ORDER BY denominations_serial ASC;",
+      1),
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_denomination_revocations",
       "SELECT"
@@ -1970,97 +2097,103 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE denom_revocations_serial_id > $1"
       " ORDER BY denom_revocations_serial_id ASC;",
       1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves",
-                            "SELECT"
-                            " reserve_uuid AS serial"
-                            ",reserve_pub"
-                            ",account_details"
-                            ",current_balance_val"
-                            ",current_balance_frac"
-                            ",expiration_date"
-                            ",gc_date"
-                            " FROM reserves"
-                            " WHERE reserve_uuid > $1"
-                            " ORDER BY reserve_uuid ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_in",
-                            "SELECT"
-                            " reserve_in_serial_id AS serial"
-                            ",wire_reference"
-                            ",credit_val"
-                            ",credit_frac"
-                            ",sender_account_details"
-                            ",exchange_account_section"
-                            ",execution_date"
-                            ",reserve_uuid"
-                            " FROM reserves_in"
-                            " WHERE reserve_in_serial_id > $1"
-                            " ORDER BY reserve_in_serial_id ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_close",
-                            "SELECT"
-                            " close_uuid AS serial"
-                            ",execution_date"
-                            ",wtid"
-                            ",receiver_account"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",reserve_uuid"
-                            " FROM reserves_close"
-                            " WHERE close_uuid > $1"
-                            " ORDER BY close_uuid ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_reserves_out",
-                            "SELECT"
-                            " reserve_out_serial_id AS serial"
-                            ",h_blind_ev"
-                            ",denom_sig"
-                            ",reserve_sig"
-                            ",execution_date"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",reserve_uuid"
-                            ",denominations_serial"
-                            " FROM reserves_out"
-                            " WHERE reserve_out_serial_id > $1"
-                            " ORDER BY reserve_out_serial_id ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_auditors",
-                            "SELECT"
-                            " auditor_uuid AS serial"
-                            ",auditor_pub"
-                            ",auditor_name"
-                            ",auditor_url"
-                            ",is_active"
-                            ",last_change"
-                            " FROM auditors"
-                            " WHERE auditor_uuid > $1"
-                            " ORDER BY auditor_uuid ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_auditor_denom_sigs",
-                            "SELECT"
-                            " auditor_denom_serial AS serial"
-                            ",auditor_uuid"
-                            ",denominations_serial"
-                            ",auditor_sig"
-                            " FROM auditor_denom_sigs"
-                            " WHERE auditor_denom_serial > $1"
-                            " ORDER BY auditor_denom_serial ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_exchange_sign_keys",
-                            "SELECT"
-                            " esk_serial AS serial"
-                            ",exchange_pub"
-                            ",master_sig"
-                            ",valid_from"
-                            ",expire_sign"
-                            ",expire_legal"
-                            " FROM exchange_sign_keys"
-                            " WHERE esk_serial > $1"
-                            " ORDER BY esk_serial ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_reserves",
+      "SELECT"
+      " reserve_uuid AS serial"
+      ",reserve_pub"
+      ",current_balance_val"
+      ",current_balance_frac"
+      ",expiration_date"
+      ",gc_date"
+      " FROM reserves"
+      " WHERE reserve_uuid > $1"
+      " ORDER BY reserve_uuid ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_reserves_in",
+      "SELECT"
+      " reserve_in_serial_id AS serial"
+      ",reserve_uuid"
+      ",wire_reference"
+      ",credit_val"
+      ",credit_frac"
+      ",wire_source_serial_id"
+      ",exchange_account_section"
+      ",execution_date"
+      " FROM reserves_in"
+      " WHERE reserve_in_serial_id > $1"
+      " ORDER BY reserve_in_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_reserves_close",
+      "SELECT"
+      " close_uuid AS serial"
+      ",reserve_uuid"
+      ",execution_date"
+      ",wtid"
+      ",wire_target_serial_id"
+      ",amount_val"
+      ",amount_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      " FROM reserves_close"
+      " WHERE close_uuid > $1"
+      " ORDER BY close_uuid ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_reserves_out",
+      "SELECT"
+      " reserve_out_serial_id AS serial"
+      ",h_blind_ev"
+      ",denominations_serial"
+      ",denom_sig"
+      ",reserve_uuid"
+      ",reserve_sig"
+      ",execution_date"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      " FROM reserves_out"
+      " WHERE reserve_out_serial_id > $1"
+      " ORDER BY reserve_out_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_auditors",
+      "SELECT"
+      " auditor_uuid AS serial"
+      ",auditor_pub"
+      ",auditor_name"
+      ",auditor_url"
+      ",is_active"
+      ",last_change"
+      " FROM auditors"
+      " WHERE auditor_uuid > $1"
+      " ORDER BY auditor_uuid ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_auditor_denom_sigs",
+      "SELECT"
+      " auditor_denom_serial AS serial"
+      ",auditor_uuid"
+      ",denominations_serial"
+      ",auditor_sig"
+      " FROM auditor_denom_sigs"
+      " WHERE auditor_denom_serial > $1"
+      " ORDER BY auditor_denom_serial ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_exchange_sign_keys",
+      "SELECT"
+      " esk_serial AS serial"
+      ",exchange_pub"
+      ",master_sig"
+      ",valid_from"
+      ",expire_sign"
+      ",expire_legal"
+      " FROM exchange_sign_keys"
+      " WHERE esk_serial > $1"
+      " ORDER BY esk_serial ASC;",
+      1),
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_signkey_revocations",
       "SELECT"
@@ -2071,26 +2204,27 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE signkey_revocations_serial_id > $1"
       " ORDER BY signkey_revocations_serial_id ASC;",
       1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_known_coins",
-                            "SELECT"
-                            " known_coin_id AS serial"
-                            ",coin_pub"
-                            ",denom_sig"
-                            ",denominations_serial"
-                            " FROM known_coins"
-                            " WHERE known_coin_id > $1"
-                            " ORDER BY known_coin_id ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_known_coins",
+      "SELECT"
+      " known_coin_id AS serial"
+      ",coin_pub"
+      ",denom_sig"
+      ",denominations_serial"
+      " FROM known_coins"
+      " WHERE known_coin_id > $1"
+      " ORDER BY known_coin_id ASC;",
+      1),
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_refresh_commitments",
       "SELECT"
       " melt_serial_id AS serial"
       ",rc"
-      ",old_known_coin_id"
       ",old_coin_sig"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",noreveal_index"
+      ",old_known_coin_id"
       " FROM refresh_commitments"
       " WHERE melt_serial_id > $1"
       " ORDER BY melt_serial_id ASC;",
@@ -2102,10 +2236,9 @@ prepare_statements (struct PostgresClosure *pg)
       ",freshcoin_index"
       ",link_sig"
       ",coin_ev"
-      ",h_coin_ev"
       ",ev_sig"
-      ",melt_serial_id"
       ",denominations_serial"
+      ",melt_serial_id"
       " FROM refresh_revealed_coins"
       " WHERE rrc_serial > $1"
       " ORDER BY rrc_serial ASC;",
@@ -2121,52 +2254,58 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE rtc_serial > $1"
       " ORDER BY rtc_serial ASC;",
       1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_deposits",
-                            "SELECT"
-                            " deposit_serial_id AS serial"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",wallet_timestamp"
-                            ",exchange_timestamp"
-                            ",refund_deadline"
-                            ",wire_deadline"
-                            ",merchant_pub"
-                            ",h_contract_terms"
-                            ",h_wire"
-                            ",coin_sig"
-                            ",wire"
-                            ",tiny"
-                            ",done"
-                            ",known_coin_id"
-                            " FROM deposits"
-                            " WHERE deposit_serial_id > $1"
-                            " ORDER BY deposit_serial_id ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_refunds",
-                            "SELECT"
-                            " refund_serial_id AS serial"
-                            ",merchant_sig"
-                            ",rtransaction_id"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",deposit_serial_id"
-                            " FROM refunds"
-                            " WHERE refund_serial_id > $1"
-                            " ORDER BY refund_serial_id ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_out",
-                            "SELECT"
-                            " wireout_uuid AS serial"
-                            ",execution_date"
-                            ",wtid_raw"
-                            ",wire_target"
-                            ",exchange_account_section"
-                            ",amount_val"
-                            ",amount_frac"
-                            " FROM wire_out"
-                            " WHERE wireout_uuid > $1"
-                            " ORDER BY wireout_uuid ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_deposits",
+      "SELECT"
+      " deposit_serial_id AS serial"
+      ",shard"
+      ",known_coin_id"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wallet_timestamp"
+      ",exchange_timestamp"
+      ",refund_deadline"
+      ",wire_deadline"
+      ",merchant_pub"
+      ",h_contract_terms"
+      ",coin_sig"
+      ",wire_salt"
+      ",wire_target_serial_id"
+      ",tiny"
+      ",done"
+      ",extension_blocked"
+      ",extension_options"
+      " FROM deposits"
+      " WHERE deposit_serial_id > $1"
+      " ORDER BY deposit_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_refunds",
+      "SELECT"
+      " refund_serial_id AS serial"
+      ",merchant_sig"
+      ",rtransaction_id"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",deposit_serial_id"
+      " FROM refunds"
+      " WHERE refund_serial_id > $1"
+      " ORDER BY refund_serial_id ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_wire_out",
+      "SELECT"
+      " wireout_uuid AS serial"
+      ",execution_date"
+      ",wtid_raw"
+      ",wire_target_serial_id"
+      ",exchange_account_section"
+      ",amount_val"
+      ",amount_frac"
+      " FROM wire_out"
+      " WHERE wireout_uuid > $1"
+      " ORDER BY wireout_uuid ASC;",
+      1),
     GNUNET_PQ_make_prepare (
       "select_above_serial_by_table_aggregation_tracking",
       "SELECT"
@@ -2177,409 +2316,446 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE aggregation_serial_id > $1"
       " ORDER BY aggregation_serial_id ASC;",
       1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_wire_fee",
-                            "SELECT"
-                            " wire_fee_serial AS serial"
-                            ",wire_method"
-                            ",start_date"
-                            ",end_date"
-                            ",wire_fee_val"
-                            ",wire_fee_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",master_sig"
-                            " FROM wire_fee"
-                            " WHERE wire_fee_serial > $1"
-                            " ORDER BY wire_fee_serial ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup",
-                            "SELECT"
-                            " recoup_uuid AS serial"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",known_coin_id"
-                            ",reserve_out_serial_id"
-                            " FROM recoup"
-                            " WHERE recoup_uuid > $1"
-                            " ORDER BY recoup_uuid ASC;",
-                            1),
-    GNUNET_PQ_make_prepare ("select_above_serial_by_table_recoup_refresh",
-                            "SELECT"
-                            " recoup_refresh_uuid AS serial"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",known_coin_id"
-                            ",rrc_serial"
-                            " FROM recoup_refresh"
-                            " WHERE recoup_refresh_uuid > $1"
-                            " ORDER BY recoup_refresh_uuid ASC;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_wire_fee",
+      "SELECT"
+      " wire_fee_serial AS serial"
+      ",wire_method"
+      ",start_date"
+      ",end_date"
+      ",wire_fee_val"
+      ",wire_fee_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ",master_sig"
+      " FROM wire_fee"
+      " WHERE wire_fee_serial > $1"
+      " ORDER BY wire_fee_serial ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_recoup",
+      "SELECT"
+      " recoup_uuid AS serial"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",known_coin_id"
+      ",reserve_out_serial_id"
+      " FROM recoup"
+      " WHERE recoup_uuid > $1"
+      " ORDER BY recoup_uuid ASC;",
+      1),
+    GNUNET_PQ_make_prepare (
+      "select_above_serial_by_table_recoup_refresh",
+      "SELECT"
+      " recoup_refresh_uuid AS serial"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",known_coin_id"
+      ",rrc_serial"
+      " FROM recoup_refresh"
+      " WHERE recoup_refresh_uuid > $1"
+      " ORDER BY recoup_refresh_uuid ASC;",
+      1),
     /* For postgres_insert_records_by_table */
-    GNUNET_PQ_make_prepare ("insert_into_table_denominations",
-                            "INSERT INTO denominations"
-                            "(denominations_serial"
-                            ",denom_pub_hash"
-                            ",denom_pub"
-                            ",master_sig"
-                            ",valid_from"
-                            ",expire_withdraw"
-                            ",expire_deposit"
-                            ",expire_legal"
-                            ",coin_val"
-                            ",coin_frac"
-                            ",fee_withdraw_val"
-                            ",fee_withdraw_frac"
-                            ",fee_deposit_val"
-                            ",fee_deposit_frac"
-                            ",fee_refresh_val"
-                            ",fee_refresh_frac"
-                            ",fee_refund_val"
-                            ",fee_refund_frac"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-                            " $11, $12, $13, $14, $15, $16, $17, $18);",
-                            18),
-    GNUNET_PQ_make_prepare ("insert_into_table_denomination_revocations",
-                            "INSERT INTO denomination_revocations"
-                            "(denom_revocations_serial_id"
-                            ",master_sig"
-                            ",denominations_serial"
-                            ") VALUES "
-                            "($1, $2, $3);",
-                            3),
-    GNUNET_PQ_make_prepare ("insert_into_table_reserves",
-                            "INSERT INTO reserves"
-                            "(reserve_uuid"
-                            ",reserve_pub"
-                            ",account_details"
-                            ",current_balance_val"
-                            ",current_balance_frac"
-                            ",expiration_date"
-                            ",gc_date"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7);",
-                            7),
-    GNUNET_PQ_make_prepare ("insert_into_table_reserves_in",
-                            "INSERT INTO reserves_in"
-                            "(reserve_in_serial_id"
-                            ",wire_reference"
-                            ",credit_val"
-                            ",credit_frac"
-                            ",sender_account_details"
-                            ",exchange_account_section"
-                            ",execution_date"
-                            ",reserve_uuid"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8);",
-                            8),
-    GNUNET_PQ_make_prepare ("insert_into_table_reserves_close",
-                            "INSERT INTO reserves_close"
-                            "(close_uuid"
-                            ",execution_date"
-                            ",wtid"
-                            ",receiver_account"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",reserve_uuid"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-                            9),
-    GNUNET_PQ_make_prepare ("insert_into_table_reserves_out",
-                            "INSERT INTO reserves_out"
-                            "(reserve_out_serial_id"
-                            ",h_blind_ev"
-                            ",denom_sig"
-                            ",reserve_sig"
-                            ",execution_date"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",reserve_uuid"
-                            ",denominations_serial"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-                            9),
-    GNUNET_PQ_make_prepare ("insert_into_table_auditors",
-                            "INSERT INTO auditors"
-                            "(auditor_uuid"
-                            ",auditor_pub"
-                            ",auditor_name"
-                            ",auditor_url"
-                            ",is_active"
-                            ",last_change"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6);",
-                            6),
-    GNUNET_PQ_make_prepare ("insert_into_table_auditor_denom_sigs",
-                            "INSERT INTO auditor_denom_sigs"
-                            "(auditor_denom_serial"
-                            ",auditor_uuid"
-                            ",denominations_serial"
-                            ",auditor_sig"
-                            ") VALUES "
-                            "($1, $2, $3, $4);",
-                            4),
-    GNUNET_PQ_make_prepare ("insert_into_table_exchange_sign_keys",
-                            "INSERT INTO exchange_sign_keys"
-                            "(esk_serial"
-                            ",exchange_pub"
-                            ",master_sig"
-                            ",valid_from"
-                            ",expire_sign"
-                            ",expire_legal"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6);",
-                            6),
-    GNUNET_PQ_make_prepare ("insert_into_table_signkey_revocations",
-                            "INSERT INTO signkey_revocations"
-                            "(signkey_revocations_serial_id"
-                            ",esk_serial"
-                            ",master_sig"
-                            ") VALUES "
-                            "($1, $2, $3);",
-                            3),
-    GNUNET_PQ_make_prepare ("insert_into_table_known_coins",
-                            "INSERT INTO known_coins"
-                            "(known_coin_id"
-                            ",coin_pub"
-                            ",denom_sig"
-                            ",denominations_serial"
-                            ") VALUES "
-                            "($1, $2, $3, $4);",
-                            4),
-    GNUNET_PQ_make_prepare ("insert_into_table_refresh_commitments",
-                            "INSERT INTO refresh_commitments"
-                            "(melt_serial_id"
-                            ",rc"
-                            ",old_coin_sig"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",noreveal_index"
-                            ",old_known_coin_id"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7);",
-                            7),
-    GNUNET_PQ_make_prepare ("insert_into_table_refresh_revealed_coins",
-                            "INSERT INTO refresh_revealed_coins"
-                            "(rrc_serial"
-                            ",freshcoin_index"
-                            ",link_sig"
-                            ",coin_ev"
-                            ",h_coin_ev"
-                            ",ev_sig"
-                            ",denominations_serial"
-                            ",melt_serial_id"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8);",
-                            8),
-    GNUNET_PQ_make_prepare ("insert_into_table_refresh_transfer_keys",
-                            "INSERT INTO refresh_transfer_keys"
-                            "(rtc_serial"
-                            ",transfer_pub"
-                            ",transfer_privs"
-                            ",melt_serial_id"
-                            ") VALUES "
-                            "($1, $2, $3, $4);",
-                            4),
-    GNUNET_PQ_make_prepare ("insert_into_table_deposits",
-                            "INSERT INTO deposits"
-                            "(deposit_serial_id"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",wallet_timestamp"
-                            ",exchange_timestamp"
-                            ",refund_deadline"
-                            ",wire_deadline"
-                            ",merchant_pub"
-                            ",h_contract_terms"
-                            ",h_wire"
-                            ",coin_sig"
-                            ",wire"
-                            ",tiny"
-                            ",done"
-                            ",known_coin_id"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
-                            " $11, $12, $13, $14, $15);",
-                            15),
-    GNUNET_PQ_make_prepare ("insert_into_table_refunds",
-                            "INSERT INTO refunds"
-                            "(refund_serial_id"
-                            ",merchant_sig"
-                            ",rtransaction_id"
-                            ",amount_with_fee_val"
-                            ",amount_with_fee_frac"
-                            ",deposit_serial_id"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6);",
-                            6),
-    GNUNET_PQ_make_prepare ("insert_into_table_wire_out",
-                            "INSERT INTO wire_out"
-                            "(wireout_uuid"
-                            ",execution_date"
-                            ",wtid_raw"
-                            ",wire_target"
-                            ",exchange_account_section"
-                            ",amount_val"
-                            ",amount_frac"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7);",
-                            7),
-    GNUNET_PQ_make_prepare ("insert_into_table_aggregation_tracking",
-                            "INSERT INTO aggregation_tracking"
-                            "(aggregation_serial_id"
-                            ",deposit_serial_id"
-                            ",wtid_raw"
-                            ") VALUES "
-                            "($1, $2, $3);",
-                            3),
-    GNUNET_PQ_make_prepare ("insert_into_table_wire_fee",
-                            "INSERT INTO wire_fee"
-                            "(wire_fee_serial"
-                            ",wire_method"
-                            ",start_date"
-                            ",end_date"
-                            ",wire_fee_val"
-                            ",wire_fee_frac"
-                            ",closing_fee_val"
-                            ",closing_fee_frac"
-                            ",master_sig"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-                            9),
-    GNUNET_PQ_make_prepare ("insert_into_table_recoup",
-                            "INSERT INTO recoup"
-                            "(recoup_uuid"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",known_coin_id"
-                            ",reserve_out_serial_id"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8);",
-                            8),
-    GNUNET_PQ_make_prepare ("insert_into_table_recoup_refresh",
-                            "INSERT INTO recoup_refresh"
-                            "(recoup_refresh_uuid"
-                            ",coin_sig"
-                            ",coin_blind"
-                            ",amount_val"
-                            ",amount_frac"
-                            ",timestamp"
-                            ",known_coin_id"
-                            ",rrc_serial"
-                            ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7, $8);",
-                            8),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_denominations",
+      "INSERT INTO denominations"
+      "(denominations_serial"
+      ",denom_pub_hash"
+      ",denom_pub"
+      ",master_sig"
+      ",valid_from"
+      ",expire_withdraw"
+      ",expire_deposit"
+      ",expire_legal"
+      ",coin_val"
+      ",coin_frac"
+      ",fee_withdraw_val"
+      ",fee_withdraw_frac"
+      ",fee_deposit_val"
+      ",fee_deposit_frac"
+      ",fee_refresh_val"
+      ",fee_refresh_frac"
+      ",fee_refund_val"
+      ",fee_refund_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+      " $11, $12, $13, $14, $15, $16, $17, $18);",
+      18),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_denomination_revocations",
+      "INSERT INTO denomination_revocations"
+      "(denom_revocations_serial_id"
+      ",master_sig"
+      ",denominations_serial"
+      ") VALUES "
+      "($1, $2, $3);",
+      3),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_reserves",
+      "INSERT INTO reserves"
+      "(reserve_uuid"
+      ",reserve_pub"
+      ",current_balance_val"
+      ",current_balance_frac"
+      ",expiration_date"
+      ",gc_date"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_reserves_in",
+      "INSERT INTO reserves_in"
+      "(reserve_in_serial_id"
+      ",wire_reference"
+      ",credit_val"
+      ",credit_frac"
+      ",wire_source_serial_id"
+      ",exchange_account_section"
+      ",execution_date"
+      ",reserve_uuid"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_reserves_close",
+      "INSERT INTO reserves_close"
+      "(close_uuid"
+      ",execution_date"
+      ",wtid"
+      ",wire_target_serial_id"
+      ",amount_val"
+      ",amount_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ",reserve_uuid"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+      9),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_reserves_out",
+      "INSERT INTO reserves_out"
+      "(reserve_out_serial_id"
+      ",h_blind_ev"
+      ",denominations_serial"
+      ",denom_sig"
+      ",reserve_uuid"
+      ",reserve_sig"
+      ",execution_date"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+      9),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_auditors",
+      "INSERT INTO auditors"
+      "(auditor_uuid"
+      ",auditor_pub"
+      ",auditor_name"
+      ",auditor_url"
+      ",is_active"
+      ",last_change"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_auditor_denom_sigs",
+      "INSERT INTO auditor_denom_sigs"
+      "(auditor_denom_serial"
+      ",auditor_uuid"
+      ",denominations_serial"
+      ",auditor_sig"
+      ") VALUES "
+      "($1, $2, $3, $4);",
+      4),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_exchange_sign_keys",
+      "INSERT INTO exchange_sign_keys"
+      "(esk_serial"
+      ",exchange_pub"
+      ",master_sig"
+      ",valid_from"
+      ",expire_sign"
+      ",expire_legal"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_signkey_revocations",
+      "INSERT INTO signkey_revocations"
+      "(signkey_revocations_serial_id"
+      ",esk_serial"
+      ",master_sig"
+      ") VALUES "
+      "($1, $2, $3);",
+      3),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_known_coins",
+      "INSERT INTO known_coins"
+      "(known_coin_id"
+      ",coin_pub"
+      ",denom_sig"
+      ",denominations_serial"
+      ") VALUES "
+      "($1, $2, $3, $4);",
+      4),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_refresh_commitments",
+      "INSERT INTO refresh_commitments"
+      "(melt_serial_id"
+      ",rc"
+      ",old_coin_sig"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",noreveal_index"
+      ",old_known_coin_id"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7);",
+      7),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_refresh_revealed_coins",
+      "INSERT INTO refresh_revealed_coins"
+      "(rrc_serial"
+      ",freshcoin_index"
+      ",link_sig"
+      ",coin_ev"
+      ",h_coin_ev"
+      ",ev_sig"
+      ",denominations_serial"
+      ",melt_serial_id"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_refresh_transfer_keys",
+      "INSERT INTO refresh_transfer_keys"
+      "(rtc_serial"
+      ",transfer_pub"
+      ",transfer_privs"
+      ",melt_serial_id"
+      ") VALUES "
+      "($1, $2, $3, $4);",
+      4),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_deposits",
+      "INSERT INTO deposits"
+      "(deposit_serial_id"
+      ",shard"
+      ",known_coin_id"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",wallet_timestamp"
+      ",exchange_timestamp"
+      ",refund_deadline"
+      ",wire_deadline"
+      ",merchant_pub"
+      ",h_contract_terms"
+      ",coin_sig"
+      ",wire_salt"
+      ",wire_target_serial_id"
+      ",tiny"
+      ",done"
+      ",extension_blocked"
+      ",extension_options"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
+      " $11, $12, $13, $14, $15, $16, $17, $18);",
+      18),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_refunds",
+      "INSERT INTO refunds"
+      "(refund_serial_id"
+      ",merchant_sig"
+      ",rtransaction_id"
+      ",amount_with_fee_val"
+      ",amount_with_fee_frac"
+      ",deposit_serial_id"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6);",
+      6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wire_out",
+      "INSERT INTO wire_out"
+      "(wireout_uuid"
+      ",execution_date"
+      ",wtid_raw"
+      ",wire_target_serial_id"
+      ",exchange_account_section"
+      ",amount_val"
+      ",amount_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7);",
+      7),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_aggregation_tracking",
+      "INSERT INTO aggregation_tracking"
+      "(aggregation_serial_id"
+      ",deposit_serial_id"
+      ",wtid_raw"
+      ") VALUES "
+      "($1, $2, $3);",
+      3),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wire_fee",
+      "INSERT INTO wire_fee"
+      "(wire_fee_serial"
+      ",wire_method"
+      ",start_date"
+      ",end_date"
+      ",wire_fee_val"
+      ",wire_fee_frac"
+      ",closing_fee_val"
+      ",closing_fee_frac"
+      ",master_sig"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+      9),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_recoup",
+      "INSERT INTO recoup"
+      "(recoup_uuid"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",known_coin_id"
+      ",reserve_out_serial_id"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_recoup_refresh",
+      "INSERT INTO recoup_refresh"
+      "(recoup_refresh_uuid"
+      ",coin_sig"
+      ",coin_blind"
+      ",amount_val"
+      ",amount_frac"
+      ",timestamp"
+      ",known_coin_id"
+      ",rrc_serial"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7, $8);",
+      8),
 
     /* Used in #postgres_begin_shard() */
-    GNUNET_PQ_make_prepare ("get_open_shard",
-                            "SELECT"
-                            " start_row"
-                            ",end_row"
-                            " FROM work_shards"
-                            " WHERE job_name=$1"
-                            "   AND last_attempt<$2"
-                            "   AND completed=FALSE"
-                            " ORDER BY last_attempt ASC"
-                            " LIMIT 1;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "get_open_shard",
+      "SELECT"
+      " start_row"
+      ",end_row"
+      " FROM work_shards"
+      " WHERE job_name=$1"
+      "   AND last_attempt<$2"
+      "   AND completed=FALSE"
+      " ORDER BY last_attempt ASC"
+      " LIMIT 1;",
+      2),
     /* Used in #postgres_begin_revolving_shard() */
-    GNUNET_PQ_make_prepare ("get_open_revolving_shard",
-                            "SELECT"
-                            " start_row"
-                            ",end_row"
-                            " FROM revolving_work_shards"
-                            " WHERE job_name=$1"
-                            "   AND active=FALSE"
-                            " ORDER BY last_attempt ASC"
-                            " LIMIT 1;",
-                            2),
+    GNUNET_PQ_make_prepare (
+      "get_open_revolving_shard",
+      "SELECT"
+      " start_row"
+      ",end_row"
+      " FROM revolving_work_shards"
+      " WHERE job_name=$1"
+      "   AND active=FALSE"
+      " ORDER BY last_attempt ASC"
+      " LIMIT 1;",
+      2),
     /* Used in #postgres_begin_shard() */
-    GNUNET_PQ_make_prepare ("reclaim_shard",
-                            "UPDATE work_shards"
-                            " SET last_attempt=$2"
-                            " WHERE job_name=$1"
-                            "   AND start_row=$3"
-                            "   AND end_row=$4",
-                            4),
+    GNUNET_PQ_make_prepare (
+      "reclaim_shard",
+      "UPDATE work_shards"
+      " SET last_attempt=$2"
+      " WHERE job_name=$1"
+      "   AND start_row=$3"
+      "   AND end_row=$4",
+      4),
     /* Used in #postgres_begin_revolving_shard() */
-    GNUNET_PQ_make_prepare ("reclaim_revolving_shard",
-                            "UPDATE revolving_work_shards"
-                            " SET last_attempt=$2"
-                            "    ,active=TRUE"
-                            " WHERE job_name=$1"
-                            "   AND start_row=$3"
-                            "   AND end_row=$4",
-                            4),
+    GNUNET_PQ_make_prepare (
+      "reclaim_revolving_shard",
+      "UPDATE revolving_work_shards"
+      " SET last_attempt=$2"
+      "    ,active=TRUE"
+      " WHERE job_name=$1"
+      "   AND start_row=$3"
+      "   AND end_row=$4",
+      4),
     /* Used in #postgres_begin_shard() */
-    GNUNET_PQ_make_prepare ("get_last_shard",
-                            "SELECT"
-                            " end_row"
-                            " FROM work_shards"
-                            " WHERE job_name=$1"
-                            " ORDER BY end_row DESC"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_last_shard",
+      "SELECT"
+      " end_row"
+      " FROM work_shards"
+      " WHERE job_name=$1"
+      " ORDER BY end_row DESC"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_begin_revolving_shard() */
-    GNUNET_PQ_make_prepare ("get_last_revolving_shard",
-                            "SELECT"
-                            " end_row"
-                            " FROM revolving_work_shards"
-                            " WHERE job_name=$1"
-                            " ORDER BY end_row DESC"
-                            " LIMIT 1;",
-                            1),
+    GNUNET_PQ_make_prepare (
+      "get_last_revolving_shard",
+      "SELECT"
+      " end_row"
+      " FROM revolving_work_shards"
+      " WHERE job_name=$1"
+      " ORDER BY end_row DESC"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_begin_shard() */
-    GNUNET_PQ_make_prepare ("claim_next_shard",
-                            "INSERT INTO work_shards"
-                            "(job_name"
-                            ",last_attempt"
-                            ",start_row"
-                            ",end_row"
-                            ") VALUES "
-                            "($1, $2, $3, $4);",
-                            4),
+    GNUNET_PQ_make_prepare (
+      "claim_next_shard",
+      "INSERT INTO work_shards"
+      "(job_name"
+      ",last_attempt"
+      ",start_row"
+      ",end_row"
+      ") VALUES "
+      "($1, $2, $3, $4);",
+      4),
     /* Used in #postgres_claim_revolving_shard() */
-    GNUNET_PQ_make_prepare ("create_revolving_shard",
-                            "INSERT INTO revolving_work_shards"
-                            "(job_name"
-                            ",last_attempt"
-                            ",start_row"
-                            ",end_row"
-                            ",active"
-                            ") VALUES "
-                            "($1, $2, $3, $4, TRUE);",
-                            4),
+    GNUNET_PQ_make_prepare (
+      "create_revolving_shard",
+      "INSERT INTO revolving_work_shards"
+      "(job_name"
+      ",last_attempt"
+      ",start_row"
+      ",end_row"
+      ",active"
+      ") VALUES "
+      "($1, $2, $3, $4, TRUE);",
+      4),
     /* Used in #postgres_complete_shard() */
-    GNUNET_PQ_make_prepare ("complete_shard",
-                            "UPDATE work_shards"
-                            " SET completed=TRUE"
-                            " WHERE job_name=$1"
-                            "   AND start_row=$2"
-                            "   AND end_row=$3",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "complete_shard",
+      "UPDATE work_shards"
+      " SET completed=TRUE"
+      " WHERE job_name=$1"
+      "   AND start_row=$2"
+      "   AND end_row=$3",
+      3),
     /* Used in #postgres_complete_shard() */
-    GNUNET_PQ_make_prepare ("release_revolving_shard",
-                            "UPDATE revolving_work_shards"
-                            " SET active=FALSE"
-                            " WHERE job_name=$1"
-                            "   AND start_row=$2"
-                            "   AND end_row=$3",
-                            3),
+    GNUNET_PQ_make_prepare (
+      "release_revolving_shard",
+      "UPDATE revolving_work_shards"
+      " SET active=FALSE"
+      " WHERE job_name=$1"
+      "   AND start_row=$2"
+      "   AND end_row=$3",
+      3),
     /* Used in #postgres_delete_revolving_shards() */
-    GNUNET_PQ_make_prepare ("delete_revolving_shards",
-                            "DELETE FROM revolving_work_shards",
-                            0),
+    GNUNET_PQ_make_prepare (
+      "delete_revolving_shards",
+      "DELETE FROM revolving_work_shards",
+      0),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -3706,6 +3882,7 @@ postgres_select_kyc_status (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param payto_uri the payto URI to check
+ * @param oauth_username user ID to store
  * @param[out] kyc set to the KYC status of the wallet
  * @return transaction status
  */
@@ -5011,54 +5188,6 @@ postgres_mark_deposit_tiny (void *cls,
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "mark_deposit_tiny",
                                              params);
-}
-
-
-/**
- * Test if a deposit was marked as done, thereby declaring that it cannot be
- * refunded anymore.
- *
- * @param cls the @e cls of this struct with the plugin-specific state
- * @param coin_pub the coin to check for deposit
- * @param merchant_pub merchant to receive the deposit
- * @param h_contract_terms contract terms of the deposit
- * @return #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT if is is marked done,
- *         #GNUNET_DB_STATUS_SUCCESS_NO_RESULTS if not,
- *         otherwise transaction error status (incl. deposit unknown)
- */
-static enum GNUNET_DB_QueryStatus
-postgres_test_deposit_done (
-  void *cls,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_MerchantPublicKeyP *merchant_pub,
-  const struct TALER_PrivateContractHash *h_contract_terms)
-{
-  struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (coin_pub),
-    GNUNET_PQ_query_param_auto_from_type (merchant_pub),
-    GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
-    GNUNET_PQ_query_param_end
-  };
-  uint8_t done = 0;
-  struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_auto_from_type ("done",
-                                          &done),
-    GNUNET_PQ_result_spec_end
-  };
-  enum GNUNET_DB_QueryStatus qs;
-
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "test_deposit_done",
-                                                 params,
-                                                 rs);
-  if (qs < 0)
-    return qs;
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    return GNUNET_DB_STATUS_HARD_ERROR; /* deposit MUST exist */
-  return (done
-          ? GNUNET_DB_STATUS_SUCCESS_ONE_RESULT
-          : GNUNET_DB_STATUS_SUCCESS_NO_RESULTS);
 }
 
 
@@ -11569,7 +11698,6 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->have_deposit = &postgres_have_deposit;
   plugin->have_deposit2 = &postgres_have_deposit2;
   plugin->mark_deposit_tiny = &postgres_mark_deposit_tiny;
-  plugin->test_deposit_done = &postgres_test_deposit_done;
   plugin->mark_deposit_done = &postgres_mark_deposit_done;
   plugin->get_ready_deposit = &postgres_get_ready_deposit;
   plugin->iterate_matching_deposits = &postgres_iterate_matching_deposits;

@@ -46,37 +46,50 @@ lrbt_cb_table_denominations (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_uint32 ("denom_type",
-                                    &td.details.denominations.denom_type),
-      GNUNET_PQ_result_spec_uint32 ("age_restrictions",
-                                    &td.details.denominations.age_restrictions),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_uint32 (
+        "denom_type",
+        &td.details.denominations.denom_type),
+      GNUNET_PQ_result_spec_uint32 (
+        "age_restrictions",
+        &td.details.denominations.age_restrictions),
       TALER_PQ_result_spec_denom_pub (
         "denom_pub",
         &td.details.denominations.denom_pub),
-      GNUNET_PQ_result_spec_auto_from_type ("master_sig",
-                                            &td.details.denominations.master_sig),
-      TALER_PQ_result_spec_absolute_time ("valid_from",
-                                          &td.details.denominations.valid_from),
-      TALER_PQ_result_spec_absolute_time ("expire_withdraw",
-                                          &td.details.denominations.
-                                          expire_withdraw),
-      TALER_PQ_result_spec_absolute_time ("expire_deposit",
-                                          &td.details.denominations.
-                                          expire_deposit),
-      TALER_PQ_result_spec_absolute_time ("expire_legal",
-                                          &td.details.denominations.expire_legal),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("coin",
-                                   &td.details.denominations.coin),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_withdraw",
-                                   &td.details.denominations.fee_withdraw),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
-                                   &td.details.denominations.fee_deposit),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refresh",
-                                   &td.details.denominations.fee_refresh),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("fee_refund",
-                                   &td.details.denominations.fee_refund),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "master_sig",
+        &td.details.denominations.master_sig),
+      TALER_PQ_result_spec_absolute_time (
+        "valid_from",
+        &td.details.denominations.valid_from),
+      TALER_PQ_result_spec_absolute_time (
+        "expire_withdraw",
+        &td.details.denominations.
+        expire_withdraw),
+      TALER_PQ_result_spec_absolute_time (
+        "expire_deposit",
+        &td.details.denominations.
+        expire_deposit),
+      TALER_PQ_result_spec_absolute_time (
+        "expire_legal",
+        &td.details.denominations.expire_legal),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "coin",
+        &td.details.denominations.coin),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "fee_withdraw",
+        &td.details.denominations.fee_withdraw),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "fee_deposit",
+        &td.details.denominations.fee_deposit),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "fee_refresh",
+        &td.details.denominations.fee_refresh),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "fee_refund",
+        &td.details.denominations.fee_refund),
       GNUNET_PQ_result_spec_end
     };
 
@@ -261,21 +274,27 @@ lrbt_cb_table_reserves_in (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_uint64 ("wire_reference",
-                                    &td.details.reserves_in.wire_reference),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("credit",
-                                   &td.details.reserves_in.credit),
-      GNUNET_PQ_result_spec_uint64 ("sender_account",
-                                    &td.details.reserves_in.sender_account),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "reserve_uuid",
+        &td.details.reserves_in.reserve_uuid),
+      GNUNET_PQ_result_spec_uint64 (
+        "wire_reference",
+        &td.details.reserves_in.wire_reference),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "credit",
+        &td.details.reserves_in.credit),
+      GNUNET_PQ_result_spec_uint64 (
+        "wire_source_serial_id",
+        &td.details.reserves_in.sender_account),
       GNUNET_PQ_result_spec_string (
         "exchange_account_section",
         &td.details.reserves_in.exchange_account_section),
-      TALER_PQ_result_spec_absolute_time ("execution_date",
-                                          &td.details.reserves_in.execution_date),
-      GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
-                                    &td.details.reserves_in.reserve_uuid),
+      TALER_PQ_result_spec_absolute_time (
+        "execution_date",
+        &td.details.reserves_in.execution_date),
       GNUNET_PQ_result_spec_end
     };
 
@@ -316,22 +335,27 @@ lrbt_cb_table_reserves_close (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
-                                    &td.details.reserves_close.reserve_uuid),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "reserve_uuid",
+        &td.details.reserves_close.reserve_uuid),
       TALER_PQ_result_spec_absolute_time (
         "execution_date",
         &td.details.reserves_close.execution_date),
-      GNUNET_PQ_result_spec_auto_from_type ("wtid",
-                                            &td.details.reserves_close.wtid),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "wtid",
+        &td.details.reserves_close.wtid),
       GNUNET_PQ_result_spec_uint64 (
         "wire_target_serial_id",
         &td.details.reserves_close.wire_target_serial_id),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
-                                   &td.details.reserves_close.amount),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
-                                   &td.details.reserves_close.closing_fee),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount",
+        &td.details.reserves_close.amount),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "closing_fee",
+        &td.details.reserves_close.closing_fee),
       GNUNET_PQ_result_spec_end
     };
 
@@ -641,15 +665,18 @@ lrbt_cb_table_known_coins (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
-                                            &td.details.known_coins.coin_pub),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "coin_pub",
+        &td.details.known_coins.coin_pub),
       TALER_PQ_result_spec_denom_sig (
         "denom_sig",
         &td.details.known_coins.denom_sig),
-      GNUNET_PQ_result_spec_uint64 ("denominations_serial",
-                                    &td.details.known_coins.denominations_serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "denominations_serial",
+        &td.details.known_coins.denominations_serial),
       GNUNET_PQ_result_spec_end
     };
 
@@ -970,16 +997,21 @@ lrbt_cb_table_refunds (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
-      GNUNET_PQ_result_spec_auto_from_type ("merchant_sig",
-                                            &td.details.refunds.merchant_sig),
-      GNUNET_PQ_result_spec_uint64 ("rtransaction_id",
-                                    &td.details.refunds.rtransaction_id),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
-                                   &td.details.refunds.amount_with_fee),
-      GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
-                                    &td.details.refunds.deposit_serial_id),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "merchant_sig",
+        &td.details.refunds.merchant_sig),
+      GNUNET_PQ_result_spec_uint64 (
+        "rtransaction_id",
+        &td.details.refunds.rtransaction_id),
+      TALER_PQ_RESULT_SPEC_AMOUNT (
+        "amount_with_fee",
+        &td.details.refunds.amount_with_fee),
+      GNUNET_PQ_result_spec_uint64 (
+        "deposit_serial_id",
+        &td.details.refunds.deposit_serial_id),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1076,8 +1108,9 @@ lrbt_cb_table_aggregation_tracking (void *cls,
   for (unsigned int i = 0; i<num_results; i++)
   {
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("serial",
-                                    &td.serial),
+      GNUNET_PQ_result_spec_uint64 (
+        "serial",
+        &td.serial),
       GNUNET_PQ_result_spec_uint64 (
         "deposit_serial_id",
         &td.details.aggregation_tracking.deposit_serial_id),

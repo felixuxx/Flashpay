@@ -198,7 +198,8 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     TALER_PQ_query_param_absolute_time (
       &td->details.reserves_close.execution_date),
-    GNUNET_PQ_query_param_auto_from_type (&td->details.reserves_close.wtid),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_close.wtid),
     GNUNET_PQ_query_param_uint64 (
       &td->details.reserves_close.wire_target_serial_id),
     TALER_PQ_query_param_amount (&td->details.reserves_close.amount),
@@ -225,17 +226,20 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_auto_from_type (&td->details.reserves_out.h_blind_ev),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_out.h_blind_ev),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.reserves_out.denominations_serial),
     TALER_PQ_query_param_denom_sig (
       &td->details.reserves_out.denom_sig),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.reserves_out.reserve_uuid),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_out.reserve_sig),
     TALER_PQ_query_param_absolute_time (
       &td->details.reserves_out.execution_date),
-    TALER_PQ_query_param_amount (&td->details.reserves_out.amount_with_fee),
-    GNUNET_PQ_query_param_uint64 (&td->details.reserves_out.reserve_uuid),
-    GNUNET_PQ_query_param_uint64 (
-      &td->details.reserves_out.denominations_serial),
+    TALER_PQ_query_param_amount (
+      &td->details.reserves_out.amount_with_fee),
     GNUNET_PQ_query_param_end
   };
 
@@ -365,7 +369,8 @@ irbt_cb_table_known_coins (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    GNUNET_PQ_query_param_auto_from_type (&td->details.known_coins.coin_pub),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.known_coins.coin_pub),
     TALER_PQ_query_param_denom_sig (
       &td->details.known_coins.denom_sig),
     GNUNET_PQ_query_param_uint64 (

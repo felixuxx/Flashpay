@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS wire_targets
 ,h_payto BYTEA NOT NULL CHECK (LENGTH(h_payto)=64)
 ,payto_uri VARCHAR NOT NULL
 ,kyc_ok BOOLEAN NOT NULL DEFAULT (false)
-,oauth_username VARCHAR NOT NULL
+,oauth_username VARCHAR
 ,PRIMARY KEY (h_payto)
 );
 COMMENT ON TABLE wire_targets

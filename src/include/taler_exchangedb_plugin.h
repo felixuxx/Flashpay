@@ -2715,26 +2715,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Test if a deposit was marked as done, thereby declaring that it
-   * cannot be refunded anymore.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param coin_pub the coin to check for deposit
-   * @param merchant_pub merchant to receive the deposit
-   * @param h_contract_terms contract terms of the deposit
-   * @return #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT if is is marked done,
-   *         #GNUNET_DB_STATUS_SUCCESS_NO_RESULTS if not,
-   *         otherwise transaction error status (incl. deposit unknown)
-   */
-  enum GNUNET_DB_QueryStatus
-  (*test_deposit_done)(void *cls,
-                       const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                       const struct TALER_MerchantPublicKeyP *merchant_pub,
-                       const struct
-                       TALER_PrivateContractHash *h_contract_terms);
-
-
-  /**
    * Mark a deposit as done, thereby declaring that it cannot be
    * executed at all anymore, and should no longer be returned by
    * @e iterate_ready_deposits() or @e iterate_matching_deposits().

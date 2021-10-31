@@ -1893,21 +1893,11 @@ run (void *cls)
   FAILIF (GNUNET_OK !=
           plugin->start (plugin->cls,
                          "test-3"));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->test_deposit_done (plugin->cls,
-                                     &deposit.coin.coin_pub,
-                                     &deposit.merchant_pub,
-                                     &deposit.h_contract_terms));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_done (plugin->cls,
                                      deposit_rowid));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->test_deposit_done (plugin->cls,
-                                     &deposit.coin.coin_pub,
-                                     &deposit.merchant_pub,
-                                     &deposit.h_contract_terms));
 
   result = 10;
   deposit2 = deposit;
