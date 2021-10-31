@@ -1897,8 +1897,7 @@ run (void *cls)
           plugin->test_deposit_done (plugin->cls,
                                      &deposit.coin.coin_pub,
                                      &deposit.merchant_pub,
-                                     &deposit.h_contract_terms,
-                                     &h_wire));
+                                     &deposit.h_contract_terms));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->mark_deposit_done (plugin->cls,
                                      deposit_rowid));
@@ -1908,8 +1907,7 @@ run (void *cls)
           plugin->test_deposit_done (plugin->cls,
                                      &deposit.coin.coin_pub,
                                      &deposit.merchant_pub,
-                                     &deposit.h_contract_terms,
-                                     &h_wire));
+                                     &deposit.h_contract_terms));
 
   result = 10;
   deposit2 = deposit;

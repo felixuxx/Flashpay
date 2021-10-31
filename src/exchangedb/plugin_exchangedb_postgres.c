@@ -423,16 +423,15 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare ("reserve_create",
                             "INSERT INTO reserves "
                             "(reserve_pub"
-                            ",account_details"
                             ",current_balance_val"
                             ",current_balance_frac"
                             ",expiration_date"
                             ",gc_date"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6)"
+                            "($1, $2, $3, $4, $5)"
                             " ON CONFLICT DO NOTHING"
                             " RETURNING reserve_uuid;",
-                            6),
+                            5),
     /* Used in #postgres_insert_reserve_closed() */
     GNUNET_PQ_make_prepare ("reserves_close_insert",
                             "INSERT INTO reserves_close "
@@ -999,6 +998,8 @@ prepare_statements (struct PostgresClosure *pg)
                             "SELECT"
                             " kyc_ok"
                             ",wire_target_serial_id AS payment_target_uuid"
+                            ",wire_salt"
+                            ",payto_uri AS receiver_wire_account"
                             ",amount_with_fee_val"
                             ",amount_with_fee_frac"
                             ",denom.fee_deposit_val"
@@ -1009,11 +1010,10 @@ prepare_statements (struct PostgresClosure *pg)
                             "    JOIN known_coins USING (known_coin_id)"
                             "    JOIN denominations denom USING (denominations_serial)"
                             " WHERE ((coin_pub=$1)"
-                            "    AND (merchant_pub=$4)"
+                            "    AND (merchant_pub=$3)"
                             "    AND (h_contract_terms=$2)"
-                            "    AND (h_wire=$3)"
                             " );",
-                            4),
+                            3),
     /* Used in #postgres_get_ready_deposit() */
     GNUNET_PQ_make_prepare ("deposits_get_ready",
                             "SELECT"
@@ -1087,9 +1087,8 @@ prepare_statements (struct PostgresClosure *pg)
                             " JOIN known_coins USING (known_coin_id)"
                             " WHERE coin_pub=$1"
                             "   AND merchant_pub=$2"
-                            "   AND h_contract_terms=$3"
-                            "   AND h_wire=$4;",
-                            5),
+                            "   AND h_contract_terms=$3;",
+                            3),
     /* Used in #postgres_get_coin_transactions() to obtain information
        about how a coin has been spend with /deposit requests. */
     GNUNET_PQ_make_prepare ("get_deposit_with_coin_pub",
@@ -3945,7 +3944,6 @@ postgres_reserves_in_insert (void *cls,
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
-      GNUNET_PQ_query_param_string (sender_account_details),
       TALER_PQ_query_param_amount (balance),
       TALER_PQ_query_param_absolute_time (&expiry),
       TALER_PQ_query_param_absolute_time (&gc),
@@ -5024,25 +5022,22 @@ postgres_mark_deposit_tiny (void *cls,
  * @param coin_pub the coin to check for deposit
  * @param merchant_pub merchant to receive the deposit
  * @param h_contract_terms contract terms of the deposit
- * @param h_wire hash of the merchant's wire details
  * @return #GNUNET_DB_STATUS_SUCCESS_ONE_RESULT if is is marked done,
  *         #GNUNET_DB_STATUS_SUCCESS_NO_RESULTS if not,
  *         otherwise transaction error status (incl. deposit unknown)
  */
 static enum GNUNET_DB_QueryStatus
-postgres_test_deposit_done (void *cls,
-                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                            const struct TALER_MerchantPublicKeyP *merchant_pub,
-                            const struct
-                            TALER_PrivateContractHash *h_contract_terms,
-                            const struct TALER_MerchantWireHash *h_wire)
+postgres_test_deposit_done (
+  void *cls,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_PrivateContractHash *h_contract_terms)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (h_contract_terms),
-    GNUNET_PQ_query_param_auto_from_type (h_wire),
     GNUNET_PQ_query_param_end
   };
   uint8_t done = 0;
@@ -7139,6 +7134,10 @@ postgres_lookup_transfer_by_deposit (
        and return #GNUNET_YES! */
     uint8_t ok8 = 0;
     struct GNUNET_PQ_ResultSpec rs2[] = {
+      GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
+                                            &wire_salt),
+      GNUNET_PQ_result_spec_string ("payto_uri",
+                                    &payto_uri),
       GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
                                     &kyc->payment_target_uuid),
       GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
@@ -7156,6 +7155,19 @@ postgres_lookup_transfer_by_deposit (
                                                    "get_deposit_for_wtid",
                                                    params,
                                                    rs2);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+    {
+      struct TALER_MerchantWireHash wh;
+
+      TALER_merchant_wire_signature_hash (payto_uri,
+                                          &wire_salt,
+                                          &wh);
+      GNUNET_PQ_cleanup_result (rs);
+      if (0 !=
+          GNUNET_memcmp (&wh,
+                         h_wire))
+        return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
+    }
     kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
     kyc->ok = (0 != ok8);
     return qs;

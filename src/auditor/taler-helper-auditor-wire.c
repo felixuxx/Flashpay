@@ -789,8 +789,8 @@ wire_missing_cb (void *cls,
                  const struct TALER_Amount *amount,
                  const char *payto_uri,
                  struct GNUNET_TIME_Absolute deadline,
-                 /* bool? */ int tiny,
-                 /* bool? */ int done)
+                 bool tiny,
+                 bool done)
 {
   json_t *rep;
 
@@ -802,9 +802,9 @@ wire_missing_cb (void *cls,
   {
     /* In internal mode, we insist that the entry was
        actually marked as tiny. */
-    if ( (GNUNET_YES == tiny) &&
-         (0 > TALER_amount_cmp (amount,
-                                &tiny_amount)) )
+    if (tiny &&
+        (0 > TALER_amount_cmp (amount,
+                               &tiny_amount)) )
       return; /* acceptable, amount was tiny */
   }
   else
