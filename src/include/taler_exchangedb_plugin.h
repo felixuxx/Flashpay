@@ -2064,8 +2064,8 @@ typedef void
   const struct TALER_Amount *amount,
   const char *payto_uri,
   struct GNUNET_TIME_Absolute deadline,
-  /* bool? */ int tiny,
-  /* bool? */ int done);
+  bool tiny,
+  bool done);
 
 
 /**
