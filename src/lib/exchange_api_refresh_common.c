@@ -196,7 +196,7 @@ serialize_melt_data (const struct MeltData *md)
 
       ps = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("ps",
-                                    &md->fresh_coins[i][j]));
+                                    &md->fresh_coins[j][i]));
       GNUNET_assert (0 ==
                      json_array_append (planchet_secrets,
                                         ps));
@@ -305,7 +305,7 @@ TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data,
     {
       struct GNUNET_JSON_Specification jspec[] = {
         GNUNET_JSON_spec_fixed_auto ("ps",
-                                     &md->fresh_coins[i][j]),
+                                     &md->fresh_coins[j][i]),
         GNUNET_JSON_spec_end ()
       };
 
