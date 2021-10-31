@@ -199,7 +199,7 @@ withdraw_transaction (void *cls,
   struct WithdrawContext *wc = cls;
   struct TALER_EXCHANGEDB_Reserve r;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_DenominationSignature denom_sig;
+  struct TALER_BlindedDenominationSignature denom_sig;
 
 #if OPTIMISTIC_SIGN
   /* store away optimistic signature to protect
@@ -231,7 +231,7 @@ withdraw_transaction (void *cls,
        optimization trade-off loses in this case: we unnecessarily computed
        a signature :-( */
 #if OPTIMISTIC_SIGN
-    TALER_denom_sig_free (&denom_sig);
+    TALER_blinded_denom_sig_free (&denom_sig);
 #endif
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
@@ -582,7 +582,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     {
       /* Even if #withdraw_transaction() failed, it may have created a signature
          (or we might have done it optimistically above). */
-      TALER_denom_sig_free (&wc.collectable.sig);
+      TALER_blinded_denom_sig_free (&wc.collectable.sig);
       GNUNET_JSON_parse_free (spec);
       return mhd_ret;
     }
@@ -593,7 +593,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   if (wc.kyc_denied)
   {
-    TALER_denom_sig_free (&wc.collectable.sig);
+    TALER_blinded_denom_sig_free (&wc.collectable.sig);
     return TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_ACCEPTED,
@@ -607,9 +607,9 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     ret = TALER_MHD_REPLY_JSON_PACK (
       rc->connection,
       MHD_HTTP_OK,
-      TALER_JSON_pack_denom_sig ("ev_sig",
-                                 &wc.collectable.sig));
-    TALER_denom_sig_free (&wc.collectable.sig);
+      TALER_JSON_pack_blinded_denom_sig ("ev_sig",
+                                         &wc.collectable.sig));
+    TALER_blinded_denom_sig_free (&wc.collectable.sig);
     return ret;
   }
 }

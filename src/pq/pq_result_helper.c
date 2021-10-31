@@ -630,7 +630,7 @@ extract_denom_sig (void *cls,
   size_t len;
   const char *res;
   int fnum;
-  uint32_t be;
+  uint32_t be[2];
 
   (void) cls;
   fnum = PQfnumber (result,
@@ -661,9 +661,14 @@ extract_denom_sig (void *cls,
   memcpy (&be,
           res,
           sizeof (be));
+  if (0x00 != ntohl (be[1]))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
   res += sizeof (be);
   len -= sizeof (be);
-  sig->cipher = ntohl (be);
+  sig->cipher = ntohl (be[0]);
   switch (sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -709,6 +714,124 @@ TALER_PQ_result_spec_denom_sig (const char *name,
   struct GNUNET_PQ_ResultSpec res = {
     .conv = &extract_denom_sig,
     .cleaner = &clean_denom_sig,
+    .dst = (void *) denom_sig,
+    .fname = name
+  };
+
+  return res;
+}
+
+
+/**
+ * Extract data from a Postgres database @a result at row @a row.
+ *
+ * @param cls closure
+ * @param result where to extract data from
+ * @param int row to extract data from
+ * @param fname name (or prefix) of the fields to extract from
+ * @param[in,out] dst_size where to store size of result, may be NULL
+ * @param[out] dst where to store the result
+ * @return
+ *   #GNUNET_YES if all results could be extracted
+ *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
+ */
+static enum GNUNET_GenericReturnValue
+extract_blinded_denom_sig (void *cls,
+                           PGresult *result,
+                           int row,
+                           const char *fname,
+                           size_t *dst_size,
+                           void *dst)
+{
+  struct TALER_BlindedDenominationSignature *sig = dst;
+  size_t len;
+  const char *res;
+  int fnum;
+  uint32_t be[2];
+
+  (void) cls;
+  fnum = PQfnumber (result,
+                    fname);
+  if (fnum < 0)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (PQgetisnull (result,
+                   row,
+                   fnum))
+    return GNUNET_NO;
+
+  /* if a field is null, continue but
+   * remember that we now return a different result */
+  len = PQgetlength (result,
+                     row,
+                     fnum);
+  res = PQgetvalue (result,
+                    row,
+                    fnum);
+  if (len < sizeof (be))
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  memcpy (&be,
+          res,
+          sizeof (be));
+  if (0x01 != ntohl (be[1])) /* magic marker: blinded */
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  res += sizeof (be);
+  len -= sizeof (be);
+  sig->cipher = ntohl (be[0]);
+  switch (sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    sig->details.blinded_rsa_signature
+      = GNUNET_CRYPTO_rsa_signature_decode (res,
+                                            len);
+    if (NULL == sig->details.blinded_rsa_signature)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  // FIXME: add CS case!
+  default:
+    GNUNET_break (0);
+  }
+  return GNUNET_SYSERR;
+}
+
+
+/**
+ * Function called to clean up memory allocated
+ * by a #GNUNET_PQ_ResultConverter.
+ *
+ * @param cls closure
+ * @param rd result data to clean up
+ */
+static void
+clean_blinded_denom_sig (void *cls,
+                         void *rd)
+{
+  struct TALER_BlindedDenominationSignature *denom_sig = rd;
+
+  (void) cls;
+  TALER_blinded_denom_sig_free (denom_sig);
+}
+
+
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_blinded_denom_sig (
+  const char *name,
+  struct TALER_BlindedDenominationSignature *denom_sig)
+{
+  struct GNUNET_PQ_ResultSpec res = {
+    .conv = &extract_blinded_denom_sig,
+    .cleaner = &clean_blinded_denom_sig,
     .dst = (void *) denom_sig,
     .fname = name
   };

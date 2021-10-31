@@ -78,6 +78,18 @@ TALER_PQ_query_param_denom_sig (
 
 
 /**
+ * Generate query parameter for a blinded denomination signature.  Internally,
+ * the various attributes of the signature will be serialized into on
+ * variable-size BLOB.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_blinded_denom_sig (
+  const struct TALER_BlindedDenominationSignature *denom_sig);
+
+
+/**
  * Generate query parameter for a JSON object (stored as a string
  * in the DB).  Note that @a x must really be a JSON object or array,
  * passing just a value (string, integer) is not supported and will
@@ -166,6 +178,19 @@ TALER_PQ_result_spec_denom_pub (const char *name,
 struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_denom_sig (const char *name,
                                 struct TALER_DenominationSignature *denom_sig);
+
+
+/**
+ * Blinded denomination signature expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] denom_sig where to store the denomination signature
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_blinded_denom_sig (
+  const char *name,
+  struct TALER_BlindedDenominationSignature *denom_sig);
 
 
 /**

@@ -88,7 +88,7 @@ static void
 handle_reserve_withdraw_finished (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct GNUNET_CRYPTO_RsaSignature *blind_sig)
+  const struct TALER_BlindedDenominationSignature *blind_sig)
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh = cls;
   struct TALER_EXCHANGE_WithdrawResponse wr = {

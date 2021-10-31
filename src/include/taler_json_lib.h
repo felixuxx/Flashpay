@@ -160,6 +160,21 @@ TALER_JSON_pack_denom_sig (
 
 /**
  * Generate packer instruction for a JSON field of type
+ * blinded denomination signature (that needs to be
+ * unblinded before it becomes valid).
+ *
+ * @param name name of the field to add to the object
+ * @param sig signature
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_blinded_denom_sig (
+  const char *name,
+  const struct TALER_BlindedDenominationSignature *sig);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
  * amount.
  *
  * @param name name of the field to add to the object
@@ -325,6 +340,20 @@ TALER_JSON_spec_denom_pub (const char *field,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_denom_sig (const char *field,
                            struct TALER_DenominationSignature *sig);
+
+
+/**
+ * Generate line in parser specification for a
+ * blinded denomination signature.
+ *
+ * @param field name of the field
+ * @param sig the blinded signature to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_blinded_denom_sig (
+  const char *field,
+  struct TALER_BlindedDenominationSignature *sig);
 
 
 /**

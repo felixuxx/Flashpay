@@ -171,7 +171,7 @@ TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
  * @return signature, the value inside the structure will be NULL on failure,
  *         see @a ec for details about the failure
  */
-struct TALER_DenominationSignature
+struct TALER_BlindedDenominationSignature
 TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
                             const void *msg,
                             size_t msg_size,

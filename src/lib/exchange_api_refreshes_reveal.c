@@ -137,12 +137,12 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     const struct TALER_PlanchetSecretsP *fc;
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
-    struct GNUNET_CRYPTO_RsaSignature *blind_sig;
+    struct TALER_BlindedDenominationSignature blind_sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_CoinPubHash coin_hash;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_rsa_signature ("ev_sig",
-                                      &blind_sig),
+      TALER_JSON_spec_blinded_denom_sig ("ev_sig",
+                                         &blind_sig),
       GNUNET_JSON_spec_end ()
     };
     struct TALER_FreshCoin coin;
@@ -170,17 +170,17 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                          &coin_hash);
     if (GNUNET_OK !=
         TALER_planchet_to_coin (pk,
-                                blind_sig,
+                                &blind_sig,
                                 fc,
                                 &coin_hash,
                                 &coin))
     {
       GNUNET_break_op (0);
-      GNUNET_CRYPTO_rsa_signature_free (blind_sig);
+      GNUNET_JSON_parse_free (spec);
       GNUNET_JSON_parse_free (outer_spec);
       return GNUNET_SYSERR;
     }
-    GNUNET_CRYPTO_rsa_signature_free (blind_sig);
+    GNUNET_JSON_parse_free (spec);
     sigs[i] = coin.sig;
   }
   GNUNET_JSON_parse_free (outer_spec);

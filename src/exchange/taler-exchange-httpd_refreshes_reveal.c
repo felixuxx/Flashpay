@@ -55,7 +55,8 @@
 static MHD_RESULT
 reply_refreshes_reveal_success (struct MHD_Connection *connection,
                                 unsigned int num_freshcoins,
-                                const struct TALER_DenominationSignature *sigs)
+                                const struct
+                                TALER_BlindedDenominationSignature *sigs)
 {
   json_t *list;
 
@@ -68,8 +69,8 @@ reply_refreshes_reveal_success (struct MHD_Connection *connection,
     json_t *obj;
 
     obj = GNUNET_JSON_PACK (
-      TALER_JSON_pack_denom_sig ("ev_sig",
-                                 &sigs[freshcoin_index]));
+      TALER_JSON_pack_blinded_denom_sig ("ev_sig",
+                                         &sigs[freshcoin_index]));
     GNUNET_assert (0 ==
                    json_array_append_new (list,
                                           obj));
@@ -123,7 +124,7 @@ struct RevealContext
   /**
    * Envelopes with the signatures to be returned.  Initially NULL.
    */
-  struct TALER_DenominationSignature *ev_sigs;
+  struct TALER_BlindedDenominationSignature *ev_sigs;
 
   /**
    * Size of the @e dks, @e rcds and @e ev_sigs arrays (if non-NULL).
@@ -187,10 +188,10 @@ check_exists_cb (void *cls,
   if (NULL == rctx->ev_sigs)
   {
     rctx->ev_sigs = GNUNET_new_array (num_freshcoins,
-                                      struct TALER_DenominationSignature);
+                                      struct TALER_BlindedDenominationSignature);
     for (unsigned int i = 0; i<num_freshcoins; i++)
-      TALER_denom_sig_deep_copy (&rctx->ev_sigs[i],
-                                 &rrcs[i].coin_sig);
+      TALER_blinded_denom_sig_deep_copy (&rctx->ev_sigs[i],
+                                         &rrcs[i].coin_sig);
   }
 }
 
@@ -683,7 +684,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
 
   /* sign _early_ (optimistic!) to keep out of transaction scope! */
   rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
-                                    struct TALER_DenominationSignature);
+                                    struct TALER_BlindedDenominationSignature);
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
     enum TALER_ErrorCode ec = TALER_EC_NONE;
@@ -769,7 +770,7 @@ cleanup:
   if (NULL != rctx->ev_sigs)
   {
     for (unsigned int i = 0; i<num_fresh_coins; i++)
-      TALER_denom_sig_free (&rctx->ev_sigs[i]);
+      TALER_blinded_denom_sig_free (&rctx->ev_sigs[i]);
     GNUNET_free (rctx->ev_sigs);
     rctx->ev_sigs = NULL; /* just to be safe... */
   }

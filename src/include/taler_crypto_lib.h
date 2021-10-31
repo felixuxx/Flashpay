@@ -524,6 +524,34 @@ struct TALER_DenominationSignature
 
 
 /**
+ * @brief Type for *blinded* denomination signatures for Taler.
+ * Must be unblinded before it becomes valid.
+ */
+struct TALER_BlindedDenominationSignature
+{
+
+  /**
+   * Type of the signature.
+   */
+  enum TALER_DenominationCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+
+    /**
+     * If we use #TALER_DENOMINATION_RSA in @a cipher.
+     */
+    struct GNUNET_CRYPTO_RsaSignature *blinded_rsa_signature;
+
+  } details;
+
+};
+
+
+/**
  * @brief Type of public signing keys for verifying blindly signed coins.
  */
 struct TALER_DenominationPublicKey
@@ -663,6 +691,16 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
 
 
 /**
+ * Free internals of @a denom_sig, but not @a denom_sig itself.
+ *
+ * @param[in] denom_sig signature to free
+ */
+void
+TALER_blinded_denom_sig_free (
+  struct TALER_BlindedDenominationSignature *denom_sig);
+
+
+/**
  * Compute the hash of the given @a denom_pub.
  *
  * @param denom_pub public key to hash
@@ -695,6 +733,19 @@ TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
 void
 TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
                            const struct TALER_DenominationSignature *denom_src);
+
+
+/**
+ * Make a (deep) copy of the given @a denom_src to
+ * @a denom_dst.
+ *
+ * @param[out] denom_dst target to copy to
+ * @param denom_str public key to copy
+ */
+void
+TALER_blinded_denom_sig_deep_copy (
+  struct TALER_BlindedDenominationSignature *denom_dst,
+  const struct TALER_BlindedDenominationSignature *denom_src);
 
 
 /**
@@ -1014,11 +1065,12 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
-                        const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
-                        const struct TALER_PlanchetSecretsP *ps,
-                        const struct TALER_CoinPubHash *c_hash,
-                        struct TALER_FreshCoin *coin);
+TALER_planchet_to_coin (
+  const struct TALER_DenominationPublicKey *dk,
+  const struct TALER_BlindedDenominationSignature *blind_sig,
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_CoinPubHash *c_hash,
+  struct TALER_FreshCoin *coin);
 
 
 /* ****************** Refresh crypto primitives ************* */
@@ -1215,7 +1267,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh);
  * @return signature, the value inside the structure will be NULL on failure,
  *         see @a ec for details about the failure
  */
-struct TALER_DenominationSignature
+struct TALER_BlindedDenominationSignature
 TALER_CRYPTO_helper_denom_sign (
   struct TALER_CRYPTO_DenominationHelper *dh,
   const struct TALER_DenominationHash *h_denom_pub,

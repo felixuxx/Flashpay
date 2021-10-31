@@ -212,21 +212,23 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 
 
 enum GNUNET_GenericReturnValue
-TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
-                        const struct GNUNET_CRYPTO_RsaSignature *blind_sig,
-                        const struct TALER_PlanchetSecretsP *ps,
-                        const struct TALER_CoinPubHash *c_hash,
-                        struct TALER_FreshCoin *coin)
+TALER_planchet_to_coin (
+  const struct TALER_DenominationPublicKey *dk,
+  const struct TALER_BlindedDenominationSignature *blind_sig,
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_CoinPubHash *c_hash,
+  struct TALER_FreshCoin *coin)
 {
   struct TALER_DenominationSignature sig;
 
-  // FIXME-Gian/Lucien: this will be the bigger
+  // FIXME-Gian/Lucien: this may need a bigger
   // change, as you have the extra round trip
   // => to be discussed!
   GNUNET_assert (TALER_DENOMINATION_RSA == dk->cipher);
+  GNUNET_assert (TALER_DENOMINATION_RSA == blind_sig->cipher);
   sig.cipher = TALER_DENOMINATION_RSA;
   sig.details.rsa_signature
-    = TALER_rsa_unblind (blind_sig,
+    = TALER_rsa_unblind (blind_sig->details.blinded_rsa_signature,
                          &ps->blinding_key.bks,
                          dk->details.rsa_public_key);
   if (GNUNET_OK !=

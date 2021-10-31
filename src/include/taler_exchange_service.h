@@ -1387,7 +1387,7 @@ typedef void
 (*TALER_EXCHANGE_Withdraw2Callback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct GNUNET_CRYPTO_RsaSignature *blind_sig);
+  const struct TALER_BlindedDenominationSignature *blind_sig);
 
 
 /**

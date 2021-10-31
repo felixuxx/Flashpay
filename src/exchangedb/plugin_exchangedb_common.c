@@ -49,7 +49,7 @@ common_free_reserve_history (void *cls,
         struct TALER_EXCHANGEDB_CollectableBlindcoin *cbc;
 
         cbc = rh->details.withdraw;
-        TALER_denom_sig_free (&cbc->sig);
+        TALER_blinded_denom_sig_free (&cbc->sig);
         GNUNET_free (cbc);
         break;
       }

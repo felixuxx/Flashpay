@@ -541,7 +541,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
 }
 
 
-struct TALER_DenominationSignature
+struct TALER_BlindedDenominationSignature
 TALER_CRYPTO_helper_denom_sign (
   struct TALER_CRYPTO_DenominationHelper *dh,
   const struct TALER_DenominationHash *h_denom_pub,
@@ -549,8 +549,8 @@ TALER_CRYPTO_helper_denom_sign (
   size_t msg_size,
   enum TALER_ErrorCode *ec)
 {
-  struct TALER_DenominationSignature ds = {
-    .details.rsa_signature = NULL
+  struct TALER_BlindedDenominationSignature ds = {
+    .details.blinded_rsa_signature = NULL
   };
   {
     char buf[sizeof (struct TALER_CRYPTO_SignRequest) + msg_size];
@@ -652,7 +652,7 @@ TALER_CRYPTO_helper_denom_sign (
         }
         *ec = TALER_EC_NONE;
         ds.cipher = TALER_DENOMINATION_RSA;
-        ds.details.rsa_signature = rsa_signature;
+        ds.details.blinded_rsa_signature = rsa_signature;
         return ds;
       }
     case TALER_HELPER_RSA_MT_RES_SIGN_FAILURE:

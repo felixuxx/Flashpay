@@ -142,6 +142,32 @@ TALER_JSON_pack_denom_sig (
 
 
 struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_blinded_denom_sig (
+  const char *name,
+  const struct TALER_BlindedDenominationSignature *sig)
+{
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  switch (sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    ps.object
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_uint64 ("cipher",
+                                   TALER_DENOMINATION_RSA),
+          GNUNET_JSON_pack_rsa_signature ("blinded_rsa_signature",
+                                          sig->details.blinded_rsa_signature));
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+  return ps;
+}
+
+
+struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_amount (const char *name,
                         const struct TALER_Amount *amount)
 {

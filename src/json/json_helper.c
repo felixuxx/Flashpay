@@ -433,7 +433,7 @@ TALER_JSON_spec_relative_time (const char *name,
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_denom_pub (void *cls,
                  json_t *root,
                  struct GNUNET_JSON_Specification *spec)
@@ -528,7 +528,7 @@ TALER_JSON_spec_denom_pub (const char *field,
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_denom_sig (void *cls,
                  json_t *root,
                  struct GNUNET_JSON_Specification *spec)
@@ -605,6 +605,100 @@ TALER_JSON_spec_denom_sig (const char *field,
   struct GNUNET_JSON_Specification ret = {
     .parser = &parse_denom_sig,
     .cleaner = &clean_denom_sig,
+    .field = field,
+    .ptr = sig
+  };
+
+  return ret;
+}
+
+
+/**
+ * Parse given JSON object to blinded denomination signature.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_blinded_denom_sig (void *cls,
+                         json_t *root,
+                         struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_BlindedDenominationSignature *denom_sig = spec->ptr;
+  uint32_t cipher;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_uint32 ("cipher",
+                             &cipher),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  denom_sig->cipher = (enum TALER_DenominationCipher) cipher;
+  switch (denom_sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_rsa_signature (
+          "blinded_rsa_signature",
+          &denom_sig->details.blinded_rsa_signature),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
+  default:
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+}
+
+
+/**
+ * Cleanup data left from parsing denomination public key.
+ *
+ * @param cls closure, NULL
+ * @param[out] spec where to free the data
+ */
+static void
+clean_blinded_denom_sig (void *cls,
+                         struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_BlindedDenominationSignature *denom_sig = spec->ptr;
+
+  TALER_blinded_denom_sig_free (denom_sig);
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_blinded_denom_sig (
+  const char *field,
+  struct TALER_BlindedDenominationSignature *sig)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_blinded_denom_sig,
+    .cleaner = &clean_blinded_denom_sig,
     .field = field,
     .ptr = sig
   };

@@ -169,6 +169,27 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig)
 }
 
 
+void
+TALER_blinded_denom_sig_free (
+  struct TALER_BlindedDenominationSignature *denom_sig)
+{
+  switch (denom_sig->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    if (NULL != denom_sig->details.blinded_rsa_signature)
+    {
+      GNUNET_CRYPTO_rsa_signature_free (
+        denom_sig->details.blinded_rsa_signature);
+      denom_sig->details.blinded_rsa_signature = NULL;
+    }
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
 /**
  * Make a (deep) copy of the given @a denom_src to
  * @a denom_dst.
@@ -214,13 +235,26 @@ TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
 }
 
 
-/**
- * Compare two denomination public keys.
- *
- * @param denom1 first key
- * @param denom2 second key
- * @return 0 if the keys are equal, otherwise -1 or 1
- */
+void
+TALER_blinded_denom_sig_deep_copy (
+  struct TALER_BlindedDenominationSignature *denom_dst,
+  const struct TALER_BlindedDenominationSignature *denom_src)
+{
+  *denom_dst = *denom_src; /* shallow copy */
+  switch (denom_src->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    denom_dst->details.blinded_rsa_signature
+      = GNUNET_CRYPTO_rsa_signature_dup (
+          denom_src->details.blinded_rsa_signature);
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+}
+
+
 int
 TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
                      const struct TALER_DenominationPublicKey *denom2)

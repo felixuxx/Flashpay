@@ -99,10 +99,10 @@ static enum GNUNET_GenericReturnValue
 reserve_withdraw_ok (struct TALER_EXCHANGE_Withdraw2Handle *wh,
                      const json_t *json)
 {
-  struct GNUNET_CRYPTO_RsaSignature *blind_sig;
+  struct TALER_BlindedDenominationSignature blind_sig;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_rsa_signature ("ev_sig",
-                                    &blind_sig),
+    TALER_JSON_spec_blinded_denom_sig ("ev_sig",
+                                       &blind_sig),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_HttpResponse hr = {
@@ -122,7 +122,7 @@ reserve_withdraw_ok (struct TALER_EXCHANGE_Withdraw2Handle *wh,
   /* signature is valid, return it to the application */
   wh->cb (wh->cb_cls,
           &hr,
-          blind_sig);
+          &blind_sig);
   /* make sure callback isn't called again after return */
   wh->cb = NULL;
   GNUNET_JSON_parse_free (spec);

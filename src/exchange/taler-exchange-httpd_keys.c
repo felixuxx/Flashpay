@@ -1918,14 +1918,14 @@ TEH_keys_denomination_by_hash2 (
 }
 
 
-struct TALER_DenominationSignature
+struct TALER_BlindedDenominationSignature
 TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
                             const void *msg,
                             size_t msg_size,
                             enum TALER_ErrorCode *ec)
 {
   struct TEH_KeyStateHandle *ksh;
-  struct TALER_DenominationSignature none;
+  struct TALER_BlindedDenominationSignature none;
 
   memset (&none,
           0,
