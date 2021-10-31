@@ -196,7 +196,8 @@ check_SCRIPTS = \
   test-sync.sh
 
 .NOTPARALLEL:
-TESTS = $(check_SCRIPTS)
+# Disabled for now: need working wallet first!
+# TESTS = $(check_SCRIPTS)
 
 EXTRA_DIST = \
   taler-auditor.in \
