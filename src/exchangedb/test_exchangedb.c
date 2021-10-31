@@ -1472,7 +1472,6 @@ run (void *cls)
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
   struct TALER_WireSalt salt;
-  struct TALER_MerchantWireHash h_wire;
 
   dkp = NULL;
   rh = NULL;
@@ -1803,7 +1802,7 @@ run (void *cls)
   TALER_merchant_wire_signature_hash (
     "payto://iban/DE67830654080004822650?receiver-name=Test",
     &deposit.wire_salt,
-    &h_wire);
+    &h_wire_wt);
   deposit.amount_with_fee = value;
   deposit.deposit_fee = fee_deposit;
 
@@ -1855,6 +1854,13 @@ run (void *cls)
                                                    NULL));
   FAILIF (1 != auditor_row_cnt);
   result = 9;
+  sleep (2); /* give deposit time to be ready */
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->get_ready_deposit (plugin->cls,
+                                     0,
+                                     INT64_MAX,
+                                     &deposit_cb,
+                                     &deposit));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->iterate_matching_deposits (plugin->cls,
                                              wire_target_row,
@@ -1862,13 +1868,6 @@ run (void *cls)
                                              &matching_deposit_cb,
                                              &deposit,
                                              2));
-  sleep (2); /* give deposit time to be ready */
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_ready_deposit (plugin->cls,
-                                     0,
-                                     INT32_MAX,
-                                     &deposit_cb,
-                                     &deposit));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->commit (plugin->cls));
   FAILIF (GNUNET_OK !=
@@ -1880,14 +1879,14 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_ready_deposit (plugin->cls,
                                      0,
-                                     INT32_MAX,
+                                     INT64_MAX,
                                      &deposit_cb,
                                      &deposit));
   plugin->rollback (plugin->cls);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
                                      0,
-                                     INT32_MAX,
+                                     INT64_MAX,
                                      &deposit_cb,
                                      &deposit));
   FAILIF (GNUNET_OK !=

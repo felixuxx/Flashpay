@@ -2742,8 +2742,8 @@ struct TALER_EXCHANGEDB_Plugin
    */
   enum GNUNET_DB_QueryStatus
   (*get_ready_deposit)(void *cls,
-                       uint32_t start_shard_row,
-                       uint32_t end_shard_row,
+                       uint64_t start_shard_row,
+                       uint64_t end_shard_row,
                        TALER_EXCHANGEDB_DepositIterator deposit_cb,
                        void *deposit_cb_cls);
 

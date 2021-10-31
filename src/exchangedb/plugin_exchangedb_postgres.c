@@ -3904,7 +3904,7 @@ inselect_account_kyc_status (
     };
     uint8_t ok8 = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
+      GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
                                     &kyc->payment_target_uuid),
       GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
                                             &ok8),
@@ -5257,8 +5257,8 @@ postgres_mark_deposit_done (void *cls,
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_ready_deposit (void *cls,
-                            uint32_t start_shard_row,
-                            uint32_t end_shard_row,
+                            uint64_t start_shard_row,
+                            uint64_t end_shard_row,
                             TALER_EXCHANGEDB_DepositIterator deposit_cb,
                             void *deposit_cb_cls)
 {
@@ -5266,8 +5266,8 @@ postgres_get_ready_deposit (void *cls,
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&now),
-    GNUNET_PQ_query_param_uint32 (&start_shard_row),
-    GNUNET_PQ_query_param_uint32 (&end_shard_row),
+    GNUNET_PQ_query_param_uint64 (&start_shard_row),
+    GNUNET_PQ_query_param_uint64 (&end_shard_row),
     GNUNET_PQ_query_param_end
   };
   struct TALER_Amount amount_with_fee;
@@ -5301,7 +5301,7 @@ postgres_get_ready_deposit (void *cls,
 
   (void) GNUNET_TIME_round_abs (&now);
   GNUNET_assert (start_shard_row < end_shard_row);
-  GNUNET_assert (end_shard_row <= INT32_MAX);
+  GNUNET_assert (end_shard_row <= INT64_MAX);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Finding ready deposits by deadline %s (%llu)\n",
               GNUNET_STRINGS_absolute_time_to_string (now),
@@ -5706,27 +5706,25 @@ postgres_ensure_coin_known (void *cls,
  * @param deposit deposit to compute shard for
  * @return shard number
  */
-static uint32_t
+static uint64_t
 compute_shard (const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
-  uint32_t res;
+  uint64_t res;
 
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (&res,
                                     sizeof (res),
-                                    &deposit->wire_salt,
-                                    sizeof (deposit->wire_salt),
                                     &deposit->merchant_pub,
                                     sizeof (deposit->merchant_pub),
                                     deposit->receiver_wire_account,
                                     strlen (deposit->receiver_wire_account),
                                     NULL, 0));
   /* interpret hash result as NBO for platform independence,
-     convert to HBO and map to [0..2^31-1] range */
+     convert to HBO and map to [0..2^63-1] range */
   res = ntohl (res);
-  if (res > INT32_MAX)
-    res += INT32_MIN;
-  GNUNET_assert (res <= INT32_MAX);
+  if (res > INT64_MAX)
+    res += INT64_MIN;
+  GNUNET_assert (res <= INT64_MAX);
   return res;
 }
 
@@ -5758,7 +5756,7 @@ postgres_insert_deposit (void *cls,
     return qs;
   }
   {
-    uint32_t shard = compute_shard (deposit);
+    uint64_t shard = compute_shard (deposit);
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&deposit->coin.coin_pub),
       TALER_PQ_query_param_amount (&deposit->amount_with_fee),
@@ -5771,11 +5769,11 @@ postgres_insert_deposit (void *cls,
       GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
       GNUNET_PQ_query_param_auto_from_type (&deposit->csig),
       TALER_PQ_query_param_absolute_time (&exchange_timestamp),
-      GNUNET_PQ_query_param_uint32 (&shard),
+      GNUNET_PQ_query_param_uint64 (&shard),
       GNUNET_PQ_query_param_end
     };
 
-    GNUNET_assert (shard <= INT32_MAX);
+    GNUNET_assert (shard <= INT64_MAX);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Inserting deposit to be executed at %s (%llu/%llu)\n",
                 GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),
@@ -7274,6 +7272,7 @@ postgres_lookup_transfer_by_deposit (
       kyc->ok = true;
       return qs;
     }
+    qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
   }
   if (0 > qs)
     return qs;
@@ -11361,7 +11360,7 @@ postgres_begin_revolving_shard (void *cls,
 {
   struct PostgresClosure *pg = cls;
 
-  GNUNET_assert (shard_limit <= 1U + (uint32_t) INT32_MAX);
+  GNUNET_assert (shard_limit <= 1U + (uint32_t) INT_MAX);
   GNUNET_assert (shard_limit > 0);
   GNUNET_assert (shard_size > 0);
   for (unsigned int retries = 0; retries<3; retries++)

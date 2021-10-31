@@ -380,7 +380,7 @@ CREATE TABLE IF NOT EXISTS deposits
   ,tiny BOOLEAN NOT NULL DEFAULT FALSE
   ,done BOOLEAN NOT NULL DEFAULT FALSE
   ,extension_blocked BOOLEAN NOT NULL DEFAULT FALSE
-  ,extension_options VARCHAR NOT NULL
+  ,extension_options VARCHAR
   ,UNIQUE (known_coin_id, merchant_pub, h_contract_terms)
   );
 COMMENT ON TABLE deposits
