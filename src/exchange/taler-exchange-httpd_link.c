@@ -84,8 +84,8 @@ handle_link_data (void *cls,
     obj = GNUNET_JSON_PACK (
       TALER_JSON_pack_denom_pub ("denom_pub",
                                  &pos->denom_pub),
-      TALER_JSON_pack_denom_sig ("ev_sig",
-                                 &pos->ev_sig),
+      TALER_JSON_pack_blinded_denom_sig ("ev_sig",
+                                         &pos->ev_sig),
       GNUNET_JSON_pack_data_auto ("link_sig",
                                   &pos->orig_coin_link_sig));
     if ( (NULL == obj) ||

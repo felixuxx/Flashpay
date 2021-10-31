@@ -295,4 +295,24 @@ TALER_denom_sig_cmp (const struct TALER_DenominationSignature *sig1,
 }
 
 
+int
+TALER_blinded_denom_sig_cmp (
+  const struct TALER_BlindedDenominationSignature *sig1,
+  const struct TALER_BlindedDenominationSignature *sig2)
+{
+  if (sig1->cipher != sig2->cipher)
+    return (sig1->cipher > sig2->cipher) ? 1 : -1;
+  switch (sig1->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    return GNUNET_CRYPTO_rsa_signature_cmp (sig1->details.blinded_rsa_signature,
+                                            sig2->details.blinded_rsa_signature);
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_assert (0);
+  }
+  return -2;
+}
+
+
 /* end of denom.c */

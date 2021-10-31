@@ -230,7 +230,7 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
       &td->details.reserves_out.h_blind_ev),
     GNUNET_PQ_query_param_uint64 (
       &td->details.reserves_out.denominations_serial),
-    TALER_PQ_query_param_denom_sig (
+    TALER_PQ_query_param_blinded_denom_sig (
       &td->details.reserves_out.denom_sig),
     GNUNET_PQ_query_param_uint64 (
       &td->details.reserves_out.reserve_uuid),
@@ -437,7 +437,7 @@ irbt_cb_table_refresh_revealed_coins (
       td->details.refresh_revealed_coins.
       coin_ev_size),
     GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
-    TALER_PQ_query_param_denom_sig (
+    TALER_PQ_query_param_blinded_denom_sig (
       &td->details.refresh_revealed_coins.ev_sig),
     GNUNET_PQ_query_param_uint64 (
       &td->details.refresh_revealed_coins.denominations_serial),

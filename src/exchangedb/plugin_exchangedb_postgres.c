@@ -6367,7 +6367,7 @@ free_link_data_list (void *cls,
   {
     next = ldl->next;
     TALER_denom_pub_free (&ldl->denom_pub);
-    TALER_denom_sig_free (&ldl->ev_sig);
+    TALER_blinded_denom_sig_free (&ldl->ev_sig);
     GNUNET_free (ldl);
     ldl = next;
   }
@@ -6401,8 +6401,8 @@ add_ldl (void *cls,
                                               &transfer_pub),
         GNUNET_PQ_result_spec_auto_from_type ("link_sig",
                                               &pos->orig_coin_link_sig),
-        TALER_PQ_result_spec_denom_sig ("ev_sig",
-                                        &pos->ev_sig),
+        TALER_PQ_result_spec_blinded_denom_sig ("ev_sig",
+                                                &pos->ev_sig),
         TALER_PQ_result_spec_denom_pub ("denom_pub",
                                         &pos->denom_pub),
         GNUNET_PQ_result_spec_end

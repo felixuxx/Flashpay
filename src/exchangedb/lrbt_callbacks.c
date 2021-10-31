@@ -405,7 +405,7 @@ lrbt_cb_table_reserves_out (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "denominations_serial",
         &td.details.reserves_out.denominations_serial),
-      TALER_PQ_result_spec_denom_sig (
+      TALER_PQ_result_spec_blinded_denom_sig (
         "denom_sig",
         &td.details.reserves_out.denom_sig),
       GNUNET_PQ_result_spec_uint64 (
@@ -787,7 +787,7 @@ lrbt_cb_table_refresh_revealed_coins (void *cls,
         "coin_ev",
         (void **) &td.details.refresh_revealed_coins.coin_ev,
         &td.details.refresh_revealed_coins.coin_ev_size),
-      TALER_PQ_result_spec_denom_sig (
+      TALER_PQ_result_spec_blinded_denom_sig (
         "ev_sig",
         &td.details.refresh_revealed_coins.ev_sig),
       GNUNET_PQ_result_spec_uint64 (

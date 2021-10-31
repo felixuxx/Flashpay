@@ -262,8 +262,8 @@ create_denom_key_pair (unsigned int size,
   TALER_denom_pub_hash (&dkp->pub,
                         &dki.issue.properties.denom_hash);
 
-  dki.issue.properties.purpose.size = htonl (sizeof (struct
-                                                     TALER_DenominationKeyValidityPS));
+  dki.issue.properties.purpose.size
+    = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
   dki.issue.properties.purpose.purpose = htonl (
     TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -479,8 +479,8 @@ handle_link_data_cb (void *cls,
             TALER_denom_pub_cmp (&ldlp->denom_pub,
                                  &new_dkp[cnt]->pub)) &&
            (0 ==
-            TALER_denom_sig_cmp (&ldlp->ev_sig,
-                                 &revealed_coins[cnt].coin_sig)) )
+            TALER_blinded_denom_sig_cmp (&ldlp->ev_sig,
+                                         &revealed_coins[cnt].coin_sig)) )
       {
         found = GNUNET_YES;
         break;
@@ -623,7 +623,7 @@ test_melting (void)
     RND_BLK (&hc);
     ccoin->denom_pub = new_dkp[cnt]->pub;
     ccoin->coin_sig.cipher = TALER_DENOMINATION_RSA;
-    ccoin->coin_sig.details.rsa_signature
+    ccoin->coin_sig.details.blinded_rsa_signature
       = GNUNET_CRYPTO_rsa_sign_fdh (new_dkp[cnt]->priv.details.rsa_private_key,
                                     &hc.hash);
   }
@@ -675,7 +675,7 @@ drop:
   {
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
     {
-      TALER_denom_sig_free (&revealed_coins[cnt].coin_sig);
+      TALER_blinded_denom_sig_free (&revealed_coins[cnt].coin_sig);
       GNUNET_free (revealed_coins[cnt].coin_ev);
     }
     GNUNET_free (revealed_coins);
@@ -1593,7 +1593,7 @@ run (void *cls)
   RND_BLK (&cbc.reserve_sig);
   cbc.denom_pub_hash = dkp_pub_hash;
   cbc.sig.cipher = TALER_DENOMINATION_RSA;
-  cbc.sig.details.rsa_signature
+  cbc.sig.details.blinded_rsa_signature
     = GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.details.rsa_private_key,
                                   &cbc.h_coin_envelope.hash);
   cbc.reserve_pub = reserve_pub;
@@ -1620,12 +1620,14 @@ run (void *cls)
           plugin->get_withdraw_info (plugin->cls,
                                      &cbc.h_coin_envelope,
                                      &cbc2));
-  FAILIF (0 != GNUNET_memcmp (&cbc2.reserve_sig, &cbc.reserve_sig));
-  FAILIF (0 != GNUNET_memcmp (&cbc2.reserve_pub, &cbc.reserve_pub));
+  FAILIF (0 != GNUNET_memcmp (&cbc2.reserve_sig,
+                              &cbc.reserve_sig));
+  FAILIF (0 != GNUNET_memcmp (&cbc2.reserve_pub,
+                              &cbc.reserve_pub));
   result = 6;
   FAILIF (GNUNET_OK !=
           GNUNET_CRYPTO_rsa_verify (&cbc.h_coin_envelope.hash,
-                                    cbc2.sig.details.rsa_signature,
+                                    cbc2.sig.details.blinded_rsa_signature,
                                     dkp->pub.details.rsa_public_key));
 
 
@@ -1634,7 +1636,9 @@ run (void *cls)
   RND_BLK (&deposit.coin.coin_pub);
   TALER_denom_pub_hash (&dkp->pub,
                         &deposit.coin.denom_pub_hash);
-  deposit.coin.denom_sig = cbc.sig;
+  deposit.coin.denom_sig.cipher = TALER_DENOMINATION_RSA;
+  deposit.coin.denom_sig.details.rsa_signature =
+    cbc.sig.details.blinded_rsa_signature;
   deadline = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&deadline);
   FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
@@ -1792,7 +1796,9 @@ run (void *cls)
   RND_BLK (&deposit.coin.coin_pub);
   TALER_denom_pub_hash (&dkp->pub,
                         &deposit.coin.denom_pub_hash);
-  deposit.coin.denom_sig = cbc.sig;
+  deposit.coin.denom_sig.cipher = TALER_DENOMINATION_RSA;
+  deposit.coin.denom_sig.details.rsa_signature =
+    cbc.sig.details.blinded_rsa_signature;
   RND_BLK (&deposit.csig);
   RND_BLK (&deposit.merchant_pub);
   RND_BLK (&deposit.h_contract_terms);
@@ -2126,8 +2132,8 @@ drop:
                 plugin->drop_tables (plugin->cls));
   if (NULL != dkp)
     destroy_denom_key_pair (dkp);
-  TALER_denom_sig_free (&cbc.sig);
-  TALER_denom_sig_free (&cbc2.sig);
+  TALER_blinded_denom_sig_free (&cbc.sig);
+  TALER_blinded_denom_sig_free (&cbc2.sig);
   dkp = NULL;
   TALER_EXCHANGEDB_plugin_unload (plugin);
   plugin = NULL;

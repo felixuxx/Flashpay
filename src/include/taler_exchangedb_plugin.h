@@ -239,7 +239,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       struct TALER_BlindedCoinHash h_blind_ev;
       uint64_t denominations_serial;
-      struct TALER_DenominationSignature denom_sig;
+      struct TALER_BlindedDenominationSignature denom_sig;
       uint64_t reserve_uuid;
       struct TALER_ReserveSignatureP reserve_sig;
       struct GNUNET_TIME_Absolute execution_date;
@@ -301,7 +301,7 @@ struct TALER_EXCHANGEDB_TableData
       void *coin_ev;
       size_t coin_ev_size;
       // h_coin_ev omitted, to be recomputed!
-      struct TALER_DenominationSignature ev_sig;
+      struct TALER_BlindedDenominationSignature ev_sig;
     } refresh_revealed_coins;
 
     struct
@@ -1334,7 +1334,7 @@ struct TALER_EXCHANGEDB_LinkList
   /**
    * Signature over the blinded envelope.
    */
-  struct TALER_DenominationSignature ev_sig;
+  struct TALER_BlindedDenominationSignature ev_sig;
 
   /**
    * Signature of the original coin being refreshed over the
