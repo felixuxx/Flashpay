@@ -405,24 +405,23 @@ prepare_statements (struct PostgresClosure *pg)
       " wire_target_serial_id=$1",
       1),
     /* Used in #postgres_inselect_wallet_kyc_status() */
-    // FIXME: Note that this statement has not been debugged at all...
-    // It just represents the _idea_.
     GNUNET_PQ_make_prepare (
-      "inselect_wallet_kyc_status",
-      "WITH cte AS ("
-      "  INSERT INTO wire_targets"
+      "insert_kyc_status",
+      "INSERT INTO wire_targets"
       "  (h_payto"
       "  ,payto_uri"
       "  ) VALUES "
       "  ($1, $2)"
-      "  ON CONFLICT (wire_target_serial_id) DO NOTHING"
-      ") "
+      " RETURNING wire_target_serial_id",
+      2),
+    GNUNET_PQ_make_prepare (
+      "select_kyc_status_by_payto",
       "SELECT "
       " kyc_ok"
       ",wire_target_serial_id"
       " FROM wire_targets"
       " WHERE h_payto=$1;",
-      2),
+      1),
     /* Used in #reserves_get() */
     GNUNET_PQ_make_prepare (
       "reserves_get",
@@ -3901,7 +3900,6 @@ inselect_account_kyc_status (
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
-      GNUNET_PQ_query_param_string (payto_uri),
       GNUNET_PQ_query_param_end
     };
     uint8_t ok8 = 0;
@@ -3914,10 +3912,36 @@ inselect_account_kyc_status (
     };
 
     qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "inselect_wallet_kyc_status",
+                                                   "select_kyc_status_by_payto",
                                                    params,
                                                    rs);
-    kyc->ok = (0 != ok8);
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      struct GNUNET_PQ_QueryParam iparams[] = {
+        GNUNET_PQ_query_param_auto_from_type (&h_payto),
+        GNUNET_PQ_query_param_string (payto_uri),
+        GNUNET_PQ_query_param_end
+      };
+      struct GNUNET_PQ_ResultSpec irs[] = {
+        GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
+                                      &kyc->payment_target_uuid),
+        GNUNET_PQ_result_spec_end
+      };
+
+      qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                     "insert_kyc_status",
+                                                     iparams,
+                                                     irs);
+      if (qs < 0)
+        return qs;
+      if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+        return GNUNET_DB_STATUS_SOFT_ERROR;
+      kyc->ok = false;
+    }
+    else
+    {
+      kyc->ok = (0 != ok8);
+    }
   }
   kyc->type = TALER_EXCHANGEDB_KYC_BALANCE;
   return qs;
@@ -4150,15 +4174,18 @@ postgres_reserves_in_insert (void *cls,
     struct TALER_EXCHANGEDB_KycStatus kyc;
     enum GNUNET_DB_QueryStatus qs3;
 
+    memset (&kyc,
+            0,
+            sizeof (kyc));
     qs3 = inselect_account_kyc_status (pg,
                                        sender_account_details,
                                        &kyc);
     if (qs3 <= 0)
     {
-      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs3);
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs3);
       return qs3;
     }
+    GNUNET_assert (0 != kyc.payment_target_uuid);
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs1)
     {
       struct GNUNET_PQ_QueryParam params[] = {
@@ -4968,7 +4995,7 @@ postgres_select_withdraw_amounts_by_account (
 
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
-    "select_XXX",
+    "select_XXX_FIXME",
     params,
     &withdraw_amount_by_account_cb,
     &wac);
