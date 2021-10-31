@@ -88,7 +88,7 @@ test_planchets (void)
   struct TALER_DenominationPrivateKey dk_priv;
   struct TALER_DenominationPublicKey dk_pub;
   struct TALER_PlanchetDetail pd;
-  struct GNUNET_CRYPTO_RsaSignature *blind_sig;
+  struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
   struct TALER_CoinPubHash c_hash;
 
@@ -104,20 +104,22 @@ test_planchets (void)
                                          &ps,
                                          &c_hash,
                                          &pd));
-  blind_sig = GNUNET_CRYPTO_rsa_sign_blinded (dk_priv.details.rsa_private_key,
-                                              pd.coin_ev,
-                                              pd.coin_ev_size);
-  GNUNET_assert (NULL != blind_sig);
+  blind_sig.cipher = TALER_DENOMINATION_RSA;
+  blind_sig.details.blinded_rsa_signature
+    = GNUNET_CRYPTO_rsa_sign_blinded (dk_priv.details.rsa_private_key,
+                                      pd.coin_ev,
+                                      pd.coin_ev_size);
+  GNUNET_assert (NULL != blind_sig.details.blinded_rsa_signature);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_to_coin (&dk_pub,
-                                         blind_sig,
+                                         &blind_sig,
                                          &ps,
                                          &c_hash,
                                          &coin));
-  GNUNET_CRYPTO_rsa_signature_free (blind_sig);
-  GNUNET_CRYPTO_rsa_signature_free (coin.sig.details.rsa_signature);
-  GNUNET_CRYPTO_rsa_private_key_free (dk_priv.details.rsa_private_key);
-  GNUNET_CRYPTO_rsa_public_key_free (dk_pub.details.rsa_public_key);
+  TALER_blinded_denom_sig_free (&blind_sig);
+  TALER_denom_sig_free (&coin.sig);
+  TALER_denom_priv_free (&dk_priv);
+  TALER_denom_pub_free (&dk_pub);
   return 0;
 }
 

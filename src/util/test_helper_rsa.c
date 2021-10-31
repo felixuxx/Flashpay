@@ -237,7 +237,7 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
 static int
 test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 {
-  struct TALER_DenominationSignature ds;
+  struct TALER_BlindedDenominationSignature ds;
   enum TALER_ErrorCode ec;
   bool success = false;
   struct TALER_CoinPubHash m_hash;
@@ -296,7 +296,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 
         rs.cipher = TALER_DENOMINATION_RSA;
         rs.details.rsa_signature
-          = TALER_rsa_unblind (ds.details.rsa_signature,
+          = TALER_rsa_unblind (ds.details.blinded_rsa_signature,
                                &bks,
                                keys[i].denom_pub.details.rsa_public_key);
         if (NULL == rs.details.rsa_signature)
@@ -304,7 +304,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
           GNUNET_break (0);
           return 6;
         }
-        GNUNET_CRYPTO_rsa_signature_free (ds.details.rsa_signature);
+        TALER_blinded_denom_sig_free (&ds);
         if (GNUNET_OK !=
             TALER_denom_pub_verify (&keys[i].denom_pub,
                                     &rs,
@@ -386,7 +386,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 static int
 perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 {
-  struct TALER_DenominationSignature ds;
+  struct TALER_BlindedDenominationSignature ds;
   enum TALER_ErrorCode ec;
   struct TALER_CoinPubHash m_hash;
   struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
@@ -438,7 +438,7 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
           delay = GNUNET_TIME_absolute_get_duration (start);
           duration = GNUNET_TIME_relative_add (duration,
                                                delay);
-          GNUNET_CRYPTO_rsa_signature_free (ds.details.rsa_signature);
+          TALER_blinded_denom_sig_free (&ds);
           j++;
           if (NUM_SIGN_TESTS == j)
             break;
