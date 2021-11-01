@@ -512,7 +512,7 @@ run (void *cls,
     denom_sig.details.rsa_signature
       = GNUNET_CRYPTO_rsa_sign_fdh (pk,
                                     &hc);
-    GNUNET_CRYPTO_rsa_public_key_free (pub);
+    TALER_denom_pub_free (&denom_pub);
     GNUNET_CRYPTO_rsa_private_key_free (pk);
   }
 

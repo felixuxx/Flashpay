@@ -1294,6 +1294,19 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5, $6);",
       6),
+    GNUNET_PQ_make_prepare (
+      "insert_into_table_wire_out",
+      "INSERT INTO wire_out"
+      "(wireout_uuid"
+      ",execution_date"
+      ",wtid_raw"
+      ",wire_target_serial_id"
+      ",exchange_account_section"
+      ",amount_val"
+      ",amount_frac"
+      ") VALUES "
+      "($1, $2, $3, $4, $5, $6, $7);",
+      7),
     /* Used in #postgres_wire_prepare_data_insert() to store
        wire transfer information before actually committing it with the bank */
     GNUNET_PQ_make_prepare (
@@ -2579,19 +2592,6 @@ prepare_statements (struct PostgresClosure *pg)
       ") VALUES "
       "($1, $2, $3, $4, $5, $6);",
       6),
-    GNUNET_PQ_make_prepare (
-      "insert_into_table_wire_out",
-      "INSERT INTO wire_out"
-      "(wireout_uuid"
-      ",execution_date"
-      ",wtid_raw"
-      ",wire_target_serial_id"
-      ",exchange_account_section"
-      ",amount_val"
-      ",amount_frac"
-      ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7);",
-      7),
     GNUNET_PQ_make_prepare (
       "insert_into_table_aggregation_tracking",
       "INSERT INTO aggregation_tracking"
@@ -7957,6 +7957,8 @@ postgres_store_wire_transfer_out (
     GNUNET_PQ_query_param_end
   };
 
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&date));
   return GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_wire_out",
                                              params);
@@ -7971,7 +7973,7 @@ postgres_store_wire_transfer_out (
  * @return #GNUNET_OK on success,
  *         #GNUNET_SYSERR on DB errors
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_gc (void *cls)
 {
   struct PostgresClosure *pg = cls;
