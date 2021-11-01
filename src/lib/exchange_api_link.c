@@ -91,14 +91,14 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                  struct TALER_DenominationSignature *sig,
                  struct TALER_DenominationPublicKey *pub)
 {
-  struct GNUNET_CRYPTO_RsaSignature *bsig;
+  struct TALER_BlindedDenominationSignature bsig;
   struct TALER_DenominationPublicKey rpub;
   struct TALER_CoinSpendSignatureP link_sig;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_denom_pub ("denom_pub",
                                &rpub),
-    GNUNET_JSON_spec_rsa_signature ("ev_sig",
-                                    &bsig),
+    TALER_JSON_spec_blinded_denom_sig ("ev_sig",
+                                       &bsig),
     GNUNET_JSON_spec_fixed_auto ("link_sig",
                                  &link_sig),
     GNUNET_JSON_spec_end ()
@@ -124,9 +124,11 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
 
   /* extract coin and signature */
   *coin_priv = fc.coin_priv;
+  // FIXME: use more generlized unblinding API!
+  GNUNET_assert (TALER_DENOMINATION_RSA == bsig.cipher);
   sig->cipher = TALER_DENOMINATION_RSA;
   sig->details.rsa_signature
-    = TALER_rsa_unblind (bsig,
+    = TALER_rsa_unblind (bsig.details.blinded_rsa_signature,
                          &fc.blinding_key.bks,
                          rpub.details.rsa_public_key);
   /* verify link_sig */
