@@ -994,8 +994,10 @@ melt_run (void *cls,
       return;
     }
 
-    if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-          (coin_command, 0, &rms->melt_priv))
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_coin_priv (coin_command,
+                                           0,
+                                           &rms->melt_priv))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -1011,8 +1013,10 @@ melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-    if (GNUNET_OK != TALER_TESTING_get_trait_denom_pub
-          (coin_command, 0, &melt_denom_pub))
+    if (GNUNET_OK !=
+        TALER_TESTING_get_trait_denom_pub (coin_command,
+                                           0,
+                                           &melt_denom_pub))
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
@@ -1134,7 +1138,7 @@ melt_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static int
+static enum GNUNET_GenericReturnValue
 melt_traits (void *cls,
              const void **ret,
              const char *trait,
@@ -1149,8 +1153,10 @@ melt_traits (void *cls,
   }
   {
     struct TALER_TESTING_Trait traits[] = {
-      TALER_TESTING_make_trait_denom_pub (index, &rms->fresh_pks[index]),
-      TALER_TESTING_make_trait_coin_priv (0, rms->melt_priv),
+      TALER_TESTING_make_trait_denom_pub (index,
+                                          &rms->fresh_pks[index]),
+      TALER_TESTING_make_trait_coin_priv (0,
+                                          rms->melt_priv),
       TALER_TESTING_trait_end ()
     };
 
@@ -1169,7 +1175,7 @@ melt_traits (void *cls,
  * @param ap NULL-termianted list of amounts to be melted (one per fresh coin)
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_amounts (struct RefreshMeltState *rms,
                va_list ap)
 {
@@ -1212,16 +1218,6 @@ parse_amounts (struct RefreshMeltState *rms,
 }
 
 
-/**
- * Create a "refresh melt" command.
- *
- * @param label command label.
- * @param coin_reference reference to a command
- *        that will provide a coin to refresh.
- * @param expected_response_code expected HTTP code.
- * @param ... NULL-terminated list of amounts to be melted
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_melt (const char *label,
                         const char *coin_reference,
@@ -1252,18 +1248,6 @@ TALER_TESTING_cmd_melt (const char *label,
 }
 
 
-/**
- * Create a "refresh melt" CMD that does TWO /refresh/melt
- * requests.  This was needed to test the replay of a valid melt
- * request, see #5312.
- *
- * @param label command label
- * @param coin_reference reference to a command that will provide
- *        a coin to refresh
- * @param expected_response_code expected HTTP code
- * @param ... NULL-terminated list of amounts to be melted
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_melt_double (const char *label,
                                const char *coin_reference,
@@ -1295,12 +1279,6 @@ TALER_TESTING_cmd_melt_double (const char *label,
 }
 
 
-/**
- * Modify a "refresh melt" command to enable retries.
- *
- * @param cmd command
- * @return modified command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_melt_with_retry (struct TALER_TESTING_Command cmd)
 {
@@ -1329,53 +1307,35 @@ refresh_reveal_traits (void *cls,
                        unsigned int index)
 {
   struct RefreshRevealState *rrs = cls;
-  unsigned int num_coins = rrs->num_fresh_coins;
-#define NUM_TRAITS ((num_coins * 4) + 3)
-  struct TALER_TESTING_Trait traits[NUM_TRAITS];
 
-  /* Making coin privs traits */
-  for (unsigned int i = 0; i<num_coins; i++)
-    traits[i] = TALER_TESTING_make_trait_coin_priv (
-      i,
-      &rrs->fresh_coins[i].coin_priv);
-
-  /* Making denom pubs traits */
-  for (unsigned int i = 0; i<num_coins; i++)
-    traits[num_coins + i]
-      = TALER_TESTING_make_trait_denom_pub (
-          i,
-          rrs->fresh_coins[i].pk);
-
-  /* Making denom sigs traits */
-  for (unsigned int i = 0; i<num_coins; i++)
-    traits[(num_coins * 2) + i]
-      = TALER_TESTING_make_trait_denom_sig (
-          i,
-          &rrs->fresh_coins[i].sig);
-  /* blinding key traits */
-  for (unsigned int i = 0; i<num_coins; i++)
-    traits[(num_coins * 3) + i]
-      = TALER_TESTING_make_trait_blinding_key (
-          i,
-          &rrs->fresh_coins[i].blinding_key);
-
-  /* number of fresh coins */
-  traits[(num_coins * 4)]
-    = TALER_TESTING_make_trait_array_length (
-        &rrs->num_fresh_coins);
-
-  /* whole array of fresh coins */
-  traits[(num_coins * 4) + 1]
-    = TALER_TESTING_make_trait_fresh_coins (
+  if (index >= rrs->num_fresh_coins)
+    return GNUNET_SYSERR;
+  {
+    struct TALER_TESTING_Trait traits[] = {
+      TALER_TESTING_make_trait_coin_priv (
+        index,
+        &rrs->fresh_coins[index].coin_priv),
+      TALER_TESTING_make_trait_denom_pub (
+        index,
+        rrs->fresh_coins[index].pk),
+      TALER_TESTING_make_trait_denom_sig (
+        index,
+        &rrs->fresh_coins[index].sig),
+      TALER_TESTING_make_trait_blinding_key (
+        index,
+        &rrs->fresh_coins[index].blinding_key),
+      TALER_TESTING_make_trait_array_length (
+        &rrs->num_fresh_coins),
+      TALER_TESTING_make_trait_fresh_coins (
         (const struct TALER_TESTING_FreshCoinData **) &rrs->fresh_coins),
+      TALER_TESTING_trait_end ()
+    };
 
-  /* end of traits */
-  traits[(num_coins * 4) + 2] = TALER_TESTING_trait_end ();
-
-  return TALER_TESTING_get_trait (traits,
-                                  ret,
-                                  trait,
-                                  index);
+    return TALER_TESTING_get_trait (traits,
+                                    ret,
+                                    trait,
+                                    index);
+  }
 }
 
 

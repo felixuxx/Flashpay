@@ -166,6 +166,7 @@ recoup_cb (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  (void) idx; /* do NOT use! We ignore 'idx', must be 0 for melt! */
 
   reserve_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                           cref);
@@ -198,9 +199,13 @@ recoup_cb (void *cls,
       }
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_coin_priv (melt_cmd,
-                                             idx,
+                                             0,
                                              &dirty_priv))
       {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Coin %u not found in command %s\n",
+                    0,
+                    ps->melt_reference);
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
