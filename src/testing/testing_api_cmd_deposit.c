@@ -299,15 +299,6 @@ deposit_run (void *cls,
     GNUNET_JSON_spec_end ()
   };
 
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (ds->wire_details,
-                         spec,
-                         NULL, NULL))
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (is);
-    return;
-  }
   (void) cmd;
   ds->is = is;
   if (NULL != ds->deposit_reference)
@@ -328,6 +319,7 @@ deposit_run (void *cls,
     ds->coin_reference = ods->coin_reference;
     ds->coin_index = ods->coin_index;
     ds->wire_details = json_incref (ods->wire_details);
+    GNUNET_assert (NULL != ds->wire_details);
     ds->contract_terms = json_incref (ods->contract_terms);
     ds->wallet_timestamp = ods->wallet_timestamp;
     ds->refund_deadline = ods->refund_deadline;
@@ -358,6 +350,19 @@ deposit_run (void *cls,
       return;
     }
     ds->merchant_priv = *merchant_priv;
+  }
+  GNUNET_assert (NULL != ds->wire_details);
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (ds->wire_details,
+                         spec,
+                         NULL, NULL))
+  {
+    json_dumpf (ds->wire_details,
+                stderr,
+                JSON_INDENT (2));
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
   }
   GNUNET_assert (ds->coin_reference);
   coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
@@ -563,28 +568,6 @@ deposit_traits (void *cls,
 }
 
 
-/**
- * Create a "deposit" command.
- *
- * @param label command label.
- * @param coin_reference reference to any operation that can
- *        provide a coin.
- * @param coin_index if @a withdraw_reference offers an array of
- *        coins, this parameter selects which one in that array.
- *        This value is currently ignored, as only one-coin
- *        withdrawals are implemented.
- * @param target_account_payto target account for the "deposit"
- *        request.
- * @param contract_terms contract terms to be signed over by the
- *        coin.
- * @param refund_deadline refund deadline, zero means 'no refunds'.
- *        Note, if time were absolute, then it would have come
- *        one day and disrupt tests meaning.
- * @param amount how much is going to be deposited.
- * @param expected_response_code expected HTTP response code.
- *
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit (const char *label,
                            const char *coin_reference,
@@ -596,13 +579,12 @@ TALER_TESTING_cmd_deposit (const char *label,
                            unsigned int expected_response_code)
 {
   struct DepositState *ds;
-  json_t *wire_details;
 
-  wire_details = TALER_TESTING_make_wire_details (target_account_payto);
   ds = GNUNET_new (struct DepositState);
   ds->coin_reference = coin_reference;
   ds->coin_index = coin_index;
-  ds->wire_details = wire_details;
+  ds->wire_details = TALER_TESTING_make_wire_details (target_account_payto);
+  GNUNET_assert (NULL != ds->wire_details);
   ds->contract_terms = json_loads (contract_terms,
                                    JSON_REJECT_DUPLICATES,
                                    NULL);
@@ -648,30 +630,6 @@ TALER_TESTING_cmd_deposit (const char *label,
 }
 
 
-/**
- * Create a "deposit" command that references an existing merchant key.
- *
- * @param label command label.
- * @param coin_reference reference to any operation that can
- *        provide a coin.
- * @param coin_index if @a withdraw_reference offers an array of
- *        coins, this parameter selects which one in that array.
- *        This value is currently ignored, as only one-coin
- *        withdrawals are implemented.
- * @param target_account_payto target account for the "deposit"
- *        request.
- * @param contract_terms contract terms to be signed over by the
- *        coin.
- * @param refund_deadline refund deadline, zero means 'no refunds'.
- *        Note, if time were absolute, then it would have come
- *        one day and disrupt tests meaning.
- * @param amount how much is going to be deposited.
- * @param expected_response_code expected HTTP response code.
- * @param merchant_priv_reference reference to another operation
- *        that has a merchant private key trait
- *
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_with_ref (const char *label,
                                     const char *coin_reference,
@@ -684,14 +642,13 @@ TALER_TESTING_cmd_deposit_with_ref (const char *label,
                                     const char *merchant_priv_reference)
 {
   struct DepositState *ds;
-  json_t *wire_details;
 
-  wire_details = TALER_TESTING_make_wire_details (target_account_payto);
   ds = GNUNET_new (struct DepositState);
   ds->merchant_priv_reference = merchant_priv_reference;
   ds->coin_reference = coin_reference;
   ds->coin_index = coin_index;
-  ds->wire_details = wire_details;
+  ds->wire_details = TALER_TESTING_make_wire_details (target_account_payto);
+  GNUNET_assert (NULL != ds->wire_details);
   ds->contract_terms = json_loads (contract_terms,
                                    JSON_REJECT_DUPLICATES,
                                    NULL);
@@ -736,15 +693,6 @@ TALER_TESTING_cmd_deposit_with_ref (const char *label,
 }
 
 
-/**
- * Create a "deposit" command that repeats an existing
- * deposit command.
- *
- * @param label command label.
- * @param deposit_reference which deposit command should we repeat
- * @param expected_response_code expected HTTP response code.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_replay (const char *label,
                                   const char *deposit_reference,
@@ -769,13 +717,6 @@ TALER_TESTING_cmd_deposit_replay (const char *label,
 }
 
 
-/**
- * Modify a deposit command to enable retries when we get transient
- * errors from the exchange.
- *
- * @param cmd a deposit command
- * @return the command with retries enabled
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_deposit_with_retry (struct TALER_TESTING_Command cmd)
 {
