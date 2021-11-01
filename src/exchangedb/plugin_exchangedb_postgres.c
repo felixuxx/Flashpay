@@ -1050,7 +1050,7 @@ prepare_statements (struct PostgresClosure *pg)
       " kyc_ok"
       ",wire_target_serial_id AS payment_target_uuid"
       ",wire_salt"
-      ",payto_uri AS receiver_wire_account"
+      ",payto_uri"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
       ",denom.fee_deposit_val"
