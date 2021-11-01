@@ -1864,7 +1864,7 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
                                      0,
-                                     INT64_MAX,
+                                     INT32_MAX,
                                      &deposit_cb,
                                      &deposit));
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1885,14 +1885,14 @@ run (void *cls)
   FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
           plugin->get_ready_deposit (plugin->cls,
                                      0,
-                                     INT64_MAX,
+                                     INT32_MAX,
                                      &deposit_cb,
                                      &deposit));
   plugin->rollback (plugin->cls);
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->get_ready_deposit (plugin->cls,
                                      0,
-                                     INT64_MAX,
+                                     INT32_MAX,
                                      &deposit_cb,
                                      &deposit));
   FAILIF (GNUNET_OK !=

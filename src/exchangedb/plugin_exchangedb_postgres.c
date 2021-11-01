@@ -5301,7 +5301,7 @@ postgres_get_ready_deposit (void *cls,
 
   (void) GNUNET_TIME_round_abs (&now);
   GNUNET_assert (start_shard_row < end_shard_row);
-  GNUNET_assert (end_shard_row <= INT64_MAX);
+  GNUNET_assert (end_shard_row <= INT32_MAX);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Finding ready deposits by deadline %s (%llu)\n",
               GNUNET_STRINGS_absolute_time_to_string (now),
@@ -5709,7 +5709,7 @@ postgres_ensure_coin_known (void *cls,
 static uint64_t
 compute_shard (const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
-  uint64_t res;
+  uint32_t res;
 
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (&res,
@@ -5720,12 +5720,12 @@ compute_shard (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                     strlen (deposit->receiver_wire_account),
                                     NULL, 0));
   /* interpret hash result as NBO for platform independence,
-     convert to HBO and map to [0..2^63-1] range */
+     convert to HBO and map to [0..2^31-1] range */
   res = ntohl (res);
-  if (res > INT64_MAX)
-    res += INT64_MIN;
-  GNUNET_assert (res <= INT64_MAX);
-  return res;
+  if (res > INT32_MAX)
+    res += INT32_MIN;
+  GNUNET_assert (res <= INT32_MAX);
+  return (uint64_t) res;
 }
 
 
@@ -5773,7 +5773,7 @@ postgres_insert_deposit (void *cls,
       GNUNET_PQ_query_param_end
     };
 
-    GNUNET_assert (shard <= INT64_MAX);
+    GNUNET_assert (shard <= INT32_MAX);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Inserting deposit to be executed at %s (%llu/%llu)\n",
                 GNUNET_STRINGS_absolute_time_to_string (deposit->wire_deadline),

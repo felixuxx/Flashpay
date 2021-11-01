@@ -213,26 +213,35 @@ run (void *cls,
      * happen here, as each deposit operation is run with a
      * fresh merchant public key! NOTE: this comment comes
      * "verbatim" from the old test-suite, and IMO does not explain
-     * a lot!*///
+     * a lot! */
     CMD_EXEC_AGGREGATOR ("run-aggregator"),
 
     /**
      * Check all the transfers took place.
      */
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-499c", ec.exchange_url,
-      "EUR:4.98", bc.exchange_payto, bc.user42_payto),
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-99c1", ec.exchange_url,
-      "EUR:0.98", bc.exchange_payto, bc.user42_payto),
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check_bank_transfer-99c", ec.exchange_url,
-      "EUR:0.08", bc.exchange_payto, bc.user43_payto),
+    TALER_TESTING_cmd_check_bank_transfer (
+      "check_bank_transfer-499c",
+      ec.exchange_url,
+      "EUR:4.98",
+      bc.exchange_payto,
+      bc.user42_payto),
+    TALER_TESTING_cmd_check_bank_transfer (
+      "check_bank_transfer-99c1",
+      ec.exchange_url,
+      "EUR:0.98",
+      bc.exchange_payto,
+      bc.user42_payto),
+    TALER_TESTING_cmd_check_bank_transfer (
+      "check_bank_transfer-99c",
+      ec.exchange_url,
+      "EUR:0.08",
+      bc.exchange_payto,
+      bc.user43_payto),
 
     /* The following transactions got originated within
      * the "massive deposit confirms" batch.  */
-    TALER_TESTING_cmd_check_bank_transfer
-      ("check-massive-transfer-1",
+    TALER_TESTING_cmd_check_bank_transfer (
+      "check-massive-transfer-1",
       ec.exchange_url,
       "EUR:0.98",
       bc.exchange_payto, bc.user43_payto),
@@ -412,7 +421,8 @@ run (void *cls,
      * These commands should close the reserve because the aggregator
      * is given a config file that overrides the reserve expiration
      * time (making it now-ish)
-     */CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
                               "EUR:5.01"),
     TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
                                       CONFIG_FILE_EXPIRE_RESERVE_NOW),
@@ -472,8 +482,8 @@ run (void *cls,
      */
     CMD_TRANSFER_TO_EXCHANGE ("massive-reserve",
                               "EUR:10.10"),
-    TALER_TESTING_cmd_check_bank_admin_transfer
-      ("check-massive-transfer",
+    TALER_TESTING_cmd_check_bank_admin_transfer (
+      "check-massive-transfer",
       "EUR:10.10",
       bc.user42_payto, bc.exchange_payto,
       "massive-reserve"),
@@ -518,8 +528,8 @@ run (void *cls,
                                        "massive-reserve",
                                        "EUR:1",
                                        MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit
-      ("massive-deposit-1",
+    TALER_TESTING_cmd_deposit (
+      "massive-deposit-1",
       "massive-withdraw-1",
       0,
       bc.user43_payto,
@@ -599,8 +609,8 @@ run (void *cls,
       GNUNET_TIME_UNIT_ZERO,
       "EUR:1",
       MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit
-      ("massive-deposit-10",
+    TALER_TESTING_cmd_deposit (
+      "massive-deposit-10",
       "massive-withdraw-10",
       0,
       bc.user43_payto,

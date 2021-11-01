@@ -386,7 +386,7 @@ CREATE TABLE IF NOT EXISTS deposits
 COMMENT ON TABLE deposits
   IS 'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
 COMMENT ON COLUMN deposits.shard
-  IS 'Used for load sharding. Should be set based on h_wire, merchant_pub and a service salt. Default of 0 onlyapplies for columns migrated from a previous version without sharding support. 64-bit value because we need an *unsigned* 32-bit value.';
+  IS 'Used for load sharding. Should be set based on h_payto and merchant_pub. Default of 0 onlyapplies for columns migrated from a previous version without sharding support. 64-bit value because we need an *unsigned* 32-bit value.';
 COMMENT ON COLUMN deposits.wire_target_serial_id
   IS 'Identifies the target bank account and KYC status';COMMENT ON COLUMN deposits.wire_salt
   IS 'Salt used when hashing the payto://-URI to get the h_wire';

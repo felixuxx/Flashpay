@@ -319,7 +319,7 @@ parse_wirewatch_config (void)
  * @param amount_with_fee what was the refunded amount with the fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 refund_by_coin_cb (void *cls,
                    const struct TALER_Amount *amount_with_fee)
 {
@@ -768,8 +768,9 @@ run_aggregation (void *cls)
 
   /* Now try to find other deposits to aggregate */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Found ready deposit for %s, aggregating\n",
-              TALER_B2S (&au_active.merchant_pub));
+              "Found ready deposit for %s, aggregating by target %llu\n",
+              TALER_B2S (&au_active.merchant_pub),
+              (unsigned long long) au_active.wire_target);
   qs = db_plugin->iterate_matching_deposits (db_plugin->cls,
                                              au_active.wire_target,
                                              &au_active.merchant_pub,
