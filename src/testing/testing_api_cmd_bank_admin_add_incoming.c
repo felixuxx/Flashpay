@@ -217,16 +217,15 @@ confirmation_cb (void *cls,
   fts->reserve_history.details.in_details.timestamp = timestamp;
   fts->reserve_history.details.in_details.wire_reference = serial_id;
   fts->aih = NULL;
+  if (http_status != fts->expected_http_status)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   switch (http_status)
   {
   case MHD_HTTP_OK:
-    if (fts->expected_http_status !=
-        MHD_HTTP_OK)
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
     fts->serial_id = serial_id;
     fts->timestamp = timestamp;
     TALER_TESTING_interpreter_next (is);
@@ -246,13 +245,6 @@ confirmation_cb (void *cls,
     }
     break;
   case MHD_HTTP_CONFLICT:
-    if (fts->expected_http_status !=
-        MHD_HTTP_CONFLICT)
-    {
-      GNUNET_break (0);
-      TALER_TESTING_interpreter_fail (is);
-      return;
-    }
     TALER_TESTING_interpreter_next (is);
     return;
   default:
