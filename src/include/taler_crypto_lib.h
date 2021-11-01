@@ -485,14 +485,19 @@ enum TALER_DenominationCipher
 {
 
   /**
+   * Invalid type of signature.
+   */
+  TALER_DENOMINATION_INVALID = 0,
+
+  /**
    * RSA blind signature.
    */
-  TALER_DENOMINATION_RSA = 0,
+  TALER_DENOMINATION_RSA = 1,
 
   /**
    * Clause-Schnorr blind signature.
    */
-  // TALER_DENOMINATION_CS = 1
+  // TALER_DENOMINATION_CS = 2
 };
 
 

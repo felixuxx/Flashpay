@@ -24,7 +24,7 @@ SELECT _v.register_patch('exchange-0001', NULL, NULL);
 CREATE TABLE IF NOT EXISTS denominations
   (denominations_serial BIGSERIAL UNIQUE
   ,denom_pub_hash BYTEA PRIMARY KEY CHECK (LENGTH(denom_pub_hash)=64)
-  ,denom_type INT4 NOT NULL DEFAULT (0)
+  ,denom_type INT4 NOT NULL DEFAULT (1) -- 1 == RSA (for now, remove default later!)
   ,age_restrictions INT4 NOT NULL DEFAULT (0)
   ,denom_pub BYTEA NOT NULL
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)

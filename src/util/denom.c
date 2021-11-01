@@ -94,6 +94,9 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
   }
   switch (denom_pub->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    GNUNET_break (0);
+    return GNUNET_NO;
   case TALER_DENOMINATION_RSA:
     if (GNUNET_OK !=
         GNUNET_CRYPTO_rsa_verify (&c_hash->hash,
@@ -117,12 +120,15 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub)
 {
   switch (denom_pub->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return;
   case TALER_DENOMINATION_RSA:
     if (NULL != denom_pub->details.rsa_public_key)
     {
       GNUNET_CRYPTO_rsa_public_key_free (denom_pub->details.rsa_public_key);
       denom_pub->details.rsa_public_key = NULL;
     }
+    denom_pub->cipher = TALER_DENOMINATION_INVALID;
     return;
   // TODO: add case for Clause-Schnorr
   default:
@@ -136,12 +142,15 @@ TALER_denom_priv_free (struct TALER_DenominationPrivateKey *denom_priv)
 {
   switch (denom_priv->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return;
   case TALER_DENOMINATION_RSA:
     if (NULL != denom_priv->details.rsa_private_key)
     {
       GNUNET_CRYPTO_rsa_private_key_free (denom_priv->details.rsa_private_key);
       denom_priv->details.rsa_private_key = NULL;
     }
+    denom_priv->cipher = TALER_DENOMINATION_INVALID;
     return;
   // TODO: add case for Clause-Schnorr
   default:
@@ -155,12 +164,15 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig)
 {
   switch (denom_sig->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return;
   case TALER_DENOMINATION_RSA:
     if (NULL != denom_sig->details.rsa_signature)
     {
       GNUNET_CRYPTO_rsa_signature_free (denom_sig->details.rsa_signature);
       denom_sig->details.rsa_signature = NULL;
     }
+    denom_sig->cipher = TALER_DENOMINATION_INVALID;
     return;
   // TODO: add case for Clause-Schnorr
   default:
@@ -182,6 +194,7 @@ TALER_blinded_denom_sig_free (
         denom_sig->details.blinded_rsa_signature);
       denom_sig->details.blinded_rsa_signature = NULL;
     }
+    denom_sig->cipher = TALER_DENOMINATION_INVALID;
     return;
   // TODO: add case for Clause-Schnorr
   default:
@@ -223,6 +236,8 @@ TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
   *denom_dst = *denom_src; /* shallow copy */
   switch (denom_src->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return;
   case TALER_DENOMINATION_RSA:
     denom_dst->details.rsa_signature
       = GNUNET_CRYPTO_rsa_signature_dup (
@@ -243,6 +258,8 @@ TALER_blinded_denom_sig_deep_copy (
   *denom_dst = *denom_src; /* shallow copy */
   switch (denom_src->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return;
   case TALER_DENOMINATION_RSA:
     denom_dst->details.blinded_rsa_signature
       = GNUNET_CRYPTO_rsa_signature_dup (
@@ -265,6 +282,8 @@ TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
     return (denom1->age_mask > denom2->age_mask) ? 1 : -1;
   switch (denom1->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return 0;
   case TALER_DENOMINATION_RSA:
     return GNUNET_CRYPTO_rsa_public_key_cmp (denom1->details.rsa_public_key,
                                              denom2->details.rsa_public_key);
@@ -284,6 +303,8 @@ TALER_denom_sig_cmp (const struct TALER_DenominationSignature *sig1,
     return (sig1->cipher > sig2->cipher) ? 1 : -1;
   switch (sig1->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return 0;
   case TALER_DENOMINATION_RSA:
     return GNUNET_CRYPTO_rsa_signature_cmp (sig1->details.rsa_signature,
                                             sig2->details.rsa_signature);
@@ -304,6 +325,8 @@ TALER_blinded_denom_sig_cmp (
     return (sig1->cipher > sig2->cipher) ? 1 : -1;
   switch (sig1->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return 0;
   case TALER_DENOMINATION_RSA:
     return GNUNET_CRYPTO_rsa_signature_cmp (sig1->details.blinded_rsa_signature,
                                             sig2->details.blinded_rsa_signature);
