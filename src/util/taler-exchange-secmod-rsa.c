@@ -875,8 +875,8 @@ setup_key (struct DenominationKey *dk,
                               "write",
                               dk->filename);
     GNUNET_free (buf);
-    GNUNET_CRYPTO_rsa_private_key_free (priv.details.rsa_private_key);
-    GNUNET_CRYPTO_rsa_public_key_free (pub.details.rsa_public_key);
+    TALER_denom_priv_free (&priv);
+    TALER_denom_pub_free (&pub);
     return GNUNET_SYSERR;
   }
   GNUNET_free (buf);

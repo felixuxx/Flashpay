@@ -103,12 +103,11 @@ test_planchets (void)
                                          &ps,
                                          &c_hash,
                                          &pd));
-  blind_sig.cipher = TALER_DENOMINATION_RSA;
-  blind_sig.details.blinded_rsa_signature
-    = GNUNET_CRYPTO_rsa_sign_blinded (dk_priv.details.rsa_private_key,
-                                      pd.coin_ev,
-                                      pd.coin_ev_size);
-  GNUNET_assert (NULL != blind_sig.details.blinded_rsa_signature);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_sign_blinded (&blind_sig,
+                                           &dk_priv,
+                                           pd.coin_ev,
+                                           pd.coin_ev_size));
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_to_coin (&dk_pub,
                                          &blind_sig,
