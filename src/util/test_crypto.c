@@ -92,12 +92,11 @@ test_planchets (void)
   struct TALER_FreshCoin coin;
   struct TALER_CoinPubHash c_hash;
 
-  dk_priv.cipher = TALER_DENOMINATION_RSA;
-  dk_priv.details.rsa_private_key
-    = GNUNET_CRYPTO_rsa_private_key_create (1024);
-  TALER_denom_priv_to_pub (&dk_priv,
-                           0,
-                           &dk_pub);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_priv_create (&dk_priv,
+                                          &dk_pub,
+                                          TALER_DENOMINATION_RSA,
+                                          1024));
   TALER_planchet_setup_random (&ps);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,

@@ -479,17 +479,16 @@ run (void *cls,
         GNUNET_TIME_absolute_add (end,
                                   GNUNET_TIME_UNIT_YEARS));
   {
-    struct GNUNET_CRYPTO_RsaPrivateKey *pk;
-    struct GNUNET_CRYPTO_RsaPublicKey *pub;
+    struct TALER_DenominationPrivateKey pk;
     struct GNUNET_HashCode hc;
-    struct TALER_DenominationPublicKey denom_pub = {
-      .cipher = TALER_DENOMINATION_RSA
-    };
+    struct TALER_DenominationPublicKey denom_pub;
 
     RANDOMIZE (&hc);
-    pk = GNUNET_CRYPTO_rsa_private_key_create (1024);
-    pub = GNUNET_CRYPTO_rsa_private_key_get_public (pk);
-    denom_pub.details.rsa_public_key = pub;
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_priv_create (&pk,
+                                            &denom_pub,
+                                            TALER_DENOMINATION_RSA,
+                                            1024));
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
     make_amountN (2, 0, &issue.properties.value);
@@ -510,10 +509,10 @@ run (void *cls,
     }
     denom_sig.cipher = TALER_DENOMINATION_RSA;
     denom_sig.details.rsa_signature
-      = GNUNET_CRYPTO_rsa_sign_fdh (pk,
+      = GNUNET_CRYPTO_rsa_sign_fdh (pk.details.rsa_private_key,
                                     &hc);
     TALER_denom_pub_free (&denom_pub);
-    GNUNET_CRYPTO_rsa_private_key_free (pk);
+    TALER_denom_priv_free (&pk);
   }
 
   {

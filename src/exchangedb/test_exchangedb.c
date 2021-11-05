@@ -225,14 +225,11 @@ create_denom_key_pair (unsigned int size,
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
 
   dkp = GNUNET_new (struct DenomKeyPair);
-  dkp->priv.cipher = TALER_DENOMINATION_RSA;
-  dkp->priv.details.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (
-    size);
-  GNUNET_assert (NULL != dkp->priv.details.rsa_private_key);
-  TALER_denom_priv_to_pub (&dkp->priv,
-                           0, /* age mask */
-                           &dkp->pub);
-
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_priv_create (&dkp->priv,
+                                          &dkp->pub,
+                                          TALER_DENOMINATION_RSA,
+                                          size));
   /* Using memset() as fields like master key and signature
      are not properly initialized for this test. */
   memset (&dki,

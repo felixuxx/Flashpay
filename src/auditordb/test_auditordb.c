@@ -142,12 +142,11 @@ run (void *cls)
   RND_BLK (&master_pub);
   RND_BLK (&reserve_pub);
   RND_BLK (&rnd_hash);
-  denom_priv.cipher = TALER_DENOMINATION_RSA;
-  denom_priv.details.rsa_private_key = GNUNET_CRYPTO_rsa_private_key_create (
-    1024);
-  TALER_denom_priv_to_pub (&denom_priv,
-                           0, /* age mask */
-                           &denom_pub);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_priv_create (&denom_priv,
+                                          &denom_pub,
+                                          TALER_DENOMINATION_RSA,
+                                          1024));
   TALER_denom_pub_hash (&denom_pub,
                         &denom_pub_hash);
   TALER_denom_priv_free (&denom_priv);

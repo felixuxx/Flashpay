@@ -22,6 +22,93 @@
 #include "taler_util.h"
 
 
+enum GNUNET_GenericReturnValue
+TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
+                         struct TALER_DenominationPublicKey *denom_pub,
+                         enum TALER_DenominationCipher cipher,
+                         ...)
+{
+  memset (denom_priv,
+          0,
+          sizeof (*denom_priv));
+  memset (denom_pub,
+          0,
+          sizeof (*denom_pub));
+  switch (cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  case TALER_DENOMINATION_RSA:
+    {
+      va_list ap;
+      unsigned int bits;
+
+      va_start (ap, cipher);
+      bits = va_arg (ap, unsigned int);
+      va_end (ap);
+      if (bits < 512)
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      denom_priv->details.rsa_private_key
+        = GNUNET_CRYPTO_rsa_private_key_create (bits);
+    }
+    if (NULL == denom_priv->details.rsa_private_key)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    denom_pub->details.rsa_public_key
+      = GNUNET_CRYPTO_rsa_private_key_get_public (
+          denom_priv->details.rsa_private_key);
+    denom_priv->cipher = cipher;
+    denom_pub->cipher = cipher;
+    return GNUNET_OK;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_break (0);
+  }
+  return GNUNET_SYSERR;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
+                          const struct TALER_DenominationPrivateKey *denom_priv,
+                          void *blinded_msg,
+                          size_t blinded_msg_size)
+{
+  memset (denom_sig,
+          0,
+          sizeof (*denom_sig));
+  switch (denom_priv->cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  case TALER_DENOMINATION_RSA:
+    denom_sig->details.blinded_rsa_signature
+      = GNUNET_CRYPTO_rsa_sign_blinded (
+          denom_priv->details.rsa_private_key,
+          blinded_msg,
+          blinded_msg_size);
+    if (NULL == denom_sig->details.blinded_rsa_signature)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    denom_sig->cipher = TALER_DENOMINATION_RSA;
+    return GNUNET_OK;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_break (0);
+  }
+  return GNUNET_SYSERR;
+}
+
+
 void
 TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
                       struct TALER_DenominationHash *denom_hash)

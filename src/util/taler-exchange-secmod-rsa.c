@@ -208,10 +208,10 @@ struct WorkItem
   struct DenominationKey *dk;
 
   /**
-   * RSA signature over @e blinded_msg using @e dk. Result of doing the
-   * work. Initially NULL.
+   * Signature over @e blinded_msg using @e dk. Result of doing the
+   * work. Initially zero.
    */
-  struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+  struct TALER_BlindedDenominationSignature denom_sig;
 
   /**
    * Coin_ev value to sign.
@@ -424,11 +424,11 @@ sign_worker (void *cls)
                                    wi);
       work_counter--;
       GNUNET_assert (0 == pthread_mutex_unlock (&work_lock));
-      wi->rsa_signature
-        = GNUNET_CRYPTO_rsa_sign_blinded (
-            wi->dk->denom_priv.details.rsa_private_key,
-            wi->blinded_msg,
-            wi->blinded_msg_size);
+      GNUNET_break (GNUNET_OK ==
+                    TALER_denom_sign_blinded (&wi->denom_sig,
+                                              &wi->dk->denom_priv,
+                                              wi->blinded_msg,
+                                              wi->blinded_msg_size));
       /* put completed work into done queue */
       GNUNET_assert (0 == pthread_mutex_lock (&done_lock));
       GNUNET_CONTAINER_DLL_insert (done_head,
@@ -495,8 +495,8 @@ static void
 free_dk (struct DenominationKey *dk)
 {
   GNUNET_free (dk->filename);
-  GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv.details.rsa_private_key);
-  GNUNET_CRYPTO_rsa_public_key_free (dk->denom_pub.details.rsa_public_key);
+  TALER_denom_priv_free (&dk->denom_priv);
+  TALER_denom_pub_free (&dk->denom_pub);
   GNUNET_free (dk);
 }
 
@@ -584,7 +584,7 @@ handle_done (void *cls)
                                  done_tail,
                                  wi);
     GNUNET_assert (0 == pthread_mutex_unlock (&done_lock));
-    if (NULL == wi->rsa_signature)
+    if (TALER_DENOMINATION_INVALID == wi->denom_sig.cipher)
     {
       struct TALER_CRYPTO_SignFailure sf = {
         .header.size = htons (sizeof (sf)),
@@ -605,10 +605,10 @@ handle_done (void *cls)
       size_t buf_size;
       size_t tsize;
 
-      buf_size = GNUNET_CRYPTO_rsa_signature_encode (wi->rsa_signature,
-                                                     &buf);
-      GNUNET_CRYPTO_rsa_signature_free (wi->rsa_signature);
-      wi->rsa_signature = NULL;
+      buf_size = GNUNET_CRYPTO_rsa_signature_encode (
+        wi->denom_sig.details.blinded_rsa_signature,
+        &buf);
+      TALER_blinded_denom_sig_free (&wi->denom_sig);
       tsize = sizeof (*sr) + buf_size;
       GNUNET_assert (tsize < UINT16_MAX);
       sr = GNUNET_malloc (tsize);
@@ -844,19 +844,17 @@ setup_key (struct DenominationKey *dk,
   size_t buf_size;
   void *buf;
 
-  priv.cipher = TALER_DENOMINATION_RSA;
-  priv.details.rsa_private_key
-    = GNUNET_CRYPTO_rsa_private_key_create (denom->rsa_keysize);
-  if (NULL == priv.details.rsa_private_key)
+  if (GNUNET_OK !=
+      TALER_denom_priv_create (&priv,
+                               &pub,
+                               TALER_DENOMINATION_RSA,
+                               (unsigned int) denom->rsa_keysize))
   {
     GNUNET_break (0);
     GNUNET_SCHEDULER_shutdown ();
     global_ret = 40;
     return GNUNET_SYSERR;
   }
-  TALER_denom_priv_to_pub (&priv,
-                           0 /* FIXME-Oec */,
-                           &pub);
   buf_size = GNUNET_CRYPTO_rsa_private_key_encode (priv.details.rsa_private_key,
                                                    &buf);
   TALER_denom_pub_hash (&pub,
@@ -899,8 +897,8 @@ setup_key (struct DenominationKey *dk,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Duplicate private key created! Terminating.\n");
-    GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv.details.rsa_private_key);
-    GNUNET_CRYPTO_rsa_public_key_free (dk->denom_pub.details.rsa_public_key);
+    TALER_denom_priv_free (&dk->denom_priv);
+    TALER_denom_pub_free (&dk->denom_pub);
     GNUNET_free (dk->filename);
     GNUNET_free (dk);
     return GNUNET_SYSERR;
@@ -1261,7 +1259,7 @@ purge_key (struct DenominationKey *dk)
     dk->purge = true;
     return;
   }
-  GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv.details.rsa_private_key);
+  TALER_denom_priv_free (&dk->denom_priv);
   GNUNET_free (dk);
 }
 
@@ -1447,8 +1445,8 @@ parse_key (struct Denomination *denom,
                   "Duplicate private key %s detected in file `%s'. Skipping.\n",
                   GNUNET_h2s (&dk->h_denom_pub.hash),
                   filename);
-      GNUNET_CRYPTO_rsa_private_key_free (priv.details.rsa_private_key);
-      GNUNET_CRYPTO_rsa_public_key_free (pub.details.rsa_public_key);
+      TALER_denom_priv_free (&priv);
+      TALER_denom_pub_free (&pub);
       GNUNET_free (dk);
       return;
     }

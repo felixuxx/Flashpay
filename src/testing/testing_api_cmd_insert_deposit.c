@@ -136,17 +136,17 @@ insert_deposit_run (void *cls,
   struct TALER_EXCHANGEDB_Deposit deposit;
   struct TALER_MerchantPrivateKeyP merchant_priv;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
-  struct TALER_DenominationPublicKey dpk = {
-    .cipher = TALER_DENOMINATION_RSA
-  };
-  struct GNUNET_CRYPTO_RsaPrivateKey *denom_priv;
+  struct TALER_DenominationPublicKey dpk;
+  struct TALER_DenominationPrivateKey denom_priv;
   struct GNUNET_HashCode hc;
 
   // prepare and store issue first.
   fake_issue (&issue);
-  denom_priv = GNUNET_CRYPTO_rsa_private_key_create (1024);
-  dpk.details.rsa_public_key = GNUNET_CRYPTO_rsa_private_key_get_public (
-    denom_priv);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_priv_create (&denom_priv,
+                                          &dpk,
+                                          TALER_DENOMINATION_RSA,
+                                          1024));
   TALER_denom_pub_hash (&dpk,
                         &issue.properties.denom_hash);
 
@@ -161,6 +161,8 @@ insert_deposit_run (void *cls,
         ids->dbc->plugin->commit (ids->dbc->plugin->cls)) )
   {
     TALER_TESTING_interpreter_fail (is);
+    TALER_denom_pub_free (&dpk);
+    TALER_denom_priv_free (&denom_priv);
     return;
   }
 
@@ -189,6 +191,8 @@ insert_deposit_run (void *cls,
                                 &deposit.deposit_fee)) )
   {
     TALER_TESTING_interpreter_fail (is);
+    TALER_denom_pub_free (&dpk);
+    TALER_denom_priv_free (&denom_priv);
     return;
   }
 
@@ -201,7 +205,7 @@ insert_deposit_run (void *cls,
                                     &hc);
   deposit.coin.denom_sig.cipher = TALER_DENOMINATION_RSA;
   deposit.coin.denom_sig.details.rsa_signature
-    = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv,
+    = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv.details.rsa_private_key,
                                   &hc);
   GNUNET_asprintf (&deposit.receiver_wire_account,
                    "payto://x-taler-bank/localhost/%s",
@@ -231,13 +235,15 @@ insert_deposit_run (void *cls,
     GNUNET_break (0);
     ids->dbc->plugin->rollback (ids->dbc->plugin->cls);
     GNUNET_free (deposit.receiver_wire_account);
+    TALER_denom_pub_free (&dpk);
+    TALER_denom_priv_free (&denom_priv);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
 
   TALER_denom_sig_free (&deposit.coin.denom_sig);
   TALER_denom_pub_free (&dpk);
-  GNUNET_CRYPTO_rsa_private_key_free (denom_priv);
+  TALER_denom_priv_free (&denom_priv);
   GNUNET_free (deposit.receiver_wire_account);
   TALER_TESTING_interpreter_next (is);
 }

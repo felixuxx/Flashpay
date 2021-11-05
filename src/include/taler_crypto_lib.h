@@ -678,6 +678,26 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
+ * Initialize denomination public-private key pair.
+ *
+ * For #TALER_DENOMINATION_RSA, an additional "unsigned int"
+ * argument with the number of bits for 'n' (e.g. 2048) must
+ * be passed.
+ *
+ * @param[out] denom_priv where to write the private key
+ * @param[out] deonm_pub where to write the public key
+ * @param cipher which type of cipher to use
+ * @param ... cipher-specific parameters
+ * @return #GNUNET_OK on success, #GNUNET_NO if parameters were invalid
+ */
+enum GNUNET_GenericReturnValue
+TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
+                         struct TALER_DenominationPublicKey *denom_pub,
+                         enum TALER_DenominationCipher cipher,
+                         ...);
+
+
+/**
  * Free internals of @a denom_priv, but not @a denom_priv itself.
  *
  * @param[in] denom_priv key to free
@@ -693,6 +713,22 @@ TALER_denom_priv_free (struct TALER_DenominationPrivateKey *denom_priv);
  */
 void
 TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
+
+
+/**
+ * Create blinded signature.
+ *
+ * @param[out] denom_sig where to write the signature
+ * @param denom_priv private key to use for signing
+ * @param blinded_msg message to sign
+ * @param blinded_msg_size number of bytes in @a blinded_msg
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
+                          const struct TALER_DenominationPrivateKey *denom_priv,
+                          void *blinded_msg,
+                          size_t blinded_msg_size);
 
 
 /**

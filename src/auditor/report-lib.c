@@ -151,7 +151,7 @@ add_denomination (
                        &issue->value);
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Tracking denomination `%s' (%s)\n",
-                GNUNET_h2s (&issue->denom_hash),
+                GNUNET_h2s (&issue->denom_hash.hash),
                 TALER_amount2s (&value));
     TALER_amount_ntoh (&value,
                        &issue->fee_withdraw);
