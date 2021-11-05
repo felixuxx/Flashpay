@@ -326,6 +326,7 @@ struct TALER_CoinSpendSignatureP
  */
 struct TALER_DenominationBlindingKeyP
 {
+  // FIXME: RSA migration!
   /**
    * Taler uses RSA for blind signatures.
    */
@@ -986,6 +987,7 @@ struct TALER_PlanchetSecretsP
    * The blinding key.
    */
   struct TALER_DenominationBlindingKeyP blinding_key;
+  // FIXME: RSA migration on generation!
 
 };
 

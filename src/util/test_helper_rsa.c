@@ -238,39 +238,32 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
   struct TALER_BlindedDenominationSignature ds;
   enum TALER_ErrorCode ec;
   bool success = false;
-  struct TALER_CoinPubHash m_hash;
-  struct TALER_BlindingSecret bks;
+  struct TALER_PlanchetSecretsP ps;
+  struct TALER_CoinPubHash c_hash;
 
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_blinding_secret_create (&bks,
-                                               TALER_DENOMINATION_RSA));
-  GNUNET_CRYPTO_hash ("Hello",
-                      strlen ("Hello"),
-                      &m_hash.hash);
+  TALER_planchet_setup_random (&ps);
   for (unsigned int i = 0; i<MAX_KEYS; i++)
   {
     if (! keys[i].valid)
       continue;
     {
-      void *buf;
-      size_t buf_size;
+      struct TALER_PlanchetDetail pd;
 
       GNUNET_assert (GNUNET_YES ==
-                     TALER_rsa_blind (&m_hash,
-                                      &bks.details.rsa_bks,
-                                      keys[i].denom_pub.details.rsa_public_key,
-                                      &buf,
-                                      &buf_size));
+                     TALER_planchet_prepare (&keys[i].denom_pub,
+                                             &ps,
+                                             &c_hash,
+                                             &pd));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Requesting signature over %u bytes with key %s\n",
-                  (unsigned int) buf_size,
+                  (unsigned int) pd.coin_ev_size,
                   GNUNET_h2s (&keys[i].h_denom_pub.hash));
       ds = TALER_CRYPTO_helper_denom_sign (dh,
                                            &keys[i].h_denom_pub,
-                                           buf,
-                                           buf_size,
+                                           pd.coin_ev,
+                                           pd.coin_ev_size,
                                            &ec);
-      GNUNET_free (buf);
+      GNUNET_free (pd.coin_ev);
     }
     switch (ec)
     {
@@ -295,7 +288,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         if (GNUNET_OK !=
             TALER_denom_sig_unblind (&rs,
                                      &ds,
-                                     &bks,
+                                     &ps.blinding_key.bks,
                                      &keys[i].denom_pub))
         {
           GNUNET_break (0);
@@ -305,7 +298,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         if (GNUNET_OK !=
             TALER_denom_pub_verify (&keys[i].denom_pub,
                                     &rs,
-                                    &m_hash))
+                                    &c_hash))
         {
           /* signature invalid */
           GNUNET_break (0);
@@ -385,14 +378,10 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 {
   struct TALER_BlindedDenominationSignature ds;
   enum TALER_ErrorCode ec;
-  struct TALER_CoinPubHash m_hash;
   struct GNUNET_TIME_Relative duration;
   struct TALER_PlanchetSecretsP ps;
 
   TALER_planchet_setup_random (&ps);
-  GNUNET_CRYPTO_hash ("Hello",
-                      strlen ("Hello"),
-                      &m_hash.hash);
   duration = GNUNET_TIME_UNIT_ZERO;
   for (unsigned int j = 0; j<NUM_SIGN_TESTS;)
   {
