@@ -133,9 +133,7 @@ key_cb (void *cls,
       {
         keys[i].valid = false;
         keys[i].revoked = false;
-        GNUNET_CRYPTO_rsa_public_key_free (
-          keys[i].denom_pub.details.rsa_public_key);
-        keys[i].denom_pub.details.rsa_public_key = NULL;
+        TALER_denom_pub_free (&keys[i].denom_pub);
         GNUNET_assert (num_keys > 0);
         num_keys--;
         found = true;
@@ -157,8 +155,8 @@ key_cb (void *cls,
       keys[i].start_time = start_time;
       keys[i].validity_duration = validity_duration;
       keys[i].denom_pub = *denom_pub;
-      keys[i].denom_pub.details.rsa_public_key
-        = GNUNET_CRYPTO_rsa_public_key_dup (denom_pub->details.rsa_public_key);
+      TALER_denom_pub_deep_copy (&keys[i].denom_pub,
+                                 denom_pub);
       num_keys++;
       return;
     }
@@ -241,11 +239,11 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
   enum TALER_ErrorCode ec;
   bool success = false;
   struct TALER_CoinPubHash m_hash;
-  struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
+  struct TALER_BlindingSecret bks;
 
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                              &bks,
-                              sizeof (bks));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_blinding_secret_create (&bks,
+                                               TALER_DENOMINATION_RSA));
   GNUNET_CRYPTO_hash ("Hello",
                       strlen ("Hello"),
                       &m_hash.hash);
@@ -259,7 +257,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 
       GNUNET_assert (GNUNET_YES ==
                      TALER_rsa_blind (&m_hash,
-                                      &bks,
+                                      &bks.details.rsa_bks,
                                       keys[i].denom_pub.details.rsa_public_key,
                                       &buf,
                                       &buf_size));
@@ -294,12 +292,11 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
       {
         struct TALER_DenominationSignature rs;
 
-        rs.cipher = TALER_DENOMINATION_RSA;
-        rs.details.rsa_signature
-          = TALER_rsa_unblind (ds.details.blinded_rsa_signature,
-                               &bks,
-                               keys[i].denom_pub.details.rsa_public_key);
-        if (NULL == rs.details.rsa_signature)
+        if (GNUNET_OK !=
+            TALER_denom_sig_unblind (&rs,
+                                     &ds,
+                                     &bks,
+                                     &keys[i].denom_pub))
         {
           GNUNET_break (0);
           return 6;

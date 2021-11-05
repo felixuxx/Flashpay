@@ -109,6 +109,94 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_denom_sig_unblind (struct TALER_DenominationSignature *denom_sig,
+                         const struct
+                         TALER_BlindedDenominationSignature *bdenom_sig,
+                         const struct TALER_BlindingSecret *bks,
+                         const struct TALER_DenominationPublicKey *denom_pub)
+{
+  if (bks->cipher != denom_pub->cipher)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  if (bdenom_sig->cipher != denom_pub->cipher)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  switch (denom_pub->cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  case TALER_DENOMINATION_RSA:
+    denom_sig->details.rsa_signature
+      = TALER_rsa_unblind (
+          bdenom_sig->details.blinded_rsa_signature,
+          &bks->details.rsa_bks,
+          denom_pub->details.rsa_public_key);
+    if (NULL == denom_sig->details.rsa_signature)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    denom_sig->cipher = TALER_DENOMINATION_RSA;
+    return GNUNET_OK;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_break (0);
+  }
+  return GNUNET_SYSERR;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_blinding_secret_create (struct TALER_BlindingSecret *bs,
+                              enum TALER_DenominationCipher cipher,
+                              ...)
+{
+  memset (bs,
+          0,
+          sizeof (*bs));
+  switch (bs->cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    return GNUNET_OK;
+  case TALER_DENOMINATION_RSA:
+    bs->cipher = TALER_DENOMINATION_RSA;
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                                &bs->details.rsa_bks,
+                                sizeof (bs->details.rsa_bks));
+    return GNUNET_OK;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_break (0);
+  }
+  return GNUNET_SYSERR;
+}
+
+
+void
+TALER_blinding_secret_free (struct TALER_BlindingSecret *bs)
+{
+  switch (bs->cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    return;
+  case TALER_DENOMINATION_RSA:
+    memset (bs,
+            0,
+            sizeof (*bs));
+    return;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_break (0);
+  }
+}
+
+
 void
 TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
                       struct TALER_DenominationHash *denom_hash)

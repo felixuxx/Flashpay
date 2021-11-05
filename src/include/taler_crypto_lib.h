@@ -588,6 +588,29 @@ struct TALER_DenominationPublicKey
 
 
 /**
+ * Client-side secrets for blinding.
+ */
+struct TALER_BlindingSecret
+{
+
+  /**
+   * Type of the blinding secret.
+   */
+  enum TALER_DenominationCipher cipher;
+
+  union
+  {
+
+    /**
+     * Blinding key secret for RSA.
+     */
+    struct GNUNET_CRYPTO_RsaBlindingKeySecret rsa_bks;
+
+  } details;
+};
+
+
+/**
  * @brief Type of private signing keys for blind signing of coins.
  */
 struct TALER_DenominationPrivateKey
@@ -678,6 +701,27 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
+ * Create a blinding secret @a bs for @a cipher.
+ *
+ * @param[out] blinding secret to initialize
+ * @param cipher cipher to create blinding secret for
+ */
+enum GNUNET_GenericReturnValue
+TALER_blinding_secret_create (struct TALER_BlindingSecret *bs,
+                              enum TALER_DenominationCipher cipher,
+                              ...);
+
+
+/**
+ * Release memory inside of a blinding secret @a bs.
+ *
+ * @param[in] blinding secret to free
+ */
+void
+TALER_blinding_secret_free (struct TALER_BlindingSecret *bs);
+
+
+/**
  * Initialize denomination public-private key pair.
  *
  * For #TALER_DENOMINATION_RSA, an additional "unsigned int"
@@ -729,6 +773,23 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
                           void *blinded_msg,
                           size_t blinded_msg_size);
+
+
+/**
+ * Unblind blinded signature.
+ *
+ * @param[out] denom_sig where to write the unblinded signature
+ * @param bdenom_sig the blinded signature
+ * @param bks blinding secret to use
+ * @param denom_pub public key used for signing
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_denom_sig_unblind (struct TALER_DenominationSignature *denom_sig,
+                         const struct
+                         TALER_BlindedDenominationSignature *bdenom_sig,
+                         const struct TALER_BlindingSecret *bks,
+                         const struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
