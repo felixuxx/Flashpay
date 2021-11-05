@@ -129,7 +129,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   sig->cipher = TALER_DENOMINATION_RSA;
   sig->details.rsa_signature
     = TALER_rsa_unblind (bsig.details.blinded_rsa_signature,
-                         &fc.blinding_key.bks,
+                         &fc.blinding_key.rsa_bks,
                          rpub.details.rsa_public_key);
   /* verify link_sig */
   {

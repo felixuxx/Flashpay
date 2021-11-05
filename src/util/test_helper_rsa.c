@@ -288,7 +288,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
         if (GNUNET_OK !=
             TALER_denom_sig_unblind (&rs,
                                      &ds,
-                                     &ps.blinding_key.bks,
+                                     &ps.blinding_key,
                                      &keys[i].denom_pub))
         {
           GNUNET_break (0);

@@ -283,7 +283,7 @@ recoup_run (void *cls,
   struct RecoupState *ps = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
-  const struct TALER_DenominationBlindingKeyP *blinding_key;
+  const union TALER_DenominationBlindingKeyP *blinding_key;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
   struct TALER_PlanchetSecretsP planchet;

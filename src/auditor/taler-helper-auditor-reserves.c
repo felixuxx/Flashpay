@@ -689,7 +689,7 @@ handle_recoup_by_reserve (
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_DenominationBlindingKeyP *coin_blind)
+  const union TALER_DenominationBlindingKeyP *coin_blind)
 {
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;

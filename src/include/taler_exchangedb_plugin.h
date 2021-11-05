@@ -368,7 +368,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       uint64_t known_coin_id;
       struct TALER_CoinSpendSignatureP coin_sig;
-      struct TALER_DenominationBlindingKeyP coin_blind;
+      union TALER_DenominationBlindingKeyP coin_blind;
       struct TALER_Amount amount;
       struct GNUNET_TIME_Absolute timestamp;
       uint64_t reserve_out_serial_id;
@@ -378,7 +378,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       uint64_t known_coin_id;
       struct TALER_CoinSpendSignatureP coin_sig;
-      struct TALER_DenominationBlindingKeyP coin_blind;
+      union TALER_DenominationBlindingKeyP coin_blind;
       struct TALER_Amount amount;
       struct GNUNET_TIME_Absolute timestamp;
       uint64_t rrc_serial;
@@ -762,7 +762,7 @@ struct TALER_EXCHANGEDB_Recoup
    * Blinding factor supplied to prove to the exchange that
    * the coin came from this reserve.
    */
-  struct TALER_DenominationBlindingKeyP coin_blind;
+  union TALER_DenominationBlindingKeyP coin_blind;
 
   /**
    * Signature of the coin of type
@@ -799,7 +799,7 @@ struct TALER_EXCHANGEDB_RecoupListEntry
    * Blinding factor supplied to prove to the exchange that
    * the coin came from this reserve.
    */
-  struct TALER_DenominationBlindingKeyP coin_blind;
+  union TALER_DenominationBlindingKeyP coin_blind;
 
   /**
    * Signature of the coin of type
@@ -847,7 +847,7 @@ struct TALER_EXCHANGEDB_RecoupRefreshListEntry
    * Blinding factor supplied to prove to the exchange that
    * the coin came from this @e old_coin_pub.
    */
-  struct TALER_DenominationBlindingKeyP coin_blind;
+  union TALER_DenominationBlindingKeyP coin_blind;
 
   /**
    * Signature of the coin of type
@@ -1930,7 +1930,7 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_DenominationBlindingKeyP *coin_blind);
+  const union TALER_DenominationBlindingKeyP *coin_blind);
 
 
 /**
@@ -1960,7 +1960,7 @@ typedef enum GNUNET_GenericReturnValue
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_DenominationBlindingKeyP *coin_blind);
+  const union TALER_DenominationBlindingKeyP *coin_blind);
 
 
 /**
@@ -2038,7 +2038,7 @@ typedef void
   uint64_t rowid,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_DenominationBlindingKeyP *coin_blind,
+  const union TALER_DenominationBlindingKeyP *coin_blind,
   const struct TALER_BlindedCoinHash *h_blinded_ev,
   const struct TALER_Amount *amount);
 
@@ -3391,7 +3391,7 @@ struct TALER_EXCHANGEDB_Plugin
     const struct TALER_ReservePublicKeyP *reserve_pub,
     const struct TALER_CoinPublicInfo *coin,
     const struct TALER_CoinSpendSignatureP *coin_sig,
-    const struct TALER_DenominationBlindingKeyP *coin_blind,
+    const union TALER_DenominationBlindingKeyP *coin_blind,
     const struct TALER_Amount *amount,
     const struct TALER_BlindedCoinHash *h_blind_ev,
     struct GNUNET_TIME_Absolute timestamp);
@@ -3416,7 +3416,7 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_CoinPublicInfo *coin,
     const struct TALER_CoinSpendSignatureP *coin_sig,
-    const struct TALER_DenominationBlindingKeyP *coin_blind,
+    const union TALER_DenominationBlindingKeyP *coin_blind,
     const struct TALER_Amount *amount,
     const struct TALER_BlindedCoinHash *h_blind_ev,
     struct GNUNET_TIME_Absolute timestamp);

@@ -2381,7 +2381,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (absolute_time, const struct GNUNET_TIME_Absolute)                \
   op (exchange_pub, const struct TALER_ExchangePublicKeyP)             \
   op (exchange_sig, const struct TALER_ExchangeSignatureP)             \
-  op (blinding_key, const struct TALER_DenominationBlindingKeyP)
+  op (blinding_key, const union TALER_DenominationBlindingKeyP)
 
 
 TALER_TESTING_SIMPLE_TRAITS (TALER_TESTING_MAKE_DECL_SIMPLE_TRAIT)

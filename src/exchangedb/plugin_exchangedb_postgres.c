@@ -9032,7 +9032,7 @@ recoup_serial_helper_cb (void *cls,
     struct TALER_ReservePublicKeyP reserve_pub;
     struct TALER_CoinPublicInfo coin;
     struct TALER_CoinSpendSignatureP coin_sig;
-    struct TALER_DenominationBlindingKeyP coin_blind;
+    union TALER_DenominationBlindingKeyP coin_blind;
     struct TALER_Amount amount;
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_BlindedCoinHash h_blind_ev;
@@ -9180,7 +9180,7 @@ recoup_refresh_serial_helper_cb (void *cls,
     struct TALER_CoinSpendPublicKeyP old_coin_pub;
     struct TALER_CoinPublicInfo coin;
     struct TALER_CoinSpendSignatureP coin_sig;
-    struct TALER_DenominationBlindingKeyP coin_blind;
+    union TALER_DenominationBlindingKeyP coin_blind;
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_DenominationHash old_denom_pub_hash;
     struct TALER_Amount amount;
@@ -9441,7 +9441,7 @@ postgres_insert_recoup_request (
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_DenominationBlindingKeyP *coin_blind,
+  const union TALER_DenominationBlindingKeyP *coin_blind,
   const struct TALER_Amount *amount,
   const struct TALER_BlindedCoinHash *h_blind_ev,
   struct GNUNET_TIME_Absolute timestamp)
@@ -9533,7 +9533,7 @@ postgres_insert_recoup_refresh_request (
   void *cls,
   const struct TALER_CoinPublicInfo *coin,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_DenominationBlindingKeyP *coin_blind,
+  const union TALER_DenominationBlindingKeyP *coin_blind,
   const struct TALER_Amount *amount,
   const struct TALER_BlindedCoinHash *h_blind_ev,
   struct GNUNET_TIME_Absolute timestamp)

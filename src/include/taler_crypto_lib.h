@@ -324,13 +324,12 @@ struct TALER_CoinSpendSignatureP
 /**
  * @brief Type of blinding keys for Taler.
  */
-struct TALER_DenominationBlindingKeyP
+union TALER_DenominationBlindingKeyP
 {
-  // FIXME: RSA migration!
   /**
    * Taler uses RSA for blind signatures.
    */
-  struct GNUNET_CRYPTO_RsaBlindingKeySecret bks;
+  struct GNUNET_CRYPTO_RsaBlindingKeySecret rsa_bks;
 };
 
 
@@ -589,29 +588,6 @@ struct TALER_DenominationPublicKey
 
 
 /**
- * Client-side secrets for blinding.
- */
-struct TALER_BlindingSecret
-{
-
-  /**
-   * Type of the blinding secret.
-   */
-  enum TALER_DenominationCipher cipher;
-
-  union
-  {
-
-    /**
-     * Blinding key secret for RSA.
-     */
-    struct GNUNET_CRYPTO_RsaBlindingKeySecret rsa_bks;
-
-  } details;
-};
-
-
-/**
  * @brief Type of private signing keys for blind signing of coins.
  */
 struct TALER_DenominationPrivateKey
@@ -704,22 +680,10 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 /**
  * Create a blinding secret @a bs for @a cipher.
  *
- * @param[out] blinding secret to initialize
- * @param cipher cipher to create blinding secret for
- */
-enum GNUNET_GenericReturnValue
-TALER_blinding_secret_create (struct TALER_BlindingSecret *bs,
-                              enum TALER_DenominationCipher cipher,
-                              ...);
-
-
-/**
- * Release memory inside of a blinding secret @a bs.
- *
- * @param[in] blinding secret to free
+ * @param[out] bs blinding secret to initialize
  */
 void
-TALER_blinding_secret_free (struct TALER_BlindingSecret *bs);
+TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs);
 
 
 /**
@@ -786,11 +750,11 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_denom_sig_unblind (struct TALER_DenominationSignature *denom_sig,
-                         const struct
-                         TALER_BlindedDenominationSignature *bdenom_sig,
-                         const struct TALER_BlindingSecret *bks,
-                         const struct TALER_DenominationPublicKey *denom_pub);
+TALER_denom_sig_unblind (
+  struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_BlindedDenominationSignature *bdenom_sig,
+  const union TALER_DenominationBlindingKeyP *bks,
+  const struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -986,8 +950,7 @@ struct TALER_PlanchetSecretsP
   /**
    * The blinding key.
    */
-  struct TALER_DenominationBlindingKeyP blinding_key;
-  // FIXME: RSA migration on generation!
+  union TALER_DenominationBlindingKeyP blinding_key;
 
 };
 

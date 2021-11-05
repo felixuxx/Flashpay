@@ -1344,9 +1344,9 @@ recoup_cb (void *cls,
            const struct TALER_CoinPublicInfo *coin,
            const struct TALER_DenominationPublicKey *denom_pub,
            const struct TALER_CoinSpendSignatureP *coin_sig,
-           const struct TALER_DenominationBlindingKeyP *coin_blind)
+           const union TALER_DenominationBlindingKeyP *coin_blind)
 {
-  const struct TALER_DenominationBlindingKeyP *cb = cls;
+  const union TALER_DenominationBlindingKeyP *cb = cls;
 
   FAILIF (NULL == cb);
   FAILIF (0 != GNUNET_memcmp (cb,
@@ -1445,7 +1445,7 @@ run (void *cls)
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct GNUNET_TIME_Absolute deadline;
-  struct TALER_DenominationBlindingKeyP coin_blind;
+  union TALER_DenominationBlindingKeyP coin_blind;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReservePublicKeyP reserve_pub2;
   struct DenomKeyPair *dkp;

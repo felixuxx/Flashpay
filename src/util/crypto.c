@@ -197,7 +197,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
   GNUNET_assert (TALER_DENOMINATION_RSA == dk->cipher);
   if (GNUNET_YES !=
       TALER_rsa_blind (c_hash,
-                       &ps->blinding_key.bks,
+                       &ps->blinding_key.rsa_bks,
                        dk->details.rsa_public_key,
                        &pd->coin_ev,
                        &pd->coin_ev_size))
@@ -229,7 +229,7 @@ TALER_planchet_to_coin (
   sig.cipher = TALER_DENOMINATION_RSA;
   sig.details.rsa_signature
     = TALER_rsa_unblind (blind_sig->details.blinded_rsa_signature,
-                         &ps->blinding_key.bks,
+                         &ps->blinding_key.rsa_bks,
                          dk->details.rsa_public_key);
   if (GNUNET_OK !=
       TALER_denom_pub_verify (dk,

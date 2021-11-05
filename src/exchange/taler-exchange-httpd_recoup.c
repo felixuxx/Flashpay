@@ -56,7 +56,7 @@ struct RecoupContext
   /**
    * Key used to blind the coin.
    */
-  const struct TALER_DenominationBlindingKeyP *coin_bks;
+  const union TALER_DenominationBlindingKeyP *coin_bks;
 
   /**
    * Signature of the coin requesting recoup.
@@ -345,7 +345,7 @@ static MHD_RESULT
 verify_and_execute_recoup (
   struct MHD_Connection *connection,
   const struct TALER_CoinPublicInfo *coin,
-  const struct TALER_DenominationBlindingKeyP *coin_bks,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendSignatureP *coin_sig,
   int refreshed)
 {
@@ -446,9 +446,10 @@ verify_and_execute_recoup (
                        &c_hash);
   GNUNET_assert (dk->denom_pub.cipher ==
                  TALER_DENOMINATION_RSA);
+  // FIXME-RSA migration...
   if (GNUNET_YES !=
       TALER_rsa_blind (&c_hash,
-                       &coin_bks->bks,
+                       &coin_bks->rsa_bks,
                        dk->denom_pub.details.rsa_public_key,
                        &coin_ev,
                        &coin_ev_size))
@@ -517,7 +518,7 @@ TEH_handler_recoup (struct MHD_Connection *connection,
 {
   enum GNUNET_GenericReturnValue ret;
   struct TALER_CoinPublicInfo coin;
-  struct TALER_DenominationBlindingKeyP coin_bks;
+  union TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
   int refreshed = GNUNET_NO;
   struct GNUNET_JSON_Specification spec[] = {

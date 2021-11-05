@@ -1506,7 +1506,7 @@ struct TALER_RecoupRequestPS
   /**
    * Blinding factor that was used to withdraw the coin.
    */
-  struct TALER_DenominationBlindingKeyP coin_blind;
+  union TALER_DenominationBlindingKeyP coin_blind;
 };
 
 
