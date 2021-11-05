@@ -352,8 +352,6 @@ verify_and_execute_recoup (
   struct RecoupContext pc;
   const struct TEH_DenominationKey *dk;
   struct TALER_CoinPubHash c_hash;
-  void *coin_ev;
-  size_t coin_ev_size;
   MHD_RESULT mret;
 
   /* check denomination exists and is in recoup mode */
@@ -442,28 +440,30 @@ verify_and_execute_recoup (
                                          NULL);
     }
   }
-  TALER_coin_pub_hash (&coin->coin_pub,
-                       &c_hash);
-  GNUNET_assert (dk->denom_pub.cipher ==
-                 TALER_DENOMINATION_RSA);
-  // FIXME-RSA migration...
-  if (GNUNET_YES !=
-      TALER_rsa_blind (&c_hash,
-                       &coin_bks->rsa_bks,
-                       dk->denom_pub.details.rsa_public_key,
-                       &coin_ev,
-                       &coin_ev_size))
+
   {
-    GNUNET_break (0);
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
-                                       NULL);
+    void *coin_ev;
+    size_t coin_ev_size;
+
+    if (GNUNET_OK !=
+        TALER_denom_blind (&dk->denom_pub,
+                           coin_bks,
+                           &coin->coin_pub,
+                           &c_hash,
+                           &coin_ev,
+                           &coin_ev_size))
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
+                                         NULL);
+    }
+    TALER_coin_ev_hash (coin_ev,
+                        coin_ev_size,
+                        &pc.h_blind);
+    GNUNET_free (coin_ev);
   }
-  TALER_coin_ev_hash (coin_ev,
-                      coin_ev_size,
-                      &pc.h_blind);
-  GNUNET_free (coin_ev);
 
   /* Perform actual recoup transaction */
   pc.coin_sig = coin_sig;

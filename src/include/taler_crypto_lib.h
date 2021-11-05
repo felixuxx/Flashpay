@@ -725,6 +725,26 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
 
 
 /**
+ * Blind coin for blind signing with @a dk using blinding secret @a coin_bks.
+ *
+ * @param dk denomination public key to blind for
+ * @param coin_bks blinding secret to use
+ * @param coin_pub public key of the coin to blind
+ * @param[out] c_hash resulting hashed coin
+ * @param[out] coin_ev blinded coin to submit
+ * @param[out] coin_ev_size number of bytes in @a coin_ev
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
+                   const union TALER_DenominationBlindingKeyP *coin_bks,
+                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                   struct TALER_CoinPubHash *c_hash,
+                   void **coin_ev,
+                   size_t *coin_ev_size);
+
+
+/**
  * Create blinded signature.
  *
  * @param[out] denom_sig where to write the signature

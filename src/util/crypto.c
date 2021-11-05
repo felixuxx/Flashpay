@@ -185,21 +185,13 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
-  // FIXME-Oec: replace with function that
-  // also hashes the age vector if we have
-  // one!
-  TALER_coin_pub_hash (&coin_pub,
-                       c_hash);
-  // FIXME-Gian/Lucien: this will be the bigger
-  // change, as you have the extra round trip
-  // => to be discussed!
-  GNUNET_assert (TALER_DENOMINATION_RSA == dk->cipher);
-  if (GNUNET_YES !=
-      TALER_rsa_blind (c_hash,
-                       &ps->blinding_key.rsa_bks,
-                       dk->details.rsa_public_key,
-                       &pd->coin_ev,
-                       &pd->coin_ev_size))
+  if (GNUNET_OK !=
+      TALER_denom_blind (dk,
+                         &ps->blinding_key,
+                         &coin_pub,
+                         c_hash,
+                         &pd->coin_ev,
+                         &pd->coin_ev_size))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

@@ -217,6 +217,38 @@ TALER_denom_priv_to_pub (const struct TALER_DenominationPrivateKey *denom_priv,
 
 
 enum GNUNET_GenericReturnValue
+TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
+                   const union TALER_DenominationBlindingKeyP *coin_bks,
+                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                   struct TALER_CoinPubHash *c_hash,
+                   void **coin_ev,
+                   size_t *coin_ev_size)
+{
+  switch (dk->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    TALER_coin_pub_hash (coin_pub,
+                         c_hash);
+    if (GNUNET_YES !=
+        TALER_rsa_blind (c_hash,
+                         &coin_bks->rsa_bks,
+                         dk->details.rsa_public_key,
+                         coin_ev,
+                         coin_ev_size))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    return GNUNET_OK;
+  // TODO: add case for Clause-Schnorr
+  default:
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+}
+
+
+enum GNUNET_GenericReturnValue
 TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
                         const struct TALER_DenominationSignature *denom_sig,
                         const struct TALER_CoinPubHash *c_hash)
