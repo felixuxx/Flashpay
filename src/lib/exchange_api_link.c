@@ -123,14 +123,16 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                 &fc);
 
   /* extract coin and signature */
+  if (GNUNET_OK !=
+      TALER_denom_sig_unblind (sig,
+                               &bsig,
+                               &fc.blinding_key,
+                               &rpub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   *coin_priv = fc.coin_priv;
-  // FIXME: use more generlized unblinding API!
-  GNUNET_assert (TALER_DENOMINATION_RSA == bsig.cipher);
-  sig->cipher = TALER_DENOMINATION_RSA;
-  sig->details.rsa_signature
-    = TALER_rsa_unblind (bsig.details.blinded_rsa_signature,
-                         &fc.blinding_key.rsa_bks,
-                         rpub.details.rsa_public_key);
   /* verify link_sig */
   {
     struct TALER_PlanchetDetail pd;

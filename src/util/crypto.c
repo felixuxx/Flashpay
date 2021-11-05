@@ -188,9 +188,8 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
   // FIXME-Oec: replace with function that
   // also hashes the age vector if we have
   // one!
-  GNUNET_CRYPTO_hash (&coin_pub.eddsa_pub,
-                      sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
-                      &c_hash->hash);
+  TALER_coin_pub_hash (&coin_pub,
+                       c_hash);
   // FIXME-Gian/Lucien: this will be the bigger
   // change, as you have the extra round trip
   // => to be discussed!
@@ -221,23 +220,22 @@ TALER_planchet_to_coin (
 {
   struct TALER_DenominationSignature sig;
 
-  // FIXME-Gian/Lucien: this may need a bigger
-  // change, as you have the extra round trip
-  // => to be discussed!
-  GNUNET_assert (TALER_DENOMINATION_RSA == dk->cipher);
-  GNUNET_assert (TALER_DENOMINATION_RSA == blind_sig->cipher);
-  sig.cipher = TALER_DENOMINATION_RSA;
-  sig.details.rsa_signature
-    = TALER_rsa_unblind (blind_sig->details.blinded_rsa_signature,
-                         &ps->blinding_key.rsa_bks,
-                         dk->details.rsa_public_key);
+  if (GNUNET_OK !=
+      TALER_denom_sig_unblind (&sig,
+                               blind_sig,
+                               &ps->blinding_key,
+                               dk))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
   if (GNUNET_OK !=
       TALER_denom_pub_verify (dk,
                               &sig,
                               c_hash))
   {
     GNUNET_break_op (0);
-    GNUNET_CRYPTO_rsa_signature_free (sig.details.rsa_signature);
+    TALER_denom_sig_free (&sig);
     return GNUNET_SYSERR;
   }
   coin->sig = sig;
@@ -327,17 +325,6 @@ TALER_rsa_blind (const struct TALER_CoinPubHash *hash,
                                   pkey,
                                   buf,
                                   buf_size);
-}
-
-
-struct GNUNET_CRYPTO_RsaSignature *
-TALER_rsa_unblind (const struct GNUNET_CRYPTO_RsaSignature *sig,
-                   const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
-                   struct GNUNET_CRYPTO_RsaPublicKey *pkey)
-{
-  return GNUNET_CRYPTO_rsa_unblind (sig,
-                                    bks,
-                                    pkey);
 }
 
 

@@ -128,7 +128,7 @@ TALER_denom_sig_unblind (
     return GNUNET_SYSERR;
   case TALER_DENOMINATION_RSA:
     denom_sig->details.rsa_signature
-      = TALER_rsa_unblind (
+      = GNUNET_CRYPTO_rsa_unblind (
           bdenom_sig->details.blinded_rsa_signature,
           &bks->rsa_bks,
           denom_pub->details.rsa_public_key);

@@ -2165,19 +2165,4 @@ TALER_rsa_blind (const struct TALER_CoinPubHash *hash,
                  size_t *buf_size);
 
 
-/**
- * Unblind a blind-signed signature.  The signature should have been generated
- * with GNUNET_CRYPTO_rsa_sign() using a hash that was blinded with
- * GNUNET_CRYPTO_rsa_blind().
- *
- * @param sig the signature made on the blinded signature purpose
- * @param bks the blinding key secret used to blind the signature purpose
- * @param pkey the public key of the signer
- * @return unblinded signature on success, NULL if RSA key is bad or malicious.
- */
-struct GNUNET_CRYPTO_RsaSignature *
-TALER_rsa_unblind (const struct GNUNET_CRYPTO_RsaSignature *sig,
-                   const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
-                   struct GNUNET_CRYPTO_RsaPublicKey *pkey);
-
 #endif
