@@ -160,7 +160,7 @@ TALER_blinding_secret_create (struct TALER_BlindingSecret *bs,
   memset (bs,
           0,
           sizeof (*bs));
-  switch (bs->cipher)
+  switch (cipher)
   {
   case TALER_DENOMINATION_INVALID:
     return GNUNET_OK;
