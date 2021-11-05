@@ -1885,6 +1885,19 @@ prepare_statements (struct PostgresClosure *pg)
       "    FROM denominations"
       "    WHERE denom_pub_hash=$2);",
       2),
+    /* used in #postgres_select_withdraw_amounts_by_account() */
+    GNUNET_PQ_make_prepare (
+      "select_above_date_by_reserves_out",
+      "SELECT"
+      " amount_with_fee_val"
+      ",amount_with_fee_frac"
+      " FROM reserves_out"
+      " WHERE reserve_uuid="
+      "   (SELECT reserve_uuid"
+      "      FROM reserves"
+      "     WHERE reserve_pub=$1)"
+      "  AND execution_date > $2;",
+      2),
     /* used in #postgres_lookup_wire_fee_by_time() */
     GNUNET_PQ_make_prepare (
       "lookup_wire_fee_by_time",
@@ -4937,7 +4950,7 @@ withdraw_amount_by_account_cb (void *cls,
   {
     struct TALER_Amount val;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_RESULT_SPEC_AMOUNT ("val",
+      TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    &val),
       GNUNET_PQ_result_spec_end
     };
@@ -4995,7 +5008,7 @@ postgres_select_withdraw_amounts_by_account (
 
   qs = GNUNET_PQ_eval_prepared_multi_select (
     pg->conn,
-    "select_XXX_FIXME",
+    "select_above_date_by_reserves_out",
     params,
     &withdraw_amount_by_account_cb,
     &wac);
