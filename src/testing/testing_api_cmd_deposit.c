@@ -420,17 +420,17 @@ deposit_run (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_JSON_merchant_wire_signature_hash (ds->wire_details,
                                                             &h_wire));
-    TALER_EXCHANGE_deposit_permission_sign (&ds->amount,
-                                            &denom_pub->fee_deposit,
-                                            &h_wire,
-                                            &h_contract_terms,
-                                            NULL, /* FIXME: extension hash! */
-                                            &denom_pub->h_key,
-                                            coin_priv,
-                                            ds->wallet_timestamp,
-                                            &merchant_pub,
-                                            ds->refund_deadline,
-                                            &coin_sig);
+    TALER_wallet_deposit_sign (&ds->amount,
+                               &denom_pub->fee_deposit,
+                               &h_wire,
+                               &h_contract_terms,
+                               NULL, /* FIXME: extension hash! */
+                               &denom_pub->h_key,
+                               ds->wallet_timestamp,
+                               &merchant_pub,
+                               ds->refund_deadline,
+                               coin_priv,
+                               &coin_sig);
   }
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,

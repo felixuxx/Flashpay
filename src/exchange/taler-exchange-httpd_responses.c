@@ -61,33 +61,25 @@ TEH_RESPONSE_compile_transaction_history (
       {
         const struct TALER_EXCHANGEDB_DepositListEntry *deposit =
           pos->details.deposit;
-        struct TALER_DepositRequestPS dr = {
-          .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
-          .purpose.size = htonl (sizeof (dr)),
-          .h_contract_terms = deposit->h_contract_terms,
-          .h_denom_pub = deposit->h_denom_pub,
-          .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
-          .refund_deadline = GNUNET_TIME_absolute_hton (
-            deposit->refund_deadline),
-          .merchant = deposit->merchant_pub,
-          .coin_pub = *coin_pub
-        };
+        struct TALER_MerchantWireHash h_wire;
 
         TALER_merchant_wire_signature_hash (deposit->receiver_wire_account,
                                             &deposit->wire_salt,
-                                            &dr.h_wire);
-
-        TALER_amount_hton (&dr.amount_with_fee,
-                           &deposit->amount_with_fee);
-        TALER_amount_hton (&dr.deposit_fee,
-                           &deposit->deposit_fee);
+                                            &h_wire);
 #if ENABLE_SANITY_CHECKS
         /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                        &dr,
-                                        &deposit->csig.eddsa_signature,
-                                        &coin_pub->eddsa_pub))
+            TALER_wallet_deposit_verify (&deposit->amount_with_fee,
+                                         &deposit->deposit_fee,
+                                         &h_wire,
+                                         &deposit->h_contract_terms,
+                                         NULL /* h_extensions! */,
+                                         &deposit->h_denom_pub,
+                                         deposit->timestamp,
+                                         &deposit->merchant_pub,
+                                         deposit->refund_deadline,
+                                         coin_pub,
+                                         &deposit->csig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -114,7 +106,7 @@ TEH_RESPONSE_compile_transaction_history (
                 GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                             &deposit->h_contract_terms),
                 GNUNET_JSON_pack_data_auto ("h_wire",
-                                            &dr.h_wire),
+                                            &h_wire),
                 GNUNET_JSON_pack_data_auto ("h_denom_pub",
                                             &deposit->h_denom_pub),
                 GNUNET_JSON_pack_data_auto ("coin_sig",

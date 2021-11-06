@@ -492,30 +492,31 @@ TALER_EXCHANGE_verify_coin_history (
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
-      struct TALER_DepositRequestPS dr = {
-        .purpose.size = htonl (sizeof (dr)),
-        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
-        .coin_pub = *coin_pub
-      };
+      struct TALER_MerchantWireHash h_wire;
+      struct TALER_PrivateContractHash h_contract_terms;
+      // struct TALER_ExtensionContractHash h_extensions; // FIXME!
+      struct GNUNET_TIME_Absolute wallet_timestamp;
+      struct TALER_MerchantPublicKeyP merchant_pub;
+      struct GNUNET_TIME_Absolute refund_deadline = {0};
       struct TALER_CoinSpendSignatureP sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                     &dr.h_contract_terms),
+                                     &h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("h_wire",
-                                     &dr.h_wire),
+                                     &h_wire),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     &dr.h_denom_pub),
-        TALER_JSON_spec_absolute_time_nbo ("timestamp",
-                                           &dr.wallet_timestamp),
+                                     h_denom_pub),
+        TALER_JSON_spec_absolute_time ("timestamp",
+                                       &wallet_timestamp),
         GNUNET_JSON_spec_mark_optional (
-          TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
-                                             &dr.refund_deadline)),
-        TALER_JSON_spec_amount_any_nbo ("deposit_fee",
-                                        &dr.deposit_fee),
+          TALER_JSON_spec_absolute_time ("refund_deadline",
+                                         &refund_deadline)),
+        TALER_JSON_spec_amount_any ("deposit_fee",
+                                    &fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
-                                     &dr.merchant),
+                                     &merchant_pub),
         GNUNET_JSON_spec_end ()
       };
 
@@ -527,23 +528,25 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      TALER_amount_hton (&dr.amount_with_fee,
-                         &amount);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                      &dr,
-                                      &sig.eddsa_signature,
-                                      &coin_pub->eddsa_pub))
+          TALER_wallet_deposit_verify (&amount,
+                                       &fee,
+                                       &h_wire,
+                                       &h_contract_terms,
+                                       NULL /* h_extensions! */,
+                                       h_denom_pub,
+                                       wallet_timestamp,
+                                       &merchant_pub,
+                                       refund_deadline,
+                                       coin_pub,
+                                       &sig))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      *h_denom_pub = dr.h_denom_pub;
       if (NULL != dk)
       {
         /* check that deposit fee matches our expectations from /keys! */
-        TALER_amount_ntoh (&fee,
-                           &dr.deposit_fee);
         if ( (GNUNET_YES !=
               TALER_amount_cmp_currency (&fee,
                                          &dk->fee_deposit)) ||

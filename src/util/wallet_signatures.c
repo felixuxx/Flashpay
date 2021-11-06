@@ -24,6 +24,91 @@
 
 
 void
+TALER_wallet_deposit_sign (
+  const struct TALER_Amount *amount,
+  const struct TALER_Amount *deposit_fee,
+  const struct TALER_MerchantWireHash *h_wire,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_ExtensionContractHash *h_extensions,
+  const struct TALER_DenominationHash *h_denom_pub,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_DepositRequestPS dr = {
+    .purpose.size = htonl (sizeof (dr)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+    .h_contract_terms = *h_contract_terms,
+    .h_wire = *h_wire,
+    .h_denom_pub = *h_denom_pub,
+    .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
+    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .merchant = *merchant_pub
+  };
+
+  // FIXME: sign also over h_extensions!
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&wallet_timestamp));
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_TIME_round_abs (&refund_deadline));
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
+                                      &dr.coin_pub.eddsa_pub);
+  TALER_amount_hton (&dr.amount_with_fee,
+                     amount);
+  TALER_amount_hton (&dr.deposit_fee,
+                     deposit_fee);
+  GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                            &dr,
+                            &coin_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_deposit_verify (
+  const struct TALER_Amount *amount,
+  const struct TALER_Amount *deposit_fee,
+  const struct TALER_MerchantWireHash *h_wire,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_ExtensionContractHash *h_extensions,
+  const struct TALER_DenominationHash *h_denom_pub,
+  struct GNUNET_TIME_Absolute wallet_timestamp,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_DepositRequestPS dr = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
+    .purpose.size = htonl (sizeof (dr)),
+    .h_contract_terms = *h_contract_terms,
+    .h_wire = *h_wire,
+    .h_denom_pub = *h_denom_pub,
+    .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
+    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .merchant = *merchant_pub,
+    .coin_pub = *coin_pub
+  };
+
+  TALER_amount_hton (&dr.amount_with_fee,
+                     amount);
+  TALER_amount_hton (&dr.deposit_fee,
+                     deposit_fee);
+  if (GNUNET_OK !=
+      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
+                                  &dr,
+                                  &coin_sig->eddsa_signature,
+                                  &coin_pub->eddsa_pub))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+void
 TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
                         const struct TALER_TransferPublicKeyP *transfer_pub,
                         const void *coin_ev,

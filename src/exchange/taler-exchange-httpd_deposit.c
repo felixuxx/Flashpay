@@ -510,37 +510,25 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        NULL);
   }
 
-  /* check deposit signature */
+  if (GNUNET_OK !=
+      TALER_wallet_deposit_verify (&deposit.amount_with_fee,
+                                   &deposit.deposit_fee,
+                                   &dc.h_wire,
+                                   &deposit.h_contract_terms,
+                                   NULL /* h_extensions! */,
+                                   &deposit.coin.denom_pub_hash,
+                                   deposit.timestamp,
+                                   &deposit.merchant_pub,
+                                   deposit.refund_deadline,
+                                   &deposit.coin.coin_pub,
+                                   &deposit.csig))
   {
-    struct TALER_DepositRequestPS dr = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
-      .purpose.size = htonl (sizeof (dr)),
-      .h_contract_terms = deposit.h_contract_terms,
-      .h_wire = dc.h_wire,
-      .h_denom_pub = deposit.coin.denom_pub_hash,
-      .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit.timestamp),
-      .refund_deadline = GNUNET_TIME_absolute_hton (deposit.refund_deadline),
-      .merchant = deposit.merchant_pub,
-      .coin_pub = deposit.coin.coin_pub
-    };
-
-    TALER_amount_hton (&dr.amount_with_fee,
-                       &deposit.amount_with_fee);
-    TALER_amount_hton (&dr.deposit_fee,
-                       &deposit.deposit_fee);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                    &dr,
-                                    &deposit.csig.eddsa_signature,
-                                    &deposit.coin.coin_pub.eddsa_pub))
-    {
-      TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_UNAUTHORIZED,
-                                         TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
-                                         NULL);
-    }
+    TALER_LOG_WARNING ("Invalid signature on /deposit request\n");
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
+                                       NULL);
   }
 
   /* execute transaction */

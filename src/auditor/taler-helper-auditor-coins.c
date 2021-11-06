@@ -1619,32 +1619,32 @@ deposit_cb (void *cls,
 
   /* Verify deposit signature */
   {
-    struct TALER_DepositRequestPS dr = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
-      .purpose.size = htonl (sizeof (dr)),
-      .h_contract_terms = deposit->h_contract_terms,
-      .wallet_timestamp = GNUNET_TIME_absolute_hton (deposit->timestamp),
-      .refund_deadline = GNUNET_TIME_absolute_hton (deposit->refund_deadline),
-      .deposit_fee = issue->fee_deposit,
-      .merchant = deposit->merchant_pub,
-      .coin_pub = deposit->coin.coin_pub
-    };
+    struct TALER_MerchantWireHash h_wire;
+    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_Amount deposit_fee;
 
     TALER_denom_pub_hash (denom_pub,
-                          &dr.h_denom_pub);
+                          &h_denom_pub);
     TALER_merchant_wire_signature_hash (deposit->receiver_wire_account,
                                         &deposit->wire_salt,
-                                        &dr.h_wire);
-    TALER_amount_hton (&dr.amount_with_fee,
-                       &deposit->amount_with_fee);
+                                        &h_wire);
+    TALER_amount_ntoh (&deposit_fee,
+                       &issue->fee_deposit);
     /* NOTE: This is one of the operations we might eventually
        want to do in parallel in the background to improve
        auditor performance! */
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                    &dr,
-                                    &deposit->csig.eddsa_signature,
-                                    &deposit->coin.coin_pub.eddsa_pub))
+        TALER_wallet_deposit_verify (&deposit->amount_with_fee,
+                                     &deposit_fee,
+                                     &h_wire,
+                                     &deposit->h_contract_terms,
+                                     NULL /* h_extensions! */,
+                                     &h_denom_pub,
+                                     deposit->timestamp,
+                                     &deposit->merchant_pub,
+                                     deposit->refund_deadline,
+                                     &deposit->coin.coin_pub,
+                                     &deposit->csig))
     {
       TALER_ARL_report (report_bad_sig_losses,
                         GNUNET_JSON_PACK (

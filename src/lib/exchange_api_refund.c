@@ -87,7 +87,7 @@ struct TALER_EXCHANGE_RefundHandle
  * @param[out] exchange_sig set to the exchange's signature
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_refund_signature_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                             const json_t *json,
                             struct TALER_ExchangePublicKeyP *exchange_pub,
@@ -138,7 +138,7 @@ verify_refund_signature_ok (struct TALER_EXCHANGE_RefundHandle *rh,
  * @param json json reply with the coin transaction history
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                             const json_t *json)
 {
@@ -196,29 +196,32 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
     if (0 == strcasecmp (type,
                          "DEPOSIT"))
     {
-      struct TALER_DepositRequestPS dr = {
-        .purpose.size = htonl (sizeof (dr)),
-        .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_DEPOSIT),
-        .coin_pub = rh->depconf.coin_pub
-      };
+      struct TALER_Amount deposit_fee;
+      struct TALER_MerchantWireHash h_wire;
+      struct TALER_PrivateContractHash h_contract_terms;
+      // struct TALER_ExtensionContractHash h_extensions; // FIXME!
+      struct TALER_DenominationHash h_denom_pub;
+      struct GNUNET_TIME_Absolute wallet_timestamp;
+      struct TALER_MerchantPublicKeyP merchant_pub;
+      struct GNUNET_TIME_Absolute refund_deadline;
       struct TALER_CoinSpendSignatureP sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                     &dr.h_contract_terms),
+                                     &h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("h_wire",
-                                     &dr.h_wire),
+                                     &h_wire),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     &dr.h_denom_pub),
-        TALER_JSON_spec_absolute_time_nbo ("timestamp",
-                                           &dr.wallet_timestamp),
-        TALER_JSON_spec_absolute_time_nbo ("refund_deadline",
-                                           &dr.refund_deadline),
-        TALER_JSON_spec_amount_any_nbo ("deposit_fee",
-                                        &dr.deposit_fee),
+                                     &h_denom_pub),
+        TALER_JSON_spec_absolute_time ("timestamp",
+                                       &wallet_timestamp),
+        TALER_JSON_spec_absolute_time ("refund_deadline",
+                                       &refund_deadline),
+        TALER_JSON_spec_amount_any ("deposit_fee",
+                                    &deposit_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
-                                     &dr.merchant),
+                                     &merchant_pub),
         GNUNET_JSON_spec_end ()
       };
 
@@ -230,21 +233,26 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      TALER_amount_hton (&dr.amount_with_fee,
-                         &amount);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_DEPOSIT,
-                                      &dr,
-                                      &sig.eddsa_signature,
-                                      &rh->depconf.coin_pub.eddsa_pub))
+          TALER_wallet_deposit_verify (&amount,
+                                       &deposit_fee,
+                                       &h_wire,
+                                       &h_contract_terms,
+                                       NULL /* h_extensions! */,
+                                       &h_denom_pub,
+                                       wallet_timestamp,
+                                       &merchant_pub,
+                                       refund_deadline,
+                                       &rh->depconf.coin_pub,
+                                       &sig))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
       if ( (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
-                                &dr.h_contract_terms)) ||
+                                &h_contract_terms)) ||
            (0 != GNUNET_memcmp (&rh->depconf.merchant,
-                                &dr.merchant)) )
+                                &merchant_pub)) )
       {
         /* deposit information is about a different merchant/contract */
         GNUNET_break_op (0);
