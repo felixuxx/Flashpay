@@ -188,6 +188,7 @@ setup_connection (struct PostgresClosure *pg)
                             "INSERT INTO deposit_confirmations "
                             "(master_pub"
                             ",h_contract_terms"
+                            ",h_extensions"
                             ",h_wire"
                             ",exchange_timestamp"
                             ",wire_deadline"
@@ -199,8 +200,8 @@ setup_connection (struct PostgresClosure *pg)
                             ",exchange_sig"
                             ",exchange_pub"
                             ",master_sig" /* master_sig could be normalized... */
-                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);",
-                            13),
+                            ") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);",
+                            14),
     /* Used in #postgres_get_deposit_confirmations() */
     GNUNET_PQ_make_prepare ("auditor_deposit_confirmation_select",
                             "SELECT"
