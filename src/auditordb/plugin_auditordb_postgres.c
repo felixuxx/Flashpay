@@ -207,8 +207,10 @@ setup_connection (struct PostgresClosure *pg)
                             "SELECT"
                             " serial_id"
                             ",h_contract_terms"
+                            ",h_extensions"
                             ",h_wire"
                             ",exchange_timestamp"
+                            ",wire_deadline"
                             ",refund_deadline"
                             ",amount_without_fee_val"
                             ",amount_without_fee_frac"
@@ -1113,7 +1115,7 @@ deposit_confirmation_cb (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("h_contract_terms",
                                             &dc.h_contract_terms),
       GNUNET_PQ_result_spec_auto_from_type ("h_extensions",
-                                            &dc.h_contract_terms),
+                                            &dc.h_extensions),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                             &dc.h_wire),
       GNUNET_PQ_result_spec_absolute_time ("exchange_timestamp",
