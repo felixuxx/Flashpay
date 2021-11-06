@@ -230,11 +230,11 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
     TALER_coin_pub_hash (coin_pub,
                          c_hash);
     if (GNUNET_YES !=
-        TALER_rsa_blind (c_hash,
-                         &coin_bks->rsa_bks,
-                         dk->details.rsa_public_key,
-                         coin_ev,
-                         coin_ev_size))
+        GNUNET_CRYPTO_rsa_blind (&c_hash->hash,
+                                 &coin_bks->rsa_bks,
+                                 dk->details.rsa_public_key,
+                                 coin_ev,
+                                 coin_ev_size))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;

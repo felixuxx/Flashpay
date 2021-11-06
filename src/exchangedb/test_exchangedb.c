@@ -493,14 +493,14 @@ handle_link_data_cb (void *cls,
  *
  * @return #GNUNET_OK if everything went well; #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 test_melting (void)
 {
   struct TALER_EXCHANGEDB_Refresh refresh_session;
   struct TALER_EXCHANGEDB_Melt ret_refresh_session;
   struct DenomKeyPair *dkp;
   struct TALER_DenominationPublicKey *new_denom_pubs;
-  int ret;
+  enum GNUNET_GenericReturnValue ret;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Absolute now;
 
@@ -524,17 +524,32 @@ test_melting (void)
   GNUNET_assert (NULL != dkp);
   /* initialize refresh session melt data */
   {
-    struct TALER_CoinPubHash hc;
+    struct TALER_CoinPubHash c_hash;
+    struct TALER_PlanchetDetail pd;
+    struct TALER_BlindedDenominationSignature bds;
+    union TALER_DenominationBlindingKeyP bks;
 
     RND_BLK (&refresh_session.coin.coin_pub);
-    TALER_coin_pub_hash (&refresh_session.coin.coin_pub,
-                         &hc);
-    refresh_session.coin.denom_sig.cipher = TALER_DENOMINATION_RSA;
-    refresh_session.coin.denom_sig.details.rsa_signature =
-      GNUNET_CRYPTO_rsa_sign_fdh (dkp->priv.details.rsa_private_key,
-                                  &hc.hash);
-    GNUNET_assert (NULL !=
-                   refresh_session.coin.denom_sig.details.rsa_signature);
+    TALER_blinding_secret_create (&bks);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_blind (&dkp->pub,
+                                      &bks,
+                                      &refresh_session.coin.coin_pub,
+                                      &c_hash,
+                                      &pd.coin_ev,
+                                      &pd.coin_ev_size));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_sign_blinded (&bds,
+                                             &dkp->priv,
+                                             pd.coin_ev,
+                                             pd.coin_ev_size));
+    GNUNET_free (pd.coin_ev);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_sig_unblind (&refresh_session.coin.denom_sig,
+                                            &bds,
+                                            &bks,
+                                            &dkp->pub));
+    TALER_blinded_denom_sig_free (&bds);
     TALER_denom_pub_hash (&dkp->pub,
                           &refresh_session.coin.denom_pub_hash);
     refresh_session.amount_with_fee = amount_with_fee;
@@ -564,11 +579,10 @@ test_melting (void)
           TALER_amount_cmp (&fee_refresh,
                             &ret_refresh_session.melt_fee));
   FAILIF (0 !=
-          GNUNET_memcmp (&refresh_session.rc, &ret_refresh_session.session.rc));
+          GNUNET_memcmp (&refresh_session.rc,
+                         &ret_refresh_session.session.rc));
   FAILIF (0 != GNUNET_memcmp (&refresh_session.coin_sig,
                               &ret_refresh_session.session.coin_sig));
-  FAILIF (NULL !=
-          ret_refresh_session.session.coin.denom_sig.details.rsa_signature);
   FAILIF (0 != memcmp (&refresh_session.coin.coin_pub,
                        &ret_refresh_session.session.coin.coin_pub,
                        sizeof (refresh_session.coin.coin_pub)));

@@ -305,21 +305,6 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 }
 
 
-enum GNUNET_GenericReturnValue
-TALER_rsa_blind (const struct TALER_CoinPubHash *hash,
-                 const struct GNUNET_CRYPTO_RsaBlindingKeySecret *bks,
-                 struct GNUNET_CRYPTO_RsaPublicKey *pkey,
-                 void **buf,
-                 size_t *buf_size)
-{
-  return GNUNET_CRYPTO_rsa_blind (&hash->hash,
-                                  bks,
-                                  pkey,
-                                  buf,
-                                  buf_size);
-}
-
-
 void
 TALER_coin_ev_hash (const void *coin_ev,
                     size_t coin_ev_size,
