@@ -353,6 +353,8 @@ TALER_blinded_denom_sig_free (
 {
   switch (denom_sig->cipher)
   {
+  case TALER_DENOMINATION_INVALID:
+    return;
   case TALER_DENOMINATION_RSA:
     if (NULL != denom_sig->details.blinded_rsa_signature)
     {

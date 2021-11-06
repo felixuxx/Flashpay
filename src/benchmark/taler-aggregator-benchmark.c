@@ -480,10 +480,14 @@ run (void *cls,
                                   GNUNET_TIME_UNIT_YEARS));
   {
     struct TALER_DenominationPrivateKey pk;
-    struct GNUNET_HashCode hc;
     struct TALER_DenominationPublicKey denom_pub;
+    struct TALER_CoinPubHash c_hash;
+    struct TALER_PlanchetDetail pd;
+    struct TALER_BlindedDenominationSignature bds;
+    union TALER_DenominationBlindingKeyP bks;
+    struct TALER_CoinSpendPublicKeyP coin_pub;
 
-    RANDOMIZE (&hc);
+    RANDOMIZE (&coin_pub);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_priv_create (&pk,
                                             &denom_pub,
@@ -507,10 +511,27 @@ run (void *cls,
       global_ret = EXIT_FAILURE;
       return;
     }
-    denom_sig.cipher = TALER_DENOMINATION_RSA;
-    denom_sig.details.rsa_signature
-      = GNUNET_CRYPTO_rsa_sign_fdh (pk.details.rsa_private_key,
-                                    &hc);
+
+    TALER_blinding_secret_create (&bks);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_blind (&denom_pub,
+                                      &bks,
+                                      &coin_pub,
+                                      &c_hash,
+                                      &pd.coin_ev,
+                                      &pd.coin_ev_size));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_sign_blinded (&bds,
+                                             &pk,
+                                             pd.coin_ev,
+                                             pd.coin_ev_size));
+    GNUNET_free (pd.coin_ev);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_sig_unblind (&denom_sig,
+                                            &bds,
+                                            &bks,
+                                            &denom_pub));
+    TALER_blinded_denom_sig_free (&bds);
     TALER_denom_pub_free (&denom_pub);
     TALER_denom_priv_free (&pk);
   }

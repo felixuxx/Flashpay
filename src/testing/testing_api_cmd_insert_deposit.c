@@ -138,7 +138,6 @@ insert_deposit_run (void *cls,
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
   struct TALER_DenominationPublicKey dpk;
   struct TALER_DenominationPrivateKey denom_priv;
-  struct GNUNET_HashCode hc;
 
   // prepare and store issue first.
   fake_issue (&issue);
@@ -201,12 +200,33 @@ insert_deposit_run (void *cls,
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                               &deposit.coin.coin_pub,
                               sizeof (deposit.coin.coin_pub));
-  GNUNET_CRYPTO_hash_create_random (GNUNET_CRYPTO_QUALITY_WEAK,
-                                    &hc);
-  deposit.coin.denom_sig.cipher = TALER_DENOMINATION_RSA;
-  deposit.coin.denom_sig.details.rsa_signature
-    = GNUNET_CRYPTO_rsa_sign_fdh (denom_priv.details.rsa_private_key,
-                                  &hc);
+  {
+    struct TALER_CoinPubHash c_hash;
+    struct TALER_PlanchetDetail pd;
+    struct TALER_BlindedDenominationSignature bds;
+    union TALER_DenominationBlindingKeyP bks;
+
+    TALER_blinding_secret_create (&bks);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_blind (&dpk,
+                                      &bks,
+                                      &deposit.coin.coin_pub,
+                                      &c_hash,
+                                      &pd.coin_ev,
+                                      &pd.coin_ev_size));
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_sign_blinded (&bds,
+                                             &denom_priv,
+                                             pd.coin_ev,
+                                             pd.coin_ev_size));
+    GNUNET_free (pd.coin_ev);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_sig_unblind (&deposit.coin.denom_sig,
+                                            &bds,
+                                            &bks,
+                                            &dpk));
+    TALER_blinded_denom_sig_free (&bds);
+  }
   GNUNET_asprintf (&deposit.receiver_wire_account,
                    "payto://x-taler-bank/localhost/%s",
                    ids->merchant_account);
