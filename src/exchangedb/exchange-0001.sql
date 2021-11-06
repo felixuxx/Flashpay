@@ -366,6 +366,9 @@ CREATE TABLE IF NOT EXISTS extension_details
   ,extension_options VARCHAR);
 COMMENT ON TABLE extension_details
   IS 'Extensions that were provided with deposits (not yet used).';
+COMMENT ON COLUMN extension_details.extension_options
+  IS 'JSON object with options set that the exchange needs to consider when executing a deposit. Supported details depend on the extensions supported by the exchange.';
+
 
 CREATE TABLE IF NOT EXISTS deposits
   (deposit_serial_id BIGSERIAL PRIMARY KEY
@@ -399,8 +402,8 @@ COMMENT ON COLUMN deposits.done
   IS 'Set to TRUE once we have included this deposit in some aggregate wire transfer to the merchant';
 COMMENT ON COLUMN deposits.extension_blocked
   IS 'True if the aggregation of the deposit is currently blocked by some extension mechanism. Used to filter out deposits that must not be processed by the canonical deposit logic.';
-COMMENT ON COLUMN deposits.extension_options
-  IS 'JSON object with options set that the exchange needs to consider when executing the deposit. Supported details depend on the extensions supported by the exchange.';
+COMMENT ON COLUMN deposits.extension_details_serial_id
+  IS 'References extensions table, NULL if extensions are not used';
 COMMENT ON COLUMN deposits.tiny
   IS 'Set to TRUE if we decided that the amount is too small to ever trigger a wire transfer by itself (requires real aggregation)';
 
