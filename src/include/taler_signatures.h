@@ -530,13 +530,6 @@ struct TALER_DepositRequestPS
    */
   struct TALER_MerchantPublicKeyP merchant;
 
-  /**
-   * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Exchange.  The deposit request is to be
-   * signed by the corresponding private key (using EdDSA).
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
 };
 
 

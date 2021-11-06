@@ -48,13 +48,12 @@ TALER_wallet_deposit_sign (
     .merchant = *merchant_pub
   };
 
-  // FIXME: sign also over h_extensions!
+  if (NULL != h_extensions)
+    dr.h_extensions = *h_extensions;
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&wallet_timestamp));
   GNUNET_assert (GNUNET_OK ==
                  GNUNET_TIME_round_abs (&refund_deadline));
-  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
-                                      &dr.coin_pub.eddsa_pub);
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
@@ -87,10 +86,11 @@ TALER_wallet_deposit_verify (
     .h_denom_pub = *h_denom_pub,
     .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
     .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
-    .merchant = *merchant_pub,
-    .coin_pub = *coin_pub
+    .merchant = *merchant_pub
   };
 
+  if (NULL != h_extensions)
+    dr.h_extensions = *h_extensions;
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
