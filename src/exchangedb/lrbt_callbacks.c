@@ -952,9 +952,9 @@ lrbt_cb_table_deposits (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "extension_blocked",
         &td.details.deposits.extension_blocked),
-      TALER_PQ_result_spec_json (
-        "extension_options",
-        &td.details.deposits.extension_options),
+      GNUNET_PQ_result_spec_uint64 (
+        "extension_details_serial_id",
+        &td.details.deposits.extension_details_serial_id),
       GNUNET_PQ_result_spec_end
     };
 

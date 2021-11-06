@@ -328,7 +328,7 @@ struct TALER_EXCHANGEDB_TableData
       bool tiny;
       bool done;
       bool extension_blocked;
-      json_t *extension_options;
+      uint64_t extension_details_serial_id;
     } deposits;
 
     struct

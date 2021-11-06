@@ -517,7 +517,8 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&tiny),
     GNUNET_PQ_query_param_auto_from_type (&done),
     GNUNET_PQ_query_param_auto_from_type (&extension_blocked),
-    TALER_PQ_query_param_json (td->details.deposits.extension_options),
+    GNUNET_PQ_query_param_uint64 (
+      &td->details.deposits.extension_details_serial_id),
     GNUNET_PQ_query_param_end
   };
 

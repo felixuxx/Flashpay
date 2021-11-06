@@ -2299,7 +2299,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",tiny"
       ",done"
       ",extension_blocked"
-      ",extension_options"
+      ",extension_details_serial_id"
       " FROM deposits"
       " WHERE deposit_serial_id > $1"
       " ORDER BY deposit_serial_id ASC;",
@@ -2588,7 +2588,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",tiny"
       ",done"
       ",extension_blocked"
-      ",extension_options"
+      ",extension_details_serial_id"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,"
       " $11, $12, $13, $14, $15, $16, $17, $18);",

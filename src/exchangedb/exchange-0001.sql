@@ -361,6 +361,11 @@ CREATE INDEX IF NOT EXISTS refresh_transfer_keys_coin_tpub
 COMMENT ON INDEX refresh_transfer_keys_coin_tpub
   IS 'for get_link (unsure if this helps or hurts for performance as there should be very few transfer public keys per rc, but at least in theory this helps the ORDER BY clause)';
 
+CREATE TABLE IF NOT EXISTS extension_details
+  (extension_details_serial_id BIGSERIAL PRIMARY KEY
+  ,extension_options VARCHAR);
+COMMENT ON TABLE extension_details
+  IS 'Extensions that were provided with deposits (not yet used).';
 
 CREATE TABLE IF NOT EXISTS deposits
   (deposit_serial_id BIGSERIAL PRIMARY KEY
@@ -380,7 +385,7 @@ CREATE TABLE IF NOT EXISTS deposits
   ,tiny BOOLEAN NOT NULL DEFAULT FALSE
   ,done BOOLEAN NOT NULL DEFAULT FALSE
   ,extension_blocked BOOLEAN NOT NULL DEFAULT FALSE
-  ,extension_options VARCHAR
+  ,extension_details_serial_id INT8 REFERENCES extension_details (extension_details_serial_id)
   ,UNIQUE (known_coin_id, merchant_pub, h_contract_terms)
   );
 COMMENT ON TABLE deposits
