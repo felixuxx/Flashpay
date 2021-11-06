@@ -205,6 +205,7 @@ auditor_cb (void *cls,
   aie->dch = TALER_AUDITOR_deposit_confirmation (
     ah,
     &dh->h_wire,
+    &dh->h_extensions,
     &dh->h_contract_terms,
     dh->exchange_timestamp,
     dh->wire_deadline,

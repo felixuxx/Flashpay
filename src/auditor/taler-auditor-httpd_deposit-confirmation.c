@@ -249,6 +249,8 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
                                  &dc.h_contract_terms),
+    GNUNET_JSON_spec_fixed_auto ("h_extensions",
+                                 &dc.h_extensions),
     GNUNET_JSON_spec_fixed_auto ("h_wire",
                                  &dc.h_wire),
     TALER_JSON_spec_absolute_time ("exchange_timestamp",

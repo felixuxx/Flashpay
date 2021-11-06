@@ -199,6 +199,7 @@ deposit_confirmation_run (void *cls,
                           const struct TALER_TESTING_Command *cmd,
                           struct TALER_TESTING_Interpreter *is)
 {
+  static struct TALER_ExtensionContractHash no_h_extensions;
   struct DepositConfirmationState *dcs = cls;
   const struct TALER_TESTING_Command *deposit_cmd;
   struct TALER_MerchantWireHash h_wire;
@@ -317,6 +318,7 @@ deposit_confirmation_run (void *cls,
   }
   dcs->dc = TALER_AUDITOR_deposit_confirmation (dcs->auditor,
                                                 &h_wire,
+                                                &no_h_extensions,
                                                 &h_contract_terms,
                                                 *exchange_timestamp,
                                                 *wire_deadline,

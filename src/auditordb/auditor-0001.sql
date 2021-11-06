@@ -228,6 +228,7 @@ CREATE TABLE IF NOT EXISTS deposit_confirmations
   (master_pub BYTEA CONSTRAINT master_pub_ref REFERENCES auditor_exchanges(master_pub) ON DELETE CASCADE
   ,serial_id BIGSERIAL UNIQUE
   ,h_contract_terms BYTEA CHECK (LENGTH(h_contract_terms)=64)
+  ,h_extensions BYTEA CHECK (LENGTH(h_contract_terms)=64)
   ,h_wire BYTEA CHECK (LENGTH(h_wire)=64)
   ,exchange_timestamp INT8 NOT NULL
   ,refund_deadline INT8 NOT NULL
