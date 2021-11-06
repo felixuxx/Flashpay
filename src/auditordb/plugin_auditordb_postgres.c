@@ -190,6 +190,7 @@ setup_connection (struct PostgresClosure *pg)
                             ",h_contract_terms"
                             ",h_wire"
                             ",exchange_timestamp"
+                            ",wire_deadline"
                             ",refund_deadline"
                             ",amount_without_fee_val"
                             ",amount_without_fee_frac"
