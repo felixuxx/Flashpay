@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS deposit_confirmations
   ,h_wire BYTEA CHECK (LENGTH(h_wire)=64)
   ,exchange_timestamp INT8 NOT NULL
   ,refund_deadline INT8 NOT NULL
+  ,wire_deadline INT8 NOT NULL
   ,amount_without_fee_val INT8 NOT NULL
   ,amount_without_fee_frac INT4 NOT NULL
   ,coin_pub BYTEA CHECK (LENGTH(coin_pub)=32)

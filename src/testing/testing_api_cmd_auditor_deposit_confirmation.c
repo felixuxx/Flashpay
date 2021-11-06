@@ -205,6 +205,7 @@ deposit_confirmation_run (void *cls,
   struct TALER_PrivateContractHash h_contract_terms;
   const struct GNUNET_TIME_Absolute *exchange_timestamp = NULL;
   struct GNUNET_TIME_Absolute timestamp;
+  const struct GNUNET_TIME_Absolute *wire_deadline;
   struct GNUNET_TIME_Absolute refund_deadline;
   struct TALER_Amount amount_without_fee;
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -243,6 +244,10 @@ deposit_confirmation_run (void *cls,
                  TALER_TESTING_get_trait_absolute_time (deposit_cmd,
                                                         dcs->coin_index,
                                                         &exchange_timestamp));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_TESTING_get_trait_wire_deadline (deposit_cmd,
+                                                        dcs->coin_index,
+                                                        &wire_deadline));
   GNUNET_assert (NULL != exchange_timestamp);
   keys = TALER_EXCHANGE_get_keys (dcs->is->exchange);
   GNUNET_assert (NULL != keys);
@@ -297,7 +302,8 @@ deposit_confirmation_run (void *cls,
   /* refund deadline is optional, defaults to zero */
   {
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_absolute_time ("refund_deadline", &refund_deadline),
+      TALER_JSON_spec_absolute_time ("refund_deadline",
+                                     &refund_deadline),
       GNUNET_JSON_spec_end ()
     };
 
@@ -313,6 +319,7 @@ deposit_confirmation_run (void *cls,
                                                 &h_wire,
                                                 &h_contract_terms,
                                                 *exchange_timestamp,
+                                                *wire_deadline,
                                                 refund_deadline,
                                                 &amount_without_fee,
                                                 &coin_pub,

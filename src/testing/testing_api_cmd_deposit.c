@@ -85,6 +85,11 @@ struct DepositState
   struct GNUNET_TIME_Absolute refund_deadline;
 
   /**
+   * Wire deadline.
+   */
+  struct GNUNET_TIME_Absolute wire_deadline;
+
+  /**
    * Set (by the interpreter) to a fresh private key.  This
    * key will be used to sign the deposit request.
    */
@@ -285,7 +290,6 @@ deposit_run (void *cls,
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *denom_pub_sig;
   struct TALER_CoinSpendSignatureP coin_sig;
-  struct GNUNET_TIME_Absolute wire_deadline;
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_PrivateContractHash h_contract_terms;
   enum TALER_ErrorCode ec;
@@ -402,18 +406,23 @@ deposit_run (void *cls,
   {
     struct GNUNET_TIME_Relative refund_deadline;
 
-    refund_deadline = GNUNET_TIME_absolute_get_remaining (ds->refund_deadline);
-    wire_deadline = GNUNET_TIME_relative_to_absolute
-                      (GNUNET_TIME_relative_multiply (refund_deadline, 2));
+    refund_deadline
+      = GNUNET_TIME_absolute_get_remaining (ds->refund_deadline);
+    ds->wire_deadline
+      = GNUNET_TIME_relative_to_absolute (
+          GNUNET_TIME_relative_multiply (refund_deadline,
+                                         2));
   }
   else
   {
     ds->refund_deadline = ds->wallet_timestamp;
-    wire_deadline = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_ZERO);
+    ds->wire_deadline
+      = GNUNET_TIME_relative_to_absolute (
+          GNUNET_TIME_UNIT_ZERO);
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
                                       &merchant_pub.eddsa_pub);
-  (void) GNUNET_TIME_round_abs (&wire_deadline);
+  (void) GNUNET_TIME_round_abs (&ds->wire_deadline);
   {
     struct TALER_MerchantWireHash h_wire;
 
@@ -434,7 +443,7 @@ deposit_run (void *cls,
   }
   ds->dh = TALER_EXCHANGE_deposit (is->exchange,
                                    &ds->amount,
-                                   wire_deadline,
+                                   ds->wire_deadline,
                                    payto_uri,
                                    &wire_salt,
                                    &h_contract_terms,
@@ -555,6 +564,10 @@ deposit_traits (void *cls,
       TALER_TESTING_make_trait_deposit_fee_amount (&ds->deposit_fee),
       TALER_TESTING_make_trait_absolute_time (0,
                                               &ds->exchange_timestamp),
+      TALER_TESTING_make_trait_wire_deadline (0,
+                                              &ds->wire_deadline),
+      TALER_TESTING_make_trait_refund_deadline (0,
+                                                &ds->refund_deadline),
       TALER_TESTING_trait_end ()
     };
 

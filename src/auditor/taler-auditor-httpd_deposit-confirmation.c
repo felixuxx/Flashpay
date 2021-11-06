@@ -183,33 +183,25 @@ verify_and_execute_deposit_confirmation (
   }
 
   /* check deposit confirmation signature */
+  if (GNUNET_OK !=
+      TALER_exchange_deposit_confirm_verify (&dc->h_contract_terms,
+                                             &dc->h_wire,
+                                             NULL /* h_extensions! */,
+                                             dc->exchange_timestamp,
+                                             dc->wire_deadline,
+                                             dc->refund_deadline,
+                                             &dc->amount_without_fee,
+                                             &dc->coin_pub,
+                                             &dc->merchant,
+                                             &dc->exchange_pub,
+                                             &dc->exchange_sig))
   {
-    struct TALER_DepositConfirmationPS dcs = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT),
-      .purpose.size = htonl (sizeof (struct TALER_DepositConfirmationPS)),
-      .h_contract_terms = dc->h_contract_terms,
-      .h_wire = dc->h_wire,
-      .exchange_timestamp = GNUNET_TIME_absolute_hton (dc->exchange_timestamp),
-      .refund_deadline = GNUNET_TIME_absolute_hton (dc->refund_deadline),
-      .coin_pub = dc->coin_pub,
-      .merchant = dc->merchant
-    };
-
-    TALER_amount_hton (&dcs.amount_without_fee,
-                       &dc->amount_without_fee);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT,
-                                    &dcs,
-                                    &dc->exchange_sig.eddsa_signature,
-                                    &dc->exchange_pub.eddsa_pub))
-    {
-      TALER_LOG_WARNING (
-        "Invalid signature on /deposit-confirmation request\n");
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_AUDITOR_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
-                                         "exchange signature invalid");
-    }
+    TALER_LOG_WARNING (
+      "Invalid signature on /deposit-confirmation request\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_AUDITOR_DEPOSIT_CONFIRMATION_SIGNATURE_INVALID,
+                                       "exchange signature invalid");
   }
 
   /* execute transaction */
@@ -263,6 +255,8 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                    &dc.exchange_timestamp),
     TALER_JSON_spec_absolute_time ("refund_deadline",
                                    &dc.refund_deadline),
+    TALER_JSON_spec_absolute_time ("wire_deadline",
+                                   &dc.wire_deadline),
     TALER_JSON_spec_amount ("amount_without_fee",
                             TAH_currency,
                             &dc.amount_without_fee),

@@ -1547,6 +1547,40 @@ TALER_CRYPTO_helper_esign_disconnect (
   struct TALER_CRYPTO_ExchangeSignHelper *esh);
 
 
+/* ********************* exchange signing ************************** */
+
+
+/**
+ * Verify a deposit confirmation.
+ *
+ * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param h_wire hash of the merchant’s account details
+ * @param h_extensions hash over the extensions, can be NULL
+ * @param exchange_timestamp timestamp when the contract was finalized, must not be too far off
+ * @param wire_deadline date until which the exchange should wire the funds
+ * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed); must not be after the @a wire_deadline
+ * @param amount_without_fee the amount to be deposited after fees
+ * @param coin_pub public key of the deposited coin
+ * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
+ * @param exchange_pub exchange's online signing public key
+ * @param exchange_sig the signature made with purpose #TALER_SIGNATURE_EXCHANGE_CONFIRM_DEPOSIT
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_deposit_confirm_verify (
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  const struct TALER_MerchantWireHash *h_wire,
+  const struct TALER_ExtensionContractHash *h_extensions,
+  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Absolute wire_deadline,
+  struct GNUNET_TIME_Absolute refund_deadline,
+  const struct TALER_Amount *amount_without_fee,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig);
+
+
 /* ********************* wallet signing ************************** */
 
 

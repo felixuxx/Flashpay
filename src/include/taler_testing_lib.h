@@ -2379,6 +2379,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
   op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \
   op (absolute_time, const struct GNUNET_TIME_Absolute)                \
+  op (wire_deadline, const struct GNUNET_TIME_Absolute)                \
+  op (refund_deadline, const struct GNUNET_TIME_Absolute)                \
   op (exchange_pub, const struct TALER_ExchangePublicKeyP)             \
   op (exchange_sig, const struct TALER_ExchangeSignatureP)             \
   op (blinding_key, const union TALER_DenominationBlindingKeyP)

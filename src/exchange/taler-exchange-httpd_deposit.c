@@ -58,9 +58,11 @@ static MHD_RESULT
 reply_deposit_success (struct MHD_Connection *connection,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        const struct TALER_MerchantWireHash *h_wire,
+                       const struct TALER_ExtensionContractHash *h_extensions,
                        const struct TALER_PrivateContractHash *h_contract_terms,
                        struct GNUNET_TIME_Absolute exchange_timestamp,
                        struct GNUNET_TIME_Absolute refund_deadline,
+                       struct GNUNET_TIME_Absolute wire_deadline,
                        const struct TALER_MerchantPublicKeyP *merchant,
                        const struct TALER_Amount *amount_without_fee)
 {
@@ -73,11 +75,14 @@ reply_deposit_success (struct MHD_Connection *connection,
     .h_wire = *h_wire,
     .exchange_timestamp = GNUNET_TIME_absolute_hton (exchange_timestamp),
     .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .wire_deadline = GNUNET_TIME_absolute_hton (wire_deadline),
     .coin_pub = *coin_pub,
-    .merchant = *merchant
+    .merchant_pub = *merchant
   };
   enum TALER_ErrorCode ec;
 
+  if (NULL != h_extensions)
+    dc.h_extensions = *h_extensions;
   TALER_amount_hton (&dc.amount_without_fee,
                      amount_without_fee);
   if (TALER_EC_NONE !=
@@ -184,9 +189,11 @@ deposit_precheck (void *cls,
     *mhd_ret = reply_deposit_success (connection,
                                       &deposit->coin.coin_pub,
                                       &dc->h_wire,
+                                      NULL /* h_extensions! */,
                                       &deposit->h_contract_terms,
                                       dc->exchange_timestamp,
                                       deposit->refund_deadline,
+                                      deposit->wire_deadline,
                                       &deposit->merchant_pub,
                                       &amount_without_fee);
     /* Treat as 'hard' DB error as we want to rollback and
@@ -559,9 +566,11 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     res = reply_deposit_success (connection,
                                  &deposit.coin.coin_pub,
                                  &dc.h_wire,
+                                 NULL /* h_extensions! */,
                                  &deposit.h_contract_terms,
                                  dc.exchange_timestamp,
                                  deposit.refund_deadline,
+                                 deposit.wire_deadline,
                                  &deposit.merchant_pub,
                                  &amount_without_fee);
     GNUNET_JSON_parse_free (spec);

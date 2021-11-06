@@ -556,10 +556,22 @@ struct TALER_DepositConfirmationPS
   struct TALER_MerchantWireHash h_wire GNUNET_PACKED;
 
   /**
+   * Hash over the extension options of the deposit, 0 if there
+   * were not extension options.
+   */
+  struct TALER_ExtensionContractHash h_extensions GNUNET_PACKED;
+
+  /**
    * Time when this confirmation was generated / when the exchange received
    * the deposit request.
    */
   struct GNUNET_TIME_AbsoluteNBO exchange_timestamp;
+
+  /**
+   * By when does the exchange expect to pay the merchant
+   * (as per the merchant's request).
+   */
+  struct GNUNET_TIME_AbsoluteNBO wire_deadline;
 
   /**
    * How much time does the @e merchant have to issue a refund
@@ -577,9 +589,7 @@ struct TALER_DepositConfirmationPS
   struct TALER_AmountNBO amount_without_fee;
 
   /**
-   * The coin's public key.  This is the value that must have been
-   * signed (blindly) by the Exchange.  The deposit request is to be
-   * signed by the corresponding private key (using EdDSA).
+   * The public key of the coin that was deposited.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -587,7 +597,7 @@ struct TALER_DepositConfirmationPS
    * The Merchant's public key.  Allows the merchant to later refund
    * the transaction or to inquire about the wire transfer identifier.
    */
-  struct TALER_MerchantPublicKeyP merchant;
+  struct TALER_MerchantPublicKeyP merchant_pub;
 
 };
 

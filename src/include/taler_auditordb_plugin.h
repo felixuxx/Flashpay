@@ -296,6 +296,11 @@ struct TALER_AUDITORDB_DepositConfirmation
   struct GNUNET_TIME_Absolute refund_deadline;
 
   /**
+   * How much time does the @e exchange have to wire the funds?
+   */
+  struct GNUNET_TIME_Absolute wire_deadline;
+
+  /**
    * Amount to be deposited, excluding fee.  Calculated from the
    * amount with fee and the fee from the deposit request.
    */
