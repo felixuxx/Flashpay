@@ -127,6 +127,12 @@ struct WithdrawState
   struct GNUNET_TIME_Relative total_backoff;
 
   /**
+   * Set to the KYC UUID *if* the exchange replied with
+   * a request for KYC.
+   */
+  uint64_t kyc_uuid;
+
+  /**
    * Expected HTTP response code to the request.
    */
   unsigned int expected_response_code;
@@ -253,7 +259,7 @@ reserve_withdraw_cb (void *cls,
     break;
   case MHD_HTTP_ACCEPTED:
     /* nothing to check */
-    /* TODO: trait for returned uuid! */
+    ws->kyc_uuid = wr->details.accepted.payment_target_uuid;
     break;
   case MHD_HTTP_FORBIDDEN:
     /* nothing to check */
@@ -287,7 +293,7 @@ reserve_withdraw_cb (void *cls,
  * @param[out] idx where we set $INDEX
  * @return #GNUNET_SYSERR if $INDEX is present but not numeric
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_coin_reference (const char *coin_reference,
                       char **cref,
                       unsigned int *idx)
@@ -528,6 +534,7 @@ withdraw_traits (void *cls,
       TALER_TESTING_make_trait_reserve_priv (reserve_priv),
       TALER_TESTING_make_trait_reserve_pub (reserve_pub),
       TALER_TESTING_make_trait_amount (&ws->amount),
+      TALER_TESTING_make_trait_payment_target_uuid (&ws->kyc_uuid),
       TALER_TESTING_make_trait_exchange_url (
         (const char **) &ws->exchange_url),
       TALER_TESTING_trait_end ()

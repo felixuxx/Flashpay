@@ -2368,6 +2368,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (taler_uri, const char *)                                     \
   op (payto_uri, const char *)                                     \
   op (row, const uint64_t)                                         \
+  op (payment_target_uuid, const uint64_t)                         \
   op (array_length, const unsigned int)                            \
   op (credit_payto_uri, const char *)                              \
   op (debit_payto_uri, const char *)                               \

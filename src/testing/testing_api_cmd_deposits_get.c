@@ -50,6 +50,12 @@ struct TrackTransactionState
   unsigned int expected_response_code;
 
   /**
+   * Set to the KYC UUID *if* the exchange replied with
+   * a request for KYC (#MHD_HTTP_ACCEPTED).
+   */
+  uint64_t kyc_uuid;
+
+  /**
    * Reference to any operation that can provide a transaction.
    * Will be the transaction to track.
    */
@@ -147,6 +153,7 @@ deposit_wtid_cb (void *cls,
     break;
   case MHD_HTTP_ACCEPTED:
     /* allowed, nothing to check here */
+    tts->kyc_uuid = dr->details.accepted.payment_target_uuid;
     break;
   case MHD_HTTP_NOT_FOUND:
     /* allowed, nothing to check here */
@@ -306,6 +313,7 @@ track_transaction_traits (void *cls,
   struct TrackTransactionState *tts = cls;
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_wtid (&tts->wtid),
+    TALER_TESTING_make_trait_payment_target_uuid (&tts->kyc_uuid),
     TALER_TESTING_trait_end ()
   };
 
