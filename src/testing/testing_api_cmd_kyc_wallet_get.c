@@ -44,6 +44,11 @@ struct KycWalletGetState
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
+   * Payto URI of the reserve of the wallet.
+   */
+  char *reserve_payto_uri;
+
+  /**
    * Command to get a reserve private key from.
    */
   const char *reserve_reference;
@@ -161,6 +166,9 @@ wallet_kyc_run (void *cls,
   {
     GNUNET_CRYPTO_eddsa_key_create (&kwg->reserve_priv.eddsa_priv);
   }
+  kwg->reserve_payto_uri
+    = TALER_payto_from_reserve (TALER_EXCHANGE_get_base_url (is->exchange),
+                                &kwg->reserve_pub);
   GNUNET_CRYPTO_eddsa_key_get_public (&kwg->reserve_priv.eddsa_priv,
                                       &kwg->reserve_pub.eddsa_pub);
   kwg->kwh = TALER_EXCHANGE_kyc_wallet (is->exchange,
@@ -193,6 +201,7 @@ wallet_kyc_cleanup (void *cls,
     TALER_EXCHANGE_kyc_wallet_cancel (kwg->kwh);
     kwg->kwh = NULL;
   }
+  GNUNET_free (kwg->reserve_payto_uri);
   GNUNET_free (kwg);
 }
 
@@ -217,6 +226,8 @@ wallet_kyc_traits (void *cls,
     TALER_TESTING_make_trait_reserve_priv (&kwg->reserve_priv),
     TALER_TESTING_make_trait_reserve_pub (&kwg->reserve_pub),
     TALER_TESTING_make_trait_payment_target_uuid (&kwg->kyc_uuid),
+    TALER_TESTING_make_trait_payto_uri (
+      (const char **) &kwg->reserve_payto_uri),
     TALER_TESTING_trait_end ()
   };
 

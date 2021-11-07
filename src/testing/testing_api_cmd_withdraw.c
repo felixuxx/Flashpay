@@ -85,6 +85,21 @@ struct WithdrawState
   char *exchange_url;
 
   /**
+   * URI if the reserve we are withdrawing from.
+   */
+  char *reserve_payto_uri;
+
+  /**
+   * Private key of the reserve we are withdrawing from.
+   */
+  struct TALER_ReservePrivateKeyP reserve_priv;
+
+  /**
+   * Public key of the reserve we are withdrawing from.
+   */
+  struct TALER_ReservePublicKeyP reserve_pub;
+
+  /**
    * Interpreter state (during command).
    */
   struct TALER_TESTING_Interpreter *is;
@@ -361,6 +376,15 @@ withdraw_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  if (NULL == ws->exchange_url)
+    ws->exchange_url
+      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (ws->is->exchange));
+  ws->reserve_priv = *rp;
+  GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
+                                      &ws->reserve_pub.eddsa_pub);
+  ws->reserve_payto_uri
+    = TALER_payto_from_reserve (ws->exchange_url,
+                                &ws->reserve_pub);
   if (NULL == ws->reuse_coin_key_ref)
   {
     TALER_planchet_setup_random (&ws->ps);
@@ -463,6 +487,7 @@ withdraw_cleanup (void *cls,
     ws->pk = NULL;
   }
   GNUNET_free (ws->exchange_url);
+  GNUNET_free (ws->reserve_payto_uri);
   GNUNET_free (ws);
 }
 
@@ -484,69 +509,34 @@ withdraw_traits (void *cls,
                  unsigned int index)
 {
   struct WithdrawState *ws = cls;
-  const struct TALER_TESTING_Command *reserve_cmd;
-  const struct TALER_ReservePrivateKeyP *reserve_priv;
-  const struct TALER_ReservePublicKeyP *reserve_pub;
+  struct TALER_TESTING_Trait traits[] = {
+    /* history entry MUST be first due to response code logic below! */
+    TALER_TESTING_make_trait_reserve_history (&ws->reserve_history),
+    TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
+                                        &ws->ps.coin_priv),
+    TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
+                                           &ws->ps.blinding_key),
+    TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
+                                        ws->pk),
+    TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
+                                        &ws->sig),
+    TALER_TESTING_make_trait_reserve_priv (&ws->reserve_priv),
+    TALER_TESTING_make_trait_reserve_pub (&ws->reserve_pub),
+    TALER_TESTING_make_trait_amount (&ws->amount),
+    TALER_TESTING_make_trait_payment_target_uuid (&ws->kyc_uuid),
+    TALER_TESTING_make_trait_payto_uri (
+      (const char **) &ws->reserve_payto_uri),
+    TALER_TESTING_make_trait_exchange_url (
+      (const char **) &ws->exchange_url),
+    TALER_TESTING_trait_end ()
+  };
 
-  /* We offer the reserve key where these coins were withdrawn
-   * from. */
-  reserve_cmd = TALER_TESTING_interpreter_lookup_command (ws->is,
-                                                          ws->reserve_reference);
-
-  if (NULL == reserve_cmd)
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (ws->is);
-    return GNUNET_SYSERR;
-  }
-
-  if (GNUNET_OK !=
-      TALER_TESTING_get_trait_reserve_priv (reserve_cmd,
-                                            &reserve_priv))
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (ws->is);
-    return GNUNET_SYSERR;
-  }
-  if (GNUNET_OK !=
-      TALER_TESTING_get_trait_reserve_pub (reserve_cmd,
-                                           &reserve_pub))
-  {
-    GNUNET_break (0);
-    TALER_TESTING_interpreter_fail (ws->is);
-    return GNUNET_SYSERR;
-  }
-  if (NULL == ws->exchange_url)
-    ws->exchange_url
-      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (ws->is->exchange));
-  {
-    struct TALER_TESTING_Trait traits[] = {
-      /* history entry MUST be first due to response code logic below! */
-      TALER_TESTING_make_trait_reserve_history (&ws->reserve_history),
-      TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
-                                          &ws->ps.coin_priv),
-      TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
-                                             &ws->ps.blinding_key),
-      TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
-                                          ws->pk),
-      TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,
-                                          &ws->sig),
-      TALER_TESTING_make_trait_reserve_priv (reserve_priv),
-      TALER_TESTING_make_trait_reserve_pub (reserve_pub),
-      TALER_TESTING_make_trait_amount (&ws->amount),
-      TALER_TESTING_make_trait_payment_target_uuid (&ws->kyc_uuid),
-      TALER_TESTING_make_trait_exchange_url (
-        (const char **) &ws->exchange_url),
-      TALER_TESTING_trait_end ()
-    };
-
-    return TALER_TESTING_get_trait ((ws->expected_response_code == MHD_HTTP_OK)
+  return TALER_TESTING_get_trait ((ws->expected_response_code == MHD_HTTP_OK)
                                     ? &traits[0] /* we have reserve history */
                                     : &traits[1],/* skip reserve history */
-                                    ret,
-                                    trait,
-                                    index);
-  }
+                                  ret,
+                                  trait,
+                                  index);
 }
 
 

@@ -62,6 +62,11 @@ struct TrackTransactionState
   const char *transaction_reference;
 
   /**
+   * Payto URI of the merchant receiving the deposit.
+   */
+  char *merchant_payto_uri;
+
+  /**
    * Index of the coin involved in the transaction.  Recall:
    * at the exchange, the tracking is done _per coin_.
    */
@@ -222,7 +227,9 @@ track_transaction_run (void *cls,
     TALER_TESTING_interpreter_fail (tts->is);
     return;
   }
-
+  tts->merchant_payto_uri
+    = GNUNET_strdup (json_string_value (json_object_get (wire_details,
+                                                         "payto_uri")));
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_contract_terms (transaction_cmd,
                                               &contract_terms))
@@ -291,6 +298,7 @@ track_transaction_cleanup (void *cls,
     TALER_EXCHANGE_deposits_get_cancel (tts->tth);
     tts->tth = NULL;
   }
+  GNUNET_free (tts->merchant_payto_uri);
   GNUNET_free (tts);
 }
 
@@ -314,6 +322,8 @@ track_transaction_traits (void *cls,
   struct TALER_TESTING_Trait traits[] = {
     TALER_TESTING_make_trait_wtid (&tts->wtid),
     TALER_TESTING_make_trait_payment_target_uuid (&tts->kyc_uuid),
+    TALER_TESTING_make_trait_payto_uri (
+      (const char **) &tts->merchant_payto_uri),
     TALER_TESTING_trait_end ()
   };
 
