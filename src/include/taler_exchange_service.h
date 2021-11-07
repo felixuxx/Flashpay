@@ -2161,6 +2161,88 @@ TALER_EXCHANGE_kyc_check_cancel (struct TALER_EXCHANGE_KycCheckHandle *kyc);
 
 
 /**
+ * KYC proof response details.
+ */
+struct TALER_EXCHANGE_KycProofResponse
+{
+  /**
+   * HTTP status code returned by the exchange.
+   */
+  unsigned int http_status;
+
+  /**
+   * Taler error code, if any.
+   */
+  enum TALER_ErrorCode ec;
+
+  union
+  {
+
+    /**
+     * KYC is OK, affirmation returned by the exchange.
+     */
+    struct
+    {
+
+      /**
+       * Where to redirect the client next.
+       */
+      const char *redirect_url;
+
+    } found;
+
+  } details;
+
+};
+
+/**
+ * Function called with the result of a KYC check.
+ *
+ * @param cls closure
+ * @param ks the account's KYC status details
+ */
+typedef void
+(*TALER_EXCHANGE_KycProofCallback)(
+  void *cls,
+  const struct TALER_EXCHANGE_KycProofResponse *kpr);
+
+
+/**
+ * Handle for a /kyc-proof operation.
+ */
+struct TALER_EXCHANGE_KycProofHandle;
+
+
+/**
+ * Run interaction with exchange to provide proof of KYC status.
+ *
+ * @param eh exchange handle to use
+ * @param payment_target number identifying the target
+ * @param code OAuth 2.0 code argument
+ * @param state OAuth 2.0 state argument
+ * @param cb function to call with the result
+ * @param cb_cls closure for @a cb
+ * @return NULL on error
+ */
+struct TALER_EXCHANGE_KycProofHandle *
+TALER_EXCHANGE_kyc_proof (struct TALER_EXCHANGE_Handle *eh,
+                          uint64_t payment_target,
+                          const char *code,
+                          const char *state,
+                          TALER_EXCHANGE_KycProofCallback cb,
+                          void *cb_cls);
+
+
+/**
+ * Cancel KYC proof operation.
+ *
+ * @param kph handle for operation to cancel
+ */
+void
+TALER_EXCHANGE_kyc_proof_cancel (struct TALER_EXCHANGE_KycProofHandle *kph);
+
+
+/**
  * Handle for a ``/kyc-wallet`` operation.
  */
 struct TALER_EXCHANGE_KycWalletHandle;
