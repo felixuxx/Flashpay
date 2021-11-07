@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS wire_targets
 (wire_target_serial_id BIGSERIAL UNIQUE
 ,h_payto BYTEA NOT NULL CHECK (LENGTH(h_payto)=64)
 ,payto_uri VARCHAR NOT NULL
-,kyc_ok BOOLEAN NOT NULL DEFAULT (false)
+,kyc_ok BOOLEAN NOT NULL DEFAULT (FALSE)
 ,oauth_username VARCHAR
 ,PRIMARY KEY (h_payto)
 );

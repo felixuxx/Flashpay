@@ -150,6 +150,13 @@ static struct TALER_Amount currency_round_unit;
 static char *exchange_base_url;
 
 /**
+ * Set to #GNUNET_YES if this exchange does not support KYC checks
+ * and thus deposits are to be aggregated regardless of the
+ * KYC status of the target account.
+ */
+static int kyc_off;
+
+/**
  * The exchange's configuration.
  */
 static const struct GNUNET_CONFIGURATION_Handle *cfg;
@@ -706,6 +713,7 @@ run_aggregation (void *cls)
     db_plugin->cls,
     s->shard_start,
     s->shard_end,
+    kyc_off ? true : false,
     &deposit_cb,
     &au_active);
   switch (qs)
@@ -1106,6 +1114,10 @@ main (int argc,
                                "test",
                                "run in test mode and exit when idle",
                                &test_mode),
+    GNUNET_GETOPT_option_flag ('y',
+                               "kyc-off",
+                               "perform wire transfers without KYC checks",
+                               &kyc_off),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;

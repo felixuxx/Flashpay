@@ -1045,7 +1045,7 @@ prepare_statements (struct PostgresClosure *pg)
     /* Fetch an existing deposit request.
        Used in #postgres_lookup_transfer_by_deposit(). */
     GNUNET_PQ_make_prepare (
-      "get_deposit_for_wtid",
+      "get_deposit_without_wtid",
       "SELECT"
       " kyc_ok"
       ",wire_target_serial_id AS payment_target_uuid"
@@ -1091,13 +1091,14 @@ prepare_statements (struct PostgresClosure *pg)
       "   AND shard <= $3"
       "   AND tiny=FALSE"
       "   AND done=FALSE"
+      "   AND (kyc_ok OR $4)"
       "   AND wire_deadline<=$1"
       "   AND refund_deadline<$1"
       " ORDER BY "
       "   shard ASC"
       "  ,wire_deadline ASC"
       " LIMIT 1;",
-      3),
+      4),
     /* Used in #postgres_iterate_matching_deposits() */
     GNUNET_PQ_make_prepare (
       "deposits_iterate_matching",
@@ -5257,13 +5258,15 @@ postgres_mark_deposit_done (void *cls,
 
 
 /**
- * Obtain information about deposits that are ready to be executed.
- * Such deposits must not be marked as "tiny" or "done", and the
- * execution time must be in the past.
+ * Obtain information about deposits that are ready to be executed.  Such
+ * deposits must not be marked as "tiny" or "done", the execution time must be
+ * in the past, and the KYC status must be 'ok'.
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param start_shard_row minimum shard row to select
  * @param end_shard_row maximum shard row to select (inclusive)
+ * @param kyc_off true if we should not check the KYC status because
+ *                this exchange does not need/support KYC checks.
  * @param deposit_cb function to call for ONE such deposit
  * @param deposit_cb_cls closure for @a deposit_cb
  * @return transaction status code
@@ -5272,15 +5275,18 @@ static enum GNUNET_DB_QueryStatus
 postgres_get_ready_deposit (void *cls,
                             uint64_t start_shard_row,
                             uint64_t end_shard_row,
+                            bool kyc_off,
                             TALER_EXCHANGEDB_DepositIterator deposit_cb,
                             void *deposit_cb_cls)
 {
   struct PostgresClosure *pg = cls;
+  uint8_t kyc_override = (kyc_off) ? 1 : 0;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_uint64 (&start_shard_row),
     GNUNET_PQ_query_param_uint64 (&end_shard_row),
+    GNUNET_PQ_query_param_auto_from_type (&kyc_override),
     GNUNET_PQ_query_param_end
   };
   struct TALER_Amount amount_with_fee;
@@ -7298,8 +7304,8 @@ postgres_lookup_transfer_by_deposit (
               "lookup_deposit_wtid returned 0 matching rows\n");
   {
     /* Check if transaction exists in deposits, so that we just
-       do not have a WTID yet, if so, do call the CB with a NULL wtid
-       and return #GNUNET_YES! */
+       do not have a WTID yet. In that case, return without wtid
+       (by setting 'pending' true). */
     uint8_t ok8 = 0;
     struct GNUNET_PQ_ResultSpec rs2[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
@@ -7320,7 +7326,7 @@ postgres_lookup_transfer_by_deposit (
     };
 
     qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_deposit_for_wtid",
+                                                   "get_deposit_without_wtid",
                                                    params,
                                                    rs2);
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)

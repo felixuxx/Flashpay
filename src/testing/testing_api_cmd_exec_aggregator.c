@@ -68,6 +68,7 @@ aggregator_run (void *cls,
                                "taler-exchange-aggregator",
                                "-c", as->config_filename,
                                "-t", /* exit when done */
+                               "-y", /* skip KYC */
                                NULL);
   if (NULL == as->aggregator_proc)
   {

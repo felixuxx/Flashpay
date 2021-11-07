@@ -2731,11 +2731,14 @@ struct TALER_EXCHANGEDB_Plugin
   /**
    * Obtain information about deposits that are ready to be executed.
    * Such deposits must not be marked as "tiny" or "done", and the
-   * execution time and refund deadlines must both be in the past.
+   * execution time, the refund deadlines must both be in the past and
+   * the KYC status must be 'ok'.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param start_shard_row minimum shard row to select
    * @param end_shard_row maximum shard row to select (inclusive)
+   * @param kyc_off true if we should not check the KYC status because
+   *                this exchange does not need/support KYC checks.
    * @param deposit_cb function to call for ONE such deposit
    * @param deposit_cb_cls closure for @a deposit_cb
    * @return transaction status code
@@ -2744,6 +2747,7 @@ struct TALER_EXCHANGEDB_Plugin
   (*get_ready_deposit)(void *cls,
                        uint64_t start_shard_row,
                        uint64_t end_shard_row,
+                       bool kyc_off,
                        TALER_EXCHANGEDB_DepositIterator deposit_cb,
                        void *deposit_cb_cls);
 
