@@ -43,6 +43,11 @@ struct AggregatorState
    * Configuration file used by the aggregator.
    */
   const char *config_filename;
+
+  /**
+   * Run with KYC restrictions on.
+   */
+  bool kyc_on;
 };
 
 
@@ -68,7 +73,9 @@ aggregator_run (void *cls,
                                "taler-exchange-aggregator",
                                "-c", as->config_filename,
                                "-t", /* exit when done */
-                               "-y", /* skip KYC */
+                               (as->kyc_on)
+                               ? NULL
+                               : "-y", /* skip KYC */
                                NULL);
   if (NULL == as->aggregator_proc)
   {
@@ -143,6 +150,29 @@ TALER_TESTING_cmd_exec_aggregator (const char *label,
 
   as = GNUNET_new (struct AggregatorState);
   as->config_filename = config_filename;
+  {
+    struct TALER_TESTING_Command cmd = {
+      .cls = as,
+      .label = label,
+      .run = &aggregator_run,
+      .cleanup = &aggregator_cleanup,
+      .traits = &aggregator_traits
+    };
+
+    return cmd;
+  }
+}
+
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_aggregator_with_kyc (const char *label,
+                                            const char *config_filename)
+{
+  struct AggregatorState *as;
+
+  as = GNUNET_new (struct AggregatorState);
+  as->config_filename = config_filename;
+  as->kyc_on = true;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = as,

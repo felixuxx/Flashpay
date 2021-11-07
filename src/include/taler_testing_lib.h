@@ -1194,6 +1194,7 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_wirewatch (const char *label,
                                   const char *config_filename);
 
+
 /**
  * Make a "aggregator" CMD.
  *
@@ -1205,6 +1206,19 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_aggregator (const char *label,
                                    const char *config_filename);
+
+
+/**
+ * Make a "aggregator" CMD and do not disable KYC checks.
+ *
+ * @param label command label.
+ * @param config_filename configuration file for the
+ *                        aggregator to use.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_aggregator_with_kyc (const char *label,
+                                            const char *config_filename);
 
 
 /**
