@@ -2197,6 +2197,20 @@ TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
                                          bool bad_sig);
 
 
+/**
+ * Create a request for a wallet's KYC UUID.
+ *
+ * @param label command label.
+ * @param reserve_reference command with reserve private key to use (or NULL to create a fresh reserve key).
+ * @param expected_response_code expected HTTP status
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_wallet_kyc_get (const char *label,
+                                  const char *reserve_reference,
+                                  unsigned int expected_response_code);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 

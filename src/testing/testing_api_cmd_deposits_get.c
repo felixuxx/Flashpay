@@ -324,19 +324,6 @@ track_transaction_traits (void *cls,
 }
 
 
-/**
- * Create a "track transaction" command.
- *
- * @param label the command label.
- * @param transaction_reference reference to a deposit operation,
- *        will be used to get the input data for the track.
- * @param coin_index index of the coin involved in the transaction.
- * @param expected_response_code expected HTTP response code.
- * @param bank_transfer_reference reference to a command that
- *        can offer a WTID so as to check that against what WTID
- *        the tracked operation has.  Set as NULL if not needed.
- * @return the command.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_track_transaction (const char *label,
                                      const char *transaction_reference,
