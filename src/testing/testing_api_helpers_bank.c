@@ -281,7 +281,7 @@ TALER_TESTING_run_bank (const char *config_filename,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_nexus (const char *config_filename,
                              int reset_db,
                              const char *config_section,
@@ -401,7 +401,7 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_bank (const char *config_filename,
                             int reset_db,
                             const char *config_section,
@@ -582,7 +582,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_fakebank (const char *config_filename,
                                 const char *config_section,
                                 struct TALER_TESTING_BankConfiguration *bc)

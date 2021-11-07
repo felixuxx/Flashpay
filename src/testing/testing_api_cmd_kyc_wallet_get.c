@@ -28,7 +28,7 @@
 #include "taler_testing_lib.h"
 
 /**
- * State for a "track transaction" CMD.
+ * State for a "/kyc-wallet" GET CMD.
  */
 struct KycWalletGetState
 {
@@ -183,7 +183,7 @@ wallet_kyc_run (void *cls,
  * Cleanup the state from a "track transaction" CMD, and possibly
  * cancel a operation thereof.
  *
- * @param cls closure.
+ * @param cls closure with our `struct KycWalletGetState`
  * @param cmd the command which is being cleaned up.
  */
 static void
