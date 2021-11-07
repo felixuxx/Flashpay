@@ -64,6 +64,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_kyc_check_get.c \
   testing_api_cmd_kyc_proof.c \
   testing_api_cmd_kyc_wallet_get.c \
+  testing_api_cmd_oauth.c \
   testing_api_cmd_offline_sign_fees.c \
   testing_api_cmd_offline_sign_keys.c \
   testing_api_cmd_set_wire_fee.c \
@@ -94,6 +95,7 @@ libtalertesting_la_LIBADD = \
   $(top_builddir)/src/lib/libtalerauditor.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/mhd/libtalermhd.la \
   $(top_builddir)/src/util/libtalerutil.la \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(top_builddir)/src/bank-lib/libtalerfakebank.la \
