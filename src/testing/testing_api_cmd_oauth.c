@@ -245,4 +245,4 @@ TALER_TESTING_cmd_oauth (const char *label,
 }
 
 
-/* end of testing_api_cmd_kyc_proof.c */
+/* end of testing_api_cmd_oauth.c */

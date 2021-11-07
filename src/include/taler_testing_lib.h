@@ -2243,6 +2243,18 @@ TALER_TESTING_cmd_proof_kyc (const char *label,
                              unsigned int expected_response_code);
 
 
+/**
+ * Starts a fake OAuth 2.0 service on @a port for testing
+ * KYC processes.
+ *
+ * @param label command label
+ * @param port the TCP port to listen on
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_oauth (const char *label,
+                         uint16_t port);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 
