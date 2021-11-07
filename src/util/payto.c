@@ -70,13 +70,6 @@ payto_get_key (const char *payto_uri,
 }
 
 
-/**
- * Extract the subject value from the URI parameters.
- *
- * @param payto_uri the URL to parse
- * @return NULL if the subject parameter is not found.
- *         The caller should free the returned value.
- */
 char *
 TALER_payto_get_subject (const char *payto_uri)
 {
@@ -85,14 +78,6 @@ TALER_payto_get_subject (const char *payto_uri)
 }
 
 
-/**
- * Obtain the payment method from a @a payto_uri. The
- * format of a payto URI is 'payto://$METHOD/$SOMETHING'.
- * We return $METHOD.
- *
- * @param payto_uri the URL to parse
- * @return NULL on error (malformed @a payto_uri)
- */
 char *
 TALER_payto_get_method (const char *payto_uri)
 {
@@ -113,16 +98,6 @@ TALER_payto_get_method (const char *payto_uri)
 }
 
 
-/**
- * Obtain the account name from a payto URL.  The format
- * of the @a payto URL is 'payto://x-taler-bank/$HOSTNAME/$ACCOUNT[?PARAMS]'.
- * We check the first part matches, skip over the $HOSTNAME
- * and return the $ACCOUNT portion.
- *
- * @param payto an x-taler-bank payto URL
- * @return only the account name from the @a payto URL, NULL if not an x-taler-bank
- *   payto URL
- */
 char *
 TALER_xtalerbank_account_from_payto (const char *payto)
 {
@@ -202,13 +177,6 @@ validate_payto_iban (const char *account_url)
 }
 
 
-/**
- * Check that a payto:// URI is well-formed.
- *
- * @param payto_uri the URL to check
- * @return NULL on success, otherwise an error
- *         message to be freed by the caller!
- */
 char *
 TALER_payto_validate (const char *payto_uri)
 {
@@ -264,3 +232,45 @@ TALER_payto_hash (const char *payto,
                       strlen (payto) + 1,
                       &h_payto->hash);
 }
+
+
+char *
+TALER_payto_from_reserve (const char *exchange_base_url,
+                          const struct TALER_ReservePublicKeyP *reserve_pub)
+{
+  char *payto_uri;
+  char *rps;
+  unsigned int skip;
+  const char *extra = "";
+  int url_len;
+
+  rps = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
+                                             sizeof (*reserve_pub));
+  skip = 0;
+  if (0 == strncasecmp (exchange_base_url,
+                        "http://",
+                        strlen ("http://")))
+  {
+    skip = strlen ("http://");
+    extra = "+http";
+  }
+  if (0 == strncasecmp (exchange_base_url,
+                        "https://",
+                        strlen ("https://")))
+    skip = strlen ("https://");
+  url_len = strlen (exchange_base_url);
+  if ('/' == exchange_base_url[url_len - 1])
+    url_len--;
+  url_len -= skip;
+  GNUNET_asprintf (&payto_uri,
+                   "taler%s://reserve/%.*s/%s",
+                   extra,
+                   url_len,
+                   exchange_base_url + skip,
+                   rps);
+  GNUNET_free (rps);
+  return payto_uri;
+}
+
+
+/* end of payto.c */

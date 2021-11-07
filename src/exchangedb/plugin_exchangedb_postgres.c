@@ -3979,42 +3979,15 @@ postgres_inselect_wallet_kyc_status (
 {
   struct PostgresClosure *pg = cls;
   char *payto_uri;
-  char *rps;
-  unsigned int skip;
-  const char *extra = "";
-  int url_len;
+  enum GNUNET_DB_QueryStatus qs;
 
-  rps = GNUNET_STRINGS_data_to_string_alloc (reserve_pub,
-                                             sizeof (*reserve_pub));
-  skip = 0;
-  if (0 == strncasecmp (pg->exchange_url,
-                        "http://",
-                        strlen ("http://")))
-    skip = strlen ("http://");
-  if (0 == strncasecmp (pg->exchange_url,
-                        "https://",
-                        strlen ("https://")))
-    skip = strlen ("https://");
-  url_len = strlen (pg->exchange_url);
-  if ('/' == pg->exchange_url[url_len - 1])
-    url_len--;
-  url_len -= skip;
-  GNUNET_asprintf (&payto_uri,
-                   "taler%s://reserve/%.*s/%s",
-                   extra,
-                   url_len,
-                   pg->exchange_url + skip,
-                   rps);
-  GNUNET_free (rps);
-  {
-    enum GNUNET_DB_QueryStatus qs;
-
-    qs = inselect_account_kyc_status (pg,
-                                      payto_uri,
-                                      kyc);
-    GNUNET_free (payto_uri);
-    return qs;
-  }
+  payto_uri = TALER_payto_from_reserve (pg->exchange_url,
+                                        reserve_pub);
+  qs = inselect_account_kyc_status (pg,
+                                    payto_uri,
+                                    kyc);
+  GNUNET_free (payto_uri);
+  return qs;
 }
 
 
