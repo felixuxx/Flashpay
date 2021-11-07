@@ -102,6 +102,10 @@ handler_cb (void *cls,
   unsigned int hc;
   json_t *body;
 
+  /* NOTE: In the future, we MAY want to distinguish between
+     the different URLs and possibly return more information.
+     For now, just do the minimum: implement the main handler
+     that checks the code. */
   code = MHD_lookup_connection_value (connection,
                                       MHD_GET_ARGUMENT_KIND,
                                       "code");
