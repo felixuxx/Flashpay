@@ -2211,6 +2211,20 @@ TALER_TESTING_cmd_wallet_kyc_get (const char *label,
                                   unsigned int expected_response_code);
 
 
+/**
+ * Create a request for an account's KYC status.
+ *
+ * @param label command label.
+ * @param payment_target_reference command with a payment target to query
+ * @param expected_response_code expected HTTP status
+ * @return the command
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_check_kyc_get (const char *label,
+                                 const char *payment_target_reference,
+                                 unsigned int expected_response_code);
+
+
 /* *** Generic trait logic for implementing traits ********* */
 
 
@@ -2381,6 +2395,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (exchange_bank_account_url, const char *)                     \
   op (taler_uri, const char *)                                     \
   op (payto_uri, const char *)                                     \
+  op (kyc_url, const char *)                                     \
   op (row, const uint64_t)                                         \
   op (payment_target_uuid, const uint64_t)                         \
   op (array_length, const unsigned int)                            \
