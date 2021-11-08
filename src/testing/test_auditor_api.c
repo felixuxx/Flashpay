@@ -70,6 +70,7 @@ static struct TALER_TESTING_BankConfiguration bc;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
+  TALER_TESTING_cmd_sleep (label "-sleep", 1), \
   TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE), \
   TALER_TESTING_cmd_exec_transfer (label, CONFIG_FILE)
 
