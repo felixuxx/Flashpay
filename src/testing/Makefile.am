@@ -122,6 +122,7 @@ check_PROGRAMS = \
   test_exchange_api_revocation \
   test_exchange_api_overlapping_keys_bug \
   test_exchange_management_api \
+  test_kyc_api \
   test_taler_exchange_aggregator-postgres \
   test_taler_exchange_wirewatch-postgres
 if HAVE_TWISTER
@@ -151,6 +152,7 @@ test_auditor_api_LDADD = \
   -lgnunetutil \
   -ljansson \
   $(XLIB)
+
 
 test_auditor_api_version_SOURCES = \
   test_auditor_api_version.c
@@ -339,6 +341,22 @@ test_bank_api_with_pybank_twisted_LDADD = \
   $(XLIB)
 
 
+test_kyc_api_SOURCES = \
+  test_kyc_api.c
+test_kyc_api_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerauditor.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
 # Distribution
 
 EXTRA_DIST = \
@@ -365,4 +383,5 @@ EXTRA_DIST = \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
   test-taler-exchange-aggregator-postgres.conf \
-  test-taler-exchange-wirewatch-postgres.conf
+  test-taler-exchange-wirewatch-postgres.conf \
+  test_kyc_api.conf
