@@ -358,6 +358,7 @@ withdraw_run (void *cls,
   const struct TALER_EXCHANGE_DenomPublicKey *dpk;
 
   (void) cmd;
+  ws->is = is;
   create_reserve
     = TALER_TESTING_interpreter_lookup_command (
         is,
@@ -378,7 +379,7 @@ withdraw_run (void *cls,
   }
   if (NULL == ws->exchange_url)
     ws->exchange_url
-      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (ws->is->exchange));
+      = GNUNET_strdup (TALER_EXCHANGE_get_base_url (is->exchange));
   ws->reserve_priv = *rp;
   GNUNET_CRYPTO_eddsa_key_get_public (&ws->reserve_priv.eddsa_priv,
                                       &ws->reserve_pub.eddsa_pub);
@@ -411,7 +412,6 @@ withdraw_run (void *cls,
     TALER_planchet_setup_random (&ws->ps);
     ws->ps.coin_priv = *coin_priv;
   }
-  ws->is = is;
   if (NULL == ws->pk)
   {
     dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
