@@ -96,13 +96,37 @@ run (void *cls,
    */
   struct TALER_TESTING_Command withdraw[] = {
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
-                              "EUR:5.01"),
+                              "EUR:15.02"),
     TALER_TESTING_cmd_check_bank_admin_transfer (
       "check-create-reserve-1",
-      "EUR:5.01", bc.user42_payto, bc.exchange_payto,
+      "EUR:15.02", bc.user42_payto, bc.exchange_payto,
       "create-reserve-1"),
     CMD_EXEC_WIREWATCH ("wirewatch-1"),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-no-kyc",
+                                       "create-reserve-1",
+                                       "EUR:10",
+                                       MHD_HTTP_ACCEPTED),
     TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1",
+                                       "create-reserve-1",
+                                       "EUR:5",
+                                       MHD_HTTP_OK),
+    TALER_TESTING_cmd_end ()
+  };
+  /**
+   * Test withdraw with KYC.
+   */
+  struct TALER_TESTING_Command withdraw_kyc[] = {
+    CMD_EXEC_WIREWATCH ("wirewatch-1"),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-lacking-kyc",
+                                       "create-reserve-1",
+                                       "EUR:5",
+                                       MHD_HTTP_ACCEPTED),
+    TALER_TESTING_cmd_proof_kyc ("proof-kyc",
+                                 "withdraw-coin-1-lacking-kyc",
+                                 "pass",
+                                 "state",
+                                 MHD_HTTP_SEE_OTHER),
+    TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-1-with-kyc",
                                        "create-reserve-1",
                                        "EUR:5",
                                        MHD_HTTP_OK),
@@ -113,7 +137,7 @@ run (void *cls,
       "deposit-simple",
       "withdraw-coin-1",
       0,
-      bc.user42_payto,
+      bc.user43_payto,
       "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
       GNUNET_TIME_UNIT_ZERO,
       "EUR:5",
@@ -156,8 +180,25 @@ run (void *cls,
       ec.exchange_url,
       "EUR:4.98",
       bc.exchange_payto,
-      bc.user42_payto),
+      bc.user43_payto),
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
+    TALER_TESTING_cmd_end ()
+  };
+
+  struct TALER_TESTING_Command wallet_kyc[] = {
+    TALER_TESTING_cmd_wallet_kyc_get (
+      "wallet-kyc-fail",
+      NULL,
+      MHD_HTTP_OK),
+    TALER_TESTING_cmd_proof_kyc ("proof-wallet-kyc",
+                                 "wallet-kyc-fail",
+                                 "pass",
+                                 "state",
+                                 MHD_HTTP_SEE_OTHER),
+    TALER_TESTING_cmd_check_kyc_get (
+      "wallet-kyc-check",
+      "wallet-kyc-fail",
+      MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
 
@@ -183,6 +224,12 @@ run (void *cls,
                              spend),
     TALER_TESTING_cmd_batch ("track",
                              track),
+    TALER_TESTING_cmd_batch ("withdraw-kyc",
+                             withdraw_kyc),
+#if 0
+    TALER_TESTING_cmd_batch ("wallet-kyc",
+                             wallet_kyc),
+#endif
     TALER_TESTING_cmd_end ()
   };
 

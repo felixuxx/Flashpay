@@ -105,6 +105,7 @@ TEH_handler_kyc_check (
   MHD_RESULT res;
   enum GNUNET_GenericReturnValue ret;
   char dummy;
+  struct TALER_PaytoHash h_payto;
 
   if (1 !=
       sscanf (args[0],
@@ -117,6 +118,34 @@ TEH_handler_kyc_check (
                                        MHD_HTTP_BAD_REQUEST,
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        "payment_target_uuid");
+  }
+  /* FIXME: write long polling logic ... */
+  {
+    const char *hps;
+
+    hps = MHD_lookup_connection_value (rc->connection,
+                                       MHD_GET_ARGUMENT_KIND,
+                                       "h_payto");
+    if (NULL == hps)
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MISSING,
+                                         "h_payto");
+    }
+    if (GNUNET_OK !=
+        GNUNET_STRINGS_string_to_data (hps,
+                                       strlen (hps),
+                                       &h_payto,
+                                       sizeof (h_payto)))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                         "h_payto");
+    }
   }
 
   if (TEH_KYC_NONE == TEH_kyc_config.mode)
@@ -141,6 +170,16 @@ TEH_handler_kyc_check (
                                   &kcc);
     if (GNUNET_SYSERR == ret)
       return res;
+    if (0 !=
+        GNUNET_memcmp (&kcc.h_payto,
+                       &h_payto))
+    {
+      GNUNET_break_op (0);
+      return TALER_MHD_reply_with_error (rc->connection,
+                                         MHD_HTTP_FORBIDDEN,
+                                         42, /* FIXME: EC! */
+                                         "h_payto");
+    }
     if (! kcc.kyc.ok)
     {
       char *url;

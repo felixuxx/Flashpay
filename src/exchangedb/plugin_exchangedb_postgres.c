@@ -26,6 +26,7 @@
 #include "taler_error_codes.h"
 #include "taler_dbevents.h"
 #include "taler_pq_lib.h"
+#include "taler_util.h"
 #include "taler_json_lib.h"
 #include "taler_exchangedb_plugin.h"
 #include <poll.h>
@@ -3986,6 +3987,10 @@ postgres_inselect_wallet_kyc_status (
   qs = inselect_account_kyc_status (pg,
                                     payto_uri,
                                     kyc);
+  GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+              "Wire account for `%s' is %llu\n",
+              payto_uri,
+              (unsigned long long) kyc->payment_target_uuid);
   GNUNET_free (payto_uri);
   return qs;
 }
@@ -4920,7 +4925,7 @@ withdraw_amount_by_account_cb (void *cls,
   struct WithdrawAmountByAccountContext *wac = cls;
   struct PostgresClosure *pg = wac->pg;
 
-  for (unsigned int i = 0; num_results; i++)
+  for (unsigned int i = 0; i < num_results; i++)
   {
     struct TALER_Amount val;
     struct GNUNET_PQ_ResultSpec rs[] = {

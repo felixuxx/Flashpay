@@ -24,6 +24,10 @@
 #include "platform.h"
 #include "taler_curl_lib.h"
 
+// FIXME-workaround: without this, we somehow sometimes forget the header
+// that indicates compression and then the exchange 400s us!
+#undef TALER_CURL_COMPRESS_BODIES
+
 #if TALER_CURL_COMPRESS_BODIES
 #include <zlib.h>
 #endif
@@ -76,18 +80,17 @@ TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
     slen = (size_t) cbuf_size;
     ctx->json_enc = (char *) cbuf;
   }
-  GNUNET_assert
-    (NULL != (ctx->headers = curl_slist_append
-                               (ctx->headers,
-                               "Content-Encoding: deflate")));
+  GNUNET_assert (NULL != (ctx->headers = curl_slist_append (
+                            ctx->headers,
+                            "Content-Encoding: deflate")));
 #else
   ctx->json_enc = str;
 #endif
 
   GNUNET_assert
-    (NULL != (ctx->headers = curl_slist_append
-                               (ctx->headers,
-                               "Content-Type: application/json")));
+    (NULL != (ctx->headers = curl_slist_append (
+                ctx->headers,
+                "Content-Type: application/json")));
 
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,

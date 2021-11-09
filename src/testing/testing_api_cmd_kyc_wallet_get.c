@@ -94,9 +94,10 @@ wallet_kyc_cb (void *cls,
   if (kwg->expected_response_code != wkr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unexpected response code %u/%d to command %s in %s:%u\n",
+                "Unexpected response code %u/%d (wanted %u) to command %s in %s:%u\n",
                 wkr->http_status,
                 (int) wkr->ec,
+                kwg->expected_response_code,
                 cmd->label,
                 __FILE__,
                 __LINE__);

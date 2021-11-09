@@ -224,6 +224,10 @@ withdraw_transaction (void *cls,
     return qs;
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Asked to withdraw from %s amount of %s\n",
+              TALER_B2S (&wc->wsrd.reserve_pub),
+              TALER_amount2s (&wc->amount_required));
   /* Don't sign again if we have already signed the coin */
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
   {
@@ -306,6 +310,10 @@ withdraw_transaction (void *cls,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "KYC status is %s for %s\n",
+              wc->kyc.ok ? "ok" : "missing",
+              TALER_B2S (&r.pub));
   if ( (! wc->kyc.ok) &&
        (TEH_KYC_NONE != TEH_kyc_config.mode) &&
        (TALER_EXCHANGEDB_KYC_W2W == wc->kyc.type) )
@@ -323,10 +331,7 @@ withdraw_transaction (void *cls,
     struct TALER_Amount acc;
     enum GNUNET_DB_QueryStatus qs2;
 
-    TALER_amount_set_zero (TEH_currency,
-                           &acc);
-    accumulate_withdraws (&acc,
-                          &wc->amount_required);
+    acc = wc->amount_required;
     qs2 = TEH_plugin->select_withdraw_amounts_by_account (
       TEH_plugin->cls,
       &wc->wsrd.reserve_pub,
@@ -353,6 +358,9 @@ withdraw_transaction (void *cls,
                                           NULL);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Amount withdrawn so far is %s\n",
+                TALER_amount2s (&acc));
     if (1 == /* 1: acc > withdraw_limit */
         TALER_amount_cmp (&acc,
                           &TEH_kyc_config.withdraw_limit))
@@ -388,6 +396,10 @@ withdraw_transaction (void *cls,
   wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
   wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
   wc->collectable.reserve_sig = wc->signature;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Persisting withdraw from %s over %s\n",
+              TALER_B2S (&r.pub),
+              TALER_amount2s (&wc->amount_required));
   qs = TEH_plugin->insert_withdraw_info (TEH_plugin->cls,
                                          &wc->collectable);
   if (0 > qs)

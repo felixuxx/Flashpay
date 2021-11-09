@@ -166,6 +166,7 @@ TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
     .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
   };
 
+  /* FIXME: move to util/wallet-signatures.c! */
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &reserve_pub.eddsa_pub);
 
@@ -187,6 +188,7 @@ TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
                                "/kyc-wallet");
   if (NULL == kwh->url)
   {
+    json_decref (req);
     GNUNET_free (kwh);
     return NULL;
   }
