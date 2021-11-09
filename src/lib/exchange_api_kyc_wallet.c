@@ -209,10 +209,11 @@ TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
   json_decref (req);
-  kwh->job = GNUNET_CURL_job_add (ctx,
-                                  eh,
-                                  &handle_kyc_wallet_finished,
-                                  kwh);
+  kwh->job = GNUNET_CURL_job_add2 (ctx,
+                                   eh,
+                                   kwh->ctx.headers,
+                                   &handle_kyc_wallet_finished,
+                                   kwh);
   return kwh;
 }
 

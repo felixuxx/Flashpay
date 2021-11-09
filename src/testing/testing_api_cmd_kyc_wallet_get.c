@@ -167,11 +167,11 @@ wallet_kyc_run (void *cls,
   {
     GNUNET_CRYPTO_eddsa_key_create (&kwg->reserve_priv.eddsa_priv);
   }
+  GNUNET_CRYPTO_eddsa_key_get_public (&kwg->reserve_priv.eddsa_priv,
+                                      &kwg->reserve_pub.eddsa_pub);
   kwg->reserve_payto_uri
     = TALER_payto_from_reserve (TALER_EXCHANGE_get_base_url (is->exchange),
                                 &kwg->reserve_pub);
-  GNUNET_CRYPTO_eddsa_key_get_public (&kwg->reserve_priv.eddsa_priv,
-                                      &kwg->reserve_pub.eddsa_pub);
   kwg->kwh = TALER_EXCHANGE_kyc_wallet (is->exchange,
                                         &kwg->reserve_priv,
                                         &wallet_kyc_cb,

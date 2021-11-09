@@ -119,7 +119,31 @@ TEH_handler_kyc_check (
                                        TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                        "payment_target_uuid");
   }
-  /* FIXME: write long polling logic ... */
+  {
+    const char *ts;
+
+    ts = MHD_lookup_connection_value (rc->connection,
+                                      MHD_GET_ARGUMENT_KIND,
+                                      "timeout_ms");
+    if (NULL != ts)
+    {
+      unsigned long long tms;
+
+      if (1 !=
+          sscanf (ts,
+                  "%llu%c",
+                  &tms,
+                  &dummy))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (rc->connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                           "timeout_ms");
+      }
+      /* FIXME: write long polling logic ... */
+    }
+  }
   {
     const char *hps;
 
@@ -176,8 +200,8 @@ TEH_handler_kyc_check (
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         42, /* FIXME: EC! */
+                                         MHD_HTTP_UNAUTHORIZED,
+                                         TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
                                          "h_payto");
     }
     if (! kcc.kyc.ok)

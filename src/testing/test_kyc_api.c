@@ -226,10 +226,8 @@ run (void *cls,
                              track),
     TALER_TESTING_cmd_batch ("withdraw-kyc",
                              withdraw_kyc),
-#if 0
     TALER_TESTING_cmd_batch ("wallet-kyc",
                              wallet_kyc),
-#endif
     TALER_TESTING_cmd_end ()
   };
 
