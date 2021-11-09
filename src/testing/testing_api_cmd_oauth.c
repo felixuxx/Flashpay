@@ -46,6 +46,76 @@ struct OAuthState
 };
 
 
+struct RequestCtx
+{
+  struct MHD_PostProcessor *pp;
+  char *code;
+  char *client_id;
+  char *redirect_uri;
+  char *client_secret;
+};
+
+
+static void
+append (char **target,
+        const char *data,
+        size_t size)
+{
+  char *tmp;
+
+  if (NULL == *target)
+  {
+    *target = GNUNET_strndup (data,
+                              size);
+    return;
+  }
+  GNUNET_asprintf (&tmp,
+                   "%s%.*s",
+                   *target,
+                   (int) size,
+                   data);
+  GNUNET_free (*target);
+  *target = tmp;
+}
+
+
+static enum MHD_Result
+handle_post (void *cls,
+             enum MHD_ValueKind kind,
+             const char *key,
+             const char *filename,
+             const char *content_type,
+             const char *transfer_encoding,
+             const char *data,
+             uint64_t off,
+             size_t size)
+{
+  struct RequestCtx *rc = cls;
+
+  if (0 == strcmp (key,
+                   "code"))
+    append (&rc->code,
+            data,
+            size);
+  if (0 == strcmp (key,
+                   "client_id"))
+    append (&rc->client_id,
+            data,
+            size);
+  if (0 == strcmp (key,
+                   "redirect_uri"))
+    append (&rc->redirect_uri,
+            data,
+            size);
+  if (0 == strcmp (key,
+                   "client_secret"))
+    append (&rc->client_secret,
+            data,
+            size);
+  return MHD_YES;
+}
+
+
 /**
  * A client has requested the given url using the given method
  * (#MHD_HTTP_METHOD_GET, #MHD_HTTP_METHOD_PUT,
@@ -95,38 +165,52 @@ handler_cb (void *cls,
             size_t *upload_data_size,
             void **con_cls)
 {
-  const char *code;
-  const char *client_id;
-  const char *redirect_uri;
-  const char *client_secret;
+  struct RequestCtx *rc = *con_cls;
   unsigned int hc;
   json_t *body;
+
+  if (NULL == rc)
+  {
+    rc = GNUNET_new (struct RequestCtx);
+    *con_cls = rc;
+    rc->pp = MHD_create_post_processor (connection,
+                                        4092,
+                                        &handle_post,
+                                        rc);
+    return MHD_YES;
+  }
+  if (0 != *upload_data_size)
+  {
+    enum MHD_Result ret;
+
+    ret = MHD_post_process (rc->pp,
+                            upload_data,
+                            *upload_data_size);
+    *upload_data_size = 0;
+    return ret;
+  }
+
 
   /* NOTE: In the future, we MAY want to distinguish between
      the different URLs and possibly return more information.
      For now, just do the minimum: implement the main handler
      that checks the code. */
-  code = MHD_lookup_connection_value (connection,
-                                      MHD_GET_ARGUMENT_KIND,
-                                      "code");
-  client_id = MHD_lookup_connection_value (connection,
-                                           MHD_GET_ARGUMENT_KIND,
-                                           "client_id");
-  redirect_uri = MHD_lookup_connection_value (connection,
-                                              MHD_GET_ARGUMENT_KIND,
-                                              "redirect_uri");
-  client_secret = MHD_lookup_connection_value (connection,
-                                               MHD_GET_ARGUMENT_KIND,
-                                               "client_secret");
-  if ( (NULL == code) ||
-       (NULL == client_id) ||
-       (NULL == redirect_uri) ||
-       (NULL == client_secret) )
+  if ( (NULL == rc->code) ||
+       (NULL == rc->client_id) ||
+       (NULL == rc->redirect_uri) ||
+       (NULL == rc->client_secret) )
   {
     GNUNET_break (0);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Bad request to Oauth faker: `%s' with %s/%s/%s/%s\n",
+                url,
+                rc->code,
+                rc->client_id,
+                rc->redirect_uri,
+                rc->client_secret);
     return MHD_NO;
   }
-  if (0 != strcmp (client_id,
+  if (0 != strcmp (rc->client_id,
                    "taler-exchange"))
   {
     body = GNUNET_JSON_PACK (
@@ -136,7 +220,7 @@ handler_cb (void *cls,
                                "only 'taler-exchange' is allowed"));
     hc = MHD_HTTP_NOT_FOUND;
   }
-  else if (0 != strcmp (client_secret,
+  else if (0 != strcmp (rc->client_secret,
                         "exchange-secret"))
   {
     body = GNUNET_JSON_PACK (
@@ -148,7 +232,7 @@ handler_cb (void *cls,
   }
   else
   {
-    if (0 != strcmp (code,
+    if (0 != strcmp (rc->code,
                      "pass"))
     {
       body = GNUNET_JSON_PACK (
@@ -178,6 +262,24 @@ handler_cb (void *cls,
 }
 
 
+static void
+cleanup (void *cls,
+         struct MHD_Connection *connection,
+         void **con_cls,
+         enum MHD_RequestTerminationCode toe)
+{
+  struct RequestCtx *rc = *con_cls;
+
+  if (NULL == rc)
+    return;
+  GNUNET_free (rc->code);
+  GNUNET_free (rc->client_id);
+  GNUNET_free (rc->redirect_uri);
+  GNUNET_free (rc->client_secret);
+  GNUNET_free (rc);
+}
+
+
 /**
  * Run the command.
  *
@@ -193,12 +295,13 @@ oauth_run (void *cls,
   struct OAuthState *oas = cls;
 
   (void) cmd;
-  (void) is;
   oas->mhd = MHD_start_daemon (MHD_USE_AUTO_INTERNAL_THREAD,
                                oas->port,
                                NULL, NULL,
                                &handler_cb, oas,
+                               MHD_OPTION_NOTIFY_COMPLETED, &cleanup, NULL,
                                NULL);
+  TALER_TESTING_interpreter_next (is);
 }
 
 

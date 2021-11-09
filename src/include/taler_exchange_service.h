@@ -2170,11 +2170,6 @@ struct TALER_EXCHANGE_KycProofResponse
    */
   unsigned int http_status;
 
-  /**
-   * Taler error code, if any.
-   */
-  enum TALER_ErrorCode ec;
-
   union
   {
 

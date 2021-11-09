@@ -343,7 +343,7 @@ run (void *cls,
     /* Try resolving a deposit's WTID for a failed deposit.
      * As the deposit failed, the answer should be that the
      * exchange does NOT know about the deposit.
-     *///
+     */
     TALER_TESTING_cmd_track_transaction ("deposit-wtid-failing",
                                          "deposit-double-2",
                                          0,
@@ -352,7 +352,7 @@ run (void *cls,
     /* Try resolving an undefined (all zeros) WTID; this
      * should fail as obviously the exchange didn't use that
      * WTID value for any transaction.
-     *///
+     */
     TALER_TESTING_cmd_track_transfer_empty ("wire-deposit-failing",
                                             NULL,
                                             MHD_HTTP_NOT_FOUND),

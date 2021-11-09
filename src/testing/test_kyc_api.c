@@ -66,7 +66,7 @@ static struct TALER_TESTING_BankConfiguration bc;
  */
 #define CMD_EXEC_AGGREGATOR(label)                        \
   TALER_TESTING_cmd_sleep (label "-sleep", 1), \
-  TALER_TESTING_cmd_exec_aggregator /*_with_kyc*/ (label, CONFIG_FILE), \
+  TALER_TESTING_cmd_exec_aggregator_with_kyc (label, CONFIG_FILE), \
   TALER_TESTING_cmd_exec_transfer (label, CONFIG_FILE)
 
 /**
@@ -118,11 +118,39 @@ run (void *cls,
       GNUNET_TIME_UNIT_ZERO,
       "EUR:5",
       MHD_HTTP_OK),
+    TALER_TESTING_cmd_track_transaction (
+      "track-deposit",
+      "deposit-simple",
+      0,
+      MHD_HTTP_ACCEPTED,
+      NULL),
     TALER_TESTING_cmd_end ()
   };
 
   struct TALER_TESTING_Command track[] = {
-    CMD_EXEC_AGGREGATOR ("run-aggregator"),
+    CMD_EXEC_AGGREGATOR ("run-aggregator-before-kyc"),
+    TALER_TESTING_cmd_check_bank_empty ("check_bank_empty-no-kyc"),
+    TALER_TESTING_cmd_check_kyc_get ("check-kyc-deposit",
+                                     "track-deposit",
+                                     MHD_HTTP_ACCEPTED),
+    TALER_TESTING_cmd_proof_kyc ("proof-kyc-no-service",
+                                 "track-deposit",
+                                 "bad",
+                                 "state",
+                                 MHD_HTTP_BAD_GATEWAY),
+    TALER_TESTING_cmd_oauth ("start-oauth-service",
+                             6666),
+    TALER_TESTING_cmd_proof_kyc ("proof-kyc-fail",
+                                 "track-deposit",
+                                 "bad",
+                                 "state",
+                                 MHD_HTTP_FORBIDDEN),
+    TALER_TESTING_cmd_proof_kyc ("proof-kyc-fail",
+                                 "track-deposit",
+                                 "pass",
+                                 "state",
+                                 MHD_HTTP_SEE_OTHER),
+    CMD_EXEC_AGGREGATOR ("run-aggregator-after-kyc"),
     TALER_TESTING_cmd_check_bank_transfer (
       "check_bank_transfer-499c",
       ec.exchange_url,

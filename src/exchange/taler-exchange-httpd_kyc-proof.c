@@ -108,6 +108,24 @@ static struct KycProofContext *kpc_head;
 static struct KycProofContext *kpc_tail;
 
 
+/**
+ * Resume processing the @a kpc request.
+ *
+ * @param kpc request to resume
+ */
+static void
+kpc_resume (struct KycProofContext *kpc)
+{
+  GNUNET_assert (GNUNET_YES == kpc->suspended);
+  kpc->suspended = GNUNET_NO;
+  GNUNET_CONTAINER_DLL_remove (kpc_head,
+                               kpc_tail,
+                               kpc);
+  MHD_resume_connection (kpc->rc->connection);
+  TALER_MHD_daemon_trigger ();
+}
+
+
 void
 TEH_kyc_proof_cleanup (void)
 {
@@ -120,11 +138,7 @@ TEH_kyc_proof_cleanup (void)
       GNUNET_CURL_job_cancel (kpc->job);
       kpc->job = NULL;
     }
-    GNUNET_CONTAINER_DLL_remove (kpc_head,
-                                 kpc_tail,
-                                 kpc);
-    kpc->suspended = GNUNET_NO;
-    MHD_resume_connection (kpc->rc->connection);
+    kpc_resume (kpc);
   }
 }
 
@@ -210,8 +224,7 @@ handle_curl_login_finished (void *cls,
                 "Unexpected response from KYC gateway");
           kpc->response_code
             = MHD_HTTP_BAD_GATEWAY;
-          MHD_resume_connection (kpc->rc->connection);
-          TALER_MHD_daemon_trigger ();
+          kpc_resume (kpc);
           return;
         }
       }
@@ -225,8 +238,7 @@ handle_curl_login_finished (void *cls,
               "Unexpected token type in response from KYC gateway");
         kpc->response_code
           = MHD_HTTP_BAD_GATEWAY;
-        MHD_resume_connection (kpc->rc->connection);
-        TALER_MHD_daemon_trigger ();
+        kpc_resume (kpc);
         return;
       }
 
@@ -234,8 +246,7 @@ handle_curl_login_finished (void *cls,
          possibly use the access_token to download information we should
          persist; then continue! */
 
-      MHD_resume_connection (kpc->rc->connection);
-      TALER_MHD_daemon_trigger ();
+      kpc_resume (kpc);
       return;
     }
   default:
@@ -268,8 +279,7 @@ handle_curl_login_finished (void *cls,
                 "Unexpected response from KYC gateway");
           kpc->response_code
             = MHD_HTTP_BAD_GATEWAY;
-          MHD_resume_connection (kpc->rc->connection);
-          TALER_MHD_daemon_trigger ();
+          kpc_resume (kpc);
           return;
         }
       }
@@ -292,8 +302,7 @@ handle_curl_login_finished (void *cls,
         GNUNET_free (reply);
       }
       kpc->response_code = MHD_HTTP_FORBIDDEN;
-      MHD_resume_connection (kpc->rc->connection);
-      TALER_MHD_daemon_trigger ();
+      kpc_resume (kpc);
     }
     break;
   }
@@ -387,7 +396,7 @@ TEH_handler_kyc_proof (
                                            "curl_easy_init");
       }
       GNUNET_asprintf (&kpc->token_url,
-                       "%s/token",
+                       "%stoken",
                        TEH_kyc_config.details.oauth2.url);
       GNUNET_assert (CURLE_OK ==
                      curl_easy_setopt (eh,
@@ -411,7 +420,7 @@ TEH_handler_kyc_proof (
           char *request_uri;
 
           GNUNET_asprintf (&request_uri,
-                           "%s/login?client_id=%s",
+                           "%slogin?client_id=%s",
                            TEH_kyc_config.details.oauth2.url,
                            TEH_kyc_config.details.oauth2.client_id);
           redirect_uri = curl_easy_escape (eh,
