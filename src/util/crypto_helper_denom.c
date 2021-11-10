@@ -20,6 +20,7 @@
  */
 #include "platform.h"
 #include "taler_util.h"
+#include "taler_extensions.h"
 #include "taler_signatures.h"
 #include "taler-exchange-secmod-rsa.h"
 #include <poll.h>
@@ -62,6 +63,11 @@ struct TALER_CRYPTO_DenominationHelper
    * Have we ever been sync'ed?
    */
   bool synced;
+
+  /**
+   * Age Mask that applies to this denomination.
+   */
+  struct TALER_AgeMask age_mask;
 };
 
 
@@ -273,6 +279,19 @@ TALER_CRYPTO_helper_denom_connect (
       TALER_CRYPTO_helper_denom_disconnect (dh);
       return NULL;
     }
+
+    /* Extract the age groups from the config, if the extension has been set,
+     * and serialize them into the age mask */
+    if (GNUNET_OK !=
+        TALER_get_age_mask (cfg, &dh->age_mask))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "extensions", /* FIXME: right section etc? */
+                                 "age-restriction",
+                                 "invalid age groups");
+      TALER_CRYPTO_helper_denom_disconnect (dh);
+      return NULL;
+    }
   }
   TALER_CRYPTO_helper_denom_poll (dh);
   return dh;
@@ -320,7 +339,7 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
     struct TALER_DenominationHash h_denom_pub;
 
     denom_pub.cipher = TALER_DENOMINATION_RSA;
-    denom_pub.age_mask = 0; // FIXME-Oec!
+    denom_pub.age_mask = dh->age_mask;
     denom_pub.details.rsa_public_key
       = GNUNET_CRYPTO_rsa_public_key_decode (buf,
                                              ntohs (kan->pub_size));

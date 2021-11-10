@@ -21,6 +21,9 @@
 #ifndef TALER_AMOUNT_LIB_H
 #define TALER_AMOUNT_LIB_H
 
+#include <stdint.h>
+#include "gnunet/gnunet_common.h"
+
 #ifdef __cplusplus
 extern "C"
 {

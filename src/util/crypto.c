@@ -320,6 +320,7 @@ void
 TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                      struct TALER_CoinPubHash *coin_h)
 {
+  // FIXME-Oec: hash over age-restriction, too
   GNUNET_CRYPTO_hash (&coin_pub->eddsa_pub,
                       sizeof (struct GNUNET_CRYPTO_EcdsaPublicKey),
                       &coin_h->hash);

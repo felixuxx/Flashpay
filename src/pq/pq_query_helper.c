@@ -185,7 +185,7 @@ qconv_denom_pub (void *cls,
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
   be[0] = htonl ((uint32_t) denom_pub->cipher);
-  be[1] = htonl (denom_pub->age_mask);
+  be[1] = htonl (denom_pub->age_mask.mask);
   switch (denom_pub->cipher)
   {
   case TALER_DENOMINATION_RSA:

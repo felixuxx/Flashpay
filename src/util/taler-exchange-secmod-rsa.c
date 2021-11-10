@@ -1422,9 +1422,10 @@ parse_key (struct Denomination *denom,
     struct TALER_DenominationPublicKey pub;
     struct DenominationKey *dk;
     struct DenominationKey *before;
+    struct TALER_AgeMask age_mask = { .mask = 0 }; /* FIXME-Oec */
 
     TALER_denom_priv_to_pub (&priv,
-                             0 /* FIXME-Oec */,
+                             age_mask,
                              &pub);
     dk = GNUNET_new (struct DenominationKey);
     dk->denom_priv = priv;

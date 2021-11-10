@@ -444,7 +444,7 @@ parse_denom_pub (void *cls,
     GNUNET_JSON_spec_uint32 ("cipher",
                              &cipher),
     GNUNET_JSON_spec_uint32 ("age_mask",
-                             &denom_pub->age_mask),
+                             &denom_pub->age_mask.mask),
     GNUNET_JSON_spec_end ()
   };
   const char *emsg;

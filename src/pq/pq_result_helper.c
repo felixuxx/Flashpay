@@ -551,7 +551,7 @@ extract_denom_pub (void *cls,
   res += sizeof (be);
   len -= sizeof (be);
   pk->cipher = ntohl (be[0]);
-  pk->age_mask = ntohl (be[1]);
+  pk->age_mask.mask = ntohl (be[1]);
   switch (pk->cipher)
   {
   case TALER_DENOMINATION_RSA:

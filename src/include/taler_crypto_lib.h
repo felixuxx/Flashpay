@@ -280,6 +280,37 @@ struct TALER_MasterSignatureP
   struct GNUNET_CRYPTO_EddsaSignature eddsa_signature;
 };
 
+/*
+ * @brief Type of a list of age groups, represented as bit mask.
+ *
+ * The bits set in the mask mark the edges at the beginning of a next age
+ * group.  F.e. for the age groups
+ *     0-7, 8-9, 10-11, 12-14, 14-15, 16-17, 18-21, 21-*
+ * the following bits are set:
+ *
+ *   31     24        16        8         0
+ *   |      |         |         |         |
+ *   oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
+ *
+ * A value of 0 means that the exchange does not support the extension for
+ * age-restriction.
+ */
+struct TALER_AgeMask
+{
+  uint32_t mask;
+};
+
+/**
+ * @brief Age restriction commitment of a coin.
+ */
+struct TALER_AgeHash
+{
+  /**
+   * The commitment is a SHA-256 hash code.
+   */
+  struct GNUNET_ShortHashCode shash;
+};
+
 
 /**
  * @brief Type of public keys for Taler coins.  The same key material is used
@@ -292,6 +323,10 @@ struct TALER_CoinSpendPublicKeyP
    */
   struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
 
+  /*
+   * If age restriction applies to the coin, it must come with a hash of the age commitment
+   */
+  struct TALER_AgeHash age_commitment_hash;
 };
 
 
@@ -342,18 +377,6 @@ struct TALER_RefreshCommitmentP
    * The commitment is a hash code.
    */
   struct GNUNET_HashCode session_hash;
-};
-
-
-/**
- * Age restriction commitment of a coin.
- */
-struct TALER_AgeHash
-{
-  /**
-   * The commitment is a SHA-256 hash code.
-   */
-  struct GNUNET_ShortHashCode shash;
 };
 
 
@@ -569,7 +592,7 @@ struct TALER_DenominationPublicKey
   /**
    * Age restriction mask used for the key.
    */
-  uint32_t age_mask;
+  struct TALER_AgeMask age_mask;
 
   /**
    * Details, depending on @e cipher.
@@ -629,6 +652,11 @@ struct TALER_CoinPublicInfo
    * being deposited.
    */
   struct TALER_DenominationHash denom_pub_hash;
+
+  /**
+   * Hash of the age commitment.
+   */
+  struct TALER_AgeHash age_commitment_hash;
 
   /**
    * (Unblinded) signature over @e coin_pub with @e denom_pub,
@@ -880,7 +908,7 @@ TALER_blinded_denom_sig_cmp (
  */
 void
 TALER_denom_priv_to_pub (const struct TALER_DenominationPrivateKey *denom_priv,
-                         uint32_t age_mask,
+                         const struct TALER_AgeMask age_mask,
                          struct TALER_DenominationPublicKey *denom_pub);
 
 
@@ -929,7 +957,6 @@ TALER_coin_ev_hash (const void *coin_ev,
 
 /**
  * Compute the hash of a coin.
- * FIXME-Oec: add age restriction hash here!
  *
  * @param coin_pub public key of the coin
  * @param[out] coin_h where to write the hash
@@ -1020,6 +1047,9 @@ struct TALER_FreshCoin
    */
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
+  /**
+   * FIXME-Oec: Age-verification vector, as pointer: Dyn alloc!
+   */
 };
 
 

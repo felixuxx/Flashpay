@@ -462,9 +462,9 @@ handle_deposit_finished (void *cls,
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
  * @param coin_pub coin’s public key
+ * @param denom_sig exchange’s unblinded signature of the coin
  * @param denom_pub denomination key with which the coin is signed
  * @param denom_pub_hash hash of @a denom_pub
- * @param denom_sig exchange’s unblinded signature of the coin
  * @param timestamp timestamp when the deposit was finalized
  * @param merchant_pub the public key of the merchant (used to identify the merchant for refund requests)
  * @param refund_deadline date until which the merchant can issue a refund to the customer via the exchange (can be zero if refunds are not allowed)
@@ -512,7 +512,8 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
     struct TALER_CoinPublicInfo coin_info = {
       .coin_pub = *coin_pub,
       .denom_pub_hash = *denom_pub_hash,
-      .denom_sig = *denom_sig
+      .denom_sig = *denom_sig,
+      .age_commitment_hash = coin_pub->age_commitment_hash
     };
 
     if (GNUNET_YES !=
