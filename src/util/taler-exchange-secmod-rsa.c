@@ -39,6 +39,7 @@
 #include <pthread.h>
 #include <sys/eventfd.h>
 #include "taler_error_codes.h"
+#include "taler_extensions.h"
 #include "taler_signatures.h"
 #include "secmod_common.h"
 
@@ -151,6 +152,14 @@ struct Denomination
    * Length of (new) RSA keys (in bits).
    */
   uint32_t rsa_keysize;
+
+  /**
+   * Age Restriction Mask.
+   * If non-zero, it defines the age restriction groups that apply to this
+   * denomination.
+   */
+  struct TALER_AgeMask age_mask;
+
 };
 
 
@@ -1422,10 +1431,9 @@ parse_key (struct Denomination *denom,
     struct TALER_DenominationPublicKey pub;
     struct DenominationKey *dk;
     struct DenominationKey *before;
-    struct TALER_AgeMask age_mask = { .mask = 0 }; /* FIXME-Oec */
 
     TALER_denom_priv_to_pub (&priv,
-                             age_mask,
+                             denom->age_mask,
                              &pub);
     dk = GNUNET_new (struct DenominationKey);
     dk->denom_priv = priv;
@@ -1645,6 +1653,21 @@ parse_denomination_cfg (const char *ct,
   }
   denom->rsa_keysize = (unsigned int) rsa_keysize;
   denom->section = GNUNET_strdup (ct);
+
+  /* Load the (optional) age groups/mask for this denomination */
+  denom->age_mask.mask = 0;
+  if (GNUNET_YES != GNUNET_CONFIGURATION_get_value_yesno (kcfg, ct,
+                                                          "age-restricted"))
+  {
+    if (GNUNET_OK != TALER_get_age_mask (kcfg, &denom->age_mask))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 "extenstions",
+                                 "age-restriction",
+                                 "invalid age groups");
+      return GNUNET_SYSERR;
+    }
+  }
   return GNUNET_OK;
 }
 

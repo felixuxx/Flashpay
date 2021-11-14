@@ -30,8 +30,8 @@
  *         invalid, OK otherwise.
  */
 enum GNUNET_GenericReturnValue
-TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg, struct
-                    TALER_AgeMask *mask)
+TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
+                    struct TALER_AgeMask *mask)
 {
   /* FIXME-Oec:
    *

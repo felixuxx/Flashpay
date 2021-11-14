@@ -281,10 +281,12 @@ TALER_CRYPTO_helper_denom_connect (
     }
 
     /* Extract the age groups from the config, if the extension has been set,
-     * and serialize them into the age mask */
+     * and serialize them into the age mask
+     */
     if (GNUNET_OK !=
         TALER_get_age_mask (cfg, &dh->age_mask))
     {
+      /* FIXME: maybe more specific error? */
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  "extensions", /* FIXME: right section etc? */
                                  "age-restriction",
