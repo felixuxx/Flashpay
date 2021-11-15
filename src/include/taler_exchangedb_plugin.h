@@ -74,7 +74,7 @@ struct TALER_EXCHANGEDB_DenominationKeyInformationP
 
 
 /**
- * Signature of events signalling a reseve got funding.
+ * Signature of events signalling a reserve got funding.
  */
 struct TALER_ReserveEventP
 {
@@ -87,6 +87,23 @@ struct TALER_ReserveEventP
    * Public key of the reserve the event is about.
    */
   struct TALER_ReservePublicKeyP reserve_pub;
+};
+
+
+/**
+ * Signature of events signalling a KYC process was completed.
+ */
+struct TALER_KycCompletedEventP
+{
+  /**
+   * Of type #TALER_DBEVENT_EXCHANGE_KYC_COMPLETED.
+   */
+  struct GNUNET_DB_EventHeaderP header;
+
+  /**
+   * Public key of the reserve the event is about.
+   */
+  struct TALER_PaytoHash h_payto;
 };
 
 

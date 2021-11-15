@@ -323,12 +323,6 @@ struct TALER_CoinSpendPublicKeyP
    */
   struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
 
-  /*
-   * If age restriction applies to the coin, it must come with a hash of the
-   * age commitment.  A zero value indicates that the coin has no age
-   * commitment set.
-   */
-  struct TALER_AgeHash age_commitment_hash;
 };
 
 

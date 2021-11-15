@@ -27,6 +27,7 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler_signatures.h"
+#include "taler_dbevents.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_kyc-wallet.h"
 #include "taler-exchange-httpd_responses.h"
@@ -187,6 +188,42 @@ kyc_check (void *cls,
 }
 
 
+/**
+ * Function called on events received from Postgres.
+ * Wakes up long pollers.
+ *
+ * @param cls the `struct TEH_RequestContext *`
+ * @param extra additional event data provided
+ * @param extra_size number of bytes in @a extra
+ */
+static void
+db_event_cb (void *cls,
+             const void *extra,
+             size_t extra_size)
+{
+  struct TEH_RequestContext *rc = cls;
+  struct KycPoller *kyp = rc->rh_ctx;
+  struct GNUNET_AsyncScopeSave old_scope;
+
+  (void) extra;
+  (void) extra_size;
+  if (! kyp->suspended)
+    return; /* event triggered while main transaction
+               was still running, or got multiple wake-up events */
+  kyp->suspended = false;
+  GNUNET_async_scope_enter (&rc->async_scope_id,
+                            &old_scope);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Resuming from long-polling on KYC status\n");
+  GNUNET_CONTAINER_DLL_remove (kyp_head,
+                               kyp_tail,
+                               kyp);
+  MHD_resume_connection (kyp->connection);
+  TALER_MHD_daemon_trigger ();
+  GNUNET_async_scope_restore (&old_scope);
+}
+
+
 MHD_RESULT
 TEH_handler_kyc_check (
   struct TEH_RequestContext *rc,
@@ -195,6 +232,7 @@ TEH_handler_kyc_check (
   struct KycPoller *kyp = rc->rh_ctx;
   MHD_RESULT res;
   enum GNUNET_GenericReturnValue ret;
+  struct GNUNET_TIME_Absolute now;
 
   if (NULL == kyp)
   {
@@ -285,87 +323,120 @@ TEH_handler_kyc_check (
       NULL,
       NULL,
       0);
+
+  if ( (NULL == kyp->eh) &&
+       GNUNET_TIME_absolute_is_future (kyp->timeout) )
   {
-    struct GNUNET_TIME_Absolute now;
+    struct TALER_KycCompletedEventP rep = {
+      .header.size = htons (sizeof (rep)),
+      .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED),
+      .h_payto = kyp->auth_h_payto
+    };
 
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
-    ret = TEH_DB_run_transaction (rc->connection,
-                                  "kyc check",
-                                  &res,
-                                  &kyc_check,
-                                  kyp);
-    if (GNUNET_SYSERR == ret)
-      return res;
-    if (0 !=
-        GNUNET_memcmp (&kyp->h_payto,
-                       &kyp->auth_h_payto))
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Starting DB event listening\n");
+    kyp->eh = TEH_plugin->event_listen (
+      TEH_plugin->cls,
+      GNUNET_TIME_absolute_get_remaining (kyp->timeout),
+      &rep.header,
+      &db_event_cb,
+      rc);
+  }
+
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
+  ret = TEH_DB_run_transaction (rc->connection,
+                                "kyc check",
+                                &res,
+                                &kyc_check,
+                                kyp);
+  if (GNUNET_SYSERR == ret)
+    return res;
+  if (0 !=
+      GNUNET_memcmp (&kyp->h_payto,
+                     &kyp->auth_h_payto))
+  {
+    GNUNET_break_op (0);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_UNAUTHORIZED,
+                                       TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
+                                       "h_payto");
+  }
+
+  /* long polling? */
+  if ( (! kyp->kyc.ok) &&
+       GNUNET_TIME_absolute_is_future (kyp->timeout))
+  {
+    GNUNET_assert (NULL != kyp->eh);
+    kyp->suspended = true;
+    GNUNET_CONTAINER_DLL_insert (kyp_head,
+                                 kyp_tail,
+                                 kyp);
+    MHD_suspend_connection (kyp->connection);
+    return MHD_YES;
+  }
+
+  /* KYC failed? */
+  if (! kyp->kyc.ok)
+  {
+    char *url;
+    char *redirect_uri;
+    char *redirect_uri_encoded;
+
+    GNUNET_assert (TEH_KYC_OAUTH2 == TEH_kyc_config.mode);
+    GNUNET_asprintf (&redirect_uri,
+                     "%s/kyc-proof/%llu",
+                     TEH_base_url,
+                     (unsigned long long) kyp->payment_target_uuid);
+    redirect_uri_encoded = TALER_urlencode (redirect_uri);
+    GNUNET_free (redirect_uri);
+    GNUNET_asprintf (&url,
+                     "%s/login?client_id=%s&redirect_uri=%s",
+                     TEH_kyc_config.details.oauth2.url,
+                     TEH_kyc_config.details.oauth2.client_id,
+                     redirect_uri_encoded);
+    GNUNET_free (redirect_uri_encoded);
+
+    res = TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_string ("kyc_url",
+                               url));
+    GNUNET_free (url);
+    return res;
+  }
+
+  /* KYC succeeded! */
+  {
+    struct TALER_ExchangePublicKeyP pub;
+    struct TALER_ExchangeSignatureP sig;
+    struct TALER_ExchangeAccountSetupSuccessPS as = {
+      .purpose.purpose = htonl (
+        TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
+      .purpose.size = htonl (sizeof (as)),
+      .h_payto = kyp->h_payto,
+      .timestamp = GNUNET_TIME_absolute_hton (now)
+    };
+    enum TALER_ErrorCode ec;
+
+    if (TALER_EC_NONE !=
+        (ec = TEH_keys_exchange_sign (&as,
+                                      &pub,
+                                      &sig)))
     {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_UNAUTHORIZED,
-                                         TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
-                                         "h_payto");
+      return TALER_MHD_reply_with_ec (rc->connection,
+                                      ec,
+                                      NULL);
     }
-    if (! kyp->kyc.ok)
-    {
-      char *url;
-      char *redirect_uri;
-      char *redirect_uri_encoded;
-
-      GNUNET_assert (TEH_KYC_OAUTH2 == TEH_kyc_config.mode);
-      GNUNET_asprintf (&redirect_uri,
-                       "%s/kyc-proof/%llu",
-                       TEH_base_url,
-                       (unsigned long long) kyp->payment_target_uuid);
-      redirect_uri_encoded = TALER_urlencode (redirect_uri);
-      GNUNET_free (redirect_uri);
-      GNUNET_asprintf (&url,
-                       "%s/login?client_id=%s&redirect_uri=%s",
-                       TEH_kyc_config.details.oauth2.url,
-                       TEH_kyc_config.details.oauth2.client_id,
-                       redirect_uri_encoded);
-      GNUNET_free (redirect_uri_encoded);
-
-      res = TALER_MHD_REPLY_JSON_PACK (
-        rc->connection,
-        MHD_HTTP_ACCEPTED,
-        GNUNET_JSON_pack_string ("kyc_url",
-                                 url));
-      GNUNET_free (url);
-      return res;
-    }
-    {
-      struct TALER_ExchangePublicKeyP pub;
-      struct TALER_ExchangeSignatureP sig;
-      struct TALER_ExchangeAccountSetupSuccessPS as = {
-        .purpose.purpose = htonl (
-          TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
-        .purpose.size = htonl (sizeof (as)),
-        .h_payto = kyp->h_payto,
-        .timestamp = GNUNET_TIME_absolute_hton (now)
-      };
-      enum TALER_ErrorCode ec;
-
-      if (TALER_EC_NONE !=
-          (ec = TEH_keys_exchange_sign (&as,
-                                        &pub,
-                                        &sig)))
-      {
-        return TALER_MHD_reply_with_ec (rc->connection,
-                                        ec,
-                                        NULL);
-      }
-      return TALER_MHD_REPLY_JSON_PACK (
-        rc->connection,
-        MHD_HTTP_OK,
-        GNUNET_JSON_pack_data_auto ("exchange_sig",
-                                    &sig),
-        GNUNET_JSON_pack_data_auto ("exchange_pub",
-                                    &pub),
-        GNUNET_JSON_pack_time_abs ("now",
-                                   now));
-    }
+    return TALER_MHD_REPLY_JSON_PACK (
+      rc->connection,
+      MHD_HTTP_OK,
+      GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                  &sig),
+      GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                  &pub),
+      GNUNET_JSON_pack_time_abs ("now",
+                                 now));
   }
 }
 

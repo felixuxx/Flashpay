@@ -385,6 +385,14 @@ prepare_statements (struct PostgresClosure *pg)
       " SET kyc_ok=TRUE"
       " WHERE wire_target_serial_id=$1",
       1),
+    GNUNET_PQ_make_prepare (
+      "get_kyc_h_payto",
+      "SELECT"
+      " h_payto"
+      " FROM wire_targets"
+      " WHERE wire_target_serial_id=$1"
+      " LIMIT 1;",
+      1),
     /* Used in #postgres_get_kyc_status() */
     GNUNET_PQ_make_prepare (
       "get_kyc_status",
@@ -3804,10 +3812,33 @@ postgres_set_kyc_ok (void *cls,
     GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
     GNUNET_PQ_query_param_end
   };
+  struct TALER_KycCompletedEventP rep = {
+    .header.size = htons (sizeof (rep)),
+    .header.type = htons (TALER_DBEVENT_EXCHANGE_KYC_COMPLETED)
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_auto_from_type ("h_payto",
+                                          &rep.h_payto),
+    GNUNET_PQ_result_spec_end
+  };
+  enum GNUNET_DB_QueryStatus qs;
 
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "set_kyc_ok",
-                                             params);
+  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                           "set_kyc_ok",
+                                           params);
+  if (qs <= 0)
+    return qs;
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "get_kyc_h_payto",
+                                                 params,
+                                                 rs);
+  if (qs <= 0)
+    return qs;
+  postgres_event_notify (pg,
+                         &rep.header,
+                         NULL,
+                         0);
+  return qs;
 }
 
 
@@ -5684,9 +5715,10 @@ postgres_ensure_coin_known (void *cls,
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
-    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_break (0);
     return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     GNUNET_break (0);
     return TALER_EXCHANGEDB_CKS_HARD_FAIL;
