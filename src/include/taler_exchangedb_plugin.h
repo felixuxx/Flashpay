@@ -2376,13 +2376,13 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param payment_target_uuid which account has been checked
-   * @param ... possibly additional data to persist (TODO)
+   * @param id ID data to persist
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*set_kyc_ok)(void *cls,
                 uint64_t payment_target_uuid,
-                ...);
+                const char *id);
 
 
   /**

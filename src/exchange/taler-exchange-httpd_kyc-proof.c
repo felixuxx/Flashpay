@@ -73,6 +73,11 @@ struct KycProofContext
   char *post_body;
 
   /**
+   * User ID extracted from the OAuth 2.0 service, or NULL.
+   */
+  char *id;
+
+  /**
    * Payment target this is about.
    */
   unsigned long long payment_target_uuid;
@@ -165,13 +170,186 @@ persist_kyc_ok (void *cls,
   struct KycProofContext *kpc = cls;
 
   return TEH_plugin->set_kyc_ok (TEH_plugin->cls,
-                                 kpc->payment_target_uuid);
+                                 kpc->payment_target_uuid,
+                                 kpc->id);
+}
+
+
+/**
+ * The request for @a kpc failed. We may have gotten a useful error
+ * message in @a j. Generate a failure response.
+ *
+ * @param[in,out] kpc request that failed
+ * @param j reply from the server (or NULL)
+ */
+static void
+handle_error (struct KycProofContext *kpc,
+              const json_t *j)
+{
+  const char *msg;
+  const char *desc;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("error",
+                             &msg),
+    GNUNET_JSON_spec_string ("error_description",
+                             &desc),
+    GNUNET_JSON_spec_end ()
+  };
+
+  {
+    enum GNUNET_GenericReturnValue res;
+    const char *emsg;
+    unsigned int line;
+
+    res = GNUNET_JSON_parse (j,
+                             spec,
+                             &emsg,
+                             &line);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break_op (0);
+      kpc->response
+        = TALER_MHD_make_error (
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            "Unexpected response from KYC gateway");
+      kpc->response_code
+        = MHD_HTTP_BAD_GATEWAY;
+      return;
+    }
+  }
+  /* case TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_AUTHORZATION_FAILED,
+     we MAY want to in the future look at the requested content type
+     and possibly respond in JSON if indicated. */
+  {
+    char *reply;
+
+    GNUNET_asprintf (&reply,
+                     "<html><head><title>%s</title></head><body><h1>%s</h1><p>%s</p></body></html>",
+                     msg,
+                     msg,
+                     desc);
+    kpc->response
+      = MHD_create_response_from_buffer (strlen (reply),
+                                         reply,
+                                         MHD_RESPMEM_MUST_COPY);
+    GNUNET_assert (NULL != kpc->response);
+    GNUNET_free (reply);
+  }
+  kpc->response_code = MHD_HTTP_FORBIDDEN;
+}
+
+
+/**
+ * The request for @a kpc succeeded (presumably).
+ * Parse the user ID and store it in @a kpc (if possible).
+ *
+ * @param[in,out] kpc request that succeeded
+ * @param j reply from the server
+ */
+static void
+parse_success_reply (struct KycProofContext *kpc,
+                     const json_t *j)
+{
+  const char *state;
+  json_t *data;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_string ("status",
+                             &state),
+    GNUNET_JSON_spec_json ("data",
+                           &data),
+    GNUNET_JSON_spec_end ()
+  };
+  enum GNUNET_GenericReturnValue res;
+  const char *emsg;
+  unsigned int line;
+
+  res = GNUNET_JSON_parse (j,
+                           spec,
+                           &emsg,
+                           &line);
+  if (GNUNET_OK != res)
+  {
+    GNUNET_break_op (0);
+    kpc->response
+      = TALER_MHD_make_error (
+          TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+          "Unexpected response from KYC gateway");
+    kpc->response_code
+      = MHD_HTTP_BAD_GATEWAY;
+    return;
+  }
+  if (0 != strcasecmp (state,
+                       "success"))
+  {
+    GNUNET_break_op (0);
+    handle_error (kpc,
+                  j);
+    return;
+  }
+  {
+    const char *id;
+    struct GNUNET_JSON_Specification ispec[] = {
+      GNUNET_JSON_spec_string ("id",
+                               &id),
+      GNUNET_JSON_spec_end ()
+    };
+
+    res = GNUNET_JSON_parse (data,
+                             ispec,
+                             &emsg,
+                             &line);
+    if (GNUNET_OK != res)
+    {
+      GNUNET_break_op (0);
+      kpc->response
+        = TALER_MHD_make_error (
+            TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+            "Unexpected response from KYC gateway");
+      kpc->response_code
+        = MHD_HTTP_BAD_GATEWAY;
+      return;
+    }
+    kpc->id = GNUNET_strdup (id);
+  }
 }
 
 
 /**
  * After we are done with the CURL interaction we
- * need to update our database state.
+ * need to update our database state with the information
+ * retrieved.
+ *
+ * @param cls our `struct KycProofContext`
+ * @param response_code HTTP response code from server, 0 on hard error
+ * @param response in JSON, NULL if response was not in JSON format
+ */
+static void
+handle_curl_fetch_finished (void *cls,
+                            long response_code,
+                            const void *response)
+{
+  struct KycProofContext *kpc = cls;
+  const json_t *j = response;
+
+  kpc->job = NULL;
+  switch (response_code)
+  {
+  case MHD_HTTP_OK:
+    parse_success_reply (kpc,
+                         j);
+    break;
+  default:
+    handle_error (kpc,
+                  j);
+    break;
+  }
+  kpc_resume (kpc);
+}
+
+
+/**
+ * After we are done with the CURL interaction we
+ * need to fetch the user's account details.
  *
  * @param cls our `struct KycProofContext`
  * @param response_code HTTP response code from server, 0 on hard error
@@ -205,6 +383,7 @@ handle_curl_login_finished (void *cls,
                                  &refresh_token),
         GNUNET_JSON_spec_end ()
       };
+      CURL *eh;
 
       {
         enum GNUNET_GenericReturnValue res;
@@ -224,8 +403,7 @@ handle_curl_login_finished (void *cls,
                 "Unexpected response from KYC gateway");
           kpc->response_code
             = MHD_HTTP_BAD_GATEWAY;
-          kpc_resume (kpc);
-          return;
+          break;
         }
       }
       if (0 != strcasecmp (token_type,
@@ -238,74 +416,72 @@ handle_curl_login_finished (void *cls,
               "Unexpected token type in response from KYC gateway");
         kpc->response_code
           = MHD_HTTP_BAD_GATEWAY;
-        kpc_resume (kpc);
-        return;
+        break;
       }
 
-      /* TODO: Here we might want to keep something to persist in the DB, and
-         possibly use the access_token to download information we should
-         persist; then continue! */
+      /* We guard against a few characters that could
+         conceivably be abused to mess with the HTTP header */
+      if ( (NULL != strchr (access_token,
+                            '\n')) ||
+           (NULL != strchr (access_token,
+                            '\r')) ||
+           (NULL != strchr (access_token,
+                            ' ')) ||
+           (NULL != strchr (access_token,
+                            ';')) )
+      {
+        GNUNET_break_op (0);
+        kpc->response
+          = TALER_MHD_make_error (
+              TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
+              "Illegal character in access token");
+        kpc->response_code
+          = MHD_HTTP_BAD_GATEWAY;
+        break;
+      }
 
-      kpc_resume (kpc);
+      eh = curl_easy_init ();
+      if (NULL == eh)
+      {
+        GNUNET_break_op (0);
+        kpc->response
+          = TALER_MHD_make_error (
+              TALER_EC_GENERIC_ALLOCATION_FAILURE,
+              "curl_easy_init");
+        kpc->response_code
+          = MHD_HTTP_INTERNAL_SERVER_ERROR;
+        break;
+      }
+      GNUNET_assert (CURLE_OK ==
+                     curl_easy_setopt (eh,
+                                       CURLOPT_URL,
+                                       TEH_kyc_config.details.oauth2.info_url));
+      {
+        char *hdr;
+        struct curl_slist *slist;
+
+        GNUNET_asprintf (&hdr,
+                         "%s: Bearer %s",
+                         MHD_HTTP_HEADER_AUTHORIZATION,
+                         access_token);
+        slist = curl_slist_append (NULL,
+                                   hdr);
+        kpc->job = GNUNET_CURL_job_add2 (TEH_curl_ctx,
+                                         eh,
+                                         slist,
+                                         &handle_curl_fetch_finished,
+                                         kpc);
+        curl_slist_free_all (slist);
+        GNUNET_free (hdr);
+      }
       return;
     }
   default:
-    {
-      const char *msg;
-      const char *desc;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_string ("error",
-                                 &msg),
-        GNUNET_JSON_spec_string ("error_description",
-                                 &desc),
-        GNUNET_JSON_spec_end ()
-      };
-
-      {
-        enum GNUNET_GenericReturnValue res;
-        const char *emsg;
-        unsigned int line;
-
-        res = GNUNET_JSON_parse (j,
-                                 spec,
-                                 &emsg,
-                                 &line);
-        if (GNUNET_OK != res)
-        {
-          GNUNET_break_op (0);
-          kpc->response
-            = TALER_MHD_make_error (
-                TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_INVALID_RESPONSE,
-                "Unexpected response from KYC gateway");
-          kpc->response_code
-            = MHD_HTTP_BAD_GATEWAY;
-          kpc_resume (kpc);
-          return;
-        }
-      }
-      /* case TALER_EC_EXCHANGE_KYC_PROOF_BACKEND_AUTHORZATION_FAILED,
-         we MAY want to in the future look at the requested content type
-         and possibly respond in JSON if indicated. */
-      {
-        char *reply;
-
-        GNUNET_asprintf (&reply,
-                         "<html><head><title>%s</title></head><body><h1>%s</h1><p>%s</p></body></html>",
-                         msg,
-                         msg,
-                         desc);
-        kpc->response
-          = MHD_create_response_from_buffer (strlen (reply),
-                                             reply,
-                                             MHD_RESPMEM_MUST_COPY);
-        GNUNET_assert (NULL != kpc->response);
-        GNUNET_free (reply);
-      }
-      kpc->response_code = MHD_HTTP_FORBIDDEN;
-      kpc_resume (kpc);
-    }
+    handle_error (kpc,
+                  j);
     break;
   }
+  kpc_resume (kpc);
 }
 
 
@@ -331,6 +507,7 @@ clean_kpc (struct TEH_RequestContext *rc)
   }
   GNUNET_free (kpc->post_body);
   GNUNET_free (kpc->token_url);
+  GNUNET_free (kpc->id);
   GNUNET_free (kpc);
 }
 

@@ -169,6 +169,28 @@ handler_cb (void *cls,
   unsigned int hc;
   json_t *body;
 
+  if (0 == strcasecmp (method,
+                       MHD_HTTP_METHOD_GET))
+  {
+    body = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_string (
+        "status",
+        "success"),
+      GNUNET_JSON_pack_object_steal (
+        "data",
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_string ("id",
+                                   "XXXID12345678"))));
+    return TALER_MHD_reply_json_steal (connection,
+                                       body,
+                                       MHD_HTTP_OK);
+  }
+  if (0 != strcasecmp (method,
+                       MHD_HTTP_METHOD_POST))
+  {
+    GNUNET_break (0);
+    return MHD_NO;
+  }
   if (NULL == rc)
   {
     rc = GNUNET_new (struct RequestCtx);

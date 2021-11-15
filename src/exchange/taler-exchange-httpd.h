@@ -91,9 +91,14 @@ struct TEH_KycOptions
     {
 
       /**
-       * URL of tue OAuth2.0 endpoint for KYC checks.
+       * URL of the OAuth2.0 endpoint for KYC checks.
        */
       char *url;
+
+      /**
+       * URL of the user info access endpoint.
+       */
+      char *info_url;
 
       /**
        * Our client ID for OAuth2.0.

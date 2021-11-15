@@ -383,8 +383,9 @@ prepare_statements (struct PostgresClosure *pg)
       "set_kyc_ok",
       "UPDATE wire_targets"
       " SET kyc_ok=TRUE"
+      ",external_id=$2"
       " WHERE wire_target_serial_id=$1",
-      1),
+      2),
     GNUNET_PQ_make_prepare (
       "get_kyc_h_payto",
       "SELECT"
@@ -3799,17 +3800,18 @@ postgres_reserves_get (void *cls,
  *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param payment_target_uuid which account has been checked
- * @param ... possibly additional data to persist (TODO)
+ * @param id external ID to persist
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_set_kyc_ok (void *cls,
                      uint64_t payment_target_uuid,
-                     ...)
+                     const char *id)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
+    GNUNET_PQ_query_param_string (id),
     GNUNET_PQ_query_param_end
   };
   struct TALER_KycCompletedEventP rep = {

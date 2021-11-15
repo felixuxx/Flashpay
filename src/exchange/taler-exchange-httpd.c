@@ -1197,6 +1197,34 @@ parse_kyc_oauth_cfg (void)
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
                                              "exchange-kyc-oauth2",
+                                             "KYC_INFO_URL",
+                                             &s))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-kyc-oauth2",
+                               "KYC_INFO_URL");
+    return GNUNET_SYSERR;
+  }
+  if ( (! TALER_url_valid_charset (s)) ||
+       ( (0 != strncasecmp (s,
+                            "http://",
+                            strlen ("http://"))) &&
+         (0 != strncasecmp (s,
+                            "https://",
+                            strlen ("https://"))) ) )
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "exchange-kyc-oauth2",
+                               "KYC_INFO_URL",
+                               "not a valid URL");
+    GNUNET_free (s);
+    return GNUNET_SYSERR;
+  }
+  TEH_kyc_config.details.oauth2.info_url = s;
+
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (TEH_cfg,
+                                             "exchange-kyc-oauth2",
                                              "KYC_OAUTH2_CLIENT_ID",
                                              &s))
   {
