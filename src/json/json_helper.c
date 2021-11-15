@@ -60,7 +60,7 @@ TALER_JSON_from_amount_nbo (const struct TALER_AmountNBO *amount)
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_amount (void *cls,
               json_t *root,
               struct GNUNET_JSON_Specification *spec)
@@ -139,7 +139,7 @@ TALER_JSON_spec_amount_any (const char *name,
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_amount_nbo (void *cls,
                   json_t *root,
                   struct GNUNET_JSON_Specification *spec)
@@ -223,7 +223,7 @@ TALER_JSON_spec_amount_any_nbo (const char *name,
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_abs_time (void *cls,
                 json_t *root,
                 struct GNUNET_JSON_Specification *spec)
@@ -304,7 +304,7 @@ TALER_JSON_spec_absolute_time (const char *name,
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_abs_time_nbo (void *cls,
                     json_t *root,
                     struct GNUNET_JSON_Specification *spec)
@@ -355,7 +355,7 @@ TALER_JSON_spec_absolute_time_nbo (const char *name,
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_rel_time (void *cls,
                 json_t *root,
                 struct GNUNET_JSON_Specification *spec)
@@ -732,7 +732,7 @@ struct I18nContext
  * @param[out] spec where to write the data
  * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_i18n_string (void *cls,
                    json_t *root,
                    struct GNUNET_JSON_Specification *spec)
