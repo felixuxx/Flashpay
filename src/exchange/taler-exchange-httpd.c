@@ -1642,6 +1642,7 @@ do_shutdown (void *cls)
   mhd = TALER_MHD_daemon_stop ();
   TEH_resume_keys_requests (true);
   TEH_reserves_get_cleanup ();
+  TEH_kyc_check_cleanup ();
   TEH_kyc_proof_cleanup ();
   if (NULL != mhd)
     MHD_stop_daemon (mhd);

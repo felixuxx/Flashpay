@@ -39,4 +39,11 @@ TEH_handler_kyc_check (
   const char *const args[]);
 
 
+/**
+ * Clean up long-polling KYC requests during shutdown.
+ */
+void
+TEH_kyc_check_cleanup (void);
+
+
 #endif

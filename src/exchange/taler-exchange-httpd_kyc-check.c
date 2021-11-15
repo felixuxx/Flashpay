@@ -33,10 +33,31 @@
 
 
 /**
- * Context for the request.
+ * Reserve GET request that is long-polling.
  */
-struct KycCheckContext
+struct KycPoller
 {
+  /**
+   * Kept in a DLL.
+   */
+  struct KycPoller *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct KycPoller *prev;
+
+  /**
+   * Connection we are handling.
+   */
+  struct MHD_Connection *connection;
+
+  /**
+   * Subscription for the database event we are
+   * waiting for.
+   */
+  struct GNUNET_DB_EventHandler *eh;
+
   /**
    * UUID being checked.
    */
@@ -52,7 +73,77 @@ struct KycCheckContext
    * have finished the KYC for.
    */
   struct TALER_PaytoHash h_payto;
+
+  /**
+   * Hash of the payto:// URI that was given to us for auth.
+   */
+  struct TALER_PaytoHash auth_h_payto;
+
+  /**
+   * When will this request time out?
+   */
+  struct GNUNET_TIME_Absolute timeout;
+
+  /**
+   * True if we are still suspended.
+   */
+  bool suspended;
+
 };
+
+
+/**
+ * Head of list of requests in long polling.
+ */
+static struct KycPoller *kyp_head;
+
+/**
+ * Tail of list of requests in long polling.
+ */
+static struct KycPoller *kyp_tail;
+
+
+void
+TEH_kyc_check_cleanup ()
+{
+  struct KycPoller *kyp;
+
+  while (NULL != (kyp = kyp_head))
+  {
+    GNUNET_CONTAINER_DLL_remove (kyp_head,
+                                 kyp_tail,
+                                 kyp);
+    if (kyp->suspended)
+    {
+      kyp->suspended = false;
+      MHD_resume_connection (kyp->connection);
+    }
+  }
+}
+
+
+/**
+ * Function called once a connection is done to
+ * clean up the `struct ReservePoller` state.
+ *
+ * @param rc context to clean up for
+ */
+static void
+kyp_cleanup (struct TEH_RequestContext *rc)
+{
+  struct KycPoller *kyp = rc->rh_ctx;
+
+  GNUNET_assert (! kyp->suspended);
+  if (NULL != kyp->eh)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Cancelling DB event listening\n");
+    TEH_plugin->event_listen_cancel (TEH_plugin->cls,
+                                     kyp->eh);
+    kyp->eh = NULL;
+  }
+  GNUNET_free (kyp);
+}
 
 
 /**
@@ -63,7 +154,7 @@ struct KycCheckContext
  * returns the soft error code, the function MAY be called again to retry and
  * MUST not queue a MHD response.
  *
- * @param cls closure with a `struct KycCheckContext *`
+ * @param cls closure with a `struct KycPoller *`
  * @param connection MHD request which triggered the transaction
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
@@ -74,13 +165,13 @@ kyc_check (void *cls,
            struct MHD_Connection *connection,
            MHD_RESULT *mhd_ret)
 {
-  struct KycCheckContext *kcc = cls;
+  struct KycPoller *kyp = cls;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->select_kyc_status (TEH_plugin->cls,
-                                      kcc->payment_target_uuid,
-                                      &kcc->h_payto,
-                                      &kcc->kyc);
+                                      kyp->payment_target_uuid,
+                                      &kyp->h_payto,
+                                      &kyp->kyc);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -101,74 +192,89 @@ TEH_handler_kyc_check (
   struct TEH_RequestContext *rc,
   const char *const args[])
 {
-  unsigned long long payment_target_uuid;
+  struct KycPoller *kyp = rc->rh_ctx;
   MHD_RESULT res;
   enum GNUNET_GenericReturnValue ret;
-  char dummy;
-  struct TALER_PaytoHash h_payto;
 
-  if (1 !=
-      sscanf (args[0],
-              "%llu%c",
-              &payment_target_uuid,
-              &dummy))
+  if (NULL == kyp)
   {
-    GNUNET_break_op (0);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_BAD_REQUEST,
-                                       TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                       "payment_target_uuid");
-  }
-  {
-    const char *ts;
+    kyp = GNUNET_new (struct KycPoller);
+    kyp->connection = rc->connection;
+    rc->rh_ctx = kyp;
+    rc->rh_cleaner = &kyp_cleanup;
 
-    ts = MHD_lookup_connection_value (rc->connection,
-                                      MHD_GET_ARGUMENT_KIND,
-                                      "timeout_ms");
-    if (NULL != ts)
     {
-      unsigned long long tms;
+      unsigned long long payment_target_uuid;
+      char dummy;
 
       if (1 !=
-          sscanf (ts,
+          sscanf (args[0],
                   "%llu%c",
-                  &tms,
+                  &payment_target_uuid,
                   &dummy))
       {
         GNUNET_break_op (0);
         return TALER_MHD_reply_with_error (rc->connection,
                                            MHD_HTTP_BAD_REQUEST,
                                            TALER_EC_GENERIC_PARAMETER_MALFORMED,
-                                           "timeout_ms");
+                                           "payment_target_uuid");
       }
-      /* FIXME: write long polling logic ... */
+      kyp->payment_target_uuid = (uint64_t) payment_target_uuid;
     }
-  }
-  {
-    const char *hps;
+    {
+      const char *ts;
 
-    hps = MHD_lookup_connection_value (rc->connection,
-                                       MHD_GET_ARGUMENT_KIND,
-                                       "h_payto");
-    if (NULL == hps)
-    {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MISSING,
-                                         "h_payto");
+      ts = MHD_lookup_connection_value (rc->connection,
+                                        MHD_GET_ARGUMENT_KIND,
+                                        "timeout_ms");
+      if (NULL != ts)
+      {
+        char dummy;
+        unsigned long long tms;
+
+        if (1 !=
+            sscanf (ts,
+                    "%llu%c",
+                    &tms,
+                    &dummy))
+        {
+          GNUNET_break_op (0);
+          return TALER_MHD_reply_with_error (rc->connection,
+                                             MHD_HTTP_BAD_REQUEST,
+                                             TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                             "timeout_ms");
+        }
+        kyp->timeout = GNUNET_TIME_relative_to_absolute (
+          GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,
+                                         tms));
+      }
     }
-    if (GNUNET_OK !=
-        GNUNET_STRINGS_string_to_data (hps,
-                                       strlen (hps),
-                                       &h_payto,
-                                       sizeof (h_payto)))
     {
-      GNUNET_break_op (0);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_BAD_REQUEST,
-                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
+      const char *hps;
+
+      hps = MHD_lookup_connection_value (rc->connection,
+                                         MHD_GET_ARGUMENT_KIND,
                                          "h_payto");
+      if (NULL == hps)
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (rc->connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           TALER_EC_GENERIC_PARAMETER_MISSING,
+                                           "h_payto");
+      }
+      if (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (hps,
+                                         strlen (hps),
+                                         &kyp->auth_h_payto,
+                                         sizeof (kyp->auth_h_payto)))
+      {
+        GNUNET_break_op (0);
+        return TALER_MHD_reply_with_error (rc->connection,
+                                           MHD_HTTP_BAD_REQUEST,
+                                           TALER_EC_GENERIC_PARAMETER_MALFORMED,
+                                           "h_payto");
+      }
     }
   }
 
@@ -181,9 +287,6 @@ TEH_handler_kyc_check (
       0);
   {
     struct GNUNET_TIME_Absolute now;
-    struct KycCheckContext kcc = {
-      .payment_target_uuid = payment_target_uuid
-    };
 
     now = GNUNET_TIME_absolute_get ();
     (void) GNUNET_TIME_round_abs (&now);
@@ -191,12 +294,12 @@ TEH_handler_kyc_check (
                                   "kyc check",
                                   &res,
                                   &kyc_check,
-                                  &kcc);
+                                  kyp);
     if (GNUNET_SYSERR == ret)
       return res;
     if (0 !=
-        GNUNET_memcmp (&kcc.h_payto,
-                       &h_payto))
+        GNUNET_memcmp (&kyp->h_payto,
+                       &kyp->auth_h_payto))
     {
       GNUNET_break_op (0);
       return TALER_MHD_reply_with_error (rc->connection,
@@ -204,7 +307,7 @@ TEH_handler_kyc_check (
                                          TALER_EC_EXCHANGE_KYC_CHECK_AUTHORIZATION_FAILED,
                                          "h_payto");
     }
-    if (! kcc.kyc.ok)
+    if (! kyp->kyc.ok)
     {
       char *url;
       char *redirect_uri;
@@ -214,7 +317,7 @@ TEH_handler_kyc_check (
       GNUNET_asprintf (&redirect_uri,
                        "%s/kyc-proof/%llu",
                        TEH_base_url,
-                       payment_target_uuid);
+                       (unsigned long long) kyp->payment_target_uuid);
       redirect_uri_encoded = TALER_urlencode (redirect_uri);
       GNUNET_free (redirect_uri);
       GNUNET_asprintf (&url,
@@ -239,7 +342,7 @@ TEH_handler_kyc_check (
         .purpose.purpose = htonl (
           TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
         .purpose.size = htonl (sizeof (as)),
-        .h_payto = kcc.h_payto,
+        .h_payto = kyp->h_payto,
         .timestamp = GNUNET_TIME_absolute_hton (now)
       };
       enum TALER_ErrorCode ec;
