@@ -117,7 +117,7 @@ irbt_cb_table_wire_targets (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.wire_targets.kyc_ok),
     GNUNET_PQ_query_param_string (
-      td->details.wire_targets.oauth_username),
+      td->details.wire_targets.external_id),
     GNUNET_PQ_query_param_end
   };
 

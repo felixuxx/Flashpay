@@ -82,7 +82,7 @@ COMMENT ON COLUMN wire_targets.h_payto
   IS 'Unsalted hash of payto_uri';
 COMMENT ON COLUMN wire_targets.kyc_ok
   IS 'true if the KYC check was passed successfully';
-COMMENT ON COLUMN wire_targets.oauth_username
+COMMENT ON COLUMN wire_targets.external_id
   IS 'Name of the user that was used for OAuth 2.0-based legitimization';
 
 

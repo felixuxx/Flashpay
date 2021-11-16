@@ -218,7 +218,7 @@ struct TALER_EXCHANGEDB_TableData
     {
       char *payto_uri;
       bool kyc_ok;
-      char *oauth_username;
+      char *external_id;
     } wire_targets;
 
     struct

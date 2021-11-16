@@ -182,8 +182,8 @@ lrbt_cb_table_wire_targets (void *cls,
                                     &td.details.wire_targets.payto_uri),
       GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
                                             &td.details.wire_targets.kyc_ok),
-      GNUNET_PQ_result_spec_string ("oauth_username",
-                                    &td.details.wire_targets.oauth_username),
+      GNUNET_PQ_result_spec_string ("external_id",
+                                    &td.details.wire_targets.external_id),
       GNUNET_PQ_result_spec_end
     };
 
