@@ -24,4 +24,5 @@ src/include/taler_error_codes.h: contrib/gana/gnu-taler-error-codes/registry.rec
 
 ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = build-aux/config.rpath   \
-  AUTHORS
+  AUTHORS \
+  README.1st

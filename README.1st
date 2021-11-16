@@ -1,0 +1,19 @@
+Building Taler
+==============
+
+Contributions are welcome. Please submit bugs you find to
+https://bugs.taler.net/ or our bugs mailinglist.  Submit patches via E-Mail to
+taler@gnu.org, formatted with `git format-patch`.
+
+In order to run the unit tests by hand (instead of using "make check"),
+you need to set the environment variable "TALER_PREFIX" to the
+directory where Taler's libraries are installed.
+Before running any testcases, you must complete the installation.
+
+Quick summary:
+
+$ ./configure --prefix=$SOMEWHERE
+$ make
+$ make install
+$ export $GNUNET_PREFIX=$SOMEWHERE
+$ make check
