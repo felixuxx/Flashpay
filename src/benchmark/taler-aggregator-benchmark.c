@@ -516,6 +516,7 @@ run (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&denom_pub,
                                       &bks,
+                                      NULL, /* FIXME-oec */
                                       &coin_pub,
                                       &c_hash,
                                       &pd.coin_ev,

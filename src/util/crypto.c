@@ -188,6 +188,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
   if (GNUNET_OK !=
       TALER_denom_blind (dk,
                          &ps->blinding_key,
+                         NULL, /* FIXME-Oec */
                          &coin_pub,
                          c_hash,
                          &pd->coin_ev,
@@ -318,9 +319,10 @@ TALER_coin_ev_hash (const void *coin_ev,
 
 void
 TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     const struct TALER_AgeHash *age_commitment_hash,
                      struct TALER_CoinPubHash *coin_h)
 {
-  if (GNUNET_is_zero (&coin_pub->age_commitment_hash))
+  if (NULL == age_commitment_hash)
   {
     /* No age commitment was set */
     GNUNET_CRYPTO_hash (&coin_pub->eddsa_pub,
@@ -340,7 +342,7 @@ TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    key_s);
 
     GNUNET_memcpy (&data[key_s],
-                   &coin_pub->age_commitment_hash,
+                   age_commitment_hash,
                    age_s);
 
     GNUNET_CRYPTO_hash (&data,

@@ -219,6 +219,7 @@ TALER_denom_priv_to_pub (const struct TALER_DenominationPrivateKey *denom_priv,
 enum GNUNET_GenericReturnValue
 TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const union TALER_DenominationBlindingKeyP *coin_bks,
+                   const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_CoinPubHash *c_hash,
                    void **coin_ev,
@@ -228,6 +229,7 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
   {
   case TALER_DENOMINATION_RSA:
     TALER_coin_pub_hash (coin_pub,
+                         age_commitment_hash,
                          c_hash);
     if (GNUNET_YES !=
         GNUNET_CRYPTO_rsa_blind (&c_hash->hash,

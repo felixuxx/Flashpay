@@ -166,9 +166,9 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
        hence recomputing it here... */
     GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
-    /* FIXME-Oec: Age commitment hash.
-     * must be put into coin_pub.age_mask */
+    /* FIXME-Oec: Age commitment hash. */
     TALER_coin_pub_hash (&coin_pub,
+                         NULL, /* FIXME-Oec */
                          &coin_hash);
     if (GNUNET_OK !=
         TALER_planchet_to_coin (pk,

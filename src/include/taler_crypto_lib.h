@@ -752,6 +752,7 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
  *
  * @param dk denomination public key to blind for
  * @param coin_bks blinding secret to use
+ * @param age_commitment_hash hash of the age commitment to be used for the coin. NULL if no commitment is made.
  * @param coin_pub public key of the coin to blind
  * @param[out] c_hash resulting hashed coin
  * @param[out] coin_ev blinded coin to submit
@@ -761,6 +762,7 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
 enum GNUNET_GenericReturnValue
 TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const union TALER_DenominationBlindingKeyP *coin_bks,
+                   const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_CoinPubHash *c_hash,
                    void **coin_ev,
@@ -899,7 +901,7 @@ TALER_blinded_denom_sig_cmp (
  * Obtain denomination public key from a denomination private key.
  *
  * @param denom_priv private key to convert
- * @param age_mask age mask to use
+ * @param age_mask age mask to be applied
  * @param[out] denom_pub where to return the public key
  */
 void
@@ -955,10 +957,12 @@ TALER_coin_ev_hash (const void *coin_ev,
  * Compute the hash of a coin.
  *
  * @param coin_pub public key of the coin
+ * @param age_commitment_hash hash of the age commitment vector. NULL, if no age commitment was set
  * @param[out] coin_h where to write the hash
  */
 void
 TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                     const struct TALER_AgeHash *age_commitment_hash,
                      struct TALER_CoinPubHash *coin_h);
 
 

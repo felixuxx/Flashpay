@@ -210,6 +210,7 @@ insert_deposit_run (void *cls,
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dpk,
                                       &bks,
+                                      NULL, /* FIXME-Oec */
                                       &deposit.coin.coin_pub,
                                       &c_hash,
                                       &pd.coin_ev,

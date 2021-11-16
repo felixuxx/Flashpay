@@ -513,7 +513,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
       .coin_pub = *coin_pub,
       .denom_pub_hash = *denom_pub_hash,
       .denom_sig = *denom_sig,
-      .age_commitment_hash = coin_pub->age_commitment_hash
+      .age_commitment_hash = NULL /* FIXME-Oec */
     };
 
     if (GNUNET_YES !=

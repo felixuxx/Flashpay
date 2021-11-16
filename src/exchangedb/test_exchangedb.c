@@ -534,6 +534,7 @@ test_melting (void)
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dkp->pub,
                                       &bks,
+                                      NULL, /* FIXME-Oec */
                                       &refresh_session.coin.coin_pub,
                                       &c_hash,
                                       &pd.coin_ev,
@@ -1608,6 +1609,7 @@ run (void *cls)
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dkp->pub,
                                       &bks,
+                                      NULL, /* FIXME-Oec */
                                       &coin_pub,
                                       &c_hash,
                                       &pd.coin_ev,
