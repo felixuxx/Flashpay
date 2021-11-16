@@ -761,7 +761,7 @@ struct UploadHandler
  * @param do_create #GNUNET_YES if the key may be created
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 load_offline_key (int do_create)
 {
   static bool done;
