@@ -176,9 +176,11 @@ run (void *cls,
         global_ret = 1;
         return;
       }
+#if FIXME_FLORIAN
       TALER_planchet_setup_refresh (&transfer_secret,
                                     coin_num_salt,
                                     &ps);
+#endif
       GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
                                           &coin_pub.eddsa_pub);
 

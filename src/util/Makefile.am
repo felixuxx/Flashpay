@@ -21,7 +21,6 @@ EXTRA_DIST = \
   test_helper_rsa.conf
 
 bin_PROGRAMS = \
-  taler-crypto-worker \
   taler-exchange-secmod-eddsa \
   taler-exchange-secmod-rsa
 
