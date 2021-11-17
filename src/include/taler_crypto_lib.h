@@ -403,6 +403,31 @@ struct TALER_WireSalt
 
 
 /**
+ * Hash used to represent an RSA public key.  Does not include age
+ * restrictions and is ONLY for RSA.  Used ONLY for interactions with the RSA
+ * security module.
+ */
+struct TALER_RsaPubHashP
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+
+/**
+ * Hash @a rsa.
+ *
+ * @param rsa key to hash
+ * @param[out] h_rsa where to write the result
+ */
+void
+TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
+                    struct TALER_RsaPubHashP *h_rsa);
+
+
+/**
  * Hash used to represent a denomination public key
  * and associated age restrictions (if any).
  */
@@ -1318,7 +1343,7 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 /**
  * Handle for talking to an Denomination key signing helper.
  */
-struct TALER_CRYPTO_DenominationHelper;
+struct TALER_CRYPTO_RsaDenominationHelper;
 
 /**
  * Function called with information about available keys for signing.  Usually
@@ -1332,19 +1357,19 @@ struct TALER_CRYPTO_DenominationHelper;
  *                 zero if the key has been revoked or purged
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
- * @param h_denom_pub hash of the @a denom_pub that is available (or was purged)
+ * @param h_rsa hash of the RSA @a denom_pub that is available (or was purged)
  * @param denom_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
  */
 typedef void
-(*TALER_CRYPTO_DenominationKeyStatusCallback)(
+(*TALER_CRYPTO_RsaDenominationKeyStatusCallback)(
   void *cls,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_time,
   struct GNUNET_TIME_Relative validity_duration,
-  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_RsaPubHashP *h_rsa,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
   const struct TALER_SecurityModuleSignatureP *sm_sig);
@@ -1358,10 +1383,10 @@ typedef void
  * @param dkc_cls closure for @a dkc
  * @return NULL on error (such as bad @a cfg).
  */
-struct TALER_CRYPTO_DenominationHelper *
-TALER_CRYPTO_helper_denom_connect (
+struct TALER_CRYPTO_RsaDenominationHelper *
+TALER_CRYPTO_helper_rsa_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
-  TALER_CRYPTO_DenominationKeyStatusCallback dkc,
+  TALER_CRYPTO_RsaDenominationKeyStatusCallback dkc,
   void *dkc_cls);
 
 
@@ -1375,7 +1400,7 @@ TALER_CRYPTO_helper_denom_connect (
  * @param dh helper process connection
  */
 void
-TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh);
+TALER_CRYPTO_helper_rsa_poll (struct TALER_CRYPTO_RsaDenominationHelper *dh);
 
 
 /**
@@ -1389,7 +1414,7 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh);
  * differences in the signature counters.  Retrying in this case may work.
  *
  * @param dh helper process connection
- * @param h_denom_pub hash of the public key to use to sign
+ * @param h_rsa hash of the RSA public key to use to sign
  * @param msg message to sign
  * @param msg_size number of bytes in @a msg
  * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
@@ -1397,9 +1422,9 @@ TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh);
  *         see @a ec for details about the failure
  */
 struct TALER_BlindedDenominationSignature
-TALER_CRYPTO_helper_denom_sign (
-  struct TALER_CRYPTO_DenominationHelper *dh,
-  const struct TALER_DenominationHash *h_denom_pub,
+TALER_CRYPTO_helper_rsa_sign (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh,
+  const struct TALER_RsaPubHashP *h_rsa,
   const void *msg,
   size_t msg_size,
   enum TALER_ErrorCode *ec);
@@ -1418,12 +1443,12 @@ TALER_CRYPTO_helper_denom_sign (
  * callback.
  *
  * @param dh helper to process connection
- * @param h_denom_pub hash of the public key to revoke
+ * @param h_rsa hash of the RSA public key to revoke
  */
 void
-TALER_CRYPTO_helper_denom_revoke (
-  struct TALER_CRYPTO_DenominationHelper *dh,
-  const struct TALER_DenominationHash *h_denom_pub);
+TALER_CRYPTO_helper_rsa_revoke (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh,
+  const struct TALER_RsaPubHashP *h_rsa);
 
 
 /**
@@ -1432,8 +1457,8 @@ TALER_CRYPTO_helper_denom_revoke (
  * @param[in] dh connection to close
  */
 void
-TALER_CRYPTO_helper_denom_disconnect (
-  struct TALER_CRYPTO_DenominationHelper *dh);
+TALER_CRYPTO_helper_rsa_disconnect (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh);
 
 
 /**
@@ -1990,7 +2015,7 @@ TALER_exchange_secmod_eddsa_verify (
 /**
  * Create security module denomination signature.
  *
- * @param h_denom_pub hash of the public key to sign
+ * @param h_rsa hash of the RSA public key to sign
  * @param section_name name of the section in the configuration
  * @param start_sign starting point of validity for signing
  * @param duration how long will the key be in use
@@ -1998,8 +2023,8 @@ TALER_exchange_secmod_eddsa_verify (
  * @param[out] secm_sig where to write the signature
  */
 void
-TALER_exchange_secmod_denom_sign (
-  const struct TALER_DenominationHash *h_denom_pub,
+TALER_exchange_secmod_rsa_sign (
+  const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,
@@ -2010,7 +2035,7 @@ TALER_exchange_secmod_denom_sign (
 /**
  * Verify security module denomination signature.
  *
- * @param h_denom_pub hash of the public key to validate
+ * @param h_rsa hash of the public key to validate
  * @param section_name name of the section in the configuration
  * @param start_sign starting point of validity for signing
  * @param duration how long will the key be in use
@@ -2019,8 +2044,8 @@ TALER_exchange_secmod_denom_sign (
  * @return #GNUNET_OK if the signature is valid
  */
 enum GNUNET_GenericReturnValue
-TALER_exchange_secmod_denom_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+TALER_exchange_secmod_rsa_verify (
+  const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,

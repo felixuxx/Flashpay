@@ -271,7 +271,7 @@
 /**
  * Signature on a denomination key announcement.
  */
-#define TALER_SIGNATURE_SM_DENOMINATION_KEY 1250
+#define TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY 1250
 
 /**
  * Signature on an exchange message signing key announcement.
@@ -324,7 +324,7 @@ struct TALER_DenominationKeyAnnouncementPS
 {
 
   /**
-   * Purpose must be #TALER_SIGNATURE_SM_DENOMINATION_KEY.
+   * Purpose must be #TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY.
    * Used with an EdDSA signature of a `struct TALER_SecurityModulePublicKeyP`.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
@@ -332,7 +332,7 @@ struct TALER_DenominationKeyAnnouncementPS
   /**
    * Hash of the denomination public key.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_RsaPubHashP h_rsa;
 
   /**
    * Hash of the section name in the configuration of this denomination.

@@ -79,7 +79,7 @@ libtalerutil_la_SOURCES = \
   config.c \
   crypto.c \
   crypto_helper_common.c \
-  crypto_helper_denom.c \
+  crypto_helper_rsa.c \
   crypto_helper_esign.c \
   crypto_wire.c \
   denom.c \

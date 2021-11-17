@@ -70,8 +70,8 @@ TALER_exchange_secmod_eddsa_verify (
 
 
 void
-TALER_exchange_secmod_denom_sign (
-  const struct TALER_DenominationHash *h_denom_pub,
+TALER_exchange_secmod_rsa_sign (
+  const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,
@@ -79,9 +79,9 @@ TALER_exchange_secmod_denom_sign (
   struct TALER_SecurityModuleSignatureP *secm_sig)
 {
   struct TALER_DenominationKeyAnnouncementPS dka = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
+    .purpose.purpose = htonl (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY),
     .purpose.size = htonl (sizeof (dka)),
-    .h_denom_pub = *h_denom_pub,
+    .h_rsa = *h_rsa,
     .anchor_time = GNUNET_TIME_absolute_hton (start_sign),
     .duration_withdraw = GNUNET_TIME_relative_hton (duration)
   };
@@ -97,8 +97,8 @@ TALER_exchange_secmod_denom_sign (
 
 
 enum GNUNET_GenericReturnValue
-TALER_exchange_secmod_denom_verify (
-  const struct TALER_DenominationHash *h_denom_pub,
+TALER_exchange_secmod_rsa_verify (
+  const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
   struct GNUNET_TIME_Absolute start_sign,
   struct GNUNET_TIME_Relative duration,
@@ -106,9 +106,9 @@ TALER_exchange_secmod_denom_verify (
   const struct TALER_SecurityModuleSignatureP *secm_sig)
 {
   struct TALER_DenominationKeyAnnouncementPS dka = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_SM_DENOMINATION_KEY),
+    .purpose.purpose = htonl (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY),
     .purpose.size = htonl (sizeof (dka)),
-    .h_denom_pub = *h_denom_pub,
+    .h_rsa = *h_rsa,
     .anchor_time = GNUNET_TIME_absolute_hton (start_sign),
     .duration_withdraw = GNUNET_TIME_relative_hton (duration)
   };
@@ -117,7 +117,7 @@ TALER_exchange_secmod_denom_verify (
                       strlen (section_name) + 1,
                       &dka.h_section_name);
   return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_DENOMINATION_KEY,
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY,
                                 &dka,
                                 &secm_sig->eddsa_signature,
                                 &secm_pub->eddsa_pub);

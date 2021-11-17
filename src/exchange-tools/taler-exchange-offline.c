@@ -2635,6 +2635,7 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     };
     struct GNUNET_TIME_Relative duration;
     struct TALER_DenominationHash h_denom_pub;
+    enum GNUNET_GenericReturnValue ok;
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (value,
@@ -2659,13 +2660,28 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                                     stamp_expire_withdraw);
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
-    if (GNUNET_OK !=
-        TALER_exchange_secmod_denom_verify (&h_denom_pub,
-                                            section_name,
-                                            stamp_start,
-                                            duration,
-                                            secm_pub,
-                                            &secm_sig))
+    switch (denom_pub.cipher)
+    {
+    case TALER_DENOMINATION_RSA:
+      {
+        struct TALER_RsaPubHashP h_rsa;
+
+        TALER_rsa_pub_hash (denom_pub.details.rsa_public_key,
+                            &h_rsa);
+        ok = TALER_exchange_secmod_rsa_verify (&h_rsa,
+                                               section_name,
+                                               stamp_start,
+                                               duration,
+                                               secm_pub,
+                                               &secm_sig);
+      }
+      break;
+    default:
+      GNUNET_break (0);
+      ok = GNUNET_SYSERR;
+      break;
+    }
+    if (GNUNET_OK != ok)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid security module signature for denomination key %s (aborting)\n",
@@ -2997,7 +3013,7 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
  * @param[in,out] result array where to output the signatures
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                 const json_t *denomkeys,
                 json_t *result)
@@ -3076,19 +3092,36 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     }
     duration = GNUNET_TIME_absolute_get_difference (stamp_start,
                                                     stamp_expire_withdraw);
+    // FIXME-Oec: setup age mask here?
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
-    if (GNUNET_OK !=
-        TALER_exchange_secmod_denom_verify (&h_denom_pub,
-                                            section_name,
-                                            stamp_start,
-                                            duration,
-                                            secm_pub,
-                                            &secm_sig))
+    switch (denom_pub.cipher)
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Invalid security module signature for denomination key %s (aborting)\n",
-                  GNUNET_h2s (&h_denom_pub.hash));
+    case TALER_DENOMINATION_RSA:
+      {
+        struct TALER_RsaPubHashP h_rsa;
+
+        TALER_rsa_pub_hash (denom_pub.details.rsa_public_key,
+                            &h_rsa);
+        if (GNUNET_OK !=
+            TALER_exchange_secmod_rsa_verify (&h_rsa,
+                                              section_name,
+                                              stamp_start,
+                                              duration,
+                                              secm_pub,
+                                              &secm_sig))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Invalid security module signature for denomination key %s (aborting)\n",
+                      GNUNET_h2s (&h_denom_pub.hash));
+          global_ret = EXIT_FAILURE;
+          test_shutdown ();
+          GNUNET_JSON_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+      }
+      break;
+    default:
       global_ret = EXIT_FAILURE;
       test_shutdown ();
       GNUNET_JSON_parse_free (spec);

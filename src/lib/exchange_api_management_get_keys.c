@@ -219,20 +219,37 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
 
       TALER_denom_pub_hash (&denom_key->key,
                             &h_denom_pub);
-      if (GNUNET_OK !=
-          TALER_exchange_secmod_denom_verify (&h_denom_pub,
-                                              section_name,
-                                              denom_key->valid_from,
-                                              duration,
-                                              &fk.denom_secmod_public_key,
-                                              &denom_key->denom_secmod_sig))
+      switch (denom_key->key.cipher)
       {
+      case TALER_DENOMINATION_RSA:
+        {
+          struct TALER_RsaPubHashP h_rsa;
+
+          TALER_rsa_pub_hash (denom_key->key.details.rsa_public_key,
+                              &h_rsa);
+          if (GNUNET_OK !=
+              TALER_exchange_secmod_rsa_verify (&h_rsa,
+                                                section_name,
+                                                denom_key->valid_from,
+                                                duration,
+                                                &fk.denom_secmod_public_key,
+                                                &denom_key->denom_secmod_sig))
+          {
+            GNUNET_break_op (0);
+            ok = false;
+            break;
+          }
+        }
+        break;
+      default:
         GNUNET_break_op (0);
         ok = false;
         break;
       }
     }
     GNUNET_JSON_parse_free (spec);
+    if (! ok)
+      break;
   }
   if (ok)
   {

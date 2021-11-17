@@ -35,6 +35,7 @@
 
 GNUNET_NETWORK_STRUCT_BEGIN
 
+
 /**
  * Message sent if a key is available.
  */
@@ -76,7 +77,7 @@ struct TALER_CRYPTO_RsaKeyAvailableNotification
    */
   struct TALER_SecurityModuleSignatureP secm_sig;
 
-  /* followed by @e pub_size bytes of the public key */
+  /* followed by @e pub_size bytes of the RSA public key */
 
   /* followed by @e section_name bytes of the configuration section name
      of the denomination of this key */
@@ -102,8 +103,7 @@ struct TALER_CRYPTO_RsaKeyPurgeNotification
   /**
    * Hash of the public key of the purged RSA key.
    */
-  // FIXME: wrong type, not hashed with age restriction here!
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_RsaPubHashP h_rsa;
 
 };
 
@@ -126,8 +126,7 @@ struct TALER_CRYPTO_SignRequest
   /**
    * Hash of the public key of the RSA key to use for the signature.
    */
-  // FIXME: wrong type, not hashed with age restriction here!
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_RsaPubHashP h_rsa;
 
   /* followed by message to sign */
 };
@@ -151,8 +150,7 @@ struct TALER_CRYPTO_RevokeRequest
   /**
    * Hash of the public key of the revoked RSA key.
    */
-  // FIXME: wrong type, not hashed with age restriction here!
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_RsaPubHashP h_rsa;
 
 };
 

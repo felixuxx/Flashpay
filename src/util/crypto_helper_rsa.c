@@ -26,12 +26,12 @@
 #include "crypto_helper_common.h"
 
 
-struct TALER_CRYPTO_DenominationHelper
+struct TALER_CRYPTO_RsaDenominationHelper
 {
   /**
    * Function to call with updates to available key material.
    */
-  TALER_CRYPTO_DenominationKeyStatusCallback dkc;
+  TALER_CRYPTO_RsaDenominationKeyStatusCallback dkc;
 
   /**
    * Closure for @e dkc
@@ -63,7 +63,7 @@ struct TALER_CRYPTO_DenominationHelper
  * @param[in,out] dh handle to tear down connection of
  */
 static void
-do_disconnect (struct TALER_CRYPTO_DenominationHelper *dh)
+do_disconnect (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 {
   GNUNET_break (0 == close (dh->sock));
   dh->sock = -1;
@@ -79,7 +79,7 @@ do_disconnect (struct TALER_CRYPTO_DenominationHelper *dh)
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
+try_connect (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 {
   if (-1 != dh->sock)
     return GNUNET_OK;
@@ -107,13 +107,13 @@ try_connect (struct TALER_CRYPTO_DenominationHelper *dh)
 }
 
 
-struct TALER_CRYPTO_DenominationHelper *
-TALER_CRYPTO_helper_denom_connect (
+struct TALER_CRYPTO_RsaDenominationHelper *
+TALER_CRYPTO_helper_rsa_connect (
   const struct GNUNET_CONFIGURATION_Handle *cfg,
-  TALER_CRYPTO_DenominationKeyStatusCallback dkc,
+  TALER_CRYPTO_RsaDenominationKeyStatusCallback dkc,
   void *dkc_cls)
 {
-  struct TALER_CRYPTO_DenominationHelper *dh;
+  struct TALER_CRYPTO_RsaDenominationHelper *dh;
   char *unixpath;
 
   if (GNUNET_OK !=
@@ -138,7 +138,7 @@ TALER_CRYPTO_helper_denom_connect (
     GNUNET_free (unixpath);
     return NULL;
   }
-  dh = GNUNET_new (struct TALER_CRYPTO_DenominationHelper);
+  dh = GNUNET_new (struct TALER_CRYPTO_RsaDenominationHelper);
   dh->dkc = dkc;
   dh->dkc_cls = dkc_cls;
   dh->sa.sun_family = AF_UNIX;
@@ -150,10 +150,10 @@ TALER_CRYPTO_helper_denom_connect (
   if (GNUNET_OK !=
       try_connect (dh))
   {
-    TALER_CRYPTO_helper_denom_disconnect (dh);
+    TALER_CRYPTO_helper_rsa_disconnect (dh);
     return NULL;
   }
-  TALER_CRYPTO_helper_denom_poll (dh);
+  TALER_CRYPTO_helper_rsa_poll (dh);
   return dh;
 }
 
@@ -166,7 +166,7 @@ TALER_CRYPTO_helper_denom_connect (
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
+handle_mt_avail (struct TALER_CRYPTO_RsaDenominationHelper *dh,
                  const struct GNUNET_MessageHeader *hdr)
 {
   const struct TALER_CRYPTO_RsaKeyAvailableNotification *kan
@@ -196,7 +196,7 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
 
   {
     struct TALER_DenominationPublicKey denom_pub;
-    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_RsaPubHashP h_rsa;
 
     denom_pub.cipher = TALER_DENOMINATION_RSA;
     denom_pub.details.rsa_public_key
@@ -208,14 +208,14 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
       return GNUNET_SYSERR;
     }
     GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.details.rsa_public_key,
-                                       &h_denom_pub.hash);
+                                       &h_rsa.hash);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Received RSA key %s (%s)\n",
-                GNUNET_h2s (&h_denom_pub.hash),
+                GNUNET_h2s (&h_rsa.hash),
                 section_name);
     if (GNUNET_OK !=
-        TALER_exchange_secmod_denom_verify (
-          &h_denom_pub,
+        TALER_exchange_secmod_rsa_verify (
+          &h_rsa,
           section_name,
           GNUNET_TIME_absolute_ntoh (kan->anchor_time),
           GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
@@ -230,7 +230,7 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
              section_name,
              GNUNET_TIME_absolute_ntoh (kan->anchor_time),
              GNUNET_TIME_relative_ntoh (kan->duration_withdraw),
-             &h_denom_pub,
+             &h_rsa,
              &denom_pub,
              &kan->secm_pub,
              &kan->secm_sig);
@@ -248,7 +248,7 @@ handle_mt_avail (struct TALER_CRYPTO_DenominationHelper *dh,
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
+handle_mt_purge (struct TALER_CRYPTO_RsaDenominationHelper *dh,
                  const struct GNUNET_MessageHeader *hdr)
 {
   const struct TALER_CRYPTO_RsaKeyPurgeNotification *pn
@@ -261,12 +261,12 @@ handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received revocation of denomination key %s\n",
-              GNUNET_h2s (&pn->h_denom_pub.hash));
+              GNUNET_h2s (&pn->h_rsa.hash));
   dh->dkc (dh->dkc_cls,
            NULL,
            GNUNET_TIME_UNIT_ZERO_ABS,
            GNUNET_TIME_UNIT_ZERO,
-           &pn->h_denom_pub,
+           &pn->h_rsa,
            NULL,
            NULL,
            NULL);
@@ -275,7 +275,7 @@ handle_mt_purge (struct TALER_CRYPTO_DenominationHelper *dh,
 
 
 void
-TALER_CRYPTO_helper_denom_poll (struct TALER_CRYPTO_DenominationHelper *dh)
+TALER_CRYPTO_helper_rsa_poll (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 {
   char buf[UINT16_MAX];
   size_t off = 0;
@@ -376,9 +376,9 @@ more:
 
 
 struct TALER_BlindedDenominationSignature
-TALER_CRYPTO_helper_denom_sign (
-  struct TALER_CRYPTO_DenominationHelper *dh,
-  const struct TALER_DenominationHash *h_denom_pub,
+TALER_CRYPTO_helper_rsa_sign (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh,
+  const struct TALER_RsaPubHashP *h_rsa,
   const void *msg,
   size_t msg_size,
   enum TALER_ErrorCode *ec)
@@ -404,7 +404,7 @@ TALER_CRYPTO_helper_denom_sign (
     sr->header.size = htons (sizeof (buf));
     sr->header.type = htons (TALER_HELPER_RSA_MT_REQ_SIGN);
     sr->reserved = htonl (0);
-    sr->h_denom_pub = *h_denom_pub;
+    sr->h_rsa = *h_rsa;
     memcpy (&sr[1],
             msg,
             msg_size);
@@ -568,14 +568,14 @@ end:
 
 
 void
-TALER_CRYPTO_helper_denom_revoke (
-  struct TALER_CRYPTO_DenominationHelper *dh,
-  const struct TALER_DenominationHash *h_denom_pub)
+TALER_CRYPTO_helper_rsa_revoke (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh,
+  const struct TALER_RsaPubHashP *h_rsa)
 {
   struct TALER_CRYPTO_RevokeRequest rr = {
     .header.size = htons (sizeof (rr)),
     .header.type = htons (TALER_HELPER_RSA_MT_REQ_REVOKE),
-    .h_denom_pub = *h_denom_pub
+    .h_rsa = *h_rsa
   };
 
   if (GNUNET_OK !=
@@ -593,13 +593,13 @@ TALER_CRYPTO_helper_denom_revoke (
   }
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Requested revocation of denomination key %s\n",
-              GNUNET_h2s (&h_denom_pub->hash));
+              GNUNET_h2s (&h_rsa->hash));
 }
 
 
 void
-TALER_CRYPTO_helper_denom_disconnect (
-  struct TALER_CRYPTO_DenominationHelper *dh)
+TALER_CRYPTO_helper_rsa_disconnect (
+  struct TALER_CRYPTO_RsaDenominationHelper *dh)
 {
   if (-1 != dh->sock)
     do_disconnect (dh);

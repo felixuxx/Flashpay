@@ -156,6 +156,22 @@ TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs)
 }
 
 
+/**
+ * Hash @a rsa.
+ *
+ * @param rsa key to hash
+ * @param[out] h_rsa where to write the result
+ */
+void
+TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
+                    struct TALER_RsaPubHashP *h_rsa)
+{
+  GNUNET_CRYPTO_rsa_public_key_hash (rsa,
+                                     &h_rsa->hash);
+
+}
+
+
 void
 TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
                       struct TALER_DenominationHash *denom_hash)
