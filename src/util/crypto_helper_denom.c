@@ -86,6 +86,7 @@ do_disconnect (struct TALER_CRYPTO_DenominationHelper *dh)
                               "unlink",
                               dh->my_sa.sun_path);
   dh->sock = -1;
+  dh->synced = false;
 }
 
 

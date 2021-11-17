@@ -864,16 +864,16 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "get_refresh_revealed_coins",
       "SELECT "
-      " freshcoin_index"
+      " rrc.freshcoin_index"
       ",denom.denom_pub"
-      ",link_sig"
-      ",coin_ev"
-      ",ev_sig"
-      " FROM refresh_revealed_coins"
+      ",rrc.link_sig"
+      ",rrc.coin_ev"
+      ",rrc.ev_sig"
+      " FROM refresh_commitments"
+      "    JOIN refresh_revealed_coins rrc"
+      "      USING (melt_serial_id)"
       "    JOIN denominations denom "
       "      USING (denominations_serial)"
-      "    JOIN refresh_commitments"
-      "      USING (melt_serial_id)"
       " WHERE rc=$1"
       "   ORDER BY freshcoin_index ASC;",
       1),

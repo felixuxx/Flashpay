@@ -53,6 +53,11 @@ TALER_MHD_add_global_headers (struct MHD_Response *response)
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN,
                                          "*"));
+  GNUNET_break (MHD_YES ==
+                MHD_add_response_header (response,
+                                         /* Not available as MHD constant yet */
+                                         "Access-Control-Expose-Headers",
+                                         "*"));
 }
 
 
@@ -268,12 +273,6 @@ TALER_MHD_reply_cors_preflight (struct MHD_Connection *connection)
                                          /* Not available as MHD constant yet */
                                          "Access-Control-Allow-Methods",
                                          "*"));
-  GNUNET_break (MHD_YES ==
-                MHD_add_response_header (response,
-                                         /* Not available as MHD constant yet */
-                                         "Access-Control-Expose-Headers",
-                                         "*"));
-
   {
     MHD_RESULT ret;
 

@@ -81,6 +81,7 @@ do_disconnect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
                               "unlink",
                               esh->my_sa.sun_path);
   esh->sock = -1;
+  esh->synced = false;
 }
 
 

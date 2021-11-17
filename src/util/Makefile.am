@@ -21,6 +21,7 @@ EXTRA_DIST = \
   test_helper_rsa.conf
 
 bin_PROGRAMS = \
+  taler-crypto-worker \
   taler-exchange-secmod-eddsa \
   taler-exchange-secmod-rsa
 
@@ -57,6 +58,18 @@ taler_exchange_secmod_eddsa_LDADD = \
   -lpthread \
   $(LIBGCRYPT_LIBS) \
   $(XLIB)
+
+taler_crypto_worker_SOURCES = \
+  taler-crypto-worker.c
+taler_crypto_worker_LDADD = \
+  libtalerutil.la \
+  -lgnunetutil \
+  -lgnunetjson \
+  -ljansson \
+  -lpthread \
+  $(LIBGCRYPT_LIBS) \
+  $(XLIB)
+
 
 lib_LTLIBRARIES = \
   libtalerutil.la
