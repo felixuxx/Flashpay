@@ -109,7 +109,7 @@ run (void *cls,
         GNUNET_JSON_spec_fixed_auto ("sig",
                                      &sig),
         GNUNET_JSON_spec_varsize ("msg",
-                                  &msg,
+                                  (void **) &msg,
                                   &msg_size),
         GNUNET_JSON_spec_end ()
       };
@@ -148,19 +148,28 @@ run (void *cls,
       uint32_t coin_index;
       json_t *resp;
       struct GNUNET_JSON_Specification eddsa_verify_spec[] = {
-        GNUNET_JSON_spec_rsa_public_key ("denom_pub",
-                                         &denom_pub.rsa_public_key),
-        TALER_JSON_spec_amount_any ("fee_withdraw", &fee_withdraw),
-        TALER_JSON_spec_amount_any ("value", &value),
-        GNUNET_JSON_spec_fixed_auto ("reserve_pub", &reserve_pub),
-        GNUNET_JSON_spec_fixed_auto ("reserve_priv", &reserve_priv),
-        GNUNET_JSON_spec_uint32 ("coin_index", &coin_index),
+        TALER_JSON_spec_denom_pub ("denom_pub",
+                                   &denom_pub),
+        TALER_JSON_spec_amount_any ("fee_withdraw",
+                                    &fee_withdraw),
+        TALER_JSON_spec_amount_any ("value",
+                                    &value),
+        GNUNET_JSON_spec_fixed_auto ("reserve_pub",
+                                     &reserve_pub),
+        GNUNET_JSON_spec_fixed_auto ("reserve_priv",
+                                     &reserve_priv),
+        GNUNET_JSON_spec_uint32 ("coin_index",
+                                 &coin_index),
         GNUNET_JSON_spec_end ()
       };
-      if (GNUNET_OK != GNUNET_JSON_parse (args,
-                                          eddsa_verify_spec,
-                                          NULL,
-                                          NULL))
+      struct TALER_CoinSpendPublicKeyP coin_pub;
+      struct TALER_PlanchetSecretsP ps;
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (args,
+                             eddsa_verify_spec,
+                             NULL,
+                             NULL))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "malformed op args\n");
@@ -168,9 +177,10 @@ run (void *cls,
         return;
       }
       TALER_planchet_setup_refresh (&transfer_secret,
-                                    coin_num_salt, &ps);
+                                    coin_num_salt,
+                                    &ps);
       GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
-                                          &coin_pub);
+                                          &coin_pub.eddsa_pub);
 
       resp = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("coin_priv", &ps.coin_priv),
@@ -211,7 +221,7 @@ run (void *cls,
       TALER_planchet_setup_refresh (&transfer_secret,
                                     coin_num_salt, &ps);
       GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
-                                          &coin_pub);
+                                          &coin_pub.eddsa_pub);
 
       resp = GNUNET_JSON_PACK (
         GNUNET_JSON_pack_data_auto ("coin_priv", &ps.coin_priv),
