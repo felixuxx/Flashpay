@@ -32,3 +32,4 @@ test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange-secmod-rs
 test_taler_exchange_httpd_home/.local/share/taler/exchange-offline/secm_tofus.pub
 test_taler_exchange_httpd_home/.local/share/taler/exchange-secmod-eddsa/
 test_taler_exchange_httpd_home/.local/share/taler/exchange-secmod-rsa/
+test_kyc_api
