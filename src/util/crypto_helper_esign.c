@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -23,6 +23,7 @@
 #include "taler_signatures.h"
 #include "taler-exchange-secmod-eddsa.h"
 #include <poll.h>
+#include "crypto_helper_common.h"
 
 
 struct TALER_CRYPTO_ExchangeSignHelper
@@ -42,16 +43,6 @@ struct TALER_CRYPTO_ExchangeSignHelper
    * Used to reconnect if the connection breaks.
    */
   struct sockaddr_un sa;
-
-  /**
-   * Socket address of this process.
-   */
-  struct sockaddr_un my_sa;
-
-  /**
-   * Template for @e my_sa.
-   */
-  char *template;
 
   /**
    * The UNIX domain socket, -1 if we are currently not connected.
@@ -76,10 +67,6 @@ static void
 do_disconnect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
 {
   GNUNET_break (0 == close (esh->sock));
-  if (0 != unlink (esh->my_sa.sun_path))
-    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                              "unlink",
-                              esh->my_sa.sun_path);
   esh->sock = -1;
   esh->synced = false;
 }
@@ -90,107 +77,34 @@ do_disconnect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
  * @e sock field in @a esh.
  *
  * @param[in,out] esh handle to establish connection for
+ * @return #GNUNET_OK on success
  */
-static void
+static enum GNUNET_GenericReturnValue
 try_connect (struct TALER_CRYPTO_ExchangeSignHelper *esh)
 {
-  char *tmpdir;
-
   if (-1 != esh->sock)
-    return;
+    return GNUNET_OK;
   esh->sock = socket (AF_UNIX,
-                      SOCK_DGRAM,
+                      SOCK_STREAM,
                       0);
   if (-1 == esh->sock)
   {
     GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                          "socket");
-    return;
+    return GNUNET_SYSERR;
   }
-  tmpdir = GNUNET_DISK_mktemp (esh->template);
-  if (NULL == tmpdir)
-  {
-    do_disconnect (esh);
-    return;
-  }
-  /* we use >= here because we want the sun_path to always
-     be 0-terminated */
-  if (strlen (tmpdir) >= sizeof (esh->sa.sun_path))
-  {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "PATHS",
-                               "TALER_RUNTIME_DIR",
-                               "path too long");
-    GNUNET_free (tmpdir);
-    do_disconnect (esh);
-    return;
-  }
-  esh->my_sa.sun_family = AF_UNIX;
-  strncpy (esh->my_sa.sun_path,
-           tmpdir,
-           sizeof (esh->sa.sun_path) - 1);
-  if (0 != unlink (tmpdir))
-    GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                              "unlink",
-                              tmpdir);
-  if (0 != bind (esh->sock,
-                 (const struct sockaddr *) &esh->my_sa,
-                 sizeof (esh->my_sa)))
+  if (0 !=
+      connect (esh->sock,
+               (const struct sockaddr *) &esh->sa,
+               sizeof (esh->sa)))
   {
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                              "bind",
-                              tmpdir);
+                              "connect",
+                              esh->sa.sun_path);
     do_disconnect (esh);
-    GNUNET_free (tmpdir);
-    return;
+    return GNUNET_SYSERR;
   }
-  /* Fix permissions on client UNIX domain socket,
-     just in case umask() is not set to enable group write */
-  {
-    char path[sizeof (esh->my_sa.sun_path) + 1];
-
-    strncpy (path,
-             esh->my_sa.sun_path,
-             sizeof (path) - 1);
-    path[sizeof (esh->my_sa.sun_path)] = '\0';
-
-    if (0 != chmod (path,
-                    S_IRUSR | S_IWUSR | S_IWGRP))
-    {
-      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                "chmod",
-                                path);
-    }
-  }
-
-  GNUNET_free (tmpdir);
-  {
-    struct GNUNET_MessageHeader hdr = {
-      .size = htons (sizeof (hdr)),
-      .type = htons (TALER_HELPER_EDDSA_MT_REQ_INIT)
-    };
-    ssize_t ret;
-
-    ret = sendto (esh->sock,
-                  &hdr,
-                  sizeof (hdr),
-                  0,
-                  (const struct sockaddr *) &esh->sa,
-                  sizeof (esh->sa));
-    if (ret < 0)
-    {
-      GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                "sendto",
-                                esh->sa.sun_path);
-      do_disconnect (esh);
-      return;
-    }
-    /* We are using SOCK_DGRAM, partial writes should not be possible */
-    GNUNET_break (((size_t) ret) == sizeof (hdr));
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Successfully sent REQ_INIT\n");
-  }
-
+  return GNUNET_OK;
 }
 
 
@@ -234,50 +148,13 @@ TALER_CRYPTO_helper_esign_connect (
            sizeof (esh->sa.sun_path) - 1);
   GNUNET_free (unixpath);
   esh->sock = -1;
+  if (GNUNET_OK !=
+      try_connect (esh))
   {
-    char *tmpdir;
-    char *template;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                 "taler-exchange-secmod-eddsa",
-                                                 "CLIENT_DIR",
-                                                 &tmpdir))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "taler-exchange-secmod-eddsa",
-                                 "CLIENT_DIR");
-      GNUNET_free (esh);
-      return NULL;
-    }
-    GNUNET_asprintf (&template,
-                     "%s/cli",
-                     tmpdir);
-    /* We expect the service to create the client directory */
-    if (GNUNET_OK !=
-        GNUNET_DISK_directory_test (tmpdir,
-                                    GNUNET_YES))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unable to read secmod client directory (%s)\n",
-                  tmpdir);
-      GNUNET_free (esh);
-      GNUNET_free (template);
-      GNUNET_free (tmpdir);
-      return NULL;
-    }
-    GNUNET_free (tmpdir);
-    esh->template = template;
-    if (strlen (template) >= sizeof (esh->sa.sun_path))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "PATHS",
-                                 "TALER_RUNTIME_DIR",
-                                 "path too long");
-      TALER_CRYPTO_helper_esign_disconnect (esh);
-      return NULL;
-    }
+    TALER_CRYPTO_helper_esign_disconnect (esh);
+    return NULL;
   }
+
   TALER_CRYPTO_helper_esign_poll (esh);
   return esh;
 }
@@ -290,7 +167,7 @@ TALER_CRYPTO_helper_esign_connect (
  * @param hdr message that we received
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 handle_mt_avail (struct TALER_CRYPTO_ExchangeSignHelper *esh,
                  const struct GNUNET_MessageHeader *hdr)
 {
@@ -330,7 +207,7 @@ handle_mt_avail (struct TALER_CRYPTO_ExchangeSignHelper *esh,
  * @param hdr message that we received
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 handle_mt_purge (struct TALER_CRYPTO_ExchangeSignHelper *esh,
                  const struct GNUNET_MessageHeader *hdr)
 {
@@ -352,101 +229,62 @@ handle_mt_purge (struct TALER_CRYPTO_ExchangeSignHelper *esh,
 }
 
 
-/**
- * Wait until the socket is ready to read.
- *
- * @param esh helper to wait for
- * @return false on timeout (after 1s)
- */
-static bool
-await_read_ready (struct TALER_CRYPTO_ExchangeSignHelper *esh)
-{
-  /* wait for reply with 1s timeout */
-  struct pollfd pfd = {
-    .fd = esh->sock,
-    .events = POLLIN
-  };
-  sigset_t sigmask;
-  struct timespec ts = {
-    .tv_sec = 1
-  };
-  int ret;
-
-  GNUNET_assert (0 == sigemptyset (&sigmask));
-  GNUNET_assert (0 == sigaddset (&sigmask, SIGTERM));
-  GNUNET_assert (0 == sigaddset (&sigmask, SIGHUP));
-  ret = ppoll (&pfd,
-               1,
-               &ts,
-               &sigmask);
-  if ( (-1 == ret) &&
-       (EINTR != errno) )
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
-                         "ppoll");
-  return (0 < ret);
-}
-
-
 void
 TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
 {
   char buf[UINT16_MAX];
-  ssize_t ret;
+  size_t off = 0;
   unsigned int retry_limit = 3;
   const struct GNUNET_MessageHeader *hdr
     = (const struct GNUNET_MessageHeader *) buf;
-  int flag = MSG_DONTWAIT;
 
-  try_connect (esh);
-  if (-1 == esh->sock)
+  if (GNUNET_OK !=
+      try_connect (esh))
     return; /* give up */
   while (1)
   {
+    uint16_t msize;
+    ssize_t ret;
+
     ret = recv (esh->sock,
-                buf,
-                sizeof (buf),
-                flag);
+                buf + off,
+                sizeof (buf) - off,
+                (esh->synced && (0 == off))
+                ? MSG_DONTWAIT
+                : 0);
     if (ret < 0)
     {
+      if (EINTR == errno)
+        continue;
       if (EAGAIN == errno)
       {
-        GNUNET_assert (0 != flag);
-        if (esh->synced)
-          break;
-        if (! await_read_ready (esh))
-        {
-          /* timeout AND not synced => full reconnect */
-          GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                      "Restarting connection to EdDSA helper, did not come up properly\n");
-          do_disconnect (esh);
-          if (0 == retry_limit)
-            return; /* give up */
-          try_connect (esh);
-          if (-1 == esh->sock)
-            return; /* give up */
-          retry_limit--;
-          flag = MSG_DONTWAIT;
-        }
-        else
-        {
-          flag = 0; /* syscall must be non-blocking this time */
-        }
-        continue; /* try again */
+        GNUNET_assert (esh->synced);
+        GNUNET_assert (0 == off);
+        break;
       }
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                            "recv");
       do_disconnect (esh);
-      return;
+      if (0 == retry_limit)
+        return; /* give up */
+      if (GNUNET_OK !=
+          try_connect (esh))
+        return; /* give up */
+      retry_limit--;
+      continue;
     }
-
-    flag = MSG_DONTWAIT;
-    if ( (ret < sizeof (struct GNUNET_MessageHeader)) ||
-         (ret != ntohs (hdr->size)) )
+    if (0 == ret)
     {
-      GNUNET_break_op (0);
-      do_disconnect (esh);
+      GNUNET_break (0 == off);
       return;
     }
+    off += ret;
+more:
+    if (off < sizeof (struct GNUNET_MessageHeader))
+      continue;
+    msize = ntohs (hdr->size);
+    if (off < msize)
+      continue;
     switch (ntohs (hdr->type))
     {
     case TALER_HELPER_EDDSA_MT_AVAIL:
@@ -475,10 +313,19 @@ TALER_CRYPTO_helper_esign_poll (struct TALER_CRYPTO_ExchangeSignHelper *esh)
       esh->synced = true;
       break;
     default:
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Received unexpected message of type %d (len: %u)\n",
+                  (unsigned int) ntohs (hdr->type),
+                  (unsigned int) msize);
       GNUNET_break_op (0);
       do_disconnect (esh);
       return;
     }
+    memmove (buf,
+             &buf[msize],
+             off - msize);
+    off -= msize;
+    goto more;
   }
 }
 
@@ -490,131 +337,164 @@ TALER_CRYPTO_helper_esign_sign_ (
   struct TALER_ExchangePublicKeyP *exchange_pub,
   struct TALER_ExchangeSignatureP *exchange_sig)
 {
+  if (GNUNET_OK !=
+      try_connect (esh))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to connect to helper\n");
+    return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
+  }
   {
     uint32_t purpose_size = ntohl (purpose->size);
     char buf[sizeof (struct TALER_CRYPTO_EddsaSignRequest) + purpose_size
              - sizeof (struct GNUNET_CRYPTO_EccSignaturePurpose)];
     struct TALER_CRYPTO_EddsaSignRequest *sr
       = (struct TALER_CRYPTO_EddsaSignRequest *) buf;
-    ssize_t ret;
 
-    try_connect (esh);
-    if (-1 == esh->sock)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Failed to connect to helper\n");
-      return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
-    }
     sr->header.size = htons (sizeof (buf));
     sr->header.type = htons (TALER_HELPER_EDDSA_MT_REQ_SIGN);
     sr->reserved = htonl (0);
     memcpy (&sr->purpose,
             purpose,
             purpose_size);
-    ret = sendto (esh->sock,
-                  buf,
-                  sizeof (buf),
-                  0,
-                  (const struct sockaddr *) &esh->sa,
-                  sizeof (esh->sa));
-    if (ret < 0)
+    if (GNUNET_OK !=
+        TALER_crypto_helper_send_all (esh->sock,
+                                      buf,
+                                      sizeof (buf)))
     {
       GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
-                                "sendto",
+                                "send",
                                 esh->sa.sun_path);
       do_disconnect (esh);
       return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
     }
-    /* We are using SOCK_DGRAM, partial writes should not be possible */
-    GNUNET_break (((size_t) ret) == sizeof (buf));
   }
 
-  while (1)
   {
     char buf[UINT16_MAX];
-    ssize_t ret;
+    size_t off = 0;
     const struct GNUNET_MessageHeader *hdr
       = (const struct GNUNET_MessageHeader *) buf;
+    bool finished = false;
+    enum TALER_ErrorCode ec = TALER_EC_INVALID;
 
-    if (! await_read_ready (esh))
+    while (1)
     {
-      do_disconnect (esh);
-      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                  "Timeout waiting for helper\n");
-      return TALER_EC_GENERIC_TIMEOUT;
-    }
-    ret = recv (esh->sock,
-                buf,
-                sizeof (buf),
-                0);
-    if (ret < 0)
-    {
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                           "recv");
-      do_disconnect (esh);
-      return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
-    }
-    if ( (ret < sizeof (struct GNUNET_MessageHeader)) ||
-         (ret != ntohs (hdr->size)) )
-    {
-      GNUNET_break_op (0);
-      do_disconnect (esh);
-      return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
-    }
-    switch (ntohs (hdr->type))
-    {
-    case TALER_HELPER_EDDSA_MT_RES_SIGNATURE:
-      if (ret != sizeof (struct TALER_CRYPTO_EddsaSignResponse))
-      {
-        GNUNET_break_op (0);
-        do_disconnect (esh);
-        return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
-      }
-      {
-        const struct TALER_CRYPTO_EddsaSignResponse *sr =
-          (const struct TALER_CRYPTO_EddsaSignResponse *) buf;
-        *exchange_sig = sr->exchange_sig;
-        *exchange_pub = sr->exchange_pub;
-        return TALER_EC_NONE;
-      }
-    case TALER_HELPER_EDDSA_MT_RES_SIGN_FAILURE:
-      if (ret != sizeof (struct TALER_CRYPTO_EddsaSignFailure))
-      {
-        GNUNET_break_op (0);
-        do_disconnect (esh);
-        return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
-      }
-      {
-        const struct TALER_CRYPTO_EddsaSignFailure *sf =
-          (const struct TALER_CRYPTO_EddsaSignFailure *) buf;
+      ssize_t ret;
+      uint16_t msize;
 
-        return (enum TALER_ErrorCode) ntohl (sf->ec);
-      }
-    case TALER_HELPER_EDDSA_MT_AVAIL:
-      if (GNUNET_OK !=
-          handle_mt_avail (esh,
-                           hdr))
+      ret = recv (esh->sock,
+                  buf,
+                  sizeof (buf),
+                  (finished && (0 == off))
+                  ? MSG_DONTWAIT
+                  : 0);
+      if (ret < 0)
       {
+        if (EINTR == errno)
+          continue;
+        if (EAGAIN == errno)
+        {
+          GNUNET_assert (finished);
+          GNUNET_assert (0 == off);
+          break;
+        }
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                             "recv");
+        do_disconnect (esh);
+        return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
+      }
+      if (0 == ret)
+      {
+        GNUNET_break (0 == off);
+        return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+      }
+      off += ret;
+more:
+      if (off < sizeof (struct GNUNET_MessageHeader))
+        continue;
+      msize = ntohs (hdr->size);
+      if (off < msize)
+        continue;
+      switch (ntohs (hdr->type))
+      {
+      case TALER_HELPER_EDDSA_MT_RES_SIGNATURE:
+        if (msize != sizeof (struct TALER_CRYPTO_EddsaSignResponse))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (esh);
+          return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        }
+        if (finished)
+        {
+          GNUNET_break_op (0);
+          do_disconnect (esh);
+          return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        }
+        {
+          const struct TALER_CRYPTO_EddsaSignResponse *sr =
+            (const struct TALER_CRYPTO_EddsaSignResponse *) buf;
+          *exchange_sig = sr->exchange_sig;
+          *exchange_pub = sr->exchange_pub;
+          finished = true;
+          ec = TALER_EC_NONE;
+          break;
+        }
+      case TALER_HELPER_EDDSA_MT_RES_SIGN_FAILURE:
+        if (msize != sizeof (struct TALER_CRYPTO_EddsaSignFailure))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (esh);
+          return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        }
+        {
+          const struct TALER_CRYPTO_EddsaSignFailure *sf =
+            (const struct TALER_CRYPTO_EddsaSignFailure *) buf;
+
+          finished = true;
+          ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+          break;
+        }
+      case TALER_HELPER_EDDSA_MT_AVAIL:
+        if (GNUNET_OK !=
+            handle_mt_avail (esh,
+                             hdr))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (esh);
+          return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        }
+        break; /* while(1) loop ensures we recv() again */
+      case TALER_HELPER_EDDSA_MT_PURGE:
+        if (GNUNET_OK !=
+            handle_mt_purge (esh,
+                             hdr))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (esh);
+          return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        }
+        break; /* while(1) loop ensures we recv() again */
+      case TALER_HELPER_EDDSA_SYNCED:
+        GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                    "Synchronized add odd time with EdDSA helper!\n");
+        esh->synced = true;
+        break;
+      default:
         GNUNET_break_op (0);
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "Received unexpected message of type %u\n",
+                    ntohs (hdr->type));
         do_disconnect (esh);
         return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
       }
-      break; /* while(1) loop ensures we recvfrom() again */
-    case TALER_HELPER_EDDSA_MT_PURGE:
-      if (GNUNET_OK !=
-          handle_mt_purge (esh,
-                           hdr))
-      {
-        GNUNET_break_op (0);
-        do_disconnect (esh);
-        return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
-      }
-      break; /* while(1) loop ensures we recvfrom() again */
-    default:
-      GNUNET_break_op (0);
-      do_disconnect (esh);
-      return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
-    }
+      memmove (buf,
+               &buf[msize],
+               off - msize);
+      off -= msize;
+      goto more;
+    } /* while(1) */
+    return ec;
   }
 }
 
@@ -624,31 +504,27 @@ TALER_CRYPTO_helper_esign_revoke (
   struct TALER_CRYPTO_ExchangeSignHelper *esh,
   const struct TALER_ExchangePublicKeyP *exchange_pub)
 {
-  struct TALER_CRYPTO_EddsaRevokeRequest rr = {
-    .header.size = htons (sizeof (rr)),
-    .header.type = htons (TALER_HELPER_EDDSA_MT_REQ_REVOKE),
-    .exchange_pub = *exchange_pub
-  };
-  ssize_t ret;
-
-  try_connect (esh);
-  if (-1 == esh->sock)
+  if (GNUNET_OK !=
+      try_connect (esh))
     return; /* give up */
-  ret = sendto (esh->sock,
-                &rr,
-                sizeof (rr),
-                0,
-                (const struct sockaddr *) &esh->sa,
-                sizeof (esh->sa));
-  if (ret < 0)
   {
-    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                         "sendto");
-    do_disconnect (esh);
-    return;
+    struct TALER_CRYPTO_EddsaRevokeRequest rr = {
+      .header.size = htons (sizeof (rr)),
+      .header.type = htons (TALER_HELPER_EDDSA_MT_REQ_REVOKE),
+      .exchange_pub = *exchange_pub
+    };
+
+    if (GNUNET_OK !=
+        TALER_crypto_helper_send_all (esh->sock,
+                                      &rr,
+                                      sizeof (rr)))
+    {
+      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                           "send");
+      do_disconnect (esh);
+      return;
+    }
   }
-  /* We are using SOCK_DGRAM, partial writes should not be possible */
-  GNUNET_break (((size_t) ret) == sizeof (rr));
 }
 
 
@@ -658,7 +534,6 @@ TALER_CRYPTO_helper_esign_disconnect (
 {
   if (-1 != esh->sock)
     do_disconnect (esh);
-  GNUNET_free (esh->template);
   GNUNET_free (esh);
 }
 
