@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2018 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -113,15 +113,22 @@ batch_cleanup (void *cls,
  * @param index index number of the object to offer.
  * @return #GNUNET_OK on success.
  */
-static enum GNUNET_GenericReturnValue
+static int
 batch_traits (void *cls,
               const void **ret,
               const char *trait,
               unsigned int index)
 {
+#define CURRENT_CMD_INDEX 0
+#define BATCH_INDEX 1
+
   struct BatchState *bs = cls;
+
   struct TALER_TESTING_Trait traits[] = {
-    TALER_TESTING_make_trait_batch_cmds (&bs->batch),
+    TALER_TESTING_make_trait_cmd
+      (CURRENT_CMD_INDEX, &bs->batch[bs->batch_ip]),
+    TALER_TESTING_make_trait_cmd
+      (BATCH_INDEX, bs->batch),
     TALER_TESTING_trait_end ()
   };
 
@@ -133,6 +140,18 @@ batch_traits (void *cls,
 }
 
 
+/**
+ * Create a "batch" command.  Such command takes a
+ * end_CMD-terminated array of CMDs and executed them.
+ * Once it hits the end CMD, it passes the control
+ * to the next top-level CMD, regardless of it being
+ * another batch or ordinary CMD.
+ *
+ * @param label the command label.
+ * @param batch array of CMDs to execute.
+ *
+ * @return the command.
+ */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_batch (const char *label,
                          struct TALER_TESTING_Command *batch)
@@ -166,29 +185,68 @@ TALER_TESTING_cmd_batch (const char *label,
 }
 
 
+/**
+ * Advance internal pointer to next command.
+ *
+ * @param is interpreter state.
+ * @param cmd batch to advance
+ */
 void
-TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is)
+TALER_TESTING_cmd_batch_next (struct TALER_TESTING_Interpreter *is,
+                              struct TALER_TESTING_Command *par,
+                              struct TALER_TESTING_Command *cmd)
 {
-  struct BatchState *bs = is->commands[is->ip].cls;
+  struct BatchState *bs = cmd->cls;
+  struct TALER_TESTING_Command *chld;
 
   if (NULL == bs->batch[bs->batch_ip].label)
   {
-    is->commands[is->ip].finish_time = GNUNET_TIME_absolute_get ();
-    is->ip++;
+    if (NULL == par)
+    {
+      is->commands[is->ip].finish_time = GNUNET_TIME_absolute_get ();
+      is->ip++;
+    }
+    else
+    {
+      struct BatchState *ps = par->cls;
+
+      cmd->finish_time = GNUNET_TIME_absolute_get ();
+      ps->batch_ip++;
+    }
     return;
   }
-  bs->batch[bs->batch_ip].finish_time = GNUNET_TIME_absolute_get ();
-  bs->batch_ip++;
+  chld = &bs->batch[bs->batch_ip];
+  if (TALER_TESTING_cmd_is_batch (chld))
+  {
+    TALER_TESTING_cmd_batch_next (is,
+                                  cmd,
+                                  chld);
+  }
+  else
+  {
+    bs->batch[bs->batch_ip].finish_time = GNUNET_TIME_absolute_get ();
+    bs->batch_ip++;
+  }
 }
 
 
-bool
+/**
+ * Test if this command is a batch command.
+ *
+ * @return false if not, true if it is a batch command
+ */
+int
 TALER_TESTING_cmd_is_batch (const struct TALER_TESTING_Command *cmd)
 {
   return cmd->run == &batch_run;
 }
 
 
+/**
+ * Obtain what command the batch is at.
+ *
+ * @return cmd current batch command
+ */
 struct TALER_TESTING_Command *
 TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd)
 {
@@ -199,6 +257,12 @@ TALER_TESTING_cmd_batch_get_current (const struct TALER_TESTING_Command *cmd)
 }
 
 
+/**
+ * Set what command the batch should be at.
+ *
+ * @param cmd current batch command
+ * @param new_ip where to move the IP
+ */
 void
 TALER_TESTING_cmd_batch_set_current (const struct TALER_TESTING_Command *cmd,
                                      unsigned int new_ip)

@@ -102,7 +102,7 @@ struct TALER_CRYPTO_RsaKeyPurgeNotification
   /**
    * Hash of the public key of the purged RSA key.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct GNUNET_HashCode h_denom_pub;
 
 };
 
@@ -125,7 +125,7 @@ struct TALER_CRYPTO_SignRequest
   /**
    * Hash of the public key of the RSA key to use for the signature.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct GNUNET_HashCode h_denom_pub;
 
   /* followed by message to sign */
 };
@@ -149,7 +149,7 @@ struct TALER_CRYPTO_RevokeRequest
   /**
    * Hash of the public key of the revoked RSA key.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct GNUNET_HashCode h_denom_pub;
 
 };
 

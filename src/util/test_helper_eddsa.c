@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2020 Taler Systems SA
+  (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -36,7 +36,7 @@
 
 /**
  * How many iterations of the successful signing test should we run
- * during the benchmark phase?
+ * during the test phase?
  */
 #define NUM_SIGN_TESTS 3
 
@@ -46,6 +46,11 @@
  */
 #define NUM_SIGN_PERFS 100
 
+/**
+ * How many parallel clients should we use for the parallel
+ * benchmark? (> 500 may cause problems with the max open FD number limit).
+ */
+#define NUM_CORES 8
 
 /**
  * Number of keys currently in #keys.
@@ -270,7 +275,8 @@ test_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh)
  * @return 0 on success
  */
 static int
-perf_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh)
+perf_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh,
+              const char *type)
 {
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
     .purpose = htonl (GNUNET_SIGNATURE_PURPOSE_TEST),
@@ -303,8 +309,69 @@ perf_signing (struct TALER_CRYPTO_ExchangeSignHelper *esh)
                                          delay);
   } /* for j */
   fprintf (stderr,
-           "%u (sequential) signature operations took %s\n",
-           (unsigned int) NUM_SIGN_TESTS,
+           "%u (%s) signature operations took %s\n",
+           (unsigned int) NUM_SIGN_PERFS,
+           type,
+           GNUNET_STRINGS_relative_time_to_string (duration,
+                                                   GNUNET_YES));
+  return 0;
+}
+
+
+/**
+ * Parallel signing logic.
+ *
+ * @param esh handle to the helper
+ * @return 0 on success
+ */
+static int
+par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
+{
+  struct GNUNET_TIME_Absolute start;
+  struct GNUNET_TIME_Relative duration;
+  pid_t pids[NUM_CORES];
+  struct TALER_CRYPTO_ExchangeSignHelper *esh;
+
+  memset (keys,
+          0,
+          sizeof (keys));
+  num_keys = 0;
+  start = GNUNET_TIME_absolute_get ();
+  for (unsigned int i = 0; i<NUM_CORES; i++)
+  {
+    pids[i] = fork ();
+    GNUNET_assert (-1 != pids[i]);
+    if (0 == pids[i])
+    {
+      int ret;
+
+      esh = TALER_CRYPTO_helper_esign_connect (cfg,
+                                               &key_cb,
+                                               NULL);
+      if (NULL == esh)
+      {
+        GNUNET_break (0);
+        exit (EXIT_FAILURE);
+      }
+      ret = perf_signing (esh,
+                          "parallel");
+      TALER_CRYPTO_helper_esign_disconnect (esh);
+      exit (ret);
+    }
+  }
+  for (unsigned int i = 0; i<NUM_CORES; i++)
+  {
+    int wstatus;
+
+    GNUNET_assert (pids[i] ==
+                   waitpid (pids[i],
+                            &wstatus,
+                            0));
+  }
+  duration = GNUNET_TIME_absolute_get_duration (start);
+  fprintf (stderr,
+           "%u (parallel) signature operations took %s (total real time)\n",
+           (unsigned int) NUM_SIGN_PERFS * NUM_CORES,
            GNUNET_STRINGS_relative_time_to_string (duration,
                                                    GNUNET_YES));
   return 0;
@@ -319,10 +386,10 @@ run_test (void)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
   struct TALER_CRYPTO_ExchangeSignHelper *esh;
+  int ret;
   struct timespec req = {
     .tv_nsec = 250000000
   };
-  int ret;
 
   cfg = GNUNET_CONFIGURATION_create ();
   if (GNUNET_OK !=
@@ -334,54 +401,47 @@ run_test (void)
   }
 
   /* wait for helper to start and give us keys */
-  fprintf (stderr, "Waiting for helper client directory to become available ");
-  for (unsigned int i = 0; i<1000; i++)
+  fprintf (stderr, "Waiting for helper to start ... ");
+  for (unsigned int i = 0; i<100; i++)
   {
+    nanosleep (&req,
+               NULL);
     esh = TALER_CRYPTO_helper_esign_connect (cfg,
                                              &key_cb,
                                              NULL);
     if (NULL != esh)
       break;
-    nanosleep (&req, NULL);
     fprintf (stderr, ".");
   }
-  GNUNET_CONFIGURATION_destroy (cfg);
   if (NULL == esh)
   {
-    GNUNET_break (0);
+    fprintf (stderr,
+             "\nFAILED: timeout trying to connect to helper\n");
+    GNUNET_CONFIGURATION_destroy (cfg);
     return 1;
-  }
-  fprintf (stderr, " done.\n");
-
-  /* wait for helper to start and give us keys */
-  fprintf (stderr, "Waiting for helper to start ");
-  for (unsigned int i = 0; i<1000; i++)
-  {
-    TALER_CRYPTO_helper_esign_poll (esh);
-    if (0 != num_keys)
-      break;
-    nanosleep (&req, NULL);
-    fprintf (stderr, ".");
   }
   if (0 == num_keys)
   {
     fprintf (stderr,
-             "\nFAILED: timeout trying to connect to helper\n");
+             "\nFAILED: no keys returend by helper\n");
     TALER_CRYPTO_helper_esign_disconnect (esh);
+    GNUNET_CONFIGURATION_destroy (cfg);
     return 1;
   }
   fprintf (stderr,
-           "\nOK: Helper ready (%u keys)\n",
+           " Done (%u keys)\n",
            num_keys);
-
   ret = 0;
   if (0 == ret)
     ret = test_revocation (esh);
   if (0 == ret)
     ret = test_signing (esh);
   if (0 == ret)
-    ret = perf_signing (esh);
+    ret = perf_signing (esh,
+                        "sequential");
   TALER_CRYPTO_helper_esign_disconnect (esh);
+  if (0 == ret)
+    ret = par_signing (cfg);
   /* clean up our state */
   for (unsigned int i = 0; i<MAX_KEYS; i++)
     if (keys[i].valid)
@@ -390,6 +450,7 @@ run_test (void)
       GNUNET_assert (num_keys > 0);
       num_keys--;
     }
+  GNUNET_CONFIGURATION_destroy (cfg);
   return ret;
 }
 
@@ -408,7 +469,7 @@ main (int argc,
   (void) argc;
   (void) argv;
   GNUNET_log_setup ("test-helper-eddsa",
-                    "INFO",
+                    "WARNING",
                     NULL);
   GNUNET_OS_init (TALER_project_data_default ());
   libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
@@ -424,7 +485,7 @@ main (int argc,
                                     "-c",
                                     "test_helper_eddsa.conf",
                                     "-L",
-                                    "INFO",
+                                    "WARNING",
                                     NULL);
   if (NULL == helper)
   {
