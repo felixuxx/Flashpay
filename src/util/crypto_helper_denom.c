@@ -238,63 +238,19 @@ TALER_CRYPTO_helper_denom_connect (
            sizeof (dh->sa.sun_path) - 1);
   GNUNET_free (unixpath);
   dh->sock = -1;
+  /* Extract the age groups from the config, if the extension has been set,
+   * and serialize them into the age mask
+   */
+  if (GNUNET_OK !=
+      TALER_get_age_mask (cfg, &dh->age_mask))
   {
-    char *tmpdir;
-    char *template;
-
-    if (GNUNET_OK !=
-        GNUNET_CONFIGURATION_get_value_filename (cfg,
-                                                 "taler-exchange-secmod-rsa",
-                                                 "CLIENT_DIR",
-                                                 &tmpdir))
-    {
-      GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                                 "taler-exchange-secmod-rsa",
-                                 "CLIENT_DIR");
-      return NULL;
-    }
-    GNUNET_asprintf (&template,
-                     "%s/cli",
-                     tmpdir);
-    /* We expect the service to create the client directory */
-    if (GNUNET_OK !=
-        GNUNET_DISK_directory_test (tmpdir,
-                                    GNUNET_YES))
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Unable to read secmod client directory (%s)\n",
-                  tmpdir);
-      GNUNET_free (dh);
-      GNUNET_free (template);
-      GNUNET_free (tmpdir);
-      return NULL;
-    }
-    GNUNET_free (tmpdir);
-    dh->template = template;
-    if (strlen (template) >= sizeof (dh->sa.sun_path))
-    {
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "PATHS",
-                                 "TALER_RUNTIME_DIR",
-                                 "path too long");
-      TALER_CRYPTO_helper_denom_disconnect (dh);
-      return NULL;
-    }
-
-    /* Extract the age groups from the config, if the extension has been set,
-     * and serialize them into the age mask
-     */
-    if (GNUNET_OK !=
-        TALER_get_age_mask (cfg, &dh->age_mask))
-    {
-      /* FIXME: maybe more specific error? */
-      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                                 "extensions", /* FIXME: right section etc? */
-                                 "age-restriction",
-                                 "invalid age groups");
-      TALER_CRYPTO_helper_denom_disconnect (dh);
-      return NULL;
-    }
+    /* FIXME: maybe more specific error? */
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               "extensions",   /* FIXME: right section etc? */
+                               "age-restriction",
+                               "invalid age groups");
+    TALER_CRYPTO_helper_denom_disconnect (dh);
+    return NULL;
   }
   TALER_CRYPTO_helper_denom_poll (dh);
   return dh;

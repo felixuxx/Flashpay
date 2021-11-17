@@ -78,17 +78,17 @@ struct DenominationKey
   /**
    * The private key of the denomination.
    */
-  struct TALER_DenominationPrivateKey denom_priv;
+  struct GNUNET_CRYPTO_RsaPrivateKey *denom_priv;
 
   /**
    * The public key of the denomination.
    */
-  struct TALER_DenominationPublicKey denom_pub;
+  struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
 
   /**
    * Hash of this denomination's public key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Time at which this key is supposed to become valid.
@@ -245,7 +245,7 @@ notify_client_dk_add (struct TES_Client *client,
   void *p;
   size_t tlen;
 
-  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub.rsa_public_key,
+  buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub,
                                                  &buf);
   GNUNET_assert (buf_len < UINT16_MAX);
   GNUNET_assert (nlen < UINT16_MAX);
@@ -258,12 +258,12 @@ notify_client_dk_add (struct TES_Client *client,
   an->section_name_len = htons ((uint16_t) nlen);
   an->anchor_time = GNUNET_TIME_absolute_hton (dk->anchor);
   an->duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw);
-  TALER_exchange_secmod_rsa_sign (&dk->h_denom_pub,
-                                  denom->section,
-                                  dk->anchor,
-                                  denom->duration_withdraw,
-                                  &TES_smpriv,
-                                  &an->secm_sig);
+  TALER_exchange_secmod_denom_sign (&dk->h_denom_pub,
+                                    denom->section,
+                                    dk->anchor,
+                                    denom->duration_withdraw,
+                                    &TES_smpriv,
+                                    &an->secm_sig);
   an->secm_pub = TES_smpub;
   p = (void *) &an[1];
   memcpy (p,
@@ -275,7 +275,7 @@ notify_client_dk_add (struct TES_Client *client,
           nlen);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Sending RSA denomination key %s (%s)\n",
-              GNUNET_h2s (&dk->h_denom_pub),
+              GNUNET_h2s (&dk->h_denom_pub.hash),
               denom->section);
   if (GNUNET_OK !=
       TES_transmit (client->csock,
@@ -311,7 +311,7 @@ notify_client_dk_del (struct TES_Client *client,
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Sending RSA denomination expiration %s\n",
-              GNUNET_h2s (&dk->h_denom_pub));
+              GNUNET_h2s (&dk->h_denom_pub.hash));
   if (GNUNET_OK !=
       TES_transmit (client->csock,
                     &pn.header))
@@ -345,7 +345,7 @@ handle_sign_request (struct TES_Client *client,
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
-                                          &sr->h_denom_pub);
+                                          &sr->h_denom_pub.hash);
   if (NULL == dk)
   {
     struct TALER_CRYPTO_SignFailure sf = {
@@ -357,7 +357,7 @@ handle_sign_request (struct TES_Client *client,
     GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Signing request failed, denomination key %s unknown\n",
-                GNUNET_h2s (&sr->h_denom_pub));
+                GNUNET_h2s (&sr->h_denom_pub.hash));
     return TES_transmit (client->csock,
                          &sf.header);
   }
@@ -374,7 +374,7 @@ handle_sign_request (struct TES_Client *client,
     GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Signing request failed, denomination key %s is not yet valid\n",
-                GNUNET_h2s (&sr->h_denom_pub));
+                GNUNET_h2s (&sr->h_denom_pub.hash));
     return TES_transmit (client->csock,
                          &sf.header);
   }
@@ -382,12 +382,12 @@ handle_sign_request (struct TES_Client *client,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received request to sign over %u bytes with key %s\n",
               (unsigned int) blinded_msg_size,
-              GNUNET_h2s (&sr->h_denom_pub));
+              GNUNET_h2s (&sr->h_denom_pub.hash));
   GNUNET_assert (dk->rc < UINT_MAX);
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
   rsa_signature
-    = GNUNET_CRYPTO_rsa_sign_blinded (dk->denom_priv.rsa_private_key,
+    = GNUNET_CRYPTO_rsa_sign_blinded (dk->denom_priv,
                                       blinded_msg,
                                       blinded_msg_size);
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
@@ -471,7 +471,7 @@ setup_key (struct DenominationKey *dk,
   buf_size = GNUNET_CRYPTO_rsa_private_key_encode (priv,
                                                    &buf);
   GNUNET_CRYPTO_rsa_public_key_hash (pub,
-                                     &dk->h_denom_pub);
+                                     &dk->h_denom_pub.hash);
   GNUNET_asprintf (&dk->filename,
                    "%s/%s/%llu",
                    keydir,
@@ -495,24 +495,24 @@ setup_key (struct DenominationKey *dk,
   GNUNET_free (buf);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Setup fresh private key %s at %s in `%s' (generation #%llu)\n",
-              GNUNET_h2s (&dk->h_denom_pub),
+              GNUNET_h2s (&dk->h_denom_pub.hash),
               GNUNET_STRINGS_absolute_time_to_string (dk->anchor),
               dk->filename,
               (unsigned long long) key_gen);
-  dk->denom_priv.rsa_private_key = priv;
-  dk->denom_pub.rsa_public_key = pub;
+  dk->denom_priv = priv;
+  dk->denom_pub = pub;
   dk->key_gen = key_gen;
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (
         keys,
-        &dk->h_denom_pub,
+        &dk->h_denom_pub.hash,
         dk,
         GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Duplicate private key created! Terminating.\n");
-    GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv.rsa_private_key);
-    GNUNET_CRYPTO_rsa_public_key_free (dk->denom_pub.rsa_public_key);
+    GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv);
+    GNUNET_CRYPTO_rsa_public_key_free (dk->denom_pub);
     GNUNET_free (dk->filename);
     GNUNET_free (dk);
     return GNUNET_SYSERR;
@@ -563,13 +563,13 @@ handle_revoke_request (struct TES_Client *client,
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
-                                          &rr->h_denom_pub);
+                                          &rr->h_denom_pub.hash);
   if (NULL == dk)
   {
     GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Revocation request ignored, denomination key %s unknown\n",
-                GNUNET_h2s (&rr->h_denom_pub));
+                GNUNET_h2s (&rr->h_denom_pub.hash));
     return GNUNET_OK;
   }
 
@@ -877,7 +877,7 @@ update_keys (struct Denomination *denom,
     GNUNET_assert (GNUNET_OK ==
                    GNUNET_CONTAINER_multihashmap_remove (
                      keys,
-                     &key->h_denom_pub,
+                     &key->h_denom_pub.hash,
                      key));
     if ( (! key->purge) &&
          (0 != unlink (key->filename)) )
@@ -885,8 +885,8 @@ update_keys (struct Denomination *denom,
                                 "unlink",
                                 key->filename);
     GNUNET_free (key->filename);
-    GNUNET_CRYPTO_rsa_private_key_free (key->denom_priv.rsa_private_key);
-    GNUNET_CRYPTO_rsa_public_key_free (key->denom_pub.rsa_public_key);
+    GNUNET_CRYPTO_rsa_private_key_free (key->denom_priv);
+    GNUNET_CRYPTO_rsa_public_key_free (key->denom_pub);
     GNUNET_free (key);
     key = nxt;
   }
@@ -1025,23 +1025,23 @@ parse_key (struct Denomination *denom,
       return;
     }
     dk = GNUNET_new (struct DenominationKey);
-    dk->denom_priv.rsa_private_key = priv;
+    dk->denom_priv = priv;
     dk->denom = denom;
     dk->anchor = anchor;
     dk->filename = GNUNET_strdup (filename);
     GNUNET_CRYPTO_rsa_public_key_hash (pub,
-                                       &dk->h_denom_pub);
-    dk->denom_pub.rsa_public_key = pub;
+                                       &dk->h_denom_pub.hash);
+    dk->denom_pub = pub;
     if (GNUNET_OK !=
         GNUNET_CONTAINER_multihashmap_put (
           keys,
-          &dk->h_denom_pub,
+          &dk->h_denom_pub.hash,
           dk,
           GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Duplicate private key %s detected in file `%s'. Skipping.\n",
-                  GNUNET_h2s (&dk->h_denom_pub),
+                  GNUNET_h2s (&dk->h_denom_pub.hash),
                   filename);
       GNUNET_CRYPTO_rsa_private_key_free (priv);
       GNUNET_CRYPTO_rsa_public_key_free (pub);
@@ -1063,7 +1063,7 @@ parse_key (struct Denomination *denom,
                                        dk);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Imported key %s from `%s'\n",
-                GNUNET_h2s (&dk->h_denom_pub),
+                GNUNET_h2s (&dk->h_denom_pub.hash),
                 filename);
   }
 }
