@@ -102,7 +102,8 @@ struct TALER_CRYPTO_RsaKeyPurgeNotification
   /**
    * Hash of the public key of the purged RSA key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  // FIXME: wrong type, not hashed with age restriction here!
+  struct TALER_DenominationHash h_denom_pub;
 
 };
 
@@ -125,7 +126,8 @@ struct TALER_CRYPTO_SignRequest
   /**
    * Hash of the public key of the RSA key to use for the signature.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  // FIXME: wrong type, not hashed with age restriction here!
+  struct TALER_DenominationHash h_denom_pub;
 
   /* followed by message to sign */
 };
@@ -149,7 +151,8 @@ struct TALER_CRYPTO_RevokeRequest
   /**
    * Hash of the public key of the revoked RSA key.
    */
-  struct GNUNET_HashCode h_denom_pub;
+  // FIXME: wrong type, not hashed with age restriction here!
+  struct TALER_DenominationHash h_denom_pub;
 
 };
 
