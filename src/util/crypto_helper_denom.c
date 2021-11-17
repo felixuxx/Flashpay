@@ -498,6 +498,7 @@ more:
           }
           *ec = TALER_EC_NONE;
           finished = true;
+          ds.cipher = TALER_DENOMINATION_RSA;
           ds.details.blinded_rsa_signature = rsa_signature;
           break;
         }
