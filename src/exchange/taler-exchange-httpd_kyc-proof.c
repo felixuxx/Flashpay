@@ -168,10 +168,19 @@ persist_kyc_ok (void *cls,
                 MHD_RESULT *mhd_ret)
 {
   struct KycProofContext *kpc = cls;
+  enum GNUNET_DB_QueryStatus qs;
 
-  return TEH_plugin->set_kyc_ok (TEH_plugin->cls,
-                                 kpc->payment_target_uuid,
-                                 kpc->id);
+  qs = TEH_plugin->set_kyc_ok (TEH_plugin->cls,
+                               kpc->payment_target_uuid,
+                               kpc->id);
+  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+  {
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_ec (connection,
+                                        TALER_EC_GENERIC_DB_STORE_FAILED,
+                                        "set_kyc_ok");
+  }
+  return qs;
 }
 
 

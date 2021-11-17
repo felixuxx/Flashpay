@@ -3811,6 +3811,10 @@ postgres_set_kyc_ok (void *cls,
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_QueryParam params2[] = {
+    GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
     GNUNET_PQ_query_param_string (id),
     GNUNET_PQ_query_param_end
   };
@@ -3827,7 +3831,7 @@ postgres_set_kyc_ok (void *cls,
 
   qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                            "set_kyc_ok",
-                                           params);
+                                           params2);
   if (qs <= 0)
     return qs;
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
