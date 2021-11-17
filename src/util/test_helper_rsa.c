@@ -74,7 +74,7 @@ struct KeyData
   /**
    * Hash of the public key.
    */
-  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_RsaPubHashP h_rsa;
 
   /**
    * Full public key.
@@ -111,7 +111,7 @@ static struct KeyData keys[MAX_KEYS];
  *                 zero if the key has been revoked or purged
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
- * @param h_denom_pub hash of the @a denom_pub that is available (or was purged)
+ * @param h_rsa hash of the @a denom_pub that is available (or was purged)
  * @param denom_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
@@ -122,7 +122,7 @@ key_cb (void *cls,
         const char *section_name,
         struct GNUNET_TIME_Absolute start_time,
         struct GNUNET_TIME_Relative validity_duration,
-        const struct TALER_DenominationHash *h_denom_pub,
+        const struct TALER_RsaPubHashP *h_rsa,
         const struct TALER_DenominationPublicKey *denom_pub,
         const struct TALER_SecurityModulePublicKeyP *sm_pub,
         const struct TALER_SecurityModuleSignatureP *sm_sig)
@@ -131,7 +131,7 @@ key_cb (void *cls,
   (void) sm_sig;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Key notification about key %s in `%s'\n",
-              GNUNET_h2s (&h_denom_pub->hash),
+              GNUNET_h2s (&h_rsa->hash),
               section_name);
   if (0 == validity_duration.rel_value_us)
   {
@@ -140,8 +140,8 @@ key_cb (void *cls,
     GNUNET_break (NULL == denom_pub);
     GNUNET_break (NULL == section_name);
     for (unsigned int i = 0; i<MAX_KEYS; i++)
-      if (0 == GNUNET_memcmp (h_denom_pub,
-                              &keys[i].h_denom_pub))
+      if (0 == GNUNET_memcmp (h_rsa,
+                              &keys[i].h_rsa))
       {
         keys[i].valid = false;
         keys[i].revoked = false;
@@ -163,7 +163,7 @@ key_cb (void *cls,
     if (! keys[i].valid)
     {
       keys[i].valid = true;
-      keys[i].h_denom_pub = *h_denom_pub;
+      keys[i].h_rsa = *h_rsa;
       keys[i].start_time = start_time;
       keys[i].validity_duration = validity_duration;
       TALER_denom_pub_deep_copy (&keys[i].denom_pub,
@@ -185,7 +185,7 @@ key_cb (void *cls,
  * @return 0 on success
  */
 static int
-test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
+test_revocation (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 {
   struct timespec req = {
     .tv_nsec = 250000000
@@ -210,12 +210,12 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
       keys[j].revoked = true;
       fprintf (stderr,
                "Revoking key %s ...",
-               GNUNET_h2s (&keys[j].h_denom_pub.hash));
-      TALER_CRYPTO_helper_denom_revoke (dh,
-                                        &keys[j].h_denom_pub);
+               GNUNET_h2s (&keys[j].h_rsa.hash));
+      TALER_CRYPTO_helper_rsa_revoke (dh,
+                                      &keys[j].h_rsa);
       for (unsigned int k = 0; k<1000; k++)
       {
-        TALER_CRYPTO_helper_denom_poll (dh);
+        TALER_CRYPTO_helper_rsa_poll (dh);
         if (! keys[j].revoked)
           break;
         nanosleep (&req, NULL);
@@ -226,7 +226,7 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
         fprintf (stderr,
                  "\nFAILED: timeout trying to revoke key %u\n",
                  j);
-        TALER_CRYPTO_helper_denom_disconnect (dh);
+        TALER_CRYPTO_helper_rsa_disconnect (dh);
         return 2;
       }
       fprintf (stderr, "\n");
@@ -244,7 +244,7 @@ test_revocation (struct TALER_CRYPTO_DenominationHelper *dh)
  * @return 0 on success
  */
 static int
-test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
+test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 {
   struct TALER_BlindedDenominationSignature ds;
   enum TALER_ErrorCode ec;
@@ -268,12 +268,12 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Requesting signature over %u bytes with key %s\n",
                   (unsigned int) pd.coin_ev_size,
-                  GNUNET_h2s (&keys[i].h_denom_pub.hash));
-      ds = TALER_CRYPTO_helper_denom_sign (dh,
-                                           &keys[i].h_denom_pub,
-                                           pd.coin_ev,
-                                           pd.coin_ev_size,
-                                           &ec);
+                  GNUNET_h2s (&keys[i].h_rsa.hash));
+      ds = TALER_CRYPTO_helper_rsa_sign (dh,
+                                         &keys[i].h_rsa,
+                                         pd.coin_ev,
+                                         pd.coin_ev_size,
+                                         &ec);
       GNUNET_free (pd.coin_ev);
     }
     switch (ec)
@@ -320,7 +320,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
       }
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Received valid signature for key %s\n",
-                  GNUNET_h2s (&keys[i].h_denom_pub.hash));
+                  GNUNET_h2s (&keys[i].h_rsa.hash));
       success = true;
       break;
     case TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY:
@@ -355,16 +355,16 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
 
   /* check signing does not work if the key is unknown */
   {
-    struct TALER_DenominationHash rnd;
+    struct TALER_RsaPubHashP rnd;
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,
                                 sizeof (rnd));
-    ds = TALER_CRYPTO_helper_denom_sign (dh,
-                                         &rnd,
-                                         "Hello",
-                                         strlen ("Hello"),
-                                         &ec);
+    ds = TALER_CRYPTO_helper_rsa_sign (dh,
+                                       &rnd,
+                                       "Hello",
+                                       strlen ("Hello"),
+                                       &ec);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
       if (TALER_EC_NONE == ec)
@@ -387,7 +387,7 @@ test_signing (struct TALER_CRYPTO_DenominationHelper *dh)
  * @return 0 on success
  */
 static int
-perf_signing (struct TALER_CRYPTO_DenominationHelper *dh,
+perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
               const char *type)
 {
   struct TALER_BlindedDenominationSignature ds;
@@ -397,7 +397,7 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh,
 
   TALER_planchet_setup_random (&ps);
   duration = GNUNET_TIME_UNIT_ZERO;
-  TALER_CRYPTO_helper_denom_poll (dh);
+  TALER_CRYPTO_helper_rsa_poll (dh);
   for (unsigned int j = 0; j<NUM_SIGN_PERFS;)
   {
     for (unsigned int i = 0; i<MAX_KEYS; i++)
@@ -425,11 +425,11 @@ perf_signing (struct TALER_CRYPTO_DenominationHelper *dh,
           struct GNUNET_TIME_Absolute start = GNUNET_TIME_absolute_get ();
           struct GNUNET_TIME_Relative delay;
 
-          ds = TALER_CRYPTO_helper_denom_sign (dh,
-                                               &keys[i].h_denom_pub,
-                                               pd.coin_ev,
-                                               pd.coin_ev_size,
-                                               &ec);
+          ds = TALER_CRYPTO_helper_rsa_sign (dh,
+                                             &keys[i].h_rsa,
+                                             pd.coin_ev,
+                                             pd.coin_ev_size,
+                                             &ec);
           if (TALER_EC_NONE != ec)
             break;
           delay = GNUNET_TIME_absolute_get_duration (start);
@@ -466,7 +466,7 @@ par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
   struct GNUNET_TIME_Absolute start;
   struct GNUNET_TIME_Relative duration;
   pid_t pids[NUM_CORES];
-  struct TALER_CRYPTO_DenominationHelper *dh;
+  struct TALER_CRYPTO_RsaDenominationHelper *dh;
 
   start = GNUNET_TIME_absolute_get ();
   for (unsigned int i = 0; i<NUM_CORES; i++)
@@ -481,13 +481,13 @@ par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
     {
       int ret;
 
-      dh = TALER_CRYPTO_helper_denom_connect (cfg,
-                                              &key_cb,
-                                              NULL);
+      dh = TALER_CRYPTO_helper_rsa_connect (cfg,
+                                            &key_cb,
+                                            NULL);
       GNUNET_assert (NULL != dh);
       ret = perf_signing (dh,
                           "parallel");
-      TALER_CRYPTO_helper_denom_disconnect (dh);
+      TALER_CRYPTO_helper_rsa_disconnect (dh);
       exit (ret);
     }
   }
@@ -517,7 +517,7 @@ static int
 run_test (void)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg;
-  struct TALER_CRYPTO_DenominationHelper *dh;
+  struct TALER_CRYPTO_RsaDenominationHelper *dh;
   struct timespec req = {
     .tv_nsec = 250000000
   };
@@ -537,9 +537,9 @@ run_test (void)
   {
     nanosleep (&req,
                NULL);
-    dh = TALER_CRYPTO_helper_denom_connect (cfg,
-                                            &key_cb,
-                                            NULL);
+    dh = TALER_CRYPTO_helper_rsa_connect (cfg,
+                                          &key_cb,
+                                          NULL);
     if (NULL != dh)
       break;
     fprintf (stderr, ".");
@@ -555,7 +555,7 @@ run_test (void)
   {
     fprintf (stderr,
              "\nFAILED: timeout trying to connect to helper\n");
-    TALER_CRYPTO_helper_denom_disconnect (dh);
+    TALER_CRYPTO_helper_rsa_disconnect (dh);
     GNUNET_CONFIGURATION_destroy (cfg);
     return 1;
   }
@@ -570,7 +570,7 @@ run_test (void)
   if (0 == ret)
     ret = perf_signing (dh,
                         "sequential");
-  TALER_CRYPTO_helper_denom_disconnect (dh);
+  TALER_CRYPTO_helper_rsa_disconnect (dh);
   if (0 == ret)
     ret = par_signing (cfg);
   /* clean up our state */
