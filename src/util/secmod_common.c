@@ -81,6 +81,10 @@ TES_transmit (int sock,
   const void *pos = hdr;
   uint16_t end = ntohs (hdr->size);
 
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Sending message of type %u and length %u\n",
+              (unsigned int) ntohs (hdr->type),
+              (unsigned int) ntohs (hdr->size));
   while (off < end)
   {
     ssize_t ret = send (sock,

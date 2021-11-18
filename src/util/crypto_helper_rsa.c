@@ -330,6 +330,10 @@ more:
     msize = ntohs (hdr->size);
     if (off < msize)
       continue;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Received message of type %u and length %u\n",
+                (unsigned int) ntohs (hdr->type),
+                (unsigned int) msize);
     switch (ntohs (hdr->type))
     {
     case TALER_HELPER_RSA_MT_AVAIL:
