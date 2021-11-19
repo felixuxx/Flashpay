@@ -1116,6 +1116,7 @@ import_key (void *cls,
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_WARNING,
                               "open",
                               filename);
+    GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
   if (0 != fstat (fd,
@@ -1131,6 +1132,7 @@ import_key (void *cls,
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "File `%s' is not a regular file, which is not allowed for private keys!\n",
                 filename);
+    GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
   if (0 != (sbuf.st_mode & (S_IWUSR | S_IRWXG | S_IRWXO)))
@@ -1286,7 +1288,7 @@ load_denominations (void *cls,
 {
   struct LoadContext *ctx = cls;
   struct Denomination *denom;
-  bool wake;
+  bool wake = true;
 
   if ( (0 != strncasecmp (denomination_alias,
                           "coin_",

@@ -441,10 +441,6 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
     return NULL;
   }
   eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
-  GNUNET_break (CURLE_OK ==
-                curl_easy_setopt (eh,
-                                  CURLOPT_TIMEOUT,
-                                  get_wire_timeout_seconds (wh->exchange)));
   if (NULL == eh)
   {
     GNUNET_break (0);
@@ -452,6 +448,10 @@ TALER_EXCHANGE_wire (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_free (wh);
     return NULL;
   }
+  GNUNET_break (CURLE_OK ==
+                curl_easy_setopt (eh,
+                                  CURLOPT_TIMEOUT,
+                                  get_wire_timeout_seconds (wh->exchange)));
   ctx = TEAH_handle_to_context (exchange);
   wh->job = GNUNET_CURL_job_add_with_ct_json (ctx,
                                               eh,

@@ -135,13 +135,11 @@ make_amount (unsigned int val,
              unsigned int frac,
              struct TALER_Amount *out)
 {
-  memset (out,
-          0,
-          sizeof (struct TALER_Amount));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (currency,
+                                        out));
   out->value = val;
   out->fraction = frac;
-  strcpy (out->currency,
-          currency);
 }
 
 

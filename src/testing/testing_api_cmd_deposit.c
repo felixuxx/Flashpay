@@ -613,16 +613,20 @@ TALER_TESTING_cmd_deposit (const char *label,
   ds->wallet_timestamp = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&ds->wallet_timestamp);
 
-  json_object_set_new (ds->contract_terms,
-                       "timestamp",
-                       GNUNET_JSON_from_time_abs (ds->wallet_timestamp));
+  GNUNET_assert (0 ==
+                 json_object_set_new (ds->contract_terms,
+                                      "timestamp",
+                                      GNUNET_JSON_from_time_abs (
+                                        ds->wallet_timestamp)));
   if (0 != refund_deadline.rel_value_us)
   {
     ds->refund_deadline = GNUNET_TIME_relative_to_absolute (refund_deadline);
     (void) GNUNET_TIME_round_abs (&ds->refund_deadline);
-    json_object_set_new (ds->contract_terms,
-                         "refund_deadline",
-                         GNUNET_JSON_from_time_abs (ds->refund_deadline));
+    GNUNET_assert (0 ==
+                   json_object_set_new (ds->contract_terms,
+                                        "refund_deadline",
+                                        GNUNET_JSON_from_time_abs (
+                                          ds->refund_deadline)));
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (amount,

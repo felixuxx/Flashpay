@@ -389,9 +389,10 @@ maint_child_death (void *cls)
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Got the dead child process handle, waiting for termination ...\n");
-  GNUNET_OS_process_wait_status (*processp,
-                                 &type,
-                                 &code);
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_OS_process_wait_status (*processp,
+                                                &type,
+                                                &code));
   GNUNET_OS_process_destroy (*processp);
   *processp = NULL;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,

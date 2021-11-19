@@ -647,12 +647,12 @@ handle_post_management (struct TEH_RequestContext *rc,
  * Handle a get "/management" request.
  *
  * @param rc request context
- * @param args array of additional options (must be empty for this function)
+ * @param args array of additional options (must be [0] == "keys")
  * @return MHD result code
  */
 static MHD_RESULT
 handle_get_management (struct TEH_RequestContext *rc,
-                       const char *const args[1])
+                       const char *const args[2])
 {
   if ( (NULL != args[0]) &&
        (0 == strcmp (args[0],

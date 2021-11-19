@@ -266,6 +266,12 @@ TES_read_work (void *cls,
       continue;
     hdr = (const struct GNUNET_MessageHeader *) buf;
     msize = ntohs (hdr->size);
+    if (msize < sizeof (struct GNUNET_MessageHeader))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    GNUNET_assert (msize <= sizeof (client->iobuf));
   } while (off < msize);
 
   if (off > msize)

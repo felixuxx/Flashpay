@@ -337,6 +337,8 @@ TALER_CRYPTO_helper_esign_sign_ (
   struct TALER_ExchangePublicKeyP *exchange_pub,
   struct TALER_ExchangeSignatureP *exchange_sig)
 {
+  uint32_t purpose_size = ntohl (purpose->size);
+
   if (GNUNET_OK !=
       try_connect (esh))
   {
@@ -344,8 +346,9 @@ TALER_CRYPTO_helper_esign_sign_ (
                 "Failed to connect to helper\n");
     return TALER_EC_EXCHANGE_SIGNKEY_HELPER_UNAVAILABLE;
   }
+  GNUNET_assert (purpose_size <
+                 UINT16_MAX - sizeof (struct TALER_CRYPTO_EddsaSignRequest));
   {
-    uint32_t purpose_size = ntohl (purpose->size);
     char buf[sizeof (struct TALER_CRYPTO_EddsaSignRequest) + purpose_size
              - sizeof (struct GNUNET_CRYPTO_EccSignaturePurpose)];
     struct TALER_CRYPTO_EddsaSignRequest *sr
@@ -414,6 +417,7 @@ more:
       if (off < sizeof (struct GNUNET_MessageHeader))
         continue;
       msize = ntohs (hdr->size);
+      GNUNET_assert (msize <= sizeof (buf));
       if (off < msize)
         continue;
       switch (ntohs (hdr->type))

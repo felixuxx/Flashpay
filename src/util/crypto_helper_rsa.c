@@ -173,22 +173,28 @@ handle_mt_avail (struct TALER_CRYPTO_RsaDenominationHelper *dh,
     = (const struct TALER_CRYPTO_RsaKeyAvailableNotification *) hdr;
   const char *buf = (const char *) &kan[1];
   const char *section_name;
+  uint16_t ps;
+  uint16_t snl;
 
   if (sizeof (*kan) > ntohs (hdr->size))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (ntohs (hdr->size) !=
-      sizeof (*kan)
-      + ntohs (kan->pub_size)
-      + ntohs (kan->section_name_len))
+  ps = ntohs (kan->pub_size);
+  snl = ntohs (kan->section_name_len);
+  if (ntohs (hdr->size) != sizeof (*kan) + ps + snl)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  section_name = &buf[ntohs (kan->pub_size)];
-  if ('\0' != section_name[ntohs (kan->section_name_len) - 1])
+  if (0 == snl)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  section_name = &buf[ps];
+  if ('\0' != section_name[snl - 1])
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

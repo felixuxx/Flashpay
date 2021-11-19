@@ -558,9 +558,14 @@ seed_forgettable (json_t *f)
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
                                   &sh,
                                   sizeof (sh));
-      json_object_set_new (f,
-                           key,
-                           GNUNET_JSON_from_data_auto (&sh));
+      if (0 !=
+          json_object_set_new (f,
+                               key,
+                               GNUNET_JSON_from_data_auto (&sh)))
+      {
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
       continue;
     }
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
