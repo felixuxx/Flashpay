@@ -4122,8 +4122,9 @@ notify_on_reserve (struct PostgresClosure *pg,
 
 
 /**
- * Insert an incoming transaction into reserves.  New reserves are also created
- * through this function.
+ * Insert an incoming transaction into reserves.  New reserves are also
+ * created through this function. Started within the scope of an ongoing
+ * transaction.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserve_pub public key of the reserve
@@ -4170,7 +4171,7 @@ postgres_reserves_in_insert (void *cls,
   /* Optimistically assume this is a new reserve, create balance for the first
      time; we do this before adding the actual transaction to "reserves_in",
      as for a new reserve it can't be a duplicate 'add' operation, and as
-     the 'add' operation may need the reserve entry as a foreign key. */
+     the 'add' operation needs the reserve entry as a foreign key. */
   {
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_auto_from_type (reserve_pub),
@@ -4217,6 +4218,7 @@ postgres_reserves_in_insert (void *cls,
     GNUNET_assert (0 != kyc.payment_target_uuid);
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs1)
     {
+      /* We do not have the UUID, so insert by public key */
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
         GNUNET_PQ_query_param_uint64 (&wire_ref),
@@ -4233,6 +4235,7 @@ postgres_reserves_in_insert (void *cls,
     }
     else
     {
+      /* We do have the UUID, use that for the insert */
       struct GNUNET_PQ_QueryParam params[] = {
         GNUNET_PQ_query_param_uint64 (&reserve_uuid),
         GNUNET_PQ_query_param_uint64 (&wire_ref),
@@ -4247,16 +4250,14 @@ postgres_reserves_in_insert (void *cls,
                                                 "reserves_in_add_by_uuid",
                                                 params);
     }
-    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs2)
-    {
-      GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs2);
-      return qs2;
-    }
+    /* qs2 could be 0 as both statements used 'ON CONFLICT DO NOTHING' */
     if (0 >= qs2)
     {
       if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs2) &&
            (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS != qs1) )
       {
+        /* Conflict for the transaction, but the reserve was
+           just now created, that should be impossible. */
         GNUNET_break (0); /* should be impossible: reserve was fresh,
                              but transaction already known */
         return GNUNET_DB_STATUS_HARD_ERROR;
@@ -4267,14 +4268,18 @@ postgres_reserves_in_insert (void *cls,
   }
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs1)
   {
+    /* New reserve, we are finished */
     notify_on_reserve (pg,
                        reserve_pub);
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* new reserve, we are finished */
+    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
 
   /* we were wrong with our optimistic assumption:
-     reserve does exist, need to do an update instead */
+     reserve did already exist, need to do an update instead */
   {
+    /* We need to move away from 'read committed' to serializable.
+       Also, we know that it should be safe to commit at this point.
+       (We are only run in a larger transaction for performance.) */
     enum GNUNET_DB_QueryStatus cs;
 
     cs = postgres_commit (pg);
