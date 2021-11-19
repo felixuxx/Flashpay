@@ -428,6 +428,8 @@ run (void *cls,
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue;
 
   (void) cls;
+  (void) args;
+  (void) cfgfile;
   /* make sure everything 'ends' before the current time,
      so that the aggregator will process everything without
      need for time-travel */
