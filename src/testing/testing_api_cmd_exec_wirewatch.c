@@ -61,6 +61,7 @@ wirewatch_run (void *cls,
 {
   struct WirewatchState *ws = cls;
 
+  (void) cmd;
   ws->wirewatch_proc
     = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                NULL, NULL, NULL,
@@ -94,6 +95,7 @@ wirewatch_cleanup (void *cls,
 {
   struct WirewatchState *ws = cls;
 
+  (void) cmd;
   if (NULL != ws->wirewatch_proc)
   {
     GNUNET_break (0 ==

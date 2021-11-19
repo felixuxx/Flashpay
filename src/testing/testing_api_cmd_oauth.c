@@ -92,6 +92,11 @@ handle_post (void *cls,
 {
   struct RequestCtx *rc = cls;
 
+  (void) kind;
+  (void) filename;
+  (void) content_type;
+  (void) transfer_encoding;
+  (void) off;
   if (0 == strcmp (key,
                    "code"))
     append (&rc->code,
@@ -169,6 +174,8 @@ handler_cb (void *cls,
   unsigned int hc;
   json_t *body;
 
+  (void) cls;
+  (void) version;
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_GET))
   {
@@ -292,6 +299,9 @@ cleanup (void *cls,
 {
   struct RequestCtx *rc = *con_cls;
 
+  (void) cls;
+  (void) connection;
+  (void) toe;
   if (NULL == rc)
     return;
   GNUNET_free (rc->code);
@@ -340,6 +350,7 @@ oauth_cleanup (void *cls,
 {
   struct OAuthState *oas = cls;
 
+  (void) cmd;
   if (NULL != oas->mhd)
   {
     MHD_stop_daemon (oas->mhd);

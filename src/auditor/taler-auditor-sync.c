@@ -310,6 +310,7 @@ do_sync (void *cls)
 {
   static struct GNUNET_TIME_Relative delay;
 
+  (void) cls;
   sync_task = NULL;
   actual_size = 0;
   if (GNUNET_SYSERR ==
@@ -469,6 +470,7 @@ load_config (const char *cfgfile)
 static void
 do_shutdown (void *cls)
 {
+  (void) cls;
   if (NULL != sync_task)
   {
     GNUNET_SCHEDULER_cancel (sync_task);

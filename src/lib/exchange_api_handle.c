@@ -535,6 +535,7 @@ auditor_version_cb (
 {
   struct TEAH_AuditorListEntry *ale = cls;
 
+  (void) hr;
   if (NULL == vi)
   {
     /* In this case, we don't mark the auditor as 'up' */

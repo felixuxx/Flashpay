@@ -181,6 +181,7 @@ qconv_denom_pub (void *cls,
   void *tbuf;
 
   (void) cls;
+  (void) data_len;
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
@@ -270,6 +271,7 @@ qconv_denom_sig (void *cls,
   void *tbuf;
 
   (void) cls;
+  (void) data_len;
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);
@@ -359,6 +361,7 @@ qconv_blinded_denom_sig (void *cls,
   void *tbuf;
 
   (void) cls;
+  (void) data_len;
   GNUNET_assert (1 == param_length);
   GNUNET_assert (scratch_length > 0);
   GNUNET_break (NULL == cls);

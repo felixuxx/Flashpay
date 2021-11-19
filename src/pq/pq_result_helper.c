@@ -520,6 +520,7 @@ extract_denom_pub (void *cls,
   uint32_t be[2];
 
   (void) cls;
+  (void) dst_size;
   fnum = PQfnumber (result,
                     fname);
   if (fnum < 0)
@@ -633,6 +634,7 @@ extract_denom_sig (void *cls,
   uint32_t be[2];
 
   (void) cls;
+  (void) dst_size;
   fnum = PQfnumber (result,
                     fname);
   if (fnum < 0)
@@ -750,6 +752,7 @@ extract_blinded_denom_sig (void *cls,
   uint32_t be[2];
 
   (void) cls;
+  (void) dst_size;
   fnum = PQfnumber (result,
                     fname);
   if (fnum < 0)

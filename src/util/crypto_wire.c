@@ -23,14 +23,6 @@
 #include "taler_signatures.h"
 
 
-/**
- * Check the signature in @a master_sig.
- *
- * @param payto_uri URL that is signed
- * @param master_pub master public key of the exchange
- * @param master_sig signature of the exchange
- * @return #GNUNET_OK if signature is valid
- */
 enum GNUNET_GenericReturnValue
 TALER_exchange_wire_signature_check (
   const char *payto_uri,
@@ -51,13 +43,6 @@ TALER_exchange_wire_signature_check (
 }
 
 
-/**
- * Create a signed wire statement for the given account.
- *
- * @param payto_uri account specification
- * @param master_priv private key to sign with
- * @param[out] master_sig where to write the signature
- */
 void
 TALER_exchange_wire_signature_make (
   const char *payto_uri,
@@ -77,15 +62,6 @@ TALER_exchange_wire_signature_make (
 }
 
 
-/**
- * Compute the hash of the given wire details.   The resulting
- * @a hc is what will be put into the contract between customer
- * and merchant for signing by both parties.
- *
- * @param payto_uri bank account
- * @param salt salt used to eliminate brute-force inversion
- * @param[out] hc set to the hash
- */
 void
 TALER_merchant_wire_signature_hash (const char *payto_uri,
                                     const struct TALER_WireSalt *salt,
@@ -104,23 +80,6 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
 }
 
 
-/**
- * Check the signature in @a merch_sig.
- * (Not yet used anywhere.)
- *
- * Expected to be used if/when we get @a merch_pub signed via
- * X.509 *and* have a way for the WebEx wallet to check that the
- * @a merch_pub provided matches that of the X.509 certificate
- * from the Web site. Until then, @a merch_pub cannto be
- * validated (no PKI), and hence there is no point in checking
- * these signatures. (See #5129 and #3946).
- *
- * @param payto_uri URL that is signed
- * @param salt the salt used to salt the @a payto_uri when hashing
- * @param merch_pub master public key of the merchant
- * @param merch_sig signature of the merchant
- * @return #GNUNET_OK if signature is valid
- */
 enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
   const char *payto_uri,
@@ -143,14 +102,6 @@ TALER_merchant_wire_signature_check (
 }
 
 
-/**
- * Create a signed wire statement for the given account. (Not yet used anywhere.)
- *
- * @param payto_uri account specification
- * @param salt the salt used to salt the @a payto_uri when hashing
- * @param merch_priv private key to sign with
- * @param[out] merch_sig where to write the signature
- */
 void
 TALER_merchant_wire_signature_make (
   const char *payto_uri,

@@ -1575,6 +1575,7 @@ deposit_cb (void *cls,
   enum GNUNET_DB_QueryStatus qs;
 
   (void) done;
+  (void) exchange_timestamp;
   GNUNET_assert (rowid >= ppc.last_deposit_serial_id); /* should be monotonically increasing */
   ppc.last_deposit_serial_id = rowid + 1;
 
@@ -2206,6 +2207,8 @@ check_denomination (
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AuditorSignatureP auditor_sig;
 
+  (void) cls;
+  (void) denom_pub;
   qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
                                                 &issue->denom_hash,
                                                 &TALER_ARL_auditor_pub,

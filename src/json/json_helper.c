@@ -232,6 +232,7 @@ parse_abs_time (void *cls,
   json_t *json_t_ms;
   unsigned long long int tval;
 
+  (void) cls;
   if (! json_is_object (root))
   {
     GNUNET_break_op (0);
@@ -313,6 +314,7 @@ parse_abs_time_nbo (void *cls,
   struct GNUNET_TIME_Absolute a;
   struct GNUNET_JSON_Specification ispec;
 
+  (void) cls;
   ispec = *spec;
   ispec.parser = &parse_abs_time;
   ispec.ptr = &a;
@@ -364,6 +366,7 @@ parse_rel_time (void *cls,
   json_t *json_d_ms;
   unsigned long long int tval;
 
+  (void) cls;
   if (! json_is_object (root))
   {
     GNUNET_break_op (0);
@@ -450,6 +453,7 @@ parse_denom_pub (void *cls,
   const char *emsg;
   unsigned int eline;
 
+  (void) cls;
   if (GNUNET_OK !=
       GNUNET_JSON_parse (root,
                          dspec,
@@ -501,6 +505,7 @@ clean_denom_pub (void *cls,
 {
   struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
 
+  (void) cls;
   TALER_denom_pub_free (denom_pub);
 }
 
@@ -543,6 +548,7 @@ parse_denom_sig (void *cls,
   const char *emsg;
   unsigned int eline;
 
+  (void) cls;
   if (GNUNET_OK !=
       GNUNET_JSON_parse (root,
                          dspec,
@@ -594,6 +600,7 @@ clean_denom_sig (void *cls,
 {
   struct TALER_DenominationSignature *denom_sig = spec->ptr;
 
+  (void) cls;
   TALER_denom_sig_free (denom_sig);
 }
 
@@ -636,6 +643,7 @@ parse_blinded_denom_sig (void *cls,
   const char *emsg;
   unsigned int eline;
 
+  (void) cls;
   if (GNUNET_OK !=
       GNUNET_JSON_parse (root,
                          dspec,
@@ -687,6 +695,7 @@ clean_blinded_denom_sig (void *cls,
 {
   struct TALER_BlindedDenominationSignature *denom_sig = spec->ptr;
 
+  (void) cls;
   TALER_blinded_denom_sig_free (denom_sig);
 }
 
@@ -802,6 +811,7 @@ i18n_cleaner (void *cls,
 {
   struct I18nContext *ctx = cls;
 
+  (void) spec;
   GNUNET_free (ctx->lp);
   GNUNET_free (ctx);
 }

@@ -627,6 +627,17 @@ char *
 TALER_JSON_wire_to_payto (const json_t *wire_s);
 
 
+/**
+ * Hash @a extensions.
+ *
+ * @param extensions contract extensions to hash
+ * @param[out] ech where to write the extension hash
+ */
+void
+TALER_deposit_extension_hash (const json_t *extensions,
+                              struct TALER_ExtensionContractHash *ech);
+
+
 #endif /* TALER_JSON_LIB_H_ */
 
 /* End of taler_json_lib.h */

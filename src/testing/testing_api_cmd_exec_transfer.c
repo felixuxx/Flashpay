@@ -60,6 +60,7 @@ transfer_run (void *cls,
 {
   struct TransferState *as = cls;
 
+  (void) cmd;
   as->transfer_proc
     = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                NULL, NULL, NULL,
@@ -94,6 +95,7 @@ transfer_cleanup (void *cls,
 {
   struct TransferState *as = cls;
 
+  (void) cmd;
   if (NULL != as->transfer_proc)
   {
     GNUNET_break (0 ==

@@ -109,6 +109,7 @@ TEH_handler_kyc_wallet (
     .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
   };
 
+  (void) args;
   ret = TALER_MHD_parse_json_data (rc->connection,
                                    root,
                                    spec);

@@ -1759,6 +1759,7 @@ trigger_upload (const char *exchange_url)
 static void
 do_upload (char *const *args)
 {
+  (void) args;
   if (NULL != in)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -2264,6 +2265,7 @@ download_cb (void *cls,
 {
   char *const *args = cls;
 
+  (void) keys;
   mgkh = NULL;
   switch (hr->http_status)
   {
@@ -3443,6 +3445,8 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  (void) cls;
+  (void) cfgfile;
   kcfg = cfg;
   if (GNUNET_OK !=
       TALER_config_get_currency (kcfg,

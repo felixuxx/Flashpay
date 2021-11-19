@@ -1238,6 +1238,7 @@ add_sign_key_cb (void *cls,
   struct SignKeyCtx *ctx = cls;
   struct SigningKey *sk = value;
 
+  (void) pid;
   ctx->next_sk_expire =
     GNUNET_TIME_absolute_min (ctx->next_sk_expire,
                               sk->meta.expire_sign);
@@ -2575,6 +2576,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
   struct TEH_KeyStateHandle *ksh;
   json_t *reply;
 
+  (void) rh;
   ksh = get_key_state (true);
   if (NULL == ksh)
   {

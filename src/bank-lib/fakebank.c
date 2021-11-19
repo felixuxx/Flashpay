@@ -1181,6 +1181,8 @@ free_account (void *cls,
 {
   struct Account *account = val;
 
+  (void) cls;
+  (void) key;
   GNUNET_assert (NULL == account->lp_head);
   GNUNET_free (account->account_name);
   GNUNET_free (account);

@@ -89,6 +89,8 @@ handle_kyc_proof_finished (void *cls,
     .http_status = (unsigned int) response_code
   };
 
+  (void) body;
+  (void) body_size;
   kph->job = NULL;
   switch (response_code)
   {

@@ -163,7 +163,7 @@ rewind_ip_run (void *cls,
         break;
     }
   }
-  if (new_ip > is->ip)
+  if (new_ip > (unsigned int) is->ip)
   {
     /* refuse to jump forward */
     GNUNET_break (0);

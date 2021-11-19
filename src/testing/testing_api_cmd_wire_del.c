@@ -170,26 +170,6 @@ wire_del_cleanup (void *cls,
 }
 
 
-/**
- * Offer internal data from a "wire_del" CMD, to other commands.
- *
- * @param cls closure.
- * @param[out] ret result.
- * @param trait name of the trait.
- * @param index index number of the object to offer.
- *
- * @return #GNUNET_OK on success.
- */
-static int
-wire_del_traits (void *cls,
-                 const void **ret,
-                 const char *trait,
-                 unsigned int index)
-{
-  return GNUNET_NO;
-}
-
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_wire_del (const char *label,
                             const char *payto_uri,
@@ -207,8 +187,7 @@ TALER_TESTING_cmd_wire_del (const char *label,
       .cls = ds,
       .label = label,
       .run = &wire_del_run,
-      .cleanup = &wire_del_cleanup,
-      .traits = &wire_del_traits
+      .cleanup = &wire_del_cleanup
     };
 
     return cmd;

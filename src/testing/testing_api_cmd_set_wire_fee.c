@@ -206,26 +206,6 @@ wire_add_cleanup (void *cls,
 }
 
 
-/**
- * Offer internal data from a "wire_add" CMD, to other commands.
- *
- * @param cls closure.
- * @param[out] ret result.
- * @param trait name of the trait.
- * @param index index number of the object to offer.
- *
- * @return #GNUNET_OK on success.
- */
-static int
-wire_add_traits (void *cls,
-                 const void **ret,
-                 const char *trait,
-                 unsigned int index)
-{
-  return GNUNET_NO;
-}
-
-
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_set_wire_fee (const char *label,
                                 const char *wire_method,
@@ -247,8 +227,7 @@ TALER_TESTING_cmd_set_wire_fee (const char *label,
       .cls = ds,
       .label = label,
       .run = &wire_add_run,
-      .cleanup = &wire_add_cleanup,
-      .traits = &wire_add_traits
+      .cleanup = &wire_add_cleanup
     };
 
     return cmd;

@@ -61,6 +61,7 @@ prepare_daemon (void);
 static void
 run_daemon (void *cls)
 {
+  (void) cls;
   mhd_task = NULL;
   do {
     triggered = false;

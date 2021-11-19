@@ -281,7 +281,7 @@ reserve_status_cb (void *cls,
     memset (found,
             0,
             sizeof (found));
-    for (unsigned int i = 0; i<=is->ip; i++)
+    for (unsigned int i = 0; i<= (unsigned int) is->ip; i++)
     {
       struct TALER_TESTING_Command *cmd = &is->commands[i];
 

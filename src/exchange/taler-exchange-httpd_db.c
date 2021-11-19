@@ -182,7 +182,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     }
     /* make sure callback did not violate invariants! */
     GNUNET_assert ( (NULL == mhd_ret) ||
-                    (-1 == *mhd_ret) );
+                    (-1 == (int) *mhd_ret) );
     if (0 <= qs)
       return GNUNET_OK;
   }

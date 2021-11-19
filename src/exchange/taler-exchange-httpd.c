@@ -467,6 +467,7 @@ handler_seed (struct TEH_RequestContext *rc,
   MHD_RESULT ret;
   struct MHD_Response *resp;
 
+  (void) args;
   body = malloc (SEED_SIZE); /* must use malloc(), because MHD will use free() */
   if (NULL == body)
     return MHD_NO;
@@ -1712,6 +1713,9 @@ run (void *cls,
   enum TALER_MHD_GlobalOptions go;
   int fh;
 
+  (void) cls;
+  (void) args;
+  (void ) cfgfile;
   go = TALER_MHD_GO_NONE;
   if (connection_close)
     go |= TALER_MHD_GO_FORCE_CONNECTION_CLOSE;

@@ -476,6 +476,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_Amount *amount,
                    const struct TALER_MerchantWireHash *h_wire,
                    const struct TALER_PrivateContractHash *h_contract_terms,
+                   const struct TALER_ExtensionContractHash *ech,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
@@ -490,7 +491,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                                    &dki->fee_deposit,
                                    h_wire,
                                    h_contract_terms,
-                                   NULL /* FIXME: h_extensions! */,
+                                   ech,
                                    denom_pub_hash,
                                    timestamp,
                                    merchant_pub,
@@ -513,7 +514,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
       .coin_pub = *coin_pub,
       .denom_pub_hash = *denom_pub_hash,
       .denom_sig = *denom_sig,
-      .age_commitment_hash = NULL /* FIXME-Oec */
+      .age_commitment_hash = { 0 } /* FIXME-Oec */
     };
 
     if (GNUNET_YES !=
@@ -567,8 +568,12 @@ TALER_EXCHANGE_deposit (
   struct TALER_MerchantWireHash h_wire;
   struct TALER_DenominationHash denom_pub_hash;
   struct TALER_Amount amount_without_fee;
+  struct TALER_ExtensionContractHash ech;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
 
+  if (NULL != extension_details)
+    TALER_deposit_extension_hash (extension_details,
+                                  &ech);
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
@@ -623,6 +628,9 @@ TALER_EXCHANGE_deposit (
                          amount,
                          &h_wire,
                          h_contract_terms,
+                         (NULL != extension_details)
+                         ? &ech
+                         : NULL,
                          coin_pub,
                          denom_sig,
                          denom_pub,

@@ -139,6 +139,7 @@ insert_deposit_run (void *cls,
   struct TALER_DenominationPublicKey dpk;
   struct TALER_DenominationPrivateKey denom_priv;
 
+  (void) cmd;
   // prepare and store issue first.
   fake_issue (&issue);
   GNUNET_assert (GNUNET_OK ==
@@ -283,6 +284,7 @@ insert_deposit_cleanup (void *cls,
 {
   struct InsertDepositState *ids = cls;
 
+  (void) cmd;
   GNUNET_free (ids);
 }
 

@@ -419,6 +419,7 @@ handle_revoke_request (struct TES_Client *client,
   struct Key *key;
   struct Key *nkey;
 
+  (void) client;
   key = NULL;
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   for (struct Key *pos = keys_head;
@@ -832,6 +833,7 @@ import_key (void *cls,
   int fd;
   struct stat sbuf;
 
+  (void) cls;
   {
     struct stat lsbuf;
 

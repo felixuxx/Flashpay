@@ -41,30 +41,6 @@ struct AuthchangeState
 
 
 /**
- * No traits to offer, just provide a stub to be called when
- * some CMDs iterates through the list of all the commands.
- *
- * @param cls closure.
- * @param[out] ret result.
- * @param trait name of the trait.
- * @param index index number of the trait to return.
- * @return #GNUNET_OK on success.
- */
-static int
-authchange_traits (void *cls,
-                   const void **ret,
-                   const char *trait,
-                   unsigned int index)
-{
-  (void) cls;
-  (void) ret;
-  (void) trait;
-  (void) index;
-  return GNUNET_NO;
-}
-
-
-/**
  * Run the command.
  *
  * @param cls closure.
@@ -78,6 +54,7 @@ authchange_run (void *cls,
 {
   struct AuthchangeState *ss = cls;
 
+  (void) cmd;
   if (NULL != is->ctx)
   {
     GNUNET_CURL_fini (is->ctx);
@@ -142,8 +119,7 @@ TALER_TESTING_cmd_set_authorization (const char *label,
       .cls = ss,
       .label = label,
       .run = &authchange_run,
-      .cleanup = &authchange_cleanup,
-      .traits = &authchange_traits
+      .cleanup = &authchange_cleanup
     };
 
     return cmd;

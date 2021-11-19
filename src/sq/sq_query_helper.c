@@ -97,6 +97,7 @@ qconv_amount_nbo (void *cls,
   struct TALER_Amount amount_hbo;
 
   (void) cls;
+  (void) data_len;
   TALER_amount_ntoh (&amount_hbo,
                      amount);
   return qconv_amount (cls,

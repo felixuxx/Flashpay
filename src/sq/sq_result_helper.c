@@ -113,11 +113,15 @@ extract_amount_nbo (void *cls,
   struct TALER_AmountNBO *amount = dst;
   struct TALER_Amount amount_hbo;
   size_t amount_hbo_size = sizeof (struct TALER_Amount);
-  if (GNUNET_YES != extract_amount (cls,
-                                    result,
-                                    column,
-                                    &amount_hbo_size,
-                                    &amount_hbo))
+
+  (void) cls;
+  (void) dst_size;
+  if (GNUNET_YES !=
+      extract_amount (cls,
+                      result,
+                      column,
+                      &amount_hbo_size,
+                      &amount_hbo))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;

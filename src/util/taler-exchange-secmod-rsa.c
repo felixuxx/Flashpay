@@ -561,6 +561,7 @@ handle_revoke_request (struct TES_Client *client,
   struct DenominationKey *ndk;
   struct Denomination *denom;
 
+  (void) client;
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
                                           &rr->h_rsa.hash);

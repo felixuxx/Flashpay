@@ -837,4 +837,15 @@ TALER_JSON_get_error_code2 (const void *data,
 }
 
 
+void
+TALER_deposit_extension_hash (const json_t *extensions,
+                              struct TALER_ExtensionContractHash *ech)
+{
+  GNUNET_assert (GNUNET_OK ==
+                 dump_and_hash (extensions,
+                                "taler-contract-extensions",
+                                &ech->hash));
+}
+
+
 /* End of json/json.c */

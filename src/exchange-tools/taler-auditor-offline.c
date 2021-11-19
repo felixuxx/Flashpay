@@ -547,6 +547,7 @@ do_upload (char *const *args)
 {
   char *exchange_url;
 
+  (void) args;
   if (GNUNET_YES == GNUNET_is_zero (&auditor_pub))
   {
     /* private key not available, try configuration for public key */
@@ -657,6 +658,8 @@ keys_cb (
 {
   char *const *args = cls;
 
+  (void) keys;
+  (void) compat;
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
@@ -1375,6 +1378,8 @@ run (void *cls,
      const char *cfgfile,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
+  (void) cls;
+  (void) cfgfile;
   kcfg = cfg;
   if (GNUNET_OK !=
       TALER_config_get_currency (kcfg,
