@@ -417,7 +417,6 @@ more:
       if (off < sizeof (struct GNUNET_MessageHeader))
         continue;
       msize = ntohs (hdr->size);
-      GNUNET_assert (msize <= sizeof (buf));
       if (off < msize)
         continue;
       switch (ntohs (hdr->type))

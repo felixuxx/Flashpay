@@ -271,7 +271,6 @@ TES_read_work (void *cls,
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
     }
-    GNUNET_assert (msize <= sizeof (client->iobuf));
   } while (off < msize);
 
   if (off > msize)
