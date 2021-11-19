@@ -490,6 +490,7 @@ refresh_reveal_cleanup (void *cls,
 {
   struct RefreshRevealState *rrs = cls;
 
+  (void) cmd;
   if (NULL != rrs->rrh)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -741,6 +742,7 @@ refresh_link_run (void *cls,
   const struct TALER_TESTING_Command *melt_cmd;
   const struct TALER_TESTING_Command *coin_cmd;
 
+  (void) cmd;
   rls->is = is;
   reveal_cmd = TALER_TESTING_interpreter_lookup_command (rls->is,
                                                          rls->reveal_reference);
@@ -855,6 +857,11 @@ do_melt_retry (void *cls)
   rms->retry_task = NULL;
   rms->is->commands[rms->is->ip].last_req_time
     = GNUNET_TIME_absolute_get ();
+  if (NULL != rms->refresh_data)
+  {
+    json_decref (rms->refresh_data);
+    rms->refresh_data = NULL;
+  }
   melt_run (rms,
             NULL,
             rms->is);
@@ -880,6 +887,7 @@ melt_cb (void *cls,
 {
   struct RefreshMeltState *rms = cls;
 
+  (void) exchange_pub;
   rms->rmh = NULL;
   if (rms->expected_response_code != hr->http_status)
   {
@@ -966,6 +974,7 @@ melt_run (void *cls,
   };
   const char **melt_fresh_amounts;
 
+  (void) cmd;
   if (NULL == (melt_fresh_amounts = rms->melt_fresh_amounts))
     melt_fresh_amounts = default_melt_fresh_amounts;
   rms->is = is;
@@ -1029,8 +1038,9 @@ melt_run (void *cls,
     {
       const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk;
 
-      if (GNUNET_OK != TALER_string_to_amount
-            (melt_fresh_amounts[i], &fresh_amount))
+      if (GNUNET_OK !=
+          TALER_string_to_amount (melt_fresh_amounts[i],
+                                  &fresh_amount))
       {
         GNUNET_break (0);
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -1060,7 +1070,8 @@ melt_run (void *cls,
       /* Make a deep copy of the RSA key */
       TALER_denom_pub_deep_copy (&rms->fresh_pks[i].key,
                                  &fresh_pk->key);
-    }
+    } /* end for */
+    GNUNET_assert (NULL == rms->refresh_data);
     rms->refresh_data
       = TALER_EXCHANGE_refresh_prepare (rms->melt_priv,
                                         &melt_amount,
@@ -1102,6 +1113,7 @@ melt_cleanup (void *cls,
 {
   struct RefreshMeltState *rms = cls;
 
+  (void) cmd;
   if (NULL != rms->rmh)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,

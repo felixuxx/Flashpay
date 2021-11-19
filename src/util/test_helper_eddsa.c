@@ -118,6 +118,7 @@ key_cb (void *cls,
         const struct TALER_SecurityModulePublicKeyP *sm_pub,
         const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
+  (void) cls;
   (void) sm_pub;
   (void) sm_sig;
   if (0 == validity_duration.rel_value_us)

@@ -75,6 +75,7 @@ run (void *cls,
 {
   struct TALER_WireTransferIdentifierRawP wtid;
 
+  (void) cls;
   memset (&wtid, 42, sizeof (wtid));
 
   {
@@ -165,6 +166,8 @@ main (int argc,
   int rv;
   const char *cfgfile;
 
+  (void) argc;
+  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

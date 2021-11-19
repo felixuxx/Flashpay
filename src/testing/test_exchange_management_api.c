@@ -145,6 +145,7 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  (void) cls;
   TALER_TESTING_run_with_fakebank (is,
                                    commands,
                                    bc.exchange_auth.wire_gateway_url);
@@ -155,6 +156,8 @@ int
 main (int argc,
       char *const *argv)
 {
+  (void) argc;
+  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

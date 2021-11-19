@@ -1386,6 +1386,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Currency `%s' does not match our configuration\n",
                   amount.currency);
+      json_decref (json);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_CONFLICT,
@@ -1411,6 +1412,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Reserve public key not unique\n");
+      json_decref (json);
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_CONFLICT,

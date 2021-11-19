@@ -143,6 +143,7 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  (void) cls;
   TALER_TESTING_run_with_fakebank (is,
                                    all,
                                    bc.exchange_auth.wire_gateway_url);
@@ -155,6 +156,7 @@ main (int argc,
 {
   const char *plugin_name;
 
+  (void) argc;
   /* these might get in the way */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

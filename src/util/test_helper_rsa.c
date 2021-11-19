@@ -99,6 +99,22 @@ static struct KeyData keys[MAX_KEYS];
 
 
 /**
+ * Release memory occupied by #keys.
+ */
+static void
+free_keys (void)
+{
+  for (unsigned int i = 0; i<MAX_KEYS; i++)
+    if (keys[i].valid)
+    {
+      TALER_denom_pub_free (&keys[i].denom_pub);
+      GNUNET_assert (num_keys > 0);
+      num_keys--;
+    }
+}
+
+
+/**
  * Function called with information about available keys for signing.  Usually
  * only called once per key upon connect. Also called again in case a key is
  * being revoked, in that case with an @a end_time of zero.  Stores the keys
@@ -127,6 +143,7 @@ key_cb (void *cls,
         const struct TALER_SecurityModulePublicKeyP *sm_pub,
         const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
+  (void) cls;
   (void) sm_pub;
   (void) sm_sig;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -472,9 +489,6 @@ par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
   for (unsigned int i = 0; i<NUM_CORES; i++)
   {
     pids[i] = fork ();
-    memset (keys,
-            0,
-            sizeof (keys));
     num_keys = 0;
     GNUNET_assert (-1 != pids[i]);
     if (0 == pids[i])
@@ -488,6 +502,7 @@ par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
       ret = perf_signing (dh,
                           "parallel");
       TALER_CRYPTO_helper_rsa_disconnect (dh);
+      free_keys ();
       exit (ret);
     }
   }
@@ -571,16 +586,10 @@ run_test (void)
     ret = perf_signing (dh,
                         "sequential");
   TALER_CRYPTO_helper_rsa_disconnect (dh);
+  free_keys ();
   if (0 == ret)
     ret = par_signing (cfg);
   /* clean up our state */
-  for (unsigned int i = 0; i<MAX_KEYS; i++)
-    if (keys[i].valid)
-    {
-      TALER_denom_pub_free (&keys[i].denom_pub);
-      GNUNET_assert (num_keys > 0);
-      num_keys--;
-    }
   GNUNET_CONFIGURATION_destroy (cfg);
   return ret;
 }

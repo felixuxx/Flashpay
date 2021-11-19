@@ -79,6 +79,7 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  (void) cls;
   TALER_TESTING_run (is,
                      commands);
 }
@@ -88,6 +89,8 @@ int
 main (int argc,
       char *const *argv)
 {
+  (void) argc;
+  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

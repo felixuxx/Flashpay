@@ -155,7 +155,8 @@ run (void *cls,
    * NOTE: not all CMDs actually need the twister,
    * so it may be better to move those into the "main"
    * lib test suite.
-   */struct TALER_TESTING_Command refund[] = {
+   */
+  struct TALER_TESTING_Command refund[] = {
     CMD_TRANSFER_TO_EXCHANGE ("create-reserve-r1",
                               "EUR:5.01"),
     CMD_EXEC_WIREWATCH ("wirewatch-r1"),
@@ -183,7 +184,6 @@ run (void *cls,
                               MHD_HTTP_FORBIDDEN,
                               "EUR:5",
                               "deposit-refund-1"),
-
     /* This next deposit CMD is only used to provide a
      * good merchant signature to the next (failing) refund
      * operations.  */
@@ -210,6 +210,7 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+#if 0
   /**
    * Test that we don't get errors when the keys from the exchange
    * are out of date.
@@ -234,6 +235,7 @@ run (void *cls,
                                        MHD_HTTP_OK),
     TALER_TESTING_cmd_end ()
   };
+#endif
 
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_wire_add ("add-wire-account",
@@ -248,11 +250,14 @@ run (void *cls,
                              refresh_409_conflict),
     TALER_TESTING_cmd_batch ("refund",
                              refund),
+#if 0
     TALER_TESTING_cmd_batch ("expired-keys",
                              expired_keys),
+#endif
     TALER_TESTING_cmd_end ()
   };
 
+  (void) cls;
   TALER_TESTING_run_with_fakebank (is,
                                    commands,
                                    bc.exchange_auth.wire_gateway_url);
@@ -280,6 +285,8 @@ main (int argc,
 {
   int ret;
 
+  (void) argc;
+  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

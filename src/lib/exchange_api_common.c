@@ -679,7 +679,7 @@ TALER_EXCHANGE_verify_coin_history (
          for the exchange to lie here, so not checking is probably OK
          (an auditor ought to check, though). Then again, we similarly
          had no reason to check the merchant's signature (other than a
-         well-formendess check). *///
+         well-formendess check). */
 
       /* check that refund fee matches our expectations from /keys! */
       if (NULL != dk)

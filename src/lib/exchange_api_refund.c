@@ -166,6 +166,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
   if (0 == len)
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
   have_deposit = false;
@@ -191,6 +192,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     if (0 == strcasecmp (type,
@@ -205,7 +207,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct GNUNET_TIME_Absolute refund_deadline;
       struct TALER_CoinSpendSignatureP sig;
-      struct GNUNET_JSON_Specification spec[] = {
+      struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
@@ -227,10 +229,11 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (transaction,
-                             spec,
+                             ispec,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (GNUNET_OK !=
@@ -247,6 +250,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                        &sig))
       {
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if ( (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
@@ -256,6 +260,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       {
         /* deposit information is about a different merchant/contract */
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (have_deposit)
@@ -266,6 +271,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                        &dtotal))
         {
           GNUNET_break_op (0);
+          GNUNET_JSON_parse_free (spec);
           return GNUNET_SYSERR;
         }
         GNUNET_break (0 <=
@@ -290,7 +296,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
         .coin_pub = rh->depconf.coin_pub
       };
-      struct GNUNET_JSON_Specification spec[] = {
+      struct GNUNET_JSON_Specification ispec[] = {
         TALER_JSON_spec_amount_any ("refund_fee",
                                     &refund_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_sig",
@@ -306,10 +312,11 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (transaction,
-                             spec,
+                             ispec,
                              NULL, NULL))
       {
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (0 >
@@ -318,6 +325,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                             &amount))
       {
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       TALER_amount_hton (&rr.refund_amount,
@@ -330,6 +338,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                       &rr.merchant.eddsa_pub))
       {
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if ( (0 != GNUNET_memcmp (&rh->depconf.h_contract_terms,
@@ -339,6 +348,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       {
         /* refund is about a different merchant/contract */
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
       if (rr.rtransaction_id == rh->depconf.rtransaction_id)
@@ -346,6 +356,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
         /* Eh, this shows either a dependency failure or idempotency,
            but must not happen in a conflict reply. Fail! */
         GNUNET_break_op (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
 
@@ -356,6 +367,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                        &rtotal))
         {
           GNUNET_break_op (0);
+          GNUNET_JSON_parse_free (spec);
           return GNUNET_SYSERR;
         }
         GNUNET_break (0 <=
@@ -376,6 +388,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                   "Unexpected type `%s' in response for exchange refund\n",
                   type);
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
   }
@@ -393,6 +406,7 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                             &amount))
       {
         GNUNET_break (0);
+        GNUNET_JSON_parse_free (spec);
         return GNUNET_SYSERR;
       }
     }
@@ -405,10 +419,12 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                               &rtotal))
   {
     /* dtotal < rtotal: good! */
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_OK;
   }
   /* this fails to prove a conflict */
   GNUNET_break_op (0);
+  GNUNET_JSON_parse_free (spec);
   return GNUNET_SYSERR;
 }
 
@@ -422,14 +438,15 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
  * @param json json reply with the signature
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                              const json_t *json)
 {
   json_t *h;
   json_t *e;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("history", &h),
+    GNUNET_JSON_spec_json ("history",
+                           &h),
     GNUNET_JSON_spec_end ()
   };
 
@@ -445,6 +462,7 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
        (1 != json_array_size (h) ) )
   {
     GNUNET_break_op (0);
+    GNUNET_JSON_parse_free (spec);
     return GNUNET_SYSERR;
   }
   e = json_array_get (h, 0);
@@ -459,7 +477,7 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       .coin_pub = rh->depconf.coin_pub
     };
     uint64_t rtransaction_id;
-    struct GNUNET_JSON_Specification spec[] = {
+    struct GNUNET_JSON_Specification ispec[] = {
       TALER_JSON_spec_amount_any ("amount",
                                   &amount),
       GNUNET_JSON_spec_string ("type",
@@ -479,10 +497,11 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
 
     if (GNUNET_OK !=
         GNUNET_JSON_parse (e,
-                           spec,
+                           ispec,
                            NULL, NULL))
     {
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     rr.rtransaction_id = GNUNET_htonll (rtransaction_id);
@@ -495,6 +514,7 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                     &rh->depconf.merchant.eddsa_pub))
     {
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
     if ( (rr.rtransaction_id != rh->depconf.rtransaction_id) ||
@@ -506,9 +526,11 @@ verify_failed_dependency_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                      &rr.refund_amount)) )
     {
       GNUNET_break_op (0);
+      GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
   }
+  GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
 }
 

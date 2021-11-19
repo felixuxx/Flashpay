@@ -198,11 +198,11 @@ serialize_melt_data (const struct MeltData *md)
         GNUNET_JSON_pack_data_auto ("ps",
                                     &md->fresh_coins[j][i]));
       GNUNET_assert (0 ==
-                     json_array_append (planchet_secrets,
-                                        ps));
+                     json_array_append_new (planchet_secrets,
+                                            ps));
     }
     GNUNET_assert (0 ==
-                   json_array_append (
+                   json_array_append_new (
                      fresh_coins,
                      GNUNET_JSON_PACK (
                        TALER_JSON_pack_denom_pub ("denom_pub",
@@ -299,6 +299,7 @@ TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data,
     {
       GNUNET_break (0);
       ok = false;
+      GNUNET_JSON_parse_free (ispec);
       break;
     }
     for (unsigned int j = 0; j<TALER_CNC_KAPPA; j++)
@@ -320,10 +321,12 @@ TALER_EXCHANGE_deserialize_melt_data_ (const json_t *melt_data,
         break;
       }
     }
+    json_decref (planchet_secrets);
     if (! ok)
       break;
   }
 
+  GNUNET_JSON_parse_free (spec);
   if (! ok)
   {
     TALER_EXCHANGE_free_melt_data_ (md);

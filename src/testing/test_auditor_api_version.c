@@ -91,6 +91,7 @@ version_cb (void *cls,
             const struct TALER_AUDITOR_VersionInformation *vi,
             enum TALER_AUDITOR_VersionCompatibility compat)
 {
+  (void) cls;
   (void) hr;
   if ( (NULL != vi) &&
        (TALER_AUDITOR_VC_MATCH == compat) )
@@ -134,6 +135,8 @@ main (int argc,
 {
   struct GNUNET_OS_Process *proc;
 
+  (void) argc;
+  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

@@ -375,6 +375,8 @@ check_refresh_reveal_cb (
   const struct TALER_TransferPublicKeyP *tpr)
 {
   (void) cls;
+
+  GNUNET_assert (TALER_CNC_KAPPA - 1 == num_tprivs);
   /* compare the refresh commit coin arrays */
   for (unsigned int cnt = 0; cnt < num_freshcoins; cnt++)
   {
@@ -433,6 +435,7 @@ audit_refresh_session_cb (void *cls,
   (void) cls;
   (void) rowid;
   (void) denom_pub;
+  (void) coin_pub;
   (void) coin_sig;
   (void) amount_with_fee;
   (void) noreveal_index;
@@ -717,6 +720,16 @@ cb_wt_never (void *cls,
              const struct TALER_Amount *coin_value,
              const struct TALER_Amount *coin_fee)
 {
+  (void) cls;
+  (void) serial_id;
+  (void) merchant_pub;
+  (void) account_payto_uri;
+  (void) exec_time;
+  (void) h_contract_terms;
+  (void) denom_pub;
+  (void) coin_pub;
+  (void) coin_value;
+  (void) coin_fee;
   GNUNET_assert (0); /* this statement should be unreachable */
 }
 
@@ -747,6 +760,8 @@ cb_wt_check (void *cls,
              const struct TALER_Amount *coin_value,
              const struct TALER_Amount *coin_fee)
 {
+  (void) row_id;
+  (void) denom_pub;
   GNUNET_assert (cls == &cb_wt_never);
   GNUNET_assert (0 == GNUNET_memcmp (merchant_pub,
                                      &merchant_pub_wt));
@@ -890,6 +905,12 @@ audit_deposit_cb (void *cls,
                   const struct TALER_DenominationPublicKey *denom_pub,
                   bool done)
 {
+  (void) cls;
+  (void) rowid;
+  (void) exchange_timestamp;
+  (void) deposit;
+  (void) denom_pub;
+  (void) done;
   auditor_row_cnt++;
   return GNUNET_OK;
 }
@@ -911,7 +932,7 @@ audit_deposit_cb (void *cls,
  * @param amount_with_fee amount that was deposited including fee
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 audit_refund_cb (void *cls,
                  uint64_t rowid,
                  const struct TALER_DenominationPublicKey *denom_pub,
@@ -948,7 +969,7 @@ audit_refund_cb (void *cls,
  * @param execution_date when did we receive the funds
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 audit_reserve_in_cb (void *cls,
                      uint64_t rowid,
                      const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -982,7 +1003,7 @@ audit_reserve_in_cb (void *cls,
  * @param amount_with_fee amount that was withdrawn
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 audit_reserve_out_cb (void *cls,
                       uint64_t rowid,
                       const struct TALER_BlindedCoinHash *h_blind_ev,
@@ -1010,7 +1031,7 @@ audit_reserve_out_cb (void *cls,
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 test_gc (void)
 {
   struct DenomKeyPair *dkp;
@@ -1062,7 +1083,7 @@ test_gc (void)
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 test_wire_fees (void)
 {
   struct GNUNET_TIME_Absolute start_date;
@@ -1171,7 +1192,7 @@ static struct TALER_Amount wire_out_amount;
  * @param amount amount that was wired
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to stop iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 audit_wire_cb (void *cls,
                uint64_t rowid,
                struct GNUNET_TIME_Absolute date,
@@ -1179,6 +1200,9 @@ audit_wire_cb (void *cls,
                const char *payto_uri,
                const struct TALER_Amount *amount)
 {
+  (void) cls;
+  (void) rowid;
+  (void) payto_uri;
   auditor_row_cnt++;
   GNUNET_assert (0 ==
                  TALER_amount_cmp (amount,
@@ -1196,7 +1220,7 @@ audit_wire_cb (void *cls,
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
 {
   auditor_row_cnt = 0;
@@ -1347,7 +1371,7 @@ drop:
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 recoup_cb (void *cls,
            uint64_t rowid,
            struct GNUNET_TIME_Absolute timestamp,
@@ -1360,6 +1384,10 @@ recoup_cb (void *cls,
 {
   const union TALER_DenominationBlindingKeyP *cb = cls;
 
+  (void) timestamp;
+  (void) amount;
+  (void) reserve_pub;
+  (void) coin_sig;
   FAILIF (NULL == cb);
   FAILIF (0 != GNUNET_memcmp (cb,
                               coin_blind));
@@ -1666,6 +1694,7 @@ run (void *cls)
             TALER_denom_pub_verify (&dkp->pub,
                                     &ds,
                                     &c_hash));
+    TALER_denom_sig_free (&ds);
   }
 
   RND_BLK (&coin_sig);
@@ -2197,6 +2226,7 @@ main (int argc,
   char *testname;
   struct GNUNET_CONFIGURATION_Handle *cfg;
 
+  (void) argc;
   result = -1;
   if (NULL == (plugin_name = strrchr (argv[0], (int) '-')))
   {

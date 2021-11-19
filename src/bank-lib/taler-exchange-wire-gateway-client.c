@@ -473,6 +473,7 @@ execute_wire_transfer (void)
                             buf_size,
                             &confirmation_cb,
                             NULL);
+  GNUNET_free (buf);
   if (NULL == eh)
   {
     fprintf (stderr,

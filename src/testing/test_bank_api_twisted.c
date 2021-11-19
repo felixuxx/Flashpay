@@ -86,6 +86,7 @@ run (void *cls,
   /* Route our commands through twister. */
   struct TALER_BANK_AuthenticationData exchange_auth_twisted;
 
+  (void) cls;
   memset (&wtid,
           0x5a,
           sizeof (wtid));
@@ -165,6 +166,7 @@ main (int argc,
   int ret;
   const char *cfgfilename;
 
+  (void) argc;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");

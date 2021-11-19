@@ -902,6 +902,8 @@ run (void *cls,
   struct TALER_TESTING_Command reserve_open_close[(RESERVE_OPEN_CLOSE_ITERATIONS
                                                    * RESERVE_OPEN_CLOSE_CHUNK)
                                                   + 1];
+
+  (void) cls;
   for (unsigned int i = 0;
        i < RESERVE_OPEN_CLOSE_ITERATIONS;
        i++)
@@ -980,6 +982,8 @@ int
 main (int argc,
       char *const *argv)
 {
+  (void) argc;
+  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
