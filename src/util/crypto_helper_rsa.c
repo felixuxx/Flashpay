@@ -298,8 +298,8 @@ TALER_CRYPTO_helper_rsa_poll (struct TALER_CRYPTO_RsaDenominationHelper *dh)
     ssize_t ret;
 
     ret = recv (dh->sock,
-                buf,
-                sizeof (buf),
+                buf + off,
+                sizeof (buf) - off,
                 (dh->synced && (0 == off))
                 ? MSG_DONTWAIT
                 : 0);

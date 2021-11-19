@@ -91,6 +91,7 @@ TES_transmit (int sock,
                         pos,
                         end - off,
                         0 /* no flags => blocking! */);
+
     if ( (-1 == ret) &&
          ( (EAGAIN == errno) ||
            (EINTR == errno) ) )

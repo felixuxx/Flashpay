@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/secmod_common.c
+ * @file util/crypto_helper_common.c
  * @brief Common functions for the exchange security modules
  * @author Florian Dold <dold@taler.net>
  */
