@@ -281,6 +281,14 @@ handle_sign_request (struct TES_Client *client,
 
     if (0 != key->rc)
       break; /* do later */
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Removing past key %s (expired %s ago)\n",
+                key->filename,
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_duration (
+                    GNUNET_TIME_absolute_add (key->anchor,
+                                              duration)),
+                  GNUNET_YES));
     GNUNET_CONTAINER_DLL_remove (keys_head,
                                  keys_tail,
                                  key);
@@ -710,6 +718,14 @@ update_keys (void *cls)
       key_gen++;
       wake = true;
     }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Removing past key %s (expired %s ago)\n",
+                keys_head->filename,
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_duration (
+                    GNUNET_TIME_absolute_add (keys_head->anchor,
+                                              duration)),
+                  GNUNET_YES));
     purge_key (keys_head);
   }
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
@@ -1063,7 +1079,15 @@ run (void *cls,
   GNUNET_DISK_directory_scan (keydir,
                               &import_key,
                               NULL);
-
+  if ( (NULL != keys_head) &&
+       (GNUNET_TIME_absolute_is_future (keys_head->anchor)) )
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Existing anchor is in the future. Refusing to start\n");
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
   /* start job to keep keys up-to-date; MUST be run before the #listen_task,
      hence with priority. */
   keygen_task = GNUNET_SCHEDULER_add_with_priority (

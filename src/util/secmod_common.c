@@ -252,8 +252,9 @@ TES_read_work (void *cls,
                              "recv");
         continue;
       }
-      GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                           "recv");
+      if (ECONNRESET != errno)
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                             "recv");
       return GNUNET_SYSERR;
     }
     if (0 == buf_size)

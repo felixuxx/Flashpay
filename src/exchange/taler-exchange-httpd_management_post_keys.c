@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -121,6 +121,7 @@ add_keys (void *cls,
   /* activate all denomination keys */
   for (unsigned int i = 0; i<akc->nd_sigs; i++)
   {
+    struct DenomSig *d = &akc->d_sigs[i];
     enum GNUNET_DB_QueryStatus qs;
     bool is_active = false;
     struct TALER_EXCHANGEDB_DenominationKeyMetaData meta;
@@ -129,7 +130,7 @@ add_keys (void *cls,
     /* For idempotency, check if the key is already active */
     qs = TEH_plugin->lookup_denomination_key (
       TEH_plugin->cls,
-      &akc->d_sigs[i].h_denom_pub,
+      &d->h_denom_pub,
       &meta);
     if (qs < 0)
     {
@@ -146,7 +147,7 @@ add_keys (void *cls,
     {
       enum GNUNET_GenericReturnValue rv;
 
-      rv = TEH_keys_load_fees (&akc->d_sigs[i].h_denom_pub,
+      rv = TEH_keys_load_fees (&d->h_denom_pub,
                                &denom_pub,
                                &meta);
       switch (rv)
@@ -156,14 +157,14 @@ add_keys (void *cls,
           connection,
           MHD_HTTP_INTERNAL_SERVER_ERROR,
           TALER_EC_EXCHANGE_GENERIC_BAD_CONFIGURATION,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
+          GNUNET_h2s (&d->h_denom_pub.hash));
         return GNUNET_DB_STATUS_HARD_ERROR;
       case GNUNET_NO:
         *mhd_ret = TALER_MHD_reply_with_error (
           connection,
           MHD_HTTP_NOT_FOUND,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
+          GNUNET_h2s (&d->h_denom_pub.hash));
         return GNUNET_DB_STATUS_HARD_ERROR;
       case GNUNET_OK:
         break;
@@ -175,39 +176,42 @@ add_keys (void *cls,
     }
 
     /* check signature is valid */
+    if (GNUNET_OK !=
+        TALER_exchange_offline_denom_validity_verify (
+          &d->h_denom_pub,
+          meta.start,
+          meta.expire_withdraw,
+          meta.expire_deposit,
+          meta.expire_legal,
+          &meta.value,
+          &meta.fee_withdraw,
+          &meta.fee_deposit,
+          &meta.fee_refresh,
+          &meta.fee_refund,
+          &TEH_master_public_key,
+          &d->master_sig))
     {
-      if (GNUNET_OK !=
-          TALER_exchange_offline_denom_validity_verify (
-            &akc->d_sigs[i].h_denom_pub,
-            meta.start,
-            meta.expire_withdraw,
-            meta.expire_deposit,
-            meta.expire_legal,
-            &meta.value,
-            &meta.fee_withdraw,
-            &meta.fee_deposit,
-            &meta.fee_refresh,
-            &meta.fee_refund,
-            &TEH_master_public_key,
-            &akc->d_sigs[i].master_sig))
-      {
-        GNUNET_break_op (0);
-        *mhd_ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_FORBIDDEN,
-          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      }
+      GNUNET_break_op (0);
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
+        GNUNET_h2s (&d->h_denom_pub.hash));
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (is_active)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Denomination key %s already active, skipping\n",
+                  GNUNET_h2s (&d->h_denom_pub.hash));
       continue; /* skip, already known */
+    }
     qs = TEH_plugin->add_denomination_key (
       TEH_plugin->cls,
-      &akc->d_sigs[i].h_denom_pub,
+      &d->h_denom_pub,
       &denom_pub,
       &meta,
-      &akc->d_sigs[i].master_sig);
+      &d->master_sig);
     TALER_denom_pub_free (&denom_pub);
     if (qs < 0)
     {
@@ -222,20 +226,20 @@ add_keys (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Added offline signature for denomination `%s'\n",
-                GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
+                GNUNET_h2s (&d->h_denom_pub.hash));
     GNUNET_assert (0 != qs);
   }
 
-
   for (unsigned int i = 0; i<akc->ns_sigs; i++)
   {
+    struct SigningSig *s = &akc->s_sigs[i];
     enum GNUNET_DB_QueryStatus qs;
     bool is_active = false;
     struct TALER_EXCHANGEDB_SignkeyMetaData meta;
 
     qs = TEH_plugin->lookup_signing_key (
       TEH_plugin->cls,
-      &akc->s_sigs[i].exchange_pub,
+      &s->exchange_pub,
       &meta);
     if (qs < 0)
     {
@@ -251,7 +255,7 @@ add_keys (void *cls,
     if (0 == qs)
     {
       if (GNUNET_OK !=
-          TEH_keys_get_timing (&akc->s_sigs[i].exchange_pub,
+          TEH_keys_get_timing (&s->exchange_pub,
                                &meta))
       {
         /* For idempotency, check if the key is already active */
@@ -259,7 +263,7 @@ add_keys (void *cls,
           connection,
           MHD_HTTP_NOT_FOUND,
           TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_UNKNOWN,
-          TALER_B2S (&akc->s_sigs[i].exchange_pub));
+          TALER_B2S (&s->exchange_pub));
         return GNUNET_DB_STATUS_HARD_ERROR;
       }
     }
@@ -269,32 +273,35 @@ add_keys (void *cls,
     }
 
     /* check signature is valid */
+    if (GNUNET_OK !=
+        TALER_exchange_offline_signkey_validity_verify (
+          &s->exchange_pub,
+          meta.start,
+          meta.expire_sign,
+          meta.expire_legal,
+          &TEH_master_public_key,
+          &s->master_sig))
     {
-      if (GNUNET_OK !=
-          TALER_exchange_offline_signkey_validity_verify (
-            &akc->s_sigs[i].exchange_pub,
-            meta.start,
-            meta.expire_sign,
-            meta.expire_legal,
-            &TEH_master_public_key,
-            &akc->s_sigs[i].master_sig))
-      {
-        GNUNET_break_op (0);
-        *mhd_ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_FORBIDDEN,
-          TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_ADD_SIGNATURE_INVALID,
-          GNUNET_h2s (&akc->d_sigs[i].h_denom_pub.hash));
-        return GNUNET_DB_STATUS_HARD_ERROR;
-      }
+      GNUNET_break_op (0);
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_FORBIDDEN,
+        TALER_EC_EXCHANGE_MANAGEMENT_KEYS_SIGNKEY_ADD_SIGNATURE_INVALID,
+        TALER_B2S (&s->exchange_pub));
+      return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (is_active)
-      continue; /* skip, already known */
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Signing key %s already active, skipping\n",
+                  TALER_B2S (&s->exchange_pub));
+      continue;   /* skip, already known */
+    }
     qs = TEH_plugin->activate_signing_key (
       TEH_plugin->cls,
-      &akc->s_sigs[i].exchange_pub,
+      &s->exchange_pub,
       &meta,
-      &akc->s_sigs[i].master_sig);
+      &s->master_sig);
     if (qs < 0)
     {
       if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -308,7 +315,7 @@ add_keys (void *cls,
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Added offline signature for signing key `%s'\n",
-                TALER_B2S (&akc->s_sigs[i].exchange_pub));
+                TALER_B2S (&s->exchange_pub));
     GNUNET_assert (0 != qs);
   }
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* only 'success', so >=0, matters here */

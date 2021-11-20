@@ -183,7 +183,8 @@ run (void *cls,
                                MHD_HTTP_OK),
     /**
      * Melt the rest of the coin's value (EUR:4.00 = 3x EUR:1.03 + 7x
-     * EUR:0.13) */
+     * EUR:0.13)
+*/
     TALER_TESTING_cmd_melt_double ("refresh-melt-1",
                                    "refresh-withdraw-coin-1",
                                    MHD_HTTP_OK,
