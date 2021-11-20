@@ -330,6 +330,40 @@ test_contract (void)
 }
 
 
+static int
+test_rfc8785 (void)
+{
+  struct TALER_PrivateContractHash h1;
+  json_t *c1;
+
+  c1 = json_pack ("{s:s}",
+                  "k1", "\x08\x0B\t\1\\\x0d");
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_JSON_contract_hash (c1,
+                                           &h1));
+  {
+    char *s;
+
+    s = GNUNET_STRINGS_data_to_string_alloc (&h1,
+                                             sizeof (h1));
+    if (0 !=
+        strcmp (s,
+                "J678K3PW9Y3DG63Z3T7ZYR2P7CEXMVZ2SFPQMABACK9TJRYREPP82542PCJ0P7Y7FAQAMWECDX50XH1RBTWHX6SSJHH6FXRV0JCS6R8"))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Invalid reference hash: %s\n",
+                  s);
+      GNUNET_free (s);
+      json_decref (c1);
+      return 1;
+    }
+    GNUNET_free (s);
+  }
+  json_decref (c1);
+  return 0;
+}
+
+
 int
 main (int argc,
       const char *const argv[])
@@ -342,6 +376,8 @@ main (int argc,
   if (0 != test_amount ())
     return 1;
   if (0 != test_contract ())
+    return 2;
+  if (0 != test_rfc8785 ())
     return 2;
   return 0;
 }

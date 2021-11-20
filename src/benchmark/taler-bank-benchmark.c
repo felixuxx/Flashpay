@@ -411,6 +411,7 @@ stop_fakebank (void *cls)
 static void
 never_task (void *cls)
 {
+  (void) cls;
   GNUNET_assert (0);
 }
 
