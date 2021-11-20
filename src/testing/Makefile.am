@@ -57,6 +57,7 @@ libtalertesting_la_SOURCES = \
   testing_api_cmd_deposit.c \
   testing_api_cmd_deposits_get.c \
   testing_api_cmd_exec_aggregator.c \
+  testing_api_cmd_exec_auditor-offline.c \
   testing_api_cmd_exec_closer.c \
   testing_api_cmd_exec_transfer.c \
   testing_api_cmd_exec_wirewatch.c \

@@ -1187,7 +1187,6 @@ TALER_TESTING_cmd_admin_add_incoming_retry (struct TALER_TESTING_Command cmd);
  *
  * @param label command label.
  * @param config_filename configuration filename.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
@@ -1196,7 +1195,7 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 
 
 /**
- * Make a "aggregator" CMD.
+ * Run a "taler-exchange-aggregator" CMD.
  *
  * @param label command label.
  * @param config_filename configuration file for the
@@ -1206,6 +1205,19 @@ TALER_TESTING_cmd_exec_wirewatch (const char *label,
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_exec_aggregator (const char *label,
                                    const char *config_filename);
+
+
+/**
+ * Run a "taler-auditor-offline" CMD.
+ *
+ * @param label command label.
+ * @param config_filename configuration file for the
+ *                        aggregator to use.
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_exec_auditor_offline (const char *label,
+                                        const char *config_filename);
 
 
 /**

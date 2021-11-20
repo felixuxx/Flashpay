@@ -207,7 +207,8 @@ deposit_confirmation_run (void *cls,
   const struct GNUNET_TIME_Absolute *exchange_timestamp = NULL;
   struct GNUNET_TIME_Absolute timestamp;
   const struct GNUNET_TIME_Absolute *wire_deadline;
-  struct GNUNET_TIME_Absolute refund_deadline;
+  struct GNUNET_TIME_Absolute refund_deadline
+    = GNUNET_TIME_UNIT_ZERO_ABS;
   struct TALER_Amount amount_without_fee;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
@@ -283,10 +284,14 @@ deposit_confirmation_run (void *cls,
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (dcs->amount_without_fee,
                                          &amount_without_fee));
-  /* timestamp is mandatory */
   {
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_absolute_time ("timestamp", &timestamp),
+      /* timestamp is mandatory */
+      TALER_JSON_spec_absolute_time ("timestamp",
+                                     &timestamp),
+      GNUNET_JSON_spec_mark_optional (
+        TALER_JSON_spec_absolute_time ("refund_deadline",
+                                       &refund_deadline)),
       GNUNET_JSON_spec_end ()
     };
 
@@ -299,22 +304,8 @@ deposit_confirmation_run (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-  }
-  /* refund deadline is optional, defaults to zero */
-  {
-    struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_absolute_time ("refund_deadline",
-                                     &refund_deadline),
-      GNUNET_JSON_spec_end ()
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_JSON_parse (contract_terms,
-                           spec,
-                           NULL, NULL))
-    {
+    if (0 == refund_deadline.abs_value_us)
       refund_deadline = timestamp;
-    }
   }
   dcs->dc = TALER_AUDITOR_deposit_confirmation (dcs->auditor,
                                                 &h_wire,
