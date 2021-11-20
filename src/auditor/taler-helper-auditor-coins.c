@@ -2206,9 +2206,28 @@ check_denomination (
   const struct TALER_DenominationKeyValidityPS *issue = &validity->properties;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_AuditorSignatureP auditor_sig;
+  struct TALER_Amount coin_value;
+  struct TALER_Amount fee_withdraw;
+  struct TALER_Amount fee_deposit;
+  struct TALER_Amount fee_refresh;
+  struct TALER_Amount fee_refund;
+  struct GNUNET_TIME_Absolute start;
+  struct GNUNET_TIME_Absolute end;
 
   (void) cls;
   (void) denom_pub;
+  TALER_amount_ntoh (&coin_value,
+                     &issue->value);
+  TALER_amount_ntoh (&fee_withdraw,
+                     &issue->fee_withdraw);
+  TALER_amount_ntoh (&fee_deposit,
+                     &issue->fee_deposit);
+  TALER_amount_ntoh (&fee_refresh,
+                     &issue->fee_refresh);
+  TALER_amount_ntoh (&fee_refund,
+                     &issue->fee_refund);
+  start = GNUNET_TIME_absolute_ntoh (issue->start);
+  end = GNUNET_TIME_absolute_ntoh (issue->expire_legal);
   qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
                                                 &issue->denom_hash,
                                                 &TALER_ARL_auditor_pub,
@@ -2216,56 +2235,41 @@ check_denomination (
   if (0 >= qs)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-                "Encountered denomination `%s' that this auditor is not auditing!\n",
-                GNUNET_h2s (&issue->denom_hash.hash));
+                "Encountered denomination `%s' (%s) valid from %s (%llu-%llu) that this auditor is not auditing!\n",
+                GNUNET_h2s (&issue->denom_hash.hash),
+                TALER_amount2s (&coin_value),
+                GNUNET_STRINGS_absolute_time_to_string (start),
+                (unsigned long long) start.abs_value_us,
+                (unsigned long long) end.abs_value_us);
     return; /* skip! */
   }
+  if (GNUNET_OK !=
+      TALER_auditor_denom_validity_verify (
+        TALER_ARL_auditor_url,
+        &issue->denom_hash,
+        &TALER_ARL_master_pub,
+        start,
+        GNUNET_TIME_absolute_ntoh (issue->expire_withdraw),
+        GNUNET_TIME_absolute_ntoh (issue->expire_deposit),
+        end,
+        &coin_value,
+        &fee_withdraw,
+        &fee_deposit,
+        &fee_refresh,
+        &fee_refund,
+        &TALER_ARL_auditor_pub,
+        &auditor_sig))
   {
-    struct TALER_Amount coin_value;
-    struct TALER_Amount fee_withdraw;
-    struct TALER_Amount fee_deposit;
-    struct TALER_Amount fee_refresh;
-    struct TALER_Amount fee_refund;
-
-    TALER_amount_ntoh (&coin_value,
-                       &issue->value);
-    TALER_amount_ntoh (&fee_withdraw,
-                       &issue->fee_withdraw);
-    TALER_amount_ntoh (&fee_deposit,
-                       &issue->fee_deposit);
-    TALER_amount_ntoh (&fee_refresh,
-                       &issue->fee_refresh);
-    TALER_amount_ntoh (&fee_refund,
-                       &issue->fee_refund);
-    if (GNUNET_OK !=
-        TALER_auditor_denom_validity_verify (
-          TALER_ARL_auditor_url,
-          &issue->denom_hash,
-          &TALER_ARL_master_pub,
-          GNUNET_TIME_absolute_ntoh (issue->start),
-          GNUNET_TIME_absolute_ntoh (issue->expire_withdraw),
-          GNUNET_TIME_absolute_ntoh (issue->expire_deposit),
-          GNUNET_TIME_absolute_ntoh (issue->expire_legal),
-          &coin_value,
-          &fee_withdraw,
-          &fee_deposit,
-          &fee_refresh,
-          &fee_refund,
-          &TALER_ARL_auditor_pub,
-          &auditor_sig))
-    {
-      TALER_ARL_report (report_denominations_without_sigs,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_data_auto ("denomination",
-                                                      &issue->denom_hash),
-                          TALER_JSON_pack_amount ("value",
-                                                  &coin_value),
-                          TALER_JSON_pack_time_abs_nbo_human ("start_time",
-                                                              issue->start),
-                          TALER_JSON_pack_time_abs_nbo_human ("end_time",
-                                                              issue->
-                                                              expire_legal)));
-    }
+    TALER_ARL_report (report_denominations_without_sigs,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_data_auto ("denomination",
+                                                    &issue->denom_hash),
+                        TALER_JSON_pack_amount ("value",
+                                                &coin_value),
+                        TALER_JSON_pack_time_abs_human ("start_time",
+                                                        start),
+                        TALER_JSON_pack_time_abs_human ("end_time",
+                                                        end)));
   }
 }
 
