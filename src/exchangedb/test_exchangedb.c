@@ -760,7 +760,7 @@ cb_wt_check (void *cls,
              const struct TALER_Amount *coin_value,
              const struct TALER_Amount *coin_fee)
 {
-  (void) row_id;
+  (void) rowid;
   (void) denom_pub;
   GNUNET_assert (cls == &cb_wt_never);
   GNUNET_assert (0 == GNUNET_memcmp (merchant_pub,
