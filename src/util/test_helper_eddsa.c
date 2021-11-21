@@ -214,7 +214,10 @@ test_revocation (struct TALER_CRYPTO_ExchangeSignHelper *esh)
         nanosleep (&req, NULL);
         fprintf (stderr, ".");
       }
-      if (keys[j].revoked)
+      if ( (keys[j].revoked) &&
+           (! GNUNET_TIME_absolute_is_past (
+              GNUNET_TIME_absolute_add (keys[j].start_time,
+                                        keys[j].validity_duration))) )
       {
         fprintf (stderr,
                  "\nFAILED: timeout trying to revoke key %u\n",
@@ -371,6 +374,7 @@ par_signing (struct GNUNET_CONFIGURATION_Handle *cfg)
       ret = perf_signing (esh,
                           "parallel");
       TALER_CRYPTO_helper_esign_disconnect (esh);
+      esh = NULL;
       exit (ret);
     }
   }
@@ -440,6 +444,7 @@ run_test (void)
     fprintf (stderr,
              "\nFAILED: no keys returend by helper\n");
     TALER_CRYPTO_helper_esign_disconnect (esh);
+    esh = NULL;
     GNUNET_CONFIGURATION_destroy (cfg);
     return 1;
   }
