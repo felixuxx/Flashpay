@@ -165,6 +165,11 @@ postgres_drop_tables (void *cls)
   if (NULL == conn)
     return GNUNET_SYSERR;
   GNUNET_PQ_disconnect (conn);
+  if (NULL != pg->conn)
+  {
+    GNUNET_PQ_disconnect (pg->conn);
+    pg->init = false;
+  }
   return GNUNET_OK;
 }
 
@@ -6403,6 +6408,7 @@ free_link_data_list (void *cls,
 {
   struct TALER_EXCHANGEDB_LinkList *next;
 
+  (void) cls;
   while (NULL != ldl)
   {
     next = ldl->next;
@@ -11901,7 +11907,10 @@ libtaler_plugin_exchangedb_postgres_done (void *cls)
   struct PostgresClosure *pg = plugin->cls;
 
   if (NULL != pg->conn)
+  {
     GNUNET_PQ_disconnect (pg->conn);
+    pg->conn = NULL;
+  }
   GNUNET_free (pg->exchange_url);
   GNUNET_free (pg->sql_dir);
   GNUNET_free (pg->currency);
