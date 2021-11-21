@@ -655,10 +655,16 @@ create_key (void)
 static struct GNUNET_TIME_Absolute
 key_action_time (void)
 {
-  if (NULL == keys_head)
+  struct Key *nxt;
+
+  nxt = keys_head;
+  while ( (NULL != nxt) &&
+          (nxt->purge) )
+    nxt = nxt->next;
+  if (NULL == nxt)
     return GNUNET_TIME_UNIT_ZERO_ABS;
   return GNUNET_TIME_absolute_min (
-    GNUNET_TIME_absolute_add (keys_head->anchor,
+    GNUNET_TIME_absolute_add (nxt->anchor,
                               duration),
     GNUNET_TIME_absolute_subtract (
       GNUNET_TIME_absolute_subtract (
@@ -678,6 +684,7 @@ static void
 update_keys (void *cls)
 {
   bool wake = false;
+  struct Key *nxt;
 
   (void) cls;
   keygen_task = NULL;
@@ -707,10 +714,11 @@ update_keys (void *cls)
       return;
     }
   }
+  nxt = keys_head;
   /* remove expired keys */
-  while ( (NULL != keys_head) &&
+  while ( (NULL != nxt) &&
           GNUNET_TIME_absolute_is_past (
-            GNUNET_TIME_absolute_add (keys_head->anchor,
+            GNUNET_TIME_absolute_add (nxt->anchor,
                                       duration)))
   {
     if (! wake)
@@ -720,13 +728,14 @@ update_keys (void *cls)
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Removing past key %s (expired %s ago)\n",
-                keys_head->filename,
+                nxt->filename,
                 GNUNET_STRINGS_relative_time_to_string (
                   GNUNET_TIME_absolute_get_duration (
-                    GNUNET_TIME_absolute_add (keys_head->anchor,
+                    GNUNET_TIME_absolute_add (nxt->anchor,
                                               duration)),
                   GNUNET_YES));
-    purge_key (keys_head);
+    purge_key (nxt);
+    nxt = nxt->next;
   }
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
   if (wake)
