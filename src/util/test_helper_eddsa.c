@@ -487,6 +487,8 @@ main (int argc,
 
   (void) argc;
   (void) argv;
+  unsetenv ("XDG_DATA_HOME");
+  unsetenv ("XDG_CONFIG_HOME");
   GNUNET_log_setup ("test-helper-eddsa",
                     "INFO",
                     NULL);
