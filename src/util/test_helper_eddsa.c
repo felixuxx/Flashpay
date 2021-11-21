@@ -220,6 +220,7 @@ test_revocation (struct TALER_CRYPTO_ExchangeSignHelper *esh)
                  "\nFAILED: timeout trying to revoke key %u\n",
                  j);
         TALER_CRYPTO_helper_esign_disconnect (esh);
+        esh = NULL;
         return 2;
       }
       fprintf (stderr, "\n");
@@ -453,7 +454,11 @@ run_test (void)
   if (0 == ret)
     ret = perf_signing (esh,
                         "sequential");
-  TALER_CRYPTO_helper_esign_disconnect (esh);
+  if (NULL != esh)
+  {
+    TALER_CRYPTO_helper_esign_disconnect (esh);
+    esh = NULL;
+  }
   if (0 == ret)
     ret = par_signing (cfg);
   /* clean up our state */

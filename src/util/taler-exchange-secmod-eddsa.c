@@ -1110,7 +1110,10 @@ run (void *cls,
        (GNUNET_TIME_absolute_is_future (keys_head->anchor)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Existing anchor is in the future. Refusing to start\n");
+                "Existing anchor is in %s the future. Refusing to start\n",
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_remaining (keys_head->anchor),
+                  GNUNET_YES));
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
     return;
