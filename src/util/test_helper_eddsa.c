@@ -27,7 +27,7 @@
  * we should never have more than 6 active keys, plus for during
  * key expiration / revocation.
  */
-#define MAX_KEYS 7
+#define MAX_KEYS 20
 
 /**
  * How many random key revocations should we test?
@@ -121,7 +121,14 @@ key_cb (void *cls,
   (void) cls;
   (void) sm_pub;
   (void) sm_sig;
-  if (0 == validity_duration.rel_value_us)
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Update on key %s (%s)...",
+              TALER_B2S (exchange_pub),
+              GNUNET_STRINGS_relative_time_to_string (validity_duration,
+                                                      GNUNET_YES));
+
+  if (GNUNET_TIME_relative_is_zero (validity_duration))
   {
     bool found = false;
 
@@ -190,14 +197,20 @@ test_revocation (struct TALER_CRYPTO_ExchangeSignHelper *esh)
       }
       keys[j].revoked = true;
       fprintf (stderr,
-               "Revoking key ...");
+               "Revoking key %s ...",
+               TALER_B2S (&keys[j].exchange_pub));
       TALER_CRYPTO_helper_esign_revoke (esh,
                                         &keys[j].exchange_pub);
       for (unsigned int k = 0; k<1000; k++)
       {
         TALER_CRYPTO_helper_esign_poll (esh);
-        if (! keys[j].revoked)
+        if ( (! keys[j].revoked) ||
+             (GNUNET_TIME_absolute_is_past (
+                GNUNET_TIME_absolute_add (keys[j].start_time,
+                                          keys[j].validity_duration))) )
+        {
           break;
+        }
         nanosleep (&req, NULL);
         fprintf (stderr, ".");
       }
@@ -470,7 +483,7 @@ main (int argc,
   (void) argc;
   (void) argv;
   GNUNET_log_setup ("test-helper-eddsa",
-                    "WARNING",
+                    "INFO",
                     NULL);
   GNUNET_OS_init (TALER_project_data_default ());
   libexec_dir = GNUNET_OS_installation_get_path (GNUNET_OS_IPK_BINDIR);
@@ -486,7 +499,7 @@ main (int argc,
                                     "-c",
                                     "test_helper_eddsa.conf",
                                     "-L",
-                                    "WARNING",
+                                    "INFO",
                                     NULL);
   if (NULL == helper)
   {

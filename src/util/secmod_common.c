@@ -229,18 +229,19 @@ TES_read_work (void *cls,
 {
   struct TES_Client *client = cls;
   char *buf = client->iobuf;
-  ssize_t buf_size;
   size_t off = 0;
   uint16_t msize;
   const struct GNUNET_MessageHeader *hdr;
 
   do
   {
-    buf_size = recv (client->csock,
-                     &buf[off],
-                     sizeof (client->iobuf) - off,
-                     0);
-    if (-1 == buf_size)
+    ssize_t recv_size;
+
+    recv_size = recv (client->csock,
+                      &buf[off],
+                      sizeof (client->iobuf) - off,
+                      0);
+    if (-1 == recv_size)
     {
       if ( (0 == off) &&
            (EAGAIN == errno) )
@@ -257,17 +258,23 @@ TES_read_work (void *cls,
                              "recv");
       return GNUNET_SYSERR;
     }
-    if (0 == buf_size)
+    if (0 == recv_size)
     {
       /* regular disconnect? */
       GNUNET_break_op (0 == off);
       return GNUNET_SYSERR;
     }
-    off += buf_size;
+    off += recv_size;
     if (off < sizeof (struct GNUNET_MessageHeader))
       continue;
     hdr = (const struct GNUNET_MessageHeader *) buf;
     msize = ntohs (hdr->size);
+#if 0
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Received message of type %u with %u bytes\n",
+                (unsigned int) ntohs (hdr->type),
+                (unsigned int) msize);
+#endif
     if (msize < sizeof (struct GNUNET_MessageHeader))
     {
       GNUNET_break_op (0);

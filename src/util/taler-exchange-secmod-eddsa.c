@@ -282,8 +282,8 @@ handle_sign_request (struct TES_Client *client,
     if (0 != key->rc)
       break; /* do later */
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Removing past key %s (expired %s ago)\n",
-                key->filename,
+                "Deleting past key %s (expired %s ago)\n",
+                TALER_B2S (&nxt->exchange_pub),
                 GNUNET_STRINGS_relative_time_to_string (
                   GNUNET_TIME_absolute_get_duration (
                     GNUNET_TIME_absolute_add (key->anchor,
@@ -400,7 +400,15 @@ static void
 purge_key (struct Key *key)
 {
   if (key->purge)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Key %s already purged, skipping\n",
+                TALER_B2S (&key->exchange_pub));
     return;
+  }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Purging key %s\n",
+              TALER_B2S (&key->exchange_pub));
   if (0 != unlink (key->filename))
     GNUNET_log_strerror_file (GNUNET_ERROR_TYPE_ERROR,
                               "unlink",
@@ -449,8 +457,8 @@ handle_revoke_request (struct TES_Client *client,
 
   key_gen++;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Revoking key %p, bumping generation to %llu\n",
-              key,
+              "Revoking key %s, bumping generation to %llu\n",
+              TALER_B2S (&key->exchange_pub),
               (unsigned long long) key_gen);
   purge_key (key);
 
@@ -570,13 +578,23 @@ eddsa_client_init (struct TES_Client *client)
 static enum GNUNET_GenericReturnValue
 eddsa_update_client_keys (struct TES_Client *client)
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Updating client %p to generation %llu\n",
+              client,
+              (unsigned long long) key_gen);
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   for (struct Key *key = keys_head;
        NULL != key;
        key = key->next)
   {
     if (key->key_gen <= client->key_gen)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Skipping key %s, no change since generation %llu\n",
+                  TALER_B2S (&key->exchange_pub),
+                  (unsigned long long) client->key_gen);
       continue;
+    }
     if (key->purge)
     {
       if (GNUNET_OK !=
@@ -715,7 +733,7 @@ update_keys (void *cls)
     }
   }
   nxt = keys_head;
-  /* remove expired keys */
+  /* purge expired keys */
   while ( (NULL != nxt) &&
           GNUNET_TIME_absolute_is_past (
             GNUNET_TIME_absolute_add (nxt->anchor,
@@ -727,8 +745,8 @@ update_keys (void *cls)
       wake = true;
     }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Removing past key %s (expired %s ago)\n",
-                nxt->filename,
+                "Purging past key %s (expired %s ago)\n",
+                TALER_B2S (&nxt->exchange_pub),
                 GNUNET_STRINGS_relative_time_to_string (
                   GNUNET_TIME_absolute_get_duration (
                     GNUNET_TIME_absolute_add (nxt->anchor,
@@ -1075,13 +1093,13 @@ run (void *cls,
     global_ret = EXIT_NOTCONFIGURED;
     return;
   }
+  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
+                                 NULL);
   global_ret = TES_listen_start (cfg,
                                  "taler-exchange-secmod-eddsa",
                                  &cb);
   if (0 != global_ret)
     return;
-  GNUNET_SCHEDULER_add_shutdown (&do_shutdown,
-                                 NULL);
   /* Load keys */
   GNUNET_break (GNUNET_OK ==
                 GNUNET_DISK_directory_create (keydir));
