@@ -232,63 +232,69 @@ TES_read_work (void *cls,
   size_t off = 0;
   uint16_t msize;
   const struct GNUNET_MessageHeader *hdr;
+  enum GNUNET_GenericReturnValue ret;
 
-  do
+  while (1)
   {
-    ssize_t recv_size;
-
-    recv_size = recv (client->csock,
-                      &buf[off],
-                      sizeof (client->iobuf) - off,
-                      0);
-    if (-1 == recv_size)
+    do
     {
-      if ( (0 == off) &&
-           (EAGAIN == errno) )
-        return GNUNET_NO;
-      if ( (EINTR == errno) ||
-           (EAGAIN == errno) )
+      ssize_t recv_size;
+
+      recv_size = recv (client->csock,
+                        &buf[off],
+                        sizeof (client->iobuf) - off,
+                        0);
+      if (-1 == recv_size)
       {
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_DEBUG,
-                             "recv");
-        continue;
+        if ( (0 == off) &&
+             (EAGAIN == errno) )
+          return GNUNET_NO;
+        if ( (EINTR == errno) ||
+             (EAGAIN == errno) )
+        {
+          GNUNET_log_strerror (GNUNET_ERROR_TYPE_DEBUG,
+                               "recv");
+          continue;
+        }
+        if (ECONNRESET != errno)
+          GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                               "recv");
+        return GNUNET_SYSERR;
       }
-      if (ECONNRESET != errno)
-        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                             "recv");
-      return GNUNET_SYSERR;
-    }
-    if (0 == recv_size)
-    {
-      /* regular disconnect? */
-      GNUNET_break_op (0 == off);
-      return GNUNET_SYSERR;
-    }
-    off += recv_size;
-    if (off < sizeof (struct GNUNET_MessageHeader))
-      continue;
-    hdr = (const struct GNUNET_MessageHeader *) buf;
-    msize = ntohs (hdr->size);
+      if (0 == recv_size)
+      {
+        /* regular disconnect? */
+        GNUNET_break_op (0 == off);
+        return GNUNET_SYSERR;
+      }
+      off += recv_size;
+      if (off < sizeof (struct GNUNET_MessageHeader))
+        continue;
+      hdr = (const struct GNUNET_MessageHeader *) buf;
+      msize = ntohs (hdr->size);
 #if 0
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Received message of type %u with %u bytes\n",
-                (unsigned int) ntohs (hdr->type),
-                (unsigned int) msize);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Received message of type %u with %u bytes\n",
+                  (unsigned int) ntohs (hdr->type),
+                  (unsigned int) msize);
 #endif
-    if (msize < sizeof (struct GNUNET_MessageHeader))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-  } while (off < msize);
+      if (msize < sizeof (struct GNUNET_MessageHeader))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+    } while (off < msize);
 
-  if (off > msize)
-  {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    ret = dispatch (client,
+                    hdr);
+    if ( (GNUNET_OK != ret) ||
+         (off == msize) )
+      return ret;
+    memmove (buf,
+             &buf[msize],
+             off - msize);
+    off -= msize;
   }
-  return dispatch (client,
-                   hdr);
 }
 
 

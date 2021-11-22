@@ -1678,8 +1678,8 @@ parse_history_common_args (const struct TALER_FAKEBANK_Handle *h,
                                         MHD_HTTP_BAD_REQUEST,
                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                         "delta"))
-      ? GNUNET_NO
-      : GNUNET_SYSERR;
+           ? GNUNET_NO
+           : GNUNET_SYSERR;
   }
   if ( (NULL != long_poll_ms) &&
        (1 != sscanf (long_poll_ms,
@@ -1697,8 +1697,8 @@ parse_history_common_args (const struct TALER_FAKEBANK_Handle *h,
                                         MHD_HTTP_BAD_REQUEST,
                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                         "long_poll_ms"))
-      ? GNUNET_NO
-      : GNUNET_SYSERR;
+           ? GNUNET_NO
+           : GNUNET_SYSERR;
   }
   if ( (NULL != start) &&
        (1 != sscanf (start,
@@ -1716,8 +1716,8 @@ parse_history_common_args (const struct TALER_FAKEBANK_Handle *h,
                                         MHD_HTTP_BAD_REQUEST,
                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                         "start"))
-      ? GNUNET_NO
-      : GNUNET_SYSERR;
+           ? GNUNET_NO
+           : GNUNET_SYSERR;
   }
   if (NULL == start)
     ha->start_idx = (d > 0) ? 0 : h->serial_counter;
@@ -1732,8 +1732,8 @@ parse_history_common_args (const struct TALER_FAKEBANK_Handle *h,
                                         MHD_HTTP_BAD_REQUEST,
                                         TALER_EC_GENERIC_PARAMETER_MALFORMED,
                                         "delta"))
-      ? GNUNET_NO
-      : GNUNET_SYSERR;
+           ? GNUNET_NO
+           : GNUNET_SYSERR;
   }
   ha->lp_timeout
     = GNUNET_TIME_relative_multiply (GNUNET_TIME_UNIT_MILLISECONDS,

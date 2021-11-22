@@ -532,8 +532,8 @@ withdraw_traits (void *cls,
   };
 
   return TALER_TESTING_get_trait ((ws->expected_response_code == MHD_HTTP_OK)
-                                    ? &traits[0] /* we have reserve history */
-                                    : &traits[1],/* skip reserve history */
+                                  ? &traits[0]   /* we have reserve history */
+                                  : &traits[1],  /* skip reserve history */
                                   ret,
                                   trait,
                                   index);
