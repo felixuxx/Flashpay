@@ -168,6 +168,7 @@ postgres_drop_tables (void *cls)
   if (NULL != pg->conn)
   {
     GNUNET_PQ_disconnect (pg->conn);
+    pg->conn = NULL;
     pg->init = false;
   }
   return GNUNET_OK;

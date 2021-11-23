@@ -86,6 +86,7 @@ run (void *cls,
     fprintf (stderr,
              "Failed to initialize database.\n");
     TALER_EXCHANGEDB_plugin_unload (plugin);
+    plugin = NULL;
     global_ret = EXIT_NOPERMISSION;
     return;
   }
@@ -97,6 +98,7 @@ run (void *cls,
       fprintf (stderr,
                "Failed to prepare database.\n");
       TALER_EXCHANGEDB_plugin_unload (plugin);
+      plugin = NULL;
       global_ret = EXIT_NOPERMISSION;
       return;
     }
@@ -119,6 +121,7 @@ run (void *cls,
     }
   }
   TALER_EXCHANGEDB_plugin_unload (plugin);
+  plugin = NULL;
 }
 
 
