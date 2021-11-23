@@ -548,7 +548,7 @@ lp_expiration_thread (void *cls)
                   timeout_ms);
       if (-1 == ret)
       {
-        if (EINTR != epoll)
+        if (EINTR != errno)
           GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                                "poll");
       }
