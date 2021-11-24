@@ -29,6 +29,12 @@
 #include "taler_signatures.h"
 #include "taler_testing_lib.h"
 
+/**
+ * Run multiple taler-exchange-httpd processes in
+ * parallel using GNU parallel?
+ */
+#define GNU_PARALLEL 1
+
 
 void
 TALER_TESTING_cleanup_files (const char *config_name)
@@ -74,12 +80,13 @@ remove_dir (const struct GNUNET_CONFIGURATION_Handle *cfg,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_cleanup_files_cfg (void *cls,
                                  const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   char *dir;
 
+  (void) cls;
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "exchange-offline",
@@ -115,7 +122,7 @@ TALER_TESTING_cleanup_files_cfg (void *cls,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_run_auditor_exchange (const char *config_filename,
                                     const char *exchange_master_pub,
                                     const char *exchange_base_url,
@@ -164,7 +171,7 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_exchange_db_reset (const char *config_filename)
 {
   struct GNUNET_OS_Process *proc;
@@ -215,7 +222,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename)
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_auditor_db_reset (const char *config_filename)
 {
   struct GNUNET_OS_Process *proc;
@@ -297,7 +304,7 @@ struct SignInfo
  * @param cfg configuration to use
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 sign_keys_for_exchange (void *cls,
                         const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
@@ -388,7 +395,7 @@ fail:
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_exchange (const char *config_filename,
                                 int reset_db,
                                 struct TALER_TESTING_ExchangeConfiguration *ec)
@@ -581,7 +588,7 @@ TALER_TESTING_wait_auditor_ready (const char *base_url)
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                    void *main_cb_cls,
                                    const char *config_file)
@@ -591,7 +598,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
     .main_cb = main_cb,
     .main_cb_cls = main_cb_cls
   };
-  int result;
+  enum GNUNET_GenericReturnValue result;
 
   result =
     GNUNET_CONFIGURATION_parse_and_run (config_file,
@@ -631,7 +638,7 @@ stop_helpers (struct GNUNET_OS_Process *helpers[2])
  * @param config_filename configuration file to use
  * @param[out] helpers where to store the process handles.
  */
-static int
+static enum GNUNET_GenericReturnValue
 start_helpers (const char *config_filename,
                struct GNUNET_OS_Process *helpers[2])
 {
@@ -690,7 +697,7 @@ start_helpers (const char *config_filename,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_exchange_cfg (
   void *cls,
   const struct GNUNET_CONFIGURATION_Handle *cfg)
@@ -751,10 +758,20 @@ TALER_TESTING_setup_with_exchange_cfg (
   }
   exchanged = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
                                        NULL, NULL, NULL,
+#if GNU_PARALLEL
+                                       "parallel",
+#endif
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
                                        "-a", /* some tests may need timetravel */
                                        "-c", setup_ctx->config_filename,
+#if GNU_PARALLEL
+                                       ":::",
+                                       "-",
+                                       "-",
+                                       "-",
+                                       "-",
+#endif
                                        NULL);
   if (NULL == exchanged)
   {
@@ -782,6 +799,14 @@ TALER_TESTING_setup_with_exchange_cfg (
     GNUNET_break (0 ==
                   GNUNET_OS_process_kill (exchanged,
                                           SIGTERM));
+#if GNU_PARALLEL
+    /* GNU Parallel kills on 2nd SIGTERM, need to give it a
+       chance to process the 1st signal first... */
+    sleep (1);
+    GNUNET_break (0 ==
+                  GNUNET_OS_process_kill (exchanged,
+                                          SIGTERM));
+#endif
     GNUNET_break (GNUNET_OK ==
                   GNUNET_OS_process_wait (exchanged));
     GNUNET_OS_process_destroy (exchanged);
@@ -798,6 +823,14 @@ TALER_TESTING_setup_with_exchange_cfg (
   GNUNET_break (0 ==
                 GNUNET_OS_process_kill (exchanged,
                                         SIGTERM));
+#if GNU_PARALLEL
+  /* GNU Parallel kills on 2nd SIGTERM, need to give it a
+     chance to process the 1st signal first... */
+  sleep (1);
+  GNUNET_break (0 ==
+                GNUNET_OS_process_kill (exchanged,
+                                        SIGTERM));
+#endif
   GNUNET_break (GNUNET_OK ==
                 GNUNET_OS_process_wait (exchanged));
   GNUNET_OS_process_destroy (exchanged);
@@ -806,7 +839,7 @@ TALER_TESTING_setup_with_exchange_cfg (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_auditor_and_exchange_cfg (
   void *cls,
   const struct GNUNET_CONFIGURATION_Handle *cfg)
@@ -902,7 +935,7 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
                                                void *main_cb_cls,
                                                const char *config_file)
@@ -920,7 +953,7 @@ TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_url_port_free (const char *url)
 {
   const char *port;

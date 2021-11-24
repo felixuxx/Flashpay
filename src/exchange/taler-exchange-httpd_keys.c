@@ -670,7 +670,6 @@ helper_rsa_cb (
               section_name,
               GNUNET_STRINGS_relative_time_to_string (validity_duration,
                                                       GNUNET_NO));
-  GNUNET_assert (TALER_DENOMINATION_RSA == denom_pub->cipher);
   key_generation++;
   TEH_resume_keys_requests (false);
   hd = GNUNET_CONTAINER_multihashmap_get (hs->rsa_keys,
@@ -688,9 +687,9 @@ helper_rsa_cb (
   hd->validity_duration = validity_duration;
   hd->h_details.h_rsa = *h_rsa;
   hd->sm_sig = *sm_sig;
+  GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
   TALER_denom_pub_deep_copy (&hd->denom_pub,
                              denom_pub);
-  GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
   // FIXME-OEC: set AGE RESTRICTION (from 'global' variable,
   // that itself is set from /managmenet API!) HERE!
   // ISSUE: tricky to handle if configuration changes
