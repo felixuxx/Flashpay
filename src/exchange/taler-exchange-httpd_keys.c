@@ -687,9 +687,10 @@ helper_rsa_cb (
   hd->validity_duration = validity_duration;
   hd->h_details.h_rsa = *h_rsa;
   hd->sm_sig = *sm_sig;
-  GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
+  GNUNET_assert (TALER_DENOMINATION_RSA == denom_pub->cipher);
   TALER_denom_pub_deep_copy (&hd->denom_pub,
                              denom_pub);
+  GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
   // FIXME-OEC: set AGE RESTRICTION (from 'global' variable,
   // that itself is set from /managmenet API!) HERE!
   // ISSUE: tricky to handle if configuration changes
