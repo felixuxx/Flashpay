@@ -128,6 +128,9 @@ add_keys (void *cls,
     struct TALER_DenominationPublicKey denom_pub;
 
     /* For idempotency, check if the key is already active */
+    memset (&denom_pub,
+            0,
+            sizeof (denom_pub));
     qs = TEH_plugin->lookup_denomination_key (
       TEH_plugin->cls,
       &d->h_denom_pub,
@@ -197,6 +200,8 @@ add_keys (void *cls,
         MHD_HTTP_FORBIDDEN,
         TALER_EC_EXCHANGE_MANAGEMENT_KEYS_DENOMKEY_ADD_SIGNATURE_INVALID,
         GNUNET_h2s (&d->h_denom_pub.hash));
+      if (! is_active)
+        TALER_denom_pub_free (&denom_pub);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     if (is_active)
