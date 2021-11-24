@@ -766,6 +766,7 @@ TALER_TESTING_setup_with_exchange_cfg (
                                        "-a", /* some tests may need timetravel */
                                        "-c", setup_ctx->config_filename,
 #if GNU_PARALLEL
+                                       "-r",
                                        ":::",
                                        "-",
                                        "-",

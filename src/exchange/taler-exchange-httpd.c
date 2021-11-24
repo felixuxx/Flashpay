@@ -67,6 +67,11 @@
 int TEH_allow_keys_timetravel;
 
 /**
+ * Should we allow two HTTPDs to bind to the same port?
+ */
+static int allow_address_reuse;
+
+/**
  * The exchange's configuration (global)
  */
 const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
@@ -1797,6 +1802,8 @@ run (void *cls,
                             MHD_OPTION_NOTIFY_CONNECTION,
                             &connection_done,
                             NULL,
+                            MHD_OPTION_LISTENING_ADDRESS_REUSE,
+                            (unsigned int) allow_address_reuse,
                             MHD_OPTION_CONNECTION_TIMEOUT,
                             connection_timeout,
                             MHD_OPTION_END);
@@ -1839,6 +1846,10 @@ main (int argc,
                                "connection-close",
                                "force HTTP connections to be closed after each request",
                                &connection_close),
+    GNUNET_GETOPT_option_flag ('r',
+                               "allow-reuse-address",
+                               "allow multiple HTTPDs to listen to the same port",
+                               &allow_address_reuse),
     GNUNET_GETOPT_option_uint ('t',
                                "timeout",
                                "SECONDS",
