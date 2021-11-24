@@ -670,6 +670,7 @@ helper_rsa_cb (
               section_name,
               GNUNET_STRINGS_relative_time_to_string (validity_duration,
                                                       GNUNET_NO));
+  GNUNET_assert (TALER_DENOMINATION_RSA == denom_pub->cipher);
   key_generation++;
   TEH_resume_keys_requests (false);
   hd = GNUNET_CONTAINER_multihashmap_get (hs->rsa_keys,
@@ -689,6 +690,7 @@ helper_rsa_cb (
   hd->sm_sig = *sm_sig;
   TALER_denom_pub_deep_copy (&hd->denom_pub,
                              denom_pub);
+  GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
   // FIXME-OEC: set AGE RESTRICTION (from 'global' variable,
   // that itself is set from /managmenet API!) HERE!
   // ISSUE: tricky to handle if configuration changes
@@ -1012,6 +1014,7 @@ denomination_info_cb (
   struct TEH_KeyStateHandle *ksh = cls;
   struct TEH_DenominationKey *dk;
 
+  GNUNET_assert (TALER_DENOMINATION_INVALID != denom_pub->cipher);
   if ( (0 == meta->start.abs_value_us) ||
        (0 == meta->expire_withdraw.abs_value_us) ||
        (0 == meta->expire_deposit.abs_value_us) ||
@@ -2389,12 +2392,20 @@ TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
   ok = load_fees (hd->section_name,
                   meta);
   if (GNUNET_OK == ok)
+  {
+    GNUNET_assert (TALER_DENOMINATION_INVALID != hd->denom_pub.cipher);
     TALER_denom_pub_deep_copy (denom_pub,
                                &hd->denom_pub);
+  }
   else
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No fees for `%s', voiding key\n",
+                hd->section_name);
     memset (denom_pub,
             0,
             sizeof (*denom_pub));
+  }
   return ok;
 }
 
