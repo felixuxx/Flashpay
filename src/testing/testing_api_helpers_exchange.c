@@ -33,7 +33,7 @@
  * Run multiple taler-exchange-httpd processes in
  * parallel using GNU parallel?
  */
-#define GNU_PARALLEL 1
+#define GNU_PARALLEL 0
 
 
 void
