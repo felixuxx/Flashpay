@@ -108,6 +108,7 @@ free_keys (void)
     if (keys[i].valid)
     {
       TALER_denom_pub_free (&keys[i].denom_pub);
+      keys[i].valid = false;
       GNUNET_assert (num_keys > 0);
       num_keys--;
     }

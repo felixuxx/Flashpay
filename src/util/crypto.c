@@ -194,7 +194,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                          &pd->coin_ev,
                          &pd->coin_ev_size))
   {
-    GNUNET_break_op (0);
+    GNUNET_break (0);
     return GNUNET_SYSERR;
   }
   TALER_denom_pub_hash (dk,
