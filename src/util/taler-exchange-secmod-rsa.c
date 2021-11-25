@@ -573,11 +573,19 @@ handle_revoke_request (struct TES_Client *client,
                 GNUNET_h2s (&rr->h_rsa.hash));
     return GNUNET_OK;
   }
+  if (dk->purge)
+  {
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Revocation request ignored, denomination key %s already revoked\n",
+                GNUNET_h2s (&rr->h_rsa.hash));
+    return GNUNET_OK;
+  }
 
   key_gen++;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Revoking key %p, bumping generation to %llu\n",
-              dk,
+              "Revoking key %s, bumping generation to %llu\n",
+              GNUNET_h2s (&rr->h_rsa.hash),
               (unsigned long long) key_gen);
   purge_key (dk);
 

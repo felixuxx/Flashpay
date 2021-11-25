@@ -454,7 +454,14 @@ handle_revoke_request (struct TES_Client *client,
                 "Revocation request ignored, key unknown\n");
     return GNUNET_OK;
   }
-
+  if (key->purge)
+  {
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Revocation request ignored, key %s already revoked\n",
+                TALER_B2S (&key->exchange_pub));
+    return GNUNET_OK;
+  }
   key_gen++;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Revoking key %s, bumping generation to %llu\n",

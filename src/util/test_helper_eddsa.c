@@ -197,8 +197,9 @@ test_revocation (struct TALER_CRYPTO_ExchangeSignHelper *esh)
       }
       keys[j].revoked = true;
       fprintf (stderr,
-               "Revoking key %s ...",
-               TALER_B2S (&keys[j].exchange_pub));
+               "Revoking key %s (%u) ...",
+               TALER_B2S (&keys[j].exchange_pub),
+               j);
       TALER_CRYPTO_helper_esign_revoke (esh,
                                         &keys[j].exchange_pub);
       for (unsigned int k = 0; k<1000; k++)
