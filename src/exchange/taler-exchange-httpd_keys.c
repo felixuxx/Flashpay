@@ -475,22 +475,14 @@ check_dk (void *cls,
           void *value)
 {
   struct TEH_DenominationKey *dk = value;
-  struct TALER_PlanchetSecretsP ps;
-  struct TALER_PlanchetDetail pd;
-  struct TALER_CoinPubHash c_hash;
+
 
   (void) hc;
   (void) value;
   GNUNET_assert (TALER_DENOMINATION_INVALID != dk->denom_pub.cipher);
-  memset (&ps,
-          42,
-          sizeof (ps));
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_planchet_prepare (&dk->denom_pub,
-                                         &ps,
-                                         &c_hash,
-                                         &pd));
-  GNUNET_free (pd.coin_ev);
+  if (TALER_DENOMINATION_RSA == dk->denom_pub.cipher)
+    GNUNET_assert (GNUNET_CRYPTO_rsa_public_key_check (
+                     dk->denom_pub.details.rsa_public_key));
   return GNUNET_OK;
 }
 
