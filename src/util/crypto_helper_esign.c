@@ -387,8 +387,8 @@ TALER_CRYPTO_helper_esign_sign_ (
       uint16_t msize;
 
       ret = recv (esh->sock,
-                  buf,
-                  sizeof (buf),
+                  &buf[off],
+                  sizeof (buf) - off,
                   (finished && (0 == off))
                   ? MSG_DONTWAIT
                   : 0);
@@ -410,6 +410,8 @@ TALER_CRYPTO_helper_esign_sign_ (
       if (0 == ret)
       {
         GNUNET_break (0 == off);
+        if (finished)
+          return TALER_EC_NONE;
         return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
       }
       off += ret;

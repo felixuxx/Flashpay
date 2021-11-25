@@ -194,9 +194,6 @@ cleanup:
 }
 
 
-/**
- * Send a signal to all clients to notify them about a key generation change.
- */
 void
 TES_wake_clients (void)
 {
@@ -216,13 +213,6 @@ TES_wake_clients (void)
 }
 
 
-/**
- * Read work request from the client.
- *
- * @param cls a `struct TES_Client *`
- * @param dispatch function to call with work requests received
- * @return #GNUNET_OK on success
- */
 enum GNUNET_GenericReturnValue
 TES_read_work (void *cls,
                TES_MessageDispatch dispatch)
@@ -234,67 +224,66 @@ TES_read_work (void *cls,
   const struct GNUNET_MessageHeader *hdr;
   enum GNUNET_GenericReturnValue ret;
 
-  while (1)
+  do
   {
-    do
+    ssize_t recv_size;
+
+    recv_size = recv (client->csock,
+                      &buf[off],
+                      sizeof (client->iobuf) - off,
+                      0);
+    if (-1 == recv_size)
     {
-      ssize_t recv_size;
-
-      recv_size = recv (client->csock,
-                        &buf[off],
-                        sizeof (client->iobuf) - off,
-                        0);
-      if (-1 == recv_size)
+      if ( (0 == off) &&
+           (EAGAIN == errno) )
+        return GNUNET_NO;
+      if ( (EINTR == errno) ||
+           (EAGAIN == errno) )
       {
-        if ( (0 == off) &&
-             (EAGAIN == errno) )
-          return GNUNET_NO;
-        if ( (EINTR == errno) ||
-             (EAGAIN == errno) )
-        {
-          GNUNET_log_strerror (GNUNET_ERROR_TYPE_DEBUG,
-                               "recv");
-          continue;
-        }
-        if (ECONNRESET != errno)
-          GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
-                               "recv");
-        return GNUNET_SYSERR;
-      }
-      if (0 == recv_size)
-      {
-        /* regular disconnect? */
-        GNUNET_break_op (0 == off);
-        return GNUNET_SYSERR;
-      }
-      off += recv_size;
-      if (off < sizeof (struct GNUNET_MessageHeader))
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_DEBUG,
+                             "recv");
         continue;
-      hdr = (const struct GNUNET_MessageHeader *) buf;
-      msize = ntohs (hdr->size);
-#if 0
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Received message of type %u with %u bytes\n",
-                  (unsigned int) ntohs (hdr->type),
-                  (unsigned int) msize);
-#endif
-      if (msize < sizeof (struct GNUNET_MessageHeader))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
       }
-    } while (off < msize);
+      if (ECONNRESET != errno)
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                             "recv");
+      return GNUNET_SYSERR;
+    }
+    if (0 == recv_size)
+    {
+      /* regular disconnect? */
+      GNUNET_break_op (0 == off);
+      return GNUNET_SYSERR;
+    }
+    off += recv_size;
+more:
+    if (off < sizeof (struct GNUNET_MessageHeader))
+      continue;
+    hdr = (const struct GNUNET_MessageHeader *) buf;
+    msize = ntohs (hdr->size);
+#if 0
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Received message of type %u with %u bytes\n",
+                (unsigned int) ntohs (hdr->type),
+                (unsigned int) msize);
+#endif
+    if (msize < sizeof (struct GNUNET_MessageHeader))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  } while (off < msize);
 
-    ret = dispatch (client,
-                    hdr);
-    if ( (GNUNET_OK != ret) ||
-         (off == msize) )
-      return ret;
-    memmove (buf,
-             &buf[msize],
-             off - msize);
-    off -= msize;
-  }
+  ret = dispatch (client,
+                  hdr);
+  if ( (GNUNET_OK != ret) ||
+       (off == msize) )
+    return ret;
+  memmove (buf,
+           &buf[msize],
+           off - msize);
+  off -= msize;
+  goto more;
 }
 
 

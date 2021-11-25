@@ -445,8 +445,8 @@ TALER_CRYPTO_helper_rsa_sign (
       ssize_t ret;
 
       ret = recv (dh->sock,
-                  buf,
-                  sizeof (buf),
+                  &buf[off],
+                  sizeof (buf) - off,
                   (finished && (0 == off))
                   ? MSG_DONTWAIT
                   : 0);
@@ -483,8 +483,14 @@ more:
       switch (ntohs (hdr->type))
       {
       case TALER_HELPER_RSA_MT_RES_SIGNATURE:
-        if ( (msize < sizeof (struct TALER_CRYPTO_SignResponse)) ||
-             (finished) )
+        if (msize < sizeof (struct TALER_CRYPTO_SignResponse))
+        {
+          GNUNET_break_op (0);
+          do_disconnect (dh);
+          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          goto end;
+        }
+        if (finished)
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
@@ -525,7 +531,8 @@ more:
             (const struct TALER_CRYPTO_SignFailure *) buf;
 
           *ec = (enum TALER_ErrorCode) ntohl (sf->ec);
-          return ds;
+          finished = true;
+          break;
         }
       case TALER_HELPER_RSA_MT_AVAIL:
         if (GNUNET_OK !=
