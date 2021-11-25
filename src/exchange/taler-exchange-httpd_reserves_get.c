@@ -26,6 +26,7 @@
 #include "taler_mhd_lib.h"
 #include "taler_json_lib.h"
 #include "taler_dbevents.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_reserves_get.h"
 #include "taler-exchange-httpd_responses.h"
 
@@ -152,11 +153,13 @@ db_event_cb (void *cls,
                             &old_scope);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Resuming from long-polling on reserve\n");
+  TEH_check_invariants ();
   GNUNET_CONTAINER_DLL_remove (rp_head,
                                rp_tail,
                                rp);
   MHD_resume_connection (rp->connection);
   TALER_MHD_daemon_trigger ();
+  TEH_check_invariants ();
   GNUNET_async_scope_restore (&old_scope);
 }
 

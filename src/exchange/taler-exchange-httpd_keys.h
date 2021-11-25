@@ -97,6 +97,13 @@ struct TEH_KeyStateHandle;
 
 
 /**
+ * Run internal invariant checks. For debugging.
+ */
+void
+TEH_check_invariants (void);
+
+
+/**
  * Return the current key state for this thread.  Possibly re-builds the key
  * state if we have reason to believe that something changed.
  *

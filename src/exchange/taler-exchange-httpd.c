@@ -290,8 +290,10 @@ handle_mhd_completion_callback (void *cls,
     return;
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
+  TEH_check_invariants ();
   if (NULL != rc->rh_cleaner)
     rc->rh_cleaner (rc);
+  TEH_check_invariants ();
   {
 #if MHD_VERSION >= 0x00097304
     const union MHD_ConnectionInfo *ci;
@@ -931,6 +933,7 @@ handle_mhd_request (void *cls,
     /* We're in a new async scope! */
     rc = *con_cls = GNUNET_new (struct TEH_RequestContext);
     GNUNET_async_scope_fresh (&rc->async_scope_id);
+    TEH_check_invariants ();
     rc->url = url;
     rc->connection = connection;
     /* We only read the correlation ID on the first callback for every client */
@@ -949,6 +952,7 @@ handle_mhd_request (void *cls,
 
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
+  TEH_check_invariants ();
   if (NULL != correlation_id)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Handling request (%s) for URL '%s', correlation_id=%s\n",
@@ -1802,10 +1806,12 @@ run (void *cls,
                             MHD_OPTION_NOTIFY_CONNECTION,
                             &connection_done,
                             NULL,
-                            MHD_OPTION_LISTENING_ADDRESS_REUSE,
-                            (unsigned int) allow_address_reuse,
                             MHD_OPTION_CONNECTION_TIMEOUT,
                             connection_timeout,
+                            (0 == allow_address_reuse)
+                            ? MHD_OPTION_END
+                            : MHD_OPTION_LISTENING_ADDRESS_REUSE,
+                            (unsigned int) allow_address_reuse,
                             MHD_OPTION_END);
     if (NULL == mhd)
     {

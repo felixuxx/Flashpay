@@ -22,6 +22,7 @@
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_dbevents.h"
 #include "taler-exchange-httpd_responses.h"
+#include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_wire.h"
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
@@ -99,6 +100,9 @@ wire_update_event_cb (void *cls,
   (void) cls;
   (void) extra;
   (void) extra_size;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received /wire update event\n");
+  TEH_check_invariants ();
   wire_generation++;
 }
 
@@ -387,10 +391,12 @@ get_wire_state (void)
   {
     struct WireStateHandle *wsh;
 
+    TEH_check_invariants ();
     wsh = build_wire_state ();
     wire_state = wsh;
     if (NULL != old_wsh)
       destroy_wire_state (old_wsh);
+    TEH_check_invariants ();
     return wsh;
   }
   return old_wsh;

@@ -461,6 +461,52 @@ suspend_request (struct MHD_Connection *connection)
 }
 
 
+/**
+ * Called on each denomination key. Checks that the key still works.
+ *
+ * @param cls NULL
+ * @param hc denomination hash (unused)
+ * @param value a `struct TEH_DenominationKey`
+ * @return #GNUNET_OK
+ */
+static int
+check_dk (void *cls,
+          const struct GNUNET_HashCode *hc,
+          void *value)
+{
+  struct TEH_DenominationKey *dk = value;
+  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetDetail pd;
+  struct TALER_CoinPubHash c_hash;
+
+  (void) hc;
+  (void) value;
+  GNUNET_assert (TALER_DENOMINATION_INVALID != dk->denom_pub.cipher);
+  memset (&ps,
+          42,
+          sizeof (ps));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_planchet_prepare (&dk->denom_pub,
+                                         &ps,
+                                         &c_hash,
+                                         &pd));
+  GNUNET_free (pd.coin_ev);
+  return GNUNET_OK;
+}
+
+
+void
+TEH_check_invariants ()
+{
+  struct TEH_KeyStateHandle *ksh;
+
+  ksh = TEH_keys_get_state ();
+  GNUNET_CONTAINER_multihashmap_iterate (ksh->denomkey_map,
+                                         &check_dk,
+                                         NULL);
+}
+
+
 void
 TEH_resume_keys_requests (bool do_shutdown)
 {
@@ -935,8 +981,12 @@ keys_update_event_cb (void *cls,
   (void) cls;
   (void) extra;
   (void) extra_size;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received /keys update event\n");
+  TEH_check_invariants ();
   key_generation++;
   TEH_resume_keys_requests (false);
+  TEH_check_invariants ();
 }
 
 

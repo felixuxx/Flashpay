@@ -210,9 +210,12 @@ db_event_cb (void *cls,
   if (! kyp->suspended)
     return; /* event triggered while main transaction
                was still running, or got multiple wake-up events */
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received KYC update event\n");
   kyp->suspended = false;
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
+  TEH_check_invariants ();
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Resuming from long-polling on KYC status\n");
   GNUNET_CONTAINER_DLL_remove (kyp_head,
@@ -220,6 +223,7 @@ db_event_cb (void *cls,
                                kyp);
   MHD_resume_connection (kyp->connection);
   TALER_MHD_daemon_trigger ();
+  TEH_check_invariants ();
   GNUNET_async_scope_restore (&old_scope);
 }
 
