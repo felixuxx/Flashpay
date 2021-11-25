@@ -779,7 +779,7 @@ decode_keys_json (const json_t *resp_obj,
     EXITIF (NULL == (sign_keys_array =
                        json_object_get (resp_obj,
                                         "signkeys")));
-    EXITIF (JSON_ARRAY != json_typeof (sign_keys_array));
+    EXITIF (! json_is_array (sign_keys_array));
     if (0 != (key_data->num_sign_keys =
                 json_array_size (sign_keys_array)))
     {
