@@ -1167,10 +1167,10 @@ import_key (void *cls,
     GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
-  if (sbuf.st_size > 2048)
+  if (sbuf.st_size > 16 * 1024)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "File `%s' to big to be a private key\n",
+                "File `%s' too big to be a private key\n",
                 filename);
     GNUNET_DISK_file_close (fh);
     return GNUNET_OK;
