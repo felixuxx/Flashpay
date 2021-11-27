@@ -285,6 +285,9 @@ COMMENT ON COLUMN known_coins.denom_sig
 CREATE INDEX IF NOT EXISTS known_coins_by_denomination
   ON known_coins
   (denominations_serial);
+CREATE INDEX IF NOT EXISTS known_coins_by_hashed_coin_pub
+  ON known_coins
+  USING HASH (coin_pub);
 
 
 CREATE TABLE IF NOT EXISTS refresh_commitments
@@ -302,6 +305,9 @@ COMMENT ON TABLE refresh_commitments
 CREATE INDEX IF NOT EXISTS refresh_commitments_old_coin_id_index
   ON refresh_commitments
   (old_known_coin_id);
+CREATE INDEX IF NOT EXISTS known_coins_by_hashed_rc
+  ON refresh_commitments
+  USING HASH (rc);
 
 
 CREATE TABLE IF NOT EXISTS refresh_revealed_coins
@@ -422,7 +428,6 @@ CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   ,refund_deadline
   ,tiny
   ,done
-  ,kyc_ok
   ,extension_blocked
   );
 COMMENT ON INDEX deposits_coin_pub_merchant_contract_index

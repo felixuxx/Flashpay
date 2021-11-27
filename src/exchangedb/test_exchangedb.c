@@ -95,6 +95,7 @@ mark_prepare_cb (void *cls,
                  const char *buf,
                  size_t buf_size)
 {
+  (void) cls;
   GNUNET_assert (11 == buf_size);
   GNUNET_assert (0 == strcasecmp (wire_method,
                                   "testcase"));
@@ -1384,10 +1385,13 @@ recoup_cb (void *cls,
 {
   const union TALER_DenominationBlindingKeyP *cb = cls;
 
+  (void) rowid;
   (void) timestamp;
   (void) amount;
   (void) reserve_pub;
   (void) coin_sig;
+  (void) coin;
+  (void) denom_pub;
   FAILIF (NULL == cb);
   FAILIF (0 != GNUNET_memcmp (cb,
                               coin_blind));
