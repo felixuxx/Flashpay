@@ -418,11 +418,12 @@ COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
 CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   ON deposits
   (shard
-  ,tiny
-  ,done
-  ,extension_blocked
   ,wire_deadline
   ,refund_deadline
+  ,tiny
+  ,done
+  ,kyc_ok
+  ,extension_blocked
   );
 COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
   IS 'for deposits_get_ready';
