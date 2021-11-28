@@ -20,12 +20,36 @@ BEGIN;
 -- Check patch versioning is in place.
 SELECT _v.register_patch('benchmark-0001', NULL, NULL);
 
-
+-- Naive, btree version
 CREATE TABLE IF NOT EXISTS benchmap
-  (reserve_uuid BIGSERIAL UNIQUE
-  ,hash BYTEA PRIMARY KEY CHECK(LENGTH(hash)=64)
+  (uuid BIGSERIAL PRIMARY KEY
+  ,hc BYTEA UNIQUE CHECK(LENGTH(hc)=64)
   ,expiration_date INT8 NOT NULL
   );
+
+-- Replace btree with hash-based index
+CREATE TABLE IF NOT EXISTS benchhmap
+  (uuid BIGSERIAL PRIMARY KEY
+  ,hc BYTEA NOT NULL CHECK(LENGTH(hc)=64)
+  ,expiration_date INT8 NOT NULL
+  );
+CREATE INDEX IF NOT EXISTS benchhmap_index
+  ON benchhmap
+  USING HASH (hc);
+ALTER TABLE benchhmap
+  ADD CONSTRAINT pk
+  EXCLUDE USING HASH (hc with =);
+
+-- Keep btree, also add 32-bit hash-based index on top
+CREATE TABLE IF NOT EXISTS benchemap
+  (uuid BIGSERIAL PRIMARY KEY
+  ,ihc INT4 NOT NULL
+  ,hc BYTEA UNIQUE CHECK(LENGTH(hc)=64)
+  ,expiration_date INT8 NOT NULL
+  );
+CREATE INDEX IF NOT EXISTS benchemap_index
+  ON benchemap
+  USING HASH (ihc);
 
 -- Complete transaction
 COMMIT;
