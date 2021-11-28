@@ -1362,6 +1362,7 @@ struct TALER_CRYPTO_RsaDenominationHelper;
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
+ * @param age_restricted true, if denomnation has age restriction set
  */
 typedef void
 (*TALER_CRYPTO_RsaDenominationKeyStatusCallback)(
@@ -1372,7 +1373,8 @@ typedef void
   const struct TALER_RsaPubHashP *h_rsa,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
-  const struct TALER_SecurityModuleSignatureP *sm_sig);
+  const struct TALER_SecurityModuleSignatureP *sm_sig,
+  bool age_restricted);
 
 
 /**

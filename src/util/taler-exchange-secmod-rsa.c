@@ -1,18 +1,18 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2014-2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU General Public License along with
+   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+ */
 /**
  * @file util/taler-exchange-secmod-rsa.c
  * @brief Standalone process to perform private key RSA operations
@@ -156,6 +156,11 @@ struct Denomination
    * Length of (new) RSA keys (in bits).
    */
   uint32_t rsa_keysize;
+
+  /**
+   * Is the denomination age restricted?  0 == false
+   */
+  uint8_t age_restricted;
 };
 
 
@@ -258,6 +263,7 @@ notify_client_dk_add (struct TES_Client *client,
   an->section_name_len = htons ((uint16_t) nlen);
   an->anchor_time = GNUNET_TIME_absolute_hton (dk->anchor);
   an->duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw);
+  an->age_restricted = denom->age_restricted;
   TALER_exchange_secmod_rsa_sign (&dk->h_rsa,
                                   denom->section,
                                   dk->anchor,
@@ -1256,6 +1262,24 @@ parse_denomination_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
   }
   denom->rsa_keysize = (unsigned int) rsa_keysize;
   denom->section = GNUNET_strdup (ct);
+  if (GNUNET_OK == (GNUNET_CONFIGURATION_have_value (cfg,
+                                                     ct,
+                                                     "AGE_RESTRICTED")))
+  {
+    enum GNUNET_GenericReturnValue ret;
+    if (GNUNET_SYSERR == (ret = GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                                                      ct,
+                                                                      "AGE_RESTRICTED")))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 ct,
+                                 "AGE_RESTRICTED",
+                                 "Value must be YES or NO\n");
+      return GNUNET_SYSERR;
+    }
+    denom->age_restricted = (ret == GNUNET_OK) ? 1 : 0;
+  }
+
   return GNUNET_OK;
 }
 
@@ -1522,8 +1546,8 @@ main (int argc,
   (void) umask (S_IWGRP | S_IROTH | S_IWOTH | S_IXOTH);
 
   /* force linker to link against libtalerutil; if we do
-   not do this, the linker may "optimize" libtalerutil
-   away and skip #TALER_OS_init(), which we do need */
+     not do this, the linker may "optimize" libtalerutil
+     away and skip #TALER_OS_init(), which we do need */
   TALER_OS_init ();
   now = now_tmp = GNUNET_TIME_absolute_get ();
   ret = GNUNET_PROGRAM_run (argc, argv,

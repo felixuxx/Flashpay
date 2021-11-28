@@ -26,6 +26,7 @@
 #include "taler-exchange-httpd_keys.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler_exchangedb_plugin.h"
+#include "taler_extensions.h"
 
 
 /**
@@ -687,6 +688,7 @@ destroy_key_helpers (struct HelperState *hs)
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
+ * @param age_restricted true, if denomination is age restricted
  */
 static void
 helper_rsa_cb (
@@ -697,7 +699,8 @@ helper_rsa_cb (
   const struct TALER_RsaPubHashP *h_rsa,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
-  const struct TALER_SecurityModuleSignatureP *sm_sig)
+  const struct TALER_SecurityModuleSignatureP *sm_sig,
+  bool age_restricted)
 {
   struct HelperState *hs = cls;
   struct HelperDenomination *hd;
@@ -729,13 +732,17 @@ helper_rsa_cb (
   TALER_denom_pub_deep_copy (&hd->denom_pub,
                              denom_pub);
   GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
-  // FIXME-OEC: set AGE RESTRICTION (from 'global' variable,
-  // that itself is set from /managmenet API!) HERE!
-  // ISSUE: tricky to handle if configuration changes
-  // between denominations (some with/without age
-  // restrictions). For that, we probably need to look at
-  // configuration [$section_name] (!?).
+
+  /* Set age restriction, if applicable */
   hd->denom_pub.age_mask.mask = 0;
+  if (age_restricted)
+  {
+    /* FIXME-oec: get age mask from global */
+    GNUNET_assert (TALER_EXTENSION_OK == TALER_get_age_mask (TEH_cfg,
+                                                             &hd->denom_pub.
+                                                             age_mask));
+  }
+
   TALER_denom_pub_hash (&hd->denom_pub,
                         &hd->h_denom_pub);
   hd->section_name = GNUNET_strdup (section_name);

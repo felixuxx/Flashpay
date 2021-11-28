@@ -629,6 +629,10 @@ struct TALER_EXCHANGEDB_DenominationKeyMetaData
    */
   struct TALER_Amount fee_refund;
 
+  /**
+   * Indication if age restriction is set for this denomination
+   */
+  bool age_restricted;
 };
 
 

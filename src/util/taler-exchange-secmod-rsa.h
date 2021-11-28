@@ -77,6 +77,11 @@ struct TALER_CRYPTO_RsaKeyAvailableNotification
    */
   struct TALER_SecurityModuleSignatureP secm_sig;
 
+  /**
+   * Indicator for age restriction
+   */
+  uint8_t age_restricted;
+
   /* followed by @e pub_size bytes of the RSA public key */
 
   /* followed by @e section_name bytes of the configuration section name
