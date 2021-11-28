@@ -15,6 +15,8 @@ pkgcfg_DATA = \
 sqldir = $(prefix)/share/taler/sql/exchange/
 
 sql_DATA = \
+  benchmark-0000.sql \
+  benchmark-0001.sql \
   exchange-0000.sql \
   exchange-0001.sql \
   drop0001.sql
@@ -25,6 +27,7 @@ EXTRA_DIST = \
   plugin_exchangedb_common.c \
   irbt_callbacks.c \
   lrbt_callbacks.c \
+  bench-db-postgres.conf \
   test-exchange-db-postgres.conf \
   $(sql_DATA)
 
@@ -70,7 +73,8 @@ libtalerexchangedb_la_LDFLAGS = \
 
 
 check_PROGRAMS = \
-  test-exchangedb-postgres
+  test-exchangedb-postgres \
+  bench-db-postgres
 
 AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=$${TALER_PREFIX:-@prefix@}/bin:$$PATH;
 TESTS = \
@@ -85,6 +89,16 @@ test_exchangedb_postgres_LDADD = \
   $(top_builddir)/src/pq/libtalerpq.la \
   -ljansson \
   -lgnunetjson \
+  -lgnunetutil \
+  $(XLIB)
+
+bench_db_postgres_SOURCES = \
+  bench_db.c
+bench_db_postgres_LDADD = \
+  libtalerexchangedb.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/pq/libtalerpq.la \
+  -lgnunetpq \
   -lgnunetutil \
   $(XLIB)
 
