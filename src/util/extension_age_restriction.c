@@ -86,7 +86,7 @@ TALER_parse_age_group_string (char *groups,
 {
   enum TALER_EXTENSION_ReturnValue ret = TALER_EXTENSION_ERROR_SYS;
   char *pos;
-  int prev = -1;
+  unsigned int prev = 0;
   unsigned int val;
   char dummy;
 
@@ -128,6 +128,7 @@ TALER_parse_age_group_string (char *groups,
     }
 
     prev = val;
+    *pos = ':';
     groups = pos + 1;
   }
 
