@@ -149,6 +149,7 @@ key_cb (void *cls,
   (void) cls;
   (void) sm_pub;
   (void) sm_sig;
+  (void) age_restricted;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Key notification about key %s in `%s'\n",
               GNUNET_h2s (&h_rsa->hash),
