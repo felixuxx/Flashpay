@@ -1105,10 +1105,10 @@ prepare_statements (struct PostgresClosure *pg)
       " WHERE "
       "       shard >= $2"
       "   AND shard <= $3"
-      "   AND wire_deadline<=$1"
-      "   AND refund_deadline<$1"
-      "   AND tiny=FALSE"
       "   AND done=FALSE"
+      "   AND extension_blocked=FALSE"
+      "   AND tiny=FALSE"
+      "   AND wire_deadline<=$1"
       "   AND (kyc_ok OR $4)"
       " ORDER BY "
       "   shard ASC"
@@ -1130,14 +1130,16 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN known_coins kc USING (known_coin_id)"
       "    JOIN denominations denom USING (denominations_serial)"
       " WHERE"
-      "     merchant_pub=$1 AND"
-      "     wire_target_serial_id=$2 AND"
-      "     done=FALSE"
-      " ORDER BY wire_deadline ASC"
+      "      merchant_pub=$1"
+      "  AND wire_target_serial_id=$2"
+      "  AND done=FALSE"
+      "  AND extension_blocked=FALSE"
+      "  AND refund_deadline<$3"
+      " ORDER BY refund_deadline ASC"
       " LIMIT "
       TALER_QUOTE (
         TALER_EXCHANGEDB_MATCHING_DEPOSITS_LIMIT) ";",
-      2),
+      3),
     /* Used in #postgres_mark_deposit_tiny() */
     GNUNET_PQ_make_prepare (
       "mark_deposit_tiny",
@@ -5505,9 +5507,11 @@ postgres_iterate_matching_deposits (
   uint32_t limit)
 {
   struct PostgresClosure *pg = cls;
+  struct GNUNET_TIME_Absolute now;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (merchant_pub),
     GNUNET_PQ_query_param_uint64 (&wire_target),
+    GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
   struct MatchingDepositContext mdc = {
@@ -5520,6 +5524,8 @@ postgres_iterate_matching_deposits (
   };
   enum GNUNET_DB_QueryStatus qs;
 
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
   qs = GNUNET_PQ_eval_prepared_multi_select (pg->conn,
                                              "deposits_iterate_matching",
                                              params,

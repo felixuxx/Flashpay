@@ -83,7 +83,6 @@ struct TALER_EXCHANGE_DepositGetHandle
  * from the exchange is valid.
  *
  * @param dwh deposit wtid handle
- * @param json json reply with the signature
  * @param exchange_pub the exchange's public key
  * @param exchange_sig the exchange's signature
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
@@ -91,7 +90,6 @@ struct TALER_EXCHANGE_DepositGetHandle
 static enum GNUNET_GenericReturnValue
 verify_deposit_wtid_signature_ok (
   const struct TALER_EXCHANGE_DepositGetHandle *dwh,
-  const json_t *json,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_ExchangeSignatureP *exchange_sig)
 {
@@ -177,7 +175,6 @@ handle_deposit_wtid_finished (void *cls,
                          &dr.details.success.coin_contribution);
       if (GNUNET_OK !=
           verify_deposit_wtid_signature_ok (dwh,
-                                            j,
                                             &dr.details.success.exchange_pub,
                                             &dr.details.success.exchange_sig))
       {

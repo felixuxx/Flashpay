@@ -378,7 +378,7 @@ COMMENT ON COLUMN extension_details.extension_options
 
 CREATE TABLE IF NOT EXISTS deposits
   (deposit_serial_id BIGSERIAL PRIMARY KEY
-  ,shard INT8 NOT NULL DEFAULT 0
+  ,shard INT8 NOT NULL
   ,known_coin_id INT8 NOT NULL REFERENCES known_coins (known_coin_id) ON DELETE CASCADE
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
@@ -400,7 +400,7 @@ CREATE TABLE IF NOT EXISTS deposits
 COMMENT ON TABLE deposits
   IS 'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
 COMMENT ON COLUMN deposits.shard
-  IS 'Used for load sharding. Should be set based on h_payto and merchant_pub. Default of 0 onlyapplies for columns migrated from a previous version without sharding support. 64-bit value because we need an *unsigned* 32-bit value.';
+  IS 'Used for load sharding. Should be set based on h_payto and merchant_pub. 64-bit value because we need an *unsigned* 32-bit value.';
 COMMENT ON COLUMN deposits.wire_target_serial_id
   IS 'Identifies the target bank account and KYC status';COMMENT ON COLUMN deposits.wire_salt
   IS 'Salt used when hashing the payto://-URI to get the h_wire';
@@ -423,12 +423,11 @@ COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
   IS 'for get_deposit_for_wtid and test_deposit_done';
 CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   ON deposits
-  (shard
-  ,wire_deadline
-  ,refund_deadline
-  ,tiny
+  (shard ASC
   ,done
   ,extension_blocked
+  ,tiny
+  ,wire_deadline ASC
   );
 COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
   IS 'for deposits_get_ready';
@@ -438,7 +437,7 @@ CREATE INDEX IF NOT EXISTS deposits_iterate_matching_index
   ,wire_target_serial_id
   ,done
   ,extension_blocked
-  ,wire_deadline
+  ,refund_deadline ASC
   );
 COMMENT ON INDEX deposits_iterate_matching_index
   IS 'for deposits_iterate_matching';
