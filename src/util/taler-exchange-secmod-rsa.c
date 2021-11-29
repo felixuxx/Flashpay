@@ -20,7 +20,7 @@
  *
  * Key design points:
  * - EVERY thread of the exchange will have its own pair of connections to the
- *   crypto helpers.  This way, every threat will also have its own /keys state
+ *   crypto helpers.  This way, every thread will also have its own /keys state
  *   and avoid the need to synchronize on those.
  * - auditor signatures and master signatures are to be kept in the exchange DB,
  *   and merged with the public keys of the helper by the exchange HTTPD!
