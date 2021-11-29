@@ -443,7 +443,7 @@ run_test (void)
   if (0 == num_keys)
   {
     fprintf (stderr,
-             "\nFAILED: no keys returend by helper\n");
+             "\nFAILED: no keys returned by helper\n");
     TALER_CRYPTO_helper_esign_disconnect (esh);
     esh = NULL;
     GNUNET_CONFIGURATION_destroy (cfg);

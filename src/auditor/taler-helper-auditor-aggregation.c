@@ -1046,7 +1046,7 @@ check_wire_out_cb (void *cls,
        in #wire_transfer_information_cb, so here we
        only log for debugging */
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "Inconsitency for wire_out %llu (WTID %s) detected\n",
+                "Inconsistency for wire_out %llu (WTID %s) detected\n",
                 (unsigned long long) rowid,
                 TALER_B2S (wtid));
   }
