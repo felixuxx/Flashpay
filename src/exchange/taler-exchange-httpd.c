@@ -918,16 +918,14 @@ handle_mhd_request (void *cls,
 
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Handling new request\n");
-    /* Atomic operation, no need for a lock ;-) */
-    cnt = __sync_add_and_fetch (&req_count,
-                                1LLU);
+    cnt = req_count++;
     if (req_max == cnt)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Restarting exchange service after %llu requests\n",
                   cnt);
       (void) kill (getpid (),
-                   SIGHUP);
+                   SIGTERM);
     }
 
     /* We're in a new async scope! */
