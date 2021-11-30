@@ -494,6 +494,8 @@ TEH_check_invariants ()
   struct TEH_KeyStateHandle *ksh;
 
   ksh = TEH_keys_get_state ();
+  if (NULL == ksh)
+    return;
   GNUNET_CONTAINER_multihashmap_iterate (ksh->denomkey_map,
                                          &check_dk,
                                          NULL);
