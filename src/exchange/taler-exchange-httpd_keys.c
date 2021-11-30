@@ -2402,10 +2402,10 @@ load_fees (const char *section_name,
        (0 != strcasecmp (TEH_currency,
                          meta->fee_refund.currency)) )
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               "Need amounts in section `%s' to use currency `%s'\n",
-                               section_name,
-                               TEH_currency);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Need amounts in section `%s' to use currency `%s'\n",
+                section_name,
+                TEH_currency);
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
