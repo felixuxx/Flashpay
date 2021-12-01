@@ -914,8 +914,6 @@ handle_mhd_request (void *cls,
   (void) version;
   if (NULL == rc)
   {
-    unsigned long long cnt;
-
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Handling new request\n");
 
@@ -1644,6 +1642,7 @@ connection_done (void *cls,
   (void) cls;
   (void) connection;
   (void) socket_context;
+  unsigned long long cnt;
 
 #if HAVE_DEVELOPER
   /* We only act if the connection is closed. */
