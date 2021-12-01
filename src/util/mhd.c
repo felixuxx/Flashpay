@@ -42,11 +42,11 @@ TALER_mhd_is_https (struct MHD_Connection *connection)
 
   if (NULL != forwarded_proto)
   {
-    if (0 == strcmp (forwarded_proto,
-                     "https"))
+    if (0 == strcasecmp (forwarded_proto,
+                         "https"))
       return GNUNET_YES;
-    if (0 == strcmp (forwarded_proto,
-                     "http"))
+    if (0 == strcasecmp (forwarded_proto,
+                         "http"))
       return GNUNET_NO;
     GNUNET_break (0);
     return GNUNET_SYSERR;
