@@ -1,19 +1,19 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2014-2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
-  <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU General Public License along with
+   TALER; see the file COPYING.  If not, see
+   <http://www.gnu.org/licenses/>
+ */
 /**
  * @file lib/exchange_api_deposit.c
  * @brief Implementation of the /deposit request of the exchange's HTTP API
@@ -405,7 +405,7 @@ handle_deposit_finished (void *cls,
     dr.hr.ec = TALER_JSON_get_error_code (j);
     dr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, this should never
-     happen, we should pass the JSON reply to the application */
+       happen, we should pass the JSON reply to the application */
     break;
   case MHD_HTTP_CONFLICT:
     /* Double spending; check signatures on transaction history */
@@ -514,7 +514,7 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
       .coin_pub = *coin_pub,
       .denom_pub_hash = *denom_pub_hash,
       .denom_sig = *denom_sig,
-      .age_commitment_hash = { 0 } /* FIXME-Oec */
+      .age_commitment_hash = {{{0}}} /* FIXME-Oec */
     };
 
     if (GNUNET_YES !=
@@ -629,8 +629,8 @@ TALER_EXCHANGE_deposit (
                          &h_wire,
                          h_contract_terms,
                          (NULL != extension_details)
-                         ? &ech
-                         : NULL,
+                   ? &ech
+                   : NULL,
                          coin_pub,
                          denom_sig,
                          denom_pub,

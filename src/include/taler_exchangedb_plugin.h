@@ -630,9 +630,20 @@ struct TALER_EXCHANGEDB_DenominationKeyMetaData
   struct TALER_Amount fee_refund;
 
   /**
-   * Indication if age restriction is set for this denomination
+   * Age restriction for the denomination. (can be zero). If not zero, the bits
+   * set in the mask mark the edges at the beginning of a next age group.  F.e.
+   * for the age groups
+   *     0-7, 8-9, 10-11, 12-14, 14-15, 16-17, 18-21, 21-*
+   * the following bits are set:
+   *
+   *   31     24        16        8         0
+   *   |      |         |         |         |
+   *   oooooooo  oo1oo1o1  o1o1o1o1  ooooooo1
+   *
+   * A value of 0 means that the denomination does not support the extension for
+   * age-restriction.
    */
-  bool age_restricted;
+  struct TALER_AgeMask age_restrictions;
 };
 
 

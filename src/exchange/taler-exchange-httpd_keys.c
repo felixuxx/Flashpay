@@ -1,18 +1,18 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2020, 2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2020, 2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU Affero General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU Affero General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 
-  You should have received a copy of the GNU Affero General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU Affero General Public License along with
+   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+ */
 /**
  * @file taler-exchange-httpd_keys.c
  * @brief management of our various keys
@@ -674,6 +674,60 @@ destroy_key_helpers (struct HelperState *hs)
 
 
 /**
+ * Looks up the AGE_RESTRICTED setting for a denomination in the config and
+ * returns the age restriction (mask) accordingly.
+ *
+ * FIXME: The mask is currently taken from the config.  However, It MUST come
+ * from the database where it has been persisted after a signed call to the
+ * /management/extension API (TODO).
+ *
+ * @param section_name Section in the configuration for the particular
+ *    denomination.
+ */
+static struct TALER_AgeMask
+load_age_mask (const char*section_name)
+{
+  static const struct TALER_AgeMask null_mask = {0};
+  struct TALER_AgeMask age_mask = {0};
+
+  /* FIXME-oec: get age_mask from database, not from config */
+  if (TALER_EXTENSION_OK != TALER_get_age_mask (TEH_cfg, &age_mask))
+  {
+    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                               TALER_EXTENSION_SECTION_AGE_RESTRICTION,
+                               "AGE_GROUPS",
+                               "must be of form a:b:...:n:m, where 0<a<b<...<n<m<32\n");
+    return null_mask;
+  }
+
+  if (age_mask.mask == 0)
+  {
+    return null_mask;
+  }
+
+  if (GNUNET_OK == (GNUNET_CONFIGURATION_have_value (
+                      TEH_cfg,
+                      section_name,
+                      "AGE_RESTRICTED")))
+  {
+    enum GNUNET_GenericReturnValue ret;
+    if (GNUNET_SYSERR == (ret = GNUNET_CONFIGURATION_get_value_yesno (TEH_cfg,
+                                                                      section_name,
+                                                                      "AGE_RESTRICTED")))
+    {
+      GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                 section_name,
+                                 "AGE_RESTRICTED",
+                                 "Value must be YES or NO\n");
+      return null_mask;
+    }
+  }
+
+  return age_mask;
+}
+
+
+/**
  * Function called with information about available keys for signing.  Usually
  * only called once per key upon connect. Also called again in case a key is
  * being revoked, in that case with an @a end_time of zero.
@@ -690,7 +744,6 @@ destroy_key_helpers (struct HelperState *hs)
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
- * @param age_restricted true, if denomination is age restricted
  */
 static void
 helper_rsa_cb (
@@ -701,8 +754,7 @@ helper_rsa_cb (
   const struct TALER_RsaPubHashP *h_rsa,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
-  const struct TALER_SecurityModuleSignatureP *sm_sig,
-  bool age_restricted)
+  const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
   struct HelperState *hs = cls;
   struct HelperDenomination *hd;
@@ -734,17 +786,8 @@ helper_rsa_cb (
   TALER_denom_pub_deep_copy (&hd->denom_pub,
                              denom_pub);
   GNUNET_assert (TALER_DENOMINATION_RSA == hd->denom_pub.cipher);
-
-  /* Set age restriction, if applicable */
-  hd->denom_pub.age_mask.mask = 0;
-  if (age_restricted)
-  {
-    /* FIXME-oec: get age mask from global */
-    GNUNET_assert (TALER_EXTENSION_OK == TALER_get_age_mask (TEH_cfg,
-                                                             &hd->denom_pub.
-                                                             age_mask));
-  }
-
+  /* load the age mask for the denomination, if applicable */
+  hd->denom_pub.age_mask = load_age_mask (section_name);
   TALER_denom_pub_hash (&hd->denom_pub,
                         &hd->h_denom_pub);
   hd->section_name = GNUNET_strdup (section_name);
@@ -2278,24 +2321,25 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
                                MHD_HTTP_OK,
                                (MHD_YES ==
                                 TALER_MHD_can_compress (rc->connection))
-                               ? krd->response_compressed
-                               : krd->response_uncompressed);
+       ? krd->response_compressed
+       : krd->response_uncompressed);
   }
 }
 
 
 /**
- * Load fees and expiration times (!) for the denomination type configured in
- * section @a section_name.  Before calling this function, the `start` and
- * `validity_duration` times must already be initialized in @a meta.
+ * Load extension data, like fees, expiration times (!) and age restriction
+ * flags for the denomination type configured in section @a section_name.
+ * Before calling this function, the `start` and `validity_duration` times must
+ * already be initialized in @a meta.
  *
  * @param section_name section in the configuration to use
  * @param[in,out] meta denomination type data to complete
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-load_fees (const char *section_name,
-           struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
+load_extension_data (const char *section_name,
+                     struct TALER_EXCHANGEDB_DenominationKeyMetaData *meta)
 {
   struct GNUNET_TIME_Relative deposit_duration;
   struct GNUNET_TIME_Relative legal_duration;
@@ -2408,6 +2452,7 @@ load_fees (const char *section_name,
                 TEH_currency);
     return GNUNET_SYSERR;
   }
+  meta->age_restrictions = load_age_mask (section_name);
   return GNUNET_OK;
 }
 
@@ -2440,8 +2485,8 @@ TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
   meta->start = hd->start_time;
   meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
                                                     hd->validity_duration);
-  ok = load_fees (hd->section_name,
-                  meta);
+  ok = load_extension_data (hd->section_name,
+                            meta);
   if (GNUNET_OK == ok)
   {
     GNUNET_assert (TALER_DENOMINATION_INVALID != hd->denom_pub.cipher);
@@ -2542,8 +2587,8 @@ add_future_denomkey_cb (void *cls,
   meta.expire_withdraw = GNUNET_TIME_absolute_add (meta.start,
                                                    hd->validity_duration);
   if (GNUNET_OK !=
-      load_fees (hd->section_name,
-                 &meta))
+      load_extension_data (hd->section_name,
+                           &meta))
   {
     /* Woops, couldn't determine fee structure!? */
     return GNUNET_OK;

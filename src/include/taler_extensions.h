@@ -39,8 +39,8 @@ enum TALER_EXTENSION_ReturnValue
  * TALER Age Restriction Extensions
  */
 
-#define TALER_EXTENSION_SECTION_AGE_RESTRICTION TALER_EXTENSION_SECTION_PREFIX \
-  "agerestriction"
+#define TALER_EXTENSION_SECTION_AGE_RESTRICTION (TALER_EXTENSION_SECTION_PREFIX  \
+                                                 "agerestriction")
 
 /**
  * The default age mask represents the age groups

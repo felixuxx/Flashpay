@@ -133,7 +133,6 @@ free_keys (void)
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
  *               The signature was already verified against @a sm_pub.
- * @param age_restricted indication if denomination is age restricted
  */
 static void
 key_cb (void *cls,
@@ -143,13 +142,11 @@ key_cb (void *cls,
         const struct TALER_RsaPubHashP *h_rsa,
         const struct TALER_DenominationPublicKey *denom_pub,
         const struct TALER_SecurityModulePublicKeyP *sm_pub,
-        const struct TALER_SecurityModuleSignatureP *sm_sig,
-        bool age_restricted)
+        const struct TALER_SecurityModuleSignatureP *sm_sig)
 {
   (void) cls;
   (void) sm_pub;
   (void) sm_sig;
-  (void) age_restricted;
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Key notification about key %s in `%s'\n",
               GNUNET_h2s (&h_rsa->hash),
@@ -189,7 +186,6 @@ key_cb (void *cls,
       keys[i].validity_duration = validity_duration;
       TALER_denom_pub_deep_copy (&keys[i].denom_pub,
                                  denom_pub);
-      /* FIXME-oec: take age_restriction into account!? */
       num_keys++;
       return;
     }

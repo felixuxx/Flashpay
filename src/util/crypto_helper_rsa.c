@@ -239,8 +239,7 @@ handle_mt_avail (struct TALER_CRYPTO_RsaDenominationHelper *dh,
              &h_rsa,
              &denom_pub,
              &kan->secm_pub,
-             &kan->secm_sig,
-             (kan->age_restricted > 0));
+             &kan->secm_sig);
     TALER_denom_pub_free (&denom_pub);
   }
   return GNUNET_OK;
@@ -276,8 +275,7 @@ handle_mt_purge (struct TALER_CRYPTO_RsaDenominationHelper *dh,
            &pn->h_rsa,
            NULL,
            NULL,
-           NULL,
-           false);
+           NULL);
   return GNUNET_OK;
 }
 
