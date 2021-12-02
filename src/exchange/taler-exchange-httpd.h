@@ -147,7 +147,7 @@ extern char *TEH_exchange_directory;
 /**
  * -I command-line flag given?
  */
-extern int TEH_check_invariants;
+extern int TEH_check_invariants_flag;
 
 /**
  * Are clients allowed to request /keys for times other than the

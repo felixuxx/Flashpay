@@ -130,7 +130,7 @@ static int connection_close;
 /**
  * -I command-line flag given?
  */
-int TEH_check_invariants;
+int TEH_check_invariants_flag;
 
 /**
  * True if we should commit suicide once all active
@@ -1911,7 +1911,7 @@ main (int argc,
     GNUNET_GETOPT_option_flag ('I',
                                "check-invariants",
                                "enable expensive invariant checks",
-                               &TEH_check_invariants),
+                               &TEH_check_invariants_flag),
     GNUNET_GETOPT_option_flag ('r',
                                "allow-reuse-address",
                                "allow multiple HTTPDs to listen to the same port",
