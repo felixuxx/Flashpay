@@ -549,6 +549,8 @@ TEH_check_invariants ()
 {
   struct TEH_KeyStateHandle *ksh;
 
+  if (0 == TEH_check_invariants)
+    return;
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
     return;
