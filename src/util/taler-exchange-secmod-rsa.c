@@ -251,6 +251,7 @@ notify_client_dk_add (struct TES_Client *client,
   GNUNET_assert (nlen < UINT16_MAX);
   tlen = buf_len + nlen + sizeof (*an);
   GNUNET_assert (tlen < UINT16_MAX);
+  // FIXME: do not re-calculate this message for every client!
   an = GNUNET_malloc (tlen);
   an->header.size = htons ((uint16_t) tlen);
   an->header.type = htons (TALER_HELPER_RSA_MT_AVAIL);
@@ -342,6 +343,7 @@ handle_sign_request (struct TES_Client *client,
   const void *blinded_msg = &sr[1];
   size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
   struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
+  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   dk = GNUNET_CONTAINER_multihashmap_get (keys,
@@ -427,7 +429,10 @@ handle_sign_request (struct TES_Client *client,
             buf_size);
     GNUNET_free (buf);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Sending RSA signature\n");
+                "Sending RSA signature after %s\n",
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUENT_TIME_absolute_get_duration (now)),
+                GNUNET_YES);
     ret = TES_transmit (client->csock,
                         &sr->header);
     GNUNET_free (sr);
@@ -660,6 +665,9 @@ rsa_work_dispatch (struct TES_Client *client,
 static enum GNUNET_GenericReturnValue
 rsa_client_init (struct TES_Client *client)
 {
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Initializing new client %p\n",
+              client);
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   for (struct Denomination *denom = denom_head;
        NULL != denom;
@@ -669,6 +677,9 @@ rsa_client_init (struct TES_Client *client)
          NULL != dk;
          dk = dk->next)
     {
+      // FIXME: avoid holding keys_lock while
+      // doing the IPC with client and the signing!
+      // => lock contention candidate!
       if (GNUNET_OK !=
           notify_client_dk_add (client,
                                 dk))
@@ -737,6 +748,9 @@ rsa_update_client_keys (struct TES_Client *client)
       }
       else
       {
+        // FIXME: avoid holding keys_lock while
+        // doing the IPC with client and the signing!
+        // => lock contention candidate!
         if (GNUNET_OK !=
             notify_client_dk_add (client,
                                   key))
@@ -943,6 +957,8 @@ update_denominations (void *cls)
   keygen_task = NULL;
   now = GNUNET_TIME_absolute_get ();
   (void) GNUNET_TIME_round_abs (&now);
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Updating denominations ...\n");
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   do {
     denom = denom_head;
@@ -953,6 +969,8 @@ update_denominations (void *cls)
       return;
   } while (denom != denom_head);
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Updating denominations finished ...\n");
   if (wake)
     TES_wake_clients ();
   keygen_task = GNUNET_SCHEDULER_add_at (denomination_action_time (denom),

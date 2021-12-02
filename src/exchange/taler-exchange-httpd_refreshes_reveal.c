@@ -271,6 +271,7 @@ refreshes_reveal_transaction (void *cls,
 
   /* Obtain basic information about the refresh operation and what
      gamma we committed to. */
+  // FIXME: why do we do 'get_melt' twice?
   qs = TEH_plugin->get_melt (TEH_plugin->cls,
                              &rctx->rc,
                              &melt);
@@ -611,6 +612,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   {
     enum GNUNET_DB_QueryStatus qs;
 
+    // FIXME: why do we do 'get_melt' twice?
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         (qs = TEH_plugin->get_melt (TEH_plugin->cls,
                                     &rctx->rc,
@@ -682,9 +684,13 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   rctx->dks = dks;
   rctx->link_sigs = link_sigs;
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Optimistically creating %u signatures\n",
+              (unsigned int) rctx->num_fresh_coins);
   /* sign _early_ (optimistic!) to keep out of transaction scope! */
   rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
                                     struct TALER_BlindedDenominationSignature);
+  // FIXME: this is sequential, modify logic to enable parallel signing!
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
     enum TALER_ErrorCode ec = TALER_EC_NONE;
@@ -705,6 +711,8 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     }
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Signatures ready, starting DB interaction\n");
   /* We try the three transactions a few times, as theoretically
      the pre-check might be satisfied by a concurrent transaction
      voiding our final commit due to uniqueness violation; naturally,
