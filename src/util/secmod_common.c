@@ -74,17 +74,15 @@ static volatile bool in_shutdown;
 
 
 enum GNUNET_GenericReturnValue
-TES_transmit (int sock,
-              const struct GNUNET_MessageHeader *hdr)
+TES_transmit_raw (int sock,
+                  size_t end,
+                  const void *pos)
 {
   ssize_t off = 0;
-  const void *pos = hdr;
-  uint16_t end = ntohs (hdr->size);
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Sending message of type %u and length %u\n",
-              (unsigned int) ntohs (hdr->type),
-              (unsigned int) ntohs (hdr->size));
+              "Sending message of length %u\n",
+              (unsigned int) end);
   while (off < end)
   {
     ssize_t ret = send (sock,
@@ -115,6 +113,20 @@ TES_transmit (int sock,
     pos += ret;
   }
   return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TES_transmit (int sock,
+              const struct GNUNET_MessageHeader *hdr)
+{
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Sending message of type %u and length %u\n",
+              (unsigned int) ntohs (hdr->type),
+              (unsigned int) ntohs (hdr->size));
+  return TES_transmit_raw (sock,
+                           ntohs (hdr->size),
+                           hdr);
 }
 
 

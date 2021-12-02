@@ -86,6 +86,11 @@ struct DenominationKey
   struct GNUNET_CRYPTO_RsaPublicKey *denom_pub;
 
   /**
+   * Message to transmit to clients to introduce this public key.
+   */
+  struct TALER_CRYPTO_RsaKeyAvailableNotification *an;
+
+  /**
    * Hash of this denomination's public key.
    */
   struct TALER_RsaPubHashP h_rsa;
@@ -214,7 +219,6 @@ static struct GNUNET_CONTAINER_MultiHashMap *keys;
  */
 static struct GNUNET_SCHEDULER_Task *keygen_task;
 
-
 /**
  * Lock for the keys queue.
  */
@@ -227,15 +231,12 @@ static uint64_t key_gen;
 
 
 /**
- * Notify @a client about @a dk becoming available.
+ * Generate the announcement message for @a dk.
  *
- * @param[in,out] client the client to notify; possible freed if transmission fails
- * @param dk the key to notify @a client about
- * @return #GNUNET_OK on success
+ * @param[in,out] denomination key to generate the announcement for
  */
-static enum GNUNET_GenericReturnValue
-notify_client_dk_add (struct TES_Client *client,
-                      const struct DenominationKey *dk)
+static void
+generate_response (struct DenominationKey *dk)
 {
   struct Denomination *denom = dk->denom;
   size_t nlen = strlen (denom->section) + 1;
@@ -251,7 +252,6 @@ notify_client_dk_add (struct TES_Client *client,
   GNUNET_assert (nlen < UINT16_MAX);
   tlen = buf_len + nlen + sizeof (*an);
   GNUNET_assert (tlen < UINT16_MAX);
-  // FIXME: do not re-calculate this message for every client!
   an = GNUNET_malloc (tlen);
   an->header.size = htons ((uint16_t) tlen);
   an->header.type = htons (TALER_HELPER_RSA_MT_AVAIL);
@@ -274,55 +274,7 @@ notify_client_dk_add (struct TES_Client *client,
   memcpy (p + buf_len,
           denom->section,
           nlen);
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Sending RSA denomination key %s (%s)\n",
-              GNUNET_h2s (&dk->h_rsa.hash),
-              denom->section);
-  if (GNUNET_OK !=
-      TES_transmit (client->csock,
-                    &an->header))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Client %p must have disconnected\n",
-                client);
-    GNUNET_free (an);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_free (an);
-  return GNUNET_OK;
-}
-
-
-/**
- * Notify @a client about @a dk being purged.
- *
- * @param[in,out] client the client to notify; possible freed if transmission fails
- * @param dk the key to notify @a client about
- * @return #GNUNET_OK on success
- */
-static enum GNUNET_GenericReturnValue
-notify_client_dk_del (struct TES_Client *client,
-                      const struct DenominationKey *dk)
-{
-  struct TALER_CRYPTO_RsaKeyPurgeNotification pn = {
-    .header.type = htons (TALER_HELPER_RSA_MT_PURGE),
-    .header.size = htons (sizeof (pn)),
-    .h_rsa = dk->h_rsa
-  };
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Sending RSA denomination expiration %s\n",
-              GNUNET_h2s (&dk->h_rsa.hash));
-  if (GNUNET_OK !=
-      TES_transmit (client->csock,
-                    &pn.header))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Client %p must have disconnected\n",
-                client);
-    return GNUNET_SYSERR;
-  }
-  return GNUNET_OK;
+  dk->an = an;
 }
 
 
@@ -409,6 +361,7 @@ handle_sign_request (struct TES_Client *client,
     return TES_transmit (client->csock,
                          &sf.header);
   }
+
   {
     struct TALER_CRYPTO_SignResponse *sr;
     void *buf;
@@ -507,6 +460,7 @@ setup_key (struct DenominationKey *dk,
   dk->denom_priv = priv;
   dk->denom_pub = pub;
   dk->key_gen = key_gen;
+  generate_response (dk);
   if (GNUNET_OK !=
       GNUNET_CONTAINER_multihashmap_put (
         keys,
@@ -519,6 +473,7 @@ setup_key (struct DenominationKey *dk,
     GNUNET_CRYPTO_rsa_private_key_free (dk->denom_priv);
     GNUNET_CRYPTO_rsa_public_key_free (dk->denom_pub);
     GNUNET_free (dk->filename);
+    GNUNET_free (dk->an);
     GNUNET_free (dk);
     return GNUNET_SYSERR;
   }
@@ -665,6 +620,9 @@ rsa_work_dispatch (struct TES_Client *client,
 static enum GNUNET_GenericReturnValue
 rsa_client_init (struct TES_Client *client)
 {
+  size_t obs = 0;
+  char *buf;
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Initializing new client %p\n",
               client);
@@ -677,23 +635,39 @@ rsa_client_init (struct TES_Client *client)
          NULL != dk;
          dk = dk->next)
     {
-      // FIXME: avoid holding keys_lock while
-      // doing the IPC with client and the signing!
-      // => lock contention candidate!
-      if (GNUNET_OK !=
-          notify_client_dk_add (client,
-                                dk))
-      {
-        GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-        GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                    "Client %p must have disconnected\n",
-                    client);
-        return GNUNET_SYSERR;
-      }
+      obs += ntohs (dk->an->header.size);
+    }
+  }
+  buf = GNUNET_malloc (obs);
+  obs = 0;
+  for (struct Denomination *denom = denom_head;
+       NULL != denom;
+       denom = denom->next)
+  {
+    for (struct DenominationKey *dk = denom->keys_head;
+         NULL != dk;
+         dk = dk->next)
+    {
+      memcpy (&buf[obs],
+              dk->an,
+              ntohs (dk->an->header.size));
+      obs += ntohs (dk->an->header.size);
     }
   }
   client->key_gen = key_gen;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+  if (GNUNET_OK !=
+      TES_transmit_raw (client->csock,
+                        obs,
+                        buf))
+  {
+    GNUNET_free (buf);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Client %p must have disconnected\n",
+                client);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_free (buf);
   {
     struct GNUNET_MessageHeader synced = {
       .type = htons (TALER_HELPER_RSA_SYNCED),
@@ -725,6 +699,10 @@ rsa_client_init (struct TES_Client *client)
 static enum GNUNET_GenericReturnValue
 rsa_update_client_keys (struct TES_Client *client)
 {
+  size_t obs = 0;
+  char *buf;
+  enum GNUNET_GenericReturnValue ret;
+
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
   for (struct Denomination *denom = denom_head;
        NULL != denom;
@@ -737,33 +715,59 @@ rsa_update_client_keys (struct TES_Client *client)
       if (key->key_gen <= client->key_gen)
         continue;
       if (key->purge)
+        obs += sizeof (struct TALER_CRYPTO_RsaKeyPurgeNotification);
+      else
+        obs += ntohs (key->an->header.size);
+    }
+  }
+  if (0 == obs)
+  {
+    /* nothing to do */
+    client->key_gen = key_gen;
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    return GNUNET_OK;
+  }
+  buf = GNUNET_malloc (obs);
+  obs = 0;
+  for (struct Denomination *denom = denom_head;
+       NULL != denom;
+       denom = denom->next)
+  {
+    for (struct DenominationKey *key = denom->keys_head;
+         NULL != key;
+         key = key->next)
+    {
+      if (key->key_gen <= client->key_gen)
+        continue;
+      if (key->purge)
       {
-        if (GNUNET_OK !=
-            notify_client_dk_del (client,
-                                  key))
-        {
-          GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-          return GNUNET_SYSERR;
-        }
+        struct TALER_CRYPTO_RsaKeyPurgeNotification pn = {
+          .header.type = htons (TALER_HELPER_RSA_MT_PURGE),
+          .header.size = htons (sizeof (pn)),
+          .h_rsa = key->h_rsa
+        };
+
+        memcpy (&buf[obs],
+                &pn,
+                sizeof (pn));
+        obs += sizeof (pn);
       }
       else
       {
-        // FIXME: avoid holding keys_lock while
-        // doing the IPC with client and the signing!
-        // => lock contention candidate!
-        if (GNUNET_OK !=
-            notify_client_dk_add (client,
-                                  key))
-        {
-          GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-          return GNUNET_SYSERR;
-        }
+        memcpy (&buf[obs],
+                key->an,
+                ntohs (key->an->header.size));
+        obs += ntohs (key->an->header.size);
       }
     }
   }
   client->key_gen = key_gen;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  return GNUNET_OK;
+  ret = TES_transmit_raw (client->csock,
+                          obs,
+                          buf);
+  GNUNET_free (buf);
+  return ret;
 }
 
 
@@ -910,6 +914,7 @@ update_keys (struct Denomination *denom,
     GNUNET_free (key->filename);
     GNUNET_CRYPTO_rsa_private_key_free (key->denom_priv);
     GNUNET_CRYPTO_rsa_public_key_free (key->denom_pub);
+    GNUNET_free (key->an);
     GNUNET_free (key);
     key = nxt;
   }
@@ -1059,6 +1064,7 @@ parse_key (struct Denomination *denom,
     TALER_rsa_pub_hash (pub,
                         &dk->h_rsa);
     dk->denom_pub = pub;
+    generate_response (dk);
     if (GNUNET_OK !=
         GNUNET_CONTAINER_multihashmap_put (
           keys,
@@ -1072,6 +1078,7 @@ parse_key (struct Denomination *denom,
                   filename);
       GNUNET_CRYPTO_rsa_private_key_free (priv);
       GNUNET_CRYPTO_rsa_public_key_free (pub);
+      GNUNET_free (dk->an);
       GNUNET_free (dk);
       return;
     }

@@ -52,6 +52,19 @@ TES_transmit (int sock,
 
 
 /**
+ * Transmit @a end bytes from @a pos on @a sock.
+ *
+ * @param sock where to send the data
+ * @param end how many bytes to send
+ * @param pos first address with data
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TES_transmit_raw (int sock,
+                  size_t end,
+                  const void *pos);
+
+/**
  * Information we keep for a client connected to us.
  */
 struct TES_Client;
