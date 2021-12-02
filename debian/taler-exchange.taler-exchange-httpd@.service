@@ -1,7 +1,8 @@
+% This is a systemd service template.
 [Unit]
-Description=GNU Taler payment system exchange REST API
+Description=GNU Taler payment system exchange REST API at %I
 AssertPathExists=/run/taler/exchange-httpd
-Requires=taler-exchange-httpd.socket taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
+Requires=taler-exchange-httpd@%i.socket taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
 After=postgres.service network.target taler-exchange-secmod-rsa.service taler-exchange-secmod-eddsa.service
 PartOf=taler-exchange.target
 
@@ -13,6 +14,7 @@ Type=simple
 Restart=always
 # Do not dally on restarts.
 RestartSec=1ms
+EnvironmentFile=/etc/environment
 ExecStart=/usr/bin/taler-exchange-httpd -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal

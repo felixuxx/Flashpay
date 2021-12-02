@@ -1,0 +1,14 @@
+[Unit]
+Description=Taler Exchange Socket at %I
+PartOf=taler-exchange-httpd@%i.service
+
+[Socket]
+ListenStream=80
+Accept=no
+Service=taler-exchange-httpd@%i.service
+SocketUser=taler-exchange-httpd
+SocketGroup=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

@@ -77,6 +77,11 @@ static int allow_address_reuse;
 const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 
 /**
+ * Handle to the HTTP server.
+ */
+static struct MHD_Daemon *mhd;
+
+/**
  * Our KYC configuration.
  */
 struct TEH_KycOptions TEH_kyc_config;
@@ -123,6 +128,12 @@ static unsigned int connection_timeout = 30;
 static int connection_close;
 
 /**
+ * True if we should commit suicide once all active
+ * connections are finished.
+ */
+bool TEH_suicide;
+
+/**
  * Value to return from main()
  */
 static int global_ret;
@@ -136,6 +147,11 @@ static uint16_t serve_port;
  * Counter for the number of requests this HTTP has processed so far.
  */
 static unsigned long long req_count;
+
+/**
+ * Counter for the number of open connections.
+ */
+static unsigned long long active_connections;
 
 /**
  * Limit for the number of requests this HTTP may process before restarting.
@@ -263,6 +279,45 @@ handle_post_coins (struct TEH_RequestContext *rc,
 
 
 /**
+ * Increments our request counter and checks if this
+ * process should commit suicide.
+ */
+static void
+check_suicide (void)
+{
+  int fd;
+  pid_t chld;
+  unsigned long long cnt;
+
+  cnt = req_count++;
+  if (req_max != cnt)
+    return;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Restarting exchange service after %llu requests\n",
+              cnt);
+  /* Stop accepting new connections */
+  fd = MHD_quiesce_daemon (mhd);
+  GNUNET_break (0 == close (fd));
+  /* Continue handling existing connections in child,
+     so that this process can die and be replaced by
+     systemd with a fresh one */
+  chld = fork ();
+  if (-1 == chld)
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                         "fork");
+    _exit (1);
+  }
+  if (0 != chld)
+  {
+    /* We are the parent, instant-suicide! */
+    _exit (0);
+  }
+  TEH_suicide = true;
+}
+
+
+/**
  * Function called whenever MHD is done with a request.  If the
  * request was a POST, we may have stored a `struct Buffer *` in the
  * @a con_cls that might still need to be cleaned up.  Call the
@@ -290,6 +345,7 @@ handle_mhd_completion_callback (void *cls,
     return;
   GNUNET_async_scope_enter (&rc->async_scope_id,
                             &old_scope);
+  check_suicide ();
   TEH_check_invariants ();
   if (NULL != rc->rh_cleaner)
     rc->rh_cleaner (rc);
@@ -1642,8 +1698,19 @@ connection_done (void *cls,
   (void) cls;
   (void) connection;
   (void) socket_context;
-  unsigned long long cnt;
 
+  switch (toe)
+  {
+  case MHD_CONNECTION_NOTIFY_STARTED:
+    active_connections++;
+    break;
+  case MHD_CONNECTION_NOTIFY_CLOSED:
+    active_connections--;
+    if (TEH_suicide &&
+        (0 == active_connections) )
+      GNUNET_SCHEDULER_shutdown ();
+    break;
+  }
 #if HAVE_DEVELOPER
   /* We only act if the connection is closed. */
   if (MHD_CONNECTION_NOTIFY_CLOSED != toe)
@@ -1651,15 +1718,6 @@ connection_done (void *cls,
   if (NULL != input_filename)
     GNUNET_SCHEDULER_shutdown ();
 #endif
-  cnt = req_count++;
-  if (req_max == cnt)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Restarting exchange service after %llu requests\n",
-                cnt);
-    (void) kill (getpid (),
-                 SIGTERM);
-  }
 }
 
 
@@ -1780,46 +1838,42 @@ run (void *cls,
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  {
-    struct MHD_Daemon *mhd;
-
-    mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
-                            | MHD_USE_PIPE_FOR_SHUTDOWN
-                            | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
-                            | MHD_USE_TCP_FASTOPEN,
-                            (-1 == fh) ? serve_port : 0,
-                            NULL, NULL,
-                            &handle_mhd_request, NULL,
-                            MHD_OPTION_LISTEN_BACKLOG_SIZE,
-                            (unsigned int) 1024,
-                            MHD_OPTION_LISTEN_SOCKET,
-                            fh,
-                            MHD_OPTION_EXTERNAL_LOGGER,
-                            &TALER_MHD_handle_logs,
-                            NULL,
-                            MHD_OPTION_NOTIFY_COMPLETED,
-                            &handle_mhd_completion_callback,
-                            NULL,
-                            MHD_OPTION_NOTIFY_CONNECTION,
-                            &connection_done,
-                            NULL,
-                            MHD_OPTION_CONNECTION_TIMEOUT,
-                            connection_timeout,
-                            (0 == allow_address_reuse)
+  mhd = MHD_start_daemon (MHD_USE_SUSPEND_RESUME
+                          | MHD_USE_PIPE_FOR_SHUTDOWN
+                          | MHD_USE_DEBUG | MHD_USE_DUAL_STACK
+                          | MHD_USE_TCP_FASTOPEN,
+                          (-1 == fh) ? serve_port : 0,
+                          NULL, NULL,
+                          &handle_mhd_request, NULL,
+                          MHD_OPTION_LISTEN_BACKLOG_SIZE,
+                          (unsigned int) 1024,
+                          MHD_OPTION_LISTEN_SOCKET,
+                          fh,
+                          MHD_OPTION_EXTERNAL_LOGGER,
+                          &TALER_MHD_handle_logs,
+                          NULL,
+                          MHD_OPTION_NOTIFY_COMPLETED,
+                          &handle_mhd_completion_callback,
+                          NULL,
+                          MHD_OPTION_NOTIFY_CONNECTION,
+                          &connection_done,
+                          NULL,
+                          MHD_OPTION_CONNECTION_TIMEOUT,
+                          connection_timeout,
+                          (0 == allow_address_reuse)
                             ? MHD_OPTION_END
                             : MHD_OPTION_LISTENING_ADDRESS_REUSE,
-                            (unsigned int) allow_address_reuse,
-                            MHD_OPTION_END);
-    if (NULL == mhd)
-    {
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Failed to launch HTTP service. Is the port in use?\n");
-      GNUNET_SCHEDULER_shutdown ();
-      return;
-    }
-    global_ret = EXIT_SUCCESS;
-    TALER_MHD_daemon_start (mhd);
+                          (unsigned int) allow_address_reuse,
+                          MHD_OPTION_END);
+  if (NULL == mhd)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failed to launch HTTP service. Is the port in use?\n");
+    GNUNET_SCHEDULER_shutdown ();
+    return;
   }
+  global_ret = EXIT_SUCCESS;
+  TALER_MHD_daemon_start (mhd);
   atexit (&write_stats);
 
 #if HAVE_DEVELOPER

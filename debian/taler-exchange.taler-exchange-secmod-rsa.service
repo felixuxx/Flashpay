@@ -6,7 +6,8 @@ PartOf=taler-exchange.target
 [Service]
 User=taler-exchange-secmod-rsa
 Type=simple
-Restart=on-failure
+Restart=always
+RestartSec=100ms
 ExecStart=/usr/bin/taler-exchange-secmod-rsa -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal

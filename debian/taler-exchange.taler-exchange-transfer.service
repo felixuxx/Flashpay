@@ -6,7 +6,8 @@ PartOf=taler-exchange.target
 [Service]
 User=taler-exchange-wire
 Type=simple
-Restart=on-failure
+Restart=always
+RestartSec=100ms
 ExecStart=/usr/bin/taler-exchange-transfer -c /etc/taler/taler.conf
 StandardOutput=journal
 StandardError=journal

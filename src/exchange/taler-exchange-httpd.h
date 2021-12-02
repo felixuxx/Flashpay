@@ -158,6 +158,13 @@ extern int TEH_allow_keys_timetravel;
 extern char *TEH_revocation_directory;
 
 /**
+ * True if we should commit suicide once all active
+ * connections are finished. Also forces /keys requests
+ * to terminate if they are long-polling.
+ */
+extern bool TEH_suicide;
+
+/**
  * Master public key (according to the
  * configuration in the exchange directory).
  */

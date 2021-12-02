@@ -37,6 +37,12 @@
 
 
 /**
+ * When do we forcefully timeout a /keys request?
+ */
+#define KEYS_TIMEOUT GNUNET_TIME_UNIT_MINUTES
+
+
+/**
  * Taler protocol version in the format CURRENT:REVISION:AGE
  * as used by GNU libtool.  See
  * https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
@@ -355,6 +361,11 @@ struct SuspendedKeysRequests
    * The suspended connection.
    */
   struct MHD_Connection *connection;
+
+  /**
+   * When does this request timeout?
+   */
+  struct GNUNET_TIME_Absolute timeout;
 };
 
 
@@ -399,6 +410,11 @@ static unsigned int skr_size;
 static struct MHD_Connection *skr_connection;
 
 /**
+ * Task to force timeouts on /keys requests.
+ */
+static struct GNUNET_SCHEDULER_Task *keys_tt;
+
+/**
  * For how long should a signing key be legally retained?
  * Configuration value.
  */
@@ -418,6 +434,40 @@ static struct TALER_SecurityModulePublicKeyP esign_sm_pub;
  * Are we shutting down?
  */
 static bool terminating;
+
+
+/**
+ * Function called to forcefully resume suspended keys requests.
+ *
+ * @param cls unused, NULL
+ */
+static void
+keys_timeout_cb (void *cls)
+{
+  struct SuspendedKeysRequests *skr;
+
+  (void) cls;
+  keys_tt = NULL;
+  while (NULL != (skr = skr_head))
+  {
+    if (GNUNET_TIME_absolute_is_future (skr->timeout))
+      break;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Resuming /keys request due to timeout\n");
+    GNUNET_CONTAINER_DLL_remove (skr_head,
+                                 skr_tail,
+                                 skr);
+    MHD_resume_connection (skr->connection);
+    TALER_MHD_daemon_trigger ();
+    GNUNET_free (skr);
+  }
+  if (NULL == skr)
+    return;
+  keys_tt = GNUNET_SCHEDULER_add_at (skr->timeout,
+                                     &keys_timeout_cb,
+                                     NULL);
+}
+
 
 /**
  * Suspend /keys request while we (hopefully) are waiting to be
@@ -445,6 +495,13 @@ suspend_request (struct MHD_Connection *connection)
   GNUNET_CONTAINER_DLL_insert (skr_head,
                                skr_tail,
                                skr);
+  skr->timeout = GNUNET_TIME_relative_to_absolute (KEYS_TIMEOUT);
+  if (NULL == keys_tt)
+  {
+    keys_tt = GNUNET_SCHEDULER_add_at (skr->timeout,
+                                       &keys_timeout_cb,
+                                       NULL);
+  }
   skr_size++;
   if (skr_size > SKR_LIMIT)
   {
@@ -477,9 +534,8 @@ check_dk (void *cls,
 {
   struct TEH_DenominationKey *dk = value;
 
-
+  (void) cls;
   (void) hc;
-  (void) value;
   GNUNET_assert (TALER_DENOMINATION_INVALID != dk->denom_pub.cipher);
   if (TALER_DENOMINATION_RSA == dk->denom_pub.cipher)
     GNUNET_assert (GNUNET_CRYPTO_rsa_public_key_check (
@@ -1073,6 +1129,11 @@ TEH_keys_init ()
 void
 TEH_keys_finished ()
 {
+  if (NULL != keys_tt)
+  {
+    GNUNET_SCHEDULER_cancel (keys_tt);
+    keys_tt = NULL;
+  }
   if (NULL != key_state)
     destroy_key_state (key_state,
                        true);
@@ -2282,13 +2343,17 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
     ksh = TEH_keys_get_state ();
     if (NULL == ksh)
     {
-      if ( (SKR_LIMIT == skr_size) &&
-           (rc->connection == skr_connection) )
+      if ( ( (SKR_LIMIT == skr_size) &&
+             (rc->connection == skr_connection) ) ||
+           TEH_suicide)
       {
-        return TALER_MHD_reply_with_error (rc->connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
-                                           "too many connections suspended on /keys");
+        return TALER_MHD_reply_with_error (
+          rc->connection,
+          MHD_HTTP_SERVICE_UNAVAILABLE,
+          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+          TEH_suicide
+          ? "server terminating"
+          : "too many connections suspended waiting on /keys");
       }
       return suspend_request (rc->connection);
     }
@@ -2688,7 +2753,7 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
   if (NULL == ksh)
   {
     return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       MHD_HTTP_SERVICE_UNAVAILABLE,
                                        TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                        "no key state");
   }
