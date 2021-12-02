@@ -37,6 +37,11 @@ struct AuthchangeState
    * What is the new authorization token to send?
    */
   const char *auth_token;
+
+  /**
+   * Old context, clean up on termination.
+   */
+  struct GNUNET_CURL_Context *old_ctx;
 };
 
 
@@ -55,11 +60,7 @@ authchange_run (void *cls,
   struct AuthchangeState *ss = cls;
 
   (void) cmd;
-  if (NULL != is->ctx)
-  {
-    GNUNET_CURL_fini (is->ctx);
-    is->ctx = NULL;
-  }
+  ss->old_ctx = is->ctx;
   if (NULL != is->rc)
   {
     GNUNET_CURL_gnunet_rc_destroy (is->rc);
@@ -101,6 +102,11 @@ authchange_cleanup (void *cls,
   struct AuthchangeState *ss = cls;
 
   (void) cmd;
+  if (NULL != ss->old_ctx)
+  {
+    GNUNET_CURL_fini (ss->old_ctx);
+    ss->old_ctx = NULL;
+  }
   GNUNET_free (ss);
 }
 
