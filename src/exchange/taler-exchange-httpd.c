@@ -128,6 +128,11 @@ static unsigned int connection_timeout = 30;
 static int connection_close;
 
 /**
+ * -I command-line flag given?
+ */
+int TEH_check_invariants;
+
+/**
  * True if we should commit suicide once all active
  * connections are finished.
  */
@@ -1903,6 +1908,10 @@ main (int argc,
                                "connection-close",
                                "force HTTP connections to be closed after each request",
                                &connection_close),
+    GNUNET_GETOPT_option_flag ('I',
+                               "check-invariants",
+                               "enable expensive invariant checks",
+                               &TEH_check_invariants),
     GNUNET_GETOPT_option_flag ('r',
                                "allow-reuse-address",
                                "allow multiple HTTPDs to listen to the same port",

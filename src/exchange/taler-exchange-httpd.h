@@ -145,6 +145,11 @@ extern const struct GNUNET_CONFIGURATION_Handle *TEH_cfg;
 extern char *TEH_exchange_directory;
 
 /**
+ * -I command-line flag given?
+ */
+extern int TEH_check_invariants;
+
+/**
  * Are clients allowed to request /keys for times other than the
  * current time? Allowing this could be abused in a DoS-attack
  * as building new /keys responses is expensive. Should only be
