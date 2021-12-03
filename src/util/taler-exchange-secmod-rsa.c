@@ -388,6 +388,11 @@ handle_sign_request (struct TES_Client *client,
                   GNUNET_YES));
     ret = TES_transmit (client->csock,
                         &sr->header);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Sent RSA signature after %s\n",
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_duration (now),
+                  GNUNET_YES));
     GNUNET_free (sr);
     return ret;
   }

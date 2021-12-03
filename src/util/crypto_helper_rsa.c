@@ -83,6 +83,8 @@ try_connect (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 {
   if (-1 != dh->sock)
     return GNUNET_OK;
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Establishing connection!\n");
   dh->sock = socket (AF_UNIX,
                      SOCK_STREAM,
                      0);
@@ -103,6 +105,7 @@ try_connect (struct TALER_CRYPTO_RsaDenominationHelper *dh)
     do_disconnect (dh);
     return GNUNET_SYSERR;
   }
+  TALER_CRYPTO_helper_rsa_poll (dh);
   return GNUNET_OK;
 }
 
@@ -153,7 +156,6 @@ TALER_CRYPTO_helper_rsa_connect (
     TALER_CRYPTO_helper_rsa_disconnect (dh);
     return NULL;
   }
-  TALER_CRYPTO_helper_rsa_poll (dh);
   return dh;
 }
 
@@ -397,6 +399,8 @@ TALER_CRYPTO_helper_rsa_sign (
     .cipher = TALER_DENOMINATION_INVALID
   };
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Starting signature process\n");
   if (GNUNET_OK !=
       try_connect (dh))
   {
@@ -406,6 +410,8 @@ TALER_CRYPTO_helper_rsa_sign (
     return ds;
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Requesting signature\n");
   {
     char buf[sizeof (struct TALER_CRYPTO_SignRequest) + msg_size];
     struct TALER_CRYPTO_SignRequest *sr
@@ -431,6 +437,8 @@ TALER_CRYPTO_helper_rsa_sign (
     }
   }
 
+  GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+              "Awaiting reply\n");
   {
     char buf[UINT16_MAX];
     size_t off = 0;
@@ -512,6 +520,8 @@ more:
             *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
             goto end;
           }
+          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                      "Received signature\n");
           *ec = TALER_EC_NONE;
           finished = true;
           ds.cipher = TALER_DENOMINATION_RSA;
@@ -531,10 +541,14 @@ more:
             (const struct TALER_CRYPTO_SignFailure *) buf;
 
           *ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+          GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                      "Signing failed!\n");
           finished = true;
           break;
         }
       case TALER_HELPER_RSA_MT_AVAIL:
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Received new key!\n");
         if (GNUNET_OK !=
             handle_mt_avail (dh,
                              hdr))
@@ -546,6 +560,8 @@ more:
         }
         break; /* while(1) loop ensures we recvfrom() again */
       case TALER_HELPER_RSA_MT_PURGE:
+        GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                    "Received revocation!\n");
         if (GNUNET_OK !=
             handle_mt_purge (dh,
                              hdr))
