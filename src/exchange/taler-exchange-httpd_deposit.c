@@ -139,11 +139,12 @@ struct DepositContext
 
 
 /**
- * Check if /deposit is already in the database.  IF it returns a non-error
- * code, the transaction logic MUST NOT queue a MHD response.  IF it returns
- * an hard error, the transaction logic MUST queue a MHD response and set @a
- * mhd_ret.  We do return a "hard" error also if we found the deposit in the
- * database and generated a regular response.
+ * Execute database transaction for /deposit.  Runs the transaction
+ * logic; IF it returns a non-error code, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an hard error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
+ * it returns the soft error code, the function MAY be called again to
+ * retry and MUST not queue a MHD response.
  *
  * @param cls a `struct DepositContext`
  * @param connection MHD request context
@@ -151,15 +152,24 @@ struct DepositContext
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
-deposit_precheck (void *cls,
-                  struct MHD_Connection *connection,
-                  MHD_RESULT *mhd_ret)
+deposit_transaction (void *cls,
+                     struct MHD_Connection *connection,
+                     MHD_RESULT *mhd_ret)
 {
   struct DepositContext *dc = cls;
   const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
-  struct TALER_Amount deposit_fee;
+  struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
+  struct TALER_Amount deposit_fee;
 
+  /* make sure coin is 'known' in database */
+  qs = TEH_make_coin_known (&deposit->coin,
+                            connection,
+                            mhd_ret);
+  if (qs < 0)
+    return qs;
+
+  /* Check for idempotency: did we get this request before? */
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
                                  deposit,
                                  &deposit_fee,
@@ -196,51 +206,8 @@ deposit_precheck (void *cls,
                                       deposit->wire_deadline,
                                       &deposit->merchant_pub,
                                       &amount_without_fee);
-    /* Treat as 'hard' DB error as we want to rollback and
-       never try again. */
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-}
-
-
-/**
- * Execute database transaction for /deposit.  Runs the transaction
- * logic; IF it returns a non-error code, the transaction logic MUST
- * NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
- * it returns the soft error code, the function MAY be called again to
- * retry and MUST not queue a MHD response.
- *
- * @param cls a `struct DepositContext`
- * @param connection MHD request context
- * @param[out] mhd_ret set to MHD status on error
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-deposit_transaction (void *cls,
-                     struct MHD_Connection *connection,
-                     MHD_RESULT *mhd_ret)
-{
-  struct DepositContext *dc = cls;
-  const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
-  struct TALER_Amount spent;
-  enum GNUNET_DB_QueryStatus qs;
-
-  /* make sure coin is 'known' in database */
-  qs = TEH_make_coin_known (&deposit->coin,
-                            connection,
-                            mhd_ret);
-  if (qs < 0)
-    return qs;
-  /* Theoretically, someone other threat may have received
-     and committed the deposit in the meantime. Check now
-     that we are in the transaction scope. */
-  qs = deposit_precheck (cls,
-                         connection,
-                         mhd_ret);
-  if (qs < 0)
-    return qs;
 
   /* Start with fee for THIS transaction */
   spent = deposit->amount_with_fee;
@@ -412,22 +379,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   TALER_merchant_wire_signature_hash (dc.payto_uri,
                                       &deposit.wire_salt,
                                       &dc.h_wire);
-  /* Check for idempotency: did we get this request before? */
   dc.deposit = &deposit;
-  {
-    MHD_RESULT mhd_ret;
-
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
-                                "precheck deposit",
-                                &mhd_ret,
-                                &deposit_precheck,
-                                &dc))
-    {
-      GNUNET_JSON_parse_free (spec);
-      return mhd_ret;
-    }
-  }
 
   /* new deposit */
   dc.exchange_timestamp = GNUNET_TIME_absolute_get ();
