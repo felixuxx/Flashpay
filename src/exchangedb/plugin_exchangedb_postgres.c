@@ -781,7 +781,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom_sig"
       ") SELECT $1, denominations_serial, $3 "
       "    FROM denominations"
-      "   WHERE denom_pub_hash=$2;",
+      "   WHERE denom_pub_hash=$2"
+      " ON CONFLICT DO NOTHING;",
       3),
 
     /* Used in #postgres_insert_melt() to store
@@ -5767,16 +5768,24 @@ postgres_ensure_coin_known (void *cls,
                                           &denom_pub_hash),
     GNUNET_PQ_result_spec_end
   };
-#if EXPLICIT_LOCKS
-  struct GNUNET_PQ_QueryParam no_params[] = {
-    GNUNET_PQ_query_param_end
-  };
 
-  if (0 > (qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                    "lock_known_coins",
-                                                    no_params)))
-    return qs;
-#endif
+  /* First, try to simply insert it */
+  qs = insert_known_coin (pg,
+                          coin);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
+    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    /* continued below */
+    break;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    return TALER_EXCHANGEDB_CKS_ADDED;
+  }
+
   /* check if the coin is already known */
   qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
                                                  "get_known_coin_dh",
@@ -5795,26 +5804,13 @@ postgres_ensure_coin_known (void *cls,
     GNUNET_break_op (0);
     return TALER_EXCHANGEDB_CKS_CONFLICT;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    break;
-  }
-
-  /* if not known, insert it */
-  qs = insert_known_coin (pg,
-                          coin);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_HARD_ERROR:
+    /* should be impossible */
     GNUNET_break (0);
     return TALER_EXCHANGEDB_CKS_HARD_FAIL;
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    GNUNET_break (0);
-    return TALER_EXCHANGEDB_CKS_HARD_FAIL;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-    break;
   }
-  return TALER_EXCHANGEDB_CKS_ADDED;
+  /* we should never get here */
+  GNUNET_break (0);
+  return TALER_EXCHANGEDB_CKS_HARD_FAIL;
 }
 
 

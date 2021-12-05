@@ -1796,9 +1796,14 @@ run (void *cls)
                          value.currency));
 
   result = 7;
-  qs = plugin->get_reserve_history (plugin->cls,
-                                    &reserve_pub,
-                                    &rh);
+  {
+    struct TALER_Amount balance;
+
+    qs = plugin->get_reserve_history (plugin->cls,
+                                      &reserve_pub,
+                                      &balance,
+                                      &rh);
+  }
   FAILIF (0 > qs);
   FAILIF (NULL == rh);
   rh_head = rh;
