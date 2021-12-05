@@ -95,6 +95,9 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
           NULL);
       return qs;
     }
+    // FIXME: why do we even return the transaction
+    // history here!? This is a coin with multiple
+    // associated denominations, after all...
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,

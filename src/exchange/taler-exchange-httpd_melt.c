@@ -311,16 +311,6 @@ melt_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   uint32_t noreveal_index;
 
-  /* First, make sure coin is 'known' in database */
-  if (! rmc->coin_is_dirty)
-  {
-    qs = TEH_make_coin_known (&rmc->refresh_session.coin,
-                              connection,
-                              mhd_ret);
-    if (qs < 0)
-      return qs;
-  }
-
   /* Check if we already created a matching refresh_session */
   qs = TEH_plugin->get_melt_index (TEH_plugin->cls,
                                    &rmc->refresh_session.rc,
@@ -420,7 +410,22 @@ handle_melt (struct MHD_Connection *connection,
     }
   }
 
-  /* run database transaction */
+  /* first, make sure coin is known */
+  if (! rmc->coin_is_dirty)
+  {
+    MHD_RESULT mhd_ret = MHD_NO;
+    enum GNUNET_DB_QueryStatus qs;
+
+    qs = TEH_make_coin_known (&rmc->refresh_session.coin,
+                              connection,
+                              &mhd_ret);
+    /* no transaction => no serialization failures should be possible */
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+    if (qs < 0)
+      return mhd_ret;
+  }
+
+  /* run main database transaction */
   {
     MHD_RESULT mhd_ret;
 
@@ -513,10 +518,6 @@ check_for_denomination_key (struct MHD_Connection *connection,
                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
                                          "coin denomination");
     }
-    /* sanity check */
-    GNUNET_break (0 ==
-                  GNUNET_memcmp (&denom_hash,
-                                 &rmc->refresh_session.coin.denom_pub_hash));
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
       struct GNUNET_TIME_Absolute now;
@@ -531,11 +532,23 @@ check_for_denomination_key (struct MHD_Connection *connection,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "MELT");
     }
-    else
+    /* Minor optimization: no need to run the
+       "ensure_coin_known" part of the transaction */
+    rmc->coin_is_dirty = true;
+    /* sanity check */
+    if (0 !=
+        GNUNET_memcmp (&denom_hash,
+                       &rmc->refresh_session.coin.denom_pub_hash))
     {
-      /* Minor optimization: no need to run the
-         "ensure_coin_known" part of the transaction */
-      rmc->coin_is_dirty = true;
+      GNUNET_break_op (0);
+      // => this is probably the wrong call, as this
+      // is NOT about insufficient funds!
+      // (see also taler-exchange-httpd_db.c for an equivalent issue)
+      return TEH_RESPONSE_reply_coin_insufficient_funds (
+        connection,
+        TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY,
+        &rmc->refresh_session.coin.coin_pub,
+        NULL);
     }
     rmc->zombie_required = true;   /* check later that zombie is satisfied */
   }
