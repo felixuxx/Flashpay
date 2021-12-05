@@ -831,7 +831,8 @@ TALER_EXCHANGE_verify_coin_history (
         return GNUNET_SYSERR;
       }
       *h_denom_pub = rr.h_denom_pub;
-      add = GNUNET_YES;
+      add = GNUNET_YES;  // FIXME: one of these should be a "NO"
+      // => need better tests!!!
     }
     else if (0 == strcasecmp (type,
                               "OLD-COIN-RECOUP"))
@@ -878,7 +879,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      add = GNUNET_YES;
+      add = GNUNET_YES; // FIXME: one of these should be a "NO"
     }
     else
     {
@@ -911,7 +912,8 @@ TALER_EXCHANGE_verify_coin_history (
          However, for the implementation, we first *add* up all of
          these negative amounts, as we might get refunds before
          deposits from a semi-evil exchange.  Then, at the end, we do
-         the subtraction by calculating "total = total - rtotal" */GNUNET_assert (GNUNET_NO == add);
+         the subtraction by calculating "total = total - rtotal" */
+      GNUNET_assert (GNUNET_NO == add);
       if (0 >
           TALER_amount_add (&rtotal,
                             &rtotal,

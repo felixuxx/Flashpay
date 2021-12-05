@@ -525,6 +525,7 @@ CREATE TABLE IF NOT EXISTS recoup
   ,timestamp INT8 NOT NULL
   ,reserve_out_serial_id INT8 NOT NULL REFERENCES reserves_out (reserve_out_serial_id) ON DELETE CASCADE
   );
+-- FIXME: explain table better!
 COMMENT ON TABLE recoup
   IS 'Information about recoups that were executed';
 COMMENT ON COLUMN recoup.known_coin_id
@@ -552,6 +553,7 @@ CREATE TABLE IF NOT EXISTS recoup_refresh
   ,timestamp INT8 NOT NULL
   ,rrc_serial INT8 NOT NULL UNIQUE REFERENCES refresh_revealed_coins (rrc_serial) ON DELETE CASCADE
   );
+-- FIXME: explain table better!
 COMMENT ON COLUMN recoup_refresh.known_coin_id
   IS 'Do not CASCADE ON DROP on the known_coin_id, as we may keep the coin alive!';
 COMMENT ON COLUMN recoup_refresh.rrc_serial
