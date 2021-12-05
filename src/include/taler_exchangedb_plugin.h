@@ -496,7 +496,7 @@ struct TALER_EXCHANGEDB_ClosingTransfer
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
-   * Amount that was transferred to the exchange.
+   * Amount that was transferred from the exchange.
    */
   struct TALER_Amount amount;
 
@@ -2512,9 +2512,54 @@ struct TALER_EXCHANGEDB_Plugin
    * @return statement execution status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_withdraw_info)(
+  (*insert_withdraw_infoXX)(
     void *cls,
     const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
+
+
+  /**
+   * Perform withdraw operation, checking for sufficient balance
+   * and possibly persisting the withdrawal details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param collectable corresponding collectable coin (blind signature)
+   *                    if a coin is found
+   * @param now current time (rounded)
+   * @param[out] found set to true if the reserve was found
+   * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] kyc set to the KYC status of the reserve
+   * @param[out] reserve_uuid set to the UUID of the reserve
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_withdraw)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+    struct GNUNET_TIME_Absolute now,
+    bool *found,
+    bool *balance_ok,
+    struct TALER_EXCHANGEDB_KycStatus *kyc_ok,
+    uint64_t *reserve_uuid);
+
+
+  /**
+   * Check that reserve remains below threshold for KYC
+   * checks after withdraw operation.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param reserve_uuid reserve to check
+   * @param withdraw_start starting point to accumulate from
+   * @param upper_limit maximum amount allowed
+   * @param[out] below_limit set to true if the limit was not exceeded
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_withdraw_limit_check)(
+    void *cls,
+    uint64_t reserve_uuid,
+    struct GNUNET_TIME_Absolute withdraw_start,
+    const struct TALER_Amount *upper_limit,
+    bool *below_limit);
 
 
   /**
@@ -2523,12 +2568,14 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param reserve_pub public key of the reserve
+   * @param[out] balance set to the reserve balance
    * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_history)(void *cls,
                          const struct TALER_ReservePublicKeyP *reserve_pub,
+                         struct TALER_Amount *balance,
                          struct TALER_EXCHANGEDB_ReserveHistory **rhp);
 
 

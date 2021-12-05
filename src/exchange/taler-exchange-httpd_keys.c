@@ -2110,6 +2110,8 @@ TEH_keys_denomination_by_hash2 (
                                           &h_denom_pub->hash);
   if (NULL == dk)
   {
+    if (NULL == conn)
+      return NULL;
     *mret = TEH_RESPONSE_reply_unknown_denom_pub_hash (conn,
                                                        h_denom_pub);
     return NULL;

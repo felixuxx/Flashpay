@@ -596,6 +596,34 @@ prepare_statements (struct PostgresClosure *pg)
       "lock_withdraw",
       "LOCK TABLE reserves_out;",
       0),
+    /* Used in #postgres_do_withdraw() to store
+       the signature of a blinded coin with the blinded coin's
+       details before returning it during /reserve/withdraw. We store
+       the coin's denomination information (public key, signature)
+       and the blinded message as well as the reserve that the coin
+       is being withdrawn from and the signature of the message
+       authorizing the withdrawal. */
+    GNUNET_PQ_make_prepare (
+      "call_withdraw",
+      "SELECT "
+      " reserve_found"
+      ",balance_ok"
+      ",kycok AS kyc_ok"
+      ",ruuid AS reserve_uuid"
+      ",account_uuid AS payment_target_uuid"
+      " FROM exchange_do_withdraw"
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+      9),
+    /* Used in #postgres_do_withdraw_limit_check() to check
+       if the withdrawals remain below the limit under which
+       KYC is not required. */
+    GNUNET_PQ_make_prepare (
+      "call_withdraw_limit_check",
+      "SELECT "
+      " below_limit"
+      " FROM exchange_do_withdraw_limit_check"
+      " ($1,$2,$3,$4);",
+      4),
     /* Used in #postgres_insert_withdraw_info() to store
        the signature of a blinded coin with the blinded coin's
        details before returning it during /reserve/withdraw. We store
@@ -3378,12 +3406,12 @@ dominations_cb_helper (void *cls,
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_MasterSignatureP master_sig;
     struct TALER_DenominationHash h_denom_pub;
-    uint8_t revoked;
+    bool revoked;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &master_sig),
-      GNUNET_PQ_result_spec_auto_from_type ("revoked",
-                                            &revoked),
+      GNUNET_PQ_result_spec_bool ("revoked",
+                                  &revoked),
       TALER_PQ_result_spec_absolute_time ("valid_from",
                                           &meta.start),
       TALER_PQ_result_spec_absolute_time ("expire_withdraw",
@@ -3422,7 +3450,7 @@ dominations_cb_helper (void *cls,
              &h_denom_pub,
              &meta,
              &master_sig,
-             (0 != revoked));
+             revoked);
     GNUNET_PQ_cleanup_result (rs);
   }
 }
@@ -3777,7 +3805,6 @@ postgres_reserves_get (void *cls,
     GNUNET_PQ_query_param_auto_from_type (&reserve->pub),
     GNUNET_PQ_query_param_end
   };
-  uint8_t ok8;
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
                                  &reserve->balance),
@@ -3787,19 +3814,16 @@ postgres_reserves_get (void *cls,
                                         &reserve->gc),
     GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
                                   &kyc->payment_target_uuid),
-    GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                          &ok8),
+    GNUNET_PQ_result_spec_bool ("kyc_ok",
+                                &kyc->ok),
     GNUNET_PQ_result_spec_end
   };
-  enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "reserves_get_with_kyc",
-                                                 params,
-                                                 rs);
   kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
-  kyc->ok = (0 != ok8);
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "reserves_get_with_kyc",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -3874,23 +3898,19 @@ postgres_get_kyc_status (void *cls,
     GNUNET_PQ_query_param_string (payto_uri),
     GNUNET_PQ_query_param_end
   };
-  uint8_t ok8;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
                                   &kyc->payment_target_uuid),
     GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                          &ok8),
+                                          &kyc->ok),
     GNUNET_PQ_result_spec_end
   };
-  enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "get_kyc_status",
-                                                 params,
-                                                 rs);
   kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
-  kyc->ok = (0 != ok8);
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "get_kyc_status",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -3914,24 +3934,20 @@ postgres_select_kyc_status (void *cls,
     GNUNET_PQ_query_param_uint64 (&payment_target_uuid),
     GNUNET_PQ_query_param_end
   };
-  uint8_t ok8;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("h_payto",
                                           h_payto),
     GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                          &ok8),
+                                          &kyc->ok),
     GNUNET_PQ_result_spec_end
   };
-  enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "select_kyc_status",
-                                                 params,
-                                                 rs);
   kyc->type = TALER_EXCHANGEDB_KYC_UNKNOWN;
-  kyc->ok = (0 != ok8);
   kyc->payment_target_uuid = payment_target_uuid;
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "select_kyc_status",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -3962,12 +3978,11 @@ inselect_account_kyc_status (
       GNUNET_PQ_query_param_auto_from_type (&h_payto),
       GNUNET_PQ_query_param_end
     };
-    uint8_t ok8 = 0;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("wire_target_serial_id",
                                     &kyc->payment_target_uuid),
-      GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                            &ok8),
+      GNUNET_PQ_result_spec_bool ("kyc_ok",
+                                  &kyc->ok),
       GNUNET_PQ_result_spec_end
     };
 
@@ -3997,10 +4012,6 @@ inselect_account_kyc_status (
       if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
         return GNUNET_DB_STATUS_SOFT_ERROR;
       kyc->ok = false;
-    }
-    else
-    {
-      kyc->ok = (0 != ok8);
     }
   }
   kyc->type = TALER_EXCHANGEDB_KYC_BALANCE;
@@ -4478,86 +4489,104 @@ postgres_get_withdraw_info (
 
 
 /**
- * Store collectable bit coin under the corresponding
- * hash of the blinded message.
+ * Perform withdraw operation, checking for sufficient balance
+ * and possibly persisting the withdrawal details.
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param collectable corresponding collectable coin (blind signature)
  *                    if a coin is found
+ * @param now current time (rounded)
+ * @param[out] found set to true if the reserve was found
+ * @param[out] balance_ok set to true if the balance was sufficient
+ * @param[out] kyc_ok set to true if the kyc status of the reserve is satisfied
+ * @param[out] reserve_uuid set to the UUID of the reserve
  * @return query execution status
  */
 static enum GNUNET_DB_QueryStatus
-postgres_insert_withdraw_info (
+postgres_do_withdraw (
   void *cls,
-  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable)
+  const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable,
+  struct GNUNET_TIME_Absolute now,
+  bool *found,
+  bool *balance_ok,
+  struct TALER_EXCHANGEDB_KycStatus *kyc,
+  uint64_t *reserve_uuid)
 {
   struct PostgresClosure *pg = cls;
-  struct TALER_EXCHANGEDB_Reserve reserve;
-  struct GNUNET_TIME_Absolute now;
   struct GNUNET_TIME_Absolute gc;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
+    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
     GNUNET_PQ_query_param_auto_from_type (&collectable->denom_pub_hash),
-    TALER_PQ_query_param_blinded_denom_sig (&collectable->sig),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (&collectable->reserve_sig),
+    GNUNET_PQ_query_param_auto_from_type (&collectable->h_coin_envelope),
+    TALER_PQ_query_param_blinded_denom_sig (&collectable->sig),
     TALER_PQ_query_param_absolute_time (&now),
-    TALER_PQ_query_param_amount (&collectable->amount_with_fee),
+    TALER_PQ_query_param_absolute_time (&gc),
     GNUNET_PQ_query_param_end
   };
-  enum GNUNET_DB_QueryStatus qs;
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("reserve_found",
+                                found),
+    GNUNET_PQ_result_spec_bool ("balance_ok",
+                                balance_ok),
+    GNUNET_PQ_result_spec_bool ("kyc_ok",
+                                &kyc->ok),
+    GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
+                                  reserve_uuid),
+    GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
+                                  &kyc->payment_target_uuid),
+    GNUNET_PQ_result_spec_end
+  };
 
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-  qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                           "insert_withdraw_info",
-                                           params);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    return qs;
-  }
-
-  /* update reserve balance */
-  reserve.pub = collectable->reserve_pub;
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-      (qs = reserves_get_internal (pg,
-                                   &reserve)))
-  {
-    /* Should have been checked before we got here... */
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-      qs = GNUNET_DB_STATUS_HARD_ERROR;
-    return qs;
-  }
-  if (0 >
-      TALER_amount_subtract (&reserve.balance,
-                             &reserve.balance,
-                             &collectable->amount_with_fee))
-  {
-    /* The reserve history was checked to make sure there is enough of a balance
-       left before we tried this; however, concurrent operations may have changed
-       the situation by now, causing us to fail here. As reserves can no longer
-       be topped up, retrying should not help either.  */
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Withdrawal from reserve `%s' refused due to insufficient balance.\n",
-                TALER_B2S (&collectable->reserve_pub));
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
   gc = GNUNET_TIME_absolute_add (now,
                                  pg->legal_reserve_expiration_time);
-  reserve.gc = GNUNET_TIME_absolute_max (gc,
-                                         reserve.gc);
-  (void) GNUNET_TIME_round_abs (&reserve.gc);
-  qs = reserves_update (pg,
-                        &reserve);
-  GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR != qs);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    GNUNET_break (0);
-    qs = GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  return qs;
+  (void) GNUNET_TIME_round_abs (&gc);
+  kyc->type = TALER_EXCHANGEDB_KYC_WITHDRAW;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_withdraw",
+                                                   params,
+                                                   rs);
+
+}
+
+
+/**
+ * Check that reserve remains below threshold for KYC
+ * checks after withdraw operation.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param reserve_uuid reserve to check
+ * @param withdraw_start starting point to accumulate from
+ * @param upper_limit maximum amount allowed
+ * @param[out] below_limit set to true if the limit was not exceeded
+ * @return query execution status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_do_withdraw_limit_check (
+  void *cls,
+  uint64_t reserve_uuid,
+  struct GNUNET_TIME_Absolute withdraw_start,
+  const struct TALER_Amount *upper_limit,
+  bool *below_limit)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_uint64 (&reserve_uuid),
+    TALER_PQ_query_param_absolute_time (&withdraw_start),
+    TALER_PQ_query_param_amount (upper_limit),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("below_limit",
+                                below_limit),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_withdraw_limit_check",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -4588,10 +4617,20 @@ struct ReserveHistoryContext
   struct PostgresClosure *pg;
 
   /**
+   * Sum of all credit transactions.
+   */
+  struct TALER_Amount balance_in;
+
+  /**
+   * Sum of all debit transactions.
+   */
+  struct TALER_Amount balance_out;
+
+  /**
    * Set to #GNUNET_SYSERR on serious internal errors during
    * the callbacks.
    */
-  int status;
+  enum GNUNET_GenericReturnValue status;
 };
 
 
@@ -4667,6 +4706,10 @@ add_bank_to_exchange (void *cls,
         return;
       }
     }
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&rhc->balance_in,
+                                     &rhc->balance_in,
+                                     &bt->amount));
     bt->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE;
@@ -4724,6 +4767,10 @@ add_withdraw_coin (void *cls,
         return;
       }
     }
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&rhc->balance_out,
+                                     &rhc->balance_out,
+                                     &cbc->amount_with_fee));
     cbc->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_WITHDRAW_COIN;
@@ -4784,6 +4831,10 @@ add_recoup (void *cls,
         return;
       }
     }
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&rhc->balance_in,
+                                     &rhc->balance_in,
+                                     &recoup->value));
     recoup->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_RECOUP_COIN;
@@ -4840,6 +4891,10 @@ add_exchange_to_bank (void *cls,
         return;
       }
     }
+    GNUNET_assert (0 <=
+                   TALER_amount_add (&rhc->balance_out,
+                                     &rhc->balance_out,
+                                     &closing->amount));
     closing->reserve_pub = *rhc->reserve_pub;
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK;
@@ -4854,12 +4909,14 @@ add_exchange_to_bank (void *cls,
  *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserve_pub public key of the reserve
+ * @param[out] balance set to the reserve balance
  * @param[out] rhp set to known transaction history (NULL if reserve is unknown)
  * @return transaction status
  */
 static enum GNUNET_DB_QueryStatus
 postgres_get_reserve_history (void *cls,
                               const struct TALER_ReservePublicKeyP *reserve_pub,
+                              struct TALER_Amount *balance,
                               struct TALER_EXCHANGEDB_ReserveHistory **rhp)
 {
   struct PostgresClosure *pg = cls;
@@ -4902,6 +4959,12 @@ postgres_get_reserve_history (void *cls,
   rhc.rh_tail = NULL;
   rhc.pg = pg;
   rhc.status = GNUNET_OK;
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (pg->currency,
+                                        &rhc.balance_in));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (pg->currency,
+                                        &rhc.balance_out));
   qs = GNUNET_DB_STATUS_SUCCESS_NO_RESULTS; /* make static analysis happy */
   for (unsigned int i = 0; NULL != work[i].cb; i++)
   {
@@ -4927,6 +4990,10 @@ postgres_get_reserve_history (void *cls,
     }
   }
   *rhp = rhc.rh;
+  GNUNET_assert (0 <=
+                 TALER_amount_subtract (balance,
+                                        &rhc.balance_in,
+                                        &rhc.balance_out));
   return qs;
 }
 
@@ -5308,13 +5375,12 @@ postgres_get_ready_deposit (void *cls,
                             void *deposit_cb_cls)
 {
   struct PostgresClosure *pg = cls;
-  uint8_t kyc_override = (kyc_off) ? 1 : 0;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_uint64 (&start_shard_row),
     GNUNET_PQ_query_param_uint64 (&end_shard_row),
-    GNUNET_PQ_query_param_auto_from_type (&kyc_override),
+    GNUNET_PQ_query_param_bool (kyc_off),
     GNUNET_PQ_query_param_end
   };
   struct TALER_Amount amount_with_fee;
@@ -6609,7 +6675,6 @@ add_coin_deposit (void *cls,
     chc->have_deposit_or_melt = true;
     deposit = GNUNET_new (struct TALER_EXCHANGEDB_DepositListEntry);
     {
-      uint8_t done = 0;
       struct GNUNET_PQ_ResultSpec rs[] = {
         TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                      &deposit->amount_with_fee),
@@ -6636,7 +6701,7 @@ add_coin_deposit (void *cls,
         GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
                                       &serial_id),
         GNUNET_PQ_result_spec_auto_from_type ("done",
-                                              &done),
+                                              &deposit->done),
         GNUNET_PQ_result_spec_end
       };
 
@@ -6650,7 +6715,6 @@ add_coin_deposit (void *cls,
         chc->failed = true;
         return;
       }
-      deposit->done = (0 != done);
     }
     tl = GNUNET_new (struct TALER_EXCHANGEDB_TransactionList);
     tl->next = chc->head;
@@ -7340,7 +7404,6 @@ postgres_lookup_transfer_by_deposit (
     /* Check if transaction exists in deposits, so that we just
        do not have a WTID yet. In that case, return without wtid
        (by setting 'pending' true). */
-    uint8_t ok8 = 0;
     struct GNUNET_PQ_ResultSpec rs2[] = {
       GNUNET_PQ_result_spec_auto_from_type ("wire_salt",
                                             &wire_salt),
@@ -7349,7 +7412,7 @@ postgres_lookup_transfer_by_deposit (
       GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
                                     &kyc->payment_target_uuid),
       GNUNET_PQ_result_spec_auto_from_type ("kyc_ok",
-                                            &ok8),
+                                            &kyc->ok),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
                                    amount_with_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT ("fee_deposit",
@@ -7377,7 +7440,6 @@ postgres_lookup_transfer_by_deposit (
         return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
     }
     kyc->type = TALER_EXCHANGEDB_KYC_DEPOSIT;
-    kyc->ok = (0 != ok8);
     return qs;
   }
 }
@@ -8164,7 +8226,7 @@ deposit_serial_helper_cb (void *cls,
     struct TALER_EXCHANGEDB_Deposit deposit;
     struct GNUNET_TIME_Absolute exchange_timestamp;
     struct TALER_DenominationPublicKey denom_pub;
-    uint8_t done = 0;
+    bool done;
     uint64_t rowid;
     struct GNUNET_PQ_ResultSpec rs[] = {
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_with_fee",
@@ -8191,8 +8253,8 @@ deposit_serial_helper_cb (void *cls,
                                             &deposit.wire_salt),
       GNUNET_PQ_result_spec_string ("receiver_wire_account",
                                     &deposit.receiver_wire_account),
-      GNUNET_PQ_result_spec_auto_from_type ("done",
-                                            &done),
+      GNUNET_PQ_result_spec_bool ("done",
+                                  &done),
       GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
                                     &rowid),
       GNUNET_PQ_result_spec_end
@@ -8213,7 +8275,7 @@ deposit_serial_helper_cb (void *cls,
                    exchange_timestamp,
                    &deposit,
                    &denom_pub,
-                   (0 != done) ? true : false);
+                   done);
     GNUNET_PQ_cleanup_result (rs);
     if (GNUNET_OK != ret)
       break;
@@ -9783,8 +9845,8 @@ missing_wire_cb (void *cls,
     struct TALER_Amount amount;
     char *payto_uri;
     struct GNUNET_TIME_Absolute deadline;
-    uint8_t tiny;
-    uint8_t done;
+    bool tiny;
+    bool done;
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("deposit_serial_id",
                                     &rowid),
@@ -9796,10 +9858,10 @@ missing_wire_cb (void *cls,
                                     &payto_uri),
       TALER_PQ_result_spec_absolute_time ("wire_deadline",
                                           &deadline),
-      GNUNET_PQ_result_spec_auto_from_type ("tiny",
-                                            &tiny),
-      GNUNET_PQ_result_spec_auto_from_type ("done",
-                                            &done),
+      GNUNET_PQ_result_spec_bool ("tiny",
+                                  &tiny),
+      GNUNET_PQ_result_spec_bool ("done",
+                                  &done),
       GNUNET_PQ_result_spec_end
     };
 
@@ -9923,22 +9985,18 @@ postgres_lookup_auditor_status (
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
     GNUNET_PQ_query_param_end
   };
-  uint8_t enabled8 = 0;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_string ("auditor_url",
                                   auditor_url),
-    GNUNET_PQ_result_spec_auto_from_type ("is_active",
-                                          &enabled8),
+    GNUNET_PQ_result_spec_bool ("is_active",
+                                enabled),
     GNUNET_PQ_result_spec_end
   };
-  enum GNUNET_DB_QueryStatus qs;
 
-  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                 "lookup_auditor_status",
-                                                 params,
-                                                 rs);
-  *enabled = (0 != enabled8);
-  return qs;
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "lookup_auditor_status",
+                                                   params,
+                                                   rs);
 }
 
 
@@ -9996,12 +10054,11 @@ postgres_update_auditor (void *cls,
                          bool enabled)
 {
   struct PostgresClosure *pg = cls;
-  uint8_t enabled8 = enabled ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (auditor_pub),
     GNUNET_PQ_query_param_string (auditor_url),
     GNUNET_PQ_query_param_string (auditor_name),
-    GNUNET_PQ_query_param_auto_from_type (&enabled8),
+    GNUNET_PQ_query_param_bool (enabled),
     GNUNET_PQ_query_param_absolute_time (&change_date),
     GNUNET_PQ_query_param_end
   };
@@ -10091,10 +10148,9 @@ postgres_update_wire (void *cls,
                       bool enabled)
 {
   struct PostgresClosure *pg = cls;
-  uint8_t enabled8 = enabled ? 1 : 0;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (payto_uri),
-    GNUNET_PQ_query_param_auto_from_type (&enabled8),
+    GNUNET_PQ_query_param_bool (enabled),
     GNUNET_PQ_query_param_absolute_time (&change_date),
     GNUNET_PQ_query_param_end
   };
@@ -11767,7 +11823,9 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_latest_reserve_in_reference =
     &postgres_get_latest_reserve_in_reference;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
-  plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
+  // plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
+  plugin->do_withdraw = &postgres_do_withdraw;
+  plugin->do_withdraw_limit_check = &postgres_do_withdraw_limit_check;
   plugin->get_reserve_history = &postgres_get_reserve_history;
   plugin->select_withdraw_amounts_by_account
     = &postgres_select_withdraw_amounts_by_account;

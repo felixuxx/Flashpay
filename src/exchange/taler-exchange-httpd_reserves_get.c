@@ -235,11 +235,13 @@ reserve_history_transaction (void *cls,
                              MHD_RESULT *mhd_ret)
 {
   struct ReserveHistoryContext *rsc = cls;
+  struct TALER_Amount balance;
 
   (void) connection;
   (void) mhd_ret;
   return TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                           &rsc->reserve_pub,
+                                          &balance,
                                           &rsc->rh);
 }
 

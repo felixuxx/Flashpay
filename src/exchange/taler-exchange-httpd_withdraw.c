@@ -92,21 +92,6 @@ struct WithdrawContext
   struct TALER_WithdrawRequestPS wsrd;
 
   /**
-   * Value of the coin plus withdraw fee.
-   */
-  struct TALER_Amount amount_required;
-
-  /**
-   * Hash of the denomination public key.
-   */
-  struct TALER_DenominationHash denom_pub_hash;
-
-  /**
-   * Signature over the request.
-   */
-  struct TALER_ReserveSignatureP signature;
-
-  /**
    * Blinded planchet.
    */
   char *blinded_msg;
@@ -126,37 +111,7 @@ struct WithdrawContext
    */
   struct TALER_EXCHANGEDB_KycStatus kyc;
 
-  /**
-   * Set to true if the operation was denied due to
-   * failing @e kyc checks.
-   */
-  bool kyc_denied;
-
 };
-
-
-/**
- * Function called with another amount that was
- * already withdrawn. Accumulates all amounts in
- * @a cls.
- *
- * @param[in,out] cls a `struct TALER_Amount`
- * @param val value to add to @a cls
- */
-static void
-accumulate_withdraws (void *cls,
-                      const struct TALER_Amount *val)
-{
-  struct TALER_Amount *acc = cls;
-
-  if (GNUNET_OK !=
-      TALER_amount_is_valid (acc))
-    return; /* ignore */
-  GNUNET_break (0 <=
-                TALER_amount_add (acc,
-                                  acc,
-                                  val));
-}
 
 
 /**
@@ -182,67 +137,34 @@ withdraw_transaction (void *cls,
                       MHD_RESULT *mhd_ret)
 {
   struct WithdrawContext *wc = cls;
-  struct TALER_EXCHANGEDB_Reserve r;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_BlindedDenominationSignature denom_sig;
+  bool found = false;
+  bool balance_ok = false;
+  uint64_t reserve_uuid;
+  struct GNUNET_TIME_Absolute now;
 
-  /* store away optimistic signature to protect
-     it from being overwritten by get_withdraw_info */
-  denom_sig = wc->collectable.sig;
-  memset (&wc->collectable.sig,
-          0,
-          sizeof (wc->collectable.sig));
-  qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                      &wc->wsrd.h_coin_envelope,
-                                      &wc->collectable);
-  if (0 > qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "withdraw details");
-    wc->collectable.sig = denom_sig;
-    return qs;
-  }
+  now = GNUNET_TIME_absolute_get ();
+  (void) GNUNET_TIME_round_abs (&now);
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Asked to withdraw from %s amount of %s\n",
-              TALER_B2S (&wc->wsrd.reserve_pub),
-              TALER_amount2s (&wc->amount_required));
-  /* Don't sign again if we have already signed the coin */
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-  {
-    /* Toss out the optimistic signature, we got another one from the DB;
-       optimization trade-off loses in this case: we unnecessarily computed
-       a signature :-( */
-    TALER_blinded_denom_sig_free (&denom_sig);
-    return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-  }
-  /* We should never get more than one result, and we handled
-     the errors (negative case) above, so that leaves no results. */
-  GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
-  wc->collectable.sig = denom_sig;
-
-  /* Check if balance is sufficient */
-  r.pub = wc->wsrd.reserve_pub; /* other fields of 'r' initialized in reserves_get (if successful) */
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Trying to withdraw from reserve: %s\n",
-              TALER_B2S (&r.pub));
-  qs = TEH_plugin->reserves_get (TEH_plugin->cls,
-                                 &r,
-                                 &wc->kyc);
+  wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
+  wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
+  qs = TEH_plugin->do_withdraw (TEH_plugin->cls,
+                                &wc->collectable,
+                                now,
+                                &found,
+                                &balance_ok,
+                                &wc->kyc,
+                                &reserve_uuid);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "reserves");
+                                             "do_withdraw");
     return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  if (! found)
   {
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_NOT_FOUND,
@@ -250,29 +172,29 @@ withdraw_transaction (void *cls,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if (0 < TALER_amount_cmp (&wc->amount_required,
-                            &r.balance))
+  if (! balance_ok)
   {
     struct TALER_EXCHANGEDB_ReserveHistory *rh;
+    struct TALER_Amount balance;
 
+    TEH_plugin->rollback (TEH_plugin->cls);
+    if (GNUNET_OK !=
+        TEH_plugin->start (TEH_plugin->cls,
+                           "get_reserve_history on insufficient balance"))
+    {
+      GNUNET_break (0);
+      if (NULL != mhd_ret)
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_START_FAILED,
+                                               NULL);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
     /* The reserve does not have the required amount (actual
      * amount + withdraw fee) */
-#if GNUNET_EXTRA_LOGGING
-    {
-      char *amount_required;
-      char *r_balance;
-
-      amount_required = TALER_amount_to_string (&wc->amount_required);
-      r_balance = TALER_amount_to_string (&r.balance);
-      TALER_LOG_DEBUG ("Asked %s over a reserve worth %s\n",
-                       amount_required,
-                       r_balance);
-      GNUNET_free (amount_required);
-      GNUNET_free (r_balance);
-    }
-#endif
     qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
                                           &wc->wsrd.reserve_pub,
+                                          &balance,
                                           &rh);
     if (NULL == rh)
     {
@@ -284,41 +206,41 @@ withdraw_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
     *mhd_ret = reply_withdraw_insufficient_funds (connection,
-                                                  &r.balance,
+                                                  &balance,
                                                   rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "KYC status is %s for %s\n",
-              wc->kyc.ok ? "ok" : "missing",
-              TALER_B2S (&r.pub));
-  if ( (! wc->kyc.ok) &&
-       (TEH_KYC_NONE != TEH_kyc_config.mode) &&
+  if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
+       (! wc->kyc.ok) &&
        (TALER_EXCHANGEDB_KYC_W2W == wc->kyc.type) )
   {
     /* Wallet-to-wallet payments _always_ require KYC */
-    wc->kyc_denied = true;
-    return qs;
+    *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
+      connection,
+      MHD_HTTP_ACCEPTED,
+      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
+                               wc->kyc.payment_target_uuid));
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if ( (! wc->kyc.ok) &&
-       (TEH_KYC_NONE != TEH_kyc_config.mode) &&
+  if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
+       (! wc->kyc.ok) &&
        (TALER_EXCHANGEDB_KYC_WITHDRAW == wc->kyc.type) &&
        (! GNUNET_TIME_relative_is_zero (TEH_kyc_config.withdraw_period)) )
   {
     /* Withdraws require KYC if above threshold */
-    struct TALER_Amount acc;
     enum GNUNET_DB_QueryStatus qs2;
+    bool below_limit;
 
-    acc = wc->amount_required;
-    qs2 = TEH_plugin->select_withdraw_amounts_by_account (
+    qs2 = TEH_plugin->do_withdraw_limit_check (
       TEH_plugin->cls,
-      &wc->wsrd.reserve_pub,
-      TEH_kyc_config.withdraw_period,
-      &accumulate_withdraws,
-      &acc);
+      reserve_uuid,
+      GNUNET_TIME_absolute_subtract (now,
+                                     TEH_kyc_config.withdraw_period),
+      &TEH_kyc_config.withdraw_limit,
+      &below_limit);
     if (0 > qs2)
     {
       GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs2);
@@ -326,52 +248,18 @@ withdraw_transaction (void *cls,
         *mhd_ret = TALER_MHD_reply_with_error (connection,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "withdraw details");
+                                               "do_withdraw_limit_check");
       return qs2;
     }
-
-    if (GNUNET_OK !=
-        TALER_amount_is_valid (&acc))
+    if (! below_limit)
     {
-      GNUNET_break (0);
-      *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                          TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                                          NULL);
+      *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
+        connection,
+        MHD_HTTP_ACCEPTED,
+        GNUNET_JSON_pack_uint64 ("payment_target_uuid",
+                                 wc->kyc.payment_target_uuid));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Amount withdrawn so far is %s\n",
-                TALER_amount2s (&acc));
-    if (1 == /* 1: acc > withdraw_limit */
-        TALER_amount_cmp (&acc,
-                          &TEH_kyc_config.withdraw_limit))
-    {
-      wc->kyc_denied = true;
-      return qs;
-    }
-  }
-
-  /* Balance is good, persist signature */
-  wc->collectable.denom_pub_hash = wc->denom_pub_hash;
-  wc->collectable.amount_with_fee = wc->amount_required;
-  wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
-  wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
-  wc->collectable.reserve_sig = wc->signature;
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Persisting withdraw from %s over %s\n",
-              TALER_B2S (&r.pub),
-              TALER_amount2s (&wc->amount_required));
-  qs = TEH_plugin->insert_withdraw_info (TEH_plugin->cls,
-                                         &wc->collectable);
-  if (0 > qs)
-  {
-    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_STORE_FAILED,
-                                             "withdraw details");
-    return qs;
   }
   return qs;
 }
@@ -432,9 +320,9 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                               (void **) &wc.blinded_msg,
                               &wc.blinded_msg_len),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
-                                 &wc.signature),
+                                 &wc.collectable.reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
-                                 &wc.denom_pub_hash),
+                                 &wc.collectable.denom_pub_hash),
     GNUNET_JSON_spec_end ()
   };
   enum TALER_ErrorCode ec;
@@ -487,7 +375,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       return mret;
     }
     dk = TEH_keys_denomination_by_hash2 (ksh,
-                                         &wc.denom_pub_hash,
+                                         &wc.collectable.denom_pub_hash,
                                          NULL,
                                          NULL);
     if (NULL == dk)
@@ -497,8 +385,9 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                       &mret))
       {
         GNUNET_JSON_parse_free (spec);
-        return TEH_RESPONSE_reply_unknown_denom_pub_hash (rc->connection,
-                                                          &wc.denom_pub_hash);
+        return TEH_RESPONSE_reply_unknown_denom_pub_hash (
+          rc->connection,
+          &wc.collectable.denom_pub_hash);
       }
       GNUNET_JSON_parse_free (spec);
       return mret;
@@ -519,7 +408,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
         GNUNET_JSON_parse_free (spec);
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
-          &wc.denom_pub_hash,
+          &wc.collectable.denom_pub_hash,
           now,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
           "WITHDRAW");
@@ -538,7 +427,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
-        &wc.denom_pub_hash,
+        &wc.collectable.denom_pub_hash,
         now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "WITHDRAW");
@@ -557,7 +446,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
         GNUNET_JSON_parse_free (spec);
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
-          &wc.denom_pub_hash,
+          &wc.collectable.denom_pub_hash,
           now,
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
           "WITHDRAW");
@@ -569,7 +458,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   {
     if (0 >
-        TALER_amount_add (&wc.amount_required,
+        TALER_amount_add (&wc.collectable.amount_with_fee,
                           &dk->meta.value,
                           &dk->meta.fee_withdraw))
     {
@@ -580,7 +469,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                          NULL);
     }
     TALER_amount_hton (&wc.wsrd.amount_with_fee,
-                       &wc.amount_required);
+                       &wc.collectable.amount_with_fee);
   }
 
   /* verify signature! */
@@ -589,15 +478,16 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   wc.wsrd.purpose.purpose
     = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
   wc.wsrd.h_denomination_pub
-    = wc.denom_pub_hash;
+    = wc.collectable.denom_pub_hash;
   TALER_coin_ev_hash (wc.blinded_msg,
                       wc.blinded_msg_len,
                       &wc.wsrd.h_coin_envelope);
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
-                                  &wc.wsrd,
-                                  &wc.signature.eddsa_signature,
-                                  &wc.wsrd.reserve_pub.eddsa_pub))
+      GNUNET_CRYPTO_eddsa_verify (
+        TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
+        &wc.wsrd,
+        &wc.collectable.reserve_sig.eddsa_signature,
+        &wc.wsrd.reserve_pub.eddsa_pub))
   {
     TALER_LOG_WARNING (
       "Client supplied invalid signature for withdraw request\n");
@@ -611,7 +501,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   /* Sign before transaction! */
   ec = TALER_EC_NONE;
   wc.collectable.sig
-    = TEH_keys_denomination_sign (&wc.denom_pub_hash,
+    = TEH_keys_denomination_sign (&wc.collectable.denom_pub_hash,
                                   wc.blinded_msg,
                                   wc.blinded_msg_len,
                                   &ec);
@@ -625,7 +515,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   }
 
   /* run transaction and sign (if not optimistically signed before) */
-  wc.kyc_denied = false;
   {
     MHD_RESULT mhd_ret;
 
@@ -646,16 +535,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   /* Clean up and send back final response */
   GNUNET_JSON_parse_free (spec);
-
-  if (wc.kyc_denied)
-  {
-    TALER_blinded_denom_sig_free (&wc.collectable.sig);
-    return TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_ACCEPTED,
-      GNUNET_JSON_pack_uint64 ("payment_target_uuid",
-                               wc.kyc.payment_target_uuid));
-  }
 
   {
     MHD_RESULT ret;

@@ -4,3 +4,4 @@ test-exchangedb-fees
 test-exchangedb-postgres
 test-exchangedb-signkeys
 test-perf-taler-exchangedb
+bench-db-postgres

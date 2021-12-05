@@ -680,6 +680,211 @@ CREATE INDEX IF NOT EXISTS revolving_work_shards_index
   );
 
 
+-- Stored procedures
+
+
+DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,integer,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
+
+CREATE OR REPLACE FUNCTION exchange_do_withdraw(
+  IN amount_val INT8,
+  IN amount_frac INT4,
+  IN h_denom_pub BYTEA,
+  IN rpub BYTEA,
+  IN reserve_sig BYTEA,
+  IN h_coin_envelope BYTEA,
+  IN denom_sig BYTEA,
+  IN now INT8,
+  IN min_reserve_gc INT8,
+  OUT reserve_found BOOLEAN,
+  OUT balance_ok BOOLEAN,
+  OUT kycok BOOLEAN,
+  OUT ruuid INT8,
+  OUT account_uuid INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  reserve_gc INT8;
+DECLARE
+  denom_serial INT8;
+DECLARE
+  reserve_val INT8;
+DECLARE
+  reserve_frac INT4;
+BEGIN
+
+SELECT denominations_serial INTO denom_serial
+  FROM denominations
+ WHERE denom_pub_hash=h_denom_pub;
+
+IF NOT FOUND
+THEN
+  -- denomination unknown, should be impossible!
+  reserve_found=FALSE;
+  balance_ok=FALSE;
+  kycok=FALSE;
+  ruuid=0;
+  account_uuid=0;
+  ASSERT false, 'denomination unknown';
+  RETURN;
+END IF;
+
+SELECT
+   reserves.reserve_uuid
+  ,current_balance_val
+  ,current_balance_frac
+  ,expiration_date
+  ,gc_date
+ INTO
+   ruuid
+  ,reserve_val
+  ,reserve_frac
+  ,reserve_gc
+  FROM reserves
+ WHERE reserves.reserve_pub=rpub;
+
+IF NOT FOUND
+THEN
+  -- reserve unknown
+  reserve_found=FALSE;
+  balance_ok=FALSE;
+  kycok=FALSE;
+  account_uuid=0;
+  RETURN;
+END IF;
+
+-- We optimistically insert, and then on conflict declare
+-- the query successful due to idempotency.
+INSERT INTO reserves_out
+  (h_blind_ev
+  ,denominations_serial
+  ,denom_sig
+  ,reserve_uuid
+  ,reserve_sig
+  ,execution_date
+  ,amount_with_fee_val
+  ,amount_with_fee_frac)
+VALUES
+  (h_coin_envelope
+  ,denom_serial
+  ,denom_sig
+  ,ruuid
+  ,reserve_sig
+  ,now
+  ,amount_val
+  ,amount_frac)
+ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- idempotent query, all constraints must be satisfied
+  reserve_found=TRUE;
+  balance_ok=TRUE;
+  kycok=TRUE;
+  account_uuid=0;
+  RETURN;
+END IF;
+
+-- Check reserve balance is sufficient.
+IF (reserve_val > amount_val)
+THEN
+  IF (reserve_frac > amount_frac)
+  THEN
+    reserve_val=reserve_val - amount_val;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_val=reserve_val - amount_val - 1;
+    reserve_frac=reserve_frac + 100000000 - amount_frac;
+  END IF;
+ELSE
+  IF (reserve_val = amount_val) AND (reserve_frac >= amount_frac)
+  THEN
+    reserve_val=0;
+    reserve_frac=reserve_frac - amount_frac;
+  ELSE
+    reserve_found=TRUE;
+    balance_ok=FALSE;
+    kycok=FALSE; -- we do not really know or care
+    account_uuid=0;
+    RETURN;
+  END IF;
+END IF;
+
+-- Calculate new expiration dates.
+min_reserve_gc=GREATEST(min_reserve_gc,reserve_gc);
+
+-- Update reserve balance.
+UPDATE reserves SET
+  gc_date=min_reserve_gc
+ ,current_balance_val=reserve_val
+ ,current_balance_frac=reserve_frac
+WHERE
+  reserves.reserve_uuid=ruuid;
+
+reserve_found=TRUE;
+balance_ok=TRUE;
+
+-- Obtain KYC status based on the last wire transfer into
+-- this reserve. FIXME: likely not adequate for reserves that got P2P transfers!
+SELECT
+   kyc_ok
+  ,wire_source_serial_id
+  INTO
+   kycok
+  ,account_uuid
+  FROM reserves_in
+  JOIN wire_targets ON (wire_source_serial_id = wire_target_serial_id)
+ WHERE reserve_uuid=ruuid
+ LIMIT 1; -- limit 1 should not be required (without p2p transfers)
+
+END $$;
+
+COMMENT ON FUNCTION exchange_do_withdraw(INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8)
+  IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result';
+
+
+
+DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bigint,bigint,bigint,int) ;
+
+
+CREATE OR REPLACE FUNCTION exchange_do_withdraw_limit_check(
+  IN ruuid INT8,
+  IN start_time INT8,
+  IN upper_limit_val INT8,
+  IN upper_limit_frac INT4,
+  OUT below_limit BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  total_val INT8;
+DECLARE
+  total_frac INT8; -- INT4 could overflow during accumulation!
+BEGIN
+
+SELECT
+   SUM(amount_with_fee_val) -- overflow here is not plausible
+  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
+  INTO
+   total_val
+  ,total_frac
+  FROM reserves_out
+ WHERE reserves_out.reserve_uuid=ruuid
+   AND execution_date > start_time;
+
+-- normalize result
+total_val = total_val + total_frac / 100000000;
+total_frac = total_frac % 100000000;
+
+-- compare to threshold
+below_limit = (total_val < upper_limit_val) OR
+            ( (total_val = upper_limit_val) AND
+              (total_frac <= upper_limit_frac) );
+END $$;
+
+COMMENT ON FUNCTION exchange_do_withdraw_limit_check(INT8, INT8, INT8, INT4)
+  IS 'Check whether the withdrawals from the given reserve since the given time are below the given threshold';
+
+
+
 
 
 -- Complete transaction

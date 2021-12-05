@@ -54,6 +54,10 @@ DROP TABLE IF EXISTS reserves CASCADE;
 DROP TABLE IF EXISTS denomination_revocations CASCADE;
 DROP TABLE IF EXISTS denominations CASCADE;
 
+DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,integer,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
+
+DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bigint,bigint,bigint,int) ;
+
 
 -- And we're out of here...
 COMMIT;

@@ -1659,10 +1659,26 @@ run (void *cls)
   cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (CURRENCY, &cbc.withdraw_fee));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_withdraw_info (plugin->cls,
-                                        &cbc));
+                 TALER_amount_set_zero (CURRENCY,
+                                        &cbc.withdraw_fee));
+  {
+    bool found;
+    bool balance_ok;
+    struct TALER_EXCHANGEDB_KycStatus kyc;
+    uint64_t ruuid;
+
+    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+            plugin->do_withdraw (plugin->cls,
+                                 &cbc,
+                                 now,
+                                 &found,
+                                 &balance_ok,
+                                 &kyc,
+                                 &ruuid));
+    GNUNET_assert (found);
+    GNUNET_assert (balance_ok);
+    GNUNET_assert (! kyc.ok);
+  }
   FAILIF (GNUNET_OK !=
           check_reserve (&reserve_pub,
                          value.value,

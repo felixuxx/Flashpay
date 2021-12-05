@@ -78,7 +78,7 @@ TES_transmit_raw (int sock,
                   size_t end,
                   const void *pos)
 {
-  ssize_t off = 0;
+  size_t off = 0;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Sending message of length %u\n",
