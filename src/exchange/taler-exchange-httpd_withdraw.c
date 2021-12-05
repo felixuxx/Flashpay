@@ -34,14 +34,6 @@
 
 
 /**
- * Perform RSA signature before checking with the database?
- * Reduces time spent in transaction, but may cause us to
- * waste CPU time if DB check fails.
- */
-#define OPTIMISTIC_SIGN 1
-
-
-/**
  * Send reserve history information to client with the
  * message that we have insufficient funds for the
  * requested withdraw operation.
@@ -175,15 +167,8 @@ accumulate_withdraws (void *cls,
  * IF it returns the soft error code, the function MAY be called again
  * to retry and MUST not queue a MHD response.
  *
- * Note that "wc->collectable.sig" may already be set before entering
- * this function, either because OPTIMISTIC_SIGN was used and we signed
- * before entering the transaction, or because this function is run
- * twice (!) by #TEH_DB_run_transaction() and the first time created
- * the signature and then failed to commit.  Furthermore, we may get
- * a 2nd correct signature briefly if "get_withdraw_info" succeeds and
- * finds one in the DB.  To avoid signing twice, the function may
- * return a valid signature in "wc->collectable.sig" **even if it failed**.
- * The caller must thus free the signature in either case.
+ * Note that "wc->collectable.sig" is set before entering this function as we
+ * signed before entering the transaction.
  *
  * @param cls a `struct WithdrawContext *`
  * @param connection MHD request which triggered the transaction
@@ -201,14 +186,12 @@ withdraw_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_BlindedDenominationSignature denom_sig;
 
-#if OPTIMISTIC_SIGN
   /* store away optimistic signature to protect
      it from being overwritten by get_withdraw_info */
   denom_sig = wc->collectable.sig;
   memset (&wc->collectable.sig,
           0,
           sizeof (wc->collectable.sig));
-#endif
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
                                       &wc->wsrd.h_coin_envelope,
                                       &wc->collectable);
@@ -234,15 +217,13 @@ withdraw_transaction (void *cls,
     /* Toss out the optimistic signature, we got another one from the DB;
        optimization trade-off loses in this case: we unnecessarily computed
        a signature :-( */
-#if OPTIMISTIC_SIGN
     TALER_blinded_denom_sig_free (&denom_sig);
-#endif
     return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
   }
   /* We should never get more than one result, and we handled
      the errors (negative case) above, so that leaves no results. */
   GNUNET_assert (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs);
-  wc->collectable.sig = denom_sig; /* Note: might still be NULL if we didn't do OPTIMISTIC_SIGN */
+  wc->collectable.sig = denom_sig;
 
   /* Check if balance is sufficient */
   r.pub = wc->wsrd.reserve_pub; /* other fields of 'r' initialized in reserves_get (if successful) */
@@ -370,27 +351,7 @@ withdraw_transaction (void *cls,
     }
   }
 
-  /* Balance is good, sign the coin! */
-#if ! OPTIMISTIC_SIGN
-  if (NULL == wc->collectable.sig.rsa_signature)
-  {
-    enum TALER_ErrorCode ec = TALER_EC_NONE;
-
-    wc->collectable.sig
-      = TEH_keys_denomination_sign (&wc->denom_pub_hash,
-                                    wc->blinded_msg,
-                                    wc->blinded_msg_len,
-                                    &ec);
-    if (TALER_EC_NONE != ec)
-    {
-      GNUNET_break (0);
-      *mhd_ret = TALER_MHD_reply_with_ec (connection,
-                                          ec,
-                                          NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-  }
-#endif
+  /* Balance is good, persist signature */
   wc->collectable.denom_pub_hash = wc->denom_pub_hash;
   wc->collectable.amount_with_fee = wc->amount_required;
   wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
@@ -413,6 +374,50 @@ withdraw_transaction (void *cls,
     return qs;
   }
   return qs;
+}
+
+
+/**
+ * Check if the @a rc is replayed and we already have an
+ * answer. If so, replay the existing answer and return the
+ * HTTP response.
+ *
+ * @param rc request context
+ * @param[in,out] wc parsed request data
+ * @param[out] mret HTTP status, set if we return true
+ * @return true if the request is idempotent with an existing request
+ *    false if we did not find the request in the DB and did not set @a mret
+ */
+static bool
+check_request_idempotent (struct TEH_RequestContext *rc,
+                          struct WithdrawContext *wc,
+                          MHD_RESULT *mret)
+{
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
+                                      &wc->wsrd.h_coin_envelope,
+                                      &wc->collectable);
+  if (0 > qs)
+  {
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
+    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      *mret = TALER_MHD_reply_with_error (rc->connection,
+                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                          TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                          "get_withdraw_info");
+    return true; /* well, kind-of */
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    return false;
+  /* generate idempotent reply */
+  *mret = TALER_MHD_REPLY_JSON_PACK (
+    rc->connection,
+    MHD_HTTP_OK,
+    TALER_JSON_pack_blinded_denom_sig ("ev_sig",
+                                       &wc->collectable.sig));
+  TALER_blinded_denom_sig_free (&wc->collectable.sig);
+  return true;
 }
 
 
@@ -463,12 +468,38 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   {
     MHD_RESULT mret;
     struct GNUNET_TIME_Absolute now;
+    struct TEH_KeyStateHandle *ksh;
 
-    dk = TEH_keys_denomination_by_hash (&wc.denom_pub_hash,
-                                        rc->connection,
-                                        &mret);
+    ksh = TEH_keys_get_state ();
+    if (NULL == ksh)
+    {
+      if (! check_request_idempotent (rc,
+                                      &wc,
+                                      &mret))
+      {
+        GNUNET_JSON_parse_free (spec);
+        return TALER_MHD_reply_with_error (rc->connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
+                                           NULL);
+      }
+      GNUNET_JSON_parse_free (spec);
+      return mret;
+    }
+    dk = TEH_keys_denomination_by_hash2 (ksh,
+                                         &wc.denom_pub_hash,
+                                         NULL,
+                                         NULL);
     if (NULL == dk)
     {
+      if (! check_request_idempotent (rc,
+                                      &wc,
+                                      &mret))
+      {
+        GNUNET_JSON_parse_free (spec);
+        return TEH_RESPONSE_reply_unknown_denom_pub_hash (rc->connection,
+                                                          &wc.denom_pub_hash);
+      }
       GNUNET_JSON_parse_free (spec);
       return mret;
     }
@@ -481,13 +512,20 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       now = GNUNET_TIME_absolute_get ();
       (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is past the expiration time for withdraws */
+      if (! check_request_idempotent (rc,
+                                      &wc,
+                                      &mret))
+      {
+        GNUNET_JSON_parse_free (spec);
+        return TEH_RESPONSE_reply_expired_denom_pub_hash (
+          rc->connection,
+          &wc.denom_pub_hash,
+          now,
+          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
+          "WITHDRAW");
+      }
       GNUNET_JSON_parse_free (spec);
-      return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        rc->connection,
-        &wc.denom_pub_hash,
-        now,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-        "WITHDRAW");
+      return mret;
     }
     if (GNUNET_TIME_absolute_is_future (dk->meta.start))
     {
@@ -495,7 +533,8 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
       now = GNUNET_TIME_absolute_get ();
       (void) GNUNET_TIME_round_abs (&now);
-      /* This denomination is not yet valid */
+      /* This denomination is not yet valid, no need to check
+         for idempotency! */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
@@ -511,13 +550,20 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       now = GNUNET_TIME_absolute_get ();
       (void) GNUNET_TIME_round_abs (&now);
       /* This denomination has been revoked */
+      if (! check_request_idempotent (rc,
+                                      &wc,
+                                      &mret))
+      {
+        GNUNET_JSON_parse_free (spec);
+        return TEH_RESPONSE_reply_expired_denom_pub_hash (
+          rc->connection,
+          &wc.denom_pub_hash,
+          now,
+          TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
+          "WITHDRAW");
+      }
       GNUNET_JSON_parse_free (spec);
-      return TEH_RESPONSE_reply_expired_denom_pub_hash (
-        rc->connection,
-        &wc.denom_pub_hash,
-        now,
-        TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
-        "WITHDRAW");
+      return mret;
     }
   }
 
@@ -562,7 +608,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                        NULL);
   }
 
-#if OPTIMISTIC_SIGN
   /* Sign before transaction! */
   ec = TALER_EC_NONE;
   wc.collectable.sig
@@ -578,7 +623,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                     ec,
                                     NULL);
   }
-#endif
 
   /* run transaction and sign (if not optimistically signed before) */
   wc.kyc_denied = false;
