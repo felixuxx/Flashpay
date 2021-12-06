@@ -2390,8 +2390,8 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
                                MHD_HTTP_OK,
                                (MHD_YES ==
                                 TALER_MHD_can_compress (rc->connection))
-       ? krd->response_compressed
-       : krd->response_uncompressed);
+                               ? krd->response_compressed
+                               : krd->response_uncompressed);
   }
 }
 

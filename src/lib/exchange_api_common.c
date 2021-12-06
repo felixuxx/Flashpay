@@ -767,6 +767,8 @@ TALER_EXCHANGE_verify_coin_history (
     else if (0 == strcasecmp (type,
                               "RECOUP-REFRESH"))
     {
+      /* This is the coin that was subjected to a recoup,
+         the value being credited to the old coin. */
       struct TALER_RecoupRefreshConfirmationPS pc = {
         .purpose.size = htonl (sizeof (pc)),
         .purpose.purpose = htonl (
@@ -831,12 +833,13 @@ TALER_EXCHANGE_verify_coin_history (
         return GNUNET_SYSERR;
       }
       *h_denom_pub = rr.h_denom_pub;
-      add = GNUNET_YES;  // FIXME: one of these should be a "NO"
-      // => need better tests!!!
+      add = GNUNET_YES;
     }
     else if (0 == strcasecmp (type,
                               "OLD-COIN-RECOUP"))
     {
+      /* This is the coin that was credited in a recoup,
+         the value being credited to the this coin. */
       struct TALER_RecoupRefreshConfirmationPS pc = {
         .purpose.size = htonl (sizeof (pc)),
         .purpose.purpose = htonl (
@@ -879,7 +882,7 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      add = GNUNET_YES; // FIXME: one of these should be a "NO"
+      add = GNUNET_NO;
     }
     else
     {

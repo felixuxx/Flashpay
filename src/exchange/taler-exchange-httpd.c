@@ -1866,8 +1866,8 @@ run (void *cls,
                           MHD_OPTION_CONNECTION_TIMEOUT,
                           connection_timeout,
                           (0 == allow_address_reuse)
-                            ? MHD_OPTION_END
-                            : MHD_OPTION_LISTENING_ADDRESS_REUSE,
+                          ? MHD_OPTION_END
+                          : MHD_OPTION_LISTENING_ADDRESS_REUSE,
                           (unsigned int) allow_address_reuse,
                           MHD_OPTION_END);
   if (NULL == mhd)

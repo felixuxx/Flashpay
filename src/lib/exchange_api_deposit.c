@@ -629,8 +629,8 @@ TALER_EXCHANGE_deposit (
                          &h_wire,
                          h_contract_terms,
                          (NULL != extension_details)
-                   ? &ech
-                   : NULL,
+                         ? &ech
+                         : NULL,
                          coin_pub,
                          denom_sig,
                          denom_pub,

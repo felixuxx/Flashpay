@@ -379,7 +379,7 @@ run (void *cls)
 
     j = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_NONCE,
                                   TOTAL);
-    if (! bm_select ((0 == f)? conn2 : conn,
+    if (! bm_select ((0 == f) ? conn2 : conn,
                      j))
     {
       GNUNET_PQ_disconnect (conn);
@@ -422,7 +422,7 @@ run (void *cls)
 
     j = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_NONCE,
                                   TOTAL);
-    if (! bhm_select ((0 == f)? conn2 : conn,
+    if (! bhm_select ((0 == f) ? conn2 : conn,
                       j))
     {
       GNUNET_PQ_disconnect (conn);
@@ -465,7 +465,7 @@ run (void *cls)
 
     j = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_NONCE,
                                   TOTAL);
-    if (! bem_select ((0 == f)? conn2 : conn,
+    if (! bem_select ((0 == f) ? conn2 : conn,
                       j))
     {
       GNUNET_PQ_disconnect (conn);

@@ -46,8 +46,9 @@ enum TALER_EXTENSION_ReturnValue
  * The default age mask represents the age groups
  * 0-7, 8-9, 10-11, 12-13, 14-15, 16-17, 18-20, 21-...
  */
-#define TALER_EXTENSION_DEFAULT_AGE_MASK (1 | 1 << 8 | 1 << 10 | 1 << 12 | 1 << \
-                                          14 | 1 << 16 | 1 << 18 | 1 << 21)
+#define TALER_EXTENSION_DEFAULT_AGE_MASK (1 | 1 << 8 | 1 << 10 | 1 << 12 | 1    \
+                                                << 14 | 1 << 16 | 1 << 18 | 1 \
+                                                << 21)
 
 /**
  * @param groups String representation of age groups, like: "8:10:12:14:16:18:21"
