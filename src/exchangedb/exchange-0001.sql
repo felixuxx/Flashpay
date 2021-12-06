@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS wire_targets
 ,PRIMARY KEY (h_payto)
 );
 COMMENT ON TABLE wire_targets
-  IS 'All recipients of money via the exchange';
+  IS 'All senders and recipients of money via the exchange';
 COMMENT ON COLUMN wire_targets.payto_uri
   IS 'Can be a regular bank account, or also be a URI identifying a reserve-account (for P2P payments)';
 COMMENT ON COLUMN wire_targets.h_payto
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS reserves_in
 COMMENT ON TABLE reserves_in
   IS 'list of transfers of funds into the reserves, one per incoming wire transfer';
 COMMENT ON COLUMN reserves_in.wire_source_serial_id
-  IS 'Identifies the debited bank account and KYC status';-- FIXME: explain 'wire_reference'!
+  IS 'Identifies the debited bank account and KYC status';
 CREATE INDEX IF NOT EXISTS reserves_in_execution_index
   ON reserves_in
   (exchange_account_section
@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS signkey_revocations
   ,master_sig BYTEA NOT NULL CHECK (LENGTH(master_sig)=64)
   );
 COMMENT ON TABLE signkey_revocations
-  IS 'remembering which online signing keys have been revoked';
+  IS 'Table storing which online signing keys have been revoked';
 
 
 CREATE TABLE IF NOT EXISTS known_coins
@@ -301,6 +301,12 @@ CREATE TABLE IF NOT EXISTS refresh_commitments
   );
 COMMENT ON TABLE refresh_commitments
   IS 'Commitments made when melting coins and the gamma value chosen by the exchange.';
+COMMENT ON COLUMN refresh_commitments.noreveal_index
+  IS 'The gamma value chosen by the exchange in the cut-and-choose protocol';
+COMMENT ON COLUMN refresh_commitments.rc
+  IS 'Commitment made by the client, hash over the various client inputs in the cut-and-choose protocol';
+COMMENT ON COLUMN refresh_commitments.old_known_coin_id
+  IS 'Coin being melted in the refresh process.';
 
 CREATE INDEX IF NOT EXISTS refresh_commitments_old_coin_id_index
   ON refresh_commitments
@@ -525,13 +531,16 @@ CREATE TABLE IF NOT EXISTS recoup
   ,timestamp INT8 NOT NULL
   ,reserve_out_serial_id INT8 NOT NULL REFERENCES reserves_out (reserve_out_serial_id) ON DELETE CASCADE
   );
--- FIXME: explain table better!
 COMMENT ON TABLE recoup
-  IS 'Information about recoups that were executed';
+  IS 'Information about recoups that were executed between a coin and a reserve. In this type of recoup, the amount is credited back to the reserve from which the coin originated.';
 COMMENT ON COLUMN recoup.known_coin_id
-  IS 'Do not CASCADE ON DROP on the known_coin_id, as we may keep the coin alive!';
+  IS 'Coin that is being debited in the recoup. Do not CASCADE ON DROP on the known_coin_id, as we may keep the coin alive!';
 COMMENT ON COLUMN recoup.reserve_out_serial_id
-  IS 'Identifies the h_blind_ev of the recouped coin.';
+  IS 'Identifies the h_blind_ev of the recouped coin and provides the link to the credited reserve.';
+COMMENT ON COLUMN recoup.coin_sig
+  IS 'Signature by the coin affirming the recoup, of type TALER_SIGNATURE_WALLET_COIN_RECOUP';
+COMMENT ON COLUMN recoup.coin_blind
+  IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the withdraw operation.';
 
 CREATE INDEX IF NOT EXISTS recoup_by_h_blind_ev
   ON recoup
@@ -553,11 +562,14 @@ CREATE TABLE IF NOT EXISTS recoup_refresh
   ,timestamp INT8 NOT NULL
   ,rrc_serial INT8 NOT NULL UNIQUE REFERENCES refresh_revealed_coins (rrc_serial) ON DELETE CASCADE
   );
--- FIXME: explain table better!
+COMMENT ON TABLE recoup_refresh
+  IS 'Table of coins that originated from a refresh operation and that were recouped. Links the (fresh) coin to the melted operation (and thus the old coin). A recoup on a refreshed coin credits the old coin and debits the fresh coin.';
 COMMENT ON COLUMN recoup_refresh.known_coin_id
-  IS 'Do not CASCADE ON DROP on the known_coin_id, as we may keep the coin alive!';
+  IS 'Refreshed coin of a revoked denomination where the residual value is credited to the old coin. Do not CASCADE ON DROP on the known_coin_id, as we may keep the coin alive!';
 COMMENT ON COLUMN recoup_refresh.rrc_serial
-  IS 'Identifies the h_blind_ev of the recouped coin (as h_coin_ev).';
+  IS 'Link to the refresh operation. Also identifies the h_blind_ev of the recouped coin (as h_coin_ev).';
+COMMENT ON COLUMN recoup_refresh.coin_blind
+  IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the refresh operation.';
 
 CREATE INDEX IF NOT EXISTS recoup_refresh_by_h_blind_ev
   ON recoup_refresh
