@@ -98,6 +98,8 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
     // FIXME: why do we even return the transaction
     // history here!? This is a coin with multiple
     // associated denominations, after all...
+    // => this is probably the wrong call, as this
+    // is NOT about insufficient funds!
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
           connection,
