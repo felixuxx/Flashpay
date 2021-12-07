@@ -39,6 +39,7 @@
 #include "taler-exchange-httpd_link.h"
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_melt.h"
+#include "taler-exchange-httpd_metrics.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_refreshes_reveal.h"
@@ -848,6 +849,12 @@ handle_mhd_request (void *cls,
       .url = "seed",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &handler_seed
+    },
+    /* Performance metrics */
+    {
+      .url = "metrics",
+      .method = MHD_HTTP_METHOD_GET,
+      .handler.get = &TEH_handler_metrics
     },
     /* Terms of service */
     {
