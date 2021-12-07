@@ -187,6 +187,7 @@ TEH_handler_management_auditors (
 
   ret = TEH_DB_run_transaction (connection,
                                 "add auditor",
+                                TEH_MT_OTHER,
                                 &res,
                                 &add_auditor,
                                 &aac);

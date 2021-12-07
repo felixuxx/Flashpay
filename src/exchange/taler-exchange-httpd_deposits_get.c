@@ -246,6 +246,7 @@ handle_track_transaction_request (
   if (GNUNET_OK !=
       TEH_DB_run_transaction (connection,
                               "handle deposits GET",
+                              TEH_MT_OTHER,
                               &mhd_ret,
                               &deposits_get_transaction,
                               &ctx))

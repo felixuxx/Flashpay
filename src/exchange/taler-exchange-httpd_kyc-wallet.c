@@ -140,6 +140,7 @@ TEH_handler_kyc_wallet (
       0);
   ret = TEH_DB_run_transaction (rc->connection,
                                 "check wallet kyc",
+                                TEH_MT_OTHER,
                                 &res,
                                 &wallet_kyc_check,
                                 &krc);

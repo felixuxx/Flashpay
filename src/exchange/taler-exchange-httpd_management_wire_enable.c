@@ -212,6 +212,7 @@ TEH_handler_management_post_wire (
 
     res = TEH_DB_run_transaction (connection,
                                   "add wire",
+                                  TEH_MT_OTHER,
                                   &ret,
                                   &add_wire,
                                   &awc);

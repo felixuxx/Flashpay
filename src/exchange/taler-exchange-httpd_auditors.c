@@ -216,6 +216,7 @@ TEH_handler_auditors (
     return MHD_YES;   /* failure */
   ret = TEH_DB_run_transaction (connection,
                                 "add auditor denom sig",
+                                TEH_MT_OTHER,
                                 &res,
                                 &add_auditor_denom_sig,
                                 &awc);

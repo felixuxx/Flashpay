@@ -193,6 +193,7 @@ TEH_handler_link (struct TEH_RequestContext *rc,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (rc->connection,
                               "run link",
+                              TEH_MT_OTHER,
                               &mhd_ret,
                               &link_transaction,
                               &ctx))

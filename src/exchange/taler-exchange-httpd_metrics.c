@@ -29,6 +29,11 @@
 #include <jansson.h>
 
 
+unsigned long long TEH_METRICS_num_requests[TEH_MT_COUNT];
+
+unsigned long long TEH_METRICS_num_conflict[TEH_MT_COUNT];
+
+
 MHD_RESULT
 TEH_handler_metrics (struct TEH_RequestContext *rc,
                      const char *const args[])

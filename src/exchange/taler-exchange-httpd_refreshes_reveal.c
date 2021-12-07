@@ -724,6 +724,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if ( (GNUNET_OK ==
           TEH_DB_run_transaction (connection,
                                   "reveal pre-check",
+                                  TEH_MT_REVEAL_PRECHECK,
                                   &ret,
                                   &refreshes_reveal_preflight,
                                   rctx)) &&
@@ -745,6 +746,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "run reveal",
+                                TEH_MT_REVEAL,
                                 &ret,
                                 &refreshes_reveal_transaction,
                                 rctx))
@@ -756,6 +758,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (GNUNET_OK ==
         TEH_DB_run_transaction (connection,
                                 "persist reveal",
+                                TEH_MT_REVEAL_PERSIST,
                                 &ret,
                                 &refreshes_reveal_persist,
                                 rctx))

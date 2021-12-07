@@ -515,6 +515,7 @@ TEH_handler_transfers_get (struct TEH_RequestContext *rc,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (rc->connection,
                               "run transfers GET",
+                              TEH_MT_OTHER,
                               &mhd_ret,
                               &get_transfer_deposits,
                               &ctx))

@@ -27,6 +27,34 @@
 
 
 /**
+ * Request types for which we collect metrics.
+ */
+enum TEH_MetricType
+{
+  TEH_MT_OTHER = 0,
+  TEH_MT_DEPOSIT = 1,
+  TEH_MT_WITHDRAW = 2,
+  TEH_MT_MELT = 3,
+  TEH_MT_REVEAL_PRECHECK = 4,
+  TEH_MT_REVEAL = 5,
+  TEH_MT_REVEAL_PERSIST = 6,
+  TEH_MT_COUNT = 7 /* MUST BE LAST! */
+};
+
+
+/**
+ * Number of requests handled of the respective type.
+ */
+extern unsigned long long TEH_METRICS_num_requests[TEH_MT_COUNT];
+
+/**
+ * Number of serialization errors encountered when
+ * handling requests of the respective type.
+ */
+extern unsigned long long TEH_METRICS_num_conflict[TEH_MT_COUNT];
+
+
+/**
  * Handle a "/metrics" request.
  *
  * @param rc request context

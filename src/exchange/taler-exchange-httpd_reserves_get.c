@@ -315,6 +315,7 @@ TEH_handler_reserves_get (struct TEH_RequestContext *rc,
   if (GNUNET_OK !=
       TEH_DB_run_transaction (rc->connection,
                               "get reserve history",
+                              TEH_MT_OTHER,
                               &mhd_ret,
                               &reserve_history_transaction,
                               &rsc))

@@ -24,6 +24,7 @@
 #include <gnunet/gnunet_json_lib.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_db.h"
 #include "taler-exchange-httpd_responses.h"
 
 
@@ -113,25 +114,10 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
 }
 
 
-/**
- * Run a database transaction for @a connection.
- * Starts a transaction and calls @a cb.  Upon success,
- * attempts to commit the transaction.  Upon soft failures,
- * retries @a cb a few times.  Upon hard or persistent soft
- * errors, generates an error message for @a connection.
- *
- * @param connection MHD connection to run @a cb for, can be NULL
- * @param name name of the transaction (for debugging)
- * @param[out] mhd_ret set to MHD response code, if transaction failed;
- *             NULL if we are not running with a @a connection and thus
- *             must not queue MHD replies
- * @param cb callback implementing transaction logic
- * @param cb_cls closure for @a cb, must be read-only!
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
- */
 enum GNUNET_GenericReturnValue
 TEH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
+                        enum TEH_MetricType mt,
                         MHD_RESULT *mhd_ret,
                         TEH_DB_TransactionCallback cb,
                         void *cb_cls)
@@ -149,6 +135,8 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                                              NULL);
     return GNUNET_SYSERR;
   }
+  GNUNET_assert (mt < TEH_MT_COUNT);
+  TEH_METRICS_num_requests[mt]++;
   for (unsigned int retries = 0;
        retries < MAX_TRANSACTION_COMMIT_RETRIES;
        retries++)
@@ -190,6 +178,7 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
                     (-1 == (int) *mhd_ret) );
     if (0 <= qs)
       return GNUNET_OK;
+    TEH_METRICS_num_conflict[mt]++;
   }
   TALER_LOG_ERROR ("Transaction `%s' commit failed %u times\n",
                    name,

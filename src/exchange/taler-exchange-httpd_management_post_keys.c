@@ -454,6 +454,7 @@ TEH_handler_management_post_keys (
 
     res = TEH_DB_run_transaction (connection,
                                   "add keys",
+                                  TEH_MT_OTHER,
                                   &ret,
                                   &add_keys,
                                   &akc);

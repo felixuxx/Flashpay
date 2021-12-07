@@ -432,6 +432,7 @@ handle_melt (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "run melt",
+                                TEH_MT_MELT,
                                 &mhd_ret,
                                 &melt_transaction,
                                 rmc))

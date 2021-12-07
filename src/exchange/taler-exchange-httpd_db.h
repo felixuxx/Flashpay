@@ -23,6 +23,7 @@
 
 #include <microhttpd.h>
 #include "taler_exchangedb_plugin.h"
+#include "taler-exchange-httpd_metrics.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
 
@@ -69,6 +70,7 @@ typedef enum GNUNET_DB_QueryStatus
  *
  * @param connection MHD connection to run @a cb for, can be NULL
  * @param name name of the transaction (for debugging)
+ * @param mt type of the requests, for metric generation
  * @param[out] mhd_ret set to MHD response code, if transaction failed (returned #GNUNET_SYSERR);
  *             NULL if we are not running with a @a connection and thus
  *             must not queue MHD replies
@@ -79,6 +81,7 @@ typedef enum GNUNET_DB_QueryStatus
 enum GNUNET_GenericReturnValue
 TEH_DB_run_transaction (struct MHD_Connection *connection,
                         const char *name,
+                        enum TEH_MetricType mt,
                         MHD_RESULT *mhd_ret,
                         TEH_DB_TransactionCallback cb,
                         void *cb_cls);

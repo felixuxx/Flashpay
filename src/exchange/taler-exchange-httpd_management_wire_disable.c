@@ -177,6 +177,7 @@ TEH_handler_management_post_wire_disable (
 
     res = TEH_DB_run_transaction (connection,
                                   "del wire",
+                                  TEH_MT_OTHER,
                                   &ret,
                                   &del_wire,
                                   &awc);

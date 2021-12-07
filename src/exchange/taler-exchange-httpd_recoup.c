@@ -477,6 +477,7 @@ verify_and_execute_recoup (
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "run recoup",
+                                TEH_MT_OTHER,
                                 &mhd_ret,
                                 &recoup_transaction,
                                 &pc))

@@ -221,6 +221,7 @@ TEH_handler_management_post_wire_fees (
 
     res = TEH_DB_run_transaction (connection,
                                   "add wire fee",
+                                  TEH_MT_OTHER,
                                   &ret,
                                   &add_fee,
                                   &afc);

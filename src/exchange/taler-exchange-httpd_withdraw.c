@@ -521,6 +521,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (rc->connection,
                                 "run withdraw",
+                                TEH_MT_WITHDRAW,
                                 &mhd_ret,
                                 &withdraw_transaction,
                                 &wc))

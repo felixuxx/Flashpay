@@ -497,6 +497,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
                                 "execute deposit",
+                                TEH_MT_DEPOSIT,
                                 &mhd_ret,
                                 &deposit_transaction,
                                 &dc))

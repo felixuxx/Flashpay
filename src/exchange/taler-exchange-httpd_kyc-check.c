@@ -351,6 +351,7 @@ TEH_handler_kyc_check (
   (void) GNUNET_TIME_round_abs (&now);
   ret = TEH_DB_run_transaction (rc->connection,
                                 "kyc check",
+                                TEH_MT_OTHER,
                                 &res,
                                 &kyc_check,
                                 kyp);
