@@ -47,23 +47,23 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    "# HELP taler_exchange_serialization_failures "
                    " number of database serialization errors by type\n"
                    "# TYPE taler_exchange_serialization_failures counter\n"
-                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
-                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
-                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
-                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
-                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
-                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
-                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
+                   "taler_exchange_serialization_failures{type=\"%s\"} %llu\n"
+                   "taler_exchange_serialization_failures{type=\"%s\"} %llu\n"
+                   "taler_exchange_serialization_failures{type=\"%s\"} %llu\n"
+                   "taler_exchange_serialization_failures{type=\"%s\"} %llu\n"
+                   "taler_exchange_serialization_failures{type=\"%s\"} %llu\n"
+                   "taler_exchange_serialization_failures{type=\"%s\"} %llu\n"
+                   "taler_exchange_serialization_failures{type=\"%s\"} %llu\n"
                    "# HELP taler_exchange_received_requests "
                    " number of received requests by type\n"
                    "# TYPE taler_exchange_received_requests counter\n"
-                   "taler_exchange_received_requests{type='%s'} %llu\n"
-                   "taler_exchange_received_requests{type='%s'} %llu\n"
-                   "taler_exchange_received_requests{type='%s'} %llu\n"
-                   "taler_exchange_received_requests{type='%s'} %llu\n"
-                   "taler_exchange_received_requests{type='%s'} %llu\n"
-                   "taler_exchange_received_requests{type='%s'} %llu\n"
-                   "taler_exchange_received_requests{type='%s'} %llu\n",
+                   "taler_exchange_received_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_received_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_received_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_received_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_received_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_received_requests{type=\"%s\"} %llu\n"
+                   "taler_exchange_received_requests{type=\"%s\"} %llu\n",
                    "other",
                    TEH_METRICS_num_conflict[TEH_MT_OTHER],
                    "deposit",
@@ -72,11 +72,11 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    TEH_METRICS_num_conflict[TEH_MT_WITHDRAW],
                    "melt",
                    TEH_METRICS_num_conflict[TEH_MT_MELT],
-                   "reveal_precheck",
+                   "reveal-precheck",
                    TEH_METRICS_num_conflict[TEH_MT_REVEAL_PRECHECK],
                    "reveal",
                    TEH_METRICS_num_conflict[TEH_MT_REVEAL],
-                   "reveal_persist",
+                   "reveal-persist",
                    TEH_METRICS_num_conflict[TEH_MT_REVEAL_PERSIST],
                    "other",
                    TEH_METRICS_num_requests[TEH_MT_OTHER],
@@ -86,11 +86,11 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
                    TEH_METRICS_num_requests[TEH_MT_WITHDRAW],
                    "melt",
                    TEH_METRICS_num_requests[TEH_MT_MELT],
-                   "reveal_precheck",
+                   "reveal-precheck",
                    TEH_METRICS_num_requests[TEH_MT_REVEAL_PRECHECK],
                    "reveal",
                    TEH_METRICS_num_requests[TEH_MT_REVEAL],
-                   "reveal_persist",
+                   "reveal-persist",
                    TEH_METRICS_num_requests[TEH_MT_REVEAL_PERSIST]);
   resp = MHD_create_response_from_buffer (strlen (reply),
                                           reply,
