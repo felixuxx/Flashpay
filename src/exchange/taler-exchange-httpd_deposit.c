@@ -162,113 +162,85 @@ deposit_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_Amount deposit_fee;
 
-  /* Check for idempotency: did we get this request before? */
-  qs = TEH_plugin->have_deposit (TEH_plugin->cls,
-                                 deposit,
-                                 &deposit_fee,
-                                 &dc->exchange_timestamp);
+  /* begin optimistically: assume this is a new deposit */
+  qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
+                                   dc->exchange_timestamp,
+                                   deposit);
   if (qs < 0)
   {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+    if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+      return qs;
+    TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
+    *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                           TALER_EC_GENERIC_DB_STORE_FAILED,
+                                           NULL);
+    return qs;
+  }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    /* Check for idempotency: did we get this request before? */
+    qs = TEH_plugin->have_deposit (TEH_plugin->cls,
+                                   deposit,
+                                   &deposit_fee,
+                                   &dc->exchange_timestamp);
+    if (qs < 0)
     {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
       *mhd_ret = TALER_MHD_reply_with_error (connection,
                                              MHD_HTTP_INTERNAL_SERVER_ERROR,
                                              TALER_EC_GENERIC_DB_FETCH_FAILED,
                                              "have_deposit");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    return qs;
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-  {
-    struct TALER_Amount amount_without_fee;
-
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "/deposit replay, accepting again!\n");
-    GNUNET_assert (0 <=
-                   TALER_amount_subtract (&amount_without_fee,
-                                          &deposit->amount_with_fee,
-                                          &deposit_fee));
-    *mhd_ret = reply_deposit_success (connection,
-                                      &deposit->coin.coin_pub,
-                                      &dc->h_wire,
-                                      NULL /* h_extensions! */,
-                                      &deposit->h_contract_terms,
-                                      dc->exchange_timestamp,
-                                      deposit->refund_deadline,
-                                      deposit->wire_deadline,
-                                      &deposit->merchant_pub,
-                                      &amount_without_fee);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  /* Start with fee for THIS transaction */
-  spent = deposit->amount_with_fee;
-  /* add cost of all previous transactions; skip RECOUP as revoked
-     denominations are not eligible for deposit, and if we are the old coin
-     pub of a revoked coin (aka a zombie), then ONLY refresh is allowed. */
-  {
-    struct TALER_EXCHANGEDB_TransactionList *tl;
-
-    qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                            &deposit->coin.coin_pub,
-                                            GNUNET_NO,
-                                            &tl);
-    if (0 > qs)
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-        *mhd_ret = TALER_MHD_reply_with_error (
-          connection,
-          MHD_HTTP_INTERNAL_SERVER_ERROR,
-          TALER_EC_GENERIC_DB_FETCH_FAILED,
-          NULL);
-      return qs;
-    }
-    if (GNUNET_OK !=
-        TALER_EXCHANGEDB_calculate_transaction_list_totals (tl,
-                                                            &spent, /* starting offset */
-                                                            &spent /* result */))
-    {
-      TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                              tl);
-      *mhd_ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_INTERNAL_SERVER_ERROR,
-        TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
-        NULL);
+      /* Conflict on insert, but record does not exist?
+         That makes no sense. */
+      GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    /* Check that cost of all transactions (including the current one) is
-       smaller (or equal) than the value of the coin. */
-    if (0 < TALER_amount_cmp (&spent,
-                              &dc->value))
+
     {
-      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                  "Deposited coin has insufficient funds left!\n");
-      *mhd_ret = TEH_RESPONSE_reply_coin_insufficient_funds (connection,
-                                                             TALER_EC_EXCHANGE_DEPOSIT_INSUFFICIENT_FUNDS,
-                                                             &deposit->coin.
-                                                             coin_pub,
-                                                             tl);
-      TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                              tl);
+      struct TALER_Amount amount_without_fee;
+
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "/deposit replay, accepting again!\n");
+      GNUNET_assert (0 <=
+                     TALER_amount_subtract (&amount_without_fee,
+                                            &deposit->amount_with_fee,
+                                            &deposit_fee));
+      *mhd_ret = reply_deposit_success (connection,
+                                        &deposit->coin.coin_pub,
+                                        &dc->h_wire,
+                                        NULL /* h_extensions! */,
+                                        &deposit->h_contract_terms,
+                                        dc->exchange_timestamp,
+                                        deposit->refund_deadline,
+                                        deposit->wire_deadline,
+                                        &deposit->merchant_pub,
+                                        &amount_without_fee);
+      /* Note: we return "hard error" to ensure the wrapper
+         does not retry the transaction, and to also not generate
+         a "fresh" response (as we would on "success") */
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
   }
-  qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
-                                   dc->exchange_timestamp,
-                                   deposit);
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    TALER_LOG_WARNING ("Failed to store /deposit information in database\n");
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_STORE_FAILED,
-                                           NULL);
-  }
-  return qs;
+
+  /* Start with zero cost, as we already added this melt transaction
+     to the DB, so we will see it again during the queries below. */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &spent));
+
+  return TEH_check_coin_balance (connection,
+                                 &deposit->coin.coin_pub,
+                                 &dc->value,
+                                 &deposit->amount_with_fee,
+                                 false, /* no need for recoup */
+                                 false, /* no need for zombie */
+                                 mhd_ret);
 }
 
 

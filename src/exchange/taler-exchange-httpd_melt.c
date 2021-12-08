@@ -34,56 +34,6 @@
 
 
 /**
- * Send a response for a failed "melt" request.  The
- * transaction history of the given coin demonstrates that the
- * @a residual value of the coin is below the @a requested
- * contribution of the coin for the melt.  Thus, the exchange
- * refuses the melt operation.
- *
- * @param connection the connection to send the response to
- * @param coin_pub public key of the coin
- * @param coin_value original value of the coin
- * @param tl transaction history for the coin
- * @param requested how much this coin was supposed to contribute, including fee
- * @param residual remaining value of the coin (after subtracting @a tl)
- * @return a MHD result code
- */
-static MHD_RESULT
-reply_melt_insufficient_funds (
-  struct MHD_Connection *connection,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_Amount *coin_value,
-  struct TALER_EXCHANGEDB_TransactionList *tl,
-  const struct TALER_Amount *requested,
-  const struct TALER_Amount *residual)
-{
-  json_t *history;
-
-  history = TEH_RESPONSE_compile_transaction_history (coin_pub,
-                                                      tl);
-  if (NULL == history)
-    return TALER_MHD_reply_with_error (connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_MELT_HISTORY_DB_ERROR_INSUFFICIENT_FUNDS,
-                                       NULL);
-  return TALER_MHD_REPLY_JSON_PACK (
-    connection,
-    MHD_HTTP_CONFLICT,
-    TALER_JSON_pack_ec (TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS),
-    GNUNET_JSON_pack_data_auto ("coin_pub",
-                                coin_pub),
-    TALER_JSON_pack_amount ("original_value",
-                            coin_value),
-    TALER_JSON_pack_amount ("residual_value",
-                            residual),
-    TALER_JSON_pack_amount ("requested_value",
-                            requested),
-    GNUNET_JSON_pack_array_steal ("history",
-                                  history));
-}
-
-
-/**
  * Send a response to a "melt" request.
  *
  * @param connection the connection to send the response to
@@ -166,127 +116,6 @@ struct MeltContext
 
 
 /**
- * Check that the coin has sufficient funds left for the selected
- * melt operation.
- *
- * @param connection the connection to send errors to
- * @param[in,out] rmc melt context
- * @param[out] mhd_ret status code to return to MHD on hard error
- * @return transaction status code
- */
-static enum GNUNET_DB_QueryStatus
-refresh_check_melt (struct MHD_Connection *connection,
-                    struct MeltContext *rmc,
-                    MHD_RESULT *mhd_ret)
-{
-  struct TALER_EXCHANGEDB_TransactionList *tl;
-  struct TALER_Amount spent;
-  enum GNUNET_DB_QueryStatus qs;
-
-  /* Start with zero cost, as we already added this melt transaction
-     to the DB, so we will see it again during the queries below. */
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TEH_currency,
-                                        &spent));
-
-  /* get historic transaction costs of this coin, including recoups as
-     we might be a zombie coin */
-  qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
-                                          &rmc->refresh_session.coin.coin_pub,
-                                          GNUNET_YES,
-                                          &tl);
-  if (0 > qs)
-  {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "coin transaction history");
-    return qs;
-  }
-  if (rmc->zombie_required)
-  {
-    /* The denomination key is only usable for a melt if this is a true
-       zombie coin, i.e. it was refreshed and the resulting fresh coin was
-       then recouped. Check that this is truly the case. */
-    for (struct TALER_EXCHANGEDB_TransactionList *tp = tl;
-         NULL != tp;
-         tp = tp->next)
-    {
-      if (TALER_EXCHANGEDB_TT_OLD_COIN_RECOUP == tp->type)
-      {
-        rmc->zombie_required = false; /* clear flag: was satisfied! */
-        break;
-      }
-    }
-    if (rmc->zombie_required)
-    {
-      /* zombie status not satisfied */
-      GNUNET_break_op (0);
-      TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                              tl);
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_BAD_REQUEST,
-                                             TALER_EC_EXCHANGE_MELT_COIN_EXPIRED_NO_ZOMBIE,
-                                             NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-  }
-  if (GNUNET_OK !=
-      TALER_EXCHANGEDB_calculate_transaction_list_totals (tl,
-                                                          &spent,
-                                                          &spent))
-  {
-    GNUNET_break (0);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_EXCHANGE_MELT_COIN_HISTORY_COMPUTATION_FAILED,
-                                           NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  /* Refuse to refresh when the coin's value is insufficient
-     for the cost of all transactions. */
-  if (0 > TALER_amount_cmp (&rmc->coin_value,
-                            &spent))
-  {
-    struct TALER_Amount coin_residual;
-    struct TALER_Amount spent_already;
-
-    /* First subtract the melt cost from 'spent' to
-       compute the total amount already spent of the coin */
-    GNUNET_assert (0 <=
-                   TALER_amount_subtract (&spent_already,
-                                          &spent,
-                                          &rmc->refresh_session.amount_with_fee));
-    /* The residual coin value is the original coin value minus
-       what we have spent (before the melt) */
-    GNUNET_assert (0 <=
-                   TALER_amount_subtract (&coin_residual,
-                                          &rmc->coin_value,
-                                          &spent_already));
-    *mhd_ret = reply_melt_insufficient_funds (
-      connection,
-      &rmc->refresh_session.coin.coin_pub,
-      &rmc->coin_value,
-      tl,
-      &rmc->refresh_session.amount_with_fee,
-      &coin_residual);
-    TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                            tl);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-
-  /* we're good, coin has sufficient funds to be melted */
-  TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
-                                          tl);
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
-}
-
-
-/**
  * Execute a "melt".  We have been given a list of valid
  * coins and a request to melt them into the given @a
  * refresh_session_pub.  Check that the coins all have the required
@@ -366,14 +195,13 @@ melt_transaction (void *cls,
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
-
-  /* check coin has enough funds remaining on it to cover melt cost */
-  qs = refresh_check_melt (connection,
-                           rmc,
-                           mhd_ret);
-  if (0 > qs)
-    return qs; /* if we failed, tell caller */
-  return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+  return TEH_check_coin_balance (connection,
+                                 &rmc->refresh_session.coin.coin_pub,
+                                 &rmc->coin_value,
+                                 &rmc->refresh_session.amount_with_fee,
+                                 true,
+                                 rmc->zombie_required,
+                                 mhd_ret);
 }
 
 

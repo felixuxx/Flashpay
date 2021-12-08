@@ -1034,7 +1034,8 @@ prepare_statements (struct PostgresClosure *pg)
       ") SELECT known_coin_id, $2, $3, $4, $5, $6, "
       " $7, $8, $9, $10, $11, $12, $13"
       "    FROM known_coins"
-      "   WHERE coin_pub=$1;",
+      "   WHERE coin_pub=$1"
+      " ON CONFLICT DO NOTHING;",
       13),
     /* Fetch an existing deposit request, used to ensure idempotency
        during /deposit processing. Used in #postgres_have_deposit(). */

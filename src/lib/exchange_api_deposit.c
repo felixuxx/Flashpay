@@ -263,7 +263,7 @@ verify_deposit_signature_conflict (
   ec = TALER_JSON_get_error_code (json);
   switch (ec)
   {
-  case TALER_EC_EXCHANGE_DEPOSIT_INSUFFICIENT_FUNDS:
+  case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
     if (0 >
         TALER_amount_add (&total,
                           &total,

@@ -97,7 +97,7 @@ struct TALER_EXCHANGE_MeltHandle
  * @param[out] noreveal_index set to the noreveal index selected by the exchange
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
                           const json_t *json,
                           struct TALER_ExchangePublicKeyP *exchange_pub,
@@ -208,7 +208,7 @@ verify_melt_signature_denom_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
  * @param json json reply with the signature(s) and transaction history
  * @return #GNUNET_OK if the signature(s) is valid, #GNUNET_SYSERR if not
  */
-static int
+static enum GNUNET_GenericReturnValue
 verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
                                       const json_t *json)
 {
@@ -282,7 +282,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   ec = TALER_JSON_get_error_code (json);
   switch (ec)
   {
-  case TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS:
+  case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
     /* check if melt operation was really too expensive given history */
     if (0 >
         TALER_amount_add (&total,
@@ -379,7 +379,7 @@ handle_melt_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     switch (hr.ec)
     {
-    case TALER_EC_EXCHANGE_MELT_INSUFFICIENT_FUNDS:
+    case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
       /* Double spending; check signatures on transaction history */
       if (GNUNET_OK !=
           verify_melt_signature_spend_conflict (mh,

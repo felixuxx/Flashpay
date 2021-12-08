@@ -106,6 +106,11 @@ struct RevealContext
   struct TALER_TransferPrivateKeyP transfer_privs[TALER_CNC_KAPPA - 1];
 
   /**
+   * Melt data for our session we got from the database for @e rc.
+   */
+  struct TALER_EXCHANGEDB_Melt melt;
+
+  /**
    * Denominations being requested.
    */
   const struct TEH_DenominationKey **dks;
@@ -266,35 +271,6 @@ refreshes_reveal_transaction (void *cls,
                               MHD_RESULT *mhd_ret)
 {
   struct RevealContext *rctx = cls;
-  struct TALER_EXCHANGEDB_Melt melt;
-  enum GNUNET_DB_QueryStatus qs;
-
-  /* Obtain basic information about the refresh operation and what
-     gamma we committed to. */
-  // FIXME: why do we do 'get_melt' twice?
-  qs = TEH_plugin->get_melt (TEH_plugin->cls,
-                             &rctx->rc,
-                             &melt);
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_REFRESHES_REVEAL_SESSION_UNKNOWN,
-                                           NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-    return qs;
-  if ( (GNUNET_DB_STATUS_HARD_ERROR == qs) ||
-       (melt.session.noreveal_index >= TALER_CNC_KAPPA) )
-  {
-    GNUNET_break (0);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                           "melt");
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
 
   /* Verify commitment */
   {
@@ -310,7 +286,7 @@ refreshes_reveal_transaction (void *cls,
     {
       struct TALER_RefreshCommitmentEntry *rce = &rcs[i];
 
-      if (i == melt.session.noreveal_index)
+      if (i == rctx->melt.session.noreveal_index)
       {
         /* Take these coin envelopes from the client */
         rce->transfer_pub = rctx->gamma_tp;
@@ -327,7 +303,7 @@ refreshes_reveal_transaction (void *cls,
         GNUNET_CRYPTO_ecdhe_key_get_public (&tpriv->ecdhe_priv,
                                             &rce->transfer_pub.ecdhe_pub);
         TALER_link_reveal_transfer_secret (tpriv,
-                                           &melt.session.coin.coin_pub,
+                                           &rctx->melt.session.coin.coin_pub,
                                            &ts);
         rce->new_coins = GNUNET_new_array (rctx->num_fresh_coins,
                                            struct TALER_RefreshCoinData);
@@ -356,15 +332,15 @@ refreshes_reveal_transaction (void *cls,
                                   TALER_CNC_KAPPA,
                                   rctx->num_fresh_coins,
                                   rcs,
-                                  &melt.session.coin.coin_pub,
-                                  &melt.session.amount_with_fee);
+                                  &rctx->melt.session.coin.coin_pub,
+                                  &rctx->melt.session.amount_with_fee);
 
     /* Free resources allocated above */
     for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
     {
       struct TALER_RefreshCommitmentEntry *rce = &rcs[i];
 
-      if (i == melt.session.noreveal_index)
+      if (i == rctx->melt.session.noreveal_index)
         continue; /* This offset is special: not allocated! */
       for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
       {
@@ -395,7 +371,7 @@ refreshes_reveal_transaction (void *cls,
   {
     struct TALER_Amount refresh_cost;
 
-    refresh_cost = melt.melt_fee;
+    refresh_cost = rctx->melt.melt_fee;
     for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
     {
       struct TALER_Amount total;
@@ -418,7 +394,7 @@ refreshes_reveal_transaction (void *cls,
       }
     }
     if (0 < TALER_amount_cmp (&refresh_cost,
-                              &melt.session.amount_with_fee))
+                              &rctx->melt.session.amount_with_fee))
     {
       GNUNET_break_op (0);
       *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -505,7 +481,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   struct TALER_DenominationHash dk_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
-  struct TALER_EXCHANGEDB_Melt melt;
   enum GNUNET_GenericReturnValue res;
   MHD_RESULT ret;
   struct TEH_KeyStateHandle *ksh;
@@ -612,11 +587,10 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    // FIXME: why do we do 'get_melt' twice?
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         (qs = TEH_plugin->get_melt (TEH_plugin->cls,
                                     &rctx->rc,
-                                    &melt)))
+                                    &rctx->melt)))
     {
       switch (qs)
       {
@@ -643,6 +617,17 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       }
       goto cleanup;
     }
+    /* Obtain basic information about the refresh operation and what
+       gamma we committed to. */
+    if (rctx->melt.session.noreveal_index >= TALER_CNC_KAPPA)
+    {
+      GNUNET_break (0);
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                        "melt");
+      goto cleanup;
+    }
   }
   /* Parse link signatures array */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
@@ -666,7 +651,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
           &rctx->gamma_tp,
           rcds[i].coin_ev,
           rcds[i].coin_ev_size,
-          &melt.session.coin.coin_pub,
+          &rctx->melt.session.coin.coin_pub,
           &link_sigs[i]))
     {
       GNUNET_break_op (0);
