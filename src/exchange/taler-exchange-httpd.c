@@ -1003,6 +1003,36 @@ handle_mhd_request (void *cls,
                   "illegal incoming correlation ID\n");
       correlation_id = NULL;
     }
+
+    /* Check if upload is in bounds */
+    if (0 == strcasecmp (method,
+                         MHD_HTTP_METHOD_POST))
+    {
+      const char *cl;
+
+      /* Maybe check for maximum upload size
+         and refuse requests if they are just too big. */
+      cl = MHD_lookup_connection_value (connection,
+                                        MHD_HEADER_KIND,
+                                        MHD_HTTP_HEADER_CONTENT_LENGTH);
+      if (NULL != cl)
+      {
+        unsigned long long cv;
+        char dummy;
+
+        if (1 != sscanf (cl,
+                         "%llu%c",
+                         &cv,
+                         &dummy))
+        {
+          /* Not valid HTTP request, just close connection. */
+          GNUNET_break_op (0);
+          return MHD_NO;
+        }
+        if (cv > TALER_MHD_REQUEST_BUFFER_MAX)
+          return TALER_MHD_reply_request_too_large (connection);
+      }
+    }
   }
 
   GNUNET_async_scope_enter (&rc->async_scope_id,

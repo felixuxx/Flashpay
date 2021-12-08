@@ -367,6 +367,8 @@ TEH_handler_management_post_keys (
       TALER_EC_GENERIC_PARAMETER_MALFORMED,
       "array expected for denom_sigs and signkey_sigs");
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received /management/keys\n");
   akc.nd_sigs = json_array_size (denom_sigs);
   akc.d_sigs = GNUNET_new_array (akc.nd_sigs,
                                  struct DenomSig);
@@ -404,6 +406,8 @@ TEH_handler_management_post_keys (
   {
     GNUNET_free (akc.d_sigs);
     GNUNET_JSON_parse_free (spec);
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failure to handle /management/keys\n");
     return ret;
   }
   akc.ns_sigs = json_array_size (signkey_sigs);
@@ -440,6 +444,8 @@ TEH_handler_management_post_keys (
   }
   if (! ok)
   {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Failure to handle /management/keys\n");
     GNUNET_free (akc.d_sigs);
     GNUNET_free (akc.s_sigs);
     GNUNET_JSON_parse_free (spec);

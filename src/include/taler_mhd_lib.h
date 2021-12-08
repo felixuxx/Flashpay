@@ -31,6 +31,12 @@
 
 
 /**
+ * Maximum POST request size.
+ */
+#define TALER_MHD_REQUEST_BUFFER_MAX (1024 * 1024 * 16)
+
+
+/**
  * Global options for response generation.
  */
 enum TALER_MHD_GlobalOptions

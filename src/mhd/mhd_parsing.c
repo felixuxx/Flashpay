@@ -28,12 +28,6 @@
 
 
 /**
- * Maximum POST request size.
- */
-#define REQUEST_BUFFER_MAX (1024 * 1024)
-
-
-/**
  * Process a POST request containing a JSON object.  This function
  * realizes an MHD POST processor that will (incrementally) process
  * JSON data uploaded to the HTTP server.  It will store the required
@@ -65,7 +59,7 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
 {
   enum GNUNET_JSON_PostResult pr;
 
-  pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
+  pr = GNUNET_JSON_post_parser (TALER_MHD_REQUEST_BUFFER_MAX,
                                 connection,
                                 con_cls,
                                 upload_data,
@@ -87,9 +81,9 @@ TALER_MHD_parse_post_json (struct MHD_Connection *connection,
     return GNUNET_YES;
   case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
     GNUNET_break (NULL == *json);
-    return (MHD_NO ==
-            TALER_MHD_reply_request_too_large
-              (connection)) ? GNUNET_SYSERR : GNUNET_NO;
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Closing connection, upload too large\n");
+    return MHD_NO;
   case GNUNET_JSON_PR_JSON_INVALID:
     GNUNET_break (NULL == *json);
     return (MHD_YES ==

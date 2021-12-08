@@ -419,24 +419,10 @@ TALER_MHD_reply_with_ec (struct MHD_Connection *connection,
 MHD_RESULT
 TALER_MHD_reply_request_too_large (struct MHD_Connection *connection)
 {
-  struct MHD_Response *response;
-
-  response = MHD_create_response_from_buffer (0,
-                                              NULL,
-                                              MHD_RESPMEM_PERSISTENT);
-  if (NULL == response)
-    return MHD_NO;
-  TALER_MHD_add_global_headers (response);
-
-  {
-    MHD_RESULT ret;
-
-    ret = MHD_queue_response (connection,
-                              MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
-                              response);
-    MHD_destroy_response (response);
-    return ret;
-  }
+  return TALER_MHD_reply_with_error (connection,
+                                     MHD_HTTP_REQUEST_ENTITY_TOO_LARGE,
+                                     TALER_EC_GENERIC_UPLOAD_EXCEEDS_LIMIT,
+                                     NULL);
 }
 
 

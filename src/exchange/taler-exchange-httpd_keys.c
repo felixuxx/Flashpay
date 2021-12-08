@@ -1557,7 +1557,7 @@ get_date_string (struct GNUNET_TIME_Absolute at,
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-setup_general_response_headers (const struct TEH_KeyStateHandle *ksh,
+setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
                                 struct MHD_Response *response)
 {
   char dat[128];
@@ -1590,6 +1590,9 @@ setup_general_response_headers (const struct TEH_KeyStateHandle *ksh,
                   MHD_add_response_header (response,
                                            MHD_HTTP_HEADER_EXPIRES,
                                            dat));
+    ksh->signature_expires
+      = GNUNET_TIME_absolute_min (m,
+                                  ksh->signature_expires);
   }
   return GNUNET_OK;
 }
