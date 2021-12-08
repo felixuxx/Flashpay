@@ -5778,6 +5778,8 @@ postgres_ensure_coin_known (void *cls,
     GNUNET_break (0);
     return TALER_EXCHANGEDB_CKS_HARD_FAIL;
   case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Serialization failure in insert_known_coin? Strange!\n");
     return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     /* continued below */
@@ -5794,8 +5796,11 @@ postgres_ensure_coin_known (void *cls,
   switch (qs)
   {
   case GNUNET_DB_STATUS_HARD_ERROR:
+    GNUNET_break (0);
     return TALER_EXCHANGEDB_CKS_HARD_FAIL;
   case GNUNET_DB_STATUS_SOFT_ERROR:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Serialization failure in get_known_coin_dh? Strange!\n");
     return TALER_EXCHANGEDB_CKS_SOFT_FAIL;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
     if (0 == GNUNET_memcmp (&denom_pub_hash,
@@ -5865,7 +5870,6 @@ postgres_insert_deposit (void *cls,
                                     &kyc);
   if (qs <= 0)
   {
-    GNUNET_break (GNUNET_DB_STATUS_HARD_ERROR == qs);
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
     return qs;
   }

@@ -130,13 +130,6 @@ recoup_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   int existing_recoup_found;
 
-  /* make sure coin is 'known' in database */
-  qs = TEH_make_coin_known (pc->coin,
-                            connection,
-                            mhd_ret);
-  if (qs < 0)
-    return qs;
-
   /* Check whether a recoup is allowed, and if so, to which
      reserve / account the money should go */
   if (pc->refreshed)
@@ -471,6 +464,21 @@ verify_and_execute_recoup (
   pc.coin_bks = coin_bks;
   pc.coin = coin;
   pc.refreshed = refreshed;
+
+  {
+    MHD_RESULT mhd_ret = MHD_NO;
+    enum GNUNET_DB_QueryStatus qs;
+
+    /* make sure coin is 'known' in database */
+    qs = TEH_make_coin_known (coin,
+                              connection,
+                              &mhd_ret);
+    /* no transaction => no serialization failures should be possible */
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+    if (qs < 0)
+      return mhd_ret;
+  }
+
   {
     MHD_RESULT mhd_ret;
 

@@ -380,6 +380,16 @@ static MHD_RESULT
 handle_melt (struct MHD_Connection *connection,
              struct MeltContext *rmc)
 {
+  if (GNUNET_SYSERR ==
+      TEH_plugin->preflight (TEH_plugin->cls))
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_DB_START_FAILED,
+                                       "preflight failure");
+  }
+
   /* verify signature of coin for melt operation */
   {
     struct TALER_RefreshMeltCoinAffirmationPS body = {

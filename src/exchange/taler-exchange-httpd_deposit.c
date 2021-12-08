@@ -162,13 +162,6 @@ deposit_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_Amount deposit_fee;
 
-  /* make sure coin is 'known' in database */
-  qs = TEH_make_coin_known (&deposit->coin,
-                            connection,
-                            mhd_ret);
-  if (qs < 0)
-    return qs;
-
   /* Check for idempotency: did we get this request before? */
   qs = TEH_plugin->have_deposit (TEH_plugin->cls,
                                  deposit,
@@ -489,6 +482,31 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_DEPOSIT_COIN_SIGNATURE_INVALID,
                                        NULL);
   }
+
+  if (GNUNET_SYSERR ==
+      TEH_plugin->preflight (TEH_plugin->cls))
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_GENERIC_DB_START_FAILED,
+                                       "preflight failure");
+  }
+
+  {
+    MHD_RESULT mhd_ret = MHD_NO;
+    enum GNUNET_DB_QueryStatus qs;
+
+    /* make sure coin is 'known' in database */
+    qs = TEH_make_coin_known (&deposit.coin,
+                              connection,
+                              &mhd_ret);
+    /* no transaction => no serialization failures should be possible */
+    GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
+    if (qs < 0)
+      return mhd_ret;
+  }
+
 
   /* execute transaction */
   {
