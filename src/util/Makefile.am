@@ -58,18 +58,6 @@ taler_exchange_secmod_eddsa_LDADD = \
   $(LIBGCRYPT_LIBS) \
   $(XLIB)
 
-taler_crypto_worker_SOURCES = \
-  taler-crypto-worker.c
-taler_crypto_worker_LDADD = \
-  libtalerutil.la \
-  -lgnunetutil \
-  -lgnunetjson \
-  -ljansson \
-  -lpthread \
-  $(LIBGCRYPT_LIBS) \
-  $(XLIB)
-
-
 lib_LTLIBRARIES = \
   libtalerutil.la
 

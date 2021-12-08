@@ -25,7 +25,6 @@
 #include "taler_error_codes.h"
 #include "taler_json_lib.h"
 #include "taler_signatures.h"
-#include "secmod_common.h"
 
 
 /**

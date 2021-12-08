@@ -1,6 +1,5 @@
 taler-config
 test_payto
-taler-crypto-worker
 taler-exchange-secmod-rsa
 taler-exchange-secmod-eddsa
 test_helper_rsa
