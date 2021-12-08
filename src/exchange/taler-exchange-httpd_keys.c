@@ -322,9 +322,10 @@ struct TEH_KeyStateHandle
   struct GNUNET_TIME_Absolute reload_time;
 
   /**
-   * When is the next key invalid and we expect to have a different reply?
+   * What is the period at which we rotate keys
+   * (signing or denomination keys)?
    */
-  struct GNUNET_TIME_Absolute next_reload;
+  struct GNUNET_TIME_Relative rekey_frequency;
 
   /**
    * When does our online signing key expire and we
@@ -1370,9 +1371,9 @@ auditor_denom_cb (
 struct SignKeyCtx
 {
   /**
-   * When does the next signing key expire. Updated.
+   * What is the current rotation frequency for signing keys. Updated.
    */
-  struct GNUNET_TIME_Absolute next_sk_expire;
+  struct GNUNET_TIME_Relative min_sk_frequency;
 
   /**
    * JSON array of signing keys (being created).
@@ -1399,10 +1400,14 @@ add_sign_key_cb (void *cls,
   struct SigningKey *sk = value;
 
   (void) pid;
-  ctx->next_sk_expire =
-    GNUNET_TIME_absolute_min (ctx->next_sk_expire,
-                              sk->meta.expire_sign);
-
+  if (GNUNET_TIME_absolute_is_future (sk->meta.expire_sign))
+  {
+    ctx->min_sk_frequency =
+      GNUNET_TIME_relative_min (ctx->min_sk_frequency,
+                                GNUNET_TIME_absolute_get_difference (
+                                  sk->meta.start,
+                                  sk->meta.expire_sign));
+  }
   GNUNET_assert (
     0 ==
     json_array_append_new (
@@ -1438,9 +1443,10 @@ struct DenomKeyCtx
   json_t *recoup;
 
   /**
-   * When does the next denomination key expire. Updated.
+   * What is the minimum key rotation frequency of
+   * valid denomination keys?
    */
-  struct GNUNET_TIME_Absolute next_dk_expire;
+  struct GNUNET_TIME_Relative min_dk_frequency;
 
 };
 
@@ -1475,9 +1481,14 @@ add_denom_key_cb (void *cls,
   }
   else
   {
-    dkc->next_dk_expire =
-      GNUNET_TIME_absolute_min (dkc->next_dk_expire,
-                                dk->meta.expire_withdraw);
+    if (GNUNET_TIME_absolute_is_future (dk->meta.start))
+    {
+      dkc->min_dk_frequency =
+        GNUNET_TIME_relative_min (dkc->min_dk_frequency,
+                                  GNUNET_TIME_absolute_get_difference (
+                                    dk->meta.start,
+                                    dk->meta.expire_withdraw));
+    }
     (void) GNUNET_CONTAINER_heap_insert (dkc->heap,
                                          dk,
                                          dk->meta.start.abs_value_us);
@@ -1562,13 +1573,14 @@ setup_general_response_headers (const struct TEH_KeyStateHandle *ksh,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_LAST_MODIFIED,
                                          dat));
-  if (0 != ksh->next_reload.abs_value_us)
+  if (! GNUNET_TIME_relative_is_zero (ksh->rekey_frequency))
   {
+    struct GNUNET_TIME_Relative r;
     struct GNUNET_TIME_Absolute m;
 
-    m = GNUNET_TIME_relative_to_absolute (TEH_max_keys_caching);
-    m = GNUNET_TIME_absolute_min (m,
-                                  ksh->next_reload);
+    r = GNUNET_TIME_relative_min (TEH_max_keys_caching,
+                                  ksh->rekey_frequency);
+    m = GNUNET_TIME_relative_to_absolute (r);
     get_date_string (m,
                      dat);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -1759,7 +1771,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 
   sctx.signkeys = json_array ();
   GNUNET_assert (NULL != sctx.signkeys);
-  sctx.next_sk_expire = GNUNET_TIME_UNIT_FOREVER_ABS;
+  sctx.min_sk_frequency = GNUNET_TIME_UNIT_FOREVER_REL;
   GNUNET_CONTAINER_multipeermap_iterate (ksh->signkey_map,
                                          &add_sign_key_cb,
                                          &sctx);
@@ -1770,15 +1782,15 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     struct DenomKeyCtx dkc = {
       .recoup = recoup,
       .heap = heap,
-      .next_dk_expire = GNUNET_TIME_UNIT_FOREVER_ABS,
+      .min_dk_frequency = GNUNET_TIME_UNIT_FOREVER_REL,
     };
 
     GNUNET_CONTAINER_multihashmap_iterate (ksh->denomkey_map,
                                            &add_denom_key_cb,
                                            &dkc);
-    ksh->next_reload
-      = GNUNET_TIME_absolute_min (dkc.next_dk_expire,
-                                  sctx.next_sk_expire);
+    ksh->rekey_frequency
+      = GNUNET_TIME_relative_min (dkc.min_dk_frequency,
+                                  sctx.min_sk_frequency);
   }
   denoms = json_array ();
   GNUNET_assert (NULL != denoms);
