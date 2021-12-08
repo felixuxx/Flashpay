@@ -45,24 +45,15 @@ TEH_handler_metrics (struct TEH_RequestContext *rc,
   (void) args;
   GNUNET_asprintf (&reply,
                    "# HELP taler_exchange_serialization_failures "
-                   " number of database serialization errors by
-type\n"
-                   "# TYPE taler_exchange_serialization_failures
-counter\n"
-                   "taler_exchange_serialization_failures{type='%s'}
-%llu\n"
-                   "taler_exchange_serialization_failures{type='%s'}
-%llu\n"
-                   "taler_exchange_serialization_failures{type='%s'}
-%llu\n"
-                   "taler_exchange_serialization_failures{type='%s'}
-%llu\n"
-                   "taler_exchange_serialization_failures{type='%s'}
-%llu\n"
-                   "taler_exchange_serialization_failures{type='%s'}
-%llu\n"
-                   "taler_exchange_serialization_failures{type='%s'}
-%llu\n"
+                   " number of database serialization errors by type\n"
+                   "# TYPE taler_exchange_serialization_failures counter\n"
+                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
+                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
+                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
+                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
+                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
+                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
+                   "taler_exchange_serialization_failures{type='%s'} %llu\n"
                    "# HELP taler_exchange_received_requests "
                    " number of received requests by type\n"
                    "# TYPE taler_exchange_received_requests counter\n"
@@ -72,8 +63,7 @@ counter\n"
                    "taler_exchange_received_requests{type='%s'} %llu\n"
                    "taler_exchange_received_requests{type='%s'} %llu\n"
                    "taler_exchange_received_requests{type='%s'} %llu\n"
-                   "taler_exchange_received_requests{type='%s'}
-%llu\n",
+                   "taler_exchange_received_requests{type='%s'} %llu\n",
                    "other",
                    TEH_METRICS_num_conflict[TEH_MT_OTHER],
                    "deposit",
