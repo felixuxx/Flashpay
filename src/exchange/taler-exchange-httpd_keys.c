@@ -1935,6 +1935,8 @@ build_key_state (struct HelperState *hs,
   ksh->auditors = json_array ();
   GNUNET_assert (NULL != ksh->auditors);
   /* NOTE: fetches master-signed signkeys, but ALSO those that were revoked! */
+  GNUNET_break (GNUNET_OK ==
+                TEH_plugin->preflight (TEH_plugin->cls));
   qs = TEH_plugin->iterate_denominations (TEH_plugin->cls,
                                           &denomination_info_cb,
                                           ksh);

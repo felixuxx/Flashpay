@@ -868,6 +868,19 @@ update_keys (struct Denomination *denom,
              bool *wake)
 {
   /* create new denomination keys */
+  if (NULL != denom->keys_tail)
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Updating keys of denomination `%s', last key %s valid for another %s\n",
+                denom->section,
+                GNUNET_h2s (&denom->keys_tail->h_rsa.hash),
+                GNUNET_STRINGS_relative_time_to_string (
+                  GNUNET_TIME_absolute_get_remaining (
+                    GNUNET_TIME_absolute_subtract (
+                      GNUNET_TIME_absolute_add (
+                        denom->keys_tail->anchor,
+                        denom->duration_withdraw),
+                      overlap_duration)),
+                  GNUNET_YES));
   while ( (NULL == denom->keys_tail) ||
           GNUNET_TIME_absolute_is_past (
             GNUNET_TIME_absolute_subtract (
