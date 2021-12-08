@@ -163,15 +163,20 @@ TEH_DB_run_transaction (struct MHD_Connection *connection,
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
       return GNUNET_SYSERR;
     if (0 <= qs)
-      qs = TEH_plugin->commit (TEH_plugin->cls);
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
     {
-      if (NULL != mhd_ret)
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_COMMIT_FAILED,
-                                               NULL);
-      return GNUNET_SYSERR;
+      qs = TEH_plugin->commit (TEH_plugin->cls);
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+      {
+        TEH_plugin->rollback (TEH_plugin->cls);
+        if (NULL != mhd_ret)
+          *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 TALER_EC_GENERIC_DB_COMMIT_FAILED,
+                                                 NULL);
+        return GNUNET_SYSERR;
+      }
+      if (0 > qs)
+        TEH_plugin->rollback (TEH_plugin->cls);
     }
     /* make sure callback did not violate invariants! */
     GNUNET_assert ( (NULL == mhd_ret) ||
