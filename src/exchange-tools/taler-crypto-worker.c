@@ -144,6 +144,7 @@ run (void *cls,
       struct TALER_Amount value;
       struct TALER_ReservePublicKeyP reserve_pub;
       struct TALER_ReservePublicKeyP reserve_priv;
+      struct TALER_TransferSecretP transfer_secret;
       uint32_t coin_index;
       json_t *resp;
       struct GNUNET_JSON_Specification eddsa_verify_spec[] = {
@@ -159,6 +160,8 @@ run (void *cls,
                                      &reserve_priv),
         GNUNET_JSON_spec_uint32 ("coin_index",
                                  &coin_index),
+        GNUNET_JSON_spec_fixed_auto ("transfer_secret",
+                                     &transfer_secret),
         GNUNET_JSON_spec_end ()
       };
       struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -175,11 +178,9 @@ run (void *cls,
         global_ret = 1;
         return;
       }
-#if FIXME_FLORIAN
       TALER_planchet_setup_refresh (&transfer_secret,
-                                    coin_num_salt,
+                                    coin_index,
                                     &ps);
-#endif
       GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
                                           &coin_pub.eddsa_pub);
 
