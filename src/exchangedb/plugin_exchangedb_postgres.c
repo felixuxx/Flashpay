@@ -798,7 +798,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",noreveal_index "
       ") SELECT $1, known_coin_id, $3, $4, $5, $6"
       "    FROM known_coins"
-      "   WHERE coin_pub=$2",
+      "   WHERE coin_pub=$2"
+      " ON CONFLICT DO NOTHING",
       6),
     /* Used in #postgres_get_melt() to fetch
        high-level information about a melt operation */

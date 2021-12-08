@@ -183,8 +183,11 @@ refresh_check_melt (struct MHD_Connection *connection,
   struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
 
-  /* Start with cost of this melt transaction */
-  spent = rmc->refresh_session.amount_with_fee;
+  /* Start with zero cost, as we already added this melt transaction
+     to the DB, so we will see it again during the queries below. */
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_amount_set_zero (TEH_currency,
+                                        &spent));
 
   /* get historic transaction costs of this coin, including recoups as
      we might be a zombie coin */
@@ -311,43 +314,11 @@ melt_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   uint32_t noreveal_index;
 
-  /* Check if we already created a matching refresh_session */
-  qs = TEH_plugin->get_melt_index (TEH_plugin->cls,
-                                   &rmc->refresh_session.rc,
-                                   &noreveal_index);
-  if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
-  {
-    TALER_LOG_DEBUG ("Coin was previously melted, returning old reply\n");
-    *mhd_ret = reply_melt_success (connection,
-                                   &rmc->refresh_session.rc,
-                                   noreveal_index);
-    /* Note: we return "hard error" to ensure the wrapper
-       does not retry the transaction, and to also not generate
-       a "fresh" response (as we would on "success") */
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
-  if (0 > qs)
-  {
-    if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "melt index");
-    return qs;
-  }
-
-  /* check coin has enough funds remaining on it to cover melt cost */
-  qs = refresh_check_melt (connection,
-                           rmc,
-                           mhd_ret);
-  if (0 > qs)
-    return qs; /* if we failed, tell caller */
-
   /* pick challenge and persist it */
   rmc->refresh_session.noreveal_index
     = GNUNET_CRYPTO_random_u32 (GNUNET_CRYPTO_QUALITY_STRONG,
                                 TALER_CNC_KAPPA);
-  if (0 >=
+  if (0 >
       (qs = TEH_plugin->insert_melt (TEH_plugin->cls,
                                      &rmc->refresh_session)))
   {
@@ -361,6 +332,47 @@ melt_transaction (void *cls,
     }
     return qs;
   }
+  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  {
+    /* Check if we already created a matching refresh_session */
+    qs = TEH_plugin->get_melt_index (TEH_plugin->cls,
+                                     &rmc->refresh_session.rc,
+                                     &noreveal_index);
+    if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT == qs)
+    {
+      TALER_LOG_DEBUG ("Coin was previously melted, returning old reply\n");
+      *mhd_ret = reply_melt_success (connection,
+                                     &rmc->refresh_session.rc,
+                                     noreveal_index);
+      /* Note: we return "hard error" to ensure the wrapper
+         does not retry the transaction, and to also not generate
+         a "fresh" response (as we would on "success") */
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+    if (0 > qs)
+    {
+      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
+        *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
+                                               "melt index");
+      return qs;
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      /* Conflict on insert, but record does not exist?
+         That makes no sense. */
+      GNUNET_break (0);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+  }
+
+  /* check coin has enough funds remaining on it to cover melt cost */
+  qs = refresh_check_melt (connection,
+                           rmc,
+                           mhd_ret);
+  if (0 > qs)
+    return qs; /* if we failed, tell caller */
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
 }
 
