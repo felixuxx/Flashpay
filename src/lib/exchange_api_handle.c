@@ -53,6 +53,17 @@
 #define EXCHANGE_SERIALIZATION_FORMAT_VERSION 0
 
 /**
+ * How far off do we allow key liftimes to be?
+ */
+#define LIFETIME_TOLERANCE GNUNET_TIME_UNIT_HOURS
+
+/**
+ * If the "Expire" cache control header is missing, for
+ * how long do we assume the reply to be valid at least?
+ */
+#define DEFAULT_EXPIRATION GNUNET_TIME_UNIT_HOURS
+
+/**
  * Set to 1 for extra debug logging.
  */
 #define DEBUG 0
@@ -847,7 +858,7 @@ decode_keys_json (const json_t *resp_obj,
       key_data->denom_keys[key_data->num_denom_keys++] = dk;
 
       /* Update "last_denom_issue_date" */
-      TALER_LOG_DEBUG ("Adding denomination key that is valid_from %s\n",
+      TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
                        GNUNET_STRINGS_absolute_time_to_string (dk.valid_from));
       key_data->last_denom_issue_date
         = GNUNET_TIME_absolute_max (key_data->last_denom_issue_date,
@@ -1053,6 +1064,9 @@ void
 TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
                                struct GNUNET_TIME_Absolute last_denom_new)
 {
+  TALER_LOG_DEBUG (
+    "Application explicitly set last denomination validity to %s\n",
+    GNUNET_STRINGS_absolute_time_to_string (last_denom_new));
   exchange->key_data.last_denom_issue_date = last_denom_new;
 }
 
@@ -1117,9 +1131,19 @@ keys_completed_cb (void *cls,
   };
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "Received keys from URL `%s' with status %ld.\n",
+              "Received keys from URL `%s' with status %ld and expiration %s.\n",
               kr->url,
-              response_code);
+              response_code,
+              GNUNET_STRINGS_absolute_time_to_string (kr->expire));
+  if (GNUNET_TIME_absolute_is_past (kr->expire))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Exchange failed to give expiration time, assuming in %s\n",
+                GNUNET_STRINGS_relative_time_to_string (DEFAULT_EXPIRATION,
+                                                        GNUNET_YES));
+    kr->expire = GNUNET_TIME_relative_to_absolute (DEFAULT_EXPIRATION);
+    (void) GNUNET_TIME_round_abs (&kr->expire);
+  }
   kd_old = exchange->key_data;
   memset (&kd,
           0,
@@ -1253,9 +1277,14 @@ keys_completed_cb (void *cls,
     break;
   }
   exchange->key_data = kd;
-  TALER_LOG_DEBUG ("Last DK issue date update to: %s\n",
-                   GNUNET_STRINGS_absolute_time_to_string
-                     (exchange->key_data.last_denom_issue_date));
+  if (GNUNET_TIME_absolute_is_past (exchange->key_data.last_denom_issue_date))
+    TALER_LOG_WARNING ("Last DK issue date from exchange is in the past: %s\n",
+                       GNUNET_STRINGS_absolute_time_to_string (
+                         exchange->key_data.last_denom_issue_date));
+  else
+    TALER_LOG_DEBUG ("Last DK issue date updated to: %s\n",
+                     GNUNET_STRINGS_absolute_time_to_string (
+                       exchange->key_data.last_denom_issue_date));
 
 
   if (MHD_HTTP_OK != response_code)
@@ -2010,10 +2039,12 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
   /* we will check using a tolerance of 1h for the time */
   now = GNUNET_TIME_absolute_get ();
   for (unsigned int i = 0; i<keys->num_sign_keys; i++)
-    if ( (keys->sign_keys[i].valid_from.abs_value_us <= now.abs_value_us + 60
-          * 60 * 1000LL * 1000LL) &&
-         (keys->sign_keys[i].valid_until.abs_value_us > now.abs_value_us - 60
-          * 60 * 1000LL * 1000LL) &&
+    if ( (keys->sign_keys[i].valid_from.abs_value_us <=
+          GNUNET_TIME_absolute_add (now,
+                                    LIFETIME_TOLERANCE).abs_value_us) &&
+         (keys->sign_keys[i].valid_until.abs_value_us >
+          GNUNET_TIME_absolute_subtract (now,
+                                         LIFETIME_TOLERANCE).abs_value_us) &&
          (0 == GNUNET_memcmp (pub,
                               &keys->sign_keys[i].key)) )
       return GNUNET_OK;
