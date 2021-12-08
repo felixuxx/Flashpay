@@ -1152,6 +1152,9 @@ keys_completed_cb (void *cls,
   switch (response_code)
   {
   case 0:
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "Failed to receive /keys response from exchange %s\n",
+                exchange->url);
     free_keys_request (kr);
     exchange->keys_error_count++;
     exchange->kr = NULL;
