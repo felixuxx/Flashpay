@@ -139,25 +139,10 @@ run (void *cls,
     }
     if (0 == strcmp ("setup_refresh_planchet", op))
     {
-      struct TALER_DenominationPublicKey denom_pub;
-      struct TALER_Amount fee_withdraw;
-      struct TALER_Amount value;
-      struct TALER_ReservePublicKeyP reserve_pub;
-      struct TALER_ReservePublicKeyP reserve_priv;
       struct TALER_TransferSecretP transfer_secret;
       uint32_t coin_index;
       json_t *resp;
       struct GNUNET_JSON_Specification eddsa_verify_spec[] = {
-        TALER_JSON_spec_denom_pub ("denom_pub",
-                                   &denom_pub),
-        TALER_JSON_spec_amount_any ("fee_withdraw",
-                                    &fee_withdraw),
-        TALER_JSON_spec_amount_any ("value",
-                                    &value),
-        GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                     &reserve_pub),
-        GNUNET_JSON_spec_fixed_auto ("reserve_priv",
-                                     &reserve_priv),
         GNUNET_JSON_spec_uint32 ("coin_index",
                                  &coin_index),
         GNUNET_JSON_spec_fixed_auto ("transfer_secret",
