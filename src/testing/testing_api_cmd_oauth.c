@@ -79,7 +79,7 @@ append (char **target,
 }
 
 
-static enum MHD_Result
+static MHD_RESULT
 handle_post (void *cls,
              enum MHD_ValueKind kind,
              const char *key,
@@ -160,7 +160,7 @@ handle_post (void *cls,
  *         #MHD_NO if the socket must be closed due to a serious
  *         error while handling the request
  */
-static enum MHD_Result
+static MHD_RESULT
 handler_cb (void *cls,
             struct MHD_Connection *connection,
             const char *url,
@@ -210,7 +210,7 @@ handler_cb (void *cls,
   }
   if (0 != *upload_data_size)
   {
-    enum MHD_Result ret;
+    MHD_RESULT ret;
 
     ret = MHD_post_process (rc->pp,
                             upload_data,
