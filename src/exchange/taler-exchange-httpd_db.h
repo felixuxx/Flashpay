@@ -47,6 +47,9 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
  * insufficient for all transactions associated with the
  * coin, return a hard error.
  *
+ * We first do a "fast" check using a stored procedure, and
+ * only obtain the "full" data on failure (for performance).
+ *
  * @param connection HTTP connection to report hard errors on
  * @param coin_pub coin to analyze
  * @param coin_value total value of the original coin (by denomination)

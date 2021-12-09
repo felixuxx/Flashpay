@@ -164,14 +164,29 @@ TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
 }
 
 
-enum GNUNET_DB_QueryStatus
-TEH_check_coin_balance (struct MHD_Connection *connection,
-                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                        const struct TALER_Amount *coin_value,
-                        const struct TALER_Amount *op_cost,
-                        bool check_recoup,
-                        bool zombie_required,
-                        MHD_RESULT *mhd_ret)
+/**
+ * Called when we actually know that the balance (was) insufficient.
+ * Re-does the check (slowly) to compute the full error message for
+ * the client.
+ *
+ * @param connection HTTP connection to report hard errors on
+ * @param coin_pub coin to analyze
+ * @param coin_value total value of the original coin (by denomination)
+ * @param op_cost cost of the current operation (for error reporting)
+ * @param check_recoup should we include recoup transactions in the check
+ * @param zombie_required additional requirement that the coin must
+ *          be a zombie coin, or also hard failure
+ * @param[out] mhd_ret set to response status code, on hard error only
+ * @return transaction status
+ */
+static enum GNUNET_DB_QueryStatus
+check_coin_balance (struct MHD_Connection *connection,
+                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                    const struct TALER_Amount *coin_value,
+                    const struct TALER_Amount *op_cost,
+                    bool check_recoup,
+                    bool zombie_required,
+                    MHD_RESULT *mhd_ret)
 {
   struct TALER_EXCHANGEDB_TransactionList *tl;
   struct TALER_Amount spent;
@@ -273,10 +288,87 @@ TEH_check_coin_balance (struct MHD_Connection *connection,
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
 
-  /* we're good, coin has sufficient funds to be melted */
+  /* This should not happen: The coin has sufficient funds
+     after all!?!? */
   TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                           tl);
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT;
+}
+
+
+enum GNUNET_DB_QueryStatus
+TEH_check_coin_balance (struct MHD_Connection *connection,
+                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                        const struct TALER_Amount *coin_value,
+                        const struct TALER_Amount *op_cost,
+                        bool check_recoup,
+                        bool zombie_required,
+                        MHD_RESULT *mhd_ret)
+{
+  bool balance_ok = false;
+  bool zombie_ok = false;
+  enum GNUNET_DB_QueryStatus qs;
+
+  qs = TEH_plugin->do_check_coin_balance (TEH_plugin->cls,
+                                          coin_pub,
+                                          coin_value,
+                                          check_recoup,
+                                          zombie_required,
+                                          &balance_ok,
+                                          &zombie_ok);
+  switch (qs)
+  {
+  case GNUNET_DB_STATUS_HARD_ERROR:
+    *mhd_ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      "check_coin_balance");
+    return qs;
+  case GNUNET_DB_STATUS_SOFT_ERROR:
+    return qs;
+  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
+    GNUNET_break (0);
+    *mhd_ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      "check_coin_balance");
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
+    /* handled below */
+    break;
+  }
+  if (! zombie_ok)
+  {
+    GNUNET_break_op (0);
+    *mhd_ret = TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_BAD_REQUEST,
+      TALER_EC_EXCHANGE_MELT_COIN_EXPIRED_NO_ZOMBIE,
+      NULL);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  if (balance_ok)
+    return qs;
+  /* balance is not OK, do expensive call to compute full error message */
+  qs = check_coin_balance (connection,
+                           coin_pub,
+                           coin_value,
+                           op_cost,
+                           check_recoup,
+                           zombie_required,
+                           mhd_ret);
+  if (qs < 0)
+    return qs; /* we expected to fail (same check as before!) */
+  GNUNET_break (0); /* stored procedure and individual statements
+                       disagree, should be impossible! */
+  *mhd_ret = TALER_MHD_reply_with_error (
+    connection,
+    MHD_HTTP_INTERNAL_SERVER_ERROR,
+    TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
+    "stored procedure disagrees with full coin transaction history fetch");
+  return GNUNET_DB_STATUS_HARD_ERROR;
 }
 
 

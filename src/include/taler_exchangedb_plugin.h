@@ -2503,18 +2503,27 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Store collectable coin under the corresponding hash of the blinded
-   * message.
+   * Check coin balance is sufficient to satisfy balance
+   * invariants.
    *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param collectable corresponding collectable coin (blind signature)
-   *                    if a coin is found
-   * @return statement execution status
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param coin_pub coin to check
+   * @param coin_value value of the coin's denomination (avoids internal lookup)
+   * @param check_recoup include recoup and recoup_refresh tables in calculation
+   * @param zombie_required additionally require coin to be a zombie coin
+   * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] zombie_ok set to true if the zombie requirement was satisfied
+   * @return query execution status
    */
   enum GNUNET_DB_QueryStatus
-  (*insert_withdraw_infoXX)(
+  (*do_check_coin_balance)(
     void *cls,
-    const struct TALER_EXCHANGEDB_CollectableBlindcoin *collectable);
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    const struct TALER_Amount *coin_value,
+    bool check_recoup,
+    bool zombie_required,
+    bool *balance_ok,
+    bool *zombie_ok);
 
 
   /**

@@ -596,6 +596,16 @@ prepare_statements (struct PostgresClosure *pg)
       "lock_withdraw",
       "LOCK TABLE reserves_out;",
       0),
+    /* Used in #postgres_do_check_coin_balance() to check
+       a coin's balance */
+    GNUNET_PQ_make_prepare (
+      "call_check_coin_balance",
+      "SELECT "
+      " balance_ok"
+      ",zombie_ok"
+      " FROM exchange_do_check_coin_balance"
+      " ($1,$2,$3,$4,$5);",
+      5),
     /* Used in #postgres_do_withdraw() to store
        the signature of a blinded coin with the blinded coin's
        details before returning it during /reserve/withdraw. We store
@@ -4488,6 +4498,53 @@ postgres_get_withdraw_info (
                                                    "get_withdraw_info",
                                                    params,
                                                    rs);
+}
+
+
+/**
+ * Check coin balance is sufficient to satisfy balance
+ * invariants.
+ *
+ * @param cls the `struct PostgresClosure` with the plugin-specific state
+ * @param coin_pub coin to check
+ * @param coin_value value of the coin's denomination (avoids internal lookup)
+ * @param check_recoup include recoup and recoup_refresh tables in calculation
+ * @param zombie_required additionally require coin to be a zombie coin
+ * @param[out] balance_ok set to true if the balance was sufficient
+ * @param[out] zombie_ok set to true if the zombie requirement was satisfied
+ * @return query execution status
+ */
+static enum GNUNET_DB_QueryStatus
+postgres_do_check_coin_balance (
+  void *cls,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_Amount *coin_value,
+  bool check_recoup,
+  bool zombie_required,
+  bool *balance_ok,
+  bool *zombie_ok)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    TALER_PQ_query_param_amount (coin_value),
+    GNUNET_PQ_query_param_auto_from_type (coin_pub),
+    GNUNET_PQ_query_param_bool (check_recoup),
+    GNUNET_PQ_query_param_bool (zombie_required),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_bool ("balance_ok",
+                                balance_ok),
+    GNUNET_PQ_result_spec_bool ("zombie_ok",
+                                zombie_ok),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "call_check_coin_balance",
+                                                   params,
+                                                   rs);
+
 }
 
 
@@ -11825,7 +11882,7 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
   plugin->get_latest_reserve_in_reference =
     &postgres_get_latest_reserve_in_reference;
   plugin->get_withdraw_info = &postgres_get_withdraw_info;
-  // plugin->insert_withdraw_info = &postgres_insert_withdraw_info;
+  plugin->do_check_coin_balance = &postgres_do_check_coin_balance;
   plugin->do_withdraw = &postgres_do_withdraw;
   plugin->do_withdraw_limit_check = &postgres_do_withdraw_limit_check;
   plugin->get_reserve_history = &postgres_get_reserve_history;
