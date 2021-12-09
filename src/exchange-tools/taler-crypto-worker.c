@@ -137,12 +137,53 @@ run (void *cls,
                   "sent response\n");
       continue;
     }
+    if (0 == strcmp ("eddsa_sign",
+                     op))
+    {
+      struct GNUNET_CRYPTO_EddsaSignature sig;
+      struct GNUNET_CRYPTO_EccSignaturePurpose *msg;
+      struct GNUNET_CRYPTO_EddsaPrivateKey priv;
+      size_t msg_size;
+      json_t *resp;
+      struct GNUNET_JSON_Specification eddsa_sign_spec[] = {
+        GNUNET_JSON_spec_fixed_auto ("priv",
+                                     &priv),
+        GNUNET_JSON_spec_varsize ("msg",
+                                  (void **) &msg,
+                                  &msg_size),
+        GNUNET_JSON_spec_end ()
+      };
+      if (GNUNET_OK != GNUNET_JSON_parse (args,
+                                          eddsa_sign_spec,
+                                          NULL,
+                                          NULL))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "malformed op args\n");
+        global_ret = 1;
+        return;
+      }
+      GNUNET_CRYPTO_eddsa_sign_ (
+        &priv,
+        msg,
+        &sig
+        );
+      resp = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("sig", &sig)
+        );
+      json_dumpf (resp, stdout, JSON_COMPACT);
+      printf ("\n");
+      fflush (stdout);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "sent response\n");
+      continue;
+    }
     if (0 == strcmp ("setup_refresh_planchet", op))
     {
       struct TALER_TransferSecretP transfer_secret;
       uint32_t coin_index;
       json_t *resp;
-      struct GNUNET_JSON_Specification eddsa_verify_spec[] = {
+      struct GNUNET_JSON_Specification setup_refresh_planchet_spec[] = {
         GNUNET_JSON_spec_uint32 ("coin_index",
                                  &coin_index),
         GNUNET_JSON_spec_fixed_auto ("transfer_secret",
@@ -154,7 +195,7 @@ run (void *cls,
 
       if (GNUNET_OK !=
           GNUNET_JSON_parse (args,
-                             eddsa_verify_spec,
+                             setup_refresh_planchet_spec,
                              NULL,
                              NULL))
       {
@@ -166,47 +207,6 @@ run (void *cls,
       TALER_planchet_setup_refresh (&transfer_secret,
                                     coin_index,
                                     &ps);
-      GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
-                                          &coin_pub.eddsa_pub);
-
-      resp = GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_data_auto ("coin_priv", &ps.coin_priv),
-        GNUNET_JSON_pack_data_auto ("coin_pub", &coin_pub),
-        GNUNET_JSON_pack_data_auto ("blinding_key", &ps.blinding_key)
-        );
-      json_dumpf (resp, stdout, JSON_COMPACT);
-      printf ("\n");
-      fflush (stdout);
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "sent response\n");
-      continue;
-    }
-    if (0 == strcmp (op, "create_planchet"))
-    {
-      struct TALER_TransferSecretP transfer_secret;
-      uint32_t coin_num_salt;
-      struct TALER_PlanchetSecretsP ps;
-      struct TALER_CoinSpendPublicKeyP coin_pub;
-      json_t *resp;
-      struct GNUNET_JSON_Specification eddsa_verify_spec[] = {
-        GNUNET_JSON_spec_fixed_auto ("transfer_secret",
-                                     &transfer_secret),
-        GNUNET_JSON_spec_uint32 ("coin_index",
-                                 &coin_num_salt),
-        GNUNET_JSON_spec_end ()
-      };
-      if (GNUNET_OK != GNUNET_JSON_parse (args,
-                                          eddsa_verify_spec,
-                                          NULL,
-                                          NULL))
-      {
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "malformed op args\n");
-        global_ret = 1;
-        return;
-      }
-      TALER_planchet_setup_refresh (&transfer_secret,
-                                    coin_num_salt, &ps);
       GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
                                           &coin_pub.eddsa_pub);
 
