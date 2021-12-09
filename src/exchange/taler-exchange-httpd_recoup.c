@@ -101,6 +101,7 @@ struct RecoupContext
 };
 
 
+// FIXME: this code should be simplified by using TEH_check_coin_balance()
 /**
  * Execute a "recoup".  The validity of the coin and signature have
  * already been checked.  The database must now check that the coin is
