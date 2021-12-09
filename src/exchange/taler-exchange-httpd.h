@@ -219,6 +219,11 @@ struct TEH_RequestContext
   struct GNUNET_AsyncScopeId async_scope_id;
 
   /**
+   * When was this request started?
+   */
+  struct GNUNET_TIME_Absolute start_time;
+
+  /**
    * Opaque parsing context.
    */
   void *opaque_post_parsing_context;

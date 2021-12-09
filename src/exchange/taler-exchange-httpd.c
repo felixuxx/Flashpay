@@ -58,6 +58,11 @@
  */
 #define UNIX_BACKLOG 50
 
+/**
+ * Above what request latency do we start to log?
+ */
+#define WARN_LATENCY GNUNET_TIME_relative_multiply ( \
+    GNUNET_TIME_UNIT_MILLISECONDS, 500)
 
 /**
  * Are clients allowed to request /keys for times other than the
@@ -383,6 +388,18 @@ handle_mhd_completion_callback (void *cls,
   /* Sanity-check that we didn't leave any transactions hanging */
   GNUNET_break (GNUNET_OK ==
                 TEH_plugin->preflight (TEH_plugin->cls));
+  {
+    struct GNUNET_TIME_Relative latency;
+
+    latency = GNUNET_TIME_absolute_get_duration (rc->start_time);
+    if (latency.rel_value_us >
+        WARN_LATENCY.rel_value_us)
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Request for `%s' took %s\n",
+                  rc->url,
+                  GNUNET_STRINGS_relative_time_to_string (latency,
+                                                          GNUNET_YES));
+  }
   GNUNET_free (rc);
   *con_cls = NULL;
   GNUNET_async_scope_restore (&old_scope);
@@ -987,6 +1004,7 @@ handle_mhd_request (void *cls,
 
     /* We're in a new async scope! */
     rc = *con_cls = GNUNET_new (struct TEH_RequestContext);
+    rc->start_time = GNUNET_TIME_absolute_get ();
     GNUNET_async_scope_fresh (&rc->async_scope_id);
     TEH_check_invariants ();
     rc->url = url;
