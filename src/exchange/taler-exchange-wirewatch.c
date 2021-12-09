@@ -234,6 +234,12 @@ shutdown_task (void *cls)
       GNUNET_CONTAINER_DLL_remove (wa_head,
                                    wa_tail,
                                    wa);
+      if (wa->started_transaction)
+      {
+        db_plugin->rollback (db_plugin->cls);
+        wa->started_transaction = false;
+      }
+      // FIXME: delete shard lock here (#7124)
       GNUNET_free (wa->job_name);
       GNUNET_free (wa);
     }
@@ -557,6 +563,7 @@ history_cb (void *cls,
       wa->hh = NULL;
       return GNUNET_SYSERR;
     }
+    wa_pos->shard_start_time = GNUNET_TIME_absolute_get ();
     wa->started_transaction = true;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -669,7 +676,6 @@ find_transfers (void *cls)
                                            NULL);
       return;
     case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-      wa_pos->shard_start_time = GNUNET_TIME_absolute_get ();
       wa_pos->shard_start = start;
       wa_pos->shard_end = end;
       wa_pos->batch_start = start;
