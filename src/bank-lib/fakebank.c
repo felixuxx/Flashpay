@@ -480,11 +480,14 @@ lp_trigger (struct LongPoller *lp,
   MHD_resume_connection (lp->conn);
   GNUNET_free (lp);
   h->mhd_again = true;
-  if (NULL != h->mhd_task)
-    GNUNET_SCHEDULER_cancel (h->mhd_task);
-  h->mhd_task =
-    GNUNET_SCHEDULER_add_now (&run_mhd,
-                              h);
+  if (-1 != h->lp_event)
+  {
+    if (NULL != h->mhd_task)
+      GNUNET_SCHEDULER_cancel (h->mhd_task);
+    h->mhd_task =
+      GNUNET_SCHEDULER_add_now (&run_mhd,
+                                h);
+  }
 }
 
 
@@ -2413,6 +2416,7 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   MHD_UNSIGNED_LONG_LONG timeout;
   struct GNUNET_TIME_Relative tv;
 
+  GNUNET_assert (-1 != h->mhd_fd);
   haveto = MHD_get_timeout (h->mhd_bank,
                             &timeout);
   if (MHD_YES == haveto)
@@ -2450,6 +2454,7 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   MHD_UNSIGNED_LONG_LONG timeout;
   struct GNUNET_TIME_Relative tv;
 
+  GNUNET_assert (-1 == h->lp_event);
   FD_ZERO (&rs);
   FD_ZERO (&ws);
   FD_ZERO (&es);
@@ -2521,6 +2526,7 @@ run_mhd (void *cls)
     h->mhd_again = false;
     MHD_run (h->mhd_bank);
   }
+  GNUNET_assert (-1 == h->lp_event);
   schedule_httpd (h);
 }
 
@@ -2554,6 +2560,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
   GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
   h->lp_event = -1;
+  h->mhd_fd = -1;
   h->port = port;
   h->ram_limit = ram_limit;
   h->serial_counter = 0;
