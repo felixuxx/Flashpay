@@ -125,6 +125,11 @@ struct WireAccount
    */
   bool delay;
 
+  /**
+   * Did we start a transaction yet?
+   */
+  bool started_transaction;
+
 };
 
 
@@ -293,7 +298,7 @@ add_account_cb (void *cls,
  *
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 exchange_serve_process_config (void)
 {
   if (GNUNET_OK !=
@@ -473,7 +478,7 @@ do_commit (struct WireAccount *wa)
  * @param json raw JSON response
  * @return #GNUNET_OK to continue, #GNUNET_SYSERR to abort iteration
  */
-static int
+static enum GNUNET_GenericReturnValue
 history_cb (void *cls,
             unsigned int http_status,
             enum TALER_ErrorCode ec,
@@ -495,9 +500,13 @@ history_cb (void *cls,
                   (unsigned int) ec,
                   http_status);
     }
-    GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-                "End of list. Committing progress!\n");
-    do_commit (wa);
+    if (wa->started_transaction)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
+                  "End of list. Committing progress!\n");
+      wa->started_transaction = false;
+      do_commit (wa);
+    }
     return GNUNET_OK; /* will be ignored anyway */
   }
   if (serial_id < wa->latest_row_off)
@@ -507,7 +516,11 @@ history_cb (void *cls,
                 "Serial ID %llu not monotonic (got %llu before). Failing!\n",
                 (unsigned long long) serial_id,
                 (unsigned long long) wa->latest_row_off);
-    db_plugin->rollback (db_plugin->cls);
+    if (wa->started_transaction)
+    {
+      wa->started_transaction = false;
+      db_plugin->rollback (db_plugin->cls);
+    }
     GNUNET_SCHEDULER_shutdown ();
     wa->hh = NULL;
     return GNUNET_SYSERR;
@@ -521,9 +534,30 @@ history_cb (void *cls,
                 (unsigned long long) wa->shard_end);
     wa->latest_row_off = serial_id - 1;
     wa->delay = false;
-    do_commit (wa);
+    if (wa->started_transaction)
+    {
+      wa->started_transaction = false;
+      do_commit (wa);
+    }
+    else
+      GNUNET_break (0); /* how did this happen */
     wa->hh = NULL;
     return GNUNET_SYSERR;
+  }
+  if (! wa->started_transaction)
+  {
+    if (GNUNET_OK !=
+        db_plugin->start_read_committed (db_plugin->cls,
+                                         "wirewatch check for incoming wire transfers"))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Failed to start database transaction!\n");
+      global_ret = EXIT_FAILURE;
+      GNUNET_SCHEDULER_shutdown ();
+      wa->hh = NULL;
+      return GNUNET_SYSERR;
+    }
+    wa->started_transaction = true;
   }
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Adding wire transfer over %s with (hashed) subject `%s'\n",
@@ -644,16 +678,6 @@ find_transfers (void *cls)
                   (unsigned long long) start);
       break;
     }
-  }
-  if (GNUNET_OK !=
-      db_plugin->start_read_committed (db_plugin->cls,
-                                       "wirewatch check for incoming wire transfers"))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to start database transaction!\n");
-    global_ret = EXIT_FAILURE;
-    GNUNET_SCHEDULER_shutdown ();
-    return;
   }
 
   limit = GNUNET_MIN (wa_pos->batch_size,
