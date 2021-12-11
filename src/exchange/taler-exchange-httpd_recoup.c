@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2020 Taler Systems SA
+  Copyright (C) 2017-2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
+#include "taler-exchange-httpd_db.h"
 #include "taler-exchange-httpd_recoup.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keys.h"
@@ -94,9 +95,9 @@ struct RecoupContext
   struct GNUNET_TIME_Absolute now;
 
   /**
-   * #GNUNET_YES if the client claims the coin originated from a refresh.
+   * true if the client claims the coin originated from a refresh.
    */
-  int refreshed;
+  bool refreshed;
 
 };
 
@@ -129,57 +130,10 @@ recoup_transaction (void *cls,
   struct TALER_Amount spent;
   struct TALER_Amount recouped;
   enum GNUNET_DB_QueryStatus qs;
-  int existing_recoup_found;
+  bool existing_recoup_found;
 
   /* Check whether a recoup is allowed, and if so, to which
      reserve / account the money should go */
-  if (pc->refreshed)
-  {
-    qs = TEH_plugin->get_old_coin_by_h_blind (TEH_plugin->cls,
-                                              &pc->h_blind,
-                                              &pc->target.old_coin_pub);
-    if (0 > qs)
-    {
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      {
-        GNUNET_break (0);
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "old coin by h_blind");
-      }
-      return qs;
-    }
-  }
-  else
-  {
-    qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
-                                             &pc->h_blind,
-                                             &pc->target.reserve_pub);
-    if (0 > qs)
-    {
-      if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-      {
-        GNUNET_break (0);
-        *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                               MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                               TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                               "reserve by h_blind");
-      }
-      return qs;
-    }
-  }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Recoup requested for unknown envelope %s\n",
-                GNUNET_h2s (&pc->h_blind.hash));
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_NOT_FOUND,
-                                           TALER_EC_EXCHANGE_RECOUP_WITHDRAW_NOT_FOUND,
-                                           NULL);
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  }
 
   /* Calculate remaining balance, including recoups already applied. */
   qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
@@ -206,7 +160,7 @@ recoup_transaction (void *cls,
                  TALER_amount_set_zero (pc->value.currency,
                                         &recouped));
   /* Check if this coin has been recouped already at least once */
-  existing_recoup_found = GNUNET_NO;
+  existing_recoup_found = false;
   for (struct TALER_EXCHANGEDB_TransactionList *pos = tl;
        NULL != pos;
        pos = pos->next)
@@ -214,7 +168,7 @@ recoup_transaction (void *cls,
     if ( (TALER_EXCHANGEDB_TT_RECOUP == pos->type) ||
          (TALER_EXCHANGEDB_TT_RECOUP_REFRESH == pos->type) )
     {
-      existing_recoup_found = GNUNET_YES;
+      existing_recoup_found = true;
       break;
     }
   }
@@ -252,8 +206,7 @@ recoup_transaction (void *cls,
                                            NULL);
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
-  if ( (0 == pc->amount.fraction) &&
-       (0 == pc->amount.value) )
+  if (TALER_amount_is_zero (&pc->amount))
   {
     /* Recoup has no effect: coin fully spent! */
     enum GNUNET_DB_QueryStatus ret;
@@ -332,7 +285,7 @@ recoup_transaction (void *cls,
  * @param coin information about the coin
  * @param coin_bks blinding data of the coin (to be checked)
  * @param coin_sig signature of the coin
- * @param refreshed #GNUNET_YES if the coin was refreshed
+ * @param refreshed true if the coin was refreshed
  * @return MHD result code
  */
 static MHD_RESULT
@@ -341,7 +294,7 @@ verify_and_execute_recoup (
   const struct TALER_CoinPublicInfo *coin,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendSignatureP *coin_sig,
-  int refreshed)
+  bool refreshed)
 {
   struct RecoupContext pc;
   const struct TEH_DenominationKey *dk;
@@ -460,7 +413,6 @@ verify_and_execute_recoup (
     GNUNET_free (coin_ev);
   }
 
-  /* Perform actual recoup transaction */
   pc.coin_sig = coin_sig;
   pc.coin_bks = coin_bks;
   pc.coin = coin;
@@ -480,6 +432,53 @@ verify_and_execute_recoup (
       return mhd_ret;
   }
 
+  {
+    enum GNUNET_DB_QueryStatus qs;
+
+    if (pc.refreshed)
+    {
+      qs = TEH_plugin->get_old_coin_by_h_blind (TEH_plugin->cls,
+                                                &pc.h_blind,
+                                                &pc.target.old_coin_pub);
+      if (0 > qs)
+      {
+        GNUNET_break (0);
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "old coin by h_blind");
+      }
+    }
+    else
+    {
+      qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
+                                               &pc.h_blind,
+                                               &pc.target.reserve_pub);
+      if (0 > qs)
+      {
+        GNUNET_break (0);
+        return TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_INTERNAL_SERVER_ERROR,
+          TALER_EC_GENERIC_DB_FETCH_FAILED,
+          "reserve by h_blind");
+      }
+    }
+    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Recoup requested for unknown envelope %s\n",
+                  GNUNET_h2s (&pc.h_blind.hash));
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_NOT_FOUND,
+        TALER_EC_EXCHANGE_RECOUP_WITHDRAW_NOT_FOUND,
+        NULL);
+    }
+  }
+
+  /* Perform actual recoup transaction */
   {
     MHD_RESULT mhd_ret;
 
@@ -531,7 +530,7 @@ TEH_handler_recoup (struct MHD_Connection *connection,
   struct TALER_CoinPublicInfo coin;
   union TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
-  int refreshed = GNUNET_NO;
+  bool refreshed = false;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &coin.denom_pub_hash),
@@ -541,9 +540,9 @@ TEH_handler_recoup (struct MHD_Connection *connection,
                                  &coin_bks),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin_sig),
-    GNUNET_JSON_spec_mark_optional
-      (GNUNET_JSON_spec_boolean ("refreshed",
-                                 &refreshed)),
+    GNUNET_JSON_spec_mark_optional (
+      GNUNET_JSON_spec_bool ("refreshed",
+                             &refreshed)),
     GNUNET_JSON_spec_end ()
   };
 
