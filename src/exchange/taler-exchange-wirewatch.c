@@ -410,6 +410,11 @@ shard_completed (struct WireAccount *wa)
     GNUNET_assert (NULL != wa_pos);
   }
   GNUNET_assert (NULL == task);
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Will look for more transfers in %s\n",
+              GNUNET_STRINGS_relative_time_to_string (
+                GNUNET_TIME_absolute_get_remaining (wa_pos->delayed_until),
+                GNUNET_YES));
   task = GNUNET_SCHEDULER_add_at (wa_pos->delayed_until,
                                   &find_transfers,
                                   NULL);
@@ -527,6 +532,11 @@ history_cb (void *cls,
                   (unsigned int) ec,
                   http_status);
     }
+    else
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "History response complete\n");
+    }
     if (wa->started_transaction)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -543,6 +553,10 @@ history_cb (void *cls,
                     "Shutdown due to test mode!\n");
         GNUNET_SCHEDULER_shutdown ();
         return GNUNET_OK;
+      }
+      else
+      {
+        shard_completed (wa);
       }
     }
     return GNUNET_OK; /* will be ignored anyway */
@@ -700,12 +714,22 @@ find_transfers (void *cls)
       return;
     case GNUNET_DB_STATUS_SOFT_ERROR:
       /* try again */
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Serialization error tying to obtain shard, will try again in %s!\n",
+                  GNUNET_STRINGS_relative_time_to_string (
+                    wirewatch_idle_sleep_interval,
+                    GNUNET_YES));
       task = GNUNET_SCHEDULER_add_delayed (wirewatch_idle_sleep_interval,
                                            &find_transfers,
                                            NULL);
       return;
     case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
       GNUNET_break (0);
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "No shard available, will try again in %s!\n",
+                  GNUNET_STRINGS_relative_time_to_string (
+                    wirewatch_idle_sleep_interval,
+                    GNUNET_YES));
       task = GNUNET_SCHEDULER_add_delayed (wirewatch_idle_sleep_interval,
                                            &find_transfers,
                                            NULL);
@@ -715,8 +739,11 @@ find_transfers (void *cls)
       wa_pos->shard_end = end;
       wa_pos->batch_start = start;
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Starting with shard at %llu\n",
-                  (unsigned long long) start);
+                  "Starting with shard at [%llu,%llu) locked for %s\n",
+                  (unsigned long long) start,
+                  (unsigned long long) end,
+                  GNUNET_STRINGS_relative_time_to_string (delay,
+                                                          GNUNET_YES));
       break;
     }
   }
