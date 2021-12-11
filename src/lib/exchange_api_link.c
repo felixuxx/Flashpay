@@ -418,19 +418,6 @@ handle_link_finished (void *cls,
 }
 
 
-/**
- * Submit a link request to the exchange and get the exchange's response.
- *
- * This API is typically not used by anyone, it is more a threat against those
- * trying to receive a funds transfer by abusing the refresh protocol.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param coin_priv private key to request link data for
- * @param link_cb the callback to call with the useful result of the
- *        refresh operation the @a coin_priv was involved in (if any)
- * @param link_cb_cls closure for @a link_cb
- * @return a handle for this request
- */
 struct TALER_EXCHANGE_LinkHandle *
 TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
                      const struct TALER_CoinSpendPrivateKeyP *coin_priv,
@@ -496,12 +483,6 @@ TALER_EXCHANGE_link (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Cancel a link request.  This function cannot be used
- * on a request handle if the callback was already invoked.
- *
- * @param lh the link handle
- */
 void
 TALER_EXCHANGE_link_cancel (struct TALER_EXCHANGE_LinkHandle *lh)
 {

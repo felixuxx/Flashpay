@@ -386,12 +386,6 @@ TALER_EXCHANGE_parse_reserve_history (
 }
 
 
-/**
- * Free memory (potentially) allocated by #TALER_EXCHANGE_parse_reserve_history().
- *
- * @param rhistory result to free
- * @param len number of entries in @a rhistory
- */
 void
 TALER_EXCHANGE_free_reserve_history (
   struct TALER_EXCHANGE_ReserveHistory *rhistory,
@@ -416,17 +410,6 @@ TALER_EXCHANGE_free_reserve_history (
 }
 
 
-/**
- * Verify a coins transaction history as returned by the exchange.
- *
- * @param dk fee structure for the coin, NULL to skip verifying fees
- * @param currency expected currency for the coin
- * @param coin_pub public key of the coin
- * @param history history of the coin in json encoding
- * @param[out] h_denom_pub set to the hash of the coin's denomination (if available)
- * @param[out] total how much of the coin has been spent according to @a history
- * @return #GNUNET_OK if @a history is valid, #GNUNET_SYSERR if not
- */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_verify_coin_history (
   const struct TALER_EXCHANGE_DenomPublicKey *dk,

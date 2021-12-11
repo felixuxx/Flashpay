@@ -30,14 +30,6 @@
 #endif
 
 
-/**
- * Add the @a body as POST data to the easy handle in @a ctx.
- *
- * @param[in,out] ctx a request context (updated)
- * @param eh easy handle to use
- * @param body JSON body to add to @e ctx
- * @return #GNUNET_OK on success #GNUNET_SYSERR on failure
- */
 enum GNUNET_GenericReturnValue
 TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
                       CURL *eh,
@@ -101,11 +93,6 @@ TALER_curl_easy_post (struct TALER_CURL_PostContext *ctx,
 }
 
 
-/**
- * Free the data in @a ctx.
- *
- * @param[in] ctx a request context (updated)
- */
 void
 TALER_curl_easy_post_finished (struct TALER_CURL_PostContext *ctx)
 {

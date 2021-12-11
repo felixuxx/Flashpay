@@ -166,13 +166,6 @@ struct KeysRequest
 };
 
 
-/**
- * Signature of functions called with the result from our call to the
- * auditor's /deposit-confirmation handler.
- *
- * @param cls closure of type `struct TEAH_AuditorInteractionEntry *`
- * @param hr HTTP response
- */
 void
 TEAH_acc_confirmation_cb (void *cls,
                           const struct TALER_AUDITOR_HttpResponse *hr)
@@ -195,15 +188,6 @@ TEAH_acc_confirmation_cb (void *cls,
 }
 
 
-/**
- * Iterate over all available auditors for @a h, calling
- * @a ac and giving it a chance to start a deposit
- * confirmation interaction.
- *
- * @param h exchange to go over auditors for
- * @param ac function to call per auditor
- * @param ac_cls closure for @a ac
- */
 void
 TEAH_get_auditors_for_dc (struct TALER_EXCHANGE_Handle *h,
                           TEAH_AuditorCallback ac,
@@ -1054,12 +1038,6 @@ static void
 request_keys (void *cls);
 
 
-/**
- * Let the user set the last valid denomination time manually.
- *
- * @param exchange the exchange handle.
- * @param last_denom_new new last denomination time.
- */
 void
 TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
                                struct GNUNET_TIME_Absolute last_denom_new)
@@ -1071,14 +1049,6 @@ TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Check if our current response for /keys is valid, and if
- * not trigger download.
- *
- * @param exchange exchange to check keys for
- * @param flags options controlling when to download what
- * @return until when the response is current, 0 if we are re-downloading
- */
 struct GNUNET_TIME_Absolute
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
                                    enum TALER_EXCHANGE_CheckKeysFlags flags)
@@ -1330,12 +1300,6 @@ keys_completed_cb (void *cls,
 /* ********************* library internal API ********* */
 
 
-/**
- * Get the context of a exchange.
- *
- * @param h the exchange handle to query
- * @return ctx context to execute jobs in
- */
 struct GNUNET_CURL_Context *
 TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
 {
@@ -1343,12 +1307,6 @@ TEAH_handle_to_context (struct TALER_EXCHANGE_Handle *h)
 }
 
 
-/**
- * Check if the handle is ready to process requests.
- *
- * @param h the exchange handle to query
- * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
- */
 enum GNUNET_GenericReturnValue
 TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
 {
@@ -1356,13 +1314,6 @@ TEAH_handle_is_ready (struct TALER_EXCHANGE_Handle *h)
 }
 
 
-/**
- * Obtain the URL to use for an API request.
- *
- * @param h handle for the exchange
- * @param path Taler API path (i.e. "/reserve/withdraw")
- * @return the full URL to use with cURL
- */
 char *
 TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
                   const char *path)
@@ -1611,17 +1562,6 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
 }
 
 
-/**
- * Serialize the latest key data from @a
- * exchange to be persisted on disk (to be used with
- * #TALER_EXCHANGE_OPTION_DATA to more efficiently recover
- * the state).
- *
- * @param exchange which exchange's key and wire data should be
- *        serialized
- * @return NULL on error (i.e. no current data available);
- *         otherwise JSON object owned by the caller
- */
 json_t *
 TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
 {
@@ -1790,24 +1730,6 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
 }
 
 
-/**
- * Initialise a connection to the exchange. Will connect to the
- * exchange and obtain information about the exchange's master
- * public key and the exchange's auditor.
- * The respective information will be passed to the @a cert_cb
- * once available, and all future interactions with the exchange
- * will be checked to be signed (where appropriate) by the
- * respective master key.
- *
- * @param ctx the context
- * @param url HTTP base URL for the exchange
- * @param cert_cb function to call with the exchange's
- *        certification information
- * @param cert_cb_cls closure for @a cert_cb
- * @param ... list of additional arguments,
- *        terminated by #TALER_EXCHANGE_OPTION_END.
- * @return the exchange handle; NULL upon error
- */
 struct TALER_EXCHANGE_Handle *
 TALER_EXCHANGE_connect (
   struct GNUNET_CURL_Context *ctx,
@@ -1825,7 +1747,7 @@ TALER_EXCHANGE_connect (
   /* Disable 100 continue processing */
   GNUNET_break (GNUNET_OK ==
                 GNUNET_CURL_append_header (ctx,
-                                           "Expect:"));
+                                           MHD_HTTP_HEADER_EXPECT ":"));
   exchange = GNUNET_new (struct TALER_EXCHANGE_Handle);
   exchange->ctx = ctx;
   exchange->url = GNUNET_strdup (url);
@@ -1968,11 +1890,6 @@ request_keys (void *cls)
 }
 
 
-/**
- * Disconnect from the exchange
- *
- * @param exchange the exchange handle
- */
 void
 TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 {
@@ -2025,14 +1942,6 @@ TALER_EXCHANGE_disconnect (struct TALER_EXCHANGE_Handle *exchange)
 }
 
 
-/**
- * Test if the given @a pub is a the current signing key from the exchange
- * according to @a keys.
- *
- * @param keys the exchange's key set
- * @param pub claimed current online signing key for the exchange
- * @return #GNUNET_OK if @a pub is (according to /keys) a current signing key
- */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
                                  const struct TALER_ExchangePublicKeyP *pub)
@@ -2058,12 +1967,6 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
 }
 
 
-/**
- * Get exchange's base URL.
- *
- * @param exchange exchange handle.
- * @return the base URL from the handle.
- */
 const char *
 TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange)
 {
@@ -2071,14 +1974,6 @@ TALER_EXCHANGE_get_base_url (const struct TALER_EXCHANGE_Handle *exchange)
 }
 
 
-/**
- * Obtain the denomination key details from the exchange.
- *
- * @param keys the exchange's key set
- * @param pk public key of the denomination to lookup
- * @return details about the given denomination key, NULL if the key is
- * not found
- */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key (
   const struct TALER_EXCHANGE_Keys *keys,
@@ -2093,12 +1988,6 @@ TALER_EXCHANGE_get_denomination_key (
 }
 
 
-/**
- * Create a copy of a denomination public key.
- *
- * @param key key to copy
- * @returns a copy, must be freed with #TALER_EXCHANGE_destroy_denomination_key
- */
 struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_copy_denomination_key (
   const struct TALER_EXCHANGE_DenomPublicKey *key)
@@ -2113,12 +2002,6 @@ TALER_EXCHANGE_copy_denomination_key (
 }
 
 
-/**
- * Destroy a denomination public key.
- * Should only be called with keys created by #TALER_EXCHANGE_copy_denomination_key.
- *
- * @param key key to destroy.
- */
 void
 TALER_EXCHANGE_destroy_denomination_key (
   struct TALER_EXCHANGE_DenomPublicKey *key)
@@ -2128,13 +2011,6 @@ TALER_EXCHANGE_destroy_denomination_key (
 }
 
 
-/**
- * Obtain the denomination key details from the exchange.
- *
- * @param keys the exchange's key set
- * @param hc hash of the public key of the denomination to lookup
- * @return details about the given denomination key
- */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_EXCHANGE_get_denomination_key_by_hash (
   const struct TALER_EXCHANGE_Keys *keys,
@@ -2148,12 +2024,6 @@ TALER_EXCHANGE_get_denomination_key_by_hash (
 }
 
 
-/**
- * Obtain the keys from the exchange.
- *
- * @param exchange the exchange handle
- * @return the exchange's key set
- */
 const struct TALER_EXCHANGE_Keys *
 TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 {
@@ -2163,13 +2033,6 @@ TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange)
 }
 
 
-/**
- * Obtain the keys from the exchange in the
- * raw JSON format
- *
- * @param exchange the exchange handle
- * @return the exchange's keys in raw JSON
- */
 json_t *
 TALER_EXCHANGE_get_keys_raw (struct TALER_EXCHANGE_Handle *exchange)
 {
