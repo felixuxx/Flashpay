@@ -19,7 +19,6 @@
  * @author Christian Grothoff
  */
 #include "platform.h"
-#include <pthread.h>
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_responses.h"
