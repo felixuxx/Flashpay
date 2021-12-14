@@ -182,7 +182,7 @@ handle_mt_avail (struct TALER_CRYPTO_ExchangeSignHelper *esh,
   if (GNUNET_OK !=
       TALER_exchange_secmod_eddsa_verify (
         &kan->exchange_pub,
-        GNUNET_TIME_absolute_ntoh (kan->anchor_time),
+        GNUNET_TIME_timestamp_ntoh (kan->anchor_time),
         GNUNET_TIME_relative_ntoh (kan->duration),
         &kan->secm_pub,
         &kan->secm_sig))
@@ -191,7 +191,7 @@ handle_mt_avail (struct TALER_CRYPTO_ExchangeSignHelper *esh,
     return GNUNET_SYSERR;
   }
   esh->ekc (esh->ekc_cls,
-            GNUNET_TIME_absolute_ntoh (kan->anchor_time),
+            GNUNET_TIME_timestamp_ntoh (kan->anchor_time),
             GNUNET_TIME_relative_ntoh (kan->duration),
             &kan->exchange_pub,
             &kan->secm_pub,
@@ -220,7 +220,7 @@ handle_mt_purge (struct TALER_CRYPTO_ExchangeSignHelper *esh,
     return GNUNET_SYSERR;
   }
   esh->ekc (esh->ekc_cls,
-            GNUNET_TIME_UNIT_ZERO_ABS,
+            GNUNET_TIME_UNIT_ZERO_TS,
             GNUNET_TIME_UNIT_ZERO,
             &pn->exchange_pub,
             NULL,

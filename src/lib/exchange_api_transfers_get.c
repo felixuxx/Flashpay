@@ -93,7 +93,7 @@ check_transfers_get_response_ok (
     TALER_JSON_spec_amount_any ("wire_fee", &td.wire_fee),
     GNUNET_JSON_spec_fixed_auto ("merchant_pub", &merchant_pub),
     GNUNET_JSON_spec_fixed_auto ("h_payto", &td.h_payto),
-    TALER_JSON_spec_absolute_time ("execution_time", &td.execution_time),
+    GNUNET_JSON_spec_timestamp ("execution_time", &td.execution_time),
     GNUNET_JSON_spec_json ("deposits", &details_j),
     GNUNET_JSON_spec_fixed_auto ("exchange_sig", &td.exchange_sig),
     GNUNET_JSON_spec_fixed_auto ("exchange_pub", &td.exchange_pub),
@@ -181,7 +181,7 @@ check_transfers_get_response_ok (
         struct TALER_WireDepositDetailP dd;
 
         dd.h_contract_terms = detail->h_contract_terms;
-        dd.execution_time = GNUNET_TIME_absolute_hton (td.execution_time);
+        dd.execution_time = GNUNET_TIME_timestamp_hton (td.execution_time);
         dd.coin_pub = detail->coin_pub;
         TALER_amount_hton (&dd.deposit_value,
                            &detail->coin_value);

@@ -50,7 +50,7 @@ struct DelWireContext
   /**
    * Timestamp for checking against replay attacks.
    */
-  struct GNUNET_TIME_Absolute validity_end;
+  struct GNUNET_TIME_Timestamp validity_end;
 
 };
 
@@ -75,7 +75,7 @@ del_wire (void *cls,
           MHD_RESULT *mhd_ret)
 {
   struct DelWireContext *awc = cls;
-  struct GNUNET_TIME_Absolute last_date;
+  struct GNUNET_TIME_Timestamp last_date;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_wire_timestamp (TEH_plugin->cls,
@@ -92,7 +92,9 @@ del_wire (void *cls,
                                            "lookup wire");
     return qs;
   }
-  if (last_date.abs_value_us > awc->validity_end.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (last_date,
+                                 >,
+                                 awc->validity_end))
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
@@ -140,8 +142,8 @@ TEH_handler_management_post_wire_disable (
                                  &awc.master_sig),
     GNUNET_JSON_spec_string ("payto_uri",
                              &awc.payto_uri),
-    TALER_JSON_spec_absolute_time ("validity_end",
-                                   &awc.validity_end),
+    GNUNET_JSON_spec_timestamp ("validity_end",
+                                &awc.validity_end),
     GNUNET_JSON_spec_end ()
   };
 

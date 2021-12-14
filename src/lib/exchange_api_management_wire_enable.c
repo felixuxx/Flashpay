@@ -23,6 +23,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
+#include "exchange_api_curl_defaults.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
 #include "taler_json_lib.h"
@@ -127,7 +128,7 @@ TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute validity_start,
+  struct GNUNET_TIME_Timestamp validity_start,
   const struct TALER_MasterSignatureP *master_sig1,
   const struct TALER_MasterSignatureP *master_sig2,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
@@ -158,9 +159,9 @@ TALER_EXCHANGE_management_enable_wire (
                                 master_sig1),
     GNUNET_JSON_pack_data_auto ("master_sig_wire",
                                 master_sig2),
-    GNUNET_JSON_pack_time_abs ("validity_start",
-                               validity_start));
-  eh = curl_easy_init ();
+    GNUNET_JSON_pack_timestamp ("validity_start",
+                                validity_start));
+  eh = TALER_EXCHANGE_curl_easy_get_ (wh->url);
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&wh->post_ctx,
@@ -177,9 +178,6 @@ TALER_EXCHANGE_management_enable_wire (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting URL '%s'\n",
               wh->url);
-  GNUNET_assert (CURLE_OK == curl_easy_setopt (eh,
-                                               CURLOPT_URL,
-                                               wh->url));
   wh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   wh->post_ctx.headers,

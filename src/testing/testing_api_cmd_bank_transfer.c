@@ -97,7 +97,7 @@ struct TransferState
   /**
    * Timestamp of the transaction (as returned from the bank).
    */
-  struct GNUNET_TIME_Absolute timestamp;
+  struct GNUNET_TIME_Timestamp timestamp;
 
   /**
    * Configuration filename.  Used to get the tip reserve key
@@ -175,7 +175,7 @@ confirmation_cb (void *cls,
                  unsigned int http_status,
                  enum TALER_ErrorCode ec,
                  uint64_t serial_id,
-                 struct GNUNET_TIME_Absolute timestamp)
+                 struct GNUNET_TIME_Timestamp timestamp)
 {
   struct TransferState *fts = cls;
   struct TALER_TESTING_Interpreter *is = fts->is;
@@ -326,7 +326,7 @@ transfer_traits (void *cls,
     TALER_TESTING_make_trait_debit_payto_uri (
       (const char **) &fts->payto_debit_account),
     TALER_TESTING_make_trait_amount (&fts->amount),
-    TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
+    TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
     TALER_TESTING_make_trait_wtid (&fts->wtid),
     TALER_TESTING_trait_end ()
   };

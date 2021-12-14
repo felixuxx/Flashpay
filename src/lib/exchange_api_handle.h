@@ -147,7 +147,7 @@ struct TALER_EXCHANGE_Handle
   /**
    * When does @e key_data expire?
    */
-  struct GNUNET_TIME_Absolute key_data_expiration;
+  struct GNUNET_TIME_Timestamp key_data_expiration;
 
   /**
    * Number of subsequent failed requests to /keys.

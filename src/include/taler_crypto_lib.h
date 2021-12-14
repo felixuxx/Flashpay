@@ -1367,7 +1367,7 @@ typedef void
 (*TALER_CRYPTO_RsaDenominationKeyStatusCallback)(
   void *cls,
   const char *section_name,
-  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_RsaPubHashP *h_rsa,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -1484,7 +1484,7 @@ struct TALER_CRYPTO_ExchangeSignHelper;
 typedef void
 (*TALER_CRYPTO_ExchangeKeyStatusCallback)(
   void *cls,
-  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
@@ -1625,9 +1625,9 @@ TALER_exchange_deposit_confirm_verify (
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_ExtensionContractHash *h_extensions,
-  struct GNUNET_TIME_Absolute exchange_timestamp,
-  struct GNUNET_TIME_Absolute wire_deadline,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  struct GNUNET_TIME_Timestamp wire_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_Amount *amount_without_fee,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
@@ -1661,9 +1661,9 @@ TALER_wallet_deposit_sign (
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute wallet_timestamp,
+  struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -1692,9 +1692,9 @@ TALER_wallet_deposit_verify (
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute wallet_timestamp,
+  struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -1754,7 +1754,7 @@ void
 TALER_exchange_offline_auditor_add_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
-  struct GNUNET_TIME_Absolute start_date,
+  struct GNUNET_TIME_Timestamp start_date,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -1773,7 +1773,7 @@ enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_add_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
-  struct GNUNET_TIME_Absolute start_date,
+  struct GNUNET_TIME_Timestamp start_date,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -1789,7 +1789,7 @@ TALER_exchange_offline_auditor_add_verify (
 void
 TALER_exchange_offline_auditor_del_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  struct GNUNET_TIME_Absolute end_date,
+  struct GNUNET_TIME_Timestamp end_date,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -1806,7 +1806,7 @@ TALER_exchange_offline_auditor_del_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_del_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  struct GNUNET_TIME_Absolute end_date,
+  struct GNUNET_TIME_Timestamp end_date,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -1882,9 +1882,9 @@ TALER_exchange_offline_signkey_revoke_verify (
 void
 TALER_exchange_offline_signkey_validity_sign (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
-  struct GNUNET_TIME_Absolute end_sign,
-  struct GNUNET_TIME_Absolute end_legal,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Timestamp end_sign,
+  struct GNUNET_TIME_Timestamp end_legal,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -1903,9 +1903,9 @@ TALER_exchange_offline_signkey_validity_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_signkey_validity_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
-  struct GNUNET_TIME_Absolute end_sign,
-  struct GNUNET_TIME_Absolute end_legal,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Timestamp end_sign,
+  struct GNUNET_TIME_Timestamp end_legal,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -1929,10 +1929,10 @@ TALER_exchange_offline_signkey_validity_verify (
 void
 TALER_exchange_offline_denom_validity_sign (
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute stamp_start,
-  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
-  struct GNUNET_TIME_Absolute stamp_expire_deposit,
-  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  struct GNUNET_TIME_Timestamp stamp_start,
+  struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
+  struct GNUNET_TIME_Timestamp stamp_expire_deposit,
+  struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
   const struct TALER_Amount *fee_withdraw,
   const struct TALER_Amount *fee_deposit,
@@ -1962,10 +1962,10 @@ TALER_exchange_offline_denom_validity_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denom_validity_verify (
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute stamp_start,
-  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
-  struct GNUNET_TIME_Absolute stamp_expire_deposit,
-  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  struct GNUNET_TIME_Timestamp stamp_start,
+  struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
+  struct GNUNET_TIME_Timestamp stamp_expire_deposit,
+  struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
   const struct TALER_Amount *fee_withdraw,
   const struct TALER_Amount *fee_deposit,
@@ -1987,7 +1987,7 @@ TALER_exchange_offline_denom_validity_verify (
 void
 TALER_exchange_secmod_eddsa_sign (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePrivateKeyP *secm_priv,
   struct TALER_SecurityModuleSignatureP *secm_sig);
@@ -2006,7 +2006,7 @@ TALER_exchange_secmod_eddsa_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_eddsa_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePublicKeyP *secm_pub,
   const struct TALER_SecurityModuleSignatureP *secm_sig);
@@ -2026,7 +2026,7 @@ void
 TALER_exchange_secmod_rsa_sign (
   const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePrivateKeyP *secm_priv,
   struct TALER_SecurityModuleSignatureP *secm_sig);
@@ -2047,7 +2047,7 @@ enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_rsa_verify (
   const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePublicKeyP *secm_pub,
   const struct TALER_SecurityModuleSignatureP *secm_sig);
@@ -2076,10 +2076,10 @@ TALER_auditor_denom_validity_sign (
   const char *auditor_url,
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
-  struct GNUNET_TIME_Absolute stamp_start,
-  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
-  struct GNUNET_TIME_Absolute stamp_expire_deposit,
-  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  struct GNUNET_TIME_Timestamp stamp_start,
+  struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
+  struct GNUNET_TIME_Timestamp stamp_expire_deposit,
+  struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
   const struct TALER_Amount *fee_withdraw,
   const struct TALER_Amount *fee_deposit,
@@ -2113,10 +2113,10 @@ TALER_auditor_denom_validity_verify (
   const char *auditor_url,
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_MasterPublicKeyP *master_pub,
-  struct GNUNET_TIME_Absolute stamp_start,
-  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
-  struct GNUNET_TIME_Absolute stamp_expire_deposit,
-  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  struct GNUNET_TIME_Timestamp stamp_start,
+  struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
+  struct GNUNET_TIME_Timestamp stamp_expire_deposit,
+  struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
   const struct TALER_Amount *fee_withdraw,
   const struct TALER_Amount *fee_deposit,
@@ -2143,8 +2143,8 @@ TALER_auditor_denom_validity_verify (
 void
 TALER_exchange_offline_wire_fee_sign (
   const char *payment_method,
-  struct GNUNET_TIME_Absolute start_time,
-  struct GNUNET_TIME_Absolute end_time,
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *wire_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_MasterPrivateKeyP *master_priv,
@@ -2166,8 +2166,8 @@ TALER_exchange_offline_wire_fee_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_fee_verify (
   const char *payment_method,
-  struct GNUNET_TIME_Absolute start_time,
-  struct GNUNET_TIME_Absolute end_time,
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *wire_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -2185,7 +2185,7 @@ TALER_exchange_offline_wire_fee_verify (
 void
 TALER_exchange_offline_wire_add_sign (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute now,
+  struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -2202,7 +2202,7 @@ TALER_exchange_offline_wire_add_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute sign_time,
+  struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 
@@ -2218,7 +2218,7 @@ TALER_exchange_offline_wire_add_verify (
 void
 TALER_exchange_offline_wire_del_sign (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute now,
+  struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -2235,7 +2235,7 @@ TALER_exchange_offline_wire_del_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_del_verify (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute sign_time,
+  struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig);
 

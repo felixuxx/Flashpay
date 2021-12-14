@@ -219,7 +219,7 @@ struct Transaction
   /**
    * When did the transaction happen?
    */
-  struct GNUNET_TIME_Absolute date;
+  struct GNUNET_TIME_Timestamp date;
 
   /**
    * Number of this transaction.
@@ -963,7 +963,7 @@ make_transfer (
   const char *exchange_base_url,
   const struct GNUNET_HashCode *request_uid,
   uint64_t *ret_row_id,
-  struct GNUNET_TIME_Absolute *timestamp)
+  struct GNUNET_TIME_Timestamp *timestamp)
 {
   struct Transaction *t;
   struct Account *debit_acc;
@@ -1022,9 +1022,9 @@ make_transfer (
   t->debit_account = debit_acc;
   t->credit_account = credit_acc;
   t->amount = *amount;
-  t->date = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&t->date);
-  *timestamp = t->date;
+  t->date = GNUNET_TIME_timestamp_get ();
+  if (NULL != timestamp)
+    *timestamp = t->date;
   t->type = T_DEBIT;
   memcpy (t->subject.debit.exchange_base_url,
           exchange_base_url,
@@ -1082,7 +1082,7 @@ make_admin_transfer (
   const struct TALER_Amount *amount,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t *row_id,
-  struct GNUNET_TIME_Absolute *timestamp)
+  struct GNUNET_TIME_Timestamp *timestamp)
 {
   struct Transaction *t;
   const struct GNUNET_PeerIdentity *pid;
@@ -1125,8 +1125,7 @@ make_admin_transfer (
   t->debit_account = debit_acc;
   t->credit_account = credit_acc;
   t->amount = *amount;
-  t->date = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&t->date);
+  t->date = GNUNET_TIME_timestamp_get ();
   if (NULL != timestamp)
     *timestamp = t->date;
   t->type = T_CREDIT;
@@ -1334,7 +1333,7 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   uint64_t row_id;
-  struct GNUNET_TIME_Absolute timestamp;
+  struct GNUNET_TIME_Timestamp timestamp;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
@@ -1431,8 +1430,8 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                     MHD_HTTP_OK,
                                     GNUNET_JSON_pack_uint64 ("row_id",
                                                              row_id),
-                                    GNUNET_JSON_pack_time_abs ("timestamp",
-                                                               timestamp));
+                                    GNUNET_JSON_pack_timestamp ("timestamp",
+                                                                timestamp));
 }
 
 
@@ -1458,7 +1457,7 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
   enum GNUNET_JSON_PostResult pr;
   json_t *json;
   uint64_t row_id;
-  struct GNUNET_TIME_Absolute ts;
+  struct GNUNET_TIME_Timestamp ts;
 
   pr = GNUNET_JSON_post_parser (REQUEST_BUFFER_MAX,
                                 connection,
@@ -1561,8 +1560,8 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_uint64 ("row_id",
                              row_id),
-    GNUNET_JSON_pack_time_abs ("timestamp",
-                               ts));
+    GNUNET_JSON_pack_timestamp ("timestamp",
+                                ts));
 }
 
 
@@ -2016,8 +2015,8 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     trans = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_uint64 ("row_id",
                                pos->row_id),
-      GNUNET_JSON_pack_time_abs ("date",
-                                 pos->date),
+      GNUNET_JSON_pack_timestamp ("date",
+                                  pos->date),
       TALER_JSON_pack_amount ("amount",
                               &pos->amount),
       GNUNET_JSON_pack_string ("credit_account",
@@ -2215,8 +2214,8 @@ handle_credit_history (struct TALER_FAKEBANK_Handle *h,
     trans = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_uint64 ("row_id",
                                pos->row_id),
-      GNUNET_JSON_pack_time_abs ("date",
-                                 pos->date),
+      GNUNET_JSON_pack_timestamp ("date",
+                                  pos->date),
       TALER_JSON_pack_amount ("amount",
                               &pos->amount),
       GNUNET_JSON_pack_string ("credit_account",

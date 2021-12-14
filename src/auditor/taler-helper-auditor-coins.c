@@ -284,20 +284,21 @@ report_emergency_by_amount (
               "Reporting emergency on denomination `%s' over loss of %s\n",
               GNUNET_h2s (&issue->denom_hash.hash),
               TALER_amount2s (loss));
-  TALER_ARL_report (report_emergencies,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_data_auto ("denompub_hash",
-                                                  &issue->denom_hash),
-                      TALER_JSON_pack_amount ("denom_risk",
-                                              risk),
-                      TALER_JSON_pack_amount ("denom_loss",
-                                              loss),
-                      TALER_JSON_pack_time_abs_nbo_human ("start",
-                                                          issue->start),
-                      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
-                                                          issue->expire_deposit),
-                      TALER_JSON_pack_amount_nbo ("value",
-                                                  &issue->value)));
+  TALER_ARL_report (
+    report_emergencies,
+    GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_auto ("denompub_hash",
+                                  &issue->denom_hash),
+      TALER_JSON_pack_amount ("denom_risk",
+                              risk),
+      TALER_JSON_pack_amount ("denom_loss",
+                              loss),
+      TALER_JSON_pack_time_abs_nbo_human ("start",
+                                          issue->start.abs_time_nbo),
+      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
+                                          issue->expire_deposit.abs_time_nbo),
+      TALER_JSON_pack_amount_nbo ("value",
+                                  &issue->value)));
   TALER_ARL_amount_add (&reported_emergency_risk_by_amount,
                         &reported_emergency_risk_by_amount,
                         risk);
@@ -330,22 +331,23 @@ report_emergency_by_count (
 {
   struct TALER_Amount denom_value;
 
-  TALER_ARL_report (report_emergencies_by_count,
-                    GNUNET_JSON_PACK (
-                      GNUNET_JSON_pack_data_auto ("denompub_hash",
-                                                  &issue->denom_hash),
-                      GNUNET_JSON_pack_uint64 ("num_issued",
-                                               num_issued),
-                      GNUNET_JSON_pack_uint64 ("num_known",
-                                               num_known),
-                      TALER_JSON_pack_amount ("denom_risk",
-                                              risk),
-                      TALER_JSON_pack_time_abs_nbo_human ("start",
-                                                          issue->start),
-                      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
-                                                          issue->expire_deposit),
-                      TALER_JSON_pack_amount_nbo ("value",
-                                                  &issue->value)));
+  TALER_ARL_report (
+    report_emergencies_by_count,
+    GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_auto ("denompub_hash",
+                                  &issue->denom_hash),
+      GNUNET_JSON_pack_uint64 ("num_issued",
+                               num_issued),
+      GNUNET_JSON_pack_uint64 ("num_known",
+                               num_known),
+      TALER_JSON_pack_amount ("denom_risk",
+                              risk),
+      TALER_JSON_pack_time_abs_nbo_human ("start",
+                                          issue->start.abs_time_nbo),
+      TALER_JSON_pack_time_abs_nbo_human ("deposit_end",
+                                          issue->expire_deposit.abs_time_nbo),
+      TALER_JSON_pack_amount_nbo ("value",
+                                  &issue->value)));
   TALER_ARL_amount_add (&reported_emergency_risk_by_count,
                         &reported_emergency_risk_by_count,
                         risk);
@@ -794,7 +796,7 @@ get_denomination_summary (struct CoinContext *cc,
  * @param value a `struct DenominationSummary`
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 sync_denomination (void *cls,
                    const struct GNUNET_HashCode *denom_hash,
                    void *value)
@@ -806,16 +808,18 @@ sync_denomination (void *cls,
   struct DenominationSummary *ds = value;
   const struct TALER_DenominationKeyValidityPS *issue = ds->issue;
   struct GNUNET_TIME_Absolute now;
-  struct GNUNET_TIME_Absolute expire_deposit;
+  struct GNUNET_TIME_Timestamp expire_deposit;
   struct GNUNET_TIME_Absolute expire_deposit_grace;
   enum GNUNET_DB_QueryStatus qs;
 
   now = GNUNET_TIME_absolute_get ();
-  expire_deposit = GNUNET_TIME_absolute_ntoh (issue->expire_deposit);
+  expire_deposit = GNUNET_TIME_timestamp_ntoh (issue->expire_deposit);
   /* add day grace period to deal with clocks not being perfectly synchronized */
-  expire_deposit_grace = GNUNET_TIME_absolute_add (expire_deposit,
+  expire_deposit_grace = GNUNET_TIME_absolute_add (expire_deposit.abs_time,
                                                    DEPOSIT_GRACE_PERIOD);
-  if (now.abs_value_us > expire_deposit_grace.abs_value_us)
+  if (GNUNET_TIME_absolute_cmp (now,
+                                >,
+                                expire_deposit_grace) )
   {
     /* Denomination key has expired, book remaining balance of
        outstanding coins as revenue; and reduce cc->risk exposure. */
@@ -963,7 +967,7 @@ withdraw_cb (void *cls,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_ReservePublicKeyP *reserve_pub,
              const struct TALER_ReserveSignatureP *reserve_sig,
-             struct GNUNET_TIME_Absolute execution_date,
+             struct GNUNET_TIME_Timestamp execution_date,
              const struct TALER_Amount *amount_with_fee)
 {
   struct CoinContext *cc = cls;
@@ -1564,7 +1568,7 @@ refresh_session_cb (void *cls,
 static enum GNUNET_GenericReturnValue
 deposit_cb (void *cls,
             uint64_t rowid,
-            struct GNUNET_TIME_Absolute exchange_timestamp,
+            struct GNUNET_TIME_Timestamp exchange_timestamp,
             const struct TALER_EXCHANGEDB_Deposit *deposit,
             const struct TALER_DenominationPublicKey *denom_pub,
             bool done)
@@ -1591,8 +1595,9 @@ deposit_cb (void *cls,
       return GNUNET_SYSERR;
     return GNUNET_OK;
   }
-  if (deposit->refund_deadline.abs_value_us >
-      deposit->wire_deadline.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (deposit->refund_deadline,
+                                 >,
+                                 deposit->wire_deadline))
   {
     report_row_inconsistency ("deposits",
                               rowid,
@@ -2071,7 +2076,7 @@ check_recoup (struct CoinContext *cc,
 static int
 recoup_cb (void *cls,
            uint64_t rowid,
-           struct GNUNET_TIME_Absolute timestamp,
+           struct GNUNET_TIME_Timestamp timestamp,
            const struct TALER_Amount *amount,
            const struct TALER_ReservePublicKeyP *reserve_pub,
            const struct TALER_CoinPublicInfo *coin,
@@ -2115,7 +2120,7 @@ recoup_cb (void *cls,
 static int
 recoup_refresh_cb (void *cls,
                    uint64_t rowid,
-                   struct GNUNET_TIME_Absolute timestamp,
+                   struct GNUNET_TIME_Timestamp timestamp,
                    const struct TALER_Amount *amount,
                    const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
                    const struct TALER_DenominationHash *old_denom_pub_hash,
@@ -2211,8 +2216,8 @@ check_denomination (
   struct TALER_Amount fee_deposit;
   struct TALER_Amount fee_refresh;
   struct TALER_Amount fee_refund;
-  struct GNUNET_TIME_Absolute start;
-  struct GNUNET_TIME_Absolute end;
+  struct GNUNET_TIME_Timestamp start;
+  struct GNUNET_TIME_Timestamp end;
 
   (void) cls;
   (void) denom_pub;
@@ -2226,8 +2231,8 @@ check_denomination (
                      &issue->fee_refresh);
   TALER_amount_ntoh (&fee_refund,
                      &issue->fee_refund);
-  start = GNUNET_TIME_absolute_ntoh (issue->start);
-  end = GNUNET_TIME_absolute_ntoh (issue->expire_legal);
+  start = GNUNET_TIME_timestamp_ntoh (issue->start);
+  end = GNUNET_TIME_timestamp_ntoh (issue->expire_legal);
   qs = TALER_ARL_edb->select_auditor_denom_sig (TALER_ARL_edb->cls,
                                                 &issue->denom_hash,
                                                 &TALER_ARL_auditor_pub,
@@ -2238,9 +2243,9 @@ check_denomination (
                 "Encountered denomination `%s' (%s) valid from %s (%llu-%llu) that this auditor is not auditing!\n",
                 GNUNET_h2s (&issue->denom_hash.hash),
                 TALER_amount2s (&coin_value),
-                GNUNET_STRINGS_absolute_time_to_string (start),
-                (unsigned long long) start.abs_value_us,
-                (unsigned long long) end.abs_value_us);
+                GNUNET_TIME_timestamp2s (start),
+                (unsigned long long) start.abs_time.abs_value_us,
+                (unsigned long long) end.abs_time.abs_value_us);
     return; /* skip! */
   }
   if (GNUNET_OK !=
@@ -2249,8 +2254,8 @@ check_denomination (
         &issue->denom_hash,
         &TALER_ARL_master_pub,
         start,
-        GNUNET_TIME_absolute_ntoh (issue->expire_withdraw),
-        GNUNET_TIME_absolute_ntoh (issue->expire_deposit),
+        GNUNET_TIME_timestamp_ntoh (issue->expire_withdraw),
+        GNUNET_TIME_timestamp_ntoh (issue->expire_deposit),
         end,
         &coin_value,
         &fee_withdraw,
@@ -2267,9 +2272,9 @@ check_denomination (
                         TALER_JSON_pack_amount ("value",
                                                 &coin_value),
                         TALER_JSON_pack_time_abs_human ("start_time",
-                                                        start),
+                                                        start.abs_time),
                         TALER_JSON_pack_time_abs_human ("end_time",
-                                                        end)));
+                                                        end.abs_time)));
   }
 }
 

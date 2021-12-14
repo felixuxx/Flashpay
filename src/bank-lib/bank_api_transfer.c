@@ -170,7 +170,7 @@ handle_transfer_finished (void *cls,
   struct TALER_BANK_TransferHandle *th = cls;
   const json_t *j = response;
   uint64_t row_id = UINT64_MAX;
-  struct GNUNET_TIME_Absolute timestamp = GNUNET_TIME_UNIT_FOREVER_ABS;
+  struct GNUNET_TIME_Timestamp timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
   enum TALER_ErrorCode ec;
 
   th->job = NULL;
@@ -184,8 +184,8 @@ handle_transfer_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("row_id",
                                  &row_id),
-        TALER_JSON_spec_absolute_time ("timestamp",
-                                       &timestamp),
+        GNUNET_JSON_spec_timestamp ("timestamp",
+                                    &timestamp),
         GNUNET_JSON_spec_end ()
       };
 

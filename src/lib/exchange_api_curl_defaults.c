@@ -30,7 +30,10 @@ TALER_EXCHANGE_curl_easy_get_ (const char *url)
 
   eh = curl_easy_init ();
   if (NULL == eh)
+  {
+    GNUNET_break (0);
     return NULL;
+  }
   GNUNET_assert (CURLE_OK ==
                  curl_easy_setopt (eh,
                                    CURLOPT_URL,

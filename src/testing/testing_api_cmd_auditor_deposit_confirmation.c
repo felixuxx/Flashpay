@@ -204,11 +204,11 @@ deposit_confirmation_run (void *cls,
   const struct TALER_TESTING_Command *deposit_cmd;
   struct TALER_MerchantWireHash h_wire;
   struct TALER_PrivateContractHash h_contract_terms;
-  const struct GNUNET_TIME_Absolute *exchange_timestamp = NULL;
-  struct GNUNET_TIME_Absolute timestamp;
-  const struct GNUNET_TIME_Absolute *wire_deadline;
-  struct GNUNET_TIME_Absolute refund_deadline
-    = GNUNET_TIME_UNIT_ZERO_ABS;
+  const struct GNUNET_TIME_Timestamp *exchange_timestamp = NULL;
+  struct GNUNET_TIME_Timestamp timestamp;
+  const struct GNUNET_TIME_Timestamp *wire_deadline;
+  struct GNUNET_TIME_Timestamp refund_deadline
+    = GNUNET_TIME_UNIT_ZERO_TS;
   struct TALER_Amount amount_without_fee;
   struct TALER_CoinSpendPublicKeyP coin_pub;
   const struct TALER_MerchantPrivateKeyP *merchant_priv;
@@ -243,9 +243,9 @@ deposit_confirmation_run (void *cls,
                                                        dcs->coin_index,
                                                        &exchange_sig));
   GNUNET_assert (GNUNET_OK ==
-                 TALER_TESTING_get_trait_absolute_time (deposit_cmd,
-                                                        dcs->coin_index,
-                                                        &exchange_timestamp));
+                 TALER_TESTING_get_trait_timestamp (deposit_cmd,
+                                                    dcs->coin_index,
+                                                    &exchange_timestamp));
   GNUNET_assert (GNUNET_OK ==
                  TALER_TESTING_get_trait_wire_deadline (deposit_cmd,
                                                         dcs->coin_index,
@@ -287,11 +287,11 @@ deposit_confirmation_run (void *cls,
   {
     struct GNUNET_JSON_Specification spec[] = {
       /* timestamp is mandatory */
-      TALER_JSON_spec_absolute_time ("timestamp",
-                                     &timestamp),
+      GNUNET_JSON_spec_timestamp ("timestamp",
+                                  &timestamp),
       GNUNET_JSON_spec_mark_optional (
-        TALER_JSON_spec_absolute_time ("refund_deadline",
-                                       &refund_deadline)),
+        GNUNET_JSON_spec_timestamp ("refund_deadline",
+                                    &refund_deadline)),
       GNUNET_JSON_spec_end ()
     };
 
@@ -304,7 +304,7 @@ deposit_confirmation_run (void *cls,
       TALER_TESTING_interpreter_fail (is);
       return;
     }
-    if (0 == refund_deadline.abs_value_us)
+    if (GNUNET_TIME_absolute_is_zero (refund_deadline.abs_time))
       refund_deadline = timestamp;
   }
   dcs->dc = TALER_AUDITOR_deposit_confirmation (dcs->auditor,

@@ -86,12 +86,12 @@ TALER_EXCHANGE_parse_reserve_history (
     {
       const char *wire_url;
       uint64_t wire_reference;
-      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_TIME_Timestamp timestamp;
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_uint64 ("wire_reference",
                                  &wire_reference),
-        TALER_JSON_spec_absolute_time ("timestamp",
-                                       &timestamp),
+        GNUNET_JSON_spec_timestamp ("timestamp",
+                                    &timestamp),
         GNUNET_JSON_spec_string ("sender_account_url",
                                  &wire_url),
         GNUNET_JSON_spec_end ()
@@ -226,7 +226,7 @@ TALER_EXCHANGE_parse_reserve_history (
                               "RECOUP"))
     {
       struct TALER_RecoupConfirmationPS pc;
-      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_TIME_Timestamp timestamp;
       const struct TALER_EXCHANGE_Keys *key_state;
       struct GNUNET_JSON_Specification recoup_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_pub",
@@ -235,8 +235,8 @@ TALER_EXCHANGE_parse_reserve_history (
                                      &rh->details.recoup_details.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &rh->details.recoup_details.exchange_pub),
-        TALER_JSON_spec_absolute_time_nbo ("timestamp",
-                                           &pc.timestamp),
+        GNUNET_JSON_spec_timestamp_nbo ("timestamp",
+                                        &pc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -256,7 +256,7 @@ TALER_EXCHANGE_parse_reserve_history (
       pc.purpose.size = htonl (sizeof (pc));
       pc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP);
       pc.reserve_pub = *reserve_pub;
-      timestamp = GNUNET_TIME_absolute_ntoh (pc.timestamp);
+      timestamp = GNUNET_TIME_timestamp_ntoh (pc.timestamp);
       rh->details.recoup_details.timestamp = timestamp;
 
       key_state = TALER_EXCHANGE_get_keys (exchange);
@@ -294,7 +294,7 @@ TALER_EXCHANGE_parse_reserve_history (
     {
       const struct TALER_EXCHANGE_Keys *key_state;
       struct TALER_ReserveCloseConfirmationPS rcc;
-      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_TIME_Timestamp timestamp;
       struct GNUNET_JSON_Specification closing_spec[] = {
         GNUNET_JSON_spec_string (
           "receiver_account_details",
@@ -307,8 +307,8 @@ TALER_EXCHANGE_parse_reserve_history (
                                      &rh->details.close_details.exchange_pub),
         TALER_JSON_spec_amount_any_nbo ("closing_fee",
                                         &rcc.closing_fee),
-        TALER_JSON_spec_absolute_time_nbo ("timestamp",
-                                           &rcc.timestamp),
+        GNUNET_JSON_spec_timestamp_nbo ("timestamp",
+                                        &rcc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -330,7 +330,7 @@ TALER_EXCHANGE_parse_reserve_history (
       rcc.purpose.size = htonl (sizeof (rcc));
       rcc.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED);
       rcc.reserve_pub = *reserve_pub;
-      timestamp = GNUNET_TIME_absolute_ntoh (rcc.timestamp);
+      timestamp = GNUNET_TIME_timestamp_ntoh (rcc.timestamp);
       rh->details.close_details.timestamp = timestamp;
       TALER_amount_ntoh (&rh->details.close_details.fee,
                          &rcc.closing_fee);
@@ -478,9 +478,9 @@ TALER_EXCHANGE_verify_coin_history (
       struct TALER_MerchantWireHash h_wire;
       struct TALER_PrivateContractHash h_contract_terms;
       // struct TALER_ExtensionContractHash h_extensions; // FIXME!
-      struct GNUNET_TIME_Absolute wallet_timestamp;
+      struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct TALER_MerchantPublicKeyP merchant_pub;
-      struct GNUNET_TIME_Absolute refund_deadline = {0};
+      struct GNUNET_TIME_Timestamp refund_deadline = {0};
       struct TALER_CoinSpendSignatureP sig;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
@@ -491,11 +491,11 @@ TALER_EXCHANGE_verify_coin_history (
                                      &h_wire),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      h_denom_pub),
-        TALER_JSON_spec_absolute_time ("timestamp",
-                                       &wallet_timestamp),
+        GNUNET_JSON_spec_timestamp ("timestamp",
+                                    &wallet_timestamp),
         GNUNET_JSON_spec_mark_optional (
-          TALER_JSON_spec_absolute_time ("refund_deadline",
-                                         &refund_deadline)),
+          GNUNET_JSON_spec_timestamp ("refund_deadline",
+                                      &refund_deadline)),
         TALER_JSON_spec_amount_any ("deposit_fee",
                                     &fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
@@ -711,8 +711,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      &rr.coin_blind),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      &rr.h_denom_pub),
-        TALER_JSON_spec_absolute_time_nbo ("timestamp",
-                                           &pc.timestamp),
+        GNUNET_JSON_spec_timestamp_nbo ("timestamp",
+                                        &pc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -781,8 +781,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      &rr.coin_blind),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      &rr.h_denom_pub),
-        TALER_JSON_spec_absolute_time_nbo ("timestamp",
-                                           &pc.timestamp),
+        GNUNET_JSON_spec_timestamp_nbo ("timestamp",
+                                        &pc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -840,8 +840,8 @@ TALER_EXCHANGE_verify_coin_history (
                                      &exchange_pub),
         GNUNET_JSON_spec_fixed_auto ("coin_pub",
                                      &pc.coin_pub),
-        TALER_JSON_spec_absolute_time_nbo ("timestamp",
-                                           &pc.timestamp),
+        GNUNET_JSON_spec_timestamp_nbo ("timestamp",
+                                        &pc.timestamp),
         GNUNET_JSON_spec_end ()
       };
 

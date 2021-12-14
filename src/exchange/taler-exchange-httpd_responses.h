@@ -77,7 +77,7 @@ MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
   const struct TALER_DenominationHash *dph,
-  struct GNUNET_TIME_Absolute now,
+  struct GNUNET_TIME_Timestamp now,
   enum TALER_ErrorCode ec,
   const char *oper);
 

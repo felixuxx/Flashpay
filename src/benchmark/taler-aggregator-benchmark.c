@@ -86,12 +86,12 @@ static struct TALER_DenominationSignature denom_sig;
 /**
  * Time range when deposits start.
  */
-static struct GNUNET_TIME_Absolute start;
+static struct GNUNET_TIME_Timestamp start;
 
 /**
  * Time range when deposits end.
  */
-static struct GNUNET_TIME_Absolute end;
+static struct GNUNET_TIME_Timestamp end;
 
 
 /**
@@ -171,18 +171,17 @@ make_amountN (unsigned int val,
  *
  * @return time stamp between start and end
  */
-static struct GNUNET_TIME_Absolute
+static struct GNUNET_TIME_Timestamp
 random_time (void)
 {
   uint64_t delta;
   struct GNUNET_TIME_Absolute ret;
 
-  delta = end.abs_value_us - start.abs_value_us;
+  delta = end.abs_time.abs_value_us - start.abs_time.abs_value_us;
   delta = GNUNET_CRYPTO_random_u64 (GNUNET_CRYPTO_QUALITY_NONCE,
                                     delta);
-  ret.abs_value_us = start.abs_value_us + delta;
-  (void) GNUNET_TIME_round_abs (&ret);
-  return ret;
+  ret.abs_value_us = start.abs_time.abs_value_us + delta;
+  return GNUNET_TIME_absolute_to_timestamp (ret);
 }
 
 
@@ -433,11 +432,10 @@ run (void *cls,
   /* make sure everything 'ends' before the current time,
      so that the aggregator will process everything without
      need for time-travel */
-  end = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&end);
-  start = GNUNET_TIME_absolute_subtract (end,
-                                         GNUNET_TIME_UNIT_MONTHS);
-  (void) GNUNET_TIME_round_abs (&start);
+  end = GNUNET_TIME_timestamp_get ();
+  start = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_subtract (end.abs_time,
+                                   GNUNET_TIME_UNIT_MONTHS));
   cfg = c;
   if (GNUNET_OK !=
       TALER_config_get_currency (cfg,
@@ -467,17 +465,19 @@ run (void *cls,
   issue.properties.purpose.size = htonl (sizeof (issue.properties));
   RANDOMIZE (&issue.properties.master);
   issue.properties.start
-    = GNUNET_TIME_absolute_hton (start);
+    = GNUNET_TIME_timestamp_hton (start);
   issue.properties.expire_withdraw
-    = GNUNET_TIME_absolute_hton (
-        GNUNET_TIME_absolute_add (start,
-                                  GNUNET_TIME_UNIT_DAYS));
+    = GNUNET_TIME_timestamp_hton (
+        GNUNET_TIME_absolute_to_timestamp (
+          GNUNET_TIME_absolute_add (start.abs_time,
+                                    GNUNET_TIME_UNIT_DAYS)));
   issue.properties.expire_deposit
-    = GNUNET_TIME_absolute_hton (end);
+    = GNUNET_TIME_timestamp_hton (end);
   issue.properties.expire_legal
-    = GNUNET_TIME_absolute_hton (
-        GNUNET_TIME_absolute_add (end,
-                                  GNUNET_TIME_UNIT_YEARS));
+    = GNUNET_TIME_timestamp_hton (
+        GNUNET_TIME_absolute_to_timestamp (
+          GNUNET_TIME_absolute_add (end.abs_time,
+                                    GNUNET_TIME_UNIT_YEARS)));
   {
     struct TALER_DenominationPrivateKey pk;
     struct TALER_DenominationPublicKey denom_pub;
@@ -541,14 +541,14 @@ run (void *cls,
     struct TALER_Amount wire_fee;
     struct TALER_MasterSignatureP master_sig;
     unsigned int year;
-    struct GNUNET_TIME_Absolute ws;
-    struct GNUNET_TIME_Absolute we;
+    struct GNUNET_TIME_Timestamp ws;
+    struct GNUNET_TIME_Timestamp we;
 
     year = GNUNET_TIME_get_current_year ();
     for (unsigned int y = year - 1; y<year + 2; y++)
     {
-      ws = GNUNET_TIME_year_to_time (y - 1);
-      we = GNUNET_TIME_year_to_time (y);
+      ws = GNUNET_TIME_absolute_to_timestamp (GNUNET_TIME_year_to_time (y - 1));
+      we = GNUNET_TIME_absolute_to_timestamp (GNUNET_TIME_year_to_time (y));
       make_amount (0, 5, &wire_fee);
       memset (&master_sig,
               0,

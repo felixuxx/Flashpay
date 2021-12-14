@@ -60,7 +60,7 @@ struct MeltedCoin
   /**
    * Timestamp indicating when coins of this denomination become invalid.
    */
-  struct GNUNET_TIME_Absolute expire_deposit;
+  struct GNUNET_TIME_Timestamp expire_deposit;
 
   /**
    * Denomination key of the original coin.

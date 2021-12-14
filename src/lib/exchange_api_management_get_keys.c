@@ -23,6 +23,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
+#include "exchange_api_curl_defaults.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
 #include "taler_crypto_lib.h"
@@ -124,12 +125,12 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                    &sign_key->key),
       GNUNET_JSON_spec_fixed_auto ("signkey_secmod_sig",
                                    &sign_key->signkey_secmod_sig),
-      TALER_JSON_spec_absolute_time ("stamp_start",
-                                     &sign_key->valid_from),
-      TALER_JSON_spec_absolute_time ("stamp_expire",
-                                     &sign_key->valid_until),
-      TALER_JSON_spec_absolute_time ("stamp_end",
-                                     &sign_key->valid_legal),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &sign_key->valid_from),
+      GNUNET_JSON_spec_timestamp ("stamp_expire",
+                                  &sign_key->valid_until),
+      GNUNET_JSON_spec_timestamp ("stamp_end",
+                                  &sign_key->valid_legal),
       GNUNET_JSON_spec_end ()
     };
 
@@ -144,8 +145,8 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     }
     {
       struct GNUNET_TIME_Relative duration
-        = GNUNET_TIME_absolute_get_difference (sign_key->valid_from,
-                                               sign_key->valid_until);
+        = GNUNET_TIME_absolute_get_difference (sign_key->valid_from.abs_time,
+                                               sign_key->valid_until.abs_time);
 
       if (GNUNET_OK !=
           TALER_exchange_secmod_eddsa_verify (
@@ -171,14 +172,14 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     struct GNUNET_JSON_Specification spec[] = {
       TALER_JSON_spec_amount_any ("value",
                                   &denom_key->value),
-      TALER_JSON_spec_absolute_time ("stamp_start",
-                                     &denom_key->valid_from),
-      TALER_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                     &denom_key->withdraw_valid_until),
-      TALER_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                     &denom_key->expire_deposit),
-      TALER_JSON_spec_absolute_time ("stamp_expire_legal",
-                                     &denom_key->expire_legal),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &denom_key->valid_from),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                  &denom_key->withdraw_valid_until),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                  &denom_key->expire_deposit),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                  &denom_key->expire_legal),
       TALER_JSON_spec_denom_pub ("denom_pub",
                                  &denom_key->key),
       TALER_JSON_spec_amount_any ("fee_withdraw",
@@ -214,8 +215,9 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
     {
       struct TALER_DenominationHash h_denom_pub;
       struct GNUNET_TIME_Relative duration
-        = GNUNET_TIME_absolute_get_difference (denom_key->valid_from,
-                                               denom_key->withdraw_valid_until);
+        = GNUNET_TIME_absolute_get_difference (
+            denom_key->valid_from.abs_time,
+            denom_key->withdraw_valid_until.abs_time);
 
       TALER_denom_pub_hash (&denom_key->key,
                             &h_denom_pub);
@@ -335,16 +337,6 @@ handle_get_keys_finished (void *cls,
 };
 
 
-/**
- * Request future keys from the exchange.  The obtained information will be
- * passed to the @a cb.
- *
- * @param ctx the context
- * @param url HTTP base URL for the exchange
- * @param cb function to call with the exchange's future keys result
- * @param cb_cls closure for @a cb
- * @return the request handle; NULL upon error
- */
 struct TALER_EXCHANGE_ManagementGetKeysHandle *
 TALER_EXCHANGE_get_management_keys (struct GNUNET_CURL_Context *ctx,
                                     const char *url,
@@ -368,14 +360,10 @@ TALER_EXCHANGE_get_management_keys (struct GNUNET_CURL_Context *ctx,
     GNUNET_free (gh);
     return NULL;
   }
-  eh = curl_easy_init ();
+  eh = TALER_EXCHANGE_curl_easy_get_ (gh->url);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting URL '%s'\n",
               gh->url);
-  GNUNET_assert (CURLE_OK ==
-                 curl_easy_setopt (eh,
-                                   CURLOPT_URL,
-                                   gh->url));
   gh->job = GNUNET_CURL_job_add (ctx,
                                  eh,
                                  &handle_get_keys_finished,
@@ -389,11 +377,6 @@ TALER_EXCHANGE_get_management_keys (struct GNUNET_CURL_Context *ctx,
 }
 
 
-/**
- * Cancel #TALER_EXCHANGE_get_management_keys() operation.
- *
- * @param gh handle of the operation to cancel
- */
 void
 TALER_EXCHANGE_get_management_keys_cancel (
   struct TALER_EXCHANGE_ManagementGetKeysHandle *gh)

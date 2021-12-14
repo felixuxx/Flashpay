@@ -297,12 +297,12 @@ struct WireFeeInfo
   /**
    * When does the fee go into effect (inclusive).
    */
-  struct GNUNET_TIME_Absolute start_date;
+  struct GNUNET_TIME_Timestamp start_date;
 
   /**
    * When does the fee stop being in effect (exclusive).
    */
-  struct GNUNET_TIME_Absolute end_date;
+  struct GNUNET_TIME_Timestamp end_date;
 
   /**
    * How high is the wire fee.
@@ -365,7 +365,7 @@ struct WireCheckContext
   /**
    * Execution time of the wire transfer.
    */
-  struct GNUNET_TIME_Absolute date;
+  struct GNUNET_TIME_Timestamp date;
 
   /**
    * Database transaction status.
@@ -698,7 +698,7 @@ wire_transfer_information_cb (
   uint64_t rowid,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const char *account_pay_uri,
-  struct GNUNET_TIME_Absolute exec_time,
+  struct GNUNET_TIME_Timestamp exec_time,
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_DenominationPublicKey *denom_pub,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -849,7 +849,9 @@ wire_transfer_information_cb (
                               rowid,
                               "target of outgoing wire transfer do not match hash of wire from deposit");
   }
-  if (exec_time.abs_value_us != wcc->date.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (exec_time,
+                                 !=,
+                                 wcc->date) )
   {
     /* This should be impossible from database constraints */
     GNUNET_break (0);
@@ -881,7 +883,7 @@ wire_transfer_information_cb (
 static const struct TALER_Amount *
 get_wire_fee (struct AggregationContext *ac,
               const char *method,
-              struct GNUNET_TIME_Absolute timestamp)
+              struct GNUNET_TIME_Timestamp timestamp)
 {
   struct WireFeeInfo *wfi;
   struct WireFeeInfo *pos;
@@ -890,10 +892,16 @@ get_wire_fee (struct AggregationContext *ac,
   /* Check if fee is already loaded in cache */
   for (pos = ac->fee_head; NULL != pos; pos = pos->next)
   {
-    if ( (pos->start_date.abs_value_us <= timestamp.abs_value_us) &&
-         (pos->end_date.abs_value_us > timestamp.abs_value_us) )
+    if (GNUNET_TIME_timestamp_cmp (pos->start_date,
+                                   <=,
+                                   timestamp) &&
+        GNUNET_TIME_timestamp_cmp (pos->end_date,
+                                   >,
+                                   timestamp) )
       return &pos->wire_fee;
-    if (pos->start_date.abs_value_us > timestamp.abs_value_us)
+    if (GNUNET_TIME_timestamp_cmp (pos->start_date,
+                                   >,
+                                   timestamp))
       break;
   }
 
@@ -929,7 +937,7 @@ get_wire_fee (struct AggregationContext *ac,
           &master_sig))
     {
       report_row_inconsistency ("wire-fee",
-                                timestamp.abs_value_us,
+                                timestamp.abs_time.abs_value_us,
                                 "wire fee signature invalid at given time");
     }
   }
@@ -938,7 +946,7 @@ get_wire_fee (struct AggregationContext *ac,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Wire fee is %s starting at %s\n",
               TALER_amount2s (&wfi->wire_fee),
-              GNUNET_STRINGS_absolute_time_to_string (wfi->start_date));
+              GNUNET_TIME_timestamp2s (wfi->start_date));
   if ( (NULL == pos) ||
        (NULL == pos->prev) )
     GNUNET_CONTAINER_DLL_insert (ac->fee_head,
@@ -951,7 +959,9 @@ get_wire_fee (struct AggregationContext *ac,
                                        wfi);
   /* Check non-overlaping fee invariant */
   if ( (NULL != wfi->prev) &&
-       (wfi->prev->end_date.abs_value_us > wfi->start_date.abs_value_us) )
+       GNUNET_TIME_timestamp_cmp (wfi->prev->end_date,
+                                  >,
+                                  wfi->start_date) )
   {
     TALER_ARL_report (report_fee_time_inconsistencies,
                       GNUNET_JSON_PACK (
@@ -960,10 +970,12 @@ get_wire_fee (struct AggregationContext *ac,
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  "start date before previous end date"),
                         TALER_JSON_pack_time_abs_human ("time",
-                                                        wfi->start_date)));
+                                                        wfi->start_date.abs_time)));
   }
   if ( (NULL != wfi->next) &&
-       (wfi->next->start_date.abs_value_us >= wfi->end_date.abs_value_us) )
+       GNUNET_TIME_timestamp_cmp (wfi->next->start_date,
+                                  >=,
+                                  wfi->end_date) )
   {
     TALER_ARL_report (report_fee_time_inconsistencies,
                       GNUNET_JSON_PACK (
@@ -972,7 +984,7 @@ get_wire_fee (struct AggregationContext *ac,
                         GNUNET_JSON_pack_string ("diagnostic",
                                                  "end date date after next start date"),
                         TALER_JSON_pack_time_abs_human ("time",
-                                                        wfi->end_date)));
+                                                        wfi->end_date.abs_time)));
   }
   return &wfi->wire_fee;
 }
@@ -993,7 +1005,7 @@ get_wire_fee (struct AggregationContext *ac,
 static enum GNUNET_GenericReturnValue
 check_wire_out_cb (void *cls,
                    uint64_t rowid,
-                   struct GNUNET_TIME_Absolute date,
+                   struct GNUNET_TIME_Timestamp date,
                    const struct TALER_WireTransferIdentifierRawP *wtid,
                    const char *payto_uri,
                    const struct TALER_Amount *amount)
@@ -1013,7 +1025,7 @@ check_wire_out_cb (void *cls,
               "Checking wire transfer %s over %s performed on %s\n",
               TALER_B2S (wtid),
               TALER_amount2s (amount),
-              GNUNET_STRINGS_absolute_time_to_string (date));
+              GNUNET_TIME_timestamp2s (date));
   if (NULL == (method = TALER_payto_get_method (payto_uri)))
   {
     report_row_inconsistency ("wire_out",
@@ -1062,7 +1074,7 @@ check_wire_out_cb (void *cls,
     if (NULL == wire_fee)
     {
       report_row_inconsistency ("wire-fee",
-                                date.abs_value_us,
+                                date.abs_time.abs_value_us,
                                 "wire fee unavailable for given time");
       /* If fee is unknown, we just assume the fee is zero */
       final_amount = wcc.total_deposits;

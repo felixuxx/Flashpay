@@ -100,13 +100,13 @@ struct TALER_EXCHANGE_DepositHandle
    * Time when this confirmation was generated / when the exchange received
    * the deposit request.
    */
-  struct GNUNET_TIME_Absolute exchange_timestamp;
+  struct GNUNET_TIME_Timestamp exchange_timestamp;
 
   /**
    * By when does the exchange expect to pay the merchant
    * (as per the merchant's request).
    */
-  struct GNUNET_TIME_Absolute wire_deadline;
+  struct GNUNET_TIME_Timestamp wire_deadline;
 
   /**
    * How much time does the @e merchant have to issue a refund
@@ -115,7 +115,7 @@ struct TALER_EXCHANGE_DepositHandle
    * performed by the exchange until the refund deadline.  This value
    * is taken from the original deposit request.
    */
-  struct GNUNET_TIME_Absolute refund_deadline;
+  struct GNUNET_TIME_Timestamp refund_deadline;
 
   /**
    * Amount to be deposited, excluding fee.  Calculated from the
@@ -334,8 +334,8 @@ handle_deposit_finished (void *cls,
         GNUNET_JSON_spec_mark_optional (
           GNUNET_JSON_spec_string ("transaction_base_url",
                                    &dr.details.success.transaction_base_url)),
-        TALER_JSON_spec_absolute_time ("exchange_timestamp",
-                                       &dh->exchange_timestamp),
+        GNUNET_JSON_spec_timestamp ("exchange_timestamp",
+                                    &dh->exchange_timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -481,9 +481,9 @@ verify_signatures (const struct TALER_EXCHANGE_DenomPublicKey *dki,
                    const struct TALER_DenominationSignature *denom_sig,
                    const struct TALER_DenominationPublicKey *denom_pub,
                    const struct TALER_DenominationHash *denom_pub_hash,
-                   struct GNUNET_TIME_Absolute timestamp,
+                   struct GNUNET_TIME_Timestamp timestamp,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
-                   struct GNUNET_TIME_Absolute refund_deadline,
+                   struct GNUNET_TIME_Timestamp refund_deadline,
                    const struct TALER_CoinSpendSignatureP *coin_sig)
 {
   if (GNUNET_OK !=
@@ -543,7 +543,7 @@ struct TALER_EXCHANGE_DepositHandle *
 TALER_EXCHANGE_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_Amount *amount,
-  struct GNUNET_TIME_Absolute wire_deadline,
+  struct GNUNET_TIME_Timestamp wire_deadline,
   const char *merchant_payto_uri,
   const struct TALER_WireSalt *wire_salt,
   const struct TALER_PrivateContractHash *h_contract_terms,
@@ -551,9 +551,9 @@ TALER_EXCHANGE_deposit (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_DenominationPublicKey *denom_pub,
-  struct GNUNET_TIME_Absolute timestamp,
+  struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_CoinSpendSignatureP *coin_sig,
   TALER_EXCHANGE_DepositResultCallback cb,
   void *cb_cls,
@@ -589,9 +589,9 @@ TALER_EXCHANGE_deposit (
                      "/coins/%s/deposit",
                      pub_str);
   }
-  (void) GNUNET_TIME_round_abs (&wire_deadline);
-  (void) GNUNET_TIME_round_abs (&refund_deadline);
-  if (refund_deadline.abs_value_us > wire_deadline.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (refund_deadline,
+                                 >,
+                                 wire_deadline))
   {
     GNUNET_break_op (0);
     *ec = TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE;
@@ -658,15 +658,15 @@ TALER_EXCHANGE_deposit (
                                 &denom_pub_hash),
     TALER_JSON_pack_denom_sig ("ub_sig",
                                denom_sig),
-    GNUNET_JSON_pack_time_abs ("timestamp",
-                               timestamp),
+    GNUNET_JSON_pack_timestamp ("timestamp",
+                                timestamp),
     GNUNET_JSON_pack_data_auto ("merchant_pub",
                                 merchant_pub),
     GNUNET_JSON_pack_allow_null (
-      GNUNET_JSON_pack_time_abs ("refund_deadline",
-                                 refund_deadline)),
-    GNUNET_JSON_pack_time_abs ("wire_transfer_deadline",
-                               wire_deadline),
+      GNUNET_JSON_pack_timestamp ("refund_deadline",
+                                  refund_deadline)),
+    GNUNET_JSON_pack_timestamp ("wire_transfer_deadline",
+                                wire_deadline),
     GNUNET_JSON_pack_data_auto ("coin_sig",
                                 coin_sig));
   dh = GNUNET_new (struct TALER_EXCHANGE_DepositHandle);

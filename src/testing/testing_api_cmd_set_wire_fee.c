@@ -119,19 +119,20 @@ wire_add_run (void *cls,
   struct WireFeeState *ds = cls;
   struct TALER_MasterSignatureP master_sig;
   struct GNUNET_TIME_Absolute now;
-  struct GNUNET_TIME_Absolute start_time;
-  struct GNUNET_TIME_Absolute end_time;
+  struct GNUNET_TIME_Timestamp start_time;
+  struct GNUNET_TIME_Timestamp end_time;
   struct TALER_Amount wire_fee;
   struct TALER_Amount closing_fee;
 
   (void) cmd;
   ds->is = is;
   now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-  start_time = GNUNET_TIME_absolute_subtract (now,
-                                              GNUNET_TIME_UNIT_HOURS);
-  end_time = GNUNET_TIME_absolute_add (now,
-                                       GNUNET_TIME_UNIT_HOURS);
+  start_time = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_subtract (now,
+                                   GNUNET_TIME_UNIT_HOURS));
+  end_time = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (now,
+                              GNUNET_TIME_UNIT_HOURS));
   if ( (GNUNET_OK !=
         TALER_string_to_amount (ds->closing_fee,
                                 &closing_fee)) ||

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2018, 2020 Taler Systems SA
+  (C) 2018, 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -55,7 +55,7 @@ struct CheckKeysState
   /**
    * Last denomination date we received when doing this request.
    */
-  struct GNUNET_TIME_Absolute my_denom_date;
+  struct GNUNET_TIME_Timestamp my_denom_date;
 };
 
 
@@ -80,7 +80,7 @@ check_keys_run (void *cls,
               is->key_generation);
   if (is->key_generation < cks->generation)
   {
-    struct GNUNET_TIME_Absolute rdate;
+    struct GNUNET_TIME_Timestamp rdate;
 
     is->working = GNUNET_NO;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -93,11 +93,11 @@ check_keys_run (void *cls,
       {
         TALER_LOG_DEBUG ("Forcing last_denom_date URL argument set to zero\n");
         TALER_EXCHANGE_set_last_denom (is->exchange,
-                                       GNUNET_TIME_UNIT_ZERO_ABS);
+                                       GNUNET_TIME_UNIT_ZERO_TS);
       }
       else
       {
-        const struct GNUNET_TIME_Absolute *last_denom_date;
+        const struct GNUNET_TIME_Timestamp *last_denom_date;
         const struct TALER_TESTING_Command *ref;
 
         ref = TALER_TESTING_interpreter_lookup_command (is,
@@ -109,9 +109,9 @@ check_keys_run (void *cls,
           return;
         }
         if (GNUNET_OK !=
-            TALER_TESTING_get_trait_absolute_time (ref,
-                                                   0,
-                                                   &last_denom_date))
+            TALER_TESTING_get_trait_timestamp (ref,
+                                               0,
+                                               &last_denom_date))
         {
           GNUNET_break (0);
           TALER_TESTING_interpreter_fail (is);
@@ -130,8 +130,7 @@ check_keys_run (void *cls,
       ? TALER_EXCHANGE_CKF_FORCE_ALL_NOW
       : TALER_EXCHANGE_CKF_FORCE_DOWNLOAD);
     /* Redownload /keys.  */
-    GNUNET_break (0 ==
-                  rdate.abs_value_us);
+    GNUNET_break (GNUNET_TIME_absolute_is_zero (rdate.abs_time));
     return;
   }
   {
@@ -186,8 +185,8 @@ check_keys_traits (void *cls,
   struct CheckKeysState *cks = cls;
   struct TALER_TESTING_Trait traits[] = {
     /* history entry MUST be first due to response code logic below! */
-    TALER_TESTING_make_trait_absolute_time (0,
-                                            &cks->my_denom_date),
+    TALER_TESTING_make_trait_timestamp (0,
+                                        &cks->my_denom_date),
     TALER_TESTING_trait_end ()
   };
 

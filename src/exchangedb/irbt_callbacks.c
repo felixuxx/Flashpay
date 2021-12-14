@@ -43,13 +43,13 @@ irbt_cb_table_denominations (struct PostgresClosure *pg,
       &td->details.denominations.denom_pub),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.denominations.master_sig),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.denominations.valid_from),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.denominations.expire_withdraw),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.denominations.expire_deposit),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.denominations.expire_legal),
     TALER_PQ_query_param_amount (&td->details.denominations.coin),
     TALER_PQ_query_param_amount (
@@ -144,8 +144,8 @@ irbt_cb_table_reserves (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_auto_from_type (&td->details.reserves.reserve_pub),
     TALER_PQ_query_param_amount (&td->details.reserves.current_balance),
-    TALER_PQ_query_param_absolute_time (&td->details.reserves.expiration_date),
-    TALER_PQ_query_param_absolute_time (&td->details.reserves.gc_date),
+    GNUNET_PQ_query_param_timestamp (&td->details.reserves.expiration_date),
+    GNUNET_PQ_query_param_timestamp (&td->details.reserves.gc_date),
     GNUNET_PQ_query_param_end
   };
 
@@ -172,7 +172,7 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.sender_account),
     GNUNET_PQ_query_param_string (
       td->details.reserves_in.exchange_account_section),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.reserves_in.execution_date),
     GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.reserve_uuid),
     GNUNET_PQ_query_param_end
@@ -196,7 +196,7 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.reserves_close.execution_date),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_close.wtid),
@@ -236,7 +236,7 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
       &td->details.reserves_out.reserve_uuid),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_out.reserve_sig),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.reserves_out.execution_date),
     TALER_PQ_query_param_amount (
       &td->details.reserves_out.amount_with_fee),
@@ -266,7 +266,7 @@ irbt_cb_table_auditors (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_string (td->details.auditors.auditor_name),
     GNUNET_PQ_query_param_string (td->details.auditors.auditor_url),
     GNUNET_PQ_query_param_auto_from_type (&is_active),
-    GNUNET_PQ_query_param_absolute_time (&td->details.auditors.last_change),
+    GNUNET_PQ_query_param_timestamp (&td->details.auditors.last_change),
     GNUNET_PQ_query_param_end
   };
 
@@ -318,11 +318,11 @@ irbt_cb_table_exchange_sign_keys (struct PostgresClosure *pg,
       &td->details.exchange_sign_keys.exchange_pub),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.exchange_sign_keys.master_sig),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.exchange_sign_keys.meta.start),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.exchange_sign_keys.meta.expire_sign),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (
       &td->details.exchange_sign_keys.meta.expire_legal),
     GNUNET_PQ_query_param_end
   };
@@ -503,11 +503,11 @@ irbt_cb_table_deposits (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_uint64 (&td->details.deposits.shard),
     GNUNET_PQ_query_param_uint64 (&td->details.deposits.known_coin_id),
     TALER_PQ_query_param_amount (&td->details.deposits.amount_with_fee),
-    TALER_PQ_query_param_absolute_time (&td->details.deposits.wallet_timestamp),
-    TALER_PQ_query_param_absolute_time (
+    GNUNET_PQ_query_param_timestamp (&td->details.deposits.wallet_timestamp),
+    GNUNET_PQ_query_param_timestamp (
       &td->details.deposits.exchange_timestamp),
-    TALER_PQ_query_param_absolute_time (&td->details.deposits.refund_deadline),
-    TALER_PQ_query_param_absolute_time (&td->details.deposits.wire_deadline),
+    GNUNET_PQ_query_param_timestamp (&td->details.deposits.refund_deadline),
+    GNUNET_PQ_query_param_timestamp (&td->details.deposits.wire_deadline),
     GNUNET_PQ_query_param_auto_from_type (&td->details.deposits.merchant_pub),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.deposits.h_contract_terms),
@@ -565,7 +565,7 @@ irbt_cb_table_wire_out (struct PostgresClosure *pg,
 {
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
-    TALER_PQ_query_param_absolute_time (&td->details.wire_out.execution_date),
+    GNUNET_PQ_query_param_timestamp (&td->details.wire_out.execution_date),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wire_out.wtid_raw),
     GNUNET_PQ_query_param_uint64 (&td->details.wire_out.wire_target_serial_id),
     GNUNET_PQ_query_param_string (
@@ -618,8 +618,8 @@ irbt_cb_table_wire_fee (struct PostgresClosure *pg,
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_uint64 (&td->serial),
     GNUNET_PQ_query_param_string (td->details.wire_fee.wire_method),
-    TALER_PQ_query_param_absolute_time (&td->details.wire_fee.start_date),
-    TALER_PQ_query_param_absolute_time (&td->details.wire_fee.end_date),
+    GNUNET_PQ_query_param_timestamp (&td->details.wire_fee.start_date),
+    GNUNET_PQ_query_param_timestamp (&td->details.wire_fee.end_date),
     TALER_PQ_query_param_amount (&td->details.wire_fee.wire_fee),
     TALER_PQ_query_param_amount (&td->details.wire_fee.closing_fee),
     GNUNET_PQ_query_param_auto_from_type (&td->details.wire_fee.master_sig),
@@ -647,7 +647,7 @@ irbt_cb_table_recoup (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (&td->details.recoup.coin_sig),
     GNUNET_PQ_query_param_auto_from_type (&td->details.recoup.coin_blind),
     TALER_PQ_query_param_amount (&td->details.recoup.amount),
-    TALER_PQ_query_param_absolute_time (&td->details.recoup.timestamp),
+    GNUNET_PQ_query_param_timestamp (&td->details.recoup.timestamp),
     GNUNET_PQ_query_param_uint64 (&td->details.recoup.known_coin_id),
     GNUNET_PQ_query_param_uint64 (&td->details.recoup.reserve_out_serial_id),
     GNUNET_PQ_query_param_end
@@ -675,7 +675,7 @@ irbt_cb_table_recoup_refresh (struct PostgresClosure *pg,
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.recoup_refresh.coin_blind),
     TALER_PQ_query_param_amount (&td->details.recoup_refresh.amount),
-    TALER_PQ_query_param_absolute_time (&td->details.recoup_refresh.timestamp),
+    GNUNET_PQ_query_param_timestamp (&td->details.recoup_refresh.timestamp),
     GNUNET_PQ_query_param_uint64 (&td->details.recoup_refresh.known_coin_id),
     GNUNET_PQ_query_param_uint64 (&td->details.recoup_refresh.rrc_serial),
     GNUNET_PQ_query_param_end

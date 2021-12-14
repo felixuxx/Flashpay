@@ -70,17 +70,17 @@ struct TALER_EXCHANGE_SigningPublicKey
   /**
    * Validity start time
    */
-  struct GNUNET_TIME_Absolute valid_from;
+  struct GNUNET_TIME_Timestamp valid_from;
 
   /**
    * Validity expiration time (how long the exchange may use it).
    */
-  struct GNUNET_TIME_Absolute valid_until;
+  struct GNUNET_TIME_Timestamp valid_until;
 
   /**
    * Validity expiration time for legal disputes.
    */
-  struct GNUNET_TIME_Absolute valid_legal;
+  struct GNUNET_TIME_Timestamp valid_legal;
 };
 
 
@@ -107,18 +107,18 @@ struct TALER_EXCHANGE_DenomPublicKey
   /**
    * Timestamp indicating when the denomination key becomes valid
    */
-  struct GNUNET_TIME_Absolute valid_from;
+  struct GNUNET_TIME_Timestamp valid_from;
 
   /**
    * Timestamp indicating when the denomination key can’t be used anymore to
    * withdraw new coins.
    */
-  struct GNUNET_TIME_Absolute withdraw_valid_until;
+  struct GNUNET_TIME_Timestamp withdraw_valid_until;
 
   /**
    * Timestamp indicating when coins of this denomination become invalid.
    */
-  struct GNUNET_TIME_Absolute expire_deposit;
+  struct GNUNET_TIME_Timestamp expire_deposit;
 
   /**
    * When do signatures with this denomination key become invalid?
@@ -127,7 +127,7 @@ struct TALER_EXCHANGE_DenomPublicKey
    * of the evidence.  @e expire_legal is expected to be significantly
    * larger than @e expire_deposit (by a year or more).
    */
-  struct GNUNET_TIME_Absolute expire_legal;
+  struct GNUNET_TIME_Timestamp expire_legal;
 
   /**
    * The value of this denomination
@@ -273,14 +273,14 @@ struct TALER_EXCHANGE_Keys
   /**
    * Timestamp indicating the /keys generation.
    */
-  struct GNUNET_TIME_Absolute list_issue_date;
+  struct GNUNET_TIME_Timestamp list_issue_date;
 
   /**
    * Timestamp indicating the creation time of the last
    * denomination key in /keys.
    * Used to fetch /keys incrementally.
    */
-  struct GNUNET_TIME_Absolute last_denom_issue_date;
+  struct GNUNET_TIME_Timestamp last_denom_issue_date;
 
   /**
    * Length of the @e sign_keys array (number of valid entries).
@@ -491,7 +491,7 @@ TALER_EXCHANGE_get_keys (struct TALER_EXCHANGE_Handle *exchange);
  */
 void
 TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
-                               struct GNUNET_TIME_Absolute last_denom_new);
+                               struct GNUNET_TIME_Timestamp last_denom_new);
 
 
 /**
@@ -535,7 +535,7 @@ enum TALER_EXCHANGE_CheckKeysFlags
  * @param flags options controlling when to download what
  * @return until when the existing response is current, 0 if we are re-downloading now
  */
-struct GNUNET_TIME_Absolute
+struct GNUNET_TIME_Timestamp
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
                                    enum TALER_EXCHANGE_CheckKeysFlags flags);
 
@@ -663,12 +663,12 @@ struct TALER_EXCHANGE_WireAggregateFees
   /**
    * Time when this fee goes into effect (inclusive)
    */
-  struct GNUNET_TIME_Absolute start_date;
+  struct GNUNET_TIME_Timestamp start_date;
 
   /**
    * Time when this fee stops being in effect (exclusive).
    */
-  struct GNUNET_TIME_Absolute end_date;
+  struct GNUNET_TIME_Timestamp end_date;
 
   /**
    * Signature affirming the above fee structure.
@@ -789,9 +789,9 @@ TALER_EXCHANGE_deposit_permission_sign (
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-  struct GNUNET_TIME_Absolute wallet_timestamp,
+  struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   struct TALER_CoinSpendSignatureP *coin_sig);
 
 
@@ -824,7 +824,7 @@ struct TALER_EXCHANGE_DepositResult
       /**
        * Time when the exchange generated the deposit confirmation
        */
-      struct GNUNET_TIME_Absolute deposit_timestamp;
+      struct GNUNET_TIME_Timestamp deposit_timestamp;
 
       /**
        * signature provided by the exchange
@@ -910,7 +910,7 @@ struct TALER_EXCHANGE_DepositHandle *
 TALER_EXCHANGE_deposit (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_Amount *amount,
-  struct GNUNET_TIME_Absolute wire_deadline,
+  struct GNUNET_TIME_Timestamp wire_deadline,
   const char *merchant_payto_uri,
   const struct TALER_WireSalt *wire_salt,
   const struct TALER_PrivateContractHash *h_contract_terms,
@@ -918,9 +918,9 @@ TALER_EXCHANGE_deposit (
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_DenominationPublicKey *denom_pub,
-  struct GNUNET_TIME_Absolute timestamp,
+  struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_CoinSpendSignatureP *coin_sig,
   TALER_EXCHANGE_DepositResultCallback cb,
   void *cb_cls,
@@ -1102,7 +1102,7 @@ struct TALER_EXCHANGE_ReserveHistory
       /**
        * When did the wire transfer happen?
        */
-      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_TIME_Timestamp timestamp;
 
     } in_details;
 
@@ -1149,7 +1149,7 @@ struct TALER_EXCHANGE_ReserveHistory
       /**
        * When did the /recoup operation happen?
        */
-      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_TIME_Timestamp timestamp;
 
     } recoup_details;
 
@@ -1183,7 +1183,7 @@ struct TALER_EXCHANGE_ReserveHistory
       /**
        * When did the wire transfer happen?
        */
-      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_TIME_Timestamp timestamp;
 
       /**
        * Fee that was charged for the closing.
@@ -1716,7 +1716,7 @@ struct TALER_EXCHANGE_TransferData
   /**
    * time when the exchange claims to have performed the wire transfer
    */
-  struct GNUNET_TIME_Absolute execution_time;
+  struct GNUNET_TIME_Timestamp execution_time;
 
   /**
    * Actual amount of the wire transfer, excluding the wire fee.
@@ -1837,7 +1837,7 @@ struct TALER_EXCHANGE_GetDepositResponse
       /**
        * actual execution time for the wire transfer
        */
-      struct GNUNET_TIME_Absolute execution_time;
+      struct GNUNET_TIME_Timestamp execution_time;
 
       /**
        * contribution to the total amount by this coin, all zeros if exchange did not
@@ -1861,7 +1861,7 @@ struct TALER_EXCHANGE_GetDepositResponse
       /**
        * planned execution time for the wire transfer
        */
-      struct GNUNET_TIME_Absolute execution_time;
+      struct GNUNET_TIME_Timestamp execution_time;
 
       /**
        * Payment target that the merchant should use
@@ -2029,6 +2029,7 @@ typedef void
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param ps secret internals of the original planchet
+ * @param amount value remaining on the coin that is being recouped
  * @param was_refreshed true if the coin in @a ps was refreshed
  * @param recoup_cb the callback to call when the final result for this request is available
  * @param recoup_cb_cls closure for @a recoup_cb
@@ -2041,6 +2042,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
                        const struct TALER_DenominationSignature *denom_sig,
                        const struct TALER_PlanchetSecretsP *ps,
+                       const struct TALER_Amount *amount,
                        bool was_refreshed,
                        TALER_EXCHANGE_RecoupResultCallback recoup_cb,
                        void *recoup_cb_cls);
@@ -2091,7 +2093,7 @@ struct TALER_EXCHANGE_KycStatus
       /**
        * Time of the affirmation.
        */
-      struct GNUNET_TIME_Absolute timestamp;
+      struct GNUNET_TIME_Timestamp timestamp;
 
       /**
        * The signing public key used for @e exchange_sig.
@@ -2327,17 +2329,17 @@ struct TALER_EXCHANGE_FutureSigningPublicKey
   /**
    * Validity start time
    */
-  struct GNUNET_TIME_Absolute valid_from;
+  struct GNUNET_TIME_Timestamp valid_from;
 
   /**
    * Validity expiration time (how long the exchange may use it).
    */
-  struct GNUNET_TIME_Absolute valid_until;
+  struct GNUNET_TIME_Timestamp valid_until;
 
   /**
    * Validity expiration time for legal disputes.
    */
-  struct GNUNET_TIME_Absolute valid_legal;
+  struct GNUNET_TIME_Timestamp valid_legal;
 };
 
 
@@ -2359,18 +2361,18 @@ struct TALER_EXCHANGE_FutureDenomPublicKey
   /**
    * Timestamp indicating when the denomination key becomes valid
    */
-  struct GNUNET_TIME_Absolute valid_from;
+  struct GNUNET_TIME_Timestamp valid_from;
 
   /**
    * Timestamp indicating when the denomination key can’t be used anymore to
    * withdraw new coins.
    */
-  struct GNUNET_TIME_Absolute withdraw_valid_until;
+  struct GNUNET_TIME_Timestamp withdraw_valid_until;
 
   /**
    * Timestamp indicating when coins of this denomination become invalid.
    */
-  struct GNUNET_TIME_Absolute expire_deposit;
+  struct GNUNET_TIME_Timestamp expire_deposit;
 
   /**
    * When do signatures with this denomination key become invalid?
@@ -2379,7 +2381,7 @@ struct TALER_EXCHANGE_FutureDenomPublicKey
    * of the evidence.  @e expire_legal is expected to be significantly
    * larger than @e expire_deposit (by a year or more).
    */
-  struct GNUNET_TIME_Absolute expire_legal;
+  struct GNUNET_TIME_Timestamp expire_legal;
 
   /**
    * The value of this denomination
@@ -2750,7 +2752,7 @@ TALER_EXCHANGE_management_enable_auditor (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
   const char *auditor_name,
-  struct GNUNET_TIME_Absolute validity_start,
+  struct GNUNET_TIME_Timestamp validity_start,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementAuditorEnableCallback cb,
   void *cb_cls);
@@ -2801,7 +2803,7 @@ TALER_EXCHANGE_management_disable_auditor (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  struct GNUNET_TIME_Absolute validity_end,
+  struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementAuditorDisableCallback cb,
   void *cb_cls);
@@ -2855,7 +2857,7 @@ TALER_EXCHANGE_management_enable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute validity_start,
+  struct GNUNET_TIME_Timestamp validity_start,
   const struct TALER_MasterSignatureP *master_sig1,
   const struct TALER_MasterSignatureP *master_sig2,
   TALER_EXCHANGE_ManagementWireEnableCallback cb,
@@ -2908,7 +2910,7 @@ TALER_EXCHANGE_management_disable_wire (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute validity_end,
+  struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_EXCHANGE_ManagementWireDisableCallback cb,
   void *cb_cls);
@@ -2963,8 +2965,8 @@ TALER_EXCHANGE_management_set_wire_fees (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_base_url,
   const char *wire_method,
-  struct GNUNET_TIME_Absolute validity_start,
-  struct GNUNET_TIME_Absolute validity_end,
+  struct GNUNET_TIME_Timestamp validity_start,
+  struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_Amount *wire_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_MasterSignatureP *master_sig,

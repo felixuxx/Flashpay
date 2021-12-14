@@ -203,9 +203,9 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
       struct TALER_PrivateContractHash h_contract_terms;
       // struct TALER_ExtensionContractHash h_extensions; // FIXME!
       struct TALER_DenominationHash h_denom_pub;
-      struct GNUNET_TIME_Absolute wallet_timestamp;
+      struct GNUNET_TIME_Timestamp wallet_timestamp;
       struct TALER_MerchantPublicKeyP merchant_pub;
-      struct GNUNET_TIME_Absolute refund_deadline;
+      struct GNUNET_TIME_Timestamp refund_deadline;
       struct TALER_CoinSpendSignatureP sig;
       struct GNUNET_JSON_Specification ispec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
@@ -216,10 +216,10 @@ verify_conflict_history_ok (struct TALER_EXCHANGE_RefundHandle *rh,
                                      &h_wire),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
                                      &h_denom_pub),
-        TALER_JSON_spec_absolute_time ("timestamp",
-                                       &wallet_timestamp),
-        TALER_JSON_spec_absolute_time ("refund_deadline",
-                                       &refund_deadline),
+        GNUNET_JSON_spec_timestamp ("timestamp",
+                                    &wallet_timestamp),
+        GNUNET_JSON_spec_timestamp ("refund_deadline",
+                                    &refund_deadline),
         TALER_JSON_spec_amount_any ("deposit_fee",
                                     &deposit_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",

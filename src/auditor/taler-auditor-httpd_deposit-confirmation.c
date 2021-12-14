@@ -63,21 +63,19 @@ verify_and_execute_deposit_confirmation (
   const struct TALER_AUDITORDB_ExchangeSigningKey *es)
 {
   enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Absolute now;
   struct GNUNET_HashCode h;
   const char *cached;
   struct TALER_ExchangeSigningKeyValidityPS skv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
     .purpose.size = htonl (sizeof (struct TALER_ExchangeSigningKeyValidityPS)),
-    .start = GNUNET_TIME_absolute_hton (es->ep_start),
-    .expire = GNUNET_TIME_absolute_hton (es->ep_expire),
-    .end = GNUNET_TIME_absolute_hton (es->ep_end),
+    .start = GNUNET_TIME_timestamp_hton (es->ep_start),
+    .expire = GNUNET_TIME_timestamp_hton (es->ep_expire),
+    .end = GNUNET_TIME_timestamp_hton (es->ep_end),
     .signkey_pub = es->exchange_pub
   };
 
-  now = GNUNET_TIME_absolute_get ();
-  if ( (es->ep_start.abs_value_us > now.abs_value_us) ||
-       (es->ep_expire.abs_value_us < now.abs_value_us) )
+  if (GNUNET_TIME_absolute_is_future (es->ep_start.abs_time) ||
+      GNUNET_TIME_absolute_is_past (es->ep_expire.abs_time) )
   {
     /* Signing key expired */
     TALER_LOG_WARNING ("Expired exchange signing key\n");
@@ -253,12 +251,12 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                  &dc.h_extensions),
     GNUNET_JSON_spec_fixed_auto ("h_wire",
                                  &dc.h_wire),
-    TALER_JSON_spec_absolute_time ("exchange_timestamp",
-                                   &dc.exchange_timestamp),
-    TALER_JSON_spec_absolute_time ("refund_deadline",
-                                   &dc.refund_deadline),
-    TALER_JSON_spec_absolute_time ("wire_deadline",
-                                   &dc.wire_deadline),
+    GNUNET_JSON_spec_timestamp ("exchange_timestamp",
+                                &dc.exchange_timestamp),
+    GNUNET_JSON_spec_timestamp ("refund_deadline",
+                                &dc.refund_deadline),
+    GNUNET_JSON_spec_timestamp ("wire_deadline",
+                                &dc.wire_deadline),
     TALER_JSON_spec_amount ("amount_without_fee",
                             TAH_currency,
                             &dc.amount_without_fee),
@@ -272,12 +270,12 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                  &dc.exchange_pub),
     GNUNET_JSON_spec_fixed_auto ("master_pub",
                                  &es.master_public_key),
-    TALER_JSON_spec_absolute_time ("ep_start",
-                                   &es.ep_start),
-    TALER_JSON_spec_absolute_time ("ep_expire",
-                                   &es.ep_expire),
-    TALER_JSON_spec_absolute_time ("ep_end",
-                                   &es.ep_end),
+    GNUNET_JSON_spec_timestamp ("ep_start",
+                                &es.ep_start),
+    GNUNET_JSON_spec_timestamp ("ep_expire",
+                                &es.ep_expire),
+    GNUNET_JSON_spec_timestamp ("ep_end",
+                                &es.ep_end),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &es.master_sig),
     GNUNET_JSON_spec_end ()

@@ -88,8 +88,9 @@ history_entry_cmp (const struct TALER_EXCHANGE_ReserveHistory *h1,
                            h2->details.in_details.sender_url)) &&
          (h1->details.in_details.wire_reference ==
           h2->details.in_details.wire_reference) &&
-         (h1->details.in_details.timestamp.abs_value_us ==
-          h2->details.in_details.timestamp.abs_value_us) )
+         (GNUNET_TIME_timestamp_cmp (h1->details.in_details.timestamp,
+                                     ==,
+                                     h2->details.in_details.timestamp)) )
       return 0;
     return 1;
   case TALER_EXCHANGE_RTT_WITHDRAWAL:

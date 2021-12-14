@@ -147,8 +147,8 @@ handle_deposit_wtid_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("wtid",
                                      &dr.details.success.wtid),
-        TALER_JSON_spec_absolute_time ("execution_time",
-                                       &dr.details.success.execution_time),
+        GNUNET_JSON_spec_timestamp ("execution_time",
+                                    &dr.details.success.execution_time),
         TALER_JSON_spec_amount_any ("coin_contribution",
                                     &dr.details.success.coin_contribution),
         GNUNET_JSON_spec_fixed_auto ("exchange_sig",
@@ -168,7 +168,7 @@ handle_deposit_wtid_finished (void *cls,
         dr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
-      dwh->depconf.execution_time = GNUNET_TIME_absolute_hton (
+      dwh->depconf.execution_time = GNUNET_TIME_timestamp_hton (
         dr.details.success.execution_time);
       dwh->depconf.wtid = dr.details.success.wtid;
       TALER_amount_hton (&dwh->depconf.coin_contribution,
@@ -192,8 +192,8 @@ handle_deposit_wtid_finished (void *cls,
     {
       /* Transaction known, but not executed yet */
       struct GNUNET_JSON_Specification spec[] = {
-        TALER_JSON_spec_absolute_time ("execution_time",
-                                       &dr.details.accepted.execution_time),
+        GNUNET_JSON_spec_timestamp ("execution_time",
+                                    &dr.details.accepted.execution_time),
         GNUNET_JSON_spec_uint64 ("payment_target_uuid",
                                  &dr.details.accepted.payment_target_uuid),
         GNUNET_JSON_spec_bool ("kyc_ok",

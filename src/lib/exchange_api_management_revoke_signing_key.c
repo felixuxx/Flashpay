@@ -23,6 +23,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
+#include "exchange_api_curl_defaults.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
 #include "taler_json_lib.h"
@@ -163,7 +164,7 @@ TALER_EXCHANGE_management_revoke_signing_key (
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("master_sig",
                                 master_sig));
-  eh = curl_easy_init ();
+  eh = TALER_EXCHANGE_curl_easy_get_ (rh->url);
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&rh->post_ctx,
@@ -180,9 +181,6 @@ TALER_EXCHANGE_management_revoke_signing_key (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting URL '%s'\n",
               rh->url);
-  GNUNET_assert (CURLE_OK == curl_easy_setopt (eh,
-                                               CURLOPT_URL,
-                                               rh->url));
   rh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   rh->post_ctx.headers,

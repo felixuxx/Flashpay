@@ -64,7 +64,7 @@ struct KeyData
   /**
    * Validity start point.
    */
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
 
   /**
    * Key expires for signing at @e start_time plus this value.
@@ -137,7 +137,7 @@ free_keys (void)
 static void
 key_cb (void *cls,
         const char *section_name,
-        struct GNUNET_TIME_Absolute start_time,
+        struct GNUNET_TIME_Timestamp start_time,
         struct GNUNET_TIME_Relative validity_duration,
         const struct TALER_RsaPubHashP *h_rsa,
         const struct TALER_DenominationPublicKey *denom_pub,
@@ -297,15 +297,19 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
     switch (ec)
     {
     case TALER_EC_NONE:
-      if (GNUNET_TIME_absolute_get_remaining (keys[i].start_time).rel_value_us >
-          GNUNET_TIME_UNIT_SECONDS.rel_value_us)
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_remaining (
+                                      keys[i].start_time.abs_time),
+                                    >,
+                                    GNUNET_TIME_UNIT_SECONDS))
       {
         /* key worked too early */
         GNUNET_break (0);
         return 4;
       }
-      if (GNUNET_TIME_absolute_get_duration (keys[i].start_time).rel_value_us >
-          keys[i].validity_duration.rel_value_us)
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_duration (
+                                      keys[i].start_time.abs_time),
+                                    >,
+                                    keys[i].validity_duration))
       {
         /* key worked too later */
         GNUNET_break (0);
@@ -344,12 +348,14 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
     case TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY:
       /* This 'failure' is expected, we're testing also for the
          error handling! */
-      if ( (0 ==
-            GNUNET_TIME_absolute_get_remaining (
-              keys[i].start_time).rel_value_us) &&
-           (GNUNET_TIME_absolute_get_duration (
-              keys[i].start_time).rel_value_us <
-            keys[i].validity_duration.rel_value_us) )
+      if ( (GNUNET_TIME_relative_is_zero (
+              GNUNET_TIME_absolute_get_remaining (
+                keys[i].start_time.abs_time))) &&
+           (GNUNET_TIME_relative_cmp (
+              GNUNET_TIME_absolute_get_duration (
+                keys[i].start_time.abs_time),
+              <,
+              keys[i].validity_duration)) )
       {
         /* key should have worked! */
         GNUNET_break (0);
@@ -422,11 +428,15 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
     {
       if (! keys[i].valid)
         continue;
-      if (GNUNET_TIME_absolute_get_remaining (keys[i].start_time).rel_value_us >
-          GNUNET_TIME_UNIT_SECONDS.rel_value_us)
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_remaining (
+                                      keys[i].start_time.abs_time),
+                                    >,
+                                    GNUNET_TIME_UNIT_SECONDS))
         continue;
-      if (GNUNET_TIME_absolute_get_duration (keys[i].start_time).rel_value_us >
-          keys[i].validity_duration.rel_value_us)
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_duration (
+                                      keys[i].start_time.abs_time),
+                                    >,
+                                    keys[i].validity_duration))
         continue;
       {
         struct TALER_CoinPubHash c_hash;

@@ -65,7 +65,7 @@ struct KeyData
   /**
    * Validity start point.
    */
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
 
   /**
    * Key expires for signing at @e start_time plus this value.
@@ -112,7 +112,7 @@ static struct KeyData keys[MAX_KEYS];
  */
 static void
 key_cb (void *cls,
-        struct GNUNET_TIME_Absolute start_time,
+        struct GNUNET_TIME_Timestamp start_time,
         struct GNUNET_TIME_Relative validity_duration,
         const struct TALER_ExchangePublicKeyP *exchange_pub,
         const struct TALER_SecurityModulePublicKeyP *sm_pub,
@@ -207,7 +207,7 @@ test_revocation (struct TALER_CRYPTO_ExchangeSignHelper *esh)
         TALER_CRYPTO_helper_esign_poll (esh);
         if ( (! keys[j].revoked) ||
              (GNUNET_TIME_absolute_is_past (
-                GNUNET_TIME_absolute_add (keys[j].start_time,
+                GNUNET_TIME_absolute_add (keys[j].start_time.abs_time,
                                           keys[j].validity_duration))) )
         {
           break;
@@ -217,7 +217,7 @@ test_revocation (struct TALER_CRYPTO_ExchangeSignHelper *esh)
       }
       if ( (keys[j].revoked) &&
            (! GNUNET_TIME_absolute_is_past (
-              GNUNET_TIME_absolute_add (keys[j].start_time,
+              GNUNET_TIME_absolute_add (keys[j].start_time.abs_time,
                                         keys[j].validity_duration))) )
       {
         fprintf (stderr,

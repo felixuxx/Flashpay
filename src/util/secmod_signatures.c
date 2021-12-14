@@ -26,7 +26,7 @@
 void
 TALER_exchange_secmod_eddsa_sign (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePrivateKeyP *secm_priv,
   struct TALER_SecurityModuleSignatureP *secm_sig)
@@ -35,7 +35,7 @@ TALER_exchange_secmod_eddsa_sign (
     .purpose.purpose = htonl (TALER_SIGNATURE_SM_SIGNING_KEY),
     .purpose.size = htonl (sizeof (ska)),
     .exchange_pub = *exchange_pub,
-    .anchor_time = GNUNET_TIME_absolute_hton (start_sign),
+    .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
     .duration = GNUNET_TIME_relative_hton (duration)
   };
 
@@ -48,7 +48,7 @@ TALER_exchange_secmod_eddsa_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_eddsa_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePublicKeyP *secm_pub,
   const struct TALER_SecurityModuleSignatureP *secm_sig)
@@ -57,7 +57,7 @@ TALER_exchange_secmod_eddsa_verify (
     .purpose.purpose = htonl (TALER_SIGNATURE_SM_SIGNING_KEY),
     .purpose.size = htonl (sizeof (ska)),
     .exchange_pub = *exchange_pub,
-    .anchor_time = GNUNET_TIME_absolute_hton (start_sign),
+    .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
     .duration = GNUNET_TIME_relative_hton (duration)
   };
 
@@ -73,7 +73,7 @@ void
 TALER_exchange_secmod_rsa_sign (
   const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePrivateKeyP *secm_priv,
   struct TALER_SecurityModuleSignatureP *secm_sig)
@@ -82,7 +82,7 @@ TALER_exchange_secmod_rsa_sign (
     .purpose.purpose = htonl (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY),
     .purpose.size = htonl (sizeof (dka)),
     .h_rsa = *h_rsa,
-    .anchor_time = GNUNET_TIME_absolute_hton (start_sign),
+    .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
     .duration_withdraw = GNUNET_TIME_relative_hton (duration)
   };
 
@@ -100,7 +100,7 @@ enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_rsa_verify (
   const struct TALER_RsaPubHashP *h_rsa,
   const char *section_name,
-  struct GNUNET_TIME_Absolute start_sign,
+  struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,
   const struct TALER_SecurityModulePublicKeyP *secm_pub,
   const struct TALER_SecurityModuleSignatureP *secm_sig)
@@ -109,7 +109,7 @@ TALER_exchange_secmod_rsa_verify (
     .purpose.purpose = htonl (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY),
     .purpose.size = htonl (sizeof (dka)),
     .h_rsa = *h_rsa,
-    .anchor_time = GNUNET_TIME_absolute_hton (start_sign),
+    .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
     .duration_withdraw = GNUNET_TIME_relative_hton (duration)
   };
 

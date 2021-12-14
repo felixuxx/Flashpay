@@ -102,12 +102,11 @@ auditor_add_run (void *cls,
                  struct TALER_TESTING_Interpreter *is)
 {
   struct AuditorAddState *ds = cls;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
   struct TALER_MasterSignatureP master_sig;
 
   (void) cmd;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
   if (ds->bad_sig)
   {

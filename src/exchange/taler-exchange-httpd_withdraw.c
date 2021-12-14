@@ -141,11 +141,9 @@ withdraw_transaction (void *cls,
   bool found = false;
   bool balance_ok = false;
   uint64_t reserve_uuid;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-
+  now = GNUNET_TIME_timestamp_get ();
   wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
   wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
   qs = TEH_plugin->do_withdraw (TEH_plugin->cls,
@@ -237,7 +235,7 @@ withdraw_transaction (void *cls,
     qs2 = TEH_plugin->do_withdraw_limit_check (
       TEH_plugin->cls,
       reserve_uuid,
-      GNUNET_TIME_absolute_subtract (now,
+      GNUNET_TIME_absolute_subtract (now.abs_time,
                                      TEH_kyc_config.withdraw_period),
       &TEH_kyc_config.withdraw_limit,
       &below_limit);
@@ -355,7 +353,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   }
   {
     MHD_RESULT mret;
-    struct GNUNET_TIME_Absolute now;
     struct TEH_KeyStateHandle *ksh;
 
     ksh = TEH_keys_get_state ();
@@ -392,14 +389,8 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       GNUNET_JSON_parse_free (spec);
       return mret;
     }
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
-    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw))
+    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_withdraw.abs_time))
     {
-      struct GNUNET_TIME_Absolute now;
-
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is past the expiration time for withdraws */
       if (! check_request_idempotent (rc,
                                       &wc,
@@ -409,35 +400,27 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
           &wc.collectable.denom_pub_hash,
-          now,
+          GNUNET_TIME_timestamp_get (),
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
           "WITHDRAW");
       }
       GNUNET_JSON_parse_free (spec);
       return mret;
     }
-    if (GNUNET_TIME_absolute_is_future (dk->meta.start))
+    if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
     {
-      struct GNUNET_TIME_Absolute now;
-
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is not yet valid, no need to check
          for idempotency! */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
         &wc.collectable.denom_pub_hash,
-        now,
+        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "WITHDRAW");
     }
     if (dk->recoup_possible)
     {
-      struct GNUNET_TIME_Absolute now;
-
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination has been revoked */
       if (! check_request_idempotent (rc,
                                       &wc,
@@ -447,7 +430,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
           &wc.collectable.denom_pub_hash,
-          now,
+          GNUNET_TIME_timestamp_get (),
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
           "WITHDRAW");
       }

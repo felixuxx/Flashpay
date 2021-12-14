@@ -54,7 +54,7 @@ struct TALER_CRYPTO_EddsaKeyAvailableNotification
   /**
    * When does the key become available?
    */
-  struct GNUNET_TIME_AbsoluteNBO anchor_time;
+  struct GNUNET_TIME_TimestampNBO anchor_time;
 
   /**
    * How long is the key available after @e anchor_time?

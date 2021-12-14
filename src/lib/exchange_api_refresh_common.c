@@ -89,8 +89,8 @@ serialize_melted_coin (const struct MeltedCoin *mc)
                             &mc->original_value),
     TALER_JSON_pack_amount ("melt_fee",
                             &mc->fee_melt),
-    GNUNET_JSON_pack_time_abs ("expire_deposit",
-                               mc->expire_deposit),
+    GNUNET_JSON_pack_timestamp ("expire_deposit",
+                                mc->expire_deposit),
     GNUNET_JSON_pack_array_steal ("transfer_privs",
                                   tprivs));
 }
@@ -126,8 +126,8 @@ deserialize_melted_coin (struct MeltedCoin *mc,
     TALER_JSON_spec_amount ("melt_fee",
                             currency,
                             &mc->fee_melt),
-    TALER_JSON_spec_absolute_time ("expire_deposit",
-                                   &mc->expire_deposit),
+    GNUNET_JSON_spec_timestamp ("expire_deposit",
+                                &mc->expire_deposit),
     GNUNET_JSON_spec_json ("transfer_privs",
                            &trans_privs),
     GNUNET_JSON_spec_end ()

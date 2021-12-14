@@ -82,12 +82,12 @@ struct DepositState
   /**
    * Refund deadline. Zero for no refunds.
    */
-  struct GNUNET_TIME_Absolute refund_deadline;
+  struct GNUNET_TIME_Timestamp refund_deadline;
 
   /**
    * Wire deadline.
    */
-  struct GNUNET_TIME_Absolute wire_deadline;
+  struct GNUNET_TIME_Timestamp wire_deadline;
 
   /**
    * Set (by the interpreter) to a fresh private key.  This
@@ -103,7 +103,7 @@ struct DepositState
   /**
    * Timestamp of the /deposit operation in the wallet (contract signing time).
    */
-  struct GNUNET_TIME_Absolute wallet_timestamp;
+  struct GNUNET_TIME_Timestamp wallet_timestamp;
 
   /**
    * Interpreter state.
@@ -139,7 +139,7 @@ struct DepositState
   /**
    * When did the exchange receive the deposit?
    */
-  struct GNUNET_TIME_Absolute exchange_timestamp;
+  struct GNUNET_TIME_Timestamp exchange_timestamp;
 
   /**
    * Signing key used by the exchange to sign the
@@ -402,27 +402,25 @@ deposit_run (void *cls,
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
-  if (0 != ds->refund_deadline.abs_value_us)
+  if (! GNUNET_TIME_absolute_is_zero (ds->refund_deadline.abs_time))
   {
     struct GNUNET_TIME_Relative refund_deadline;
 
     refund_deadline
-      = GNUNET_TIME_absolute_get_remaining (ds->refund_deadline);
+      = GNUNET_TIME_absolute_get_remaining (ds->refund_deadline.abs_time);
     ds->wire_deadline
-      = GNUNET_TIME_relative_to_absolute (
+      =
+        GNUNET_TIME_relative_to_timestamp (
           GNUNET_TIME_relative_multiply (refund_deadline,
                                          2));
   }
   else
   {
     ds->refund_deadline = ds->wallet_timestamp;
-    ds->wire_deadline
-      = GNUNET_TIME_relative_to_absolute (
-          GNUNET_TIME_UNIT_ZERO);
+    ds->wire_deadline = GNUNET_TIME_timestamp_get ();
   }
   GNUNET_CRYPTO_eddsa_key_get_public (&ds->merchant_priv.eddsa_priv,
                                       &merchant_pub.eddsa_pub);
-  (void) GNUNET_TIME_round_abs (&ds->wire_deadline);
   {
     struct TALER_MerchantWireHash h_wire;
 
@@ -562,8 +560,8 @@ deposit_traits (void *cls,
       TALER_TESTING_make_trait_merchant_priv (&ds->merchant_priv),
       TALER_TESTING_make_trait_deposit_amount (&ds->amount),
       TALER_TESTING_make_trait_deposit_fee_amount (&ds->deposit_fee),
-      TALER_TESTING_make_trait_absolute_time (0,
-                                              &ds->exchange_timestamp),
+      TALER_TESTING_make_trait_timestamp (0,
+                                          &ds->exchange_timestamp),
       TALER_TESTING_make_trait_wire_deadline (0,
                                               &ds->wire_deadline),
       TALER_TESTING_make_trait_refund_deadline (0,
@@ -610,22 +608,19 @@ TALER_TESTING_cmd_deposit (const char *label,
                 label);
     GNUNET_assert (0);
   }
-  ds->wallet_timestamp = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&ds->wallet_timestamp);
-
+  ds->wallet_timestamp = GNUNET_TIME_timestamp_get ();
   GNUNET_assert (0 ==
                  json_object_set_new (ds->contract_terms,
                                       "timestamp",
-                                      GNUNET_JSON_from_time_abs (
+                                      GNUNET_JSON_from_timestamp (
                                         ds->wallet_timestamp)));
-  if (0 != refund_deadline.rel_value_us)
+  if (! GNUNET_TIME_relative_is_zero (refund_deadline))
   {
-    ds->refund_deadline = GNUNET_TIME_relative_to_absolute (refund_deadline);
-    (void) GNUNET_TIME_round_abs (&ds->refund_deadline);
+    ds->refund_deadline = GNUNET_TIME_relative_to_timestamp (refund_deadline);
     GNUNET_assert (0 ==
                    json_object_set_new (ds->contract_terms,
                                         "refund_deadline",
-                                        GNUNET_JSON_from_time_abs (
+                                        GNUNET_JSON_from_timestamp (
                                           ds->refund_deadline)));
   }
   GNUNET_assert (GNUNET_OK ==
@@ -677,19 +672,16 @@ TALER_TESTING_cmd_deposit_with_ref (const char *label,
                 label);
     GNUNET_assert (0);
   }
-  ds->wallet_timestamp = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&ds->wallet_timestamp);
-
+  ds->wallet_timestamp = GNUNET_TIME_timestamp_get ();
   json_object_set_new (ds->contract_terms,
                        "timestamp",
-                       GNUNET_JSON_from_time_abs (ds->wallet_timestamp));
+                       GNUNET_JSON_from_timestamp (ds->wallet_timestamp));
   if (0 != refund_deadline.rel_value_us)
   {
-    ds->refund_deadline = GNUNET_TIME_relative_to_absolute (refund_deadline);
-    (void) GNUNET_TIME_round_abs (&ds->refund_deadline);
+    ds->refund_deadline = GNUNET_TIME_relative_to_timestamp (refund_deadline);
     json_object_set_new (ds->contract_terms,
                          "refund_deadline",
-                         GNUNET_JSON_from_time_abs (ds->refund_deadline));
+                         GNUNET_JSON_from_timestamp (ds->refund_deadline));
   }
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (amount,

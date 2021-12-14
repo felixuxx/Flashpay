@@ -23,6 +23,7 @@
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
 #include "taler_exchange_service.h"
+#include "auditor_api_curl_defaults.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
 #include "taler_json_lib.h"
@@ -190,7 +191,7 @@ TALER_EXCHANGE_add_auditor_denomination (
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("auditor_sig",
                                 auditor_sig));
-  eh = curl_easy_init ();
+  eh = TALER_AUDITOR_curl_easy_get_ (ah->url);
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&ah->post_ctx,
@@ -207,9 +208,6 @@ TALER_EXCHANGE_add_auditor_denomination (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting URL '%s'\n",
               ah->url);
-  GNUNET_assert (CURLE_OK == curl_easy_setopt (eh,
-                                               CURLOPT_URL,
-                                               ah->url));
   ah->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   ah->post_ctx.headers,

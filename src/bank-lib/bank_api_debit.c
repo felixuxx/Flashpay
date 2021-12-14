@@ -73,7 +73,7 @@ struct TALER_BANK_DebitHistoryHandle
  *         were set,
  *         #GNUNET_SYSERR if there was a protocol violation in @a history
  */
-static int
+static enum GNUNET_GenericReturnValue
 parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
                        const json_t *history)
 {
@@ -97,8 +97,8 @@ parse_account_history (struct TALER_BANK_DebitHistoryHandle *hh,
     struct GNUNET_JSON_Specification hist_spec[] = {
       TALER_JSON_spec_amount_any ("amount",
                                   &td.amount),
-      TALER_JSON_spec_absolute_time ("date",
-                                     &td.execution_date),
+      GNUNET_JSON_spec_timestamp ("date",
+                                  &td.execution_date),
       GNUNET_JSON_spec_uint64 ("row_id",
                                &row_id),
       GNUNET_JSON_spec_fixed_auto ("wtid",

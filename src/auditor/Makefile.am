@@ -54,13 +54,12 @@ libauditorreport_la_LIBADD = \
 taler_auditor_dbinit_SOURCES = \
   taler-auditor-dbinit.c
 taler_auditor_dbinit_LDADD = \
-  $(LIBGCRYPT_LIBS) \
-  $(top_builddir)/src/util/libtalerutil.la \
-  $(top_builddir)/src/pq/libtalerpq.la \
   $(top_builddir)/src/auditordb/libtalerauditordb.la \
-  -lgnunetutil  $(XLIB)
-taler_auditor_dbinit_LDFLAGS = \
-  $(POSTGRESQL_LDFLAGS)
+  $(top_builddir)/src/pq/libtalerpq.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  $(LIBGCRYPT_LIBS) \
+  $(XLIB)
 taler_auditor_dbinit_CPPFLAGS = \
   -I$(top_srcdir)/src/include \
   -I$(top_srcdir)/src/pq/ \
@@ -182,8 +181,6 @@ taler_auditor_sync_LDADD = \
   -lgnunetutil \
   $(LIBGCRYPT_LIBS) \
   $(XLIB)
-taler_auditor_sync_LDFLAGS = \
-  $(POSTGRESQL_LDFLAGS)
 taler_auditor_sync_CPPFLAGS = \
   -I$(top_srcdir)/src/include \
   -I$(top_srcdir)/src/pq/ \

@@ -59,7 +59,7 @@ struct AddAuditorContext
   /**
    * Timestamp for checking against replay attacks.
    */
-  struct GNUNET_TIME_Absolute validity_start;
+  struct GNUNET_TIME_Timestamp validity_start;
 
 };
 
@@ -84,7 +84,7 @@ add_auditor (void *cls,
              MHD_RESULT *mhd_ret)
 {
   struct AddAuditorContext *aac = cls;
-  struct GNUNET_TIME_Absolute last_date;
+  struct GNUNET_TIME_Timestamp last_date;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_auditor_timestamp (TEH_plugin->cls,
@@ -102,7 +102,9 @@ add_auditor (void *cls,
     return qs;
   }
   if ( (0 < qs) &&
-       (last_date.abs_value_us > aac->validity_start.abs_value_us) )
+       (GNUNET_TIME_timestamp_cmp (last_date,
+                                   >,
+                                   aac->validity_start) ) )
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
@@ -155,8 +157,8 @@ TEH_handler_management_auditors (
                              &aac.auditor_url),
     GNUNET_JSON_spec_string ("auditor_name",
                              &aac.auditor_name),
-    TALER_JSON_spec_absolute_time ("validity_start",
-                                   &aac.validity_start),
+    GNUNET_JSON_spec_timestamp ("validity_start",
+                                &aac.validity_start),
     GNUNET_JSON_spec_end ()
   };
   MHD_RESULT res;

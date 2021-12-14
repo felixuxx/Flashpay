@@ -112,7 +112,7 @@ test_dc (void *cls,
   dcc->last_seen_coin_serial = serial_id;
   {
     enum GNUNET_DB_QueryStatus qs;
-    struct GNUNET_TIME_Absolute exchange_timestamp;
+    struct GNUNET_TIME_Timestamp exchange_timestamp;
     struct TALER_Amount deposit_fee;
 
     qs = TALER_ARL_edb->have_deposit2 (TALER_ARL_edb->cls,
@@ -140,16 +140,17 @@ test_dc (void *cls,
     }
   }
   /* deposit confirmation missing! report! */
-  TALER_ARL_report (report_deposit_confirmation_inconsistencies,
-                    GNUNET_JSON_PACK (
-                      TALER_JSON_pack_time_abs_human ("timestamp",
-                                                      dc->exchange_timestamp),
-                      TALER_JSON_pack_amount ("amount",
-                                              &dc->amount_without_fee),
-                      GNUNET_JSON_pack_uint64 ("rowid",
-                                               serial_id),
-                      GNUNET_JSON_pack_data_auto ("account",
-                                                  &dc->h_wire)));
+  TALER_ARL_report (
+    report_deposit_confirmation_inconsistencies,
+    GNUNET_JSON_PACK (
+      TALER_JSON_pack_time_abs_human ("timestamp",
+                                      dc->exchange_timestamp.abs_time),
+      TALER_JSON_pack_amount ("amount",
+                              &dc->amount_without_fee),
+      GNUNET_JSON_pack_uint64 ("rowid",
+                               serial_id),
+      GNUNET_JSON_pack_data_auto ("account",
+                                  &dc->h_wire)));
   dcc->first_missed_coin_serial = GNUNET_MIN (dcc->first_missed_coin_serial,
                                               serial_id);
   dcc->missed_count++;

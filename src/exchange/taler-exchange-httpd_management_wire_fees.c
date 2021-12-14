@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020, 2021 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -50,12 +50,12 @@ struct AddFeeContext
   /**
    * Starting period.
    */
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
 
   /**
    * End of period.
    */
-  struct GNUNET_TIME_Absolute end_time;
+  struct GNUNET_TIME_Timestamp end_time;
 
   /**
    * Wire fee amount.
@@ -171,10 +171,10 @@ TEH_handler_management_post_wire_fees (
                                  &afc.master_sig),
     GNUNET_JSON_spec_string ("wire_method",
                              &afc.wire_method),
-    TALER_JSON_spec_absolute_time ("fee_start",
-                                   &afc.start_time),
-    TALER_JSON_spec_absolute_time ("fee_end",
-                                   &afc.end_time),
+    GNUNET_JSON_spec_timestamp ("fee_start",
+                                &afc.start_time),
+    GNUNET_JSON_spec_timestamp ("fee_end",
+                                &afc.end_time),
     TALER_JSON_spec_amount ("closing_fee",
                             TEH_currency,
                             &afc.closing_fee),

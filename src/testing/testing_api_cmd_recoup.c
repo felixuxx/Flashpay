@@ -364,6 +364,7 @@ recoup_run (void *cls,
                                   denom_pub,
                                   coin_sig,
                                   &planchet,
+                                  &ps->reserve_history.amount,
                                   NULL != ps->melt_reference,
                                   recoup_cb,
                                   ps);
@@ -440,10 +441,9 @@ TALER_TESTING_cmd_recoup (const char *label,
   ps->expected_response_code = expected_response_code;
   ps->coin_reference = coin_reference;
   ps->melt_reference = melt_reference;
-  if ( (NULL != amount) &&
-       (GNUNET_OK !=
-        TALER_string_to_amount (amount,
-                                &ps->reserve_history.amount)) )
+  if (GNUNET_OK !=
+      TALER_string_to_amount (amount,
+                              &ps->reserve_history.amount))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to parse amount `%s' at %s\n",

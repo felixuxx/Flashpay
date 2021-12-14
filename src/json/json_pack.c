@@ -25,17 +25,6 @@
 
 
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_abs (const char *name,
-                          struct GNUNET_TIME_Absolute at)
-{
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_TIME_round_abs (&at));
-  return GNUNET_JSON_pack_time_abs (name,
-                                    at);
-}
-
-
-struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_time_abs_human (const char *name,
                                 struct GNUNET_TIME_Absolute at)
 {
@@ -50,40 +39,11 @@ TALER_JSON_pack_time_abs_human (const char *name,
 
 
 struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_abs_nbo (const char *name,
-                              struct GNUNET_TIME_AbsoluteNBO at)
-{
-  return TALER_JSON_pack_time_abs (name,
-                                   GNUNET_TIME_absolute_ntoh (at));
-}
-
-
-struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_time_abs_nbo_human (const char *name,
                                     struct GNUNET_TIME_AbsoluteNBO at)
 {
   return TALER_JSON_pack_time_abs_human (name,
                                          GNUNET_TIME_absolute_ntoh (at));
-}
-
-
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_rel (const char *name,
-                          struct GNUNET_TIME_Relative rt)
-{
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_TIME_round_rel (&rt));
-  return GNUNET_JSON_pack_time_rel (name,
-                                    rt);
-}
-
-
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_rel_nbo (const char *name,
-                              struct GNUNET_TIME_RelativeNBO rt)
-{
-  return TALER_JSON_pack_time_rel (name,
-                                   GNUNET_TIME_relative_ntoh (rt));
 }
 
 

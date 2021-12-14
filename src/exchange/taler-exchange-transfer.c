@@ -407,7 +407,7 @@ wire_confirm_cb (void *cls,
                  unsigned int http_status_code,
                  enum TALER_ErrorCode ec,
                  uint64_t row_id,
-                 struct GNUNET_TIME_Absolute wire_timestamp)
+                 struct GNUNET_TIME_Timestamp wire_timestamp)
 {
   struct WirePrepareData *wpd = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -642,7 +642,8 @@ run_transfers (void *cls)
       /* normal case */
       break;
     }
-    shard_delay = GNUNET_TIME_absolute_get_duration (shard->shard_start_time);
+    shard_delay = GNUNET_TIME_absolute_get_duration (
+      shard->shard_start_time);
     GNUNET_free (shard);
     GNUNET_assert (NULL == task);
     task = GNUNET_SCHEDULER_add_now (&select_shard,
@@ -776,8 +777,8 @@ select_shard (void *cls)
       GNUNET_assert (NULL == task);
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Serialization failure, trying again in %s!\n",
-                  GNUNET_STRINGS_relative_time_to_string (serialization_delay,
-                                                          GNUNET_YES));
+                  GNUNET_TIME_relative2s (serialization_delay,
+                                          true));
       task = GNUNET_SCHEDULER_add_delayed (serialization_delay,
                                            &select_shard,
                                            NULL);

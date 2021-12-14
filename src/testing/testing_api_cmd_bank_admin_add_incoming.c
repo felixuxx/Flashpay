@@ -117,7 +117,7 @@ struct AdminAddIncomingState
   /**
    * Timestamp of the transaction (as returned from the bank).
    */
-  struct GNUNET_TIME_Absolute timestamp;
+  struct GNUNET_TIME_Timestamp timestamp;
 
   /**
    * Merchant instance.  Sometimes used to get the tip reserve
@@ -207,7 +207,7 @@ confirmation_cb (void *cls,
                  unsigned int http_status,
                  enum TALER_ErrorCode ec,
                  uint64_t serial_id,
-                 struct GNUNET_TIME_Absolute timestamp,
+                 struct GNUNET_TIME_Timestamp timestamp,
                  const json_t *json)
 {
   struct AdminAddIncomingState *fts = cls;
@@ -432,7 +432,7 @@ admin_add_incoming_traits (void *cls,
       TALER_TESTING_make_trait_exchange_bank_account_url (
         &fts->exchange_credit_url),
       TALER_TESTING_make_trait_amount (&fts->amount),
-      TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
+      TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
       TALER_TESTING_make_trait_reserve_priv (&fts->reserve_priv),
       TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
       TALER_TESTING_make_trait_reserve_history (&fts->reserve_history),
@@ -454,7 +454,7 @@ admin_add_incoming_traits (void *cls,
       TALER_TESTING_make_trait_exchange_bank_account_url (
         &fts->exchange_credit_url),
       TALER_TESTING_make_trait_amount (&fts->amount),
-      TALER_TESTING_make_trait_absolute_time (0, &fts->timestamp),
+      TALER_TESTING_make_trait_timestamp (0, &fts->timestamp),
       TALER_TESTING_make_trait_reserve_pub (&fts->reserve_pub),
       TALER_TESTING_make_trait_reserve_history (&fts->reserve_history),
       TALER_TESTING_trait_end ()

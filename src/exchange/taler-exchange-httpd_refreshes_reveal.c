@@ -519,31 +519,23 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (NULL == dks[i])
       return mret;
 
-    if (GNUNET_TIME_absolute_is_past (dks[i]->meta.expire_withdraw))
+    if (GNUNET_TIME_absolute_is_past (dks[i]->meta.expire_withdraw.abs_time))
     {
-      struct GNUNET_TIME_Absolute now;
-
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is past the expiration time for withdraws */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &dk_h[i],
-        now,
+        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "REVEAL");
     }
-    if (GNUNET_TIME_absolute_is_future (dks[i]->meta.start))
+    if (GNUNET_TIME_absolute_is_future (dks[i]->meta.start.abs_time))
     {
-      struct GNUNET_TIME_Absolute now;
-
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
       /* This denomination is not yet valid */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &dk_h[i],
-        now,
+        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "REVEAL");
     }

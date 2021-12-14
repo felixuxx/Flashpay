@@ -39,7 +39,7 @@
  * Which version of the Taler protocol is implemented
  * by this library?  Used to determine compatibility.
  */
-#define EXCHANGE_PROTOCOL_CURRENT 10
+#define EXCHANGE_PROTOCOL_CURRENT 11
 
 /**
  * How many versions are we backwards compatible with?
@@ -161,7 +161,7 @@ struct KeysRequest
    * Expiration time according to "Expire:" header.
    * 0 if not provided by the server.
    */
-  struct GNUNET_TIME_Absolute expire;
+  struct GNUNET_TIME_Timestamp expire;
 
 };
 
@@ -264,12 +264,12 @@ parse_json_signkey (struct TALER_EXCHANGE_SigningPublicKey *sign_key,
                                  &sign_key_issue_sig),
     GNUNET_JSON_spec_fixed_auto ("key",
                                  &sign_key->key),
-    TALER_JSON_spec_absolute_time ("stamp_start",
-                                   &sign_key->valid_from),
-    TALER_JSON_spec_absolute_time ("stamp_expire",
-                                   &sign_key->valid_until),
-    TALER_JSON_spec_absolute_time ("stamp_end",
-                                   &sign_key->valid_legal),
+    GNUNET_JSON_spec_timestamp ("stamp_start",
+                                &sign_key->valid_from),
+    GNUNET_JSON_spec_timestamp ("stamp_expire",
+                                &sign_key->valid_until),
+    GNUNET_JSON_spec_timestamp ("stamp_end",
+                                &sign_key->valid_legal),
     GNUNET_JSON_spec_end ()
   };
 
@@ -322,14 +322,14 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &denom_key->master_sig),
-    TALER_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                   &denom_key->expire_deposit),
-    TALER_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                   &denom_key->withdraw_valid_until),
-    TALER_JSON_spec_absolute_time ("stamp_start",
-                                   &denom_key->valid_from),
-    TALER_JSON_spec_absolute_time ("stamp_expire_legal",
-                                   &denom_key->expire_legal),
+    GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                &denom_key->expire_deposit),
+    GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                &denom_key->withdraw_valid_until),
+    GNUNET_JSON_spec_timestamp ("stamp_start",
+                                &denom_key->valid_from),
+    GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                &denom_key->expire_legal),
     TALER_JSON_spec_amount_any ("value",
                                 &denom_key->value),
     TALER_JSON_spec_amount_any ("fee_withdraw",
@@ -675,10 +675,10 @@ decode_keys_json (const json_t *resp_obj,
                                  &pub),
     GNUNET_JSON_spec_fixed_auto ("master_public_key",
                                  &key_data->master_pub),
-    TALER_JSON_spec_absolute_time ("list_issue_date",
-                                   &key_data->list_issue_date),
-    TALER_JSON_spec_relative_time ("reserve_closing_delay",
-                                   &key_data->reserve_closing_delay),
+    GNUNET_JSON_spec_timestamp ("list_issue_date",
+                                &key_data->list_issue_date),
+    GNUNET_JSON_spec_relative_time ("reserve_closing_delay",
+                                    &key_data->reserve_closing_delay),
     GNUNET_JSON_spec_string ("currency",
                              &currency),
     GNUNET_JSON_spec_mark_optional (
@@ -843,10 +843,10 @@ decode_keys_json (const json_t *resp_obj,
 
       /* Update "last_denom_issue_date" */
       TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
-                       GNUNET_STRINGS_absolute_time_to_string (dk.valid_from));
+                       GNUNET_TIME_timestamp2s (dk.valid_from));
       key_data->last_denom_issue_date
-        = GNUNET_TIME_absolute_max (key_data->last_denom_issue_date,
-                                    dk.valid_from);
+        = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
+                                     dk.valid_from);
     };
   }
 
@@ -970,7 +970,7 @@ decode_keys_json (const json_t *resp_obj,
     struct TALER_ExchangeKeySetPS ks = {
       .purpose.size = htonl (sizeof (ks)),
       .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET),
-      .list_issue_date = GNUNET_TIME_absolute_hton (key_data->list_issue_date)
+      .list_issue_date = GNUNET_TIME_timestamp_hton (key_data->list_issue_date)
     };
 
     GNUNET_CRYPTO_hash_context_finish (hash_context,
@@ -1040,16 +1040,16 @@ request_keys (void *cls);
 
 void
 TALER_EXCHANGE_set_last_denom (struct TALER_EXCHANGE_Handle *exchange,
-                               struct GNUNET_TIME_Absolute last_denom_new)
+                               struct GNUNET_TIME_Timestamp last_denom_new)
 {
   TALER_LOG_DEBUG (
     "Application explicitly set last denomination validity to %s\n",
-    GNUNET_STRINGS_absolute_time_to_string (last_denom_new));
+    GNUNET_TIME_timestamp2s (last_denom_new));
   exchange->key_data.last_denom_issue_date = last_denom_new;
 }
 
 
-struct GNUNET_TIME_Absolute
+struct GNUNET_TIME_Timestamp
 TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
                                    enum TALER_EXCHANGE_CheckKeysFlags flags)
 {
@@ -1057,7 +1057,7 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
   bool pull_all_keys = 0 != (flags & TALER_EXCHANGE_CKF_PULL_ALL_KEYS);
 
   if (NULL != exchange->kr)
-    return GNUNET_TIME_UNIT_ZERO_ABS;
+    return GNUNET_TIME_UNIT_ZERO_TS;
 
   if (pull_all_keys)
   {
@@ -1067,12 +1067,13 @@ TALER_EXCHANGE_check_keys_current (struct TALER_EXCHANGE_Handle *exchange,
     exchange->state = MHS_INIT;
   }
   if ( (! force_download) &&
-       (GNUNET_TIME_absolute_is_future (exchange->key_data_expiration)) )
+       (GNUNET_TIME_absolute_is_future (
+          exchange->key_data_expiration.abs_time)) )
     return exchange->key_data_expiration;
   if (NULL == exchange->retry_task)
     exchange->retry_task = GNUNET_SCHEDULER_add_now (&request_keys,
                                                      exchange);
-  return GNUNET_TIME_UNIT_ZERO_ABS;
+  return GNUNET_TIME_UNIT_ZERO_TS;
 }
 
 
@@ -1104,15 +1105,16 @@ keys_completed_cb (void *cls,
               "Received keys from URL `%s' with status %ld and expiration %s.\n",
               kr->url,
               response_code,
-              GNUNET_STRINGS_absolute_time_to_string (kr->expire));
-  if (GNUNET_TIME_absolute_is_past (kr->expire))
+              GNUNET_TIME_timestamp2s (kr->expire));
+  if (GNUNET_TIME_absolute_is_past (kr->expire.abs_time))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Exchange failed to give expiration time, assuming in %s\n",
-                GNUNET_STRINGS_relative_time_to_string (DEFAULT_EXPIRATION,
-                                                        GNUNET_YES));
-    kr->expire = GNUNET_TIME_relative_to_absolute (DEFAULT_EXPIRATION);
-    (void) GNUNET_TIME_round_abs (&kr->expire);
+                GNUNET_TIME_relative2s (DEFAULT_EXPIRATION,
+                                        true));
+    kr->expire
+      = GNUNET_TIME_absolute_to_timestamp (
+          GNUNET_TIME_relative_to_absolute (DEFAULT_EXPIRATION));
   }
   kd_old = exchange->key_data;
   memset (&kd,
@@ -1250,13 +1252,14 @@ keys_completed_cb (void *cls,
     break;
   }
   exchange->key_data = kd;
-  if (GNUNET_TIME_absolute_is_past (exchange->key_data.last_denom_issue_date))
+  if (GNUNET_TIME_absolute_is_past (
+        exchange->key_data.last_denom_issue_date.abs_time))
     TALER_LOG_WARNING ("Last DK issue date from exchange is in the past: %s\n",
-                       GNUNET_STRINGS_absolute_time_to_string (
+                       GNUNET_TIME_timestamp2s (
                          exchange->key_data.last_denom_issue_date));
   else
     TALER_LOG_DEBUG ("Last DK issue date updated to: %s\n",
-                     GNUNET_STRINGS_absolute_time_to_string (
+                     GNUNET_TIME_timestamp2s (
                        exchange->key_data.last_denom_issue_date));
 
 
@@ -1340,7 +1343,7 @@ TEAH_path_to_url (struct TALER_EXCHANGE_Handle *h,
  */
 static enum GNUNET_GenericReturnValue
 parse_date_string (const char *dateline,
-                   struct GNUNET_TIME_Absolute *at)
+                   struct GNUNET_TIME_Timestamp *at)
 {
   static const char *MONTHS[] =
   { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -1422,7 +1425,7 @@ parse_date_string (const char *dateline,
   }
   if (t < 0)
     t = 0; /* can happen due to timezone issues if date was 1.1.1970 */
-  at->abs_value_us = 1000LL * 1000LL * t;
+  *at = GNUNET_TIME_timestamp_from_s (t);
   return GNUNET_OK;
 }
 
@@ -1464,7 +1467,7 @@ header_cb (char *buffer,
                 "Failed to parse %s-header `%s'\n",
                 MHD_HTTP_HEADER_EXPIRES,
                 val);
-    kr->expire = GNUNET_TIME_UNIT_ZERO_ABS;
+    kr->expire = GNUNET_TIME_UNIT_ZERO_TS;
   }
   GNUNET_free (val);
   return total;
@@ -1490,7 +1493,7 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
   json_t *keys;
   const char *url;
   uint32_t version;
-  struct GNUNET_TIME_Absolute expire;
+  struct GNUNET_TIME_Timestamp expire;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_uint32 ("version",
                              &version),
@@ -1498,8 +1501,8 @@ deserialize_data (struct TALER_EXCHANGE_Handle *exchange,
                            &keys),
     GNUNET_JSON_spec_string ("exchange_url",
                              &url),
-    TALER_JSON_spec_absolute_time ("expire",
-                                   &expire),
+    GNUNET_JSON_spec_timestamp ("expire",
+                                &expire),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_Keys key_data;
@@ -1566,13 +1569,13 @@ json_t *
 TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
 {
   const struct TALER_EXCHANGE_Keys *kd = &exchange->key_data;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
   json_t *keys;
   json_t *signkeys;
   json_t *denoms;
   json_t *auditors;
 
-  now = GNUNET_TIME_absolute_get ();
+  now = GNUNET_TIME_timestamp_get ();
   signkeys = json_array ();
   if (NULL == signkeys)
   {
@@ -1584,19 +1587,21 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
     const struct TALER_EXCHANGE_SigningPublicKey *sk = &kd->sign_keys[i];
     json_t *signkey;
 
-    if (now.abs_value_us > sk->valid_until.abs_value_us)
+    if (GNUNET_TIME_timestamp_cmp (now,
+                                   >,
+                                   sk->valid_until))
       continue; /* skip keys that have expired */
     signkey = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_data_auto ("key",
                                   &sk->key),
       GNUNET_JSON_pack_data_auto ("master_sig",
                                   &sk->master_sig),
-      GNUNET_JSON_pack_time_abs ("stamp_start",
-                                 sk->valid_from),
-      GNUNET_JSON_pack_time_abs ("stamp_expire",
-                                 sk->valid_until),
-      GNUNET_JSON_pack_time_abs ("stamp_end",
-                                 sk->valid_legal));
+      GNUNET_JSON_pack_timestamp ("stamp_start",
+                                  sk->valid_from),
+      GNUNET_JSON_pack_timestamp ("stamp_expire",
+                                  sk->valid_until),
+      GNUNET_JSON_pack_timestamp ("stamp_end",
+                                  sk->valid_legal));
     if (NULL == signkey)
     {
       GNUNET_break (0);
@@ -1623,17 +1628,19 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
     const struct TALER_EXCHANGE_DenomPublicKey *dk = &kd->denom_keys[i];
     json_t *denom;
 
-    if (now.abs_value_us > dk->expire_deposit.abs_value_us)
+    if (GNUNET_TIME_timestamp_cmp (now,
+                                   >,
+                                   dk->expire_deposit))
       continue; /* skip keys that have expired */
     denom = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_time_abs ("stamp_expire_deposit",
-                                 dk->expire_deposit),
-      GNUNET_JSON_pack_time_abs ("stamp_expire_withdraw",
-                                 dk->withdraw_valid_until),
-      GNUNET_JSON_pack_time_abs ("stamp_start",
-                                 dk->valid_from),
-      GNUNET_JSON_pack_time_abs ("stamp_expire_legal",
-                                 dk->expire_legal),
+      GNUNET_JSON_pack_timestamp ("stamp_expire_deposit",
+                                  dk->expire_deposit),
+      GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",
+                                  dk->withdraw_valid_until),
+      GNUNET_JSON_pack_timestamp ("stamp_start",
+                                  dk->valid_from),
+      GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
+                                  dk->expire_legal),
       TALER_JSON_pack_amount ("value",
                               &dk->value),
       TALER_JSON_pack_amount ("fee_withdraw",
@@ -1677,7 +1684,9 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
         &kd->denom_keys[adi->denom_key_offset];
       json_t *k;
 
-      if (now.abs_value_us > dk->expire_deposit.abs_value_us)
+      if (GNUNET_TIME_timestamp_cmp (now,
+                                     >,
+                                     dk->expire_deposit))
         continue; /* skip auditor signatures for denomination keys that have expired */
       GNUNET_assert (adi->denom_key_offset < kd->num_denom_keys);
       k = GNUNET_JSON_PACK (
@@ -1710,8 +1719,8 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
                                 &kd->master_pub),
     GNUNET_JSON_pack_time_rel ("reserve_closing_delay",
                                kd->reserve_closing_delay),
-    GNUNET_JSON_pack_time_abs ("list_issue_date",
-                               kd->list_issue_date),
+    GNUNET_JSON_pack_timestamp ("list_issue_date",
+                                kd->list_issue_date),
     GNUNET_JSON_pack_array_steal ("signkeys",
                                   signkeys),
     GNUNET_JSON_pack_array_steal ("denoms",
@@ -1721,8 +1730,8 @@ TALER_EXCHANGE_serialize_data (struct TALER_EXCHANGE_Handle *exchange)
   return GNUNET_JSON_PACK (
     GNUNET_JSON_pack_uint64 ("version",
                              EXCHANGE_SERIALIZATION_FORMAT_VERSION),
-    GNUNET_JSON_pack_time_abs ("expire",
-                               exchange->key_data_expiration),
+    GNUNET_JSON_pack_timestamp ("expire",
+                                exchange->key_data_expiration),
     GNUNET_JSON_pack_string ("exchange_url",
                              exchange->url),
     GNUNET_JSON_pack_object_steal ("keys",
@@ -1823,12 +1832,12 @@ request_keys (void *cls)
   if (GNUNET_YES == TEAH_handle_is_ready (exchange))
   {
     TALER_LOG_DEBUG ("Last DK issue date (before GETting /keys): %s\n",
-                     GNUNET_STRINGS_absolute_time_to_string (
+                     GNUNET_TIME_timestamp2s (
                        exchange->key_data.last_denom_issue_date));
     sprintf (&url[strlen (url)],
              "last_issue_date=%llu&",
-             (unsigned long
-              long) exchange->key_data.last_denom_issue_date.abs_value_us
+             (unsigned long long)
+             exchange->key_data.last_denom_issue_date.abs_time.abs_value_us
              / 1000000LLU);
   }
 
@@ -1951,18 +1960,22 @@ TALER_EXCHANGE_test_signing_key (const struct TALER_EXCHANGE_Keys *keys,
   /* we will check using a tolerance of 1h for the time */
   now = GNUNET_TIME_absolute_get ();
   for (unsigned int i = 0; i<keys->num_sign_keys; i++)
-    if ( (keys->sign_keys[i].valid_from.abs_value_us <=
-          GNUNET_TIME_absolute_add (now,
-                                    LIFETIME_TOLERANCE).abs_value_us) &&
-         (keys->sign_keys[i].valid_until.abs_value_us >
-          GNUNET_TIME_absolute_subtract (now,
-                                         LIFETIME_TOLERANCE).abs_value_us) &&
+    if ( (GNUNET_TIME_absolute_cmp (
+            keys->sign_keys[i].valid_from.abs_time,
+            <=,
+            GNUNET_TIME_absolute_add (now,
+                                      LIFETIME_TOLERANCE))) &&
+         (GNUNET_TIME_absolute_cmp (
+            keys->sign_keys[i].valid_until.abs_time,
+            >,
+            GNUNET_TIME_absolute_subtract (now,
+                                           LIFETIME_TOLERANCE))) &&
          (0 == GNUNET_memcmp (pub,
                               &keys->sign_keys[i].key)) )
       return GNUNET_OK;
   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-              "Signing key not valid at time %llu\n",
-              (unsigned long long) now.abs_value_us);
+              "Signing key not valid at time %s\n",
+              GNUNET_TIME_absolute2s (now));
   return GNUNET_SYSERR;
 }
 

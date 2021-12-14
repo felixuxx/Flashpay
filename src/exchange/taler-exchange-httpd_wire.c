@@ -212,8 +212,8 @@ static void
 add_wire_fee (void *cls,
               const struct TALER_Amount *wire_fee,
               const struct TALER_Amount *closing_fee,
-              struct GNUNET_TIME_Absolute start_date,
-              struct GNUNET_TIME_Absolute end_date,
+              struct GNUNET_TIME_Timestamp start_date,
+              struct GNUNET_TIME_Timestamp end_date,
               const struct TALER_MasterSignatureP *master_sig)
 {
   json_t *a = cls;
@@ -226,10 +226,10 @@ add_wire_fee (void *cls,
                                   wire_fee),
           TALER_JSON_pack_amount ("closing_fee",
                                   closing_fee),
-          GNUNET_JSON_pack_time_abs ("start_date",
-                                     start_date),
-          GNUNET_JSON_pack_time_abs ("end_date",
-                                     end_date),
+          GNUNET_JSON_pack_timestamp ("start_date",
+                                      start_date),
+          GNUNET_JSON_pack_timestamp ("end_date",
+                                      end_date),
           GNUNET_JSON_pack_data_auto ("sig",
                                       master_sig))))
   {

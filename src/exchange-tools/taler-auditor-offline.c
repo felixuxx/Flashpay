@@ -752,10 +752,10 @@ show_denomkeys (const json_t *denomkeys)
     const char *err_name;
     unsigned int err_line;
     struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_TIME_Absolute stamp_start;
-    struct GNUNET_TIME_Absolute stamp_expire_withdraw;
-    struct GNUNET_TIME_Absolute stamp_expire_deposit;
-    struct GNUNET_TIME_Absolute stamp_expire_legal;
+    struct GNUNET_TIME_Timestamp stamp_start;
+    struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
+    struct GNUNET_TIME_Timestamp stamp_expire_deposit;
+    struct GNUNET_TIME_Timestamp stamp_expire_legal;
     struct TALER_Amount coin_value;
     struct TALER_Amount fee_withdraw;
     struct TALER_Amount fee_deposit;
@@ -780,14 +780,14 @@ show_denomkeys (const json_t *denomkeys)
       TALER_JSON_spec_amount ("fee_refund",
                               currency,
                               &fee_refund),
-      GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                      &stamp_start),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                      &stamp_expire_withdraw),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                      &stamp_expire_deposit),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
-                                      &stamp_expire_legal),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &stamp_start),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                  &stamp_expire_withdraw),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                  &stamp_expire_deposit),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                  &stamp_expire_legal),
       GNUNET_JSON_spec_fixed_auto ("master_sig",
                                    &master_sig),
       GNUNET_JSON_spec_end ()
@@ -811,8 +811,9 @@ show_denomkeys (const json_t *denomkeys)
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    duration = GNUNET_TIME_absolute_get_difference (stamp_start,
-                                                    stamp_expire_withdraw);
+    duration = GNUNET_TIME_absolute_get_difference (
+      stamp_start.abs_time,
+      stamp_expire_withdraw.abs_time);
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
     if (GNUNET_OK !=
@@ -851,18 +852,18 @@ show_denomkeys (const json_t *denomkeys)
       refresh_fee_s = TALER_amount_to_string (&fee_refresh);
       refund_fee_s = TALER_amount_to_string (&fee_refund);
       deposit_s = GNUNET_strdup (
-        GNUNET_STRINGS_absolute_time_to_string (stamp_expire_deposit));
+        GNUNET_TIME_timestamp2s (stamp_expire_deposit));
       legal_s = GNUNET_strdup (
-        GNUNET_STRINGS_absolute_time_to_string (stamp_expire_legal));
+        GNUNET_TIME_timestamp2s (stamp_expire_legal));
 
       printf (
         "DENOMINATION-KEY %s of value %s starting at %s "
         "(used for: %s, deposit until: %s legal end: %s) with fees %s/%s/%s/%s\n",
         TALER_B2S (&h_denom_pub),
         TALER_amount2s (&coin_value),
-        GNUNET_STRINGS_absolute_time_to_string (stamp_start),
-        GNUNET_STRINGS_relative_time_to_string (duration,
-                                                GNUNET_NO),
+        GNUNET_TIME_timestamp2s (stamp_start),
+        GNUNET_TIME_relative2s (duration,
+                                false),
         deposit_s,
         legal_s,
         withdraw_fee_s,
@@ -1052,10 +1053,10 @@ sign_denomkeys (const json_t *denomkeys)
     const char *err_name;
     unsigned int err_line;
     struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_TIME_Absolute stamp_start;
-    struct GNUNET_TIME_Absolute stamp_expire_withdraw;
-    struct GNUNET_TIME_Absolute stamp_expire_deposit;
-    struct GNUNET_TIME_Absolute stamp_expire_legal;
+    struct GNUNET_TIME_Timestamp stamp_start;
+    struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
+    struct GNUNET_TIME_Timestamp stamp_expire_deposit;
+    struct GNUNET_TIME_Timestamp stamp_expire_legal;
     struct TALER_Amount coin_value;
     struct TALER_Amount fee_withdraw;
     struct TALER_Amount fee_deposit;
@@ -1080,14 +1081,14 @@ sign_denomkeys (const json_t *denomkeys)
       TALER_JSON_spec_amount ("fee_refund",
                               currency,
                               &fee_refund),
-      GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                      &stamp_start),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                      &stamp_expire_withdraw),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                      &stamp_expire_deposit),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
-                                      &stamp_expire_legal),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &stamp_start),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                  &stamp_expire_withdraw),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                  &stamp_expire_deposit),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                  &stamp_expire_legal),
       GNUNET_JSON_spec_fixed_auto ("master_sig",
                                    &master_sig),
       GNUNET_JSON_spec_end ()

@@ -422,19 +422,22 @@ const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
                        const struct TALER_Amount *amount)
 {
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
   struct TALER_EXCHANGE_DenomPublicKey *pk;
   char *str;
 
-  now = GNUNET_TIME_absolute_get ();
+  now = GNUNET_TIME_timestamp_get ();
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
   {
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
-         (now.abs_value_us >= pk->valid_from.abs_value_us) &&
-         (now.abs_value_us <
-          pk->withdraw_valid_until.abs_value_us) )
+         (GNUNET_TIME_timestamp_cmp (now,
+                                     >=,
+                                     pk->valid_from)) &&
+         (GNUNET_TIME_timestamp_cmp (now,
+                                     <,
+                                     pk->withdraw_valid_until)) )
       return pk;
   }
   /* do 2nd pass to check if expiration times are to blame for
@@ -445,19 +448,21 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
     pk = &keys->denom_keys[i];
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
-         ( (now.abs_value_us < pk->valid_from.abs_value_us) ||
-           (now.abs_value_us >
-            pk->withdraw_valid_until.abs_value_us) ) )
+         (GNUNET_TIME_timestamp_cmp (now,
+                                     <,
+                                     pk->valid_from) ||
+          GNUNET_TIME_timestamp_cmp (now,
+                                     >,
+                                     pk->withdraw_valid_until) ) )
     {
       GNUNET_log
         (GNUNET_ERROR_TYPE_WARNING,
         "Have denomination key for `%s', but with wrong"
         " expiration range %llu vs [%llu,%llu)\n",
         str,
-        (unsigned long long) now.abs_value_us,
-        (unsigned long long) pk->valid_from.abs_value_us,
-        (unsigned long long)
-        pk->withdraw_valid_until.abs_value_us);
+        (unsigned long long) now.abs_time.abs_value_us,
+        (unsigned long long) pk->valid_from.abs_time.abs_value_us,
+        (unsigned long long) pk->withdraw_valid_until.abs_time.abs_value_us);
       GNUNET_free (str);
       return NULL;
     }

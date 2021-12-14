@@ -60,7 +60,7 @@ struct InsertDepositState
   /**
    * When did the exchange receive the deposit?
    */
-  struct GNUNET_TIME_Absolute exchange_timestamp;
+  struct GNUNET_TIME_Timestamp exchange_timestamp;
 
   /**
    * Amount to deposit, inclusive of deposit fee.
@@ -81,27 +81,23 @@ struct InsertDepositState
 static void
 fake_issue (struct TALER_EXCHANGEDB_DenominationKeyInformationP *issue)
 {
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   memset (issue,
           0,
           sizeof (struct TALER_EXCHANGEDB_DenominationKeyInformationP));
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   issue->properties.start
-    = GNUNET_TIME_absolute_hton (now);
+    = GNUNET_TIME_timestamp_hton (now);
   issue->properties.expire_withdraw
-    = GNUNET_TIME_absolute_hton (
-        GNUNET_TIME_absolute_add (now,
-                                  GNUNET_TIME_UNIT_MINUTES));
+    = GNUNET_TIME_timestamp_hton (
+        GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_MINUTES));
   issue->properties.expire_deposit
-    = GNUNET_TIME_absolute_hton (
-        GNUNET_TIME_absolute_add (now,
-                                  GNUNET_TIME_UNIT_HOURS));
+    = GNUNET_TIME_timestamp_hton (
+        GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_HOURS));
   issue->properties.expire_legal
-    = GNUNET_TIME_absolute_hton (
-        GNUNET_TIME_absolute_add (now,
-                                  GNUNET_TIME_UNIT_DAYS));
+    = GNUNET_TIME_timestamp_hton (
+        GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_DAYS));
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount_nbo ("EUR:1",
                                              &issue->properties.value));
@@ -235,11 +231,9 @@ insert_deposit_run (void *cls,
   memset (&deposit.wire_salt,
           46,
           sizeof (deposit.wire_salt));
-  deposit.timestamp = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&deposit.timestamp);
-  deposit.wire_deadline = GNUNET_TIME_relative_to_absolute (ids->wire_deadline);
-  (void) GNUNET_TIME_round_abs (&deposit.wire_deadline);
-
+  deposit.timestamp = GNUNET_TIME_timestamp_get ();
+  deposit.wire_deadline = GNUNET_TIME_relative_to_timestamp (
+    ids->wire_deadline);
   /* finally, actually perform the DB operation */
   if ( (GNUNET_OK !=
         ids->dbc->plugin->start (ids->dbc->plugin->cls,
@@ -295,14 +289,13 @@ TALER_TESTING_cmd_insert_deposit (
   const struct TALER_TESTING_DatabaseConnection *dbc,
   const char *merchant_name,
   const char *merchant_account,
-  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Relative wire_deadline,
   const char *amount_with_fee,
   const char *deposit_fee)
 {
   struct InsertDepositState *ids;
 
-  GNUNET_TIME_round_abs (&exchange_timestamp);
   ids = GNUNET_new (struct InsertDepositState);
   ids->dbc = dbc;
   ids->merchant_name = merchant_name;

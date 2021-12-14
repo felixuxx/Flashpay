@@ -211,9 +211,9 @@ expired_reserve_cb (void *cls,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_Amount *left,
                     const char *account_payto_uri,
-                    struct GNUNET_TIME_Absolute expiration_date)
+                    struct GNUNET_TIME_Timestamp expiration_date)
 {
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
   struct TALER_WireTransferIdentifierRawP wtid;
   struct TALER_Amount amount_without_fee;
   struct TALER_Amount closing_fee;
@@ -226,9 +226,8 @@ expired_reserve_cb (void *cls,
      fetch this: */
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Processing reserve closure at %s\n",
-              GNUNET_STRINGS_absolute_time_to_string (expiration_date));
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+              GNUNET_TIME_timestamp2s (expiration_date));
+  now = GNUNET_TIME_timestamp_get ();
 
   /* lookup account we should use */
   wa = TALER_EXCHANGEDB_find_account_by_payto_uri (account_payto_uri);
@@ -246,8 +245,8 @@ expired_reserve_cb (void *cls,
      (we may be lagging behind!) */
   {
     struct TALER_Amount wire_fee;
-    struct GNUNET_TIME_Absolute start_date;
-    struct GNUNET_TIME_Absolute end_date;
+    struct GNUNET_TIME_Timestamp start_date;
+    struct GNUNET_TIME_Timestamp end_date;
     struct TALER_MasterSignatureP master_sig;
     enum GNUNET_DB_QueryStatus qs;
 
@@ -264,7 +263,7 @@ expired_reserve_cb (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not get wire fees for %s at %s. Aborting run.\n",
                   wa->method,
-                  GNUNET_STRINGS_absolute_time_to_string (expiration_date));
+                  GNUNET_TIME_timestamp2s (expiration_date));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -382,7 +381,7 @@ static void
 run_reserve_closures (void *cls)
 {
   enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   (void) cls;
   task = NULL;
@@ -406,11 +405,10 @@ run_reserve_closures (void *cls)
     GNUNET_SCHEDULER_shutdown ();
     return;
   }
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Checking for reserves to close by date %s\n",
-              GNUNET_STRINGS_absolute_time_to_string (now));
+              GNUNET_TIME_timestamp2s (now));
   qs = db_plugin->get_expired_reserves (db_plugin->cls,
                                         now,
                                         &expired_reserve_cb,

@@ -23,15 +23,6 @@
 #include "bank_api_common.h"
 
 
-/**
- * Set authentication data in @a easy from @a auth.
- * The API currently specifies the use of HTTP basic
- * authentication.
- *
- * @param easy curl handle to setup for authentication
- * @param auth authentication data to use
- * @return #GNUNET_OK in success
- */
 int
 TALER_BANK_setup_auth_ (CURL *easy,
                         const struct TALER_BANK_AuthenticationData *auth)

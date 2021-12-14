@@ -792,13 +792,13 @@ postgres_commit (void *cls)
  * @return #GNUNET_OK on success,
  *         #GNUNET_SYSERR on DB errors
  */
-static int
+static enum GNUNET_GenericReturnValue
 postgres_gc (void *cls)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Absolute now;
   struct GNUNET_PQ_QueryParam params_time[] = {
-    TALER_PQ_query_param_absolute_time (&now),
+    GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_Context *conn;
@@ -1003,9 +1003,9 @@ postgres_insert_exchange_signkey (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (&sk->master_public_key),
-    TALER_PQ_query_param_absolute_time (&sk->ep_start),
-    TALER_PQ_query_param_absolute_time (&sk->ep_expire),
-    TALER_PQ_query_param_absolute_time (&sk->ep_end),
+    GNUNET_PQ_query_param_timestamp (&sk->ep_start),
+    GNUNET_PQ_query_param_timestamp (&sk->ep_expire),
+    GNUNET_PQ_query_param_timestamp (&sk->ep_end),
     GNUNET_PQ_query_param_auto_from_type (&sk->exchange_pub),
     GNUNET_PQ_query_param_auto_from_type (&sk->master_sig),
     GNUNET_PQ_query_param_end
@@ -1035,9 +1035,9 @@ postgres_insert_deposit_confirmation (
     GNUNET_PQ_query_param_auto_from_type (&dc->h_contract_terms),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_extensions),
     GNUNET_PQ_query_param_auto_from_type (&dc->h_wire),
-    TALER_PQ_query_param_absolute_time (&dc->exchange_timestamp),
-    TALER_PQ_query_param_absolute_time (&dc->wire_deadline),
-    TALER_PQ_query_param_absolute_time (&dc->refund_deadline),
+    GNUNET_PQ_query_param_timestamp (&dc->exchange_timestamp),
+    GNUNET_PQ_query_param_timestamp (&dc->wire_deadline),
+    GNUNET_PQ_query_param_timestamp (&dc->refund_deadline),
     TALER_PQ_query_param_amount (&dc->amount_without_fee),
     GNUNET_PQ_query_param_auto_from_type (&dc->coin_pub),
     GNUNET_PQ_query_param_auto_from_type (&dc->merchant),
@@ -1118,12 +1118,12 @@ deposit_confirmation_cb (void *cls,
                                             &dc.h_extensions),
       GNUNET_PQ_result_spec_auto_from_type ("h_wire",
                                             &dc.h_wire),
-      GNUNET_PQ_result_spec_absolute_time ("exchange_timestamp",
-                                           &dc.exchange_timestamp),
-      GNUNET_PQ_result_spec_absolute_time ("refund_deadline",
-                                           &dc.refund_deadline),
-      GNUNET_PQ_result_spec_absolute_time ("wire_deadline",
-                                           &dc.wire_deadline),
+      GNUNET_PQ_result_spec_timestamp ("exchange_timestamp",
+                                       &dc.exchange_timestamp),
+      GNUNET_PQ_result_spec_timestamp ("refund_deadline",
+                                       &dc.refund_deadline),
+      GNUNET_PQ_result_spec_timestamp ("wire_deadline",
+                                       &dc.wire_deadline),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount_without_fee",
                                    &dc.amount_without_fee),
       GNUNET_PQ_result_spec_auto_from_type ("coin_pub",
@@ -1726,7 +1726,7 @@ postgres_insert_wire_auditor_progress (
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
+    GNUNET_PQ_query_param_timestamp (&pp->last_timestamp),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_uuid),
     GNUNET_PQ_query_param_end
   };
@@ -1754,7 +1754,7 @@ postgres_update_wire_auditor_progress (
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    TALER_PQ_query_param_absolute_time (&pp->last_timestamp),
+    GNUNET_PQ_query_param_timestamp (&pp->last_timestamp),
     GNUNET_PQ_query_param_uint64 (&pp->last_reserve_close_uuid),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1786,8 +1786,8 @@ postgres_get_wire_auditor_progress (
     GNUNET_PQ_query_param_end
   };
   struct GNUNET_PQ_ResultSpec rs[] = {
-    TALER_PQ_result_spec_absolute_time ("last_timestamp",
-                                        &pp->last_timestamp),
+    GNUNET_PQ_result_spec_timestamp ("last_timestamp",
+                                     &pp->last_timestamp),
     GNUNET_PQ_result_spec_uint64 ("last_reserve_close_uuid",
                                   &pp->last_reserve_close_uuid),
     GNUNET_PQ_result_spec_end
@@ -1820,7 +1820,7 @@ postgres_insert_reserve_info (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *reserve_balance,
                               const struct TALER_Amount *withdraw_fee_balance,
-                              struct GNUNET_TIME_Absolute expiration_date,
+                              struct GNUNET_TIME_Timestamp expiration_date,
                               const char *origin_account)
 {
   struct PostgresClosure *pg = cls;
@@ -1829,7 +1829,7 @@ postgres_insert_reserve_info (void *cls,
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
-    TALER_PQ_query_param_absolute_time (&expiration_date),
+    GNUNET_PQ_query_param_timestamp (&expiration_date),
     GNUNET_PQ_query_param_string (origin_account),
     GNUNET_PQ_query_param_end
   };
@@ -1863,13 +1863,13 @@ postgres_update_reserve_info (void *cls,
                               const struct TALER_MasterPublicKeyP *master_pub,
                               const struct TALER_Amount *reserve_balance,
                               const struct TALER_Amount *withdraw_fee_balance,
-                              struct GNUNET_TIME_Absolute expiration_date)
+                              struct GNUNET_TIME_Timestamp expiration_date)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     TALER_PQ_query_param_amount (reserve_balance),
     TALER_PQ_query_param_amount (withdraw_fee_balance),
-    TALER_PQ_query_param_absolute_time (&expiration_date),
+    GNUNET_PQ_query_param_timestamp (&expiration_date),
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_end
@@ -1932,7 +1932,7 @@ postgres_get_reserve_info (void *cls,
                            uint64_t *rowid,
                            struct TALER_Amount *reserve_balance,
                            struct TALER_Amount *withdraw_fee_balance,
-                           struct GNUNET_TIME_Absolute *expiration_date,
+                           struct GNUNET_TIME_Timestamp *expiration_date,
                            char **sender_account)
 {
   struct PostgresClosure *pg = cls;
@@ -1944,7 +1944,7 @@ postgres_get_reserve_info (void *cls,
   struct GNUNET_PQ_ResultSpec rs[] = {
     TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_balance", reserve_balance),
     TALER_PQ_RESULT_SPEC_AMOUNT ("withdraw_fee_balance", withdraw_fee_balance),
-    TALER_PQ_result_spec_absolute_time ("expiration_date", expiration_date),
+    GNUNET_PQ_result_spec_timestamp ("expiration_date", expiration_date),
     GNUNET_PQ_result_spec_uint64 ("auditor_reserves_rowid", rowid),
     GNUNET_PQ_result_spec_string ("origin_account", sender_account),
     GNUNET_PQ_result_spec_end
@@ -2440,7 +2440,7 @@ postgres_insert_historic_denom_revenue (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_DenominationHash *denom_pub_hash,
-  struct GNUNET_TIME_Absolute revenue_timestamp,
+  struct GNUNET_TIME_Timestamp revenue_timestamp,
   const struct TALER_Amount *revenue_balance,
   const struct TALER_Amount *loss_balance)
 {
@@ -2448,7 +2448,7 @@ postgres_insert_historic_denom_revenue (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
     GNUNET_PQ_query_param_auto_from_type (denom_pub_hash),
-    TALER_PQ_query_param_absolute_time (&revenue_timestamp),
+    GNUNET_PQ_query_param_timestamp (&revenue_timestamp),
     TALER_PQ_query_param_amount (revenue_balance),
     TALER_PQ_query_param_amount (loss_balance),
     GNUNET_PQ_query_param_end
@@ -2507,15 +2507,18 @@ historic_denom_revenue_cb (void *cls,
   for (unsigned int i = 0; i < num_results; i++)
   {
     struct TALER_DenominationHash denom_pub_hash;
-    struct GNUNET_TIME_Absolute revenue_timestamp;
+    struct GNUNET_TIME_Timestamp revenue_timestamp;
     struct TALER_Amount revenue_balance;
     struct TALER_Amount loss;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash", &denom_pub_hash),
-      TALER_PQ_result_spec_absolute_time ("revenue_timestamp",
-                                          &revenue_timestamp),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("revenue_balance", &revenue_balance),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("loss_balance", &loss),
+      GNUNET_PQ_result_spec_auto_from_type ("denom_pub_hash",
+                                            &denom_pub_hash),
+      GNUNET_PQ_result_spec_timestamp ("revenue_timestamp",
+                                       &revenue_timestamp),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("revenue_balance",
+                                   &revenue_balance),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("loss_balance",
+                                   &loss),
       GNUNET_PQ_result_spec_end
     };
 
@@ -2595,15 +2598,15 @@ static enum GNUNET_DB_QueryStatus
 postgres_insert_historic_reserve_revenue (
   void *cls,
   const struct TALER_MasterPublicKeyP *master_pub,
-  struct GNUNET_TIME_Absolute start_time,
-  struct GNUNET_TIME_Absolute end_time,
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *reserve_profits)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (master_pub),
-    TALER_PQ_query_param_absolute_time (&start_time),
-    TALER_PQ_query_param_absolute_time (&end_time),
+    GNUNET_PQ_query_param_timestamp (&start_time),
+    GNUNET_PQ_query_param_timestamp (&end_time),
     TALER_PQ_query_param_amount (reserve_profits),
     GNUNET_PQ_query_param_end
   };
@@ -2660,13 +2663,16 @@ historic_reserve_revenue_cb (void *cls,
 
   for (unsigned int i = 0; i < num_results; i++)
   {
-    struct GNUNET_TIME_Absolute start_date;
-    struct GNUNET_TIME_Absolute end_date;
+    struct GNUNET_TIME_Timestamp start_date;
+    struct GNUNET_TIME_Timestamp end_date;
     struct TALER_Amount reserve_profits;
     struct GNUNET_PQ_ResultSpec rs[] = {
-      TALER_PQ_result_spec_absolute_time ("start_date", &start_date),
-      TALER_PQ_result_spec_absolute_time ("end_date", &end_date),
-      TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_profits", &reserve_profits),
+      GNUNET_PQ_result_spec_timestamp ("start_date",
+                                       &start_date),
+      GNUNET_PQ_result_spec_timestamp ("end_date",
+                                       &end_date),
+      TALER_PQ_RESULT_SPEC_AMOUNT ("reserve_profits",
+                                   &reserve_profits),
       GNUNET_PQ_result_spec_end
     };
 

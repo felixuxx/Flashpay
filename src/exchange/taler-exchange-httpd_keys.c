@@ -57,7 +57,7 @@
  * #TALER_PROTOCOL_CURRENT and #TALER_PROTOCOL_AGE in
  * exchange_api_handle.c!
  */
-#define EXCHANGE_PROTOCOL_VERSION "10:0:0"
+#define EXCHANGE_PROTOCOL_VERSION "11:0:0"
 
 
 /**
@@ -69,7 +69,7 @@ struct HelperDenomination
   /**
    * When will the helper start to use this key for signing?
    */
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
 
   /**
    * For how long will the helper allow signing? 0 if
@@ -150,7 +150,7 @@ struct HelperSignkey
   /**
    * When will the helper start to use this key for signing?
    */
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
 
   /**
    * For how long will the helper allow signing? 0 if
@@ -234,7 +234,7 @@ struct KeysResponseData
    * The client's request must include this date or a higher one
    * for this response to be applicable.
    */
-  struct GNUNET_TIME_Absolute cherry_pick_date;
+  struct GNUNET_TIME_Timestamp cherry_pick_date;
 
 };
 
@@ -319,7 +319,7 @@ struct TEH_KeyStateHandle
   /**
    * When did we initiate the key reloading?
    */
-  struct GNUNET_TIME_Absolute reload_time;
+  struct GNUNET_TIME_Timestamp reload_time;
 
   /**
    * What is the period at which we rotate keys
@@ -331,7 +331,7 @@ struct TEH_KeyStateHandle
    * When does our online signing key expire and we
    * thus need to re-generate this response?
    */
-  struct GNUNET_TIME_Absolute signature_expires;
+  struct GNUNET_TIME_Timestamp signature_expires;
 
   /**
    * True if #finish_keys_response() was not yet run and this key state
@@ -808,7 +808,7 @@ static void
 helper_rsa_cb (
   void *cls,
   const char *section_name,
-  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_RsaPubHashP *h_rsa,
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -885,7 +885,7 @@ helper_rsa_cb (
 static void
 helper_esign_cb (
   void *cls,
-  struct GNUNET_TIME_Absolute start_time,
+  struct GNUNET_TIME_Timestamp start_time,
   struct GNUNET_TIME_Relative validity_duration,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_SecurityModulePublicKeyP *sm_pub,
@@ -1173,10 +1173,10 @@ denomination_info_cb (
   struct TEH_DenominationKey *dk;
 
   GNUNET_assert (TALER_DENOMINATION_INVALID != denom_pub->cipher);
-  if ( (0 == meta->start.abs_value_us) ||
-       (0 == meta->expire_withdraw.abs_value_us) ||
-       (0 == meta->expire_deposit.abs_value_us) ||
-       (0 == meta->expire_legal.abs_value_us) )
+  if (GNUNET_TIME_absolute_is_zero (meta->start.abs_time) ||
+      GNUNET_TIME_absolute_is_zero (meta->expire_withdraw.abs_time) ||
+      GNUNET_TIME_absolute_is_zero (meta->expire_deposit.abs_time) ||
+      GNUNET_TIME_absolute_is_zero (meta->expire_legal.abs_time) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Database contains invalid denomination key %s\n",
@@ -1400,25 +1400,25 @@ add_sign_key_cb (void *cls,
   struct SigningKey *sk = value;
 
   (void) pid;
-  if (GNUNET_TIME_absolute_is_future (sk->meta.expire_sign))
+  if (GNUNET_TIME_absolute_is_future (sk->meta.expire_sign.abs_time))
   {
     ctx->min_sk_frequency =
       GNUNET_TIME_relative_min (ctx->min_sk_frequency,
                                 GNUNET_TIME_absolute_get_difference (
-                                  sk->meta.start,
-                                  sk->meta.expire_sign));
+                                  sk->meta.start.abs_time,
+                                  sk->meta.expire_sign.abs_time));
   }
   GNUNET_assert (
     0 ==
     json_array_append_new (
       ctx->signkeys,
       GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_time_abs ("stamp_start",
-                                   sk->meta.start),
-        GNUNET_JSON_pack_time_abs ("stamp_expire",
-                                   sk->meta.expire_sign),
-        GNUNET_JSON_pack_time_abs ("stamp_end",
-                                   sk->meta.expire_legal),
+        GNUNET_JSON_pack_timestamp ("stamp_start",
+                                    sk->meta.start),
+        GNUNET_JSON_pack_timestamp ("stamp_expire",
+                                    sk->meta.expire_sign),
+        GNUNET_JSON_pack_timestamp ("stamp_end",
+                                    sk->meta.expire_legal),
         GNUNET_JSON_pack_data_auto ("master_sig",
                                     &sk->master_sig),
         GNUNET_JSON_pack_data_auto ("key",
@@ -1481,17 +1481,17 @@ add_denom_key_cb (void *cls,
   }
   else
   {
-    if (GNUNET_TIME_absolute_is_future (dk->meta.start))
+    if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
     {
       dkc->min_dk_frequency =
         GNUNET_TIME_relative_min (dkc->min_dk_frequency,
                                   GNUNET_TIME_absolute_get_difference (
-                                    dk->meta.start,
-                                    dk->meta.expire_withdraw));
+                                    dk->meta.start.abs_time,
+                                    dk->meta.expire_withdraw.abs_time));
     }
     (void) GNUNET_CONTAINER_heap_insert (dkc->heap,
                                          dk,
-                                         dk->meta.start.abs_value_us);
+                                         dk->meta.start.abs_time.abs_value_us);
   }
   return GNUNET_OK;
 }
@@ -1567,7 +1567,7 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
                 MHD_add_response_header (response,
                                          MHD_HTTP_HEADER_CONTENT_TYPE,
                                          "application/json"));
-  get_date_string (ksh->reload_time,
+  get_date_string (ksh->reload_time.abs_time,
                    dat);
   GNUNET_break (MHD_YES ==
                 MHD_add_response_header (response,
@@ -1576,12 +1576,14 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
   if (! GNUNET_TIME_relative_is_zero (ksh->rekey_frequency))
   {
     struct GNUNET_TIME_Relative r;
-    struct GNUNET_TIME_Absolute m;
+    struct GNUNET_TIME_Absolute a;
+    struct GNUNET_TIME_Timestamp m;
 
     r = GNUNET_TIME_relative_min (TEH_max_keys_caching,
                                   ksh->rekey_frequency);
-    m = GNUNET_TIME_relative_to_absolute (r);
-    get_date_string (m,
+    a = GNUNET_TIME_relative_to_absolute (r);
+    m = GNUNET_TIME_absolute_to_timestamp (a);
+    get_date_string (m.abs_time,
                      dat);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Setting /keys 'Expires' header to '%s'\n",
@@ -1591,8 +1593,8 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
                                            MHD_HTTP_HEADER_EXPIRES,
                                            dat));
     ksh->signature_expires
-      = GNUNET_TIME_absolute_min (m,
-                                  ksh->signature_expires);
+      = GNUNET_TIME_timestamp_min (m,
+                                   ksh->signature_expires);
   }
   return GNUNET_OK;
 }
@@ -1613,7 +1615,7 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
 static enum GNUNET_GenericReturnValue
 create_krd (struct TEH_KeyStateHandle *ksh,
             const struct GNUNET_HashCode *denom_keys_hash,
-            struct GNUNET_TIME_Absolute last_cpd,
+            struct GNUNET_TIME_Timestamp last_cpd,
             json_t *signkeys,
             json_t *recoup,
             json_t *denoms)
@@ -1623,7 +1625,7 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   struct TALER_ExchangeSignatureP exchange_sig;
   json_t *keys;
 
-  GNUNET_assert (0 != last_cpd.abs_value_us);
+  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time));
   GNUNET_assert (NULL != signkeys);
   GNUNET_assert (NULL != recoup);
   GNUNET_assert (NULL != denoms);
@@ -1631,13 +1633,13 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   GNUNET_assert (NULL != TEH_currency);
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Creating /keys at cherry pick date %s\n",
-              GNUNET_STRINGS_absolute_time_to_string (last_cpd));
+              GNUNET_TIME_timestamp2s (last_cpd));
   /* Sign hash over denomination keys */
   {
     struct TALER_ExchangeKeySetPS ks = {
       .purpose.size = htonl (sizeof (ks)),
       .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_KEY_SET),
-      .list_issue_date = GNUNET_TIME_absolute_hton (last_cpd),
+      .list_issue_date = GNUNET_TIME_timestamp_hton (last_cpd),
       .hc = *denom_keys_hash
     };
     enum TALER_ErrorCode ec;
@@ -1660,8 +1662,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     sk = GNUNET_CONTAINER_multipeermap_get (
       ksh->signkey_map,
       (const struct GNUNET_PeerIdentity *) &exchange_pub);
-    ksh->signature_expires = GNUNET_TIME_absolute_min (sk->meta.expire_sign,
-                                                       ksh->signature_expires);
+    ksh->signature_expires = GNUNET_TIME_timestamp_min (sk->meta.expire_sign,
+                                                        ksh->signature_expires);
   }
 
   keys = GNUNET_JSON_PACK (
@@ -1681,8 +1683,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
                                    denoms),
     GNUNET_JSON_pack_array_incref ("auditors",
                                    ksh->auditors),
-    GNUNET_JSON_pack_time_abs ("list_issue_date",
-                               last_cpd),
+    GNUNET_JSON_pack_timestamp ("list_issue_date",
+                                last_cpd),
     GNUNET_JSON_pack_data_auto ("eddsa_pub",
                                 &exchange_pub),
     GNUNET_JSON_pack_data_auto ("eddsa_sig",
@@ -1768,7 +1770,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   json_t *recoup;
   struct SignKeyCtx sctx;
   json_t *denoms;
-  struct GNUNET_TIME_Absolute last_cpd;
+  struct GNUNET_TIME_Timestamp last_cpd;
   struct GNUNET_CONTAINER_Heap *heap;
   struct GNUNET_HashContext *hash_context;
 
@@ -1797,7 +1799,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   }
   denoms = json_array ();
   GNUNET_assert (NULL != denoms);
-  last_cpd = GNUNET_TIME_UNIT_ZERO_ABS;
+  last_cpd = GNUNET_TIME_UNIT_ZERO_TS;
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   {
     struct TEH_DenominationKey *dk;
@@ -1805,8 +1807,10 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     /* heap = min heap, sorted by start time */
     while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
     {
-      if ( (last_cpd.abs_value_us != dk->meta.start.abs_value_us) &&
-           (0 != last_cpd.abs_value_us) )
+      if (GNUNET_TIME_timestamp_cmp (last_cpd,
+                                     !=,
+                                     dk->meta.start) &&
+          (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time)) )
       {
         struct GNUNET_HashCode hc;
 
@@ -1823,7 +1827,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                       "Failed to generate key response data for %s\n",
-                      GNUNET_STRINGS_absolute_time_to_string (last_cpd));
+                      GNUNET_TIME_timestamp2s (last_cpd));
           GNUNET_CRYPTO_hash_context_abort (hash_context);
           /* drain heap before destroying it */
           while (NULL != (dk = GNUNET_CONTAINER_heap_remove_root (heap)))
@@ -1846,14 +1850,14 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
           GNUNET_JSON_PACK (
             GNUNET_JSON_pack_data_auto ("master_sig",
                                         &dk->master_sig),
-            GNUNET_JSON_pack_time_abs ("stamp_start",
-                                       dk->meta.start),
-            GNUNET_JSON_pack_time_abs ("stamp_expire_withdraw",
-                                       dk->meta.expire_withdraw),
-            GNUNET_JSON_pack_time_abs ("stamp_expire_deposit",
-                                       dk->meta.expire_deposit),
-            GNUNET_JSON_pack_time_abs ("stamp_expire_legal",
-                                       dk->meta.expire_legal),
+            GNUNET_JSON_pack_timestamp ("stamp_start",
+                                        dk->meta.start),
+            GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",
+                                        dk->meta.expire_withdraw),
+            GNUNET_JSON_pack_timestamp ("stamp_expire_deposit",
+                                        dk->meta.expire_deposit),
+            GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
+                                        dk->meta.expire_legal),
             TALER_JSON_pack_denom_pub ("denom_pub",
                                        &dk->denom_pub),
             TALER_JSON_pack_amount ("value",
@@ -1869,7 +1873,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     }
   }
   GNUNET_CONTAINER_heap_destroy (heap);
-  if (0 != last_cpd.abs_value_us)
+  if (! GNUNET_TIME_absolute_is_zero (last_cpd.abs_time))
   {
     struct GNUNET_HashCode hc;
 
@@ -1885,7 +1889,7 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to generate key response data for %s\n",
-                  GNUNET_STRINGS_absolute_time_to_string (last_cpd));
+                  GNUNET_TIME_timestamp2s (last_cpd));
       json_decref (denoms);
       json_decref (sctx.signkeys);
       json_decref (recoup);
@@ -1922,9 +1926,8 @@ build_key_state (struct HelperState *hs,
   enum GNUNET_DB_QueryStatus qs;
 
   ksh = GNUNET_new (struct TEH_KeyStateHandle);
-  ksh->signature_expires = GNUNET_TIME_UNIT_FOREVER_ABS;
-  ksh->reload_time = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&ksh->reload_time);
+  ksh->signature_expires = GNUNET_TIME_UNIT_FOREVER_TS;
+  ksh->reload_time = GNUNET_TIME_timestamp_get ();
   /* We must use the key_generation from when we STARTED the process! */
   ksh->key_generation = key_generation;
   if (NULL == hs)
@@ -2054,7 +2057,7 @@ get_key_state (bool management_only)
     return ksh;
   }
   if ( (old_ksh->key_generation < key_generation) ||
-       (GNUNET_TIME_absolute_is_past (old_ksh->signature_expires)) )
+       (GNUNET_TIME_absolute_is_past (old_ksh->signature_expires.abs_time)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Rebuilding /keys, generation upgrade from %llu to %llu\n",
@@ -2298,7 +2301,7 @@ TEH_keys_exchange_revoke (const struct TALER_ExchangePublicKeyP *exchange_pub)
  * Comparator used for a binary search by cherry_pick_date for @a key in the
  * `struct KeysResponseData` array. See libc's qsort() and bsearch() functions.
  *
- * @param key pointer to a `struct GNUNET_TIME_Absolute`
+ * @param key pointer to a `struct GNUNET_TIME_Timestamp`
  * @param value pointer to a `struct KeysResponseData` array entry
  * @return 0 if time matches, -1 if key is smaller, 1 if key is larger
  */
@@ -2306,12 +2309,16 @@ static int
 krd_search_comparator (const void *key,
                        const void *value)
 {
-  const struct GNUNET_TIME_Absolute *kd = key;
+  const struct GNUNET_TIME_Timestamp *kd = key;
   const struct KeysResponseData *krd = value;
 
-  if (kd->abs_value_us > krd->cherry_pick_date.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (*kd,
+                                 >,
+                                 krd->cherry_pick_date))
     return -1;
-  if (kd->abs_value_us < krd->cherry_pick_date.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (*kd,
+                                 <,
+                                 krd->cherry_pick_date))
     return 1;
   return 0;
 }
@@ -2321,7 +2328,7 @@ MHD_RESULT
 TEH_keys_get_handler (struct TEH_RequestContext *rc,
                       const char *const args[])
 {
-  struct GNUNET_TIME_Absolute last_issue_date;
+  struct GNUNET_TIME_Timestamp last_issue_date;
 
   (void) args;
   {
@@ -2349,11 +2356,11 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
          be a problem, as giving back 'older' data than what the client asks for
          (given that the client asks for data in the distant future) is not
          problematic */
-      last_issue_date = GNUNET_TIME_absolute_from_s (cherrypickn);
+      last_issue_date = GNUNET_TIME_timestamp_from_s (cherrypickn);
     }
     else
     {
-      last_issue_date.abs_value_us = 0LLU;
+      last_issue_date = GNUNET_TIME_UNIT_ZERO_TS;
     }
   }
 
@@ -2385,16 +2392,16 @@ TEH_keys_get_handler (struct TEH_RequestContext *rc,
                    &krd_search_comparator);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Filtering /keys by cherry pick date %s found entry %u/%u\n",
-                GNUNET_STRINGS_absolute_time_to_string (last_issue_date),
+                GNUNET_TIME_timestamp2s (last_issue_date),
                 (unsigned int) (krd - ksh->krd_array),
                 ksh->krd_array_length);
     if ( (NULL == krd) &&
          (ksh->krd_array_length > 0) )
     {
-      if (0 != last_issue_date.abs_value_us)
+      if (! GNUNET_TIME_absolute_is_zero (last_issue_date.abs_time))
         GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                     "Client provided invalid cherry picking timestamp %s, returning full response\n",
-                    GNUNET_STRINGS_absolute_time_to_string (last_issue_date));
+                    GNUNET_TIME_timestamp2s (last_issue_date));
       krd = &ksh->krd_array[ksh->krd_array_length - 1];
     }
     if (NULL == krd)
@@ -2430,7 +2437,7 @@ load_extension_data (const char *section_name,
   struct GNUNET_TIME_Relative deposit_duration;
   struct GNUNET_TIME_Relative legal_duration;
 
-  GNUNET_assert (0 != meta->start.abs_value_us); /* caller bug */
+  GNUNET_assert (! GNUNET_TIME_absolute_is_zero (meta->start.abs_time)); /* caller bug */
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (TEH_cfg,
                                            section_name,
@@ -2453,14 +2460,13 @@ load_extension_data (const char *section_name,
                                "DURATION_LEGAL");
     return GNUNET_SYSERR;
   }
-  /* NOTE: this is a change from the 0.8 semantics of the configuration:
-     before duration_spend was relative to 'start', not to 'expire_withdraw'.
-     But doing it this way avoids the error case where previously
-     duration_spend < duration_withdraw was not allowed. */
-  meta->expire_deposit = GNUNET_TIME_absolute_add (meta->expire_withdraw,
-                                                   deposit_duration);
-  meta->expire_legal = GNUNET_TIME_absolute_add (meta->expire_deposit,
-                                                 legal_duration);
+  meta->expire_deposit
+    = GNUNET_TIME_absolute_to_timestamp (
+        GNUNET_TIME_absolute_add (meta->expire_withdraw.abs_time,
+                                  deposit_duration));
+  meta->expire_legal = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (meta->expire_deposit.abs_time,
+                              legal_duration));
   if (GNUNET_OK !=
       TALER_config_get_amount (TEH_cfg,
                                section_name,
@@ -2569,8 +2575,9 @@ TEH_keys_load_fees (const struct TALER_DenominationHash *h_denom_pub,
     return GNUNET_NO;
   }
   meta->start = hd->start_time;
-  meta->expire_withdraw = GNUNET_TIME_absolute_add (meta->start,
-                                                    hd->validity_duration);
+  meta->expire_withdraw = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (meta->start.abs_time,
+                              hd->validity_duration));
   ok = load_extension_data (hd->section_name,
                             meta);
   if (GNUNET_OK == ok)
@@ -2611,10 +2618,13 @@ TEH_keys_get_timing (const struct TALER_ExchangePublicKeyP *exchange_pub,
   hsk = GNUNET_CONTAINER_multipeermap_get (ksh->helpers->esign_keys,
                                            &pid);
   meta->start = hsk->start_time;
-  meta->expire_sign = GNUNET_TIME_absolute_add (meta->start,
-                                                hsk->validity_duration);
-  meta->expire_legal = GNUNET_TIME_absolute_add (meta->expire_sign,
-                                                 signkey_legal_duration);
+
+  meta->expire_sign = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (meta->start.abs_time,
+                              hsk->validity_duration));
+  meta->expire_legal = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (meta->expire_sign.abs_time,
+                              signkey_legal_duration));
   return GNUNET_OK;
 }
 
@@ -2653,7 +2663,7 @@ struct FutureBuilderContext
  * @param value a `struct HelperDenomination`
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 add_future_denomkey_cb (void *cls,
                         const struct GNUNET_HashCode *h_denom_pub,
                         void *value)
@@ -2670,8 +2680,9 @@ add_future_denomkey_cb (void *cls,
   if (GNUNET_TIME_relative_is_zero (hd->validity_duration))
     return GNUNET_OK; /* this key already expired! */
   meta.start = hd->start_time;
-  meta.expire_withdraw = GNUNET_TIME_absolute_add (meta.start,
-                                                   hd->validity_duration);
+  meta.expire_withdraw = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (meta.start.abs_time,
+                              hd->validity_duration));
   if (GNUNET_OK !=
       load_extension_data (hd->section_name,
                            &meta))
@@ -2686,14 +2697,14 @@ add_future_denomkey_cb (void *cls,
       GNUNET_JSON_PACK (
         TALER_JSON_pack_amount ("value",
                                 &meta.value),
-        GNUNET_JSON_pack_time_abs ("stamp_start",
-                                   meta.start),
-        GNUNET_JSON_pack_time_abs ("stamp_expire_withdraw",
-                                   meta.expire_withdraw),
-        GNUNET_JSON_pack_time_abs ("stamp_expire_deposit",
-                                   meta.expire_deposit),
-        GNUNET_JSON_pack_time_abs ("stamp_expire_legal",
-                                   meta.expire_legal),
+        GNUNET_JSON_pack_timestamp ("stamp_start",
+                                    meta.start),
+        GNUNET_JSON_pack_timestamp ("stamp_expire_withdraw",
+                                    meta.expire_withdraw),
+        GNUNET_JSON_pack_timestamp ("stamp_expire_deposit",
+                                    meta.expire_deposit),
+        GNUNET_JSON_pack_timestamp ("stamp_expire_legal",
+                                    meta.expire_legal),
         TALER_JSON_pack_denom_pub ("denom_pub",
                                    &hd->denom_pub),
         TALER_JSON_pack_amount ("fee_withdraw",
@@ -2723,7 +2734,7 @@ add_future_denomkey_cb (void *cls,
  * @param value a `struct HelperDenomination`
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 add_future_signkey_cb (void *cls,
                        const struct GNUNET_PeerIdentity *pid,
                        void *value)
@@ -2731,8 +2742,8 @@ add_future_signkey_cb (void *cls,
   struct FutureBuilderContext *fbc = cls;
   struct HelperSignkey *hsk = value;
   struct SigningKey *sk;
-  struct GNUNET_TIME_Absolute stamp_expire;
-  struct GNUNET_TIME_Absolute legal_end;
+  struct GNUNET_TIME_Timestamp stamp_expire;
+  struct GNUNET_TIME_Timestamp legal_end;
 
   sk = GNUNET_CONTAINER_multipeermap_get (fbc->ksh->signkey_map,
                                           pid);
@@ -2740,22 +2751,24 @@ add_future_signkey_cb (void *cls,
     return GNUNET_OK; /* skip: this key is already active */
   if (GNUNET_TIME_relative_is_zero (hsk->validity_duration))
     return GNUNET_OK; /* this key already expired! */
-  stamp_expire = GNUNET_TIME_absolute_add (hsk->start_time,
-                                           hsk->validity_duration);
-  legal_end = GNUNET_TIME_absolute_add (stamp_expire,
-                                        signkey_legal_duration);
+  stamp_expire = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (hsk->start_time.abs_time,
+                              hsk->validity_duration));
+  legal_end = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (stamp_expire.abs_time,
+                              signkey_legal_duration));
   GNUNET_assert (0 ==
                  json_array_append_new (
                    fbc->signkeys,
                    GNUNET_JSON_PACK (
                      GNUNET_JSON_pack_data_auto ("key",
                                                  &hsk->exchange_pub),
-                     GNUNET_JSON_pack_time_abs ("stamp_start",
-                                                hsk->start_time),
-                     GNUNET_JSON_pack_time_abs ("stamp_expire",
-                                                stamp_expire),
-                     GNUNET_JSON_pack_time_abs ("stamp_end",
-                                                legal_end),
+                     GNUNET_JSON_pack_timestamp ("stamp_start",
+                                                 hsk->start_time),
+                     GNUNET_JSON_pack_timestamp ("stamp_expire",
+                                                 stamp_expire),
+                     GNUNET_JSON_pack_timestamp ("stamp_end",
+                                                 legal_end),
                      GNUNET_JSON_pack_data_auto ("signkey_secmod_sig",
                                                  &hsk->sm_sig))));
   return GNUNET_OK;

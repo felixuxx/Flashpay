@@ -27,14 +27,14 @@ void
 TALER_exchange_offline_auditor_add_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
-  struct GNUNET_TIME_Absolute start_date,
+  struct GNUNET_TIME_Timestamp start_date,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterAddAuditorPS kv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_ADD_AUDITOR),
     .purpose.size = htonl (sizeof (kv)),
-    .start_date = GNUNET_TIME_absolute_hton (start_date),
+    .start_date = GNUNET_TIME_timestamp_hton (start_date),
     .auditor_pub = *auditor_pub,
   };
 
@@ -51,7 +51,7 @@ enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_add_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
   const char *auditor_url,
-  struct GNUNET_TIME_Absolute start_date,
+  struct GNUNET_TIME_Timestamp start_date,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -59,7 +59,7 @@ TALER_exchange_offline_auditor_add_verify (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_MASTER_ADD_AUDITOR),
     .purpose.size = htonl (sizeof (aa)),
-    .start_date = GNUNET_TIME_absolute_hton (start_date),
+    .start_date = GNUNET_TIME_timestamp_hton (start_date),
     .auditor_pub = *auditor_pub
   };
 
@@ -76,14 +76,14 @@ TALER_exchange_offline_auditor_add_verify (
 void
 TALER_exchange_offline_auditor_del_sign (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  struct GNUNET_TIME_Absolute end_date,
+  struct GNUNET_TIME_Timestamp end_date,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterDelAuditorPS kv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_AUDITOR),
     .purpose.size = htonl (sizeof (kv)),
-    .end_date = GNUNET_TIME_absolute_hton (end_date),
+    .end_date = GNUNET_TIME_timestamp_hton (end_date),
     .auditor_pub = *auditor_pub,
   };
 
@@ -96,7 +96,7 @@ TALER_exchange_offline_auditor_del_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_auditor_del_verify (
   const struct TALER_AuditorPublicKeyP *auditor_pub,
-  struct GNUNET_TIME_Absolute end_date,
+  struct GNUNET_TIME_Timestamp end_date,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -104,7 +104,7 @@ TALER_exchange_offline_auditor_del_verify (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_MASTER_DEL_AUDITOR),
     .purpose.size = htonl (sizeof (da)),
-    .end_date = GNUNET_TIME_absolute_hton (end_date),
+    .end_date = GNUNET_TIME_timestamp_hton (end_date),
     .auditor_pub = *auditor_pub
   };
 
@@ -197,9 +197,9 @@ TALER_exchange_offline_signkey_revoke_verify (
 void
 TALER_exchange_offline_signkey_validity_sign (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
-  struct GNUNET_TIME_Absolute end_sign,
-  struct GNUNET_TIME_Absolute end_legal,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Timestamp end_sign,
+  struct GNUNET_TIME_Timestamp end_legal,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
@@ -207,9 +207,9 @@ TALER_exchange_offline_signkey_validity_sign (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
     .purpose.size = htonl (sizeof (skv)),
-    .start = GNUNET_TIME_absolute_hton (start_sign),
-    .expire = GNUNET_TIME_absolute_hton (end_sign),
-    .end = GNUNET_TIME_absolute_hton (end_legal),
+    .start = GNUNET_TIME_timestamp_hton (start_sign),
+    .expire = GNUNET_TIME_timestamp_hton (end_sign),
+    .end = GNUNET_TIME_timestamp_hton (end_legal),
     .signkey_pub = *exchange_pub
   };
 
@@ -222,9 +222,9 @@ TALER_exchange_offline_signkey_validity_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_signkey_validity_verify (
   const struct TALER_ExchangePublicKeyP *exchange_pub,
-  struct GNUNET_TIME_Absolute start_sign,
-  struct GNUNET_TIME_Absolute end_sign,
-  struct GNUNET_TIME_Absolute end_legal,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Timestamp end_sign,
+  struct GNUNET_TIME_Timestamp end_legal,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -232,9 +232,9 @@ TALER_exchange_offline_signkey_validity_verify (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_MASTER_SIGNING_KEY_VALIDITY),
     .purpose.size = htonl (sizeof (skv)),
-    .start = GNUNET_TIME_absolute_hton (start_sign),
-    .expire = GNUNET_TIME_absolute_hton (end_sign),
-    .end = GNUNET_TIME_absolute_hton (end_legal),
+    .start = GNUNET_TIME_timestamp_hton (start_sign),
+    .expire = GNUNET_TIME_timestamp_hton (end_sign),
+    .end = GNUNET_TIME_timestamp_hton (end_legal),
     .signkey_pub = *exchange_pub
   };
 
@@ -250,10 +250,10 @@ TALER_exchange_offline_signkey_validity_verify (
 void
 TALER_exchange_offline_denom_validity_sign (
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute stamp_start,
-  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
-  struct GNUNET_TIME_Absolute stamp_expire_deposit,
-  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  struct GNUNET_TIME_Timestamp stamp_start,
+  struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
+  struct GNUNET_TIME_Timestamp stamp_expire_deposit,
+  struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
   const struct TALER_Amount *fee_withdraw,
   const struct TALER_Amount *fee_deposit,
@@ -267,10 +267,10 @@ TALER_exchange_offline_denom_validity_sign (
       = htonl (TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
     .purpose.size
       = htonl (sizeof (issue)),
-    .start = GNUNET_TIME_absolute_hton (stamp_start),
-    .expire_withdraw = GNUNET_TIME_absolute_hton (stamp_expire_withdraw),
-    .expire_deposit = GNUNET_TIME_absolute_hton (stamp_expire_deposit),
-    .expire_legal = GNUNET_TIME_absolute_hton (stamp_expire_legal),
+    .start = GNUNET_TIME_timestamp_hton (stamp_start),
+    .expire_withdraw = GNUNET_TIME_timestamp_hton (stamp_expire_withdraw),
+    .expire_deposit = GNUNET_TIME_timestamp_hton (stamp_expire_deposit),
+    .expire_legal = GNUNET_TIME_timestamp_hton (stamp_expire_legal),
     .denom_hash = *h_denom_pub
   };
 
@@ -295,10 +295,10 @@ TALER_exchange_offline_denom_validity_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_denom_validity_verify (
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute stamp_start,
-  struct GNUNET_TIME_Absolute stamp_expire_withdraw,
-  struct GNUNET_TIME_Absolute stamp_expire_deposit,
-  struct GNUNET_TIME_Absolute stamp_expire_legal,
+  struct GNUNET_TIME_Timestamp stamp_start,
+  struct GNUNET_TIME_Timestamp stamp_expire_withdraw,
+  struct GNUNET_TIME_Timestamp stamp_expire_deposit,
+  struct GNUNET_TIME_Timestamp stamp_expire_legal,
   const struct TALER_Amount *coin_value,
   const struct TALER_Amount *fee_withdraw,
   const struct TALER_Amount *fee_deposit,
@@ -312,10 +312,10 @@ TALER_exchange_offline_denom_validity_verify (
       TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY),
     .purpose.size = htonl (sizeof (dkv)),
     .master = *master_pub,
-    .start = GNUNET_TIME_absolute_hton (stamp_start),
-    .expire_withdraw = GNUNET_TIME_absolute_hton (stamp_expire_withdraw),
-    .expire_deposit = GNUNET_TIME_absolute_hton (stamp_expire_deposit),
-    .expire_legal = GNUNET_TIME_absolute_hton (stamp_expire_legal),
+    .start = GNUNET_TIME_timestamp_hton (stamp_start),
+    .expire_withdraw = GNUNET_TIME_timestamp_hton (stamp_expire_withdraw),
+    .expire_deposit = GNUNET_TIME_timestamp_hton (stamp_expire_deposit),
+    .expire_legal = GNUNET_TIME_timestamp_hton (stamp_expire_legal),
     .denom_hash = *h_denom_pub
   };
 
@@ -341,18 +341,16 @@ TALER_exchange_offline_denom_validity_verify (
 void
 TALER_exchange_offline_wire_add_sign (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute now,
+  struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterAddWirePS kv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_ADD_WIRE),
     .purpose.size = htonl (sizeof (kv)),
-    .start_date = GNUNET_TIME_absolute_hton (now),
+    .start_date = GNUNET_TIME_timestamp_hton (now),
   };
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_TIME_round_abs (&now));
   TALER_payto_hash (payto_uri,
                     &kv.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
@@ -364,14 +362,14 @@ TALER_exchange_offline_wire_add_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_add_verify (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute sign_time,
+  struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterAddWirePS aw = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_ADD_WIRE),
     .purpose.size = htonl (sizeof (aw)),
-    .start_date = GNUNET_TIME_absolute_hton (sign_time),
+    .start_date = GNUNET_TIME_timestamp_hton (sign_time),
   };
 
   TALER_payto_hash (payto_uri,
@@ -388,18 +386,16 @@ TALER_exchange_offline_wire_add_verify (
 void
 TALER_exchange_offline_wire_del_sign (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute now,
+  struct GNUNET_TIME_Timestamp now,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterDelWirePS kv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_DEL_WIRE),
     .purpose.size = htonl (sizeof (kv)),
-    .end_date = GNUNET_TIME_absolute_hton (now),
+    .end_date = GNUNET_TIME_timestamp_hton (now),
   };
 
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_TIME_round_abs (&now));
   TALER_payto_hash (payto_uri,
                     &kv.h_payto);
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
@@ -411,7 +407,7 @@ TALER_exchange_offline_wire_del_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_del_verify (
   const char *payto_uri,
-  struct GNUNET_TIME_Absolute sign_time,
+  struct GNUNET_TIME_Timestamp sign_time,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig)
 {
@@ -419,7 +415,7 @@ TALER_exchange_offline_wire_del_verify (
     .purpose.purpose = htonl (
       TALER_SIGNATURE_MASTER_DEL_WIRE),
     .purpose.size = htonl (sizeof (aw)),
-    .end_date = GNUNET_TIME_absolute_hton (sign_time),
+    .end_date = GNUNET_TIME_timestamp_hton (sign_time),
   };
 
   TALER_payto_hash (payto_uri,
@@ -435,8 +431,8 @@ TALER_exchange_offline_wire_del_verify (
 void
 TALER_exchange_offline_wire_fee_sign (
   const char *payment_method,
-  struct GNUNET_TIME_Absolute start_time,
-  struct GNUNET_TIME_Absolute end_time,
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *wire_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_MasterPrivateKeyP *master_priv,
@@ -445,8 +441,8 @@ TALER_exchange_offline_wire_fee_sign (
   struct TALER_MasterWireFeePS kv = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES),
     .purpose.size = htonl (sizeof (kv)),
-    .start_date = GNUNET_TIME_absolute_hton (start_time),
-    .end_date = GNUNET_TIME_absolute_hton (end_time),
+    .start_date = GNUNET_TIME_timestamp_hton (start_time),
+    .end_date = GNUNET_TIME_timestamp_hton (end_time),
   };
 
   GNUNET_CRYPTO_hash (payment_method,
@@ -465,8 +461,8 @@ TALER_exchange_offline_wire_fee_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_wire_fee_verify (
   const char *payment_method,
-  struct GNUNET_TIME_Absolute start_time,
-  struct GNUNET_TIME_Absolute end_time,
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Timestamp end_time,
   const struct TALER_Amount *wire_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_MasterPublicKeyP *master_pub,
@@ -475,8 +471,8 @@ TALER_exchange_offline_wire_fee_verify (
   struct TALER_MasterWireFeePS wf = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_WIRE_FEES),
     .purpose.size = htonl (sizeof (wf)),
-    .start_date = GNUNET_TIME_absolute_hton (start_time),
-    .end_date = GNUNET_TIME_absolute_hton (end_time)
+    .start_date = GNUNET_TIME_timestamp_hton (start_time),
+    .end_date = GNUNET_TIME_timestamp_hton (end_time)
   };
 
   GNUNET_CRYPTO_hash (payment_method,

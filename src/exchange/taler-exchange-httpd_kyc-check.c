@@ -236,7 +236,7 @@ TEH_handler_kyc_check (
   struct KycPoller *kyp = rc->rh_ctx;
   MHD_RESULT res;
   enum GNUNET_GenericReturnValue ret;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   if (NULL == kyp)
   {
@@ -347,8 +347,7 @@ TEH_handler_kyc_check (
       rc);
   }
 
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   ret = TEH_DB_run_transaction (rc->connection,
                                 "kyc check",
                                 TEH_MT_OTHER,
@@ -420,7 +419,7 @@ TEH_handler_kyc_check (
         TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS),
       .purpose.size = htonl (sizeof (as)),
       .h_payto = kyp->h_payto,
-      .timestamp = GNUNET_TIME_absolute_hton (now)
+      .timestamp = GNUNET_TIME_timestamp_hton (now)
     };
     enum TALER_ErrorCode ec;
 
@@ -440,8 +439,8 @@ TEH_handler_kyc_check (
                                   &sig),
       GNUNET_JSON_pack_data_auto ("exchange_pub",
                                   &pub),
-      GNUNET_JSON_pack_time_abs ("now",
-                                 now));
+      GNUNET_JSON_pack_timestamp ("now",
+                                  now));
   }
 }
 

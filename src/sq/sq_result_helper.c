@@ -38,7 +38,7 @@
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_amount (void *cls,
                 sqlite3_stmt *result,
                 unsigned int column,
@@ -68,13 +68,6 @@ extract_amount (void *cls,
 }
 
 
-/**
- * Currency amount expected.
- *
- * @param currency the currency to use for @a amount
- * @param[out] amount where to store the result
- * @return array entry for the result specification to use
- */
 struct GNUNET_SQ_ResultSpec
 TALER_SQ_result_spec_amount (const char *currency,
                              struct TALER_Amount *amount)
@@ -103,7 +96,7 @@ TALER_SQ_result_spec_amount (const char *currency,
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_amount_nbo (void *cls,
                     sqlite3_stmt *result,
                     unsigned int column,
@@ -132,13 +125,6 @@ extract_amount_nbo (void *cls,
 }
 
 
-/**
- * Currency amount expected.
- *
- * @param currency the currency to use for @a amount
- * @param[out] amount where to store the result
- * @return array entry for the result specification to use
- */
 struct GNUNET_SQ_ResultSpec
 TALER_SQ_result_spec_amount_nbo (const char *currency,
                                  struct TALER_AmountNBO *amount)
@@ -167,7 +153,7 @@ TALER_SQ_result_spec_amount_nbo (const char *currency,
  *   #GNUNET_YES if all results could be extracted
  *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
  */
-static int
+static enum GNUNET_GenericReturnValue
 extract_json (void *cls,
               sqlite3_stmt *result,
               unsigned int column,
@@ -241,140 +227,6 @@ TALER_SQ_result_spec_json (json_t **jp)
     .cleaner = &clean_json,
     .dst = (void *) jp,
     .cls = (void *) jp,
-    .num_params = 1
-  };
-
-  return res;
-}
-
-
-/**
- * Extract amount data from a SQLite database
- *
- * @param cls closure
- * @param result where to extract data from
- * @param column column to extract data from
- * @param[in,out] dst_size where to store size of result, may be NULL
- * @param[out] dst where to store the result
- * @return
- *   #GNUNET_YES if all results could be extracted
- *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
- */
-static int
-extract_round_time (void *cls,
-                    sqlite3_stmt *result,
-                    unsigned int column,
-                    size_t *dst_size,
-                    void *dst)
-{
-  struct GNUNET_TIME_Absolute *udst = dst;
-  struct GNUNET_TIME_Absolute tmp;
-
-  (void) cls;
-  if (SQLITE_INTEGER != sqlite3_column_type (result,
-                                             (int) column))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_assert (NULL != dst);
-  if (sizeof (struct GNUNET_TIME_Absolute) != *dst_size)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  tmp.abs_value_us = sqlite3_column_int64 (result,
-                                           (int) column);
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_TIME_round_abs (&tmp));
-  *udst = tmp;
-  return GNUNET_OK;
-}
-
-
-/**
- * Rounded absolute time expected.
- * In contrast to #GNUNET_SQ_query_param_absolute_time_nbo(),
- * this function ensures that the result is rounded and can
- * be converted to JSON.
- *
- * @param[out] at where to store the result
- * @return array entry for the result specification to use
- */
-struct GNUNET_SQ_ResultSpec
-TALER_SQ_result_spec_absolute_time (struct GNUNET_TIME_Absolute *at)
-{
-  struct GNUNET_SQ_ResultSpec res = {
-    .conv = &extract_round_time,
-    .dst = (void *) at,
-    .dst_size = sizeof (struct GNUNET_TIME_Absolute),
-    .num_params = 1
-  };
-
-  return res;
-}
-
-
-/**
- * Extract amount data from a SQLite database
- *
- * @param cls closure
- * @param result where to extract data from
- * @param column column to extract data from
- * @param[in,out] dst_size where to store size of result, may be NULL
- * @param[out] dst where to store the result
- * @return
- *   #GNUNET_YES if all results could be extracted
- *   #GNUNET_SYSERR if a result was invalid (non-existing field or NULL)
- */
-static int
-extract_round_time_nbo (void *cls,
-                        sqlite3_stmt *result,
-                        unsigned int column,
-                        size_t *dst_size,
-                        void *dst)
-{
-  struct GNUNET_TIME_AbsoluteNBO *udst = dst;
-  struct GNUNET_TIME_Absolute tmp;
-
-  (void) cls;
-  if (SQLITE_INTEGER != sqlite3_column_type (result,
-                                             (int) column))
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  GNUNET_assert (NULL != dst);
-  if (sizeof (struct GNUNET_TIME_AbsoluteNBO) != *dst_size)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-  tmp.abs_value_us = sqlite3_column_int64 (result,
-                                           (int) column);
-  GNUNET_break (GNUNET_OK ==
-                GNUNET_TIME_round_abs (&tmp));
-  *udst = GNUNET_TIME_absolute_hton (tmp);
-  return GNUNET_OK;
-}
-
-
-/**
- * Rounded absolute time expected.
- * In contrast to #GNUNET_SQ_result_spec_absolute_time_nbo(),
- * this function ensures that the result is rounded and can
- * be converted to JSON.
- *
- * @param[out] at where to store the result
- * @return array entry for the result specification to use
- */
-struct GNUNET_SQ_ResultSpec
-TALER_SQ_result_spec_absolute_time_nbo (struct GNUNET_TIME_AbsoluteNBO *at)
-{
-  struct GNUNET_SQ_ResultSpec res = {
-    .conv = &extract_round_time_nbo,
-    .dst = (void *) at,
-    .dst_size = sizeof (struct GNUNET_TIME_AbsoluteNBO),
     .num_params = 1
   };
 

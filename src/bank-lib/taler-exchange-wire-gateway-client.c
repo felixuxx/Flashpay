@@ -227,7 +227,7 @@ credit_history_cb (void *cls,
            details->credit_account_uri,
            TALER_B2S (&details->reserve_pub),
            TALER_amount2s (&details->amount),
-           GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
+           GNUNET_TIME_timestamp2s (details->execution_date));
   return GNUNET_OK;
 }
 
@@ -340,7 +340,7 @@ debit_history_cb (void *cls,
            details->credit_account_uri,
            TALER_B2S (&details->wtid),
            TALER_amount2s (&details->amount),
-           GNUNET_STRINGS_absolute_time_to_string (details->execution_date));
+           GNUNET_TIME_timestamp2s (details->execution_date));
   return GNUNET_OK;
 }
 
@@ -391,7 +391,7 @@ confirmation_cb (void *cls,
                  unsigned int response_code,
                  enum TALER_ErrorCode ec,
                  uint64_t row_id,
-                 struct GNUNET_TIME_Absolute timestamp)
+                 struct GNUNET_TIME_Timestamp timestamp)
 {
   (void) cls;
   eh = NULL;
@@ -408,7 +408,7 @@ confirmation_cb (void *cls,
   fprintf (stdout,
            "Wire transfer #%llu executed successfully at %s.\n",
            (unsigned long long) row_id,
-           GNUNET_STRINGS_absolute_time_to_string (timestamp));
+           GNUNET_TIME_timestamp2s (timestamp));
   global_ret = 0;
   GNUNET_SCHEDULER_shutdown ();
 }
@@ -500,7 +500,7 @@ res_cb (void *cls,
         unsigned int http_status,
         enum TALER_ErrorCode ec,
         uint64_t serial_id,
-        struct GNUNET_TIME_Absolute timestamp,
+        struct GNUNET_TIME_Timestamp timestamp,
         const json_t *json)
 {
   (void) cls;

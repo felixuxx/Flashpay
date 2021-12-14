@@ -60,9 +60,9 @@ reply_deposit_success (struct MHD_Connection *connection,
                        const struct TALER_MerchantWireHash *h_wire,
                        const struct TALER_ExtensionContractHash *h_extensions,
                        const struct TALER_PrivateContractHash *h_contract_terms,
-                       struct GNUNET_TIME_Absolute exchange_timestamp,
-                       struct GNUNET_TIME_Absolute refund_deadline,
-                       struct GNUNET_TIME_Absolute wire_deadline,
+                       struct GNUNET_TIME_Timestamp exchange_timestamp,
+                       struct GNUNET_TIME_Timestamp refund_deadline,
+                       struct GNUNET_TIME_Timestamp wire_deadline,
                        const struct TALER_MerchantPublicKeyP *merchant,
                        const struct TALER_Amount *amount_without_fee)
 {
@@ -73,9 +73,9 @@ reply_deposit_success (struct MHD_Connection *connection,
     .purpose.size = htonl (sizeof (dc)),
     .h_contract_terms = *h_contract_terms,
     .h_wire = *h_wire,
-    .exchange_timestamp = GNUNET_TIME_absolute_hton (exchange_timestamp),
-    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
-    .wire_deadline = GNUNET_TIME_absolute_hton (wire_deadline),
+    .exchange_timestamp = GNUNET_TIME_timestamp_hton (exchange_timestamp),
+    .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
+    .wire_deadline = GNUNET_TIME_timestamp_hton (wire_deadline),
     .coin_pub = *coin_pub,
     .merchant_pub = *merchant
   };
@@ -97,8 +97,8 @@ reply_deposit_success (struct MHD_Connection *connection,
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     MHD_HTTP_OK,
-    GNUNET_JSON_pack_time_abs ("exchange_timestamp",
-                               exchange_timestamp),
+    GNUNET_JSON_pack_timestamp ("exchange_timestamp",
+                                exchange_timestamp),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
                                 &sig),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
@@ -119,7 +119,7 @@ struct DepositContext
   /**
    * Our timestamp (when we received the request).
    */
-  struct GNUNET_TIME_Absolute exchange_timestamp;
+  struct GNUNET_TIME_Timestamp exchange_timestamp;
 
   /**
    * Calculated hash over the wire details.
@@ -281,13 +281,13 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                  &deposit.h_contract_terms),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &deposit.csig),
-    TALER_JSON_spec_absolute_time ("timestamp",
-                                   &deposit.timestamp),
+    GNUNET_JSON_spec_timestamp ("timestamp",
+                                &deposit.timestamp),
     GNUNET_JSON_spec_mark_optional (
-      TALER_JSON_spec_absolute_time ("refund_deadline",
-                                     &deposit.refund_deadline)),
-    TALER_JSON_spec_absolute_time ("wire_transfer_deadline",
-                                   &deposit.wire_deadline),
+      GNUNET_JSON_spec_timestamp ("refund_deadline",
+                                  &deposit.refund_deadline)),
+    GNUNET_JSON_spec_timestamp ("wire_transfer_deadline",
+                                &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()
   };
 
@@ -332,7 +332,9 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     }
   }
   deposit.receiver_wire_account = (char *) dc.payto_uri;
-  if (deposit.refund_deadline.abs_value_us > deposit.wire_deadline.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (deposit.refund_deadline,
+                                 >,
+                                 deposit.wire_deadline))
   {
     GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
@@ -347,8 +349,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   dc.deposit = &deposit;
 
   /* new deposit */
-  dc.exchange_timestamp = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&dc.exchange_timestamp);
+  dc.exchange_timestamp = GNUNET_TIME_timestamp_get ();
   /* check denomination exists and is valid */
   {
     struct TEH_DenominationKey *dk;
@@ -362,13 +363,12 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       GNUNET_JSON_parse_free (spec);
       return mret;
     }
-    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
+    if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
     {
       /* This denomination is past the expiration time for deposits */
-      struct GNUNET_TIME_Absolute now;
+      struct GNUNET_TIME_Timestamp now;
 
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
+      now = GNUNET_TIME_timestamp_get ();
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
@@ -377,13 +377,12 @@ TEH_handler_deposit (struct MHD_Connection *connection,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "DEPOSIT");
     }
-    if (GNUNET_TIME_absolute_is_future (dk->meta.start))
+    if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
     {
       /* This denomination is not yet valid */
-      struct GNUNET_TIME_Absolute now;
+      struct GNUNET_TIME_Timestamp now;
 
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
+      now = GNUNET_TIME_timestamp_get ();
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
@@ -394,10 +393,9 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     }
     if (dk->recoup_possible)
     {
-      struct GNUNET_TIME_Absolute now;
+      struct GNUNET_TIME_Timestamp now;
 
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
+      now = GNUNET_TIME_timestamp_get ();
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (

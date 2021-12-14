@@ -40,20 +40,6 @@
 
 /**
  * Generate packer instruction for a JSON field of type
- * absolute time.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the field to add to the object
- * @param at absolute time to pack
- * @return json pack specification
- */
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_abs (const char *name,
-                          struct GNUNET_TIME_Absolute at);
-
-
-/**
- * Generate packer instruction for a JSON field of type
  * absolute time creating a human-readable timestamp.
  *
  * @param name name of the field to add to the object
@@ -63,20 +49,6 @@ TALER_JSON_pack_time_abs (const char *name,
 struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_time_abs_human (const char *name,
                                 struct GNUNET_TIME_Absolute at);
-
-
-/**
- * Generate packer instruction for a JSON field of type
- * absolute time in network byte order.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the field to add to the object
- * @param at absolute time to pack
- * @return json pack specification
- */
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_abs_nbo (const char *name,
-                              struct GNUNET_TIME_AbsoluteNBO at);
 
 
 /**
@@ -100,34 +72,6 @@ TALER_JSON_pack_time_abs_nbo (const char *name,
 struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_time_abs_nbo_human (const char *name,
                                     struct GNUNET_TIME_AbsoluteNBO at);
-
-
-/**
- * Generate packer instruction for a JSON field of type
- * relative time.
- * The relative time value is expected to be already rounded.
- *
- * @param name name of the field to add to the object
- * @param rt relative time to pack
- * @return json pack specification
- */
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_rel (const char *name,
-                          struct GNUNET_TIME_Relative rt);
-
-
-/**
- * Generate packer instruction for a JSON field of type
- * relative time in network byte order.
- * The relative time value is expected to be already rounded.
- *
- * @param name name of the field to add to the object
- * @param rt relative time to pack
- * @return json pack specification
- */
-struct GNUNET_JSON_PackSpec
-TALER_JSON_pack_time_rel_nbo (const char *name,
-                              struct GNUNET_TIME_RelativeNBO rt);
 
 
 /**
@@ -276,46 +220,6 @@ TALER_JSON_spec_amount_any (const char *name,
 struct GNUNET_JSON_Specification
 TALER_JSON_spec_amount_any_nbo (const char *name,
                                 struct TALER_AmountNBO *r_amount);
-
-
-/**
- * Provide specification to parse given JSON object to an absolute time.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the time field in the JSON
- * @param[out] r_time where the time has to be written
- * @return spec for parsing an absolute time
- */
-struct GNUNET_JSON_Specification
-TALER_JSON_spec_absolute_time (const char *name,
-                               struct GNUNET_TIME_Absolute *r_time);
-
-
-/**
- * Provide specification to parse given JSON object to an absolute time
- * in network byte order.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the time field in the JSON
- * @param[out] r_time where the time has to be written
- * @return spec for parsing an absolute time
- */
-struct GNUNET_JSON_Specification
-TALER_JSON_spec_absolute_time_nbo (const char *name,
-                                   struct GNUNET_TIME_AbsoluteNBO *r_time);
-
-
-/**
- * Provide specification to parse given JSON object to a relative time.
- * The absolute time value is expected to be already rounded.
- *
- * @param name name of the time field in the JSON
- * @param[out] r_time where the time has to be written
- * @return spec for parsing a relative time
- */
-struct GNUNET_JSON_Specification
-TALER_JSON_spec_relative_time (const char *name,
-                               struct GNUNET_TIME_Relative *r_time);
 
 
 /**

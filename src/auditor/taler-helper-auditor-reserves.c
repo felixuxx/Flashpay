@@ -284,7 +284,7 @@ struct ReserveSummary
    * Previous reserve expiration data, as remembered by the auditor.
    * (updated on-the-fly in #handle_reserve_in()).
    */
-  struct GNUNET_TIME_Absolute a_expiration_date;
+  struct GNUNET_TIME_Timestamp a_expiration_date;
 
   /**
    * Which account did originally put money into the reserve?
@@ -408,12 +408,12 @@ handle_reserve_in (void *cls,
                    const struct TALER_Amount *credit,
                    const char *sender_account_details,
                    uint64_t wire_reference,
-                   struct GNUNET_TIME_Absolute execution_date)
+                   struct GNUNET_TIME_Timestamp execution_date)
 {
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
-  struct GNUNET_TIME_Absolute expiry;
+  struct GNUNET_TIME_Timestamp expiry;
   enum GNUNET_DB_QueryStatus qs;
 
   (void) wire_reference;
@@ -463,10 +463,11 @@ handle_reserve_in (void *cls,
               "Additional incoming wire transfer for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
               TALER_amount2s (credit));
-  expiry = GNUNET_TIME_absolute_add (execution_date,
-                                     idle_reserve_expiration_time);
-  rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
-                                                    expiry);
+  expiry = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (execution_date.abs_time,
+                              idle_reserve_expiration_time));
+  rs->a_expiration_date = GNUNET_TIME_timestamp_max (rs->a_expiration_date,
+                                                     expiry);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;
@@ -494,7 +495,7 @@ handle_reserve_out (void *cls,
                     const struct TALER_DenominationPublicKey *denom_pub,
                     const struct TALER_ReservePublicKeyP *reserve_pub,
                     const struct TALER_ReserveSignatureP *reserve_sig,
-                    struct GNUNET_TIME_Absolute execution_date,
+                    struct GNUNET_TIME_Timestamp execution_date,
                     const struct TALER_Amount *amount_with_fee)
 {
   struct ReserveContext *rc = cls;
@@ -504,8 +505,8 @@ handle_reserve_out (void *cls,
   struct TALER_Amount withdraw_fee;
   struct TALER_Amount auditor_value;
   struct TALER_Amount auditor_amount_with_fee;
-  struct GNUNET_TIME_Absolute valid_start;
-  struct GNUNET_TIME_Absolute expire_withdraw;
+  struct GNUNET_TIME_Timestamp valid_start;
+  struct GNUNET_TIME_Timestamp expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
   struct TALER_WithdrawRequestPS wsrd = {
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW),
@@ -545,22 +546,26 @@ handle_reserve_out (void *cls,
   }
 
   /* check that execution date is within withdraw range for denom_pub  */
-  valid_start = GNUNET_TIME_absolute_ntoh (issue->start);
-  expire_withdraw = GNUNET_TIME_absolute_ntoh (issue->expire_withdraw);
+  valid_start = GNUNET_TIME_timestamp_ntoh (issue->start);
+  expire_withdraw = GNUNET_TIME_timestamp_ntoh (issue->expire_withdraw);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Checking withdraw timing: %llu, expire: %llu, timing: %llu\n",
-              (unsigned long long) valid_start.abs_value_us,
-              (unsigned long long) expire_withdraw.abs_value_us,
-              (unsigned long long) execution_date.abs_value_us);
-  if ( (valid_start.abs_value_us > execution_date.abs_value_us) ||
-       (expire_withdraw.abs_value_us < execution_date.abs_value_us) )
+              (unsigned long long) valid_start.abs_time.abs_value_us,
+              (unsigned long long) expire_withdraw.abs_time.abs_value_us,
+              (unsigned long long) execution_date.abs_time.abs_value_us);
+  if (GNUNET_TIME_timestamp_cmp (valid_start,
+                                 >,
+                                 execution_date) ||
+      GNUNET_TIME_timestamp_cmp (expire_withdraw,
+                                 <,
+                                 execution_date))
   {
     TALER_ARL_report (denomination_key_validity_withdraw_inconsistencies,
                       GNUNET_JSON_PACK (
                         GNUNET_JSON_pack_uint64 ("row",
                                                  rowid),
                         TALER_JSON_pack_time_abs_human ("execution_date",
-                                                        execution_date),
+                                                        execution_date.abs_time),
                         GNUNET_JSON_pack_data_auto ("reserve_pub",
                                                     reserve_pub),
                         GNUNET_JSON_pack_data_auto ("denompub_h",
@@ -683,7 +688,7 @@ static int
 handle_recoup_by_reserve (
   void *cls,
   uint64_t rowid,
-  struct GNUNET_TIME_Absolute timestamp,
+  struct GNUNET_TIME_Timestamp timestamp,
   const struct TALER_Amount *amount,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   const struct TALER_CoinPublicInfo *coin,
@@ -694,7 +699,7 @@ handle_recoup_by_reserve (
   struct ReserveContext *rc = cls;
   struct GNUNET_HashCode key;
   struct ReserveSummary *rs;
-  struct GNUNET_TIME_Absolute expiry;
+  struct GNUNET_TIME_Timestamp expiry;
   struct TALER_MasterSignatureP msig;
   uint64_t rev_rowid;
   enum GNUNET_DB_QueryStatus qs;
@@ -845,10 +850,11 @@ handle_recoup_by_reserve (
               "Additional /recoup value to for reserve `%s' of %s\n",
               TALER_B2S (reserve_pub),
               TALER_amount2s (amount));
-  expiry = GNUNET_TIME_absolute_add (timestamp,
-                                     idle_reserve_expiration_time);
-  rs->a_expiration_date = GNUNET_TIME_absolute_max (rs->a_expiration_date,
-                                                    expiry);
+  expiry = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (timestamp.abs_time,
+                              idle_reserve_expiration_time));
+  rs->a_expiration_date = GNUNET_TIME_timestamp_max (rs->a_expiration_date,
+                                                     expiry);
   if (TALER_ARL_do_abort ())
     return GNUNET_SYSERR;
   return GNUNET_OK;
@@ -864,14 +870,14 @@ handle_recoup_by_reserve (
  * @param[out] fee set to the closing fee
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 get_closing_fee (const char *receiver_account,
-                 struct GNUNET_TIME_Absolute atime,
+                 struct GNUNET_TIME_Timestamp atime,
                  struct TALER_Amount *fee)
 {
   struct TALER_MasterSignatureP master_sig;
-  struct GNUNET_TIME_Absolute start_date;
-  struct GNUNET_TIME_Absolute end_date;
+  struct GNUNET_TIME_Timestamp start_date;
+  struct GNUNET_TIME_Timestamp end_date;
   struct TALER_Amount wire_fee;
   char *method;
 
@@ -894,9 +900,9 @@ get_closing_fee (const char *receiver_account,
     GNUNET_asprintf (&diag,
                      "closing fee for `%s' unavailable at %s\n",
                      method,
-                     GNUNET_STRINGS_absolute_time_to_string (atime));
+                     GNUNET_TIME_timestamp2s (atime));
     report_row_inconsistency ("closing-fee",
-                              atime.abs_value_us,
+                              atime.abs_time.abs_value_us,
                               diag);
     GNUNET_free (diag);
     GNUNET_free (method);
@@ -925,7 +931,7 @@ static int
 handle_reserve_closed (
   void *cls,
   uint64_t rowid,
-  struct GNUNET_TIME_Absolute execution_date,
+  struct GNUNET_TIME_Timestamp execution_date,
   const struct TALER_Amount *amount_with_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_ReservePublicKeyP *reserve_pub,
@@ -1155,8 +1161,10 @@ verify_reserve_balance (void *cls,
 
   /* Check that reserve is being closed if it is past its expiration date
      (and the closing fee would not exceed the remaining balance) */
-  if (CLOSING_GRACE_PERIOD.rel_value_us <
-      GNUNET_TIME_absolute_get_duration (rs->a_expiration_date).rel_value_us)
+  if (GNUNET_TIME_relative_cmp (CLOSING_GRACE_PERIOD,
+                                <,
+                                GNUNET_TIME_absolute_get_duration (
+                                  rs->a_expiration_date.abs_time)))
   {
     /* Reserve is expired */
     struct TALER_Amount cfee;
@@ -1183,7 +1191,7 @@ verify_reserve_balance (void *cls,
             TALER_JSON_pack_amount ("balance",
                                     &nbalance),
             TALER_JSON_pack_time_abs_human ("expiration_time",
-                                            rs->a_expiration_date)));
+                                            rs->a_expiration_date.abs_time)));
       }
     }
     else
@@ -1192,16 +1200,17 @@ verify_reserve_balance (void *cls,
       TALER_ARL_amount_add (&total_balance_reserve_not_closed,
                             &total_balance_reserve_not_closed,
                             &nbalance);
-      TALER_ARL_report (report_reserve_not_closed_inconsistencies,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_data_auto ("reserve_pub",
-                                                      &rs->reserve_pub),
-                          TALER_JSON_pack_amount ("balance",
-                                                  &nbalance),
-                          TALER_JSON_pack_time_abs_human ("expiration_time",
-                                                          rs->a_expiration_date),
-                          GNUNET_JSON_pack_string ("diagnostic",
-                                                   "could not determine closing fee")));
+      TALER_ARL_report (
+        report_reserve_not_closed_inconsistencies,
+        GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_data_auto ("reserve_pub",
+                                      &rs->reserve_pub),
+          TALER_JSON_pack_amount ("balance",
+                                  &nbalance),
+          TALER_JSON_pack_time_abs_human ("expiration_time",
+                                          rs->a_expiration_date.abs_time),
+          GNUNET_JSON_pack_string ("diagnostic",
+                                   "could not determine closing fee")));
     }
   }
 

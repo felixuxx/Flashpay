@@ -71,7 +71,7 @@ struct AggregationUnit
    * The current time (which triggered the aggregation and
    * defines the wire fee).
    */
-  struct GNUNET_TIME_Absolute execution_time;
+  struct GNUNET_TIME_Timestamp execution_time;
 
   /**
    * Wire details of the merchant.
@@ -116,7 +116,7 @@ struct Shard
   /**
    * When did we start processing the shard?
    */
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
 
   /**
    * Starting row of the shard.
@@ -445,12 +445,11 @@ deposit_cb (void *cls,
   }
 
   /* make sure we have current fees */
-  au->execution_time = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&au->execution_time);
+  au->execution_time = GNUNET_TIME_timestamp_get ();
   {
     struct TALER_Amount closing_fee;
-    struct GNUNET_TIME_Absolute start_date;
-    struct GNUNET_TIME_Absolute end_date;
+    struct GNUNET_TIME_Timestamp start_date;
+    struct GNUNET_TIME_Timestamp end_date;
     struct TALER_MasterSignatureP master_sig;
     enum GNUNET_DB_QueryStatus qs;
 
@@ -467,7 +466,7 @@ deposit_cb (void *cls,
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Could not get wire fees for %s at %s. Aborting run.\n",
                   au->wa->method,
-                  GNUNET_STRINGS_absolute_time_to_string (au->execution_time));
+                  GNUNET_TIME_timestamp2s (au->execution_time));
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
   }
@@ -738,7 +737,7 @@ run_aggregation (void *cls)
     {
       uint64_t counter = s->work_counter;
       struct GNUNET_TIME_Relative duration
-        = GNUNET_TIME_absolute_get_duration (s->start_time);
+        = GNUNET_TIME_absolute_get_duration (s->start_time.abs_time);
 
       cleanup_au (&au_active);
       db_plugin->rollback (db_plugin->cls);
@@ -746,8 +745,8 @@ run_aggregation (void *cls)
                   "Completed shard [%u,%u] after %s with %llu deposits\n",
                   (unsigned int) s->shard_start,
                   (unsigned int) s->shard_end,
-                  GNUNET_STRINGS_relative_time_to_string (duration,
-                                                          GNUNET_YES),
+                  GNUNET_TIME_relative2s (duration,
+                                          true),
                   (unsigned long long) counter);
       release_shard (s);
       if ( (GNUNET_YES == test_mode) &&
@@ -1009,7 +1008,7 @@ run_shard (void *cls)
     return;
   }
   s = GNUNET_new (struct Shard);
-  s->start_time = GNUNET_TIME_absolute_get ();
+  s->start_time = GNUNET_TIME_timestamp_get ();
   qs = db_plugin->begin_revolving_shard (db_plugin->cls,
                                          "aggregator",
                                          shard_size,

@@ -1031,7 +1031,7 @@ upload_auditor_add (const char *exchange_url,
   struct TALER_MasterSignatureP master_sig;
   const char *auditor_url;
   const char *auditor_name;
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
   struct TALER_AuditorPublicKeyP auditor_pub;
   struct AuditorAddRequest *aar;
   const char *err_name;
@@ -1041,8 +1041,8 @@ upload_auditor_add (const char *exchange_url,
                              &auditor_url),
     GNUNET_JSON_spec_string ("auditor_name",
                              &auditor_name),
-    GNUNET_JSON_spec_absolute_time ("validity_start",
-                                    &start_time),
+    GNUNET_JSON_spec_timestamp ("validity_start",
+                                &start_time),
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
                                  &auditor_pub),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
@@ -1130,15 +1130,15 @@ upload_auditor_del (const char *exchange_url,
 {
   struct TALER_AuditorPublicKeyP auditor_pub;
   struct TALER_MasterSignatureP master_sig;
-  struct GNUNET_TIME_Absolute end_time;
+  struct GNUNET_TIME_Timestamp end_time;
   struct AuditorDelRequest *adr;
   const char *err_name;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("auditor_pub",
                                  &auditor_pub),
-    GNUNET_JSON_spec_absolute_time ("validity_end",
-                                    &end_time),
+    GNUNET_JSON_spec_timestamp ("validity_end",
+                                &end_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
     GNUNET_JSON_spec_end ()
@@ -1223,15 +1223,15 @@ upload_wire_add (const char *exchange_url,
   struct TALER_MasterSignatureP master_sig_add;
   struct TALER_MasterSignatureP master_sig_wire;
   const char *payto_uri;
-  struct GNUNET_TIME_Absolute start_time;
+  struct GNUNET_TIME_Timestamp start_time;
   struct WireAddRequest *war;
   const char *err_name;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri",
                              &payto_uri),
-    GNUNET_JSON_spec_absolute_time ("validity_start",
-                                    &start_time),
+    GNUNET_JSON_spec_timestamp ("validity_start",
+                                &start_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig_add",
                                  &master_sig_add),
     GNUNET_JSON_spec_fixed_auto ("master_sig_wire",
@@ -1333,15 +1333,15 @@ upload_wire_del (const char *exchange_url,
 {
   struct TALER_MasterSignatureP master_sig;
   const char *payto_uri;
-  struct GNUNET_TIME_Absolute end_time;
+  struct GNUNET_TIME_Timestamp end_time;
   struct WireDelRequest *wdr;
   const char *err_name;
   unsigned int err_line;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri",
                              &payto_uri),
-    GNUNET_JSON_spec_absolute_time ("validity_end",
-                                    &end_time),
+    GNUNET_JSON_spec_timestamp ("validity_end",
+                                &end_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
     GNUNET_JSON_spec_end ()
@@ -1431,8 +1431,8 @@ upload_wire_fee (const char *exchange_url,
   unsigned int err_line;
   struct TALER_Amount wire_fee;
   struct TALER_Amount closing_fee;
-  struct GNUNET_TIME_Absolute start_time;
-  struct GNUNET_TIME_Absolute end_time;
+  struct GNUNET_TIME_Timestamp start_time;
+  struct GNUNET_TIME_Timestamp end_time;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("wire_method",
                              &wire_method),
@@ -1442,10 +1442,10 @@ upload_wire_fee (const char *exchange_url,
     TALER_JSON_spec_amount ("closing_fee",
                             currency,
                             &closing_fee),
-    GNUNET_JSON_spec_absolute_time ("start_time",
-                                    &start_time),
-    GNUNET_JSON_spec_absolute_time ("end_time",
-                                    &end_time),
+    GNUNET_JSON_spec_timestamp ("start_time",
+                                &start_time),
+    GNUNET_JSON_spec_timestamp ("end_time",
+                                &end_time),
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
     GNUNET_JSON_spec_end ()
@@ -1926,7 +1926,7 @@ do_add_auditor (char *const *args)
 {
   struct TALER_MasterSignatureP master_sig;
   struct TALER_AuditorPublicKeyP auditor_pub;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   if (NULL != in)
   {
@@ -1965,8 +1965,7 @@ do_add_auditor (char *const *args)
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
     return;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   TALER_exchange_offline_auditor_add_sign (&auditor_pub,
                                            args[1],
                                            now,
@@ -1978,8 +1977,8 @@ do_add_auditor (char *const *args)
                                                args[1]),
                       GNUNET_JSON_pack_string ("auditor_name",
                                                args[2]),
-                      GNUNET_JSON_pack_time_abs ("validity_start",
-                                                 now),
+                      GNUNET_JSON_pack_timestamp ("validity_start",
+                                                  now),
                       GNUNET_JSON_pack_data_auto ("auditor_pub",
                                                   &auditor_pub),
                       GNUNET_JSON_pack_data_auto ("master_sig",
@@ -1999,7 +1998,7 @@ do_del_auditor (char *const *args)
 {
   struct TALER_MasterSignatureP master_sig;
   struct TALER_AuditorPublicKeyP auditor_pub;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   if (NULL != in)
   {
@@ -2025,9 +2024,7 @@ do_del_auditor (char *const *args)
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
     return;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-
+  now = GNUNET_TIME_timestamp_get ();
   TALER_exchange_offline_auditor_del_sign (&auditor_pub,
                                            now,
                                            &master_priv,
@@ -2036,8 +2033,8 @@ do_del_auditor (char *const *args)
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_data_auto ("auditor_pub",
                                                   &auditor_pub),
-                      GNUNET_JSON_pack_time_abs ("validity_end",
-                                                 now),
+                      GNUNET_JSON_pack_timestamp ("validity_end",
+                                                  now),
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
   next (args + 1);
@@ -2055,7 +2052,7 @@ do_add_wire (char *const *args)
 {
   struct TALER_MasterSignatureP master_sig_add;
   struct TALER_MasterSignatureP master_sig_wire;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   if (NULL != in)
   {
@@ -2076,9 +2073,7 @@ do_add_wire (char *const *args)
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
     return;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-
+  now = GNUNET_TIME_timestamp_get ();
   {
     char *wire_method;
 
@@ -2105,8 +2100,8 @@ do_add_wire (char *const *args)
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_string ("payto_uri",
                                                args[0]),
-                      GNUNET_JSON_pack_time_abs ("validity_start",
-                                                 now),
+                      GNUNET_JSON_pack_timestamp ("validity_start",
+                                                  now),
                       GNUNET_JSON_pack_data_auto ("master_sig_add",
                                                   &master_sig_add),
                       GNUNET_JSON_pack_data_auto ("master_sig_wire",
@@ -2125,7 +2120,7 @@ static void
 do_del_wire (char *const *args)
 {
   struct TALER_MasterSignatureP master_sig;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   if (NULL != in)
   {
@@ -2146,9 +2141,7 @@ do_del_wire (char *const *args)
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
     return;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-
+  now = GNUNET_TIME_timestamp_get ();
   TALER_exchange_offline_wire_del_sign (args[0],
                                         now,
                                         &master_priv,
@@ -2157,8 +2150,8 @@ do_del_wire (char *const *args)
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_string ("payto_uri",
                                                args[0]),
-                      GNUNET_JSON_pack_time_abs ("validity_end",
-                                                 now),
+                      GNUNET_JSON_pack_timestamp ("validity_end",
+                                                  now),
                       GNUNET_JSON_pack_data_auto ("master_sig",
                                                   &master_sig)));
   next (args + 1);
@@ -2180,8 +2173,8 @@ do_set_wire_fee (char *const *args)
   unsigned int year;
   struct TALER_Amount wire_fee;
   struct TALER_Amount closing_fee;
-  struct GNUNET_TIME_Absolute start_time;
-  struct GNUNET_TIME_Absolute end_time;
+  struct GNUNET_TIME_Timestamp start_time;
+  struct GNUNET_TIME_Timestamp end_time;
 
   if (NULL != in)
   {
@@ -2220,8 +2213,10 @@ do_set_wire_fee (char *const *args)
   if (GNUNET_OK !=
       load_offline_key (GNUNET_NO))
     return;
-  start_time = GNUNET_TIME_year_to_time (year);
-  end_time = GNUNET_TIME_year_to_time (year + 1);
+  start_time = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_year_to_time (year));
+  end_time = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_year_to_time (year + 1));
 
   TALER_exchange_offline_wire_fee_sign (args[1],
                                         start_time,
@@ -2234,10 +2229,10 @@ do_set_wire_fee (char *const *args)
                     GNUNET_JSON_PACK (
                       GNUNET_JSON_pack_string ("wire_method",
                                                args[1]),
-                      GNUNET_JSON_pack_time_abs ("start_time",
-                                                 start_time),
-                      GNUNET_JSON_pack_time_abs ("end_time",
-                                                 end_time),
+                      GNUNET_JSON_pack_timestamp ("start_time",
+                                                  start_time),
+                      GNUNET_JSON_pack_timestamp ("end_time",
+                                                  end_time),
                       TALER_JSON_pack_amount ("wire_fee",
                                               &wire_fee),
                       TALER_JSON_pack_amount ("closing_fee",
@@ -2504,17 +2499,17 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     unsigned int err_line;
     struct TALER_ExchangePublicKeyP exchange_pub;
     struct TALER_SecurityModuleSignatureP secm_sig;
-    struct GNUNET_TIME_Absolute start_time;
-    struct GNUNET_TIME_Absolute sign_end;
-    struct GNUNET_TIME_Absolute legal_end;
+    struct GNUNET_TIME_Timestamp start_time;
+    struct GNUNET_TIME_Timestamp sign_end;
+    struct GNUNET_TIME_Timestamp legal_end;
     struct GNUNET_TIME_Relative duration;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                      &start_time),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire",
-                                      &sign_end),
-      GNUNET_JSON_spec_absolute_time ("stamp_end",
-                                      &legal_end),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &start_time),
+      GNUNET_JSON_spec_timestamp ("stamp_expire",
+                                  &sign_end),
+      GNUNET_JSON_spec_timestamp ("stamp_end",
+                                  &legal_end),
       GNUNET_JSON_spec_fixed_auto ("key",
                                    &exchange_pub),
       GNUNET_JSON_spec_fixed_auto ("signkey_secmod_sig",
@@ -2540,8 +2535,8 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    duration = GNUNET_TIME_absolute_get_difference (start_time,
-                                                    sign_end);
+    duration = GNUNET_TIME_absolute_get_difference (start_time.abs_time,
+                                                    sign_end.abs_time);
     if (GNUNET_OK !=
         TALER_exchange_secmod_eddsa_verify (&exchange_pub,
                                             start_time,
@@ -2560,12 +2555,12 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       char *legal_end_s;
 
       legal_end_s = GNUNET_strdup (
-        GNUNET_STRINGS_absolute_time_to_string (legal_end));
+        GNUNET_TIME_timestamp2s (legal_end));
       printf ("EXCHANGE-KEY %s starting at %s (used for: %s, legal end: %s)\n",
               TALER_B2S (&exchange_pub),
-              GNUNET_STRINGS_absolute_time_to_string (start_time),
-              GNUNET_STRINGS_relative_time_to_string (duration,
-                                                      GNUNET_NO),
+              GNUNET_TIME_timestamp2s (start_time),
+              GNUNET_TIME_relative2s (duration,
+                                      false),
               legal_end_s);
       GNUNET_free (legal_end_s);
     }
@@ -2593,10 +2588,10 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     unsigned int err_line;
     const char *section_name;
     struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_TIME_Absolute stamp_start;
-    struct GNUNET_TIME_Absolute stamp_expire_withdraw;
-    struct GNUNET_TIME_Absolute stamp_expire_deposit;
-    struct GNUNET_TIME_Absolute stamp_expire_legal;
+    struct GNUNET_TIME_Timestamp stamp_start;
+    struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
+    struct GNUNET_TIME_Timestamp stamp_expire_deposit;
+    struct GNUNET_TIME_Timestamp stamp_expire_legal;
     struct TALER_Amount coin_value;
     struct TALER_Amount fee_withdraw;
     struct TALER_Amount fee_deposit;
@@ -2623,14 +2618,14 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       TALER_JSON_spec_amount ("fee_refund",
                               currency,
                               &fee_refund),
-      GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                      &stamp_start),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                      &stamp_expire_withdraw),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                      &stamp_expire_deposit),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
-                                      &stamp_expire_legal),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &stamp_start),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                  &stamp_expire_withdraw),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                  &stamp_expire_deposit),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                  &stamp_expire_legal),
       GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
                                    &secm_sig),
       GNUNET_JSON_spec_end ()
@@ -2658,8 +2653,9 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    duration = GNUNET_TIME_absolute_get_difference (stamp_start,
-                                                    stamp_expire_withdraw);
+    duration = GNUNET_TIME_absolute_get_difference (
+      stamp_start.abs_time,
+      stamp_expire_withdraw.abs_time);
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);
     switch (denom_pub.cipher)
@@ -2706,9 +2702,9 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       refresh_fee_s = TALER_amount_to_string (&fee_refresh);
       refund_fee_s = TALER_amount_to_string (&fee_refund);
       deposit_s = GNUNET_strdup (
-        GNUNET_STRINGS_absolute_time_to_string (stamp_expire_deposit));
+        GNUNET_TIME_timestamp2s (stamp_expire_deposit));
       legal_s = GNUNET_strdup (
-        GNUNET_STRINGS_absolute_time_to_string (stamp_expire_legal));
+        GNUNET_TIME_timestamp2s (stamp_expire_legal));
 
       printf (
         "DENOMINATION-KEY(%s) %s of value %s starting at %s "
@@ -2716,9 +2712,9 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
         section_name,
         TALER_B2S (&h_denom_pub),
         TALER_amount2s (&coin_value),
-        GNUNET_STRINGS_absolute_time_to_string (stamp_start),
-        GNUNET_STRINGS_relative_time_to_string (duration,
-                                                GNUNET_NO),
+        GNUNET_TIME_timestamp2s (stamp_start),
+        GNUNET_TIME_relative2s (duration,
+                                false),
         deposit_s,
         legal_s,
         withdraw_fee_s,
@@ -2929,17 +2925,17 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     unsigned int err_line;
     struct TALER_ExchangePublicKeyP exchange_pub;
     struct TALER_SecurityModuleSignatureP secm_sig;
-    struct GNUNET_TIME_Absolute start_time;
-    struct GNUNET_TIME_Absolute sign_end;
-    struct GNUNET_TIME_Absolute legal_end;
+    struct GNUNET_TIME_Timestamp start_time;
+    struct GNUNET_TIME_Timestamp sign_end;
+    struct GNUNET_TIME_Timestamp legal_end;
     struct GNUNET_TIME_Relative duration;
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                      &start_time),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire",
-                                      &sign_end),
-      GNUNET_JSON_spec_absolute_time ("stamp_end",
-                                      &legal_end),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &start_time),
+      GNUNET_JSON_spec_timestamp ("stamp_expire",
+                                  &sign_end),
+      GNUNET_JSON_spec_timestamp ("stamp_end",
+                                  &legal_end),
       GNUNET_JSON_spec_fixed_auto ("key",
                                    &exchange_pub),
       GNUNET_JSON_spec_fixed_auto ("signkey_secmod_sig",
@@ -2966,8 +2962,8 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       return GNUNET_SYSERR;
     }
 
-    duration = GNUNET_TIME_absolute_get_difference (start_time,
-                                                    sign_end);
+    duration = GNUNET_TIME_absolute_get_difference (start_time.abs_time,
+                                                    sign_end.abs_time);
     if (GNUNET_OK !=
         TALER_exchange_secmod_eddsa_verify (&exchange_pub,
                                             start_time,
@@ -3028,10 +3024,10 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
     unsigned int err_line;
     const char *section_name;
     struct TALER_DenominationPublicKey denom_pub;
-    struct GNUNET_TIME_Absolute stamp_start;
-    struct GNUNET_TIME_Absolute stamp_expire_withdraw;
-    struct GNUNET_TIME_Absolute stamp_expire_deposit;
-    struct GNUNET_TIME_Absolute stamp_expire_legal;
+    struct GNUNET_TIME_Timestamp stamp_start;
+    struct GNUNET_TIME_Timestamp stamp_expire_withdraw;
+    struct GNUNET_TIME_Timestamp stamp_expire_deposit;
+    struct GNUNET_TIME_Timestamp stamp_expire_legal;
     struct TALER_Amount coin_value;
     struct TALER_Amount fee_withdraw;
     struct TALER_Amount fee_deposit;
@@ -3058,14 +3054,14 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       TALER_JSON_spec_amount ("fee_refund",
                               currency,
                               &fee_refund),
-      GNUNET_JSON_spec_absolute_time ("stamp_start",
-                                      &stamp_start),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_withdraw",
-                                      &stamp_expire_withdraw),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_deposit",
-                                      &stamp_expire_deposit),
-      GNUNET_JSON_spec_absolute_time ("stamp_expire_legal",
-                                      &stamp_expire_legal),
+      GNUNET_JSON_spec_timestamp ("stamp_start",
+                                  &stamp_start),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_withdraw",
+                                  &stamp_expire_withdraw),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_deposit",
+                                  &stamp_expire_deposit),
+      GNUNET_JSON_spec_timestamp ("stamp_expire_legal",
+                                  &stamp_expire_legal),
       GNUNET_JSON_spec_fixed_auto ("denom_secmod_sig",
                                    &secm_sig),
       GNUNET_JSON_spec_end ()
@@ -3092,8 +3088,9 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
       test_shutdown ();
       return GNUNET_SYSERR;
     }
-    duration = GNUNET_TIME_absolute_get_difference (stamp_start,
-                                                    stamp_expire_withdraw);
+    duration = GNUNET_TIME_absolute_get_difference (
+      stamp_start.abs_time,
+      stamp_expire_withdraw.abs_time);
     // FIXME-Oec: setup age mask here?
     TALER_denom_pub_hash (&denom_pub,
                           &h_denom_pub);

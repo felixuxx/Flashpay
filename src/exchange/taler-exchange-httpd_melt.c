@@ -319,12 +319,11 @@ check_for_denomination_key (struct MHD_Connection *connection,
     &mret);
   if (NULL == dk)
     return mret;
-  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_legal))
+  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_legal.abs_time))
   {
-    struct GNUNET_TIME_Absolute now;
+    struct GNUNET_TIME_Timestamp now;
 
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
+    now = GNUNET_TIME_timestamp_get ();
     /* Way too late now, even zombies have expired */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
@@ -333,12 +332,11 @@ check_for_denomination_key (struct MHD_Connection *connection,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
       "MELT");
   }
-  if (GNUNET_TIME_absolute_is_future (dk->meta.start))
+  if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
   {
-    struct GNUNET_TIME_Absolute now;
+    struct GNUNET_TIME_Timestamp now;
 
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
+    now = GNUNET_TIME_timestamp_get ();
     /* This denomination is not yet valid */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
@@ -347,7 +345,7 @@ check_for_denomination_key (struct MHD_Connection *connection,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
       "MELT");
   }
-  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
+  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
   {
     /* We are past deposit expiration time, but maybe this is a zombie? */
     struct TALER_DenominationHash denom_hash;
@@ -371,10 +369,9 @@ check_for_denomination_key (struct MHD_Connection *connection,
     }
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     {
-      struct GNUNET_TIME_Absolute now;
+      struct GNUNET_TIME_Timestamp now;
 
-      now = GNUNET_TIME_absolute_get ();
-      (void) GNUNET_TIME_round_abs (&now);
+      now = GNUNET_TIME_timestamp_get ();
       /* We never saw this coin before, so _this_ justification is not OK */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,

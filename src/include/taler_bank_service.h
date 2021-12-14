@@ -112,12 +112,13 @@ struct TALER_BANK_AdminAddIncomingHandle;
  * @param json detailed response from the HTTPD, or NULL if reply was not in JSON
  */
 typedef void
-(*TALER_BANK_AdminAddIncomingCallback) (void *cls,
-                                        unsigned int http_status,
-                                        enum TALER_ErrorCode ec,
-                                        uint64_t serial_id,
-                                        struct GNUNET_TIME_Absolute timestamp,
-                                        const json_t *json);
+(*TALER_BANK_AdminAddIncomingCallback) (
+  void *cls,
+  unsigned int http_status,
+  enum TALER_ErrorCode ec,
+  uint64_t serial_id,
+  struct GNUNET_TIME_Timestamp timestamp,
+  const json_t *json);
 
 
 /**
@@ -199,11 +200,12 @@ struct TALER_BANK_TransferHandle;
  * @param timestamp when did the transaction go into effect
  */
 typedef void
-(*TALER_BANK_TransferCallback)(void *cls,
-                               unsigned int response_code,
-                               enum TALER_ErrorCode ec,
-                               uint64_t row_id,
-                               struct GNUNET_TIME_Absolute timestamp);
+(*TALER_BANK_TransferCallback)(
+  void *cls,
+  unsigned int response_code,
+  enum TALER_ErrorCode ec,
+  uint64_t row_id,
+  struct GNUNET_TIME_Timestamp timestamp);
 
 
 /**
@@ -266,7 +268,7 @@ struct TALER_BANK_CreditDetails
   /**
    * Time of the the transfer
    */
-  struct GNUNET_TIME_Absolute execution_date;
+  struct GNUNET_TIME_Timestamp execution_date;
 
   /**
    * Reserve public key encoded in the wire
@@ -332,13 +334,14 @@ typedef enum GNUNET_GenericReturnValue
  *         In this case, the callback is not called.
  */
 struct TALER_BANK_CreditHistoryHandle *
-TALER_BANK_credit_history (struct GNUNET_CURL_Context *ctx,
-                           const struct TALER_BANK_AuthenticationData *auth,
-                           uint64_t start_row,
-                           int64_t num_results,
-                           struct GNUNET_TIME_Relative timeout,
-                           TALER_BANK_CreditHistoryCallback hres_cb,
-                           void *hres_cb_cls);
+TALER_BANK_credit_history (
+  struct GNUNET_CURL_Context *ctx,
+  const struct TALER_BANK_AuthenticationData *auth,
+  uint64_t start_row,
+  int64_t num_results,
+  struct GNUNET_TIME_Relative timeout,
+  TALER_BANK_CreditHistoryCallback hres_cb,
+  void *hres_cb_cls);
 
 
 /**
@@ -374,7 +377,7 @@ struct TALER_BANK_DebitDetails
   /**
    * Time of the the transfer
    */
-  struct GNUNET_TIME_Absolute execution_date;
+  struct GNUNET_TIME_Timestamp execution_date;
 
   /**
    * Wire transfer identifier used by the exchange.
@@ -477,7 +480,7 @@ TALER_BANK_debit_history_cancel (struct TALER_BANK_DebitHistoryHandle *hh);
  * @param[out] auth set to the configuration data found
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_BANK_auth_parse_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            const char *section,
                            struct TALER_BANK_AuthenticationData *auth);

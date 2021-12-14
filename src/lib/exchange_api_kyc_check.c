@@ -100,8 +100,8 @@ handle_kyc_check_finished (void *cls,
                                      &ks.details.kyc_ok.exchange_sig),
         GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                      &ks.details.kyc_ok.exchange_pub),
-        TALER_JSON_spec_absolute_time ("now",
-                                       &ks.details.kyc_ok.timestamp),
+        GNUNET_JSON_spec_timestamp ("now",
+                                    &ks.details.kyc_ok.timestamp),
         GNUNET_JSON_spec_end ()
       };
       const struct TALER_EXCHANGE_Keys *key_state;
@@ -122,7 +122,7 @@ handle_kyc_check_finished (void *cls,
         ks.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
         break;
       }
-      kyc_purpose.timestamp = GNUNET_TIME_absolute_hton (
+      kyc_purpose.timestamp = GNUNET_TIME_timestamp_hton (
         ks.details.kyc_ok.timestamp);
       key_state = TALER_EXCHANGE_get_keys (kch->exchange);
       if (GNUNET_OK !=

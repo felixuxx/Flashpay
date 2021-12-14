@@ -133,7 +133,7 @@ struct TALER_TESTING_LibeufinServices
  * @return #GNUNET_OK on success, #GNUNET_NO if test should be
  *         skipped, #GNUNET_SYSERR on test failure
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_exchange (const char *config_filename,
                                 int reset_db,
                                 struct TALER_TESTING_ExchangeConfiguration *ec);
@@ -208,7 +208,7 @@ TALER_TESTING_cleanup_files (const char *config_name);
  * @param cfg configuration
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_cleanup_files_cfg (void *cls,
                                  const struct GNUNET_CONFIGURATION_Handle *cfg);
 
@@ -222,7 +222,7 @@ TALER_TESTING_cleanup_files_cfg (void *cls,
  * @param auditor_url URL of auditor to enable, can be NULL
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_run_exchange_offline (const char *config_filename,
                                     const char *payto_uri,
                                     const char *auditor_pub,
@@ -235,7 +235,7 @@ TALER_TESTING_run_exchange_offline (const char *config_filename,
  * @param config_filename configuration file to use
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_auditor_db_reset (const char *config_filename);
 
 
@@ -245,7 +245,7 @@ TALER_TESTING_auditor_db_reset (const char *config_filename);
  * @param config_filename configuration file to use
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_exchange_db_reset (const char *config_filename);
 
 
@@ -255,7 +255,7 @@ TALER_TESTING_exchange_db_reset (const char *config_filename);
  * @param config_filename configuration file to use
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_run_auditor_offline (const char *config_filename);
 
 
@@ -268,7 +268,7 @@ TALER_TESTING_run_auditor_offline (const char *config_filename);
  * @param do_remove #GNUNET_NO to add exchange, #GNUNET_YES to remove
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_run_auditor_exchange (const char *config_filename,
                                     const char *exchange_master_pub,
                                     const char *exchange_base_url,
@@ -281,7 +281,7 @@ TALER_TESTING_run_auditor_exchange (const char *config_filename,
  * @param url URL to extract port from, 80 is default
  * @return #GNUNET_OK if the port is free
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_url_port_free (const char *url);
 
 
@@ -324,7 +324,7 @@ struct TALER_TESTING_BankConfiguration
  * @param[out] bc set to the bank's configuration data
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_fakebank (const char *config_filename,
                                 const char *config_section,
                                 struct TALER_TESTING_BankConfiguration *bc);
@@ -531,7 +531,7 @@ struct TALER_TESTING_Command
    * @param index index number of the object to extract.
    * @return #GNUNET_OK on success
    */
-  int
+  enum GNUNET_GenericReturnValue
   (*traits)(void *cls,
             const void **ret,
             const char *trait,
@@ -731,7 +731,7 @@ typedef void
  *         non-#GNUNET_OK codes are #GNUNET_SYSERR most of the
  *         times.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls,
                      const struct GNUNET_CONFIGURATION_Handle *cfg,
@@ -751,7 +751,7 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
  *         non-GNUNET_OK codes are #GNUNET_SYSERR most of the
  *         times.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_auditor_setup (TALER_TESTING_Main main_cb,
                              void *main_cb_cls,
                              const char *config_filename);
@@ -788,7 +788,7 @@ struct TALER_TESTING_SetupContext
  * @param cfg configuration to use.
  * @return #GNUNET_OK if no errors occurred.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_exchange_cfg (
   void *cls,
   const struct GNUNET_CONFIGURATION_Handle *cfg);
@@ -809,7 +809,7 @@ TALER_TESTING_setup_with_exchange_cfg (
  *        at its base URL.
  * @return #GNUNET_OK if no errors occurred.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
                                    void *main_cb_cls,
                                    const char *config_file);
@@ -824,7 +824,7 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
  * @param cfg configuration to use.
  * @return #GNUNET_OK if no errors occurred.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_auditor_and_exchange_cfg (
   void *cls,
   const struct GNUNET_CONFIGURATION_Handle *cfg);
@@ -845,7 +845,7 @@ TALER_TESTING_setup_with_auditor_and_exchange_cfg (
  *        at its base URL.
  * @return #GNUNET_OK if no errors occurred.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup_with_auditor_and_exchange (TALER_TESTING_Main main_cb,
                                                void *main_cb_cls,
                                                const char *config_file);
@@ -905,7 +905,7 @@ TALER_TESTING_run_fakebank (const char *bank_url,
  * @param[out] bc set to the bank's configuration data
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_bank (const char *config_filename,
                             int reset_db,
                             const char *config_section,
@@ -922,7 +922,7 @@ TALER_TESTING_prepare_bank (const char *config_filename,
  * @return the base url, or NULL upon errors.  Must be freed
  *         by the caller.
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_nexus (const char *config_filename,
                              int reset_db,
                              const char *config_section,
@@ -934,7 +934,7 @@ TALER_TESTING_prepare_nexus (const char *config_filename,
  * @param prog program's name to look into
  * @param marker chunk to find in @a prog
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_has_in_name (const char *prog,
                            const char *marker);
 
@@ -1966,7 +1966,7 @@ TALER_TESTING_cmd_insert_deposit (
   const struct TALER_TESTING_DatabaseConnection *dbc,
   const char *merchant_name,
   const char *merchant_account,
-  struct GNUNET_TIME_Absolute exchange_timestamp,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Relative wire_deadline,
   const char *amount_with_fee,
   const char *deposit_fee);
@@ -2446,12 +2446,12 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
   op (debit_payto_uri, const char *)                               \
   op (order_id, const char *)                                      \
   op (amount, const struct TALER_Amount)                           \
-  op (amount_with_fee, const struct TALER_Amount)                        \
-  op (deposit_amount, const struct TALER_Amount)                           \
-  op (deposit_fee_amount, const struct TALER_Amount)                           \
+  op (amount_with_fee, const struct TALER_Amount)                  \
+  op (deposit_amount, const struct TALER_Amount)                   \
+  op (deposit_fee_amount, const struct TALER_Amount)               \
   op (batch_cmds, struct TALER_TESTING_Command *)                  \
   op (uuid, const struct GNUNET_Uuid)                              \
-  op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)            \
+  op (fresh_coins, const struct TALER_TESTING_FreshCoinData *)     \
   op (claim_token, const struct TALER_ClaimTokenP)                 \
   op (relative_time, const struct GNUNET_TIME_Relative)            \
   op (process, struct GNUNET_OS_Process *)
@@ -2460,14 +2460,15 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 /**
  * Call #op on all indexed traits.
  */
-#define TALER_TESTING_INDEXED_TRAITS(op)                         \
+#define TALER_TESTING_INDEXED_TRAITS(op)                               \
   op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
-  op (denom_sig, const struct TALER_DenominationSignature) \
+  op (denom_sig, const struct TALER_DenominationSignature)             \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
   op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \
   op (absolute_time, const struct GNUNET_TIME_Absolute)                \
-  op (wire_deadline, const struct GNUNET_TIME_Absolute)                \
-  op (refund_deadline, const struct GNUNET_TIME_Absolute)                \
+  op (timestamp, const struct GNUNET_TIME_Timestamp)                   \
+  op (wire_deadline, const struct GNUNET_TIME_Timestamp)               \
+  op (refund_deadline, const struct GNUNET_TIME_Timestamp)             \
   op (exchange_pub, const struct TALER_ExchangePublicKeyP)             \
   op (exchange_sig, const struct TALER_ExchangeSignatureP)             \
   op (blinding_key, const union TALER_DenominationBlindingKeyP)

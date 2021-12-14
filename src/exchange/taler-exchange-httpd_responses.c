@@ -96,11 +96,11 @@ TEH_RESPONSE_compile_transaction_history (
                                         &deposit->amount_with_fee),
                 TALER_JSON_pack_amount ("deposit_fee",
                                         &deposit->deposit_fee),
-                GNUNET_JSON_pack_time_abs ("timestamp",
-                                           deposit->timestamp),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            deposit->timestamp),
                 GNUNET_JSON_pack_allow_null (
-                  GNUNET_JSON_pack_time_abs ("refund_deadline",
-                                             deposit->refund_deadline)),
+                  GNUNET_JSON_pack_timestamp ("refund_deadline",
+                                              deposit->refund_deadline)),
                 GNUNET_JSON_pack_data_auto ("merchant_pub",
                                             &deposit->merchant_pub),
                 GNUNET_JSON_pack_data_auto ("h_contract_terms",
@@ -243,7 +243,7 @@ TEH_RESPONSE_compile_transaction_history (
           .purpose.purpose = htonl (
             TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
           .purpose.size = htonl (sizeof (pc)),
-          .timestamp = GNUNET_TIME_absolute_hton (pr->timestamp),
+          .timestamp = GNUNET_TIME_timestamp_hton (pr->timestamp),
           .coin_pub = pr->coin.coin_pub,
           .old_coin_pub = pr->old_coin_pub
         };
@@ -278,8 +278,8 @@ TEH_RESPONSE_compile_transaction_history (
                                             &epub),
                 GNUNET_JSON_pack_data_auto ("coin_pub",
                                             &pr->coin.coin_pub),
-                GNUNET_JSON_pack_time_abs ("timestamp",
-                                           pr->timestamp))))
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            pr->timestamp))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -296,7 +296,7 @@ TEH_RESPONSE_compile_transaction_history (
         struct TALER_RecoupConfirmationPS pc = {
           .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
           .purpose.size = htonl (sizeof (pc)),
-          .timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp),
+          .timestamp = GNUNET_TIME_timestamp_hton (recoup->timestamp),
           .coin_pub = *coin_pub,
           .reserve_pub = recoup->reserve_pub
         };
@@ -334,8 +334,8 @@ TEH_RESPONSE_compile_transaction_history (
                                             &recoup->coin_blind),
                 GNUNET_JSON_pack_data_auto ("reserve_pub",
                                             &recoup->reserve_pub),
-                GNUNET_JSON_pack_time_abs ("timestamp",
-                                           recoup->timestamp))))
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            recoup->timestamp))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -353,7 +353,7 @@ TEH_RESPONSE_compile_transaction_history (
           .purpose.purpose = htonl (
             TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP_REFRESH),
           .purpose.size = htonl (sizeof (pc)),
-          .timestamp = GNUNET_TIME_absolute_hton (pr->timestamp),
+          .timestamp = GNUNET_TIME_timestamp_hton (pr->timestamp),
           .coin_pub = *coin_pub,
           .old_coin_pub = pr->old_coin_pub
         };
@@ -394,8 +394,8 @@ TEH_RESPONSE_compile_transaction_history (
                                             &pr->coin_sig),
                 GNUNET_JSON_pack_data_auto ("coin_blind",
                                             &pr->coin_blind),
-                GNUNET_JSON_pack_time_abs ("timestamp",
-                                           pr->timestamp))))
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            pr->timestamp))))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -418,16 +418,15 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
 {
   struct TALER_ExchangePublicKeyP epub;
   struct TALER_ExchangeSignatureP esig;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
   enum TALER_ErrorCode ec;
 
-  now = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   {
     struct TALER_DenominationUnknownAffirmationPS dua = {
       .purpose.size = htonl (sizeof (dua)),
       .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN),
-      .timestamp = GNUNET_TIME_absolute_hton (now),
+      .timestamp = GNUNET_TIME_timestamp_hton (now),
       .h_denom_pub = *dph,
     };
 
@@ -447,8 +446,8 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
     connection,
     MHD_HTTP_NOT_FOUND,
     TALER_JSON_pack_ec (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN),
-    GNUNET_JSON_pack_time_abs ("timestamp",
-                               now),
+    GNUNET_JSON_pack_timestamp ("timestamp",
+                                now),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &epub),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
@@ -462,7 +461,7 @@ MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
   const struct TALER_DenominationHash *dph,
-  struct GNUNET_TIME_Absolute now,
+  struct GNUNET_TIME_Timestamp now,
   enum TALER_ErrorCode ec,
   const char *oper)
 {
@@ -473,7 +472,7 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
     .purpose.size = htonl (sizeof (dua)),
     .purpose.purpose = htonl (
       TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_EXPIRED),
-    .timestamp = GNUNET_TIME_absolute_hton (now),
+    .timestamp = GNUNET_TIME_timestamp_hton (now),
     .h_denom_pub = *dph,
   };
 
@@ -499,8 +498,8 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
     TALER_JSON_pack_ec (ec),
     GNUNET_JSON_pack_string ("oper",
                              oper),
-    GNUNET_JSON_pack_time_abs ("timestamp",
-                               now),
+    GNUNET_JSON_pack_timestamp ("timestamp",
+                                now),
     GNUNET_JSON_pack_data_auto ("exchange_pub",
                                 &epub),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
@@ -607,8 +606,8 @@ TEH_RESPONSE_compile_reserve_history (
               GNUNET_JSON_PACK (
                 GNUNET_JSON_pack_string ("type",
                                          "CREDIT"),
-                GNUNET_JSON_pack_time_abs ("timestamp",
-                                           bank->execution_date),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            bank->execution_date),
                 GNUNET_JSON_pack_string ("sender_account_url",
                                          bank->sender_account_details),
                 GNUNET_JSON_pack_uint64 ("wire_reference",
@@ -694,7 +693,7 @@ TEH_RESPONSE_compile_reserve_history (
           struct TALER_RecoupConfirmationPS pc = {
             .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_RECOUP),
             .purpose.size = htonl (sizeof (pc)),
-            .timestamp = GNUNET_TIME_absolute_hton (recoup->timestamp),
+            .timestamp = GNUNET_TIME_timestamp_hton (recoup->timestamp),
             .coin_pub = recoup->coin.coin_pub,
             .reserve_pub = recoup->reserve_pub
           };
@@ -722,8 +721,8 @@ TEH_RESPONSE_compile_reserve_history (
                                             &pub),
                 GNUNET_JSON_pack_data_auto ("exchange_sig",
                                             &sig),
-                GNUNET_JSON_pack_time_abs ("timestamp",
-                                           recoup->timestamp),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            recoup->timestamp),
                 TALER_JSON_pack_amount ("amount",
                                         &recoup->value),
                 GNUNET_JSON_pack_data_auto ("coin_pub",
@@ -765,7 +764,7 @@ TEH_RESPONSE_compile_reserve_history (
           struct TALER_ReserveCloseConfirmationPS rcc = {
             .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_RESERVE_CLOSED),
             .purpose.size = htonl (sizeof (rcc)),
-            .timestamp = GNUNET_TIME_absolute_hton (closing->execution_date),
+            .timestamp = GNUNET_TIME_timestamp_hton (closing->execution_date),
             .reserve_pub = pos->details.closing->reserve_pub,
             .wtid = closing->wtid
           };
@@ -800,8 +799,8 @@ TEH_RESPONSE_compile_reserve_history (
                                             &pub),
                 GNUNET_JSON_pack_data_auto ("exchange_sig",
                                             &sig),
-                GNUNET_JSON_pack_time_abs ("timestamp",
-                                           closing->execution_date),
+                GNUNET_JSON_pack_timestamp ("timestamp",
+                                            closing->execution_date),
                 TALER_JSON_pack_amount ("amount",
                                         &value),
                 TALER_JSON_pack_amount ("closing_fee",

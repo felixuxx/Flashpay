@@ -57,7 +57,7 @@ struct AddWireContext
   /**
    * Timestamp for checking against replay attacks.
    */
-  struct GNUNET_TIME_Absolute validity_start;
+  struct GNUNET_TIME_Timestamp validity_start;
 
 };
 
@@ -82,7 +82,7 @@ add_wire (void *cls,
           MHD_RESULT *mhd_ret)
 {
   struct AddWireContext *awc = cls;
-  struct GNUNET_TIME_Absolute last_date;
+  struct GNUNET_TIME_Timestamp last_date;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_wire_timestamp (TEH_plugin->cls,
@@ -100,7 +100,9 @@ add_wire (void *cls,
     return qs;
   }
   if ( (0 < qs) &&
-       (last_date.abs_value_us > awc->validity_start.abs_value_us) )
+       (GNUNET_TIME_timestamp_cmp (last_date,
+                                   >,
+                                   awc->validity_start)) )
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
@@ -147,8 +149,8 @@ TEH_handler_management_post_wire (
                                  &awc.master_sig_add),
     GNUNET_JSON_spec_string ("payto_uri",
                              &awc.payto_uri),
-    TALER_JSON_spec_absolute_time ("validity_start",
-                                   &awc.validity_start),
+    GNUNET_JSON_spec_timestamp ("validity_start",
+                                &awc.validity_start),
     GNUNET_JSON_spec_end ()
   };
 

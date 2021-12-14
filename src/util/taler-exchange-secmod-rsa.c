@@ -98,7 +98,7 @@ struct DenominationKey
   /**
    * Time at which this key is supposed to become valid.
    */
-  struct GNUNET_TIME_Absolute anchor;
+  struct GNUNET_TIME_Timestamp anchor;
 
   /**
    * Generation when this key was created or revoked.
@@ -173,13 +173,13 @@ static int global_ret;
  * Time when the key update is executed.
  * Either the actual current time, or a pretended time.
  */
-static struct GNUNET_TIME_Absolute now;
+static struct GNUNET_TIME_Timestamp now;
 
 /**
  * The time for the key update, as passed by the user
  * on the command line.
  */
-static struct GNUNET_TIME_Absolute now_tmp;
+static struct GNUNET_TIME_Timestamp now_tmp;
 
 /**
  * Where do we store the keys?
@@ -257,7 +257,7 @@ generate_response (struct DenominationKey *dk)
   an->header.type = htons (TALER_HELPER_RSA_MT_AVAIL);
   an->pub_size = htons ((uint16_t) buf_len);
   an->section_name_len = htons ((uint16_t) nlen);
-  an->anchor_time = GNUNET_TIME_absolute_hton (dk->anchor);
+  an->anchor_time = GNUNET_TIME_timestamp_hton (dk->anchor);
   an->duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw);
   TALER_exchange_secmod_rsa_sign (&dk->h_rsa,
                                   denom->section,
@@ -315,8 +315,7 @@ handle_sign_request (struct TES_Client *client,
     return TES_transmit (client->csock,
                          &sf.header);
   }
-  if (0 !=
-      GNUNET_TIME_absolute_get_remaining (dk->anchor).rel_value_us)
+  if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
   {
     /* it is too early */
     struct TALER_CRYPTO_SignFailure sf = {
@@ -383,14 +382,14 @@ handle_sign_request (struct TES_Client *client,
     GNUNET_free (buf);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Sending RSA signature after %s\n",
-                GNUNET_STRINGS_relative_time_to_string (
+                GNUNET_TIME_relative2s (
                   GNUNET_TIME_absolute_get_duration (now),
                   GNUNET_YES));
     ret = TES_transmit (client->csock,
                         &sr->header);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Sent RSA signature after %s\n",
-                GNUNET_STRINGS_relative_time_to_string (
+                GNUNET_TIME_relative2s (
                   GNUNET_TIME_absolute_get_duration (now),
                   GNUNET_YES));
     GNUNET_free (sr);
@@ -439,7 +438,7 @@ setup_key (struct DenominationKey *dk,
                    "%s/%s/%llu",
                    keydir,
                    denom->section,
-                   (unsigned long long) (dk->anchor.abs_value_us
+                   (unsigned long long) (dk->anchor.abs_time.abs_value_us
                                          / GNUNET_TIME_UNIT_SECONDS.rel_value_us));
   if (GNUNET_OK !=
       GNUNET_DISK_fn_write (dk->filename,
@@ -459,7 +458,7 @@ setup_key (struct DenominationKey *dk,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Setup fresh private key %s at %s in `%s' (generation #%llu)\n",
               GNUNET_h2s (&dk->h_rsa.hash),
-              GNUNET_STRINGS_absolute_time_to_string (dk->anchor),
+              GNUNET_TIME_timestamp2s (dk->anchor),
               dk->filename,
               (unsigned long long) key_gen);
   dk->denom_priv = priv;
@@ -785,23 +784,22 @@ rsa_update_client_keys (struct TES_Client *client)
  */
 static enum GNUNET_GenericReturnValue
 create_key (struct Denomination *denom,
-            struct GNUNET_TIME_Absolute now)
+            struct GNUNET_TIME_Timestamp now)
 {
   struct DenominationKey *dk;
-  struct GNUNET_TIME_Absolute anchor;
+  struct GNUNET_TIME_Timestamp anchor;
 
-  if (NULL == denom->keys_tail)
+  anchor = now;
+  if (NULL != denom->keys_tail)
   {
-    anchor = now;
-  }
-  else
-  {
-    anchor = GNUNET_TIME_absolute_add (denom->keys_tail->anchor,
-                                       GNUNET_TIME_relative_subtract (
-                                         denom->duration_withdraw,
-                                         overlap_duration));
-    if (now.abs_value_us > anchor.abs_value_us)
-      anchor = now;
+    struct GNUNET_TIME_Absolute abs;
+
+    abs = GNUNET_TIME_absolute_add (denom->keys_tail->anchor.abs_time,
+                                    GNUNET_TIME_relative_subtract (
+                                      denom->duration_withdraw,
+                                      overlap_duration));
+    if (GNUNET_TIME_absolute_cmp (now.abs_time, <, abs))
+      anchor = GNUNET_TIME_absolute_to_timestamp (abs);
   }
   dk = GNUNET_new (struct DenominationKey);
   dk->denom = denom;
@@ -839,14 +837,14 @@ denomination_action_time (const struct Denomination *denom)
     return GNUNET_TIME_UNIT_ZERO_ABS;
   tt = GNUNET_TIME_absolute_subtract (
     GNUNET_TIME_absolute_subtract (
-      GNUNET_TIME_absolute_add (tail->anchor,
+      GNUNET_TIME_absolute_add (tail->anchor.abs_time,
                                 denom->duration_withdraw),
       lookahead_sign),
     overlap_duration);
   if (head->rc > 0)
     return tt; /* head expiration does not count due to rc > 0 */
   return GNUNET_TIME_absolute_min (
-    GNUNET_TIME_absolute_add (head->anchor,
+    GNUNET_TIME_absolute_add (head->anchor.abs_time,
                               denom->duration_withdraw),
     tt);
 }
@@ -864,7 +862,7 @@ denomination_action_time (const struct Denomination *denom)
  */
 static enum GNUNET_GenericReturnValue
 update_keys (struct Denomination *denom,
-             struct GNUNET_TIME_Absolute now,
+             struct GNUNET_TIME_Timestamp now,
              bool *wake)
 {
   /* create new denomination keys */
@@ -873,11 +871,11 @@ update_keys (struct Denomination *denom,
                 "Updating keys of denomination `%s', last key %s valid for another %s\n",
                 denom->section,
                 GNUNET_h2s (&denom->keys_tail->h_rsa.hash),
-                GNUNET_STRINGS_relative_time_to_string (
+                GNUNET_TIME_relative2s (
                   GNUNET_TIME_absolute_get_remaining (
                     GNUNET_TIME_absolute_subtract (
                       GNUNET_TIME_absolute_add (
-                        denom->keys_tail->anchor,
+                        denom->keys_tail->anchor.abs_time,
                         denom->duration_withdraw),
                       overlap_duration)),
                   GNUNET_YES));
@@ -885,7 +883,7 @@ update_keys (struct Denomination *denom,
           GNUNET_TIME_absolute_is_past (
             GNUNET_TIME_absolute_subtract (
               GNUNET_TIME_absolute_subtract (
-                GNUNET_TIME_absolute_add (denom->keys_tail->anchor,
+                GNUNET_TIME_absolute_add (denom->keys_tail->anchor.abs_time,
                                           denom->duration_withdraw),
                 lookahead_sign),
               overlap_duration)) )
@@ -908,7 +906,7 @@ update_keys (struct Denomination *denom,
   /* remove expired denomination keys */
   while ( (NULL != denom->keys_head) &&
           GNUNET_TIME_absolute_is_past
-            (GNUNET_TIME_absolute_add (denom->keys_head->anchor,
+            (GNUNET_TIME_absolute_add (denom->keys_head->anchor.abs_time,
                                        denom->duration_withdraw)) )
   {
     struct DenominationKey *key = denom->keys_head;
@@ -951,7 +949,7 @@ update_keys (struct Denomination *denom,
          NULL != pos;
          pos = pos->next)
     {
-      if (denomination_action_time (pos).abs_value_us >= at.abs_value_us)
+      if (GNUNET_TIME_absolute_cmp (denomination_action_time (pos), >=, at))
         break;
       before = pos;
     }
@@ -974,12 +972,13 @@ update_denominations (void *cls)
 {
   struct Denomination *denom;
   struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp t;
   bool wake = false;
 
   (void) cls;
   keygen_task = NULL;
   now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  t = GNUNET_TIME_absolute_to_timestamp (now);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Updating denominations ...\n");
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
@@ -987,7 +986,7 @@ update_denominations (void *cls)
     denom = denom_head;
     if (GNUNET_OK !=
         update_keys (denom,
-                     now,
+                     t,
                      &wake))
       return;
   } while (denom != denom_head);
@@ -1020,7 +1019,7 @@ parse_key (struct Denomination *denom,
   char *anchor_s;
   char dummy;
   unsigned long long anchor_ll;
-  struct GNUNET_TIME_Absolute anchor;
+  struct GNUNET_TIME_Timestamp anchor;
 
   anchor_s = strrchr (filename,
                       '/');
@@ -1042,8 +1041,10 @@ parse_key (struct Denomination *denom,
                 filename);
     return;
   }
-  anchor.abs_value_us = anchor_ll * GNUNET_TIME_UNIT_SECONDS.rel_value_us;
-  if (anchor_ll != anchor.abs_value_us / GNUNET_TIME_UNIT_SECONDS.rel_value_us)
+  anchor.abs_time.abs_value_us
+    = anchor_ll * GNUNET_TIME_UNIT_SECONDS.rel_value_us;
+  if (anchor_ll != anchor.abs_time.abs_value_us
+      / GNUNET_TIME_UNIT_SECONDS.rel_value_us)
   {
     /* Integer overflow. Bad, invalid filename. */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -1105,7 +1106,7 @@ parse_key (struct Denomination *denom,
          NULL != pos;
          pos = pos->next)
     {
-      if (pos->anchor.abs_value_us > anchor.abs_value_us)
+      if (GNUNET_TIME_timestamp_cmp (pos->anchor, >, anchor))
         break;
       before = pos;
     }
@@ -1267,9 +1268,9 @@ parse_denomination_cfg (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                "DURATION_WITHDRAW");
     return GNUNET_SYSERR;
   }
-  GNUNET_TIME_round_rel (&denom->duration_withdraw);
-  if (overlap_duration.rel_value_us >=
-      denom->duration_withdraw.rel_value_us)
+  if (GNUNET_TIME_relative_cmp (overlap_duration,
+                                >=,
+                                denom->duration_withdraw))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                "taler-exchange-secmod-rsa",
@@ -1317,7 +1318,7 @@ struct LoadContext
   /**
    * Current time to use.
    */
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp t;
 
   /**
    * Status, to be set to #GNUNET_SYSERR on failure
@@ -1379,7 +1380,7 @@ load_denominations (void *cls,
                                denom_tail,
                                denom);
   update_keys (denom,
-               ctx->now,
+               ctx->t,
                &wake);
 }
 
@@ -1404,8 +1405,6 @@ load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                "OVERLAP_DURATION");
     return GNUNET_SYSERR;
   }
-  GNUNET_TIME_round_rel (&overlap_duration);
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
                                            "taler-exchange-secmod-rsa",
@@ -1417,7 +1416,6 @@ load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                "LOOKAHEAD_SIGN");
     return GNUNET_SYSERR;
   }
-  GNUNET_TIME_round_rel (&lookahead_sign);
   return GNUNET_OK;
 }
 
@@ -1459,10 +1457,11 @@ run (void *cls,
     .updater = rsa_update_client_keys,
     .init = rsa_client_init
   };
+
   (void) cls;
   (void) args;
   (void) cfgfile;
-  if (now.abs_value_us != now_tmp.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (now, !=, now_tmp))
   {
     /* The user gave "--now", use it! */
     now = now_tmp;
@@ -1470,9 +1469,8 @@ run (void *cls,
   else
   {
     /* get current time again, we may be timetraveling! */
-    now = GNUNET_TIME_absolute_get ();
+    now = GNUNET_TIME_timestamp_get ();
   }
-  GNUNET_TIME_round_abs (&now);
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_filename (cfg,
                                                "taler-exchange-secmod-rsa",
@@ -1505,10 +1503,9 @@ run (void *cls,
     struct LoadContext lc = {
       .cfg = cfg,
       .ret = GNUNET_OK,
-      .now = now
+      .t = now
     };
 
-    (void) GNUNET_TIME_round_abs (&lc.now);
     GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
     GNUNET_CONFIGURATION_iterate_sections (cfg,
                                            &load_denominations,
@@ -1552,11 +1549,11 @@ main (int argc,
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
-    GNUNET_GETOPT_option_absolute_time ('t',
-                                        "time",
-                                        "TIMESTAMP",
-                                        "pretend it is a different time for the update",
-                                        &now_tmp),
+    GNUNET_GETOPT_option_timestamp ('t',
+                                    "time",
+                                    "TIMESTAMP",
+                                    "pretend it is a different time for the update",
+                                    &now_tmp),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
@@ -1568,7 +1565,7 @@ main (int argc,
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
   TALER_OS_init ();
-  now = now_tmp = GNUNET_TIME_absolute_get ();
+  now_tmp = now = GNUNET_TIME_timestamp_get ();
   ret = GNUNET_PROGRAM_run (argc, argv,
                             "taler-exchange-secmod-rsa",
                             "Handle private RSA key operations for a Taler exchange",

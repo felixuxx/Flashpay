@@ -78,7 +78,7 @@ struct Key
   /**
    * Time at which this key is supposed to become valid.
    */
-  struct GNUNET_TIME_Absolute anchor;
+  struct GNUNET_TIME_Timestamp anchor;
 
   /**
    * Generation when this key was created or revoked.
@@ -124,13 +124,13 @@ static int global_ret;
  * Time when the key update is executed.
  * Either the actual current time, or a pretended time.
  */
-static struct GNUNET_TIME_Absolute now;
+static struct GNUNET_TIME_Timestamp now;
 
 /**
  * The time for the key update, as passed by the user
  * on the command line.
  */
-static struct GNUNET_TIME_Absolute now_tmp;
+static struct GNUNET_TIME_Timestamp now_tmp;
 
 /**
  * Where do we store the keys?
@@ -179,7 +179,7 @@ notify_client_key_add (struct TES_Client *client,
   struct TALER_CRYPTO_EddsaKeyAvailableNotification an = {
     .header.size = htons (sizeof (an)),
     .header.type = htons (TALER_HELPER_EDDSA_MT_AVAIL),
-    .anchor_time = GNUNET_TIME_absolute_hton (key->anchor),
+    .anchor_time = GNUNET_TIME_timestamp_hton (key->anchor),
     .duration = GNUNET_TIME_relative_hton (duration),
     .exchange_pub = key->exchange_pub,
     .secm_pub = TES_smpub
@@ -274,7 +274,7 @@ handle_sign_request (struct TES_Client *client,
   key = keys_head;
   while ( (NULL != key) &&
           (GNUNET_TIME_absolute_is_past (
-             GNUNET_TIME_absolute_add (key->anchor,
+             GNUNET_TIME_absolute_add (key->anchor.abs_time,
                                        duration))) )
   {
     struct Key *nxt = key->next;
@@ -284,9 +284,9 @@ handle_sign_request (struct TES_Client *client,
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Deleting past key %s (expired %s ago)\n",
                 TALER_B2S (&nxt->exchange_pub),
-                GNUNET_STRINGS_relative_time_to_string (
+                GNUNET_TIME_relative2s (
                   GNUNET_TIME_absolute_get_duration (
-                    GNUNET_TIME_absolute_add (key->anchor,
+                    GNUNET_TIME_absolute_add (key->anchor.abs_time,
                                               duration)),
                   GNUNET_YES));
     GNUNET_CONTAINER_DLL_remove (keys_head,
@@ -364,7 +364,7 @@ setup_key (struct Key *key,
   GNUNET_asprintf (&key->filename,
                    "%s/%llu",
                    keydir,
-                   (unsigned long long) (key->anchor.abs_value_us
+                   (unsigned long long) (key->anchor.abs_time.abs_value_us
                                          / GNUNET_TIME_UNIT_SECONDS.rel_value_us));
   if (GNUNET_OK !=
       GNUNET_DISK_fn_write (key->filename,
@@ -638,23 +638,21 @@ static enum GNUNET_GenericReturnValue
 create_key (void)
 {
   struct Key *key;
-  struct GNUNET_TIME_Absolute anchor;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp anchor;
 
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-  if (NULL == keys_tail)
+  anchor = GNUNET_TIME_timestamp_get ();
+  if (NULL != keys_tail)
   {
-    anchor = now;
-  }
-  else
-  {
-    anchor = GNUNET_TIME_absolute_add (keys_tail->anchor,
-                                       GNUNET_TIME_relative_subtract (
-                                         duration,
-                                         overlap_duration));
-    if (now.abs_value_us > anchor.abs_value_us)
-      anchor = now;
+    struct GNUNET_TIME_Absolute abs;
+
+    abs = GNUNET_TIME_absolute_add (keys_tail->anchor.abs_time,
+                                    GNUNET_TIME_relative_subtract (
+                                      duration,
+                                      overlap_duration));
+    if (GNUNET_TIME_absolute_cmp (anchor.abs_time,
+                                  <,
+                                  abs))
+      anchor = GNUNET_TIME_absolute_to_timestamp (abs);
   }
   key = GNUNET_new (struct Key);
   key->anchor = anchor;
@@ -689,11 +687,11 @@ key_action_time (void)
   if (NULL == nxt)
     return GNUNET_TIME_UNIT_ZERO_ABS;
   return GNUNET_TIME_absolute_min (
-    GNUNET_TIME_absolute_add (nxt->anchor,
+    GNUNET_TIME_absolute_add (nxt->anchor.abs_time,
                               duration),
     GNUNET_TIME_absolute_subtract (
       GNUNET_TIME_absolute_subtract (
-        GNUNET_TIME_absolute_add (keys_tail->anchor,
+        GNUNET_TIME_absolute_add (keys_tail->anchor.abs_time,
                                   duration),
         lookahead_sign),
       overlap_duration));
@@ -719,7 +717,7 @@ update_keys (void *cls)
           GNUNET_TIME_absolute_is_past (
             GNUNET_TIME_absolute_subtract (
               GNUNET_TIME_absolute_subtract (
-                GNUNET_TIME_absolute_add (keys_tail->anchor,
+                GNUNET_TIME_absolute_add (keys_tail->anchor.abs_time,
                                           duration),
                 lookahead_sign),
               overlap_duration)) )
@@ -743,7 +741,7 @@ update_keys (void *cls)
   /* purge expired keys */
   while ( (NULL != nxt) &&
           GNUNET_TIME_absolute_is_past (
-            GNUNET_TIME_absolute_add (nxt->anchor,
+            GNUNET_TIME_absolute_add (nxt->anchor.abs_time,
                                       duration)))
   {
     if (! wake)
@@ -754,9 +752,9 @@ update_keys (void *cls)
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Purging past key %s (expired %s ago)\n",
                 TALER_B2S (&nxt->exchange_pub),
-                GNUNET_STRINGS_relative_time_to_string (
+                GNUNET_TIME_relative2s (
                   GNUNET_TIME_absolute_get_duration (
-                    GNUNET_TIME_absolute_add (nxt->anchor,
+                    GNUNET_TIME_absolute_add (nxt->anchor.abs_time,
                                               duration)),
                   GNUNET_YES));
     purge_key (nxt);
@@ -788,7 +786,7 @@ parse_key (const char *filename,
   char *anchor_s;
   char dummy;
   unsigned long long anchor_ll;
-  struct GNUNET_TIME_Absolute anchor;
+  struct GNUNET_TIME_Timestamp anchor;
 
   anchor_s = strrchr (filename,
                       '/');
@@ -810,8 +808,10 @@ parse_key (const char *filename,
                 filename);
     return GNUNET_SYSERR;
   }
-  anchor.abs_value_us = anchor_ll * GNUNET_TIME_UNIT_SECONDS.rel_value_us;
-  if (anchor_ll != anchor.abs_value_us / GNUNET_TIME_UNIT_SECONDS.rel_value_us)
+  anchor.abs_time.abs_value_us = anchor_ll
+                                 * GNUNET_TIME_UNIT_SECONDS.rel_value_us;
+  if (anchor_ll != anchor.abs_time.abs_value_us
+      / GNUNET_TIME_UNIT_SECONDS.rel_value_us)
   {
     /* Integer overflow. Bad, invalid filename. */
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
@@ -850,7 +850,7 @@ parse_key (const char *filename,
          NULL != pos;
          pos = pos->next)
     {
-      if (pos->anchor.abs_value_us > anchor.abs_value_us)
+      if (GNUNET_TIME_timestamp_cmp (pos->anchor, >, anchor))
         break;
       before = pos;
     }
@@ -1012,8 +1012,6 @@ load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                "DURATION");
     return GNUNET_SYSERR;
   }
-  GNUNET_TIME_round_rel (&overlap_duration);
-
   if (GNUNET_OK !=
       GNUNET_CONFIGURATION_get_value_time (cfg,
                                            "taler-exchange-secmod-eddsa",
@@ -1025,7 +1023,6 @@ load_durations (const struct GNUNET_CONFIGURATION_Handle *cfg)
                                "LOOKAHEAD_SIGN");
     return GNUNET_SYSERR;
   }
-  GNUNET_TIME_round_rel (&lookahead_sign);
   return GNUNET_OK;
 }
 
@@ -1071,7 +1068,7 @@ run (void *cls,
   (void) cls;
   (void) args;
   (void) cfgfile;
-  if (now.abs_value_us != now_tmp.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (now, !=, now_tmp))
   {
     /* The user gave "--now", use it! */
     now = now_tmp;
@@ -1079,9 +1076,8 @@ run (void *cls,
   else
   {
     /* get current time again, we may be timetraveling! */
-    now = GNUNET_TIME_absolute_get ();
+    now = GNUNET_TIME_timestamp_get ();
   }
-  GNUNET_TIME_round_abs (&now);
   if (GNUNET_OK !=
       load_durations (cfg))
   {
@@ -1114,12 +1110,13 @@ run (void *cls,
                               &import_key,
                               NULL);
   if ( (NULL != keys_head) &&
-       (GNUNET_TIME_absolute_is_future (keys_head->anchor)) )
+       (GNUNET_TIME_absolute_is_future (keys_head->anchor.abs_time)) )
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Existing anchor is in %s the future. Refusing to start\n",
-                GNUNET_STRINGS_relative_time_to_string (
-                  GNUNET_TIME_absolute_get_remaining (keys_head->anchor),
+                GNUNET_TIME_relative2s (
+                  GNUNET_TIME_absolute_get_remaining (
+                    keys_head->anchor.abs_time),
                   GNUNET_YES));
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();
@@ -1148,11 +1145,11 @@ main (int argc,
   struct GNUNET_GETOPT_CommandLineOption options[] = {
     GNUNET_GETOPT_option_timetravel ('T',
                                      "timetravel"),
-    GNUNET_GETOPT_option_absolute_time ('t',
-                                        "time",
-                                        "TIMESTAMP",
-                                        "pretend it is a different time for the update",
-                                        &now_tmp),
+    GNUNET_GETOPT_option_timestamp ('t',
+                                    "time",
+                                    "TIMESTAMP",
+                                    "pretend it is a different time for the update",
+                                    &now_tmp),
     GNUNET_GETOPT_OPTION_END
   };
   enum GNUNET_GenericReturnValue ret;
@@ -1164,8 +1161,9 @@ main (int argc,
    not do this, the linker may "optimize" libtalerutil
    away and skip #TALER_OS_init(), which we do need */
   TALER_OS_init ();
-  now = now_tmp = GNUNET_TIME_absolute_get ();
-  ret = GNUNET_PROGRAM_run (argc, argv,
+  now_tmp = now = GNUNET_TIME_timestamp_get ();
+  ret = GNUNET_PROGRAM_run (argc,
+                            argv,
                             "taler-exchange-secmod-eddsa",
                             "Handle private EDDSA key operations for a Taler exchange",
                             options,

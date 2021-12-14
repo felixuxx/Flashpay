@@ -31,9 +31,9 @@ TALER_wallet_deposit_sign (
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute wallet_timestamp,
+  struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv,
   struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -43,17 +43,13 @@ TALER_wallet_deposit_sign (
     .h_contract_terms = *h_contract_terms,
     .h_wire = *h_wire,
     .h_denom_pub = *h_denom_pub,
-    .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
-    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .wallet_timestamp = GNUNET_TIME_timestamp_hton (wallet_timestamp),
+    .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
     .merchant = *merchant_pub
   };
 
   if (NULL != h_extensions)
     dr.h_extensions = *h_extensions;
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_TIME_round_abs (&wallet_timestamp));
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_TIME_round_abs (&refund_deadline));
   TALER_amount_hton (&dr.amount_with_fee,
                      amount);
   TALER_amount_hton (&dr.deposit_fee,
@@ -72,9 +68,9 @@ TALER_wallet_deposit_verify (
   const struct TALER_PrivateContractHash *h_contract_terms,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_DenominationHash *h_denom_pub,
-  struct GNUNET_TIME_Absolute wallet_timestamp,
+  struct GNUNET_TIME_Timestamp wallet_timestamp,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -84,8 +80,8 @@ TALER_wallet_deposit_verify (
     .h_contract_terms = *h_contract_terms,
     .h_wire = *h_wire,
     .h_denom_pub = *h_denom_pub,
-    .wallet_timestamp = GNUNET_TIME_absolute_hton (wallet_timestamp),
-    .refund_deadline = GNUNET_TIME_absolute_hton (refund_deadline),
+    .wallet_timestamp = GNUNET_TIME_timestamp_hton (wallet_timestamp),
+    .refund_deadline = GNUNET_TIME_timestamp_hton (refund_deadline),
     .merchant = *merchant_pub
   };
 

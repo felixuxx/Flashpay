@@ -50,7 +50,7 @@ struct DelAuditorContext
   /**
    * Timestamp for checking against replay attacks.
    */
-  struct GNUNET_TIME_Absolute validity_end;
+  struct GNUNET_TIME_Timestamp validity_end;
 
 };
 
@@ -75,7 +75,7 @@ del_auditor (void *cls,
              MHD_RESULT *mhd_ret)
 {
   struct DelAuditorContext *dac = cls;
-  struct GNUNET_TIME_Absolute last_date;
+  struct GNUNET_TIME_Timestamp last_date;
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->lookup_auditor_timestamp (TEH_plugin->cls,
@@ -92,7 +92,9 @@ del_auditor (void *cls,
                                            "lookup auditor");
     return qs;
   }
-  if (last_date.abs_value_us > dac->validity_end.abs_value_us)
+  if (GNUNET_TIME_timestamp_cmp (last_date,
+                                 >,
+                                 dac->validity_end))
   {
     *mhd_ret = TALER_MHD_reply_with_error (
       connection,
@@ -145,8 +147,8 @@ TEH_handler_management_auditors_AP_disable (
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("master_sig",
                                  &master_sig),
-    TALER_JSON_spec_absolute_time ("validity_end",
-                                   &dac.validity_end),
+    GNUNET_JSON_spec_timestamp ("validity_end",
+                                &dac.validity_end),
     GNUNET_JSON_spec_end ()
   };
   MHD_RESULT res;

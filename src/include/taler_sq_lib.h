@@ -61,33 +61,6 @@ TALER_SQ_query_param_json (const json_t *x);
 
 
 /**
- * Generate query parameter for an absolute time value.
- * In contrast to
- * #GNUNET_SQ_query_param_absolute_time(), this function
- * will abort (!) if the time given is not rounded!
- * The database must store a 64-bit integer.
- *
- * @param x pointer to the query parameter to pass
- */
-struct GNUNET_SQ_QueryParam
-TALER_SQ_query_param_absolute_time (const struct GNUNET_TIME_Absolute *x);
-
-
-/**
- * Generate query parameter for an absolute time value.
- * In contrast to
- * #GNUNET_SQ_query_param_absolute_time(), this function
- * will abort (!) if the time given is not rounded!
- * The database must store a 64-bit integer.
- *
- * @param x pointer to the query parameter to pass
- */
-struct GNUNET_SQ_QueryParam
-TALER_SQ_query_param_absolute_time_nbo (const struct
-                                        GNUNET_TIME_AbsoluteNBO *x);
-
-
-/**
  * Currency amount expected.
  *
  * @param currency currency to use for @a amount
@@ -119,32 +92,6 @@ TALER_SQ_result_spec_amount (const char *currency,
  */
 struct GNUNET_SQ_ResultSpec
 TALER_SQ_result_spec_json (json_t **jp);
-
-
-/**
- * Rounded absolute time expected.
- * In contrast to #GNUNET_SQ_query_param_absolute_time_nbo(),
- * this function ensures that the result is rounded and can
- * be converted to JSON.
- *
- * @param[out] at where to store the result
- * @return array entry for the result specification to use
- */
-struct GNUNET_SQ_ResultSpec
-TALER_SQ_result_spec_absolute_time (struct GNUNET_TIME_Absolute *at);
-
-
-/**
- * Rounded absolute time expected.
- * In contrast to #GNUNET_SQ_result_spec_absolute_time_nbo(),
- * this function ensures that the result is rounded and can
- * be converted to JSON.
- *
- * @param[out] at where to store the result
- * @return array entry for the result specification to use
- */
-struct GNUNET_SQ_ResultSpec
-TALER_SQ_result_spec_absolute_time_nbo (struct GNUNET_TIME_AbsoluteNBO *at);
 
 
 #endif  /* TALER_SQ_LIB_H_ */

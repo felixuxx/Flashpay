@@ -342,7 +342,7 @@ struct TALER_DenominationKeyAnnouncementPS
   /**
    * When does the key become available?
    */
-  struct GNUNET_TIME_AbsoluteNBO anchor_time;
+  struct GNUNET_TIME_TimestampNBO anchor_time;
 
   /**
    * How long is the key available after @e anchor_time?
@@ -373,7 +373,7 @@ struct TALER_SigningKeyAnnouncementPS
   /**
    * When does the key become available?
    */
-  struct GNUNET_TIME_AbsoluteNBO anchor_time;
+  struct GNUNET_TIME_TimestampNBO anchor_time;
 
   /**
    * How long is the key available after @e anchor_time?
@@ -497,14 +497,14 @@ struct TALER_DepositRequestPS
    * deposit request in a timely fashion (so back-dating is not
    * prevented).
    */
-  struct GNUNET_TIME_AbsoluteNBO wallet_timestamp;
+  struct GNUNET_TIME_TimestampNBO wallet_timestamp;
 
   /**
    * How much time does the merchant have to issue a refund request?
    * Zero if refunds are not allowed.  After this time, the coin
    * cannot be refunded.
    */
-  struct GNUNET_TIME_AbsoluteNBO refund_deadline;
+  struct GNUNET_TIME_TimestampNBO refund_deadline;
 
   /**
    * Amount to be deposited, including deposit fee charged by the
@@ -565,13 +565,13 @@ struct TALER_DepositConfirmationPS
    * Time when this confirmation was generated / when the exchange received
    * the deposit request.
    */
-  struct GNUNET_TIME_AbsoluteNBO exchange_timestamp;
+  struct GNUNET_TIME_TimestampNBO exchange_timestamp;
 
   /**
    * By when does the exchange expect to pay the merchant
    * (as per the merchant's request).
    */
-  struct GNUNET_TIME_AbsoluteNBO wire_deadline;
+  struct GNUNET_TIME_TimestampNBO wire_deadline;
 
   /**
    * How much time does the @e merchant have to issue a refund
@@ -580,7 +580,7 @@ struct TALER_DepositConfirmationPS
    * performed by the exchange until the refund deadline.  This value
    * is taken from the original deposit request.
    */
-  struct GNUNET_TIME_AbsoluteNBO refund_deadline;
+  struct GNUNET_TIME_TimestampNBO refund_deadline;
 
   /**
    * Amount to be deposited, excluding fee.  Calculated from the
@@ -782,7 +782,7 @@ struct TALER_ExchangeSigningKeyValidityPS
   /**
    * When does this signing key begin to be valid?
    */
-  struct GNUNET_TIME_AbsoluteNBO start;
+  struct GNUNET_TIME_TimestampNBO start;
 
   /**
    * When does this signing key expire? Note: This is currently when
@@ -792,7 +792,7 @@ struct TALER_ExchangeSigningKeyValidityPS
    * the use of either key during the overlap time (due to the
    * possibility of clock skew).
    */
-  struct GNUNET_TIME_AbsoluteNBO expire;
+  struct GNUNET_TIME_TimestampNBO expire;
 
   /**
    * When do signatures with this signing key become invalid?  After
@@ -801,7 +801,7 @@ struct TALER_ExchangeSigningKeyValidityPS
    * evidence.  @e end is expected to be significantly larger than @e
    * expire (by a year or more).
    */
-  struct GNUNET_TIME_AbsoluteNBO end;
+  struct GNUNET_TIME_TimestampNBO end;
 
   /**
    * The public online signing key that the exchange will use
@@ -828,7 +828,7 @@ struct TALER_ExchangeKeySetPS
   /**
    * Time of the key set issue.
    */
-  struct GNUNET_TIME_AbsoluteNBO list_issue_date;
+  struct GNUNET_TIME_TimestampNBO list_issue_date;
 
   /**
    * Hash over the various denomination signing keys returned.
@@ -858,7 +858,7 @@ struct TALER_ExchangeAccountSetupSuccessPS
   /**
    * When was the signature made.
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_TimestampNBO timestamp;
 };
 
 
@@ -878,7 +878,7 @@ struct TALER_MasterAddAuditorPS
   /**
    * Time of the change.
    */
-  struct GNUNET_TIME_AbsoluteNBO start_date;
+  struct GNUNET_TIME_TimestampNBO start_date;
 
   /**
    * Public key of the auditor.
@@ -908,7 +908,7 @@ struct TALER_MasterDelAuditorPS
   /**
    * Time of the change.
    */
-  struct GNUNET_TIME_AbsoluteNBO end_date;
+  struct GNUNET_TIME_TimestampNBO end_date;
 
   /**
    * Public key of the auditor.
@@ -934,7 +934,7 @@ struct TALER_MasterAddWirePS
   /**
    * Time of the change.
    */
-  struct GNUNET_TIME_AbsoluteNBO start_date;
+  struct GNUNET_TIME_TimestampNBO start_date;
 
   /**
    * Hash over the exchange's payto URI.
@@ -959,7 +959,7 @@ struct TALER_MasterDelWirePS
   /**
    * Time of the change.
    */
-  struct GNUNET_TIME_AbsoluteNBO end_date;
+  struct GNUNET_TIME_TimestampNBO end_date;
 
   /**
    * Hash over the exchange's payto URI.
@@ -990,7 +990,7 @@ struct TALER_DenominationKeyValidityPS
   /**
    * Start time of the validity period for this key.
    */
-  struct GNUNET_TIME_AbsoluteNBO start;
+  struct GNUNET_TIME_TimestampNBO start;
 
   /**
    * The exchange will sign fresh coins between @e start and this time.
@@ -1004,7 +1004,7 @@ struct TALER_DenominationKeyValidityPS
    * with the same value with overlapping validity periods, to address
    * issues such as clock skew.
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
+  struct GNUNET_TIME_TimestampNBO expire_withdraw;
 
   /**
    * Coins signed with the denomination key must be spent or refreshed
@@ -1016,7 +1016,7 @@ struct TALER_DenominationKeyValidityPS
    * significantly larger than @e expire_withdraw (by months or even
    * years).
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_deposit;
+  struct GNUNET_TIME_TimestampNBO expire_deposit;
 
   /**
    * When do signatures with this denomination key become invalid?
@@ -1025,7 +1025,7 @@ struct TALER_DenominationKeyValidityPS
    * of the evidence.  @e expire_legal is expected to be significantly
    * larger than @e expire_deposit (by a year or more).
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_legal;
+  struct GNUNET_TIME_TimestampNBO expire_legal;
 
   /**
    * The value of the coins signed with this denomination key.
@@ -1093,7 +1093,7 @@ struct TALER_ExchangeKeyValidityPS
   /**
    * Start time of the validity period for this key.
    */
-  struct GNUNET_TIME_AbsoluteNBO start;
+  struct GNUNET_TIME_TimestampNBO start;
 
   /**
    * The exchange will sign fresh coins between @e start and this time.
@@ -1107,7 +1107,7 @@ struct TALER_ExchangeKeyValidityPS
    * with the same value with overlapping validity periods, to address
    * issues such as clock skew.
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_withdraw;
+  struct GNUNET_TIME_TimestampNBO expire_withdraw;
 
   /**
    * Coins signed with the denomination key must be spent or refreshed
@@ -1119,7 +1119,7 @@ struct TALER_ExchangeKeyValidityPS
    * significantly larger than @e expire_withdraw (by months or even
    * years).
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_deposit;
+  struct GNUNET_TIME_TimestampNBO expire_deposit;
 
   /**
    * When do signatures with this denomination key become invalid?
@@ -1128,7 +1128,7 @@ struct TALER_ExchangeKeyValidityPS
    * of the evidence.  @e expire_legal is expected to be significantly
    * larger than @e expire_deposit (by a year or more).
    */
-  struct GNUNET_TIME_AbsoluteNBO expire_legal;
+  struct GNUNET_TIME_TimestampNBO expire_legal;
 
   /**
    * The value of the coins signed with this denomination key.
@@ -1231,12 +1231,12 @@ struct TALER_MasterWireFeePS
   /**
    * Start date when the fee goes into effect.
    */
-  struct GNUNET_TIME_AbsoluteNBO start_date;
+  struct GNUNET_TIME_TimestampNBO start_date;
 
   /**
    * End date when the fee stops being in effect (exclusive)
    */
-  struct GNUNET_TIME_AbsoluteNBO end_date;
+  struct GNUNET_TIME_TimestampNBO end_date;
 
   /**
    * Fee charged to the merchant per wire transfer.
@@ -1338,7 +1338,7 @@ struct TALER_WireDepositDetailP
   /**
    * Time when the wire transfer was performed by the exchange.
    */
-  struct GNUNET_TIME_AbsoluteNBO execution_time;
+  struct GNUNET_TIME_TimestampNBO execution_time;
 
   /**
    * Coin's public key.
@@ -1473,7 +1473,7 @@ struct TALER_ConfirmWirePS
    * timestamp may not be exactly the same on the wire, i.e.
    * because the wire has a different timezone or resolution.
    */
-  struct GNUNET_TIME_AbsoluteNBO execution_time;
+  struct GNUNET_TIME_TimestampNBO execution_time;
 
   /**
    * The contribution of @e coin_pub to the total transfer volume.
@@ -1532,7 +1532,7 @@ struct TALER_RecoupConfirmationPS
    * Indirectly determines when the wire transfer is (likely)
    * to happen.
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_TimestampNBO timestamp;
 
   /**
    * How much of the coin's value will the exchange transfer?
@@ -1570,7 +1570,7 @@ struct TALER_RecoupRefreshConfirmationPS
    * Indirectly determines when the wire transfer is (likely)
    * to happen.
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_TimestampNBO timestamp;
 
   /**
    * How much of the coin's value will the exchange transfer?
@@ -1605,7 +1605,7 @@ struct TALER_DenominationUnknownAffirmationPS
   /**
    * When did the exchange sign this message.
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_TimestampNBO timestamp;
 
   /**
    * Hash of the public denomination key we do not know.
@@ -1630,7 +1630,7 @@ struct TALER_DenominationExpiredAffirmationPS
   /**
    * When did the exchange sign this message.
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_TimestampNBO timestamp;
 
   /**
    * Name of the operation that is not allowed at this time.  Might NOT be 0-terminated, but is padded with 0s.
@@ -1660,7 +1660,7 @@ struct TALER_ReserveCloseConfirmationPS
   /**
    * When did the exchange initiate the wire transfer.
    */
-  struct GNUNET_TIME_AbsoluteNBO timestamp;
+  struct GNUNET_TIME_TimestampNBO timestamp;
 
   /**
    * How much did the exchange send?

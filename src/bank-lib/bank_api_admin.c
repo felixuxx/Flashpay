@@ -75,12 +75,12 @@ handle_admin_add_incoming_finished (void *cls,
 {
   struct TALER_BANK_AdminAddIncomingHandle *aai = cls;
   uint64_t row_id = UINT64_MAX;
-  struct GNUNET_TIME_Absolute timestamp;
+  struct GNUNET_TIME_Timestamp timestamp;
   enum TALER_ErrorCode ec;
   const json_t *j = response;
 
   aai->job = NULL;
-  timestamp = GNUNET_TIME_UNIT_FOREVER_ABS;
+  timestamp = GNUNET_TIME_UNIT_FOREVER_TS;
   switch (response_code)
   {
   case 0:
@@ -91,8 +91,8 @@ handle_admin_add_incoming_finished (void *cls,
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_uint64 ("row_id",
                                  &row_id),
-        TALER_JSON_spec_absolute_time ("timestamp",
-                                       &timestamp),
+        GNUNET_JSON_spec_timestamp ("timestamp",
+                                    &timestamp),
         GNUNET_JSON_spec_end ()
       };
 
@@ -158,23 +158,6 @@ handle_admin_add_incoming_finished (void *cls,
 }
 
 
-/**
- * Perform a wire transfer from some account to the exchange to fill a
- * reserve.  Note that this API is usually only used for testing (with
- * fakebank and our Python bank) and thus may not be accessible in a
- * production setting.
- *
- * @param ctx curl context for the event loop
- * @param auth authentication data to send to the bank
- * @param reserve_pub wire transfer subject for the transfer
- * @param amount amount that was is to be deposited
- * @param debit_account account to deposit from (payto URI, but used as 'payfrom')
- * @param res_cb the callback to call when the final result for this request is available
- * @param res_cb_cls closure for the above callback
- * @return NULL
- *         if the inputs are invalid (i.e. invalid amount) or internal errors.
- *         In this case, the callback is not called.
- */
 struct TALER_BANK_AdminAddIncomingHandle *
 TALER_BANK_admin_add_incoming (
   struct GNUNET_CURL_Context *ctx,
@@ -268,12 +251,6 @@ TALER_BANK_admin_add_incoming (
 }
 
 
-/**
- * Cancel an add incoming.  This function cannot be used on a request
- * handle if a response is already served for it.
- *
- * @param aai the admin add incoming request handle
- */
 void
 TALER_BANK_admin_add_incoming_cancel (
   struct TALER_BANK_AdminAddIncomingHandle *aai)

@@ -89,7 +89,7 @@ reply_transfer_details (struct MHD_Connection *connection,
                         const struct TALER_MerchantPublicKeyP *merchant_pub,
                         const char *payto_uri,
                         const struct TALER_Amount *wire_fee,
-                        struct GNUNET_TIME_Absolute exec_time,
+                        struct GNUNET_TIME_Timestamp exec_time,
                         const struct AggregatedDepositDetail *wdd_head)
 {
   json_t *deposits;
@@ -99,7 +99,6 @@ reply_transfer_details (struct MHD_Connection *connection,
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
 
-  GNUNET_TIME_round_abs (&exec_time);
   deposits = json_array ();
   GNUNET_assert (NULL != deposits);
   hash_context = GNUNET_CRYPTO_hash_context_start ();
@@ -108,7 +107,7 @@ reply_transfer_details (struct MHD_Connection *connection,
        wdd_pos = wdd_pos->next)
   {
     dd.h_contract_terms = wdd_pos->h_contract_terms;
-    dd.execution_time = GNUNET_TIME_absolute_hton (exec_time);
+    dd.execution_time = GNUNET_TIME_timestamp_hton (exec_time);
     dd.coin_pub = wdd_pos->coin_pub;
     TALER_amount_hton (&dd.deposit_value,
                        &wdd_pos->deposit_value);
@@ -175,8 +174,8 @@ reply_transfer_details (struct MHD_Connection *connection,
                                 merchant_pub),
     GNUNET_JSON_pack_data_auto ("h_payto",
                                 &wdp.h_payto),
-    GNUNET_JSON_pack_time_abs ("execution_time",
-                               exec_time),
+    GNUNET_JSON_pack_timestamp ("execution_time",
+                                exec_time),
     GNUNET_JSON_pack_array_steal ("deposits",
                                   deposits),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
@@ -219,7 +218,7 @@ struct WtidTransactionContext
   /**
    * Execution time of the wire transfer
    */
-  struct GNUNET_TIME_Absolute exec_time;
+  struct GNUNET_TIME_Timestamp exec_time;
 
   /**
    * Head of DLL with deposit details for transfers GET response.
@@ -273,7 +272,7 @@ handle_deposit_data (void *cls,
                      uint64_t rowid,
                      const struct TALER_MerchantPublicKeyP *merchant_pub,
                      const char *account_payto_uri,
-                     struct GNUNET_TIME_Absolute exec_time,
+                     struct GNUNET_TIME_Timestamp exec_time,
                      const struct TALER_PrivateContractHash *h_contract_terms,
                      const struct TALER_DenominationPublicKey *denom_pub,
                      const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -397,8 +396,8 @@ get_transfer_deposits (void *cls,
 {
   struct WtidTransactionContext *ctx = cls;
   enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Absolute wire_fee_start_date;
-  struct GNUNET_TIME_Absolute wire_fee_end_date;
+  struct GNUNET_TIME_Timestamp wire_fee_start_date;
+  struct GNUNET_TIME_Timestamp wire_fee_end_date;
   struct TALER_MasterSignatureP wire_fee_master_sig;
   struct TALER_Amount closing_fee;
 

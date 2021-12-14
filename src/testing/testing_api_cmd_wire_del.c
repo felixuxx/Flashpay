@@ -108,11 +108,10 @@ wire_del_run (void *cls,
 {
   struct WireDelState *ds = cls;
   struct TALER_MasterSignatureP master_sig;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   (void) cmd;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   ds->is = is;
   if (ds->bad_sig)
   {

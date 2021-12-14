@@ -173,18 +173,18 @@ static enum GNUNET_GenericReturnValue
 verify_signatures (const struct TALER_MerchantWireHash *h_wire,
                    const struct TALER_ExtensionContractHash *h_extensions,
                    const struct TALER_PrivateContractHash *h_contract_terms,
-                   struct GNUNET_TIME_Absolute exchange_timestamp,
-                   struct GNUNET_TIME_Absolute wire_deadline,
-                   struct GNUNET_TIME_Absolute refund_deadline,
+                   struct GNUNET_TIME_Timestamp exchange_timestamp,
+                   struct GNUNET_TIME_Timestamp wire_deadline,
+                   struct GNUNET_TIME_Timestamp refund_deadline,
                    const struct TALER_Amount *amount_without_fee,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    const struct TALER_MerchantPublicKeyP *merchant_pub,
                    const struct TALER_ExchangePublicKeyP *exchange_pub,
                    const struct TALER_ExchangeSignatureP *exchange_sig,
                    const struct TALER_MasterPublicKeyP *master_pub,
-                   struct GNUNET_TIME_Absolute ep_start,
-                   struct GNUNET_TIME_Absolute ep_expire,
-                   struct GNUNET_TIME_Absolute ep_end,
+                   struct GNUNET_TIME_Timestamp ep_start,
+                   struct GNUNET_TIME_Timestamp ep_expire,
+                   struct GNUNET_TIME_Timestamp ep_end,
                    const struct TALER_MasterSignatureP *master_sig)
 {
   if (GNUNET_OK !=
@@ -223,7 +223,7 @@ verify_signatures (const struct TALER_MerchantWireHash *h_wire,
     TALER_LOG_WARNING ("Invalid signature on exchange signing key!\n");
     return GNUNET_SYSERR;
   }
-  if (GNUNET_TIME_absolute_is_past (ep_end))
+  if (GNUNET_TIME_absolute_is_past (ep_end.abs_time))
   {
     GNUNET_break (0);
     TALER_LOG_WARNING ("Exchange signing key is no longer valid!\n");
@@ -239,18 +239,18 @@ TALER_AUDITOR_deposit_confirmation (
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_PrivateContractHash *h_contract_terms,
-  struct GNUNET_TIME_Absolute exchange_timestamp,
-  struct GNUNET_TIME_Absolute wire_deadline,
-  struct GNUNET_TIME_Absolute refund_deadline,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
+  struct GNUNET_TIME_Timestamp wire_deadline,
+  struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_Amount *amount_without_fee,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   const struct TALER_MerchantPublicKeyP *merchant_pub,
   const struct TALER_ExchangePublicKeyP *exchange_pub,
   const struct TALER_ExchangeSignatureP *exchange_sig,
   const struct TALER_MasterPublicKeyP *master_pub,
-  struct GNUNET_TIME_Absolute ep_start,
-  struct GNUNET_TIME_Absolute ep_expire,
-  struct GNUNET_TIME_Absolute ep_end,
+  struct GNUNET_TIME_Timestamp ep_start,
+  struct GNUNET_TIME_Timestamp ep_expire,
+  struct GNUNET_TIME_Timestamp ep_end,
   const struct TALER_MasterSignatureP *master_sig,
   TALER_AUDITOR_DepositConfirmationResultCallback cb,
   void *cb_cls)
@@ -260,11 +260,6 @@ TALER_AUDITOR_deposit_confirmation (
   json_t *deposit_confirmation_obj;
   CURL *eh;
 
-  (void) GNUNET_TIME_round_abs (&exchange_timestamp);
-  (void) GNUNET_TIME_round_abs (&refund_deadline);
-  (void) GNUNET_TIME_round_abs (&ep_start);
-  (void) GNUNET_TIME_round_abs (&ep_expire);
-  (void) GNUNET_TIME_round_abs (&ep_end);
   GNUNET_assert (GNUNET_YES ==
                  TALER_AUDITOR_handle_is_ready_ (auditor));
   if (GNUNET_OK !=
@@ -297,12 +292,12 @@ TALER_AUDITOR_deposit_confirmation (
                                     h_extensions),
         GNUNET_JSON_pack_data_auto ("h_contract_terms",
                                     h_contract_terms),
-        GNUNET_JSON_pack_time_abs ("exchange_timestamp",
-                                   exchange_timestamp),
-        GNUNET_JSON_pack_time_abs ("refund_deadline",
-                                   refund_deadline),
-        GNUNET_JSON_pack_time_abs ("wire_deadline",
-                                   wire_deadline),
+        GNUNET_JSON_pack_timestamp ("exchange_timestamp",
+                                    exchange_timestamp),
+        GNUNET_JSON_pack_timestamp ("refund_deadline",
+                                    refund_deadline),
+        GNUNET_JSON_pack_timestamp ("wire_deadline",
+                                    wire_deadline),
         TALER_JSON_pack_amount ("amount_without_fee",
                                 amount_without_fee),
         GNUNET_JSON_pack_data_auto ("coin_pub",
@@ -313,12 +308,12 @@ TALER_AUDITOR_deposit_confirmation (
                                     exchange_sig),
         GNUNET_JSON_pack_data_auto ("master_pub",
                                     master_pub),
-        GNUNET_JSON_pack_time_abs ("ep_start",
-                                   ep_start),
-        GNUNET_JSON_pack_time_abs ("ep_expire",
-                                   ep_expire),
-        GNUNET_JSON_pack_time_abs ("ep_end",
-                                   ep_end),
+        GNUNET_JSON_pack_timestamp ("ep_start",
+                                    ep_start),
+        GNUNET_JSON_pack_timestamp ("ep_expire",
+                                    ep_expire),
+        GNUNET_JSON_pack_timestamp ("ep_end",
+                                    ep_end),
         GNUNET_JSON_pack_data_auto ("master_sig",
                                     master_sig),
         GNUNET_JSON_pack_data_auto ("exchange_pub",

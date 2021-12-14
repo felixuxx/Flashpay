@@ -52,7 +52,7 @@ reply_deposit_details (struct MHD_Connection *connection,
                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
                        const struct TALER_Amount *coin_contribution,
                        const struct TALER_WireTransferIdentifierRawP *wtid,
-                       struct GNUNET_TIME_Absolute exec_time)
+                       struct GNUNET_TIME_Timestamp exec_time)
 {
   struct TALER_ExchangePublicKeyP pub;
   struct TALER_ExchangeSignatureP sig;
@@ -63,7 +63,7 @@ reply_deposit_details (struct MHD_Connection *connection,
     .h_contract_terms = *h_contract_terms,
     .wtid = *wtid,
     .coin_pub = *coin_pub,
-    .execution_time = GNUNET_TIME_absolute_hton (exec_time)
+    .execution_time = GNUNET_TIME_timestamp_hton (exec_time)
   };
   enum TALER_ErrorCode ec;
 
@@ -83,8 +83,8 @@ reply_deposit_details (struct MHD_Connection *connection,
     MHD_HTTP_OK,
     GNUNET_JSON_pack_data_auto ("wtid",
                                 wtid),
-    GNUNET_JSON_pack_time_abs ("execution_time",
-                               exec_time),
+    GNUNET_JSON_pack_timestamp ("execution_time",
+                                exec_time),
     TALER_JSON_pack_amount ("coin_contribution",
                             coin_contribution),
     GNUNET_JSON_pack_data_auto ("exchange_sig",
@@ -128,7 +128,7 @@ struct DepositWtidContext
   /**
    * Set by #handle_wtid data to the wire transfer execution time.
    */
-  struct GNUNET_TIME_Absolute execution_time;
+  struct GNUNET_TIME_Timestamp execution_time;
 
   /**
    * Set by #handle_wtid to the coin contribution to the transaction
@@ -264,8 +264,8 @@ handle_track_transaction_request (
                                ctx.kyc.payment_target_uuid),
       GNUNET_JSON_pack_bool ("kyc_ok",
                              ctx.kyc.ok),
-      GNUNET_JSON_pack_time_abs ("execution_time",
-                                 ctx.execution_time));
+      GNUNET_JSON_pack_timestamp ("execution_time",
+                                  ctx.execution_time));
   return reply_deposit_details (connection,
                                 &tps->h_contract_terms,
                                 &tps->h_wire,

@@ -22,6 +22,7 @@
 #include "platform.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_curl_lib.h>
+#include "exchange_api_curl_defaults.h"
 #include "taler_exchange_service.h"
 #include "taler_signatures.h"
 #include "taler_curl_lib.h"
@@ -126,8 +127,8 @@ TALER_EXCHANGE_management_set_wire_fees (
   struct GNUNET_CURL_Context *ctx,
   const char *exchange_base_url,
   const char *wire_method,
-  struct GNUNET_TIME_Absolute validity_start,
-  struct GNUNET_TIME_Absolute validity_end,
+  struct GNUNET_TIME_Timestamp validity_start,
+  struct GNUNET_TIME_Timestamp validity_end,
   const struct TALER_Amount *wire_fee,
   const struct TALER_Amount *closing_fee,
   const struct TALER_MasterSignatureP *master_sig,
@@ -157,15 +158,15 @@ TALER_EXCHANGE_management_set_wire_fees (
                              wire_method),
     GNUNET_JSON_pack_data_auto ("master_sig",
                                 master_sig),
-    GNUNET_JSON_pack_time_abs ("fee_start",
-                               validity_start),
-    GNUNET_JSON_pack_time_abs ("fee_end",
-                               validity_end),
+    GNUNET_JSON_pack_timestamp ("fee_start",
+                                validity_start),
+    GNUNET_JSON_pack_timestamp ("fee_end",
+                                validity_end),
     TALER_JSON_pack_amount ("closing_fee",
                             closing_fee),
     TALER_JSON_pack_amount ("wire_fee",
                             wire_fee));
-  eh = curl_easy_init ();
+  eh = TALER_EXCHANGE_curl_easy_get_ (swfh->url);
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
       TALER_curl_easy_post (&swfh->post_ctx,
@@ -182,9 +183,6 @@ TALER_EXCHANGE_management_set_wire_fees (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting URL '%s'\n",
               swfh->url);
-  GNUNET_assert (CURLE_OK == curl_easy_setopt (eh,
-                                               CURLOPT_URL,
-                                               swfh->url));
   swfh->job = GNUNET_CURL_job_add2 (ctx,
                                     eh,
                                     swfh->post_ctx.headers,

@@ -92,7 +92,7 @@ struct RecoupContext
    * Set by #recoup_transaction to the timestamp when the recoup
    * was accepted.
    */
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   /**
    * true if the client claims the coin originated from a refresh.
@@ -233,8 +233,7 @@ recoup_transaction (void *cls,
   }
   TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
                                           tl);
-  pc->now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&pc->now);
+  pc->now = GNUNET_TIME_timestamp_get ();
 
   /* add coin to list of wire transfers for recoup */
   if (pc->refreshed)
@@ -307,45 +306,33 @@ verify_and_execute_recoup (
                                       &mret);
   if (NULL == dk)
     return mret;
-  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit))
+  if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
   {
-    struct GNUNET_TIME_Absolute now;
-
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
     /* This denomination is past the expiration time for recoup */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
       &coin->denom_pub_hash,
-      now,
+      GNUNET_TIME_timestamp_get (),
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
       "RECOUP");
   }
-  if (GNUNET_TIME_absolute_is_future (dk->meta.start))
+  if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
   {
-    struct GNUNET_TIME_Absolute now;
-
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
     /* This denomination is not yet valid */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
       &coin->denom_pub_hash,
-      now,
+      GNUNET_TIME_timestamp_get (),
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
       "RECOUP");
   }
   if (! dk->recoup_possible)
   {
-    struct GNUNET_TIME_Absolute now;
-
-    now = GNUNET_TIME_absolute_get ();
-    (void) GNUNET_TIME_round_abs (&now);
     /* This denomination is not eligible for recoup */
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
       &coin->denom_pub_hash,
-      now,
+      GNUNET_TIME_timestamp_get (),
       TALER_EC_EXCHANGE_RECOUP_NOT_ELIGIBLE,
       "RECOUP");
   }
@@ -530,6 +517,7 @@ TEH_handler_recoup (struct MHD_Connection *connection,
   struct TALER_CoinPublicInfo coin;
   union TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
+  struct TALER_Amount amount;
   bool refreshed = false;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
@@ -540,6 +528,9 @@ TEH_handler_recoup (struct MHD_Connection *connection,
                                  &coin_bks),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin_sig),
+    TALER_JSON_spec_amount ("amount",
+                            TEH_currency,
+                            &amount),
     GNUNET_JSON_spec_mark_optional (
       GNUNET_JSON_spec_bool ("refreshed",
                              &refreshed)),

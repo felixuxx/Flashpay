@@ -61,18 +61,18 @@ lrbt_cb_table_denominations (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "master_sig",
         &td.details.denominations.master_sig),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "valid_from",
         &td.details.denominations.valid_from),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "expire_withdraw",
         &td.details.denominations.
         expire_withdraw),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "expire_deposit",
         &td.details.denominations.
         expire_deposit),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "expire_legal",
         &td.details.denominations.expire_legal),
       TALER_PQ_RESULT_SPEC_AMOUNT (
@@ -230,10 +230,10 @@ lrbt_cb_table_reserves (void *cls,
                                             &td.details.reserves.reserve_pub),
       TALER_PQ_RESULT_SPEC_AMOUNT ("current_balance",
                                    &td.details.reserves.current_balance),
-      TALER_PQ_result_spec_absolute_time ("expiration_date",
-                                          &td.details.reserves.expiration_date),
-      TALER_PQ_result_spec_absolute_time ("gc_date",
-                                          &td.details.reserves.gc_date),
+      GNUNET_PQ_result_spec_timestamp ("expiration_date",
+                                       &td.details.reserves.expiration_date),
+      GNUNET_PQ_result_spec_timestamp ("gc_date",
+                                       &td.details.reserves.gc_date),
       GNUNET_PQ_result_spec_end
     };
 
@@ -292,7 +292,7 @@ lrbt_cb_table_reserves_in (void *cls,
       GNUNET_PQ_result_spec_string (
         "exchange_account_section",
         &td.details.reserves_in.exchange_account_section),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "execution_date",
         &td.details.reserves_in.execution_date),
       GNUNET_PQ_result_spec_end
@@ -341,7 +341,7 @@ lrbt_cb_table_reserves_close (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "reserve_uuid",
         &td.details.reserves_close.reserve_uuid),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "execution_date",
         &td.details.reserves_close.execution_date),
       GNUNET_PQ_result_spec_auto_from_type (
@@ -414,7 +414,7 @@ lrbt_cb_table_reserves_out (void *cls,
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_sig",
         &td.details.reserves_out.reserve_sig),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "execution_date",
         &td.details.reserves_out.execution_date),
       TALER_PQ_RESULT_SPEC_AMOUNT (
@@ -470,8 +470,8 @@ lrbt_cb_table_auditors (void *cls,
                                     &td.details.auditors.auditor_name),
       GNUNET_PQ_result_spec_auto_from_type ("is_active",
                                             &is_active8),
-      TALER_PQ_result_spec_absolute_time ("last_change",
-                                          &td.details.auditors.last_change),
+      GNUNET_PQ_result_spec_timestamp ("last_change",
+                                       &td.details.auditors.last_change),
       GNUNET_PQ_result_spec_end
     };
 
@@ -571,15 +571,15 @@ lrbt_cb_table_exchange_sign_keys (void *cls,
       GNUNET_PQ_result_spec_auto_from_type ("master_sig",
                                             &td.details.exchange_sign_keys.
                                             master_sig),
-      TALER_PQ_result_spec_absolute_time ("valid_from",
-                                          &td.details.exchange_sign_keys.meta.
-                                          start),
-      TALER_PQ_result_spec_absolute_time ("expire_sign",
-                                          &td.details.exchange_sign_keys.meta.
-                                          expire_sign),
-      TALER_PQ_result_spec_absolute_time ("expire_legal",
-                                          &td.details.exchange_sign_keys.meta.
-                                          expire_legal),
+      GNUNET_PQ_result_spec_timestamp ("valid_from",
+                                       &td.details.exchange_sign_keys.meta.
+                                       start),
+      GNUNET_PQ_result_spec_timestamp ("expire_sign",
+                                       &td.details.exchange_sign_keys.meta.
+                                       expire_sign),
+      GNUNET_PQ_result_spec_timestamp ("expire_legal",
+                                       &td.details.exchange_sign_keys.meta.
+                                       expire_legal),
       GNUNET_PQ_result_spec_end
     };
 
@@ -916,16 +916,16 @@ lrbt_cb_table_deposits (void *cls,
       TALER_PQ_RESULT_SPEC_AMOUNT (
         "amount_with_fee",
         &td.details.deposits.amount_with_fee),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "wallet_timestamp",
         &td.details.deposits.wallet_timestamp),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "exchange_timestamp",
         &td.details.deposits.exchange_timestamp),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "refund_deadline",
         &td.details.deposits.refund_deadline),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "wire_deadline",
         &td.details.deposits.wire_deadline),
       GNUNET_PQ_result_spec_auto_from_type (
@@ -1054,7 +1054,7 @@ lrbt_cb_table_wire_out (void *cls,
     struct GNUNET_PQ_ResultSpec rs[] = {
       GNUNET_PQ_result_spec_uint64 ("serial",
                                     &td.serial),
-      TALER_PQ_result_spec_absolute_time (
+      GNUNET_PQ_result_spec_timestamp (
         "execution_date",
         &td.details.wire_out.execution_date),
       GNUNET_PQ_result_spec_auto_from_type (
@@ -1161,10 +1161,10 @@ lrbt_cb_table_wire_fee (void *cls,
                                     &td.serial),
       GNUNET_PQ_result_spec_string ("wire_method",
                                     &td.details.wire_fee.wire_method),
-      TALER_PQ_result_spec_absolute_time ("start_date",
-                                          &td.details.wire_fee.start_date),
-      TALER_PQ_result_spec_absolute_time ("end_date",
-                                          &td.details.wire_fee.end_date),
+      GNUNET_PQ_result_spec_timestamp ("start_date",
+                                       &td.details.wire_fee.start_date),
+      GNUNET_PQ_result_spec_timestamp ("end_date",
+                                       &td.details.wire_fee.end_date),
       TALER_PQ_RESULT_SPEC_AMOUNT ("wire_fee",
                                    &td.details.wire_fee.wire_fee),
       TALER_PQ_RESULT_SPEC_AMOUNT ("closing_fee",
@@ -1219,8 +1219,8 @@ lrbt_cb_table_recoup (void *cls,
                                             &td.details.recoup.coin_blind),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &td.details.recoup.amount),
-      TALER_PQ_result_spec_absolute_time ("timestamp",
-                                          &td.details.recoup.timestamp),
+      GNUNET_PQ_result_spec_timestamp ("timestamp",
+                                       &td.details.recoup.timestamp),
       GNUNET_PQ_result_spec_uint64 ("known_coin_id",
                                     &td.details.recoup.known_coin_id),
       GNUNET_PQ_result_spec_uint64 ("reserve_out_serial_id",
@@ -1274,8 +1274,8 @@ lrbt_cb_table_recoup_refresh (void *cls,
         &td.details.recoup_refresh.coin_blind),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &td.details.recoup_refresh.amount),
-      TALER_PQ_result_spec_absolute_time ("timestamp",
-                                          &td.details.recoup_refresh.timestamp),
+      GNUNET_PQ_result_spec_timestamp ("timestamp",
+                                       &td.details.recoup_refresh.timestamp),
       GNUNET_PQ_result_spec_uint64 ("known_coin_id",
                                     &td.details.recoup_refresh.known_coin_id),
       GNUNET_PQ_result_spec_uint64 ("rrc_serial",

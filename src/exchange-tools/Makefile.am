@@ -53,8 +53,6 @@ taler_exchange_dbinit_LDADD = \
   $(top_builddir)/src/exchangedb/libtalerexchangedb.la \
   -lgnunetutil \
   $(XLIB)
-taler_exchange_dbinit_LDFLAGS = \
-  $(POSTGRESQL_LDFLAGS)
 taler_exchange_dbinit_CPPFLAGS = \
   -I$(top_srcdir)/src/include \
   -I$(top_srcdir)/src/pq/ \

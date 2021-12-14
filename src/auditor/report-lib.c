@@ -160,12 +160,12 @@ add_denomination (
                 TALER_amount2s (&value));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Start time is %s\n",
-                GNUNET_STRINGS_absolute_time_to_string
-                  (GNUNET_TIME_absolute_ntoh (issue->start)));
+                GNUNET_TIME_timestamp2s
+                  (GNUNET_TIME_timestamp_ntoh (issue->start)));
     GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                 "Expire deposit time is %s\n",
-                GNUNET_STRINGS_absolute_time_to_string
-                  (GNUNET_TIME_absolute_ntoh (issue->expire_deposit)));
+                GNUNET_TIME_timestamp2s
+                  (GNUNET_TIME_timestamp_ntoh (issue->expire_deposit)));
   }
 #endif
   {
