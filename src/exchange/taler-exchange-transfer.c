@@ -201,7 +201,7 @@ static unsigned int shard_size = DEFAULT_BATCH_SIZE;
 /**
  * How many workers should we plan our scheduling with?
  */
-static unsigned int max_workers = 16;
+static unsigned int max_workers = 0;
 
 
 /**
@@ -336,6 +336,15 @@ commit_or_warn (void)
  */
 static void
 run_transfers (void *cls);
+
+
+static void
+run_transfers_delayed (void *cls)
+{
+  (void) cls;
+  shard->shard_start_time = GNUNET_TIME_absolute_get ();
+  run_transfers (NULL);
+}
 
 
 /**
@@ -710,7 +719,7 @@ run_transfers (void *cls)
                   "No more pending wire transfers, going idle\n");
       GNUNET_assert (NULL == task);
       task = GNUNET_SCHEDULER_add_delayed (transfer_idle_sleep_interval,
-                                           &run_transfers,
+                                           &run_transfers_delayed,
                                            NULL);
     }
     return;
