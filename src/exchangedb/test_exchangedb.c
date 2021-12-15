@@ -214,7 +214,7 @@ destroy_denom_key_pair (struct DenomKeyPair *dkp)
  */
 static struct DenomKeyPair *
 create_denom_key_pair (unsigned int size,
-                       struct GNUNET_TIME_Absolute now,
+                       struct GNUNET_TIME_Timestamp now,
                        const struct TALER_Amount *value,
                        const struct TALER_Amount *fee_withdraw,
                        const struct TALER_Amount *fee_deposit,
@@ -237,21 +237,24 @@ create_denom_key_pair (unsigned int size,
           0,
           sizeof (struct TALER_EXCHANGEDB_DenominationKey));
   dki.denom_pub = dkp->pub;
-  GNUNET_TIME_round_abs (&now);
-  dki.issue.properties.start = GNUNET_TIME_absolute_hton (now);
-  dki.issue.properties.expire_withdraw = GNUNET_TIME_absolute_hton
-                                           (GNUNET_TIME_absolute_add (now,
-                                                                      GNUNET_TIME_UNIT_HOURS));
-  dki.issue.properties.expire_deposit = GNUNET_TIME_absolute_hton
-                                          (GNUNET_TIME_absolute_add
-                                            (now,
-                                            GNUNET_TIME_relative_multiply (
-                                              GNUNET_TIME_UNIT_HOURS, 2)));
-  dki.issue.properties.expire_legal = GNUNET_TIME_absolute_hton
-                                        (GNUNET_TIME_absolute_add
-                                          (now,
-                                          GNUNET_TIME_relative_multiply (
-                                            GNUNET_TIME_UNIT_HOURS, 3)));
+  dki.issue.properties.start = GNUNET_TIME_timestamp_hton (now);
+  dki.issue.properties.expire_withdraw = GNUNET_TIME_timestamp_hton
+                                           (GNUNET_TIME_absolute_to_timestamp
+                                             (GNUNET_TIME_absolute_add (
+                                               now.abs_time,
+                                               GNUNET_TIME_UNIT_HOURS)));
+  dki.issue.properties.expire_deposit = GNUNET_TIME_timestamp_hton (
+    GNUNET_TIME_absolute_to_timestamp
+      (GNUNET_TIME_absolute_add
+        (now.abs_time,
+        GNUNET_TIME_relative_multiply (
+          GNUNET_TIME_UNIT_HOURS, 2))));
+  dki.issue.properties.expire_legal = GNUNET_TIME_timestamp_hton (
+    GNUNET_TIME_absolute_to_timestamp
+      (GNUNET_TIME_absolute_add
+        (now.abs_time,
+        GNUNET_TIME_relative_multiply (
+          GNUNET_TIME_UNIT_HOURS, 3))));
   TALER_amount_hton (&dki.issue.properties.value, value);
   TALER_amount_hton (&dki.issue.properties.fee_withdraw, fee_withdraw);
   TALER_amount_hton (&dki.issue.properties.fee_deposit, fee_deposit);
@@ -506,7 +509,7 @@ test_melting (void)
   struct TALER_DenominationPublicKey *new_denom_pubs;
   enum GNUNET_GenericReturnValue ret;
   enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
 
   ret = GNUNET_SYSERR;
   RND_BLK (&refresh_session);
@@ -516,8 +519,7 @@ test_melting (void)
   /* create and test a refresh session */
   refresh_session.noreveal_index = MELT_NOREVEAL_INDEX;
   /* create a denomination (value: 1; fraction: 100) */
-  now = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   dkp = create_denom_key_pair (512,
                                now,
                                &value,
@@ -614,10 +616,9 @@ test_melting (void)
   for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
-    struct GNUNET_TIME_Absolute now;
+    struct GNUNET_TIME_Timestamp now;
 
-    now = GNUNET_TIME_absolute_get ();
-    GNUNET_TIME_round_abs (&now);
+    now = GNUNET_TIME_timestamp_get ();
     new_dkp[cnt] = create_denom_key_pair (RSA_KEY_SIZE,
                                           now,
                                           &value,
@@ -714,7 +715,7 @@ cb_wt_never (void *cls,
              uint64_t serial_id,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const char *account_payto_uri,
-             struct GNUNET_TIME_Absolute exec_time,
+             struct GNUNET_TIME_Timestamp exec_time,
              const struct TALER_PrivateContractHash *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -742,7 +743,7 @@ static struct TALER_CoinSpendPublicKeyP coin_pub_wt;
 static struct TALER_Amount coin_value_wt;
 static struct TALER_Amount coin_fee_wt;
 static struct TALER_Amount transfer_value_wt;
-static struct GNUNET_TIME_Absolute wire_out_date;
+static struct GNUNET_TIME_Timestamp wire_out_date;
 static struct TALER_WireTransferIdentifierRawP wire_out_wtid;
 
 
@@ -754,7 +755,7 @@ cb_wt_check (void *cls,
              uint64_t rowid,
              const struct TALER_MerchantPublicKeyP *merchant_pub,
              const char *account_payto_uri,
-             struct GNUNET_TIME_Absolute exec_time,
+             struct GNUNET_TIME_Timestamp exec_time,
              const struct TALER_PrivateContractHash *h_contract_terms,
              const struct TALER_DenominationPublicKey *denom_pub,
              const struct TALER_CoinSpendPublicKeyP *coin_pub,
@@ -768,7 +769,9 @@ cb_wt_check (void *cls,
                                      &merchant_pub_wt));
   GNUNET_assert (0 == strcmp (account_payto_uri,
                               "payto://iban/DE67830654080004822650?receiver-name=Test"));
-  GNUNET_assert (exec_time.abs_value_us == wire_out_date.abs_value_us);
+  GNUNET_assert (GNUNET_TIME_timestamp_cmp (exec_time,
+                                            ==,
+                                            wire_out_date));
   GNUNET_assert (0 == GNUNET_memcmp (h_contract_terms,
                                      &h_contract_terms_wt));
   GNUNET_assert (0 == GNUNET_memcmp (coin_pub,
@@ -901,7 +904,7 @@ matching_deposit_cb (void *cls,
 static enum GNUNET_GenericReturnValue
 audit_deposit_cb (void *cls,
                   uint64_t rowid,
-                  struct GNUNET_TIME_Absolute exchange_timestamp,
+                  struct GNUNET_TIME_Timestamp exchange_timestamp,
                   const struct TALER_EXCHANGEDB_Deposit *deposit,
                   const struct TALER_DenominationPublicKey *denom_pub,
                   bool done)
@@ -977,7 +980,7 @@ audit_reserve_in_cb (void *cls,
                      const struct TALER_Amount *credit,
                      const char *sender_account_details,
                      uint64_t wire_reference,
-                     struct GNUNET_TIME_Absolute execution_date)
+                     struct GNUNET_TIME_Timestamp execution_date)
 {
   (void) cls;
   (void) rowid;
@@ -1011,7 +1014,7 @@ audit_reserve_out_cb (void *cls,
                       const struct TALER_DenominationPublicKey *denom_pub,
                       const struct TALER_ReservePublicKeyP *reserve_pub,
                       const struct TALER_ReserveSignatureP *reserve_sig,
-                      struct GNUNET_TIME_Absolute execution_date,
+                      struct GNUNET_TIME_Timestamp execution_date,
                       const struct TALER_Amount *amount_with_fee)
 {
   (void) cls;
@@ -1036,17 +1039,17 @@ static enum GNUNET_GenericReturnValue
 test_gc (void)
 {
   struct DenomKeyPair *dkp;
-  struct GNUNET_TIME_Absolute now;
-  struct GNUNET_TIME_Absolute past;
+  struct GNUNET_TIME_Timestamp now;
+  struct GNUNET_TIME_Timestamp past;
   struct TALER_EXCHANGEDB_DenominationKeyInformationP issue2;
   struct TALER_DenominationHash denom_hash;
 
-  now = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&now);
-  past = GNUNET_TIME_absolute_subtract (now,
-                                        GNUNET_TIME_relative_multiply (
-                                          GNUNET_TIME_UNIT_HOURS,
-                                          4));
+  now = GNUNET_TIME_timestamp_get ();
+  past = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_subtract (now.abs_time,
+                                   GNUNET_TIME_relative_multiply (
+                                     GNUNET_TIME_UNIT_HOURS,
+                                     4)));
   dkp = create_denom_key_pair (RSA_KEY_SIZE,
                                past,
                                &value,
@@ -1087,21 +1090,19 @@ test_gc (void)
 static enum GNUNET_GenericReturnValue
 test_wire_fees (void)
 {
-  struct GNUNET_TIME_Absolute start_date;
-  struct GNUNET_TIME_Absolute end_date;
+  struct GNUNET_TIME_Timestamp start_date;
+  struct GNUNET_TIME_Timestamp end_date;
   struct TALER_Amount wire_fee;
   struct TALER_Amount closing_fee;
   struct TALER_MasterSignatureP master_sig;
-  struct GNUNET_TIME_Absolute sd;
-  struct GNUNET_TIME_Absolute ed;
+  struct GNUNET_TIME_Timestamp sd;
+  struct GNUNET_TIME_Timestamp ed;
   struct TALER_Amount fee;
   struct TALER_Amount fee2;
   struct TALER_MasterSignatureP ms;
 
-  start_date = GNUNET_TIME_absolute_get ();
-  GNUNET_TIME_round_abs (&start_date);
-  end_date = GNUNET_TIME_relative_to_absolute (GNUNET_TIME_UNIT_MINUTES);
-  GNUNET_TIME_round_abs (&end_date);
+  start_date = GNUNET_TIME_timestamp_get ();
+  end_date = GNUNET_TIME_relative_to_timestamp (GNUNET_TIME_UNIT_MINUTES);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.424242",
                                          &wire_fee));
@@ -1163,8 +1164,12 @@ test_wire_fees (void)
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-  if ( (sd.abs_value_us != start_date.abs_value_us) ||
-       (ed.abs_value_us != end_date.abs_value_us) ||
+  if ( (GNUNET_TIME_timestamp_cmp (sd,
+                                   !=,
+                                   start_date)) ||
+       (GNUNET_TIME_timestamp_cmp (ed,
+                                   !=,
+                                   end_date)) ||
        (0 != TALER_amount_cmp (&fee,
                                &wire_fee)) ||
        (0 != TALER_amount_cmp (&fee2,
@@ -1196,7 +1201,7 @@ static struct TALER_Amount wire_out_amount;
 static enum GNUNET_GenericReturnValue
 audit_wire_cb (void *cls,
                uint64_t rowid,
-               struct GNUNET_TIME_Absolute date,
+               struct GNUNET_TIME_Timestamp date,
                const struct TALER_WireTransferIdentifierRawP *wtid,
                const char *payto_uri,
                const struct TALER_Amount *amount)
@@ -1211,7 +1216,9 @@ audit_wire_cb (void *cls,
   GNUNET_assert (0 ==
                  GNUNET_memcmp (wtid,
                                 &wire_out_wtid));
-  GNUNET_assert (date.abs_value_us == wire_out_date.abs_value_us);
+  GNUNET_assert (GNUNET_TIME_timestamp_cmp (date,
+                                            ==,
+                                            wire_out_date));
   return GNUNET_OK;
 }
 
@@ -1228,8 +1235,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
   memset (&wire_out_wtid,
           42,
           sizeof (wire_out_wtid));
-  wire_out_date = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&wire_out_date);
+  wire_out_date = GNUNET_TIME_timestamp_get ();
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1",
                                          &wire_out_amount));
@@ -1263,7 +1269,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
     struct TALER_WireTransferIdentifierRawP wtid2;
     struct TALER_Amount coin_contribution2;
     struct TALER_Amount coin_fee2;
-    struct GNUNET_TIME_Absolute execution_time2;
+    struct GNUNET_TIME_Timestamp execution_time2;
     struct TALER_EXCHANGEDB_KycStatus kyc;
 
     h_contract_terms_wt2.hash.bits[0]++;
@@ -1321,7 +1327,7 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
     struct TALER_WireTransferIdentifierRawP wtid2;
     struct TALER_Amount coin_contribution2;
     struct TALER_Amount coin_fee2;
-    struct GNUNET_TIME_Absolute execution_time2;
+    struct GNUNET_TIME_Timestamp execution_time2;
     struct TALER_EXCHANGEDB_KycStatus kyc;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1338,8 +1344,9 @@ test_wire_out (const struct TALER_EXCHANGEDB_Deposit *deposit)
                                                 &kyc));
     GNUNET_assert (0 == GNUNET_memcmp (&wtid2,
                                        &wire_out_wtid));
-    GNUNET_assert (execution_time2.abs_value_us ==
-                   wire_out_date.abs_value_us);
+    GNUNET_assert (GNUNET_TIME_timestamp_cmp (execution_time2,
+                                              ==,
+                                              wire_out_date));
     GNUNET_assert (0 == TALER_amount_cmp (&coin_contribution2,
                                           &coin_value_wt));
     GNUNET_assert (0 == TALER_amount_cmp (&coin_fee2,
@@ -1375,7 +1382,7 @@ drop:
 static enum GNUNET_GenericReturnValue
 recoup_cb (void *cls,
            uint64_t rowid,
-           struct GNUNET_TIME_Absolute timestamp,
+           struct GNUNET_TIME_Timestamp timestamp,
            const struct TALER_Amount *amount,
            const struct TALER_ReservePublicKeyP *reserve_pub,
            const struct TALER_CoinPublicInfo *coin,
@@ -1420,7 +1427,7 @@ wire_missing_cb (void *cls,
                  const struct TALER_CoinSpendPublicKeyP *coin_pub,
                  const struct TALER_Amount *amount,
                  const char *payto_uri,
-                 struct GNUNET_TIME_Absolute deadline,
+                 struct GNUNET_TIME_Timestamp deadline,
                  bool tiny,
                  bool done)
 {
@@ -1488,7 +1495,7 @@ run (void *cls)
 {
   struct GNUNET_CONFIGURATION_Handle *cfg = cls;
   struct TALER_CoinSpendSignatureP coin_sig;
-  struct GNUNET_TIME_Absolute deadline;
+  struct GNUNET_TIME_Timestamp deadline;
   union TALER_DenominationBlindingKeyP coin_blind;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReservePublicKeyP reserve_pub2;
@@ -1510,7 +1517,7 @@ run (void *cls)
   unsigned int cnt;
   uint64_t rr;
   enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Timestamp now;
   struct TALER_WireSalt salt;
   union TALER_DenominationBlindingKeyP bks;
   struct TALER_CoinPubHash c_hash;
@@ -1574,8 +1581,7 @@ run (void *cls)
           plugin->get_latest_reserve_in_reference (plugin->cls,
                                                    "exchange-account-1",
                                                    &rr));
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
                                       &reserve_pub,
@@ -1594,8 +1600,7 @@ run (void *cls)
                          value.value,
                          value.fraction,
                          value.currency));
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->reserves_in_insert (plugin->cls,
                                       &reserve_pub,
@@ -1619,8 +1624,7 @@ run (void *cls)
                          value.fraction * 2,
                          value.currency));
   result = 5;
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   dkp = create_denom_key_pair (RSA_KEY_SIZE,
                                now,
                                &value,
@@ -1727,9 +1731,7 @@ run (void *cls)
                                           &cbc.sig,
                                           &bks,
                                           &dkp->pub));
-
-  deadline = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&deadline);
+  deadline = GNUNET_TIME_timestamp_get ();
   FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
           plugin->ensure_coin_known (plugin->cls,
                                      &deposit.coin));
@@ -1779,8 +1781,7 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":0.000010",
                                          &fee_closing));
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
+  now = GNUNET_TIME_timestamp_get ();
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
           plugin->insert_reserve_closed (plugin->cls,
                                          &reserve_pub,
@@ -1917,12 +1918,11 @@ run (void *cls)
           plugin->ensure_coin_known (plugin->cls,
                                      &deposit.coin));
   {
-    struct GNUNET_TIME_Absolute now;
-    struct GNUNET_TIME_Absolute r;
+    struct GNUNET_TIME_Timestamp now;
+    struct GNUNET_TIME_Timestamp r;
     struct TALER_Amount deposit_fee;
 
-    now = GNUNET_TIME_absolute_get ();
-    GNUNET_TIME_round_abs (&now);
+    now = GNUNET_TIME_timestamp_get ();
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->insert_deposit (plugin->cls,
                                     now,
@@ -1932,16 +1932,20 @@ run (void *cls)
                                   &deposit,
                                   &deposit_fee,
                                   &r));
-    FAILIF (now.abs_value_us != r.abs_value_us);
+    FAILIF (GNUNET_TIME_timestamp_cmp (now,
+                                       !=,
+                                       r));
   }
   {
-    struct GNUNET_TIME_Absolute start_range;
-    struct GNUNET_TIME_Absolute end_range;
+    struct GNUNET_TIME_Timestamp start_range;
+    struct GNUNET_TIME_Timestamp end_range;
 
-    start_range = GNUNET_TIME_absolute_subtract (deadline,
-                                                 GNUNET_TIME_UNIT_SECONDS);
-    end_range = GNUNET_TIME_absolute_add (deadline,
-                                          GNUNET_TIME_UNIT_SECONDS);
+    start_range = GNUNET_TIME_absolute_to_timestamp (
+      GNUNET_TIME_absolute_subtract (deadline.abs_time,
+                                     GNUNET_TIME_UNIT_SECONDS));
+    end_range = GNUNET_TIME_absolute_to_timestamp (
+      GNUNET_TIME_absolute_add (deadline.abs_time,
+                                GNUNET_TIME_UNIT_SECONDS));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->select_deposits_missing_wire (plugin->cls,
                                                   start_range,
@@ -2012,7 +2016,7 @@ run (void *cls)
                          "test-2"));
   RND_BLK (&deposit2.merchant_pub); /* should fail if merchant is different */
   {
-    struct GNUNET_TIME_Absolute r;
+    struct GNUNET_TIME_Timestamp r;
     struct TALER_Amount deposit_fee;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
@@ -2140,11 +2144,15 @@ run (void *cls)
         FAILIF (0 !=
                 GNUNET_memcmp (&have->wire_salt,
                                &deposit.wire_salt));
-        FAILIF (have->timestamp.abs_value_us != deposit.timestamp.abs_value_us);
-        FAILIF (have->refund_deadline.abs_value_us !=
-                deposit.refund_deadline.abs_value_us);
-        FAILIF (have->wire_deadline.abs_value_us !=
-                deposit.wire_deadline.abs_value_us);
+        FAILIF (GNUNET_TIME_timestamp_cmp (have->timestamp,
+                                           !=,
+                                           deposit.timestamp));
+        FAILIF (GNUNET_TIME_timestamp_cmp (have->refund_deadline,
+                                           !=,
+                                           deposit.refund_deadline));
+        FAILIF (GNUNET_TIME_timestamp_cmp (have->wire_deadline,
+                                           !=,
+                                           deposit.wire_deadline));
         FAILIF (0 != TALER_amount_cmp (&have->amount_with_fee,
                                        &deposit.amount_with_fee));
         FAILIF (0 != TALER_amount_cmp (&have->deposit_fee,
