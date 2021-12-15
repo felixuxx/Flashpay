@@ -134,10 +134,10 @@ run (void *cls)
   struct TALER_DenominationPrivateKey denom_priv;
   struct TALER_DenominationPublicKey denom_pub;
   struct TALER_DenominationHash denom_pub_hash;
-  struct GNUNET_TIME_Absolute now;
-  struct GNUNET_TIME_Absolute past;
-  struct GNUNET_TIME_Absolute future;
-  struct GNUNET_TIME_Absolute date;
+  struct GNUNET_TIME_Timestamp now;
+  struct GNUNET_TIME_Timestamp past;
+  struct GNUNET_TIME_Timestamp future;
+  struct GNUNET_TIME_Timestamp date;
 
   RND_BLK (&master_pub);
   RND_BLK (&reserve_pub);
@@ -152,16 +152,17 @@ run (void *cls)
   TALER_denom_priv_free (&denom_priv);
   TALER_denom_pub_free (&denom_pub);
 
-  now = GNUNET_TIME_absolute_get ();
-  (void) GNUNET_TIME_round_abs (&now);
-  past = GNUNET_TIME_absolute_subtract (now,
-                                        GNUNET_TIME_relative_multiply (
-                                          GNUNET_TIME_UNIT_HOURS,
-                                          4));
-  future = GNUNET_TIME_absolute_add (now,
-                                     GNUNET_TIME_relative_multiply (
-                                       GNUNET_TIME_UNIT_HOURS,
-                                       4));
+  now = GNUNET_TIME_timestamp_get ();
+  past = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_subtract (now.abs_time,
+                                   GNUNET_TIME_relative_multiply (
+                                     GNUNET_TIME_UNIT_HOURS,
+                                     4)));
+  future = GNUNET_TIME_absolute_to_timestamp (
+    GNUNET_TIME_absolute_add (now.abs_time,
+                              GNUNET_TIME_relative_multiply (
+                                GNUNET_TIME_UNIT_HOURS,
+                                4)));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Test: auditor_insert_exchange\n");
@@ -488,7 +489,7 @@ run (void *cls)
   select_historic_denom_revenue_result (
     void *cls,
     const struct TALER_DenominationHash *denom_pub_hash2,
-    struct GNUNET_TIME_Absolute revenue_timestamp2,
+    struct GNUNET_TIME_Timestamp revenue_timestamp2,
     const struct TALER_Amount *revenue_balance2,
     const struct TALER_Amount *loss2)
   {
@@ -548,12 +549,11 @@ run (void *cls)
               "Test: select_historic_reserve_revenue\n");
 
   int
-  select_historic_reserve_revenue_result (void *cls,
-                                          struct GNUNET_TIME_Absolute
-                                          start_time2,
-                                          struct GNUNET_TIME_Absolute end_time2,
-                                          const struct
-                                          TALER_Amount *reserve_profits2)
+  select_historic_reserve_revenue_result (
+    void *cls,
+    struct GNUNET_TIME_Timestamp start_time2,
+    struct GNUNET_TIME_Timestamp end_time2,
+    const struct TALER_Amount *reserve_profits2)
   {
     static int n = 0;
 
