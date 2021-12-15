@@ -33,8 +33,6 @@ run_queries (sqlite3 *db)
   struct TALER_Amount hamount;
   struct TALER_AmountNBO namount;
   json_t *json;
-  struct GNUNET_TIME_Absolute htime = GNUNET_TIME_absolute_get ();
-  struct GNUNET_TIME_AbsoluteNBO ntime;
   sqlite3_stmt *test_insert;
   sqlite3_stmt *test_select;
   struct GNUNET_SQ_PrepareStatement ps[] = {
@@ -44,10 +42,8 @@ run_queries (sqlite3 *db)
                             ",namount_val"
                             ",namount_frac"
                             ",json"
-                            ",htime"
-                            ",ntime"
                             ") VALUES "
-                            "($1, $2, $3, $4, $5, $6, $7)",
+                            "($1, $2, $3, $4, $5)",
                             &test_insert),
     GNUNET_SQ_make_prepare ("SELECT"
                             " hamount_val"
@@ -55,8 +51,6 @@ run_queries (sqlite3 *db)
                             ",namount_val"
                             ",namount_frac"
                             ",json"
-                            ",htime"
-                            ",ntime"
                             " FROM test_sq",
                             &test_select),
     GNUNET_SQ_PREPARE_END
@@ -71,19 +65,15 @@ run_queries (sqlite3 *db)
   json = json_object ();
   json_object_set_new (json, "foo", json_integer (42));
   GNUNET_assert (NULL != json);
-  GNUNET_TIME_round_abs (&htime);
-  ntime = GNUNET_TIME_absolute_hton (htime);
-
-  GNUNET_assert (GNUNET_OK == GNUNET_SQ_prepare (db,
-                                                 ps));
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_SQ_prepare (db,
+                                    ps));
 
   {
     struct GNUNET_SQ_QueryParam params_insert[] = {
       TALER_SQ_query_param_amount (&hamount),
       TALER_SQ_query_param_amount_nbo (&namount),
       TALER_SQ_query_param_json (json),
-      TALER_SQ_query_param_absolute_time (&htime),
-      TALER_SQ_query_param_absolute_time_nbo (&ntime),
       GNUNET_SQ_query_param_end
     };
     GNUNET_SQ_reset (db,
@@ -99,8 +89,6 @@ run_queries (sqlite3 *db)
     struct TALER_AmountNBO nresult_amount;
     struct TALER_Amount nresult_amount_converted;
     json_t *result_json;
-    struct GNUNET_TIME_Absolute hresult_time;
-    struct GNUNET_TIME_AbsoluteNBO nresult_time;
     struct GNUNET_SQ_QueryParam params_select[] = {
       GNUNET_SQ_query_param_end
     };
@@ -110,8 +98,6 @@ run_queries (sqlite3 *db)
       TALER_SQ_result_spec_amount_nbo ("EUR",
                                        &nresult_amount),
       TALER_SQ_result_spec_json (&result_json),
-      TALER_SQ_result_spec_absolute_time (&hresult_time),
-      TALER_SQ_result_spec_absolute_time_nbo (&nresult_time),
       GNUNET_SQ_result_spec_end
     };
 
@@ -134,9 +120,7 @@ run_queries (sqlite3 *db)
         (0 != TALER_amount_cmp (&hamount,
                                 &nresult_amount_converted)) ||
         (1 != json_equal (json,
-                          result_json)) ||
-        (htime.abs_value_us != hresult_time.abs_value_us) ||
-        (ntime.abs_value_us__ != nresult_time.abs_value_us__))
+                          result_json)) )
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Result from database doesn't match input\n");
@@ -162,8 +146,6 @@ main (int argc,
                             ",namount_val INT8 NOT NULL"
                             ",namount_frac INT8 NOT NULL"
                             ",json VARCHAR NOT NULL"
-                            ",htime INT8 NOT NULL"
-                            ",ntime INT8 NOT NULL"
                             ")"),
     GNUNET_SQ_EXECUTE_STATEMENT_END
   };
