@@ -95,7 +95,7 @@ struct TALER_EXCHANGE_RecoupHandle
  * @return #GNUNET_OK if the signature is valid and we called the callback;
  *         #GNUNET_SYSERR if not (callback must still be called)
  */
-static int
+static enum GNUNET_GenericReturnValue
 process_recoup_response (const struct TALER_EXCHANGE_RecoupHandle *ph,
                          const json_t *json)
 {
@@ -312,8 +312,8 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
 {
   struct TALER_EXCHANGE_RecoupHandle *ph;
   struct GNUNET_CURL_Context *ctx;
-  struct TALER_RecoupRequestPS pr;
   struct TALER_CoinSpendSignatureP coin_sig;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
   struct TALER_DenominationHash h_denom_pub;
   json_t *recoup_obj;
   CURL *eh;
@@ -321,17 +321,15 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
-  pr.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP);
-  pr.purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS));
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
-                                      &pr.coin_pub.eddsa_pub);
+                                      &coin_pub.eddsa_pub);
   TALER_denom_pub_hash (&pk->key,
                         &h_denom_pub);
-  pr.h_denom_pub = pk->h_key;
-  pr.coin_blind = ps->blinding_key;
-  GNUNET_CRYPTO_eddsa_sign (&ps->coin_priv.eddsa_priv,
-                            &pr,
-                            &coin_sig.eddsa_signature);
+  TALER_wallet_recoup_sign (&h_denom_pub,
+                            &ps->blinding_key,
+                            amount,
+                            &ps->coin_priv,
+                            &coin_sig);
   recoup_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &h_denom_pub),
@@ -349,11 +347,11 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
 
-    end = GNUNET_STRINGS_data_to_string (&pr.coin_pub,
-                                         sizeof (struct
-                                                 TALER_CoinSpendPublicKeyP),
-                                         pub_str,
-                                         sizeof (pub_str));
+    end = GNUNET_STRINGS_data_to_string (
+      &coin_pub,
+      sizeof (struct TALER_CoinSpendPublicKeyP),
+      pub_str,
+      sizeof (pub_str));
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
@@ -362,7 +360,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   ph = GNUNET_new (struct TALER_EXCHANGE_RecoupHandle);
-  ph->coin_pub = pr.coin_pub;
+  ph->coin_pub = coin_pub;
   ph->exchange = exchange;
   ph->pk = *pk;
   memset (&ph->pk.key,

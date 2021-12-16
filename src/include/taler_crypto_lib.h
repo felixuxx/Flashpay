@@ -1738,6 +1738,63 @@ TALER_wallet_link_verify (
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
 
+
+/**
+ * Sign link data.
+ *
+ * @param h_denom_pub hash of the denomiantion public key of the new coin
+ * @param transfer_pub transfer public key
+ * @param coin_ev coin envelope
+ * @param coin_ev_size number of bytes in @a coin_ev
+ * @param old_coin_priv private key to sign with
+ * @param[out] coin_sig resulting signature
+ */
+void
+TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
+                        const struct TALER_TransferPublicKeyP *transfer_pub,
+                        const void *coin_ev,
+                        size_t coin_ev_size,
+                        const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
+                        struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Verify recoup signature.
+ *
+ * @param h_denom_pub hash of the denomiantion public key of the coin
+ * @param coin_bks blinding factor used when withdrawing the coin
+ * @param requested_amount amount that is left to be recouped
+ * @param coin_pub coin key of the coin to be recouped
+ * @param coin_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_recoup_verify (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_Amount *requested_amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Create recoup signature.
+ *
+ * @param h_denom_pub hash of the denomiantion public key of the coin
+ * @param coin_bks blinding factor used when withdrawing the coin
+ * @param requested_amount amount that is left to be recouped
+ * @param coin_priv coin key of the coin to be recouped
+ * @param coin_sig resulting signature
+ */
+void
+TALER_wallet_recoup_sign (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_Amount *requested_amount,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig);
+
+
 /* ********************* offline signing ************************** */
 
 

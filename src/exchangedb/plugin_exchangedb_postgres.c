@@ -3246,8 +3246,8 @@ postgres_get_denomination_info (
                                                  rs);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs)
     return qs;
-  issue->properties.purpose.size = htonl (sizeof (struct
-                                                  TALER_DenominationKeyValidityPS));
+  issue->properties.purpose.size
+    = htonl (sizeof (struct TALER_DenominationKeyValidityPS));
   issue->properties.purpose.purpose = htonl (
     TALER_SIGNATURE_MASTER_DENOMINATION_KEY_VALIDITY);
   issue->properties.denom_hash = *denom_pub_hash;

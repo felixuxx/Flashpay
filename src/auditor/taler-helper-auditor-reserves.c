@@ -684,7 +684,7 @@ handle_reserve_out (void *cls,
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 handle_recoup_by_reserve (
   void *cls,
   uint64_t rowid,
@@ -711,35 +711,26 @@ handle_recoup_by_reserve (
   ppr.last_reserve_recoup_serial_id = rowid + 1;
   /* We know that denom_pub matches denom_pub_hash because this
      is how the SQL statement joined the tables. */
+  if (GNUNET_OK !=
+      TALER_wallet_recoup_verify (&coin->denom_pub_hash,
+                                  coin_blind,
+                                  amount,
+                                  &coin->coin_pub,
+                                  coin_sig))
   {
-    struct TALER_RecoupRequestPS pr = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
-      .purpose.size = htonl (sizeof (pr)),
-      .h_denom_pub = coin->denom_pub_hash,
-      .coin_pub = coin->coin_pub,
-      .coin_blind = *coin_blind
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                    &pr,
-                                    &coin_sig->eddsa_signature,
-                                    &coin->coin_pub.eddsa_pub))
-    {
-      TALER_ARL_report (report_bad_sig_losses,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_string ("operation",
-                                                   "recoup"),
-                          GNUNET_JSON_pack_uint64 ("row",
-                                                   rowid),
-                          TALER_JSON_pack_amount ("loss",
-                                                  amount),
-                          GNUNET_JSON_pack_data_auto ("key_pub",
-                                                      &coin->coin_pub)));
-      TALER_ARL_amount_add (&total_bad_sig_loss,
-                            &total_bad_sig_loss,
-                            amount);
-    }
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "recoup"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                amount),
+                        GNUNET_JSON_pack_data_auto ("key_pub",
+                                                    &coin->coin_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          amount);
   }
 
   /* check that the coin was eligible for recoup!*/

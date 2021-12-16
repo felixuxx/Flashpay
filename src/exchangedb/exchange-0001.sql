@@ -697,8 +697,6 @@ CREATE INDEX IF NOT EXISTS revolving_work_shards_index
 -- Stored procedures
 
 
-DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,integer,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
-
 CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   IN amount_val INT8,
   IN amount_frac INT4,
@@ -855,9 +853,6 @@ END $$;
 COMMENT ON FUNCTION exchange_do_withdraw(INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA, BYTEA, INT8, INT8)
   IS 'Checks whether the reserve has sufficient balance for a withdraw operation (or the request is repeated and was previously approved) and if so updates the database with the result';
 
-
-
-DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bigint,bigint,bigint,int) ;
 
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw_limit_check(

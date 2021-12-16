@@ -1983,38 +1983,29 @@ check_recoup (struct CoinContext *cc,
     cc->qs = qs;
     return GNUNET_SYSERR;
   }
+  if (GNUNET_OK !=
+      TALER_wallet_recoup_verify (&coin->denom_pub_hash,
+                                  coin_blind,
+                                  amount,
+                                  &coin->coin_pub,
+                                  coin_sig))
   {
-    struct TALER_RecoupRequestPS pr = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
-      .purpose.size = htonl (sizeof (pr)),
-      .coin_pub = coin->coin_pub,
-      .coin_blind = *coin_blind,
-      .h_denom_pub = coin->denom_pub_hash
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
-                                    &pr,
-                                    &coin_sig->eddsa_signature,
-                                    &coin->coin_pub.eddsa_pub))
-    {
-      TALER_ARL_report (report_bad_sig_losses,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_string ("operation",
-                                                   operation),
-                          GNUNET_JSON_pack_uint64 ("row",
-                                                   rowid),
-                          TALER_JSON_pack_amount ("loss",
-                                                  amount),
-                          GNUNET_JSON_pack_data_auto ("coin_pub",
-                                                      &coin->coin_pub)));
-      TALER_ARL_amount_add (&total_bad_sig_loss,
-                            &total_bad_sig_loss,
-                            amount);
-      if (TALER_ARL_do_abort ())
-        return GNUNET_SYSERR;
-      return GNUNET_OK;
-    }
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 operation),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                amount),
+                        GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                    &coin->coin_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          amount);
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
   ds = get_denomination_summary (cc,
                                  issue,

@@ -238,23 +238,26 @@ create_denom_key_pair (unsigned int size,
           sizeof (struct TALER_EXCHANGEDB_DenominationKey));
   dki.denom_pub = dkp->pub;
   dki.issue.properties.start = GNUNET_TIME_timestamp_hton (now);
-  dki.issue.properties.expire_withdraw = GNUNET_TIME_timestamp_hton
-                                           (GNUNET_TIME_absolute_to_timestamp
-                                             (GNUNET_TIME_absolute_add (
-                                               now.abs_time,
-                                               GNUNET_TIME_UNIT_HOURS)));
-  dki.issue.properties.expire_deposit = GNUNET_TIME_timestamp_hton (
-    GNUNET_TIME_absolute_to_timestamp
-      (GNUNET_TIME_absolute_add
-        (now.abs_time,
-        GNUNET_TIME_relative_multiply (
-          GNUNET_TIME_UNIT_HOURS, 2))));
-  dki.issue.properties.expire_legal = GNUNET_TIME_timestamp_hton (
-    GNUNET_TIME_absolute_to_timestamp
-      (GNUNET_TIME_absolute_add
-        (now.abs_time,
-        GNUNET_TIME_relative_multiply (
-          GNUNET_TIME_UNIT_HOURS, 3))));
+  dki.issue.properties.expire_withdraw
+    = GNUNET_TIME_timestamp_hton
+        (GNUNET_TIME_absolute_to_timestamp
+          (GNUNET_TIME_absolute_add (
+            now.abs_time,
+            GNUNET_TIME_UNIT_HOURS)));
+  dki.issue.properties.expire_deposit
+    = GNUNET_TIME_timestamp_hton (
+        GNUNET_TIME_absolute_to_timestamp
+          (GNUNET_TIME_absolute_add
+            (now.abs_time,
+            GNUNET_TIME_relative_multiply (
+              GNUNET_TIME_UNIT_HOURS, 2))));
+  dki.issue.properties.expire_legal
+    = GNUNET_TIME_timestamp_hton (
+        GNUNET_TIME_absolute_to_timestamp
+          (GNUNET_TIME_absolute_add
+            (now.abs_time,
+            GNUNET_TIME_relative_multiply (
+              GNUNET_TIME_UNIT_HOURS, 3))));
   TALER_amount_hton (&dki.issue.properties.value, value);
   TALER_amount_hton (&dki.issue.properties.fee_withdraw, fee_withdraw);
   TALER_amount_hton (&dki.issue.properties.fee_deposit, fee_deposit);
@@ -276,6 +279,8 @@ create_denom_key_pair (unsigned int size,
     destroy_denom_key_pair (dkp);
     return NULL;
   }
+  memset (&issue2, 0, sizeof (issue2));
+  plugin->commit (plugin->cls);
   if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
       plugin->get_denomination_info (plugin->cls,
                                      &dki.issue.properties.denom_hash,

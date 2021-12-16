@@ -1497,11 +1497,6 @@ struct TALER_RecoupRequestPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Public key of the coin to be refunded.
-   */
-  struct TALER_CoinSpendPublicKeyP coin_pub;
-
-  /**
    * Hash of the (revoked) denomination public key of the coin.
    */
   struct TALER_DenominationHash h_denom_pub;
@@ -1510,6 +1505,12 @@ struct TALER_RecoupRequestPS
    * Blinding factor that was used to withdraw the coin.
    */
   union TALER_DenominationBlindingKeyP coin_blind;
+
+  /**
+   * How much of the coin's value will be recouped?
+   */
+  struct TALER_AmountNBO recoup_amount;
+
 };
 
 

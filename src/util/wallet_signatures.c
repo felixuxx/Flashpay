@@ -155,4 +155,51 @@ TALER_wallet_link_verify (
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_wallet_recoup_verify (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_Amount *requested_amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_RecoupRequestPS pr = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+    .purpose.size = htonl (sizeof (pr)),
+    .h_denom_pub = *h_denom_pub,
+    .coin_blind = *coin_bks
+  };
+
+  TALER_amount_hton (&pr.recoup_amount,
+                     requested_amount);
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP,
+                                     &pr,
+                                     &coin_sig->eddsa_signature,
+                                     &coin_pub->eddsa_pub);
+}
+
+
+void
+TALER_wallet_recoup_sign (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_Amount *requested_amount,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_RecoupRequestPS pr = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+    .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
+    .h_denom_pub = *h_denom_pub,
+    .coin_blind = *coin_bks
+  };
+
+  TALER_amount_hton (&pr.recoup_amount,
+                     requested_amount);
+  GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                            &pr,
+                            &coin_sig->eddsa_signature);
+}
+
+
 /* end of wallet_signatures.c */
