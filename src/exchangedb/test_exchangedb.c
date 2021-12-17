@@ -531,10 +531,8 @@ handle_link_data_cb (void *cls,
         break;
       }
     }
-    GNUNET_assert (found);
-  }
-}
-
+    //FIXME:
+    GNUNET_assert (GNUNET_NO != found);
 
 /**
  * Callback that should never be called.
@@ -1469,7 +1467,7 @@ run (void *cls)
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_AgeHash age_hash;
     struct TALER_AgeHash *p_ah[2] = {NULL, &age_hash};
-
+    //FIXME:
     /* Call TALER_denom_blind()/TALER_denom_sign_blinded() twice, once without
      * age_hash, once with age_hash */
     RND_BLK (&age_hash);
@@ -1495,6 +1493,25 @@ run (void *cls)
                                                pd.coin_ev_size));
       GNUNET_free (pd.coin_ev);
     }
+    RND_BLK (&coin_pub);
+    TALER_blinding_secret_create (&bks, TALER_DENOMINATION_RSA);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_blind (&dkp->pub,
+                                      &bks,
+                                      NULL, /* FIXME-Oec */
+                                      &coin_pub,
+                                      &c_hash,
+                                      &pd.blinded_planchet));
+    TALER_coin_ev_hash (
+      pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
+      pd.blinded_planchet.details.rsa_blinded_planchet.
+      blinded_msg_size,
+      &cbc.h_coin_envelope);
+    GNUNET_assert (GNUNET_OK ==
+                   TALER_denom_sign_blinded (&cbc.sig,
+                                             &dkp->priv,
+                                             &pd.blinded_planchet));
+    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
   }
 
   cbc.reserve_pub = reserve_pub;

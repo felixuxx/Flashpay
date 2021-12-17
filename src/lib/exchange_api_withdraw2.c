@@ -437,9 +437,11 @@ TALER_EXCHANGE_withdraw2 (
 
     TALER_amount_hton (&req.amount_with_fee,
                        &wh->requested_amount);
-    TALER_coin_ev_hash (pd->coin_ev,
-                        pd->coin_ev_size,
-                        &req.h_coin_envelope);
+    TALER_coin_ev_hash (
+      pd->blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
+      pd->blinded_planchet.details.rsa_blinded_planchet.
+      blinded_msg_size,
+      &req.h_coin_envelope);
     GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
                               &req,
                               &reserve_sig.eddsa_signature);
@@ -452,8 +454,10 @@ TALER_EXCHANGE_withdraw2 (
       GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                   &pd->denom_pub_hash),
       GNUNET_JSON_pack_data_varsize ("coin_ev",
-                                     pd->coin_ev,
-                                     pd->coin_ev_size),
+                                     pd->blinded_planchet.details.
+                                     rsa_blinded_planchet.blinded_msg,
+                                     pd->blinded_planchet.details.
+                                     rsa_blinded_planchet.blinded_msg_size),
       GNUNET_JSON_pack_data_auto ("reserve_sig",
                                   &reserve_sig));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,

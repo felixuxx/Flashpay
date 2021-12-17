@@ -82,7 +82,7 @@ test_high_level (void)
  * @return 0 on success
  */
 static int
-test_planchets (void)
+test_planchets_rsa (void)
 {
   struct TALER_PlanchetSecretsP ps;
   struct TALER_DenominationPrivateKey dk_priv;
@@ -92,12 +92,23 @@ test_planchets (void)
   struct TALER_FreshCoin coin;
   struct TALER_CoinPubHash c_hash;
 
+
+  GNUNET_assert (GNUNET_SYSERR ==
+                 TALER_denom_priv_create (&dk_priv,
+                                          &dk_pub,
+                                          TALER_DENOMINATION_INVALID));
+
+  GNUNET_assert (GNUNET_SYSERR ==
+                 TALER_denom_priv_create (&dk_priv,
+                                          &dk_pub,
+                                          42));
+
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dk_priv,
                                           &dk_pub,
                                           TALER_DENOMINATION_RSA,
                                           1024));
-  TALER_planchet_setup_random (&ps);
+  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_RSA);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
                                          &ps,
@@ -106,8 +117,7 @@ test_planchets (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
-                                           pd.coin_ev,
-                                           pd.coin_ev_size));
+                                           &pd.blinded_planchet));
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_to_coin (&dk_pub,
                                          &blind_sig,
@@ -119,6 +129,66 @@ test_planchets (void)
   TALER_denom_priv_free (&dk_priv);
   TALER_denom_pub_free (&dk_pub);
   return 0;
+}
+
+
+/**
+ * Test the basic planchet functionality of creating a fresh planchet with CS denomination
+ * and extracting the respective signature.
+ *
+ * @return 0 on success
+ */
+static int
+test_planchets_cs (void)
+{
+  // struct TALER_PlanchetSecretsP ps;
+  struct TALER_DenominationPrivateKey dk_priv;
+  struct TALER_DenominationPublicKey dk_pub;
+  // struct TALER_PlanchetDetail pd;
+  // struct TALER_BlindedDenominationSignature blind_sig;
+  // struct TALER_FreshCoin coin;
+  // struct TALER_CoinPubHash c_hash;
+  // struct TALER_PlanchetDeriveCsBlindingSecrets seed;
+
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_priv_create (&dk_priv,
+                                          &dk_pub,
+                                          TALER_DENOMINATION_CS));
+
+  // seed.secret = "test secret";
+  // seed.secret_len = strlen ("test secret");
+
+  // TODO: Probably need to adjust GNUNET CS implementation for the CSNonce creation and afterwards adjust the derive function
+  // TALER_planchet_setup_random (&ps, TALER_DENOMINATION_CS, &seed);
+
+  // GNUNET_assert (GNUNET_OK ==
+  //                TALER_planchet_prepare (&dk_pub,
+  //                                        &ps,
+  //                                        &c_hash,
+  //                                        &pd));
+
+
+  // TALER_blinded_denom_sig_free (&blind_sig);
+  // TALER_denom_sig_free (&coin.sig);
+  TALER_denom_priv_free (&dk_priv);
+  TALER_denom_pub_free (&dk_pub);
+  return 0;
+}
+
+
+/**
+ * Test the basic planchet functionality of creating a fresh planchet
+ * and extracting the respective signature.
+ * Calls test_planchets_rsa and test_planchets_cs
+ *
+ * @return 0 on success
+ */
+static int
+test_planchets (void)
+{
+  if (0 != test_planchets_rsa ())
+    return -1;
+  return test_planchets_cs ();
 }
 
 

@@ -155,20 +155,25 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_CRYPTO_hash (pd.coin_ev,
                         pd.coin_ev_size,
                         &coin_envelope_hash.hash);
-
+    //FIXME: 
     if (GNUNET_OK !=
         TALER_wallet_link_verify (&pd.denom_pub_hash,
                                   trans_pub,
                                   &coin_envelope_hash,
+                                  pd.blinded_planchet.details.
+                                  rsa_blinded_planchet.blinded_msg,
+                                  pd.blinded_planchet.details.
+                                  rsa_blinded_planchet.blinded_msg_size,
                                   &old_coin_pub,
                                   &link_sig))
     {
       GNUNET_break_op (0);
-      GNUNET_free (pd.coin_ev);
+      GNUNET_free (
+        pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    GNUNET_free (pd.coin_ev);
+    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
   }
 
   /* clean up */

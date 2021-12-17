@@ -167,11 +167,68 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
 
 
 void
-TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps)
+blinding_secret_create_va (union TALER_DenominationBlindingKeyP *bs,
+                           enum TALER_DenominationCipher cipher,
+                           va_list ap)
+{
+  switch (cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    GNUNET_break (0);
+    return;
+  case TALER_DENOMINATION_RSA:
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                                &bs->rsa_bks,
+                                sizeof (struct
+                                        GNUNET_CRYPTO_RsaBlindingKeySecret));
+    return;
+  case TALER_DENOMINATION_CS:
+    {
+      // TODO: nonce teil ist noch falsch. da kommt bs[2] zurück, was wir nicht speichern wollen!
+      struct TALER_PlanchetDeriveCsBlindingSecrets*seed;
+
+      seed = va_arg (ap, struct TALER_PlanchetDeriveCsBlindingSecrets *);
+
+      // GNUNET_CRYPTO_cs_blinding_secrets_derive(&seed->secret,
+      //                                          seed->secret_len,
+      //                                          &bs->nonce);
+      return;
+    }
+
+  default:
+    GNUNET_break (0);
+  }
+
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
+                              bs,
+                              sizeof (*bs));
+}
+
+
+void
+TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
+                              enum TALER_DenominationCipher cipher,
+                              ...)
+{
+  va_list ap;
+  va_start (ap, cipher);
+  blinding_secret_create_va (bs, cipher, ap);
+  va_end (ap);
+}
+
+
+void
+TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
+                             enum TALER_DenominationCipher cipher,
+                             ...)
 {
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
-                              ps,
-                              sizeof (*ps));
+                              &ps->coin_priv,
+                              sizeof (struct TALER_CoinSpendPrivateKeyP));
+  va_list ap;
+  va_start (ap, cipher);
+  blinding_secret_create_va (&ps->blinding_key, cipher, ap);
+  va_end (ap);
 }
 
 
@@ -191,8 +248,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                          NULL, /* FIXME-Oec */
                          &coin_pub,
                          c_hash,
-                         &pd->coin_ev,
-                         &pd->coin_ev_size))
+                         &pd->blinded_planchet))
   {
     GNUNET_break (0);
     return GNUNET_SYSERR;

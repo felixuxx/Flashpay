@@ -388,7 +388,7 @@ withdraw_run (void *cls,
                                 &ws->reserve_pub);
   if (NULL == ws->reuse_coin_key_ref)
   {
-    TALER_planchet_setup_random (&ws->ps);
+    TALER_planchet_setup_random (&ws->ps, TALER_DENOMINATION_RSA);
   }
   else
   {
@@ -409,7 +409,7 @@ withdraw_run (void *cls,
                    TALER_TESTING_get_trait_coin_priv (cref,
                                                       index,
                                                       &coin_priv));
-    TALER_planchet_setup_random (&ws->ps);
+    TALER_planchet_setup_random (&ws->ps, TALER_DENOMINATION_RSA);
     ws->ps.coin_priv = *coin_priv;
   }
   if (NULL == ws->pk)

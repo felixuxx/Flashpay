@@ -441,8 +441,10 @@ TALER_EXCHANGE_refresh_prepare (
         return NULL;
       }
       rcd->dk = &md.fresh_pks[j];
-      rcd->coin_ev = pd.coin_ev;
-      rcd->coin_ev_size = pd.coin_ev_size;
+      rcd->coin_ev =
+        pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg;
+      rcd->coin_ev_size =
+        pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size;
     }
   }
 

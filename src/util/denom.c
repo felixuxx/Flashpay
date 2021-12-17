@@ -34,6 +34,10 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
   memset (denom_pub,
           0,
           sizeof (*denom_pub));
+
+  denom_priv->cipher = cipher;
+  denom_pub->cipher = cipher;
+
   switch (cipher)
   {
   case TALER_DENOMINATION_INVALID:
@@ -63,10 +67,13 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
     denom_pub->details.rsa_public_key
       = GNUNET_CRYPTO_rsa_private_key_get_public (
           denom_priv->details.rsa_private_key);
-    denom_priv->cipher = cipher;
-    denom_pub->cipher = cipher;
     return GNUNET_OK;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    GNUNET_CRYPTO_cs_private_key_generate (&denom_priv->details.cs_private_key);
+    GNUNET_CRYPTO_cs_private_key_get_public (
+      &denom_priv->details.cs_private_key,
+      &denom_pub->details.cs_public_key);
+    return GNUNET_OK;
   default:
     GNUNET_break (0);
   }
@@ -77,8 +84,7 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
 enum GNUNET_GenericReturnValue
 TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
-                          void *blinded_msg,
-                          size_t blinded_msg_size)
+                          const struct TALER_BlindedPlanchet *blinded_planchet)
 {
   memset (denom_sig,
           0,
@@ -92,8 +98,8 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
     denom_sig->details.blinded_rsa_signature
       = GNUNET_CRYPTO_rsa_sign_blinded (
           denom_priv->details.rsa_private_key,
-          blinded_msg,
-          blinded_msg_size);
+          blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
+          blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size);
     if (NULL == denom_sig->details.blinded_rsa_signature)
     {
       GNUNET_break (0);
@@ -144,15 +150,6 @@ TALER_denom_sig_unblind (
     GNUNET_break (0);
   }
   return GNUNET_SYSERR;
-}
-
-
-void
-TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs)
-{
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_NONCE,
-                              bs,
-                              sizeof (*bs));
 }
 
 
@@ -238,21 +235,28 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_CoinPubHash *c_hash,
-                   void **coin_ev,
-                   size_t *coin_ev_size)
+                   struct TALER_BlindedPlanchet *blinded_planchet)
 {
+  // if (dk->cipher != blinded_planchet->cipher)
+  // {
+  //   GNUNET_break (0);
+  //   return GNUNET_SYSERR;
+  // }
+  blinded_planchet->cipher = dk->cipher;
+  TALER_coin_pub_hash (coin_pub,
+                       age_commitment_hash,
+                       c_hash);
   switch (dk->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    TALER_coin_pub_hash (coin_pub,
-                         age_commitment_hash,
-                         c_hash);
     if (GNUNET_YES !=
         GNUNET_CRYPTO_rsa_blind (&c_hash->hash,
                                  &coin_bks->rsa_bks,
                                  dk->details.rsa_public_key,
-                                 coin_ev,
-                                 coin_ev_size))
+                                 &blinded_planchet->details.rsa_blinded_planchet
+                                 .blinded_msg,
+                                 &blinded_planchet->details.rsa_blinded_planchet
+                                 .blinded_msg_size))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -314,7 +318,9 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub)
     }
     denom_pub->cipher = TALER_DENOMINATION_INVALID;
     return;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    // TODO: ATM nothing needs to be freed, but check again after implementation.
+    return;
   default:
     GNUNET_assert (0);
   }
@@ -336,7 +342,9 @@ TALER_denom_priv_free (struct TALER_DenominationPrivateKey *denom_priv)
     }
     denom_priv->cipher = TALER_DENOMINATION_INVALID;
     return;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    // TODO: ATM nothing needs to be freed, but check again after implementation.
+    return;
   default:
     GNUNET_assert (0);
   }
@@ -358,7 +366,9 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig)
     }
     denom_sig->cipher = TALER_DENOMINATION_INVALID;
     return;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    // TODO: ATM nothing needs to be freed, but check again after implementation.
+    return;
   default:
     GNUNET_assert (0);
   }
@@ -382,7 +392,9 @@ TALER_blinded_denom_sig_free (
     }
     denom_sig->cipher = TALER_DENOMINATION_INVALID;
     return;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    // TODO: ATM nothing needs to be freed, but check again after implementation.
+    return;
   default:
     GNUNET_assert (0);
   }

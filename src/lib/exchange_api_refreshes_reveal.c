@@ -370,15 +370,22 @@ TALER_EXCHANGE_refreshes_reveal (
     }
     GNUNET_assert (0 ==
                    json_array_append_new (coin_evs,
-                                          GNUNET_JSON_from_data (pd.coin_ev,
-                                                                 pd.coin_ev_size)));
+                                          GNUNET_JSON_from_data (
+                                            pd.blinded_planchet.details.
+                                            rsa_blinded_planchet.blinded_msg,
+                                            pd.
+                                            blinded_planchet.details.
+                                            rsa_blinded_planchet.
+                                            blinded_msg_size)));
     {
       struct TALER_CoinSpendSignatureP link_sig;
 
       TALER_wallet_link_sign (&denom_hash,
                               &transfer_pub,
-                              pd.coin_ev,
-                              pd.coin_ev_size,
+                              pd.blinded_planchet.details.rsa_blinded_planchet.
+                              blinded_msg,
+                              pd.blinded_planchet.details.rsa_blinded_planchet.
+                              blinded_msg_size,
                               &md->melted_coin.coin_priv,
                               &link_sig);
       GNUNET_assert (0 ==
@@ -386,7 +393,7 @@ TALER_EXCHANGE_refreshes_reveal (
                        link_sigs,
                        GNUNET_JSON_from_data_auto (&link_sig)));
     }
-    GNUNET_free (pd.coin_ev);
+    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
   }
 
   /* build array of transfer private keys */

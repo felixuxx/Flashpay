@@ -353,9 +353,15 @@ struct TALER_CoinSpendSignatureP
 
 /**
  * @brief Type of blinding keys for Taler.
+ * must be 32 bytes
  */
 union TALER_DenominationBlindingKeyP
 {
+  /**
+   * Clause Schnorr Signatures have 2 blinding secrets, each containing two unpredictable values.
+   */
+  struct GNUNET_CRYPTO_CsNonce nonce;
+
   /**
    * Taler uses RSA for blind signatures.
    */
@@ -575,9 +581,9 @@ enum TALER_DenominationCipher
   TALER_DENOMINATION_RSA = 1,
 
   /**
-   * Clause-Schnorr blind signature.
+   * Clause Blind Schnorr signature.
    */
-  // TALER_DENOMINATION_CS = 2
+  TALER_DENOMINATION_CS = 2
 };
 
 
@@ -597,6 +603,10 @@ struct TALER_DenominationSignature
    */
   union
   {
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsSignature cs_signature;
 
     /**
      * If we use #TALER_DENOMINATION_RSA in @a cipher.
@@ -607,6 +617,24 @@ struct TALER_DenominationSignature
 
 };
 
+/**
+ * The Sign Answer for Clause B lind Schnorr signature.
+ * The sign operation returns a parameter @param b and the signature
+ * scalar @param s_scalar.
+ * The function does not return the whole signature, due to that is only the blinded s_scalar.
+ */
+struct TALER_BlindedDenominationCsSignAnswer
+{
+  /**
+   * To make ROS problem harder, the signer chooses an unpredictable b and only calculates signature of c_b
+   */
+  unsigned int b;
+
+  /**
+   * The blinded s scalar calculated from c_b
+   */
+  struct GNUNET_CRYPTO_CsBlindS s_scalar;
+};
 
 /**
  * @brief Type for *blinded* denomination signatures for Taler.
@@ -625,6 +653,12 @@ struct TALER_BlindedDenominationSignature
    */
   union
   {
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     * At this point only the blinded s scalar is used.
+     * The final signature consisting of r,s is built after unblinding.
+     */
+    struct TALER_BlindedDenominationCsSignAnswer blinded_cs_answer;
 
     /**
      * If we use #TALER_DENOMINATION_RSA in @a cipher.
@@ -657,6 +691,10 @@ struct TALER_DenominationPublicKey
    */
   union
   {
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsPublicKey cs_public_key;
 
     /**
      * If we use #TALER_DENOMINATION_RSA in @a cipher.
@@ -683,6 +721,10 @@ struct TALER_DenominationPrivateKey
    */
   union
   {
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     */
+    struct GNUNET_CRYPTO_CsPrivateKey cs_private_key;
 
     /**
      * If we use #TALER_DENOMINATION_RSA in @a cipher.
@@ -692,6 +734,141 @@ struct TALER_DenominationPrivateKey
   } details;
 };
 
+/**
+ * @brief RSA Parameters to create blinded signature
+ *
+ */
+struct TALER_BlindedRsaPlanchet
+{
+  /**
+   * blinded message to be signed
+   * Note: is malloc()'ed!
+   */
+  void *blinded_msg;
+
+  /**
+   * size of the blinded message to be signed
+   */
+  size_t blinded_msg_size;
+};
+
+
+/**
+ * @brief CS Parameters to create blinded signature
+ *
+ */
+struct TALER_BlindedCsPlanchet
+{
+  /**
+   * Withdraw or refresh nonce used for derivation
+   */
+  struct GNUNET_CRYPTO_CsNonce nonce;
+
+  /**
+   * The Clause Schnorr c_0 and c_1 containing the blinded message
+   */
+  struct GNUNET_CRYPTO_CsC c[2];
+};
+
+
+/**
+ * @brief Type including Parameters to create blinded signature
+ *
+ */
+struct TALER_BlindedPlanchet
+{
+  /**
+   * Type of the sign blinded message
+   */
+  enum TALER_DenominationCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     */
+    struct TALER_BlindedCsPlanchet cs_blinded_planchet;
+
+    /**
+     * If we use #TALER_DENOMINATION_RSA in @a cipher.
+     */
+    struct TALER_BlindedRsaPlanchet rsa_blinded_planchet;
+
+  } details;
+};
+
+
+/**
+ * @brief RSA Parameters to create blinded messages
+ *
+ */
+struct TALER_DenominationBlindMessageRsaParams
+{
+  /**
+   * blinded message to be signed
+   * Note: is malloc()'ed!
+   */
+  void **coin_ev;
+
+  /**
+   * size of the blinded message to be signed
+   */
+  size_t *coin_ev_size;
+};
+
+
+/**
+ * @brief CS Parameters to create blinded messages
+ *
+ */
+struct TALER_DenominationBlindMessageCsParams
+{
+
+};
+
+/**
+ * @brief Type including Parameters to create blinded message
+ *
+ */
+struct TALER_DenominationBlindMessageParams
+{
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     */
+    struct TALER_DenominationBlindMessageCsParams cs_blind_msg_params;
+
+    /**
+     * If we use #TALER_DENOMINATION_RSA in @a cipher.
+     */
+    struct TALER_DenominationBlindMessageRsaParams rsa_blind_msg_params;
+
+  } details;
+};
+
+/**
+ * @brief CS Blinding Secret parameters to derive blinding secrets
+ *
+ */
+struct TALER_PlanchetDeriveCsBlindingSecrets
+{
+  /**
+  * Secret to derive blinding secrets from
+  */
+  void *secret;
+
+  /**
+   * size of the secret to derive blinding secrets from
+   */
+  size_t secret_len;
+};
 
 /**
  * @brief Public information about a coin (including the public key
@@ -768,7 +945,9 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
  * @param[out] bs blinding secret to initialize
  */
 void
-TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs);
+TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
+                              enum TALER_DenominationCipher cipher,
+                              ...);
 
 
 /**
@@ -827,8 +1006,7 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_CoinPubHash *c_hash,
-                   void **coin_ev,
-                   size_t *coin_ev_size);
+                   struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**
@@ -843,8 +1021,7 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
 enum GNUNET_GenericReturnValue
 TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
-                          void *blinded_msg,
-                          size_t blinded_msg_size);
+                          const struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**
@@ -1056,7 +1233,7 @@ struct TALER_PlanchetSecretsP
   struct TALER_CoinSpendPrivateKeyP coin_priv;
 
   /**
-   * The blinding key.
+   * The blinding key. must be 32 byte
    */
   union TALER_DenominationBlindingKeyP blinding_key;
 
@@ -1080,14 +1257,9 @@ struct TALER_PlanchetDetail
   struct TALER_DenominationHash denom_pub_hash;
 
   /**
-   * Blinded coin (see GNUNET_CRYPTO_rsa_blind()).  Note: is malloc()'ed!
+   * The blinded planchet
    */
-  void *coin_ev;
-
-  /**
-   * Number of bytes in @a coin_ev.
-   */
-  size_t coin_ev_size;
+  struct TALER_BlindedPlanchet blinded_planchet;
 };
 
 
@@ -1224,7 +1396,9 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
  * @param[out] ps value to initialize
  */
 void
-TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps);
+TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
+                             enum TALER_DenominationCipher cipher,
+                             ...);
 
 
 /**

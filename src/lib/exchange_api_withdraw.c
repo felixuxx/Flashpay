@@ -200,7 +200,7 @@ TALER_EXCHANGE_withdraw (
                                       reserve_priv,
                                       &handle_reserve_withdraw_finished,
                                       wh);
-  GNUNET_free (pd.coin_ev);
+  GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
   return wh;
 }
 
