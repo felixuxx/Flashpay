@@ -277,9 +277,9 @@ lrbt_cb_table_reserves_in (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "serial",
         &td.serial),
-      GNUNET_PQ_result_spec_uint64 (
-        "reserve_uuid",
-        &td.details.reserves_in.reserve_uuid),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.reserves_in.reserve_pub),
       GNUNET_PQ_result_spec_uint64 (
         "wire_reference",
         &td.details.reserves_in.wire_reference),
@@ -338,9 +338,9 @@ lrbt_cb_table_reserves_close (void *cls,
       GNUNET_PQ_result_spec_uint64 (
         "serial",
         &td.serial),
-      GNUNET_PQ_result_spec_uint64 (
-        "reserve_uuid",
-        &td.details.reserves_close.reserve_uuid),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.reserves_close.reserve_pub),
       GNUNET_PQ_result_spec_timestamp (
         "execution_date",
         &td.details.reserves_close.execution_date),
@@ -408,9 +408,9 @@ lrbt_cb_table_reserves_out (void *cls,
       TALER_PQ_result_spec_blinded_denom_sig (
         "denom_sig",
         &td.details.reserves_out.denom_sig),
-      GNUNET_PQ_result_spec_uint64 (
-        "reserve_uuid",
-        &td.details.reserves_out.reserve_uuid),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "reserve_pub",
+        &td.details.reserves_out.reserve_pub),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_sig",
         &td.details.reserves_out.reserve_sig),

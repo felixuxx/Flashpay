@@ -378,7 +378,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",kyc_ok"
       ",wire_target_serial_id AS payment_target_uuid"
       " FROM reserves"
-      " JOIN reserves_in ri USING (reserve_uuid)"
+      " JOIN reserves_in ri USING (reserve_pub)"
       " JOIN wire_targets wt "
       "  ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
       " WHERE reserve_pub=$1"
@@ -467,7 +467,7 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "reserves_close_insert",
       "INSERT INTO reserves_close "
-      "(reserve_uuid"
+      "(reserve_pub"
       ",execution_date"
       ",wtid"
       ",wire_target_serial_id"
@@ -475,9 +475,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
-      ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7, $8"
-      "  FROM reserves"
-      "  WHERE reserve_pub=$1;",
+      ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8);",
       8),
     /* Used in #reserves_update() when the reserve is updated */
     GNUNET_PQ_make_prepare (
@@ -494,23 +492,21 @@ prepare_statements (struct PostgresClosure *pg)
     GNUNET_PQ_make_prepare (
       "reserves_in_add_transaction",
       "INSERT INTO reserves_in "
-      "(reserve_uuid"
+      "(reserve_pub"
       ",wire_reference"
       ",credit_val"
       ",credit_frac"
       ",exchange_account_section"
       ",wire_source_serial_id"
       ",execution_date"
-      ") SELECT reserve_uuid, $2, $3, $4, $5, $6, $7"
-      "  FROM reserves"
-      "  WHERE reserve_pub=$1"
+      ") VALUES ($1, $2, $3, $4, $5, $6, $7)"
       " ON CONFLICT DO NOTHING;",
       7),
     /* Used in #postgres_reserves_in_insert() to store transaction details */
     GNUNET_PQ_make_prepare (
-      "reserves_in_add_by_uuid",
+      "reserves_in_add_by_pub",
       "INSERT INTO reserves_in "
-      "(reserve_uuid"
+      "(reserve_pub"
       ",wire_reference"
       ",credit_val"
       ",credit_frac"
@@ -545,7 +541,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",reserve_in_serial_id"
       " FROM reserves_in"
       " JOIN reserves"
-      "   USING (reserve_uuid)"
+      "   USING (reserve_pub)"
       " JOIN wire_targets"
       "   ON (wire_source_serial_id = wire_target_serial_id)"
       " WHERE reserve_in_serial_id>=$1"
@@ -565,7 +561,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",reserve_in_serial_id"
       " FROM reserves_in"
       " JOIN reserves "
-      "   USING (reserve_uuid)"
+      "   USING (reserve_pub)"
       " JOIN wire_targets"
       "   ON (wire_source_serial_id = wire_target_serial_id)"
       " WHERE reserve_in_serial_id>=$1 AND exchange_account_section=$2"
@@ -584,10 +580,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM reserves_in"
       " JOIN wire_targets"
       "   ON (wire_source_serial_id = wire_target_serial_id)"
-      " WHERE reserve_uuid="
-      " (SELECT reserve_uuid "
-      "   FROM reserves"
-      "   WHERE reserve_pub=$1);",
+      " WHERE reserve_pub=$1;",
       1),
     /* Lock withdraw table; NOTE: we may want to eventually shard the
        deposit table to avoid this lock being the main point of
@@ -619,7 +612,6 @@ prepare_statements (struct PostgresClosure *pg)
       " reserve_found"
       ",balance_ok"
       ",kycok AS kyc_ok"
-      ",ruuid AS reserve_uuid"
       ",account_uuid AS payment_target_uuid"
       " FROM exchange_do_withdraw"
       " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
@@ -643,23 +635,18 @@ prepare_statements (struct PostgresClosure *pg)
        authorizing the withdrawal. */
     GNUNET_PQ_make_prepare (
       "insert_withdraw_info",
-      "WITH ds AS"
-      " (SELECT denominations_serial"
-      "    FROM denominations"
-      "   WHERE denom_pub_hash=$2)"
       "INSERT INTO reserves_out "
       "(h_blind_ev"
       ",denominations_serial"
       ",denom_sig"
-      ",reserve_uuid"
+      ",reserve_pub"
       ",reserve_sig"
       ",execution_date"
       ",amount_with_fee_val"
       ",amount_with_fee_frac"
-      ") SELECT $1, ds.denominations_serial, $3, reserve_uuid, $5, $6, $7, $8"
-      "    FROM reserves"
-      "    CROSS JOIN ds"
-      "    WHERE reserve_pub=$4;",
+      ") SELECT $1, denominations_serial, $3, $4, $5, $6, $7, $8"
+      "    FROM denominations"
+      "    WHERE denom_pub_hash=$2;",
       8),
     /* Used in #postgres_get_withdraw_info() to
        locate the response for a /reserve/withdraw request
@@ -679,7 +666,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",denom.fee_withdraw_frac"
       " FROM reserves_out"
       "    JOIN reserves"
-      "      USING (reserve_uuid)"
+      "      USING (reserve_pub)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
       " WHERE h_blind_ev=$1;",
@@ -703,10 +690,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM reserves_out"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
-      " WHERE reserve_uuid="
-      "   (SELECT reserve_uuid"
-      "      FROM reserves"
-      "     WHERE reserve_pub=$1);",
+      " WHERE reserve_pub=$1;",
       1),
     /* Used in #postgres_select_withdrawals_above_serial_id() */
     GNUNET_PQ_make_prepare (
@@ -722,7 +706,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",reserve_out_serial_id"
       " FROM reserves_out"
       "    JOIN reserves"
-      "      USING (reserve_uuid)"
+      "      USING (reserve_pub)"
       "    JOIN denominations denom"
       "      USING (denominations_serial)"
       " WHERE reserve_out_serial_id>=$1"
@@ -1531,7 +1515,7 @@ prepare_statements (struct PostgresClosure *pg)
       "    JOIN reserves_out ro"
       "      USING (reserve_out_serial_id)"
       "    JOIN reserves"
-      "      USING (reserve_uuid)"
+      "      USING (reserve_pub)"
       "    JOIN denominations denoms"
       "      ON (coins.denominations_serial = denoms.denominations_serial)"
       " WHERE recoup_uuid>=$1"
@@ -1589,7 +1573,7 @@ prepare_statements (struct PostgresClosure *pg)
       "   JOIN wire_targets"
       "     USING (wire_target_serial_id)"
       "   JOIN reserves"
-      "     USING (reserve_uuid)"
+      "     USING (reserve_pub)"
       " WHERE close_uuid>=$1"
       " ORDER BY close_uuid ASC;",
       1),
@@ -1613,10 +1597,7 @@ prepare_statements (struct PostgresClosure *pg)
       "      USING (denominations_serial)"
       "    JOIN reserves_out ro"
       "      USING (reserve_out_serial_id)"
-      " WHERE ro.reserve_uuid="
-      "   (SELECT reserve_uuid"
-      "     FROM reserves"
-      "    WHERE reserve_pub=$1);",
+      " WHERE ro.reserve_pub=$1;",
       1),
     /* Used in #postgres_get_coin_transactions() to obtain recoup transactions
        affecting old coins of refreshed coins */
@@ -1661,10 +1642,7 @@ prepare_statements (struct PostgresClosure *pg)
       " FROM reserves_close"
       "   JOIN wire_targets"
       "     USING (wire_target_serial_id)"
-      " WHERE reserve_uuid="
-      "   (SELECT reserve_uuid"
-      "     FROM reserves"
-      "    WHERE reserve_pub=$1);",
+      " WHERE reserve_pub=$1;",
       1),
     /* Used in #postgres_get_expired_reserves() */
     GNUNET_PQ_make_prepare (
@@ -1677,7 +1655,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",current_balance_frac"
       " FROM reserves"
       "   JOIN reserves_in ri"
-      "     USING (reserve_uuid)"
+      "     USING (reserve_pub)"
       "   JOIN wire_targets wt"
       "     ON (ri.wire_source_serial_id = wt.wire_target_serial_id)"
       " WHERE expiration_date<=$1"
@@ -1703,7 +1681,7 @@ prepare_statements (struct PostgresClosure *pg)
       " JOIN reserves_out ro"
       "   USING (reserve_out_serial_id)"
       " JOIN reserves"
-      "   USING (reserve_uuid)"
+      "   USING (reserve_pub)"
       " JOIN known_coins coins"
       "   USING (known_coin_id)"
       " JOIN denominations denoms"
@@ -1744,7 +1722,7 @@ prepare_statements (struct PostgresClosure *pg)
       " reserves.reserve_pub"
       " FROM reserves_out"
       " JOIN reserves"
-      "   USING (reserve_uuid)"
+      "   USING (reserve_pub)"
       " WHERE h_blind_ev=$1"
       " LIMIT 1;",
       1),
@@ -1952,10 +1930,7 @@ prepare_statements (struct PostgresClosure *pg)
       " amount_with_fee_val"
       ",amount_with_fee_frac"
       " FROM reserves_out"
-      " WHERE reserve_uuid="
-      "   (SELECT reserve_uuid"
-      "      FROM reserves"
-      "     WHERE reserve_pub=$1)"
+      " WHERE reserve_pub=$1"
       "  AND execution_date > $2;",
       2),
     /* used in #postgres_lookup_wire_fee_by_time() */
@@ -2199,7 +2174,7 @@ prepare_statements (struct PostgresClosure *pg)
       "select_above_serial_by_table_reserves_in",
       "SELECT"
       " reserve_in_serial_id AS serial"
-      ",reserve_uuid"
+      ",reserve_pub"
       ",wire_reference"
       ",credit_val"
       ",credit_frac"
@@ -2214,7 +2189,7 @@ prepare_statements (struct PostgresClosure *pg)
       "select_above_serial_by_table_reserves_close",
       "SELECT"
       " close_uuid AS serial"
-      ",reserve_uuid"
+      ",reserve_pub"
       ",execution_date"
       ",wtid"
       ",wire_target_serial_id"
@@ -2233,7 +2208,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",h_blind_ev"
       ",denominations_serial"
       ",denom_sig"
-      ",reserve_uuid"
+      ",reserve_pub"
       ",reserve_sig"
       ",execution_date"
       ",amount_with_fee_val"
@@ -2504,7 +2479,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",wire_source_serial_id"
       ",exchange_account_section"
       ",execution_date"
-      ",reserve_uuid"
+      ",reserve_pub"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8);",
       8),
@@ -2519,7 +2494,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",amount_frac"
       ",closing_fee_val"
       ",closing_fee_frac"
-      ",reserve_uuid"
+      ",reserve_pub"
       ") VALUES "
       "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
       9),
@@ -2530,7 +2505,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",h_blind_ev"
       ",denominations_serial"
       ",denom_sig"
-      ",reserve_uuid"
+      ",reserve_pub"
       ",reserve_sig"
       ",execution_date"
       ",amount_with_fee_val"
@@ -4249,41 +4224,21 @@ postgres_reserves_in_insert (void *cls,
       return qs3;
     }
     GNUNET_assert (0 != kyc.payment_target_uuid);
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs1)
-    {
-      /* We do not have the UUID, so insert by public key */
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
-        GNUNET_PQ_query_param_uint64 (&wire_ref),
-        TALER_PQ_query_param_amount (balance),
-        GNUNET_PQ_query_param_string (exchange_account_section),
-        GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
-        GNUNET_PQ_query_param_timestamp (&execution_time),
-        GNUNET_PQ_query_param_end
-      };
+    /* We do not have the UUID, so insert by public key */
+    struct GNUNET_PQ_QueryParam params[] = {
+      GNUNET_PQ_query_param_auto_from_type (&reserve.pub),
+      GNUNET_PQ_query_param_uint64 (&wire_ref),
+      TALER_PQ_query_param_amount (balance),
+      GNUNET_PQ_query_param_string (exchange_account_section),
+      GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
+      GNUNET_PQ_query_param_timestamp (&execution_time),
+      GNUNET_PQ_query_param_end
+    };
 
-      qs2 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                "reserves_in_add_transaction",
-                                                params);
-    }
-    else
-    {
-      /* We do have the UUID, use that for the insert */
-      struct GNUNET_PQ_QueryParam params[] = {
-        GNUNET_PQ_query_param_uint64 (&reserve_uuid),
-        GNUNET_PQ_query_param_uint64 (&wire_ref),
-        TALER_PQ_query_param_amount (balance),
-        GNUNET_PQ_query_param_string (exchange_account_section),
-        GNUNET_PQ_query_param_uint64 (&kyc.payment_target_uuid),
-        GNUNET_PQ_query_param_timestamp (&execution_time),
-        GNUNET_PQ_query_param_end
-      };
-
-      qs2 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                                "reserves_in_add_by_uuid",
-                                                params);
-    }
-    /* qs2 could be 0 as both statements used 'ON CONFLICT DO NOTHING' */
+    qs2 = GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                              "reserves_in_add_transaction",
+                                              params);
+    /* qs2 could be 0 as statement used 'ON CONFLICT DO NOTHING' */
     if (0 >= qs2)
     {
       if ( (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs2) &&
@@ -4558,7 +4513,6 @@ postgres_do_check_coin_balance (
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
  * @param[out] kyc_ok set to true if the kyc status of the reserve is satisfied
- * @param[out] reserve_uuid set to the UUID of the reserve
  * @return query execution status
  */
 static enum GNUNET_DB_QueryStatus
@@ -4568,8 +4522,7 @@ postgres_do_withdraw (
   struct GNUNET_TIME_Timestamp now,
   bool *found,
   bool *balance_ok,
-  struct TALER_EXCHANGEDB_KycStatus *kyc,
-  uint64_t *reserve_uuid)
+  struct TALER_EXCHANGEDB_KycStatus *kyc)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_TIME_Timestamp gc;
@@ -4591,8 +4544,6 @@ postgres_do_withdraw (
                                 balance_ok),
     GNUNET_PQ_result_spec_bool ("kyc_ok",
                                 &kyc->ok),
-    GNUNET_PQ_result_spec_uint64 ("reserve_uuid",
-                                  reserve_uuid),
     GNUNET_PQ_result_spec_uint64 ("payment_target_uuid",
                                   &kyc->payment_target_uuid),
     GNUNET_PQ_result_spec_end
@@ -4624,14 +4575,14 @@ postgres_do_withdraw (
 static enum GNUNET_DB_QueryStatus
 postgres_do_withdraw_limit_check (
   void *cls,
-  uint64_t reserve_uuid,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
   struct GNUNET_TIME_Absolute withdraw_start,
   const struct TALER_Amount *upper_limit,
   bool *below_limit)
 {
   struct PostgresClosure *pg = cls;
   struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_uint64 (&reserve_uuid),
+    GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_absolute_time (&withdraw_start),
     TALER_PQ_query_param_amount (upper_limit),
     GNUNET_PQ_query_param_end

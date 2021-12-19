@@ -174,7 +174,7 @@ irbt_cb_table_reserves_in (struct PostgresClosure *pg,
       td->details.reserves_in.exchange_account_section),
     GNUNET_PQ_query_param_timestamp (
       &td->details.reserves_in.execution_date),
-    GNUNET_PQ_query_param_uint64 (&td->details.reserves_in.reserve_uuid),
+    GNUNET_PQ_query_param_auto_from_type (&td->details.reserves_in.reserve_pub),
     GNUNET_PQ_query_param_end
   };
 
@@ -204,7 +204,8 @@ irbt_cb_table_reserves_close (struct PostgresClosure *pg,
       &td->details.reserves_close.wire_target_serial_id),
     TALER_PQ_query_param_amount (&td->details.reserves_close.amount),
     TALER_PQ_query_param_amount (&td->details.reserves_close.closing_fee),
-    GNUNET_PQ_query_param_uint64 (&td->details.reserves_close.reserve_uuid),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_close.reserve_pub),
     GNUNET_PQ_query_param_end
   };
 
@@ -232,8 +233,8 @@ irbt_cb_table_reserves_out (struct PostgresClosure *pg,
       &td->details.reserves_out.denominations_serial),
     TALER_PQ_query_param_blinded_denom_sig (
       &td->details.reserves_out.denom_sig),
-    GNUNET_PQ_query_param_uint64 (
-      &td->details.reserves_out.reserve_uuid),
+    GNUNET_PQ_query_param_auto_from_type (
+      &td->details.reserves_out.reserve_pub),
     GNUNET_PQ_query_param_auto_from_type (
       &td->details.reserves_out.reserve_sig),
     GNUNET_PQ_query_param_timestamp (

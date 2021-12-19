@@ -1674,7 +1674,6 @@ run (void *cls)
     bool found;
     bool balance_ok;
     struct TALER_EXCHANGEDB_KycStatus kyc;
-    uint64_t ruuid;
 
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->do_withdraw (plugin->cls,
@@ -1682,8 +1681,7 @@ run (void *cls)
                                  now,
                                  &found,
                                  &balance_ok,
-                                 &kyc,
-                                 &ruuid));
+                                 &kyc));
     GNUNET_assert (found);
     GNUNET_assert (balance_ok);
     GNUNET_assert (! kyc.ok);

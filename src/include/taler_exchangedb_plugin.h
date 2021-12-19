@@ -239,12 +239,12 @@ struct TALER_EXCHANGEDB_TableData
       uint64_t sender_account;
       char *exchange_account_section;
       struct GNUNET_TIME_Timestamp execution_date;
-      uint64_t reserve_uuid;
+      struct TALER_ReservePublicKeyP reserve_pub;
     } reserves_in;
 
     struct
     {
-      uint64_t reserve_uuid;
+      struct TALER_ReservePublicKeyP reserve_pub;
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_WireTransferIdentifierRawP wtid;
       uint64_t wire_target_serial_id;
@@ -257,7 +257,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_BlindedCoinHash h_blind_ev;
       uint64_t denominations_serial;
       struct TALER_BlindedDenominationSignature denom_sig;
-      uint64_t reserve_uuid;
+      struct TALER_ReservePublicKeyP reserve_pub;
       struct TALER_ReserveSignatureP reserve_sig;
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_Amount amount_with_fee;
@@ -2537,7 +2537,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
    * @param[out] kyc set to the KYC status of the reserve
-   * @param[out] reserve_uuid set to the UUID of the reserve
    * @return query execution status
    */
   enum GNUNET_DB_QueryStatus
@@ -2547,8 +2546,7 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp now,
     bool *found,
     bool *balance_ok,
-    struct TALER_EXCHANGEDB_KycStatus *kyc_ok,
-    uint64_t *reserve_uuid);
+    struct TALER_EXCHANGEDB_KycStatus *kyc_ok);
 
 
   /**
@@ -2556,7 +2554,7 @@ struct TALER_EXCHANGEDB_Plugin
    * checks after withdraw operation.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param reserve_uuid reserve to check
+   * @param reserve_pub reserve to check
    * @param withdraw_start starting point to accumulate from
    * @param upper_limit maximum amount allowed
    * @param[out] below_limit set to true if the limit was not exceeded
@@ -2565,7 +2563,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*do_withdraw_limit_check)(
     void *cls,
-    uint64_t reserve_uuid,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
     struct GNUNET_TIME_Absolute withdraw_start,
     const struct TALER_Amount *upper_limit,
     bool *below_limit);

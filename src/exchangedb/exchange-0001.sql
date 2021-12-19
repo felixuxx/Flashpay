@@ -87,19 +87,32 @@ COMMENT ON COLUMN wire_targets.external_id
 
 
 CREATE TABLE IF NOT EXISTS reserves
-  (reserve_uuid BIGSERIAL UNIQUE
+  (reserve_uuid BIGSERIAL
   ,reserve_pub BYTEA PRIMARY KEY CHECK(LENGTH(reserve_pub)=32)
   ,current_balance_val INT8 NOT NULL
   ,current_balance_frac INT4 NOT NULL
   ,expiration_date INT8 NOT NULL
   ,gc_date INT8 NOT NULL
-  );
+  )
+  PARTITION BY HASH (reserve_pub);
+
 COMMENT ON TABLE reserves
   IS 'Summarizes the balance of a reserve. Updated when new funds are added or withdrawn.';
 COMMENT ON COLUMN reserves.expiration_date
   IS 'Used to trigger closing of reserves that have not been drained after some time';
 COMMENT ON COLUMN reserves.gc_date
   IS 'Used to forget all information about a reserve during garbage collection';
+
+CREATE TABLE reserves_0 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 0);
+CREATE TABLE reserves_1 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 1);
+CREATE TABLE reserves_2 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 2);
+CREATE TABLE reserves_3 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 3);
+CREATE TABLE reserves_4 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 4);
+CREATE TABLE reserves_5 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 5);
+CREATE TABLE reserves_6 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 6);
+CREATE TABLE reserves_7 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 7);
+
+
 
 CREATE INDEX IF NOT EXISTS reserves_expiration_index
   ON reserves
@@ -119,14 +132,14 @@ COMMENT ON INDEX reserves_gc_index
 
 CREATE TABLE IF NOT EXISTS reserves_in
   (reserve_in_serial_id BIGSERIAL UNIQUE
-  ,reserve_uuid INT8 NOT NULL REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
+  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,wire_reference INT8 NOT NULL
   ,credit_val INT8 NOT NULL
   ,credit_frac INT4 NOT NULL
   ,wire_source_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id)
   ,exchange_account_section TEXT NOT NULL
   ,execution_date INT8 NOT NULL
-  ,PRIMARY KEY (reserve_uuid, wire_reference)
+  ,PRIMARY KEY (reserve_pub, wire_reference)
   );
 COMMENT ON TABLE reserves_in
   IS 'list of transfers of funds into the reserves, one per incoming wire transfer';
@@ -144,9 +157,10 @@ CREATE INDEX IF NOT EXISTS reserves_in_exchange_account_serial
   );
 
 
+
 CREATE TABLE IF NOT EXISTS reserves_close
   (close_uuid BIGSERIAL PRIMARY KEY
-  ,reserve_uuid INT8 NOT NULL REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
+  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,execution_date INT8 NOT NULL
   ,wtid BYTEA NOT NULL CHECK (LENGTH(wtid)=32)
   ,wire_target_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id)
@@ -161,7 +175,7 @@ COMMENT ON COLUMN reserves_close.wire_target_serial_id
 
 CREATE INDEX IF NOT EXISTS reserves_close_by_uuid
   ON reserves_close
-  (reserve_uuid);
+  (reserve_pub);
 
 
 CREATE TABLE IF NOT EXISTS reserves_out
@@ -169,7 +183,7 @@ CREATE TABLE IF NOT EXISTS reserves_out
   ,h_blind_ev BYTEA PRIMARY KEY CHECK (LENGTH(h_blind_ev)=64)
   ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial)
   ,denom_sig BYTEA NOT NULL
-  ,reserve_uuid INT8 NOT NULL REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
+  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
   ,execution_date INT8 NOT NULL
   ,amount_with_fee_val INT8 NOT NULL
@@ -182,10 +196,10 @@ COMMENT ON COLUMN reserves_out.h_blind_ev
 COMMENT ON COLUMN reserves_out.denominations_serial
   IS 'We do not CASCADE ON DELETE here, we may keep the denomination data alive';
 
-CREATE INDEX IF NOT EXISTS reserves_out_reserve_uuid_index
+CREATE INDEX IF NOT EXISTS reserves_out_reserve_pub_index
   ON reserves_out
-  (reserve_uuid);
-COMMENT ON INDEX reserves_out_reserve_uuid_index
+  (reserve_pub);
+COMMENT ON INDEX reserves_out_reserve_pub_index
   IS 'for get_reserves_out';
 
 CREATE INDEX IF NOT EXISTS reserves_out_execution_date
@@ -710,7 +724,6 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
   OUT kycok BOOLEAN,
-  OUT ruuid INT8,
   OUT account_uuid INT8)
 LANGUAGE plpgsql
 AS $$
@@ -734,21 +747,18 @@ THEN
   reserve_found=FALSE;
   balance_ok=FALSE;
   kycok=FALSE;
-  ruuid=0;
   account_uuid=0;
   ASSERT false, 'denomination unknown';
   RETURN;
 END IF;
 
 SELECT
-   reserves.reserve_uuid
-  ,current_balance_val
+   current_balance_val
   ,current_balance_frac
   ,expiration_date
   ,gc_date
  INTO
-   ruuid
-  ,reserve_val
+   reserve_val
   ,reserve_frac
   ,reserve_gc
   FROM reserves
@@ -770,7 +780,7 @@ INSERT INTO reserves_out
   (h_blind_ev
   ,denominations_serial
   ,denom_sig
-  ,reserve_uuid
+  ,reserve_pub
   ,reserve_sig
   ,execution_date
   ,amount_with_fee_val
@@ -779,7 +789,7 @@ VALUES
   (h_coin_envelope
   ,denom_serial
   ,denom_sig
-  ,ruuid
+  ,rpub
   ,reserve_sig
   ,now
   ,amount_val
@@ -830,7 +840,7 @@ UPDATE reserves SET
  ,current_balance_val=reserve_val
  ,current_balance_frac=reserve_frac
 WHERE
-  reserves.reserve_uuid=ruuid;
+  reserves.reserve_pub=rpub;
 
 reserve_found=TRUE;
 balance_ok=TRUE;
@@ -845,7 +855,7 @@ SELECT
   ,account_uuid
   FROM reserves_in
   JOIN wire_targets ON (wire_source_serial_id = wire_target_serial_id)
- WHERE reserve_uuid=ruuid
+ WHERE reserve_pub=rpub
  LIMIT 1; -- limit 1 should not be required (without p2p transfers)
 
 END $$;
@@ -856,7 +866,7 @@ COMMENT ON FUNCTION exchange_do_withdraw(INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA,
 
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw_limit_check(
-  IN ruuid INT8,
+  IN rpub BYTEA,
   IN start_time INT8,
   IN upper_limit_val INT8,
   IN upper_limit_frac INT4,
@@ -876,7 +886,7 @@ SELECT
    total_val
   ,total_frac
   FROM reserves_out
- WHERE reserves_out.reserve_uuid=ruuid
+ WHERE reserves_out.reserve_pub=rpub
    AND execution_date > start_time;
 
 -- normalize result
@@ -889,7 +899,7 @@ below_limit = (total_val < upper_limit_val) OR
               (total_frac <= upper_limit_frac) );
 END $$;
 
-COMMENT ON FUNCTION exchange_do_withdraw_limit_check(INT8, INT8, INT8, INT4)
+COMMENT ON FUNCTION exchange_do_withdraw_limit_check(BYTEA, INT8, INT8, INT4)
   IS 'Check whether the withdrawals from the given reserve since the given time are below the given threshold';
 
 

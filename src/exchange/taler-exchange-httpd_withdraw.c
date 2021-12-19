@@ -140,7 +140,6 @@ withdraw_transaction (void *cls,
   enum GNUNET_DB_QueryStatus qs;
   bool found = false;
   bool balance_ok = false;
-  uint64_t reserve_uuid;
   struct GNUNET_TIME_Timestamp now;
 
   now = GNUNET_TIME_timestamp_get ();
@@ -151,8 +150,7 @@ withdraw_transaction (void *cls,
                                 now,
                                 &found,
                                 &balance_ok,
-                                &wc->kyc,
-                                &reserve_uuid);
+                                &wc->kyc);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -234,7 +232,7 @@ withdraw_transaction (void *cls,
 
     qs2 = TEH_plugin->do_withdraw_limit_check (
       TEH_plugin->cls,
-      reserve_uuid,
+      &wc->collectable.reserve_pub,
       GNUNET_TIME_absolute_subtract (now.abs_time,
                                      TEH_kyc_config.withdraw_period),
       &TEH_kyc_config.withdraw_limit,
