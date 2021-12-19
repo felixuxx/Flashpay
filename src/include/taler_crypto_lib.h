@@ -518,6 +518,30 @@ struct TALER_CoinPubHash
 };
 
 
+/**
+ * @brief Value that uniquely identifies a tip.
+ */
+struct TALER_TipIdentifierP
+{
+  /**
+   * The tip identifier is a SHA-512 hash code.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+
+/**
+ * @brief Value that uniquely identifies a tip pick up operation.
+ */
+struct TALER_PickupIdentifierP
+{
+  /**
+   * The pickup identifier is a SHA-512 hash code.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 
