@@ -202,4 +202,58 @@ TALER_wallet_recoup_sign (
 }
 
 
+void
+TALER_wallet_melt_sign (
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *melt_fee,
+  const struct TALER_RefreshCommitmentP *rc,
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_RefreshMeltCoinAffirmationPS melt = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
+    .purpose.size = htonl (sizeof (melt)),
+    .rc = *rc,
+    .h_denom_pub = *h_denom_pub
+  };
+
+  TALER_amount_hton (&melt.amount_with_fee,
+                     amount_with_fee);
+  TALER_amount_hton (&melt.melt_fee,
+                     melt_fee);
+  GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                            &melt,
+                            &coin_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_melt_verify (
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *melt_fee,
+  const struct TALER_RefreshCommitmentP *rc,
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_RefreshMeltCoinAffirmationPS melt = {
+    .purpose.size = htonl (sizeof (melt)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
+    .rc = *rc,
+    .h_denom_pub = *h_denom_pub
+  };
+
+  TALER_amount_hton (&melt.amount_with_fee,
+                     amount_with_fee);
+  TALER_amount_hton (&melt.melt_fee,
+                     melt_fee);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_WALLET_COIN_MELT,
+    &melt,
+    &coin_sig->eddsa_signature,
+    &coin_pub->eddsa_pub);
+}
+
+
 /* end of wallet_signatures.c */

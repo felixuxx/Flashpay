@@ -1724,6 +1724,47 @@ TALER_wallet_deposit_verify (
 
 
 /**
+ * Sign a melt request.
+ *
+ * @param amount the amount to be melted (with fee)
+ * @param melt_fee the melt fee we expect to pay
+ * @param rc refresh session we are committed to
+ * @param h_denom_pub hash of the coin denomination's public key
+ * @param coin_priv coin’s private key
+ * @param[out] coin_sig set to the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_MELT
+ */
+void
+TALER_wallet_melt_sign (
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *melt_fee,
+  const struct TALER_RefreshCommitmentP *rc,
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Verify a melt request.
+ *
+ * @param amount the amount to be melted (with fee)
+ * @param melt_fee the melt fee we expect to pay
+ * @param rc refresh session we are committed to
+ * @param h_denom_pub hash of the coin denomination's public key
+ * @param coin_pub coin’s public key
+ * @param coin_sig the signature made with purpose #TALER_SIGNATURE_WALLET_COIN_MELT
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_melt_verify (
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_Amount *melt_fee,
+  const struct TALER_RefreshCommitmentP *rc,
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
  * Sign link data.
  *
  * @param h_denom_pub hash of the denomiantion public key of the new coin

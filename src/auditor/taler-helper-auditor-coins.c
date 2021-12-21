@@ -1287,23 +1287,17 @@ refresh_session_cb (void *cls,
 
   /* verify melt signature */
   {
-    struct TALER_RefreshMeltCoinAffirmationPS rmc = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
-      .purpose.size = htonl (sizeof (rmc)),
-      .rc = *rc,
-      .melt_fee = issue->fee_refresh,
-      .coin_pub = *coin_pub
-    };
+    const struct TALER_DenominationHash h_denom_pub;
 
     TALER_denom_pub_hash (denom_pub,
                           &rmc.h_denom_pub);
-    TALER_amount_hton (&rmc.amount_with_fee,
-                       amount_with_fee);
     if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                    &rmc,
-                                    &coin_sig->eddsa_signature,
-                                    &coin_pub->eddsa_pub))
+        TALER_wallet_melt_verify (&rmc.amount_with_fee,
+                                  &issue->fee_refresh,
+                                  rc,
+                                  &h_denom_pub,
+                                  coin_pub,
+                                  coin_sig))
     {
       TALER_ARL_report (report_bad_sig_losses,
                         GNUNET_JSON_PACK (

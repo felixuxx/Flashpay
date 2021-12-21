@@ -464,10 +464,8 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   struct MeltData *md;
   struct TALER_CoinSpendSignatureP confirm_sig;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
-  struct TALER_RefreshMeltCoinAffirmationPS melt = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
-    .purpose.size = htonl (sizeof (melt)),
-  };
+  struct TALER_DenominationHash h_denom_pub;
+  struct TALER_CoinSpendPublicKeyP coin_pub;
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
@@ -478,21 +476,17 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     return NULL;
   }
-  melt.rc = md->rc;
-  TALER_amount_hton (&melt.amount_with_fee,
-                     &md->melted_coin.melt_amount_with_fee);
-  TALER_amount_hton (&melt.melt_fee,
-                     &md->melted_coin.fee_melt);
-  GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
-                                      &melt.coin_pub.eddsa_pub);
   TALER_denom_pub_hash (&md->melted_coin.pub_key,
-                        &melt.h_denom_pub);
-  GNUNET_CRYPTO_eddsa_sign (&md->melted_coin.coin_priv.eddsa_priv,
-                            &melt,
-                            &confirm_sig.eddsa_signature);
+                        &h_denom_pub);
+  TALER_wallet_melt_sign (&md->melted_coin.melt_amount_with_fee,
+                          &md->melted_coin.fee_melt,
+                          &md->rc,
+                          &h_denom_pub,
+                          &md->melted_coin.coin_priv,
+                          &confirm_sig);
+  GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
+                                      &coin_pub.eddsa_pub);
   melt_obj = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_data_auto ("coin_pub",
-                                &melt.coin_pub),
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &melt.h_denom_pub),
     TALER_JSON_pack_denom_sig ("denom_sig",
