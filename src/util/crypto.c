@@ -167,8 +167,8 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
 
 
 void
-cs_blinding_seed_derive (const void *secret,
-                         size_t secret_len,
+cs_blinding_seed_derive (const struct
+                         TALER_CoinSpendPrivateKeyP *coin_priv,
                          const struct GNUNET_CRYPTO_CsRPublic r_pub[2],
                          struct GNUNET_CRYPTO_CsNonce *blind_seed)
 {
@@ -179,8 +179,8 @@ cs_blinding_seed_derive (const void *secret,
                                      GCRY_MD_SHA256,
                                      "bseed",
                                      strlen ("bseed"),
-                                     secret,
-                                     secret_len,
+                                     coin_priv,
+                                     sizeof(*coin_priv),
                                      r_pub,
                                      sizeof(struct GNUNET_CRYPTO_CsRPublic) * 2,
                                      NULL,
@@ -227,11 +227,13 @@ TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
     return;
   case TALER_DENOMINATION_CS:
     {
-      struct TALER_PlanchetDeriveCsBlindingSecrets *params;
-      params = va_arg (ap, struct TALER_PlanchetDeriveCsBlindingSecrets *);
-      cs_blinding_seed_derive (params->secret,
-                               params->secret_len,
-                               params->r_pub,
+      struct TALER_CoinSpendPrivateKeyP *coin_priv;
+      struct TALER_DenominationCsPublicR *r_pub;
+      coin_priv = va_arg (ap, struct TALER_CoinSpendPrivateKeyP *);
+      r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
+
+      cs_blinding_seed_derive (coin_priv,
+                               r_pub->r_pub,
                                &bs->nonce);
       return;
     }

@@ -82,6 +82,47 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
 
 
 enum GNUNET_GenericReturnValue
+TALER_denom_cs_derive_r_secret (const struct TALER_WithdrawNonce *nonce,
+                                const struct
+                                TALER_DenominationPrivateKey *denom_priv,
+                                struct TALER_DenominationCsPrivateR *r)
+{
+  if (denom_priv->cipher != TALER_DENOMINATION_CS)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
+                             &denom_priv->details.cs_private_key,
+                             r->r);
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
+                                const struct
+                                TALER_DenominationPrivateKey *denom_priv,
+                                struct TALER_DenominationCsPublicR *r_pub)
+{
+  if (denom_priv->cipher != TALER_DENOMINATION_CS)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
+  struct GNUNET_CRYPTO_CsRSecret r[2];
+  GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
+                             &denom_priv->details.cs_private_key,
+                             r);
+  GNUNET_CRYPTO_cs_r_get_public (&r[0], &r_pub->r_pub[0]);
+  GNUNET_CRYPTO_cs_r_get_public (&r[1], &r_pub->r_pub[1]);
+  return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
 TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
                           const struct TALER_BlindedPlanchet *blinded_planchet)

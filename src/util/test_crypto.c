@@ -147,6 +147,8 @@ test_planchets_cs (void)
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHash c_hash;
   struct TALER_WithdrawNonce nonce;
+  struct TALER_DenominationCsPublicR r_pub;
+  // struct TALER_DenominationCsPrivateR priv_r;
   // struct TALER_BlindedDenominationSignature blind_sig;
   // struct TALER_FreshCoin coin;
   // struct TALER_PlanchetDeriveCsBlindingSecrets seed;
@@ -156,14 +158,18 @@ test_planchets_cs (void)
                                           &dk_pub,
                                           TALER_DENOMINATION_CS));
 
-  // seed.secret = "test secret";
-  // seed.secret_len = strlen ("test secret");
-
   TALER_planchet_setup_random (&ps, TALER_DENOMINATION_CS);
   TALER_cs_withdraw_nonce_derive (&ps.coin_priv, &nonce);
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_cs_derive_r_public (&nonce,
+                                                 &dk_priv,
+                                                 &r_pub));
+  TALER_blinding_secret_create (&ps.blinding_key,
+                                TALER_DENOMINATION_CS,
+                                &ps.coin_priv,
+                                &r_pub);
 
-  // NEXT: Implement to create withdraw nonce
-  // Implement to get R_0 and R_1
+  // NEXT:
   // Implement to genrate b-seed from it and calculate c then§
 
   // GNUNET_assert (GNUNET_OK ==

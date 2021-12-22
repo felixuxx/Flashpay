@@ -794,6 +794,9 @@ struct TALER_BlindedPlanchet
   } details;
 };
 
+/**
+ * Withdraw nonce for CS denominations
+ */
 struct TALER_WithdrawNonce
 {
   /**
@@ -802,12 +805,32 @@ struct TALER_WithdrawNonce
   struct GNUNET_CRYPTO_CsNonce nonce;
 };
 
+/**
+ * Withdraw nonce for CS denominations
+ */
 struct TALER_RefreshNonce
 {
   /**
    * 32 bit nonce to include in withdrawals
    */
   struct GNUNET_CRYPTO_CsNonce nonce;
+};
+
+/**
+ * Public R for Cs denominations
+ */
+struct TALER_DenominationCsPublicR
+{
+  struct GNUNET_CRYPTO_CsRPublic r_pub[2];
+};
+
+/**
+ * Secret r for Cs denominations
+ */
+
+struct TALER_DenominationCsPrivateR
+{
+  struct GNUNET_CRYPTO_CsRSecret r[2];
 };
 
 /**
@@ -860,28 +883,6 @@ struct TALER_DenominationBlindMessageParams
     struct TALER_DenominationBlindMessageRsaParams rsa_blind_msg_params;
 
   } details;
-};
-
-/**
- * @brief CS Blinding Secret parameters to derive blinding secrets
- *
- */
-struct TALER_PlanchetDeriveCsBlindingSecrets
-{
-  /**
-  * Secret to derive blinding secrets from
-  */
-  void *secret;
-
-  /**
-   * size of the secret to derive blinding secrets from
-   */
-  size_t secret_len;
-
-  /**
-   * public R_0 and R_1 are hashed too
-   */
-  struct GNUNET_CRYPTO_CsRPublic r_pub[2];
 };
 
 /**
@@ -1010,6 +1011,36 @@ TALER_denom_priv_free (struct TALER_DenominationPrivateKey *denom_priv);
  */
 void
 TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
+
+
+/**
+ * Function for CS signatures to derive the secret r_0 and r_1
+ *
+ * @param nonce withdraw nonce from a client
+ * @param denom_priv denomination privkey as long-term secret
+ * @param r the resulting r_0 and r_1
+ * @return enum GNUNET_GenericReturnValue, returns SYSERR when denom key has wrong type
+ */
+enum GNUNET_GenericReturnValue
+TALER_denom_cs_derive_r_secret (const struct TALER_WithdrawNonce *nonce,
+                                const struct
+                                TALER_DenominationPrivateKey *denom_priv,
+                                struct TALER_DenominationCsPrivateR *r);
+
+/**
+ * @brief Function for CS signatures to derive public R_0 and R_1
+ *
+ * @param nonce withdraw nonce from a client
+ * @param denom_priv denomination privkey as long-term secret
+ * @param r_pub the resulting R_0 and R_1
+ * @return enum GNUNET_GenericReturnValue
+ */
+
+enum GNUNET_GenericReturnValue
+TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
+                                const struct
+                                TALER_DenominationPrivateKey *denom_priv,
+                                struct TALER_DenominationCsPublicR *r_pub);
 
 
 /**
