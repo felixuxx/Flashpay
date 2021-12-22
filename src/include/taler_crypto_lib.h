@@ -760,16 +760,10 @@ struct TALER_BlindedRsaPlanchet
 struct TALER_BlindedCsPlanchet
 {
   /**
-   * Withdraw or refresh nonce used for derivation
-   */
-  struct GNUNET_CRYPTO_CsNonce nonce;
-
-  /**
    * The Clause Schnorr c_0 and c_1 containing the blinded message
    */
   struct GNUNET_CRYPTO_CsC c[2];
 };
-
 
 /**
  * @brief Type including Parameters to create blinded signature
@@ -800,6 +794,21 @@ struct TALER_BlindedPlanchet
   } details;
 };
 
+struct TALER_WithdrawNonce
+{
+  /**
+   * 32 bit nonce to include in withdrawals
+   */
+  struct GNUNET_CRYPTO_CsNonce nonce;
+};
+
+struct TALER_RefreshNonce
+{
+  /**
+   * 32 bit nonce to include in withdrawals
+   */
+  struct GNUNET_CRYPTO_CsNonce nonce;
+};
 
 /**
  * @brief RSA Parameters to create blinded messages
@@ -868,6 +877,11 @@ struct TALER_PlanchetDeriveCsBlindingSecrets
    * size of the secret to derive blinding secrets from
    */
   size_t secret_len;
+
+  /**
+   * public R_0 and R_1 are hashed too
+   */
+  struct GNUNET_CRYPTO_CsRPublic r_pub[2];
 };
 
 /**
@@ -938,6 +952,16 @@ struct TALER_TrackTransferDetails
 void
 TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
+/**
+ * @brief Method to generate withdraw nonce
+ *
+ * @param coin_priv private key of the coin
+ * @param nonce withdraw nonce included in the request to generate R_0 and R_1
+ */
+void
+TALER_cs_withdraw_nonce_derive (const struct
+                                TALER_CoinSpendPrivateKeyP *coin_priv,
+                                struct TALER_WithdrawNonce *nonce);
 
 /**
  * Create a blinding secret @a bs for @a cipher.
@@ -1397,8 +1421,7 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
  */
 void
 TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
-                             enum TALER_DenominationCipher cipher,
-                             ...);
+                             enum TALER_DenominationCipher cipher);
 
 
 /**

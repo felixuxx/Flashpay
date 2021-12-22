@@ -199,7 +199,10 @@ TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
       GNUNET_free (buf);
     }
     break;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    GNUNET_CRYPTO_hash_context_read (hc,
+                                     &denom_pub->details.cs_public_key,
+                                     sizeof(denom_pub->details.cs_public_key));
   default:
     GNUNET_assert (0);
   }
@@ -237,11 +240,6 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    struct TALER_CoinPubHash *c_hash,
                    struct TALER_BlindedPlanchet *blinded_planchet)
 {
-  // if (dk->cipher != blinded_planchet->cipher)
-  // {
-  //   GNUNET_break (0);
-  //   return GNUNET_SYSERR;
-  // }
   blinded_planchet->cipher = dk->cipher;
   TALER_coin_pub_hash (coin_pub,
                        age_commitment_hash,
