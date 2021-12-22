@@ -148,10 +148,9 @@ test_planchets_cs (void)
   struct TALER_CoinPubHash c_hash;
   struct TALER_WithdrawNonce nonce;
   struct TALER_DenominationCsPublicR r_pub;
-  // struct TALER_DenominationCsPrivateR priv_r;
+  struct TALER_DenominationCsPrivateR priv_r;
   // struct TALER_BlindedDenominationSignature blind_sig;
   // struct TALER_FreshCoin coin;
-  // struct TALER_PlanchetDeriveCsBlindingSecrets seed;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dk_priv,
@@ -169,15 +168,17 @@ test_planchets_cs (void)
                                 &ps.coin_priv,
                                 &r_pub);
 
-  // NEXT:
-  // Implement to genrate b-seed from it and calculate c then§
-
-  // GNUNET_assert (GNUNET_OK ==
-  //                TALER_planchet_prepare (&dk_pub,
-  //                                        &ps,
-  //                                        &c_hash,
-  //                                        &pd));
-
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_planchet_prepare (&dk_pub,
+                                         &ps,
+                                         &c_hash,
+                                         &pd,
+                                         &nonce,
+                                         &r_pub));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_denom_cs_derive_r_secret (&nonce,
+                                                 &dk_priv,
+                                                 &priv_r));
 
   // TALER_blinded_denom_sig_free (&blind_sig);
   // TALER_denom_sig_free (&coin.sig);

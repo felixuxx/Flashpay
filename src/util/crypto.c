@@ -280,23 +280,61 @@ enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
                         struct TALER_CoinPubHash *c_hash,
-                        struct TALER_PlanchetDetail *pd)
+                        struct TALER_PlanchetDetail *pd,
+                        ...)
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
-  if (GNUNET_OK !=
-      TALER_denom_blind (dk,
-                         &ps->blinding_key,
-                         NULL, /* FIXME-Oec */
-                         &coin_pub,
-                         c_hash,
-                         &pd->blinded_planchet))
+
+  switch (dk->cipher)
   {
+  case TALER_DENOMINATION_RSA:
+    if (GNUNET_OK !=
+        TALER_denom_blind (dk,
+                           &ps->blinding_key,
+                           NULL, /* FIXME-Oec */
+                           &coin_pub,
+                           c_hash,
+                           &pd->blinded_planchet))
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    break;
+  case TALER_DENOMINATION_CS:
+    {
+      va_list ap;
+      va_start (ap, pd);
+      struct TALER_WithdrawNonce *nonce;
+      struct TALER_DenominationCsPublicR *r_pub;
+
+      nonce = va_arg (ap, struct TALER_WithdrawNonce *);
+      r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
+
+      if (GNUNET_OK !=
+          TALER_denom_blind (dk,
+                             &ps->blinding_key,
+                             NULL, /* FIXME-Oec */
+                             &coin_pub,
+                             c_hash,
+                             &pd->blinded_planchet,
+                             nonce,
+                             r_pub))
+      {
+        va_end (ap);
+        GNUNET_break (0);
+        return GNUNET_SYSERR;
+      }
+      va_end (ap);
+      break;
+    }
+  default:
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+
   TALER_denom_pub_hash (dk,
                         &pd->denom_pub_hash);
   return GNUNET_OK;

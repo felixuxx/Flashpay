@@ -1061,7 +1061,8 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_CoinPubHash *c_hash,
-                   struct TALER_BlindedPlanchet *blinded_planchet);
+                   struct TALER_BlindedPlanchet *blinded_planchet,
+                   ...);
 
 
 /**
@@ -1469,7 +1470,8 @@ enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const struct TALER_PlanchetSecretsP *ps,
                         struct TALER_CoinPubHash *c_hash,
-                        struct TALER_PlanchetDetail *pd);
+                        struct TALER_PlanchetDetail *pd,
+                        ...);
 
 
 /**

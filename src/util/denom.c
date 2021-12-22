@@ -244,6 +244,7 @@ TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
     GNUNET_CRYPTO_hash_context_read (hc,
                                      &denom_pub->details.cs_public_key,
                                      sizeof(denom_pub->details.cs_public_key));
+    break;
   default:
     GNUNET_assert (0);
   }
@@ -279,7 +280,8 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
                    struct TALER_CoinPubHash *c_hash,
-                   struct TALER_BlindedPlanchet *blinded_planchet)
+                   struct TALER_BlindedPlanchet *blinded_planchet,
+                   ...)
 {
   blinded_planchet->cipher = dk->cipher;
   TALER_coin_pub_hash (coin_pub,
@@ -301,7 +303,34 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
       return GNUNET_SYSERR;
     }
     return GNUNET_OK;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    {
+      // TODO: Where to store the blinded rpub? currently ignored
+      struct GNUNET_CRYPTO_CsRPublic blinded_r_pub[2];
+
+      va_list ap;
+      va_start (ap, blinded_planchet);
+      struct TALER_WithdrawNonce *nonce;
+      struct TALER_DenominationCsPublicR *r_pub;
+
+      nonce = va_arg (ap, struct TALER_WithdrawNonce *);
+      r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
+
+      struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
+      GNUNET_CRYPTO_cs_blinding_secrets_derive (&nonce->nonce, bs);
+
+      GNUNET_CRYPTO_cs_calc_blinded_c (bs,
+                                       r_pub->r_pub,
+                                       &dk->details.cs_public_key,
+                                       &c_hash->hash,
+                                       sizeof(struct GNUNET_HashCode),
+                                       blinded_planchet->details.
+                                       cs_blinded_planchet.c,
+                                       blinded_r_pub);
+
+      va_end (ap);
+      return GNUNET_OK;
+    }
   default:
     GNUNET_break (0);
     return GNUNET_SYSERR;
