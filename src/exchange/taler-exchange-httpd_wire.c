@@ -130,7 +130,7 @@ TEH_wire_init ()
 
 
 void
-TEH_WIRE_done ()
+TEH_wire_done ()
 {
   if (NULL != wire_state)
   {

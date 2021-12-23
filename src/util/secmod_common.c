@@ -232,8 +232,8 @@ TES_read_work (void *cls,
   struct TES_Client *client = cls;
   char *buf = client->iobuf;
   size_t off = 0;
-  uint16_t msize;
-  const struct GNUNET_MessageHeader *hdr;
+  uint16_t msize = 0;
+  const struct GNUNET_MessageHeader *hdr = NULL;
   enum GNUNET_GenericReturnValue ret;
 
   do

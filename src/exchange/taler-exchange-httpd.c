@@ -1799,7 +1799,8 @@ do_shutdown (void *cls)
   TEH_kyc_proof_cleanup ();
   if (NULL != mhd)
     MHD_stop_daemon (mhd);
-  TEH_WIRE_done ();
+  TEH_wire_done ();
+  TEH_extensions_done ();
   TEH_keys_finished ();
   if (NULL != TEH_plugin)
   {
@@ -1855,6 +1856,13 @@ run (void *cls,
   }
   if (GNUNET_SYSERR ==
       TEH_plugin->preflight (TEH_plugin->cls))
+  {
+    global_ret = EXIT_FAILURE;
+    GNUNET_SCHEDULER_shutdown ();
+    return;
+  }
+  if (GNUNET_OK !=
+      TEH_extensions_init ())
   {
     global_ret = EXIT_FAILURE;
     GNUNET_SCHEDULER_shutdown ();

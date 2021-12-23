@@ -135,4 +135,25 @@ TEH_handler_management_post_wire_fees (
   const json_t *root);
 
 
+/**
+ * Handle a POST "/management/extensions" request.
+ *
+ * @param connection the MHD connection to handle
+ * @param root uploaded JSON data
+ * @return MHD result code
+ */
+MHD_RESULT
+TEH_handler_management_post_extensions (
+  struct MHD_Connection *connection,
+  const json_t *root);
+
+
+/**
+ * Initialize extension configuration handling.
+ *
+ * @return #GNUNET_OK on success
+ */
+enum GNUNET_GenericReturnValue
+TEH_extensions_init (void);
+
 #endif

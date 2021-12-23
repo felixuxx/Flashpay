@@ -30,7 +30,7 @@
  * Clean up wire subsystem.
  */
 void
-TEH_WIRE_done (void);
+TEH_wire_done (void);
 
 
 /**

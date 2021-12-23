@@ -750,7 +750,7 @@ load_age_mask (const char*section_name)
   struct TALER_AgeMask age_mask = {0};
 
   /* FIXME-oec: get age_mask from database, not from config */
-  if (TALER_EXTENSION_OK != TALER_get_age_mask (TEH_cfg, &age_mask))
+  if (TALER_Extension_OK != TALER_get_age_mask (TEH_cfg, &age_mask))
   {
     GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                TALER_EXTENSION_SECTION_AGE_RESTRICTION,
@@ -761,6 +761,9 @@ load_age_mask (const char*section_name)
 
   if (age_mask.mask == 0)
   {
+    /* Age restriction support is not enabled.  Ignore the AGE_RESTRICTED field
+     * for the particular denomination and simply return the null_mask
+     */
     return null_mask;
   }
 

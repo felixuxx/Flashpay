@@ -280,6 +280,22 @@ COMMENT ON TABLE signkey_revocations
   IS 'Table storing which online signing keys have been revoked';
 
 
+CREATE TABLE IF NOT EXISTS extensions
+  (extension_id BIGSERIAL UNIQUE
+  ,name VARCHAR NOT NULL UNIQUE
+  ,config BYTEA NOT NULL
+  ,config_sig BYTEA NOT NULL
+  );
+COMMENT ON TABLE extensions
+  IS 'Configurations of the activated extensions';
+COMMENT ON COLUMN extensions.name
+  IS 'Name of the extension';
+COMMENT ON COLUMN extensions.config
+  IS 'Configuration of the extension as JSON-blob';
+COMMENT ON COLUMN extensions.config
+  IS 'Signature of the configuration of an extension, signed with the master key of the exchange';
+
+
 CREATE TABLE IF NOT EXISTS known_coins
   (known_coin_id BIGSERIAL UNIQUE
   ,coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)

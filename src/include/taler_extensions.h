@@ -26,21 +26,70 @@
 
 #define TALER_EXTENSION_SECTION_PREFIX "exchange-extension-"
 
-enum TALER_EXTENSION_ReturnValue
+enum TALER_Extension_ReturnValue
 {
-  TALER_EXTENSION_OK = 0,
-  TALER_EXTENSION_ERROR_PARSING = 1,
-  TALER_EXTENSION_ERROR_INVALID = 2,
-  TALER_EXTENSION_ERROR_SYS = 3
+  TALER_Extension_OK = 0,
+  TALER_Extension_ERROR_PARSING = 1,
+  TALER_Extension_ERROR_INVALID = 2,
+  TALER_Extension_ERROR_SYS = 3
+};
+
+enum TALER_Extension_Type
+{
+  TALER_Extension_Peer2Peer = 0,
+  TALER_Extension_AgeRestriction = 1,
+  TALER_Extension_Max = 2
+};
+
+struct TALER_Extension
+{
+  enum TALER_Extension_Type type;
+  char *name;
+  bool critical;
+  void *config;
+  size_t config_size;
+};
+
+struct TALER_Peer2Peer_Config
+{
+  // FIXME
+};
+
+/**
+ * TEH_extensions is the global manifest with the list supported extensions,
+ * sorted by TALER_Extension_Type.
+ *
+ * TODO: Mutex?
+ *
+ **/
+struct TALER_Extension TEH_extensions[TALER_Extension_Max] = {
+  [TALER_Extension_Peer2Peer] = {
+    .type = TALER_Extension_Peer2Peer,
+    .name = "peer2peer",
+    .critical = false,
+    .config_size = sizeof(struct TALER_Peer2Peer_Config),
+  },
+  [TALER_Extension_AgeRestriction] = {
+    .type = TALER_Extension_AgeRestriction,
+    .name = "age_restriction",
+    .critical = false,
+    .config_size = sizeof(struct TALER_AgeMask),
+  },
 };
 
 
 /*
- * TALER Age Restriction Extensions
+ * TALER Peer2Peer Extension
+ * FIXME
+ */
+
+
+/*
+ * TALER Age Restriction Extension
  */
 
 #define TALER_EXTENSION_SECTION_AGE_RESTRICTION (TALER_EXTENSION_SECTION_PREFIX  \
-                                                 "agerestriction")
+                                                 "age_restriction")
 
 /**
  * The default age mask represents the age groups
@@ -55,7 +104,7 @@ enum TALER_EXTENSION_ReturnValue
  * @param[out] mask Mask representation for age restriction.
  * @return Error, if age groups were invalid, OK otherwise.
  */
-enum TALER_EXTENSION_ReturnValue
+enum TALER_Extension_ReturnValue
 TALER_parse_age_group_string (char *groups,
                               struct TALER_AgeMask *mask);
 
@@ -66,8 +115,7 @@ TALER_parse_age_group_string (char *groups,
  * @return Error if extension for age restriction was set but age groups were
  *         invalid, OK otherwise.
  */
-enum TALER_EXTENSION_ReturnValue
+enum TALER_Extension_ReturnValue
 TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
                     struct TALER_AgeMask *mask);
-
 #endif

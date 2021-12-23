@@ -35,6 +35,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_management_auditor_enable.c \
   exchange_api_management_get_keys.c \
   exchange_api_management_post_keys.c \
+  exchange_api_management_post_extensions.c \
   exchange_api_management_revoke_denomination_key.c \
   exchange_api_management_revoke_signing_key.c \
   exchange_api_management_set_wire_fee.c \

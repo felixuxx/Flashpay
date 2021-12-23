@@ -31,12 +31,12 @@
  * @return Error if extension for age restriction was set, but age groups were
  *         invalid, OK otherwise.
  */
-enum TALER_EXTENSION_ReturnValue
+enum TALER_Extension_ReturnValue
 TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
                     struct TALER_AgeMask *mask)
 {
   char *groups;
-  enum TALER_EXTENSION_ReturnValue ret = TALER_EXTENSION_ERROR_SYS;
+  enum TALER_Extension_ReturnValue ret = TALER_Extension_ERROR_SYS;
 
   if ((GNUNET_NO == GNUNET_CONFIGURATION_have_value (cfg,
                                                      TALER_EXTENSION_SECTION_AGE_RESTRICTION,
@@ -47,7 +47,7 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
   {
     /* Age restriction is not enabled */
     mask->mask = 0;
-    return TALER_EXTENSION_OK;
+    return TALER_Extension_OK;
   }
 
   /* Age restriction is enabled, extract age groups */
@@ -57,13 +57,13 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                                           &groups))
   {
     /* FIXME: log error? */
-    return TALER_EXTENSION_ERROR_SYS;
+    return TALER_Extension_ERROR_SYS;
   }
   if (groups == NULL)
   {
     /* No groups defined in config, return default_age_mask */
     mask->mask = TALER_EXTENSION_DEFAULT_AGE_MASK;
-    return TALER_EXTENSION_OK;
+    return TALER_Extension_OK;
   }
 
   ret = TALER_parse_age_group_string (groups, mask);
@@ -80,11 +80,11 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @param[out] mask Bit representation of the age groups.
  * @return Error if string was invalid, OK otherwise.
  */
-enum TALER_EXTENSION_ReturnValue
+enum TALER_Extension_ReturnValue
 TALER_parse_age_group_string (char *groups,
                               struct TALER_AgeMask *mask)
 {
-  enum TALER_EXTENSION_ReturnValue ret = TALER_EXTENSION_ERROR_SYS;
+  enum TALER_Extension_ReturnValue ret = TALER_Extension_ERROR_SYS;
   char *pos;
   unsigned int prev = 0;
   unsigned int val;
@@ -105,14 +105,14 @@ TALER_parse_age_group_string (char *groups,
     {
       /* Invalid input */
       mask->mask = 0;
-      ret = TALER_EXTENSION_ERROR_PARSING;
+      ret = TALER_Extension_ERROR_PARSING;
       break;
     }
     else if ((0 >= val) || (32 <= val) || (prev >= val))
     {
       /* Invalid value */
       mask->mask = 0;
-      ret = TALER_EXTENSION_ERROR_INVALID;
+      ret = TALER_Extension_ERROR_INVALID;
       break;
     }
 
@@ -123,7 +123,7 @@ TALER_parse_age_group_string (char *groups,
     {
       /* We reached the end. Mark zeroth age-group and exit. */
       mask->mask |= 1;
-      ret = TALER_EXTENSION_OK;
+      ret = TALER_Extension_OK;
       break;
     }
 

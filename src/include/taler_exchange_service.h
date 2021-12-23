@@ -1,18 +1,18 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2014-2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU Affero General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU Affero General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 
-  You should have received a copy of the GNU Affero General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU Affero General Public License along with
+   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+ */
 /**
  * @file include/taler_exchange_service.h
  * @brief C interface of libtalerexchange, a C library to use exchange's HTTP API
@@ -1527,7 +1527,7 @@ typedef void
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param refresh_data the refresh data as returned from
-          #TALER_EXCHANGE_refresh_prepare())
+ #TALER_EXCHANGE_refresh_prepare())
  * @param melt_cb the callback to call with the result
  * @param melt_cb_cls closure for @a melt_cb
  * @return a handle for this request; NULL if the argument was invalid.
@@ -1593,7 +1593,7 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param refresh_data the refresh data as returned from
-          #TALER_EXCHANGE_refresh_prepare())
+ #TALER_EXCHANGE_refresh_prepare())
  * @param noreveal_index response from the exchange to the
  *        #TALER_EXCHANGE_melt() invocation
  * @param reveal_cb the callback to call with the final result of the
@@ -2614,6 +2614,62 @@ TALER_EXCHANGE_post_management_keys (
 void
 TALER_EXCHANGE_post_management_keys_cancel (
   struct TALER_EXCHANGE_ManagementPostKeysHandle *ph);
+
+
+/**
+ * Information needed for a POST /management/extensions operation.
+ */
+struct TALER_EXCHANGE_ManagementPostExtensionsData
+{
+  struct TALER_Extension *extensions;
+  struct TALER_MasterSignatureP *extension_sigs;
+  uint32_t num_extensions;
+};
+
+/**
+ * Function called with information about the post extensions operation result.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ */
+typedef void
+(*TALER_EXCHANGE_ManagementPostExtensionsCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr);
+
+/**
+ * @brief Handle for a POST /management/extensions request.
+ */
+struct TALER_EXCHANGE_ManagementPostExtensionsHandle;
+
+
+/**
+ * FIXME-oec: Provide correct explanation of this function.
+ *
+ * @param ctx the context
+ * @param url HTTP base URL for the exchange
+ * @param pkd signature data to POST
+ * @param cb function to call with the exchange's result
+ * @param cb_cls closure for @a cb
+ * @return the request handle; NULL upon error
+ */
+struct TALER_EXCHANGE_ManagementPostExtensionsHandle *
+TALER_EXCHANGE_management_post_extensions (
+  struct GNUNET_CURL_Context *ctx,
+  const char *url,
+  const struct TALER_EXCHANGE_ManagementPostExtensionsData *pkd,
+  TALER_EXCHANGE_ManagementPostExtensionsCallback cb,
+  void *cb_cls);
+
+/**
+ * Cancel #TALER_EXCHANGE_post_management_extensions() operation.
+ *
+ * @param ph handle of the operation to cancel
+ */
+void
+TALER_EXCHANGE_post_management_extensions_cancel (
+  struct TALER_EXCHANGE_ManagementPostExtensionsHandle *ph);
+
 
 /**
  * Function called with information about the post revocation operation result.

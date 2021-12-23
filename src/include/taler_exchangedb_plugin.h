@@ -4038,6 +4038,9 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*delete_revolving_shards)(void *cls);
 
+  /**
+   * TODO-oec: add function for adding extension config
+   */
 
 };
 

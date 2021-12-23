@@ -82,6 +82,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_db.c taler-exchange-httpd_db.h \
   taler-exchange-httpd_deposit.c taler-exchange-httpd_deposit.h \
   taler-exchange-httpd_deposits_get.c taler-exchange-httpd_deposits_get.h \
+  taler-exchange-httpd_extensions.c taler-exchange-httpd_extensions.h \
   taler-exchange-httpd_keys.c taler-exchange-httpd_keys.h \
   taler-exchange-httpd_kyc-check.c taler-exchange-httpd_kyc-check.h \
   taler-exchange-httpd_kyc-proof.c taler-exchange-httpd_kyc-proof.h \
@@ -91,6 +92,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_management_auditors.c \
   taler-exchange-httpd_management_auditors_AP_disable.c \
   taler-exchange-httpd_management_denominations_HDP_revoke.c \
+  taler-exchange-httpd_management_extensions.c \
   taler-exchange-httpd_management_post_keys.c \
   taler-exchange-httpd_management_signkey_EP_revoke.c \
   taler-exchange-httpd_management_wire_enable.c \
@@ -108,9 +110,6 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_transfers_get.c taler-exchange-httpd_transfers_get.h \
   taler-exchange-httpd_wire.c taler-exchange-httpd_wire.h \
   taler-exchange-httpd_withdraw.c taler-exchange-httpd_withdraw.h
-
-#  taler-exchange-httpd_management_post_keys.c
-
 
 taler_exchange_httpd_LDADD = \
   $(LIBGCRYPT_LIBS) \
