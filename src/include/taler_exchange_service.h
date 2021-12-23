@@ -1033,6 +1033,85 @@ void
 TALER_EXCHANGE_refund_cancel (struct TALER_EXCHANGE_RefundHandle *refund);
 
 
+/* ********************* POST /csr *********************** */
+
+
+/**
+ * @brief A /csr Handle
+ */
+struct TALER_EXCHANGE_CsRHandle;
+
+
+/**
+ * Details about a response for a CS R request.
+ */
+struct TALER_EXCHANGE_CsRResponse
+{
+  /**
+   * HTTP response data.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Details about the response.
+   */
+  union
+  {
+    /**
+     * Details if the status is #MHD_HTTP_OK.
+     */
+    struct
+    {
+      /**
+       * Signature over the coin.
+       */
+      struct TALER_DenominationCsPublicR r_pubs;
+    } success;
+
+    /**
+     * Details if the status is #MHD_HTTP_GONE.
+     */
+    struct
+    {
+      /* TODO: returning full details is not implemented */
+    } gone;
+
+  } details;
+};
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * CS R request to a exchange.
+ *
+ * @param cls closure
+ * @param csrr response details
+ */
+typedef void
+(*TALER_EXCHANGE_CsRCallback) (void *cls,
+                               const struct TALER_EXCHANGE_CsRResponse *csrr);
+
+
+/**
+ * Get a CS R using a /csr request.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param pk denomination of coin the R's will be used for
+ * @param nonce public nonce for CS R request
+ * @param res_cb the callback to call when the final result for this request is available
+ * @param res_cb_cls closure for the above callback
+ * @return handle for the operation on success, NULL on error, i.e.
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_CsRHandle *
+TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
+                    const struct TALER_EXCHANGE_DenomPublicKey *pk,
+                    const struct TALER_WithdrawNonce *nonce,
+                    TALER_EXCHANGE_CsRCallback res_cb,
+                    void *res_cb_cls);
+
+
 /* ********************* GET /reserves/$RESERVE_PUB *********************** */
 
 

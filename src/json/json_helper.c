@@ -658,7 +658,7 @@ TALER_JSON_spec_i18n_str (const char *name,
   return ret;
 }
 
-
+//FIXME:
 enum GNUNET_GenericReturnValue
 TALER_JSON_parse_agemask (const json_t *root,
                           struct TALER_AgeMask *mask)
@@ -688,6 +688,54 @@ TALER_JSON_parse_agemask (const json_t *root,
   }
 
   return GNUNET_OK;
+/**
+ * Parse given JSON object to CS R.
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_csr (void *cls,
+           json_t *root,
+           struct GNUNET_JSON_Specification *spec)
+{
+  struct GNUNET_CRYPTO_CsRPublic *r_pub = spec->ptr;
+
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_fixed (spec->field, r_pub, sizeof (struct
+                                                        GNUNET_CRYPTO_CsRPublic)),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  return GNUNET_OK;
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_csr (const char *field,
+                     struct GNUNET_CRYPTO_CsRPublic *r_pub)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_csr,
+    .cleaner = NULL,
+    .field = field,
+    .ptr = r_pub
+  };
+
+  return ret;
 }
 
 
