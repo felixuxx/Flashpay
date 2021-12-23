@@ -212,8 +212,6 @@ TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
                               enum TALER_DenominationCipher cipher,
                               ...)
 {
-  va_list ap;
-  va_start (ap, cipher);
   switch (cipher)
   {
   case TALER_DENOMINATION_INVALID:
@@ -227,6 +225,8 @@ TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
     return;
   case TALER_DENOMINATION_CS:
     {
+      va_list ap;
+      va_start (ap, cipher);
       struct TALER_CoinSpendPrivateKeyP *coin_priv;
       struct TALER_DenominationCsPublicR *r_pub;
       coin_priv = va_arg (ap, struct TALER_CoinSpendPrivateKeyP *);
@@ -235,12 +235,12 @@ TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
       cs_blinding_seed_derive (coin_priv,
                                r_pub->r_pub,
                                &bs->nonce);
+      va_end (ap);
       return;
     }
   default:
     GNUNET_break (0);
   }
-  va_end (ap);
 }
 
 

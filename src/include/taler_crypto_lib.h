@@ -1077,7 +1077,8 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
 enum GNUNET_GenericReturnValue
 TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
-                          const struct TALER_BlindedPlanchet *blinded_planchet);
+                          const struct TALER_BlindedPlanchet *blinded_planchet,
+                          ...);
 
 
 /**

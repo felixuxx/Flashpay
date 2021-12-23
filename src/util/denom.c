@@ -125,7 +125,8 @@ TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
 enum GNUNET_GenericReturnValue
 TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
-                          const struct TALER_BlindedPlanchet *blinded_planchet)
+                          const struct TALER_BlindedPlanchet *blinded_planchet,
+                          ...)
 {
   memset (denom_sig,
           0,
@@ -148,7 +149,31 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
     }
     denom_sig->cipher = TALER_DENOMINATION_RSA;
     return GNUNET_OK;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    {
+      va_list ap;
+      va_start (ap, blinded_planchet);
+      struct TALER_WithdrawNonce *nonce;
+      nonce = va_arg (ap, struct TALER_WithdrawNonce *);
+
+      struct GNUNET_CRYPTO_CsRSecret r[2];
+      GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
+                                 &denom_priv->details.cs_private_key,
+                                 r);
+
+      denom_sig->details.blinded_cs_answer.b =
+        GNUNET_CRYPTO_cs_sign_derive (&denom_priv->details.cs_private_key,
+                                      r,
+                                      blinded_planchet->details.
+                                      cs_blinded_planchet.c,
+                                      &nonce->nonce,
+                                      &denom_sig->details.blinded_cs_answer.
+                                      s_scalar);
+
+      denom_sig->cipher = TALER_DENOMINATION_CS;
+      va_end (ap);
+    }
+    return GNUNET_OK;
   default:
     GNUNET_break (0);
   }
