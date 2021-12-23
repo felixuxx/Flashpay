@@ -1095,7 +1095,8 @@ TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
   const union TALER_DenominationBlindingKeyP *bks,
-  const struct TALER_DenominationPublicKey *denom_pub);
+  const struct TALER_DenominationPublicKey *denom_pub,
+  ...);
 
 
 /**
@@ -1492,7 +1493,8 @@ TALER_planchet_to_coin (
   const struct TALER_BlindedDenominationSignature *blind_sig,
   const struct TALER_PlanchetSecretsP *ps,
   const struct TALER_CoinPubHash *c_hash,
-  struct TALER_FreshCoin *coin);
+  struct TALER_FreshCoin *coin,
+  ...);
 
 
 /* ****************** Refresh crypto primitives ************* */

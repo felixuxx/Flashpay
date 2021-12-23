@@ -175,7 +175,8 @@ test_planchets_cs (void)
                                          &c_hash,
                                          &pd,
                                          &nonce,
-                                         &r_pub));
+                                         &r_pub,
+                                         &r_pub_blind));
   // TODO: Remove r_secret if not needed
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_cs_derive_r_secret (&nonce,
@@ -192,7 +193,8 @@ test_planchets_cs (void)
   //                                        &blind_sig,
   //                                        &ps,
   //                                        &c_hash,
-  //                                        &coin));
+  //                                        &coin,
+  //                                        &r_pub_blind));
 
   TALER_blinded_denom_sig_free (&blind_sig);
   // TALER_denom_sig_free (&coin.sig);

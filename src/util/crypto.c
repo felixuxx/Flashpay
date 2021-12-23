@@ -309,9 +309,11 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
       va_start (ap, pd);
       struct TALER_WithdrawNonce *nonce;
       struct TALER_DenominationCsPublicR *r_pub;
+      struct TALER_DenominationCsPublicR *blinded_r_pub;
 
       nonce = va_arg (ap, struct TALER_WithdrawNonce *);
       r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
+      blinded_r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
 
       if (GNUNET_OK !=
           TALER_denom_blind (dk,
@@ -321,7 +323,8 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                              c_hash,
                              &pd->blinded_planchet,
                              nonce,
-                             r_pub))
+                             r_pub,
+                             blinded_r_pub))
       {
         va_end (ap);
         GNUNET_break (0);
@@ -347,19 +350,50 @@ TALER_planchet_to_coin (
   const struct TALER_BlindedDenominationSignature *blind_sig,
   const struct TALER_PlanchetSecretsP *ps,
   const struct TALER_CoinPubHash *c_hash,
-  struct TALER_FreshCoin *coin)
+  struct TALER_FreshCoin *coin,
+  ...)
 {
   struct TALER_DenominationSignature sig;
 
-  if (GNUNET_OK !=
-      TALER_denom_sig_unblind (&sig,
-                               blind_sig,
-                               &ps->blinding_key,
-                               dk))
+  switch (dk->cipher)
   {
-    GNUNET_break_op (0);
+  case TALER_DENOMINATION_RSA:
+    if (GNUNET_OK !=
+        TALER_denom_sig_unblind (&sig,
+                                 blind_sig,
+                                 &ps->blinding_key,
+                                 dk))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    break;
+  case TALER_DENOMINATION_CS:
+    {
+      va_list ap;
+      va_start (ap, coin);
+
+      struct TALER_DenominationCsPublicR *r_pub_dash;
+      r_pub_dash = va_arg (ap, struct TALER_DenominationCsPublicR *);
+      if (GNUNET_OK !=
+          TALER_denom_sig_unblind (&sig,
+                                   blind_sig,
+                                   &ps->blinding_key,
+                                   dk,
+                                   r_pub_dash))
+      {
+        GNUNET_break_op (0);
+        va_end (ap);
+        return GNUNET_SYSERR;
+      }
+      va_end (ap);
+    }
+    break;
+  default:
+    GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+
   if (GNUNET_OK !=
       TALER_denom_pub_verify (dk,
                               &sig,

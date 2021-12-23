@@ -186,7 +186,8 @@ TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
   const union TALER_DenominationBlindingKeyP *bks,
-  const struct TALER_DenominationPublicKey *denom_pub)
+  const struct TALER_DenominationPublicKey *denom_pub,
+  ...)
 {
   if (bdenom_sig->cipher != denom_pub->cipher)
   {
@@ -211,7 +212,36 @@ TALER_denom_sig_unblind (
     }
     denom_sig->cipher = TALER_DENOMINATION_RSA;
     return GNUNET_OK;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    {
+      va_list ap;
+      va_start (ap, denom_pub);
+      struct TALER_DenominationCsPublicR *r_pub_dash;
+      r_pub_dash = va_arg (ap, struct TALER_DenominationCsPublicR *);
+
+      struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
+      GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce, bs);
+
+      struct GNUNET_CRYPTO_CsS s_scalar;
+
+      GNUNET_CRYPTO_cs_unblind (&bdenom_sig->details.blinded_cs_answer.s_scalar,
+                                &bs[bdenom_sig->details.blinded_cs_answer.b],
+                                &s_scalar);
+
+      // TODO: This seems to work, but is this a good idea?
+      // Not working:
+      // denom_sig->details.cs_signature.r_point = r_pub_dash->r_pub[bdenom_sig->details.blinded_cs_answer.b];
+      GNUNET_memcpy (&denom_sig->details.cs_signature, &s_scalar, sizeof(struct
+                                                                         GNUNET_CRYPTO_CsS));
+      GNUNET_memcpy (&denom_sig->details.cs_signature + sizeof(struct
+                                                               GNUNET_CRYPTO_CsS),
+                     &r_pub_dash->r_pub[bdenom_sig->details.blinded_cs_answer.b],
+                     sizeof(struct GNUNET_CRYPTO_CsRPublic));
+
+      denom_sig->cipher = TALER_DENOMINATION_CS;
+      va_end (ap);
+      return GNUNET_OK;
+    }
   default:
     GNUNET_break (0);
   }
@@ -330,16 +360,15 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
     return GNUNET_OK;
   case TALER_DENOMINATION_CS:
     {
-      // TODO: Where to store the blinded rpub? currently ignored
-      struct GNUNET_CRYPTO_CsRPublic blinded_r_pub[2];
-
       va_list ap;
       va_start (ap, blinded_planchet);
       struct TALER_WithdrawNonce *nonce;
       struct TALER_DenominationCsPublicR *r_pub;
+      struct TALER_DenominationCsPublicR *blinded_r_pub;
 
       nonce = va_arg (ap, struct TALER_WithdrawNonce *);
       r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
+      blinded_r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
 
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&nonce->nonce, bs);
@@ -351,7 +380,7 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                                        sizeof(struct GNUNET_HashCode),
                                        blinded_planchet->details.
                                        cs_blinded_planchet.c,
-                                       blinded_r_pub);
+                                       blinded_r_pub->r_pub);
 
       va_end (ap);
       return GNUNET_OK;
@@ -389,7 +418,18 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
       return GNUNET_NO;
     }
     return GNUNET_YES;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_cs_verify (&denom_sig->details.cs_signature,
+                                 &denom_pub->details.cs_public_key,
+                                 c_hash,
+                                 sizeof(*c_hash)))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                  "Coin signature is invalid\n");
+      return GNUNET_NO;
+    }
+    return GNUNET_YES;
   default:
     GNUNET_assert (0);
   }
