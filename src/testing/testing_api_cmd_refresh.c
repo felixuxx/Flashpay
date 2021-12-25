@@ -573,7 +573,6 @@ link_cb (void *cls,
          const struct TALER_DenominationSignature *sigs,
          const struct TALER_DenominationPublicKey *pubs)
 {
-
   struct RefreshLinkState *rls = cls;
   const struct TALER_TESTING_Command *reveal_cmd;
   struct TALER_TESTING_Command *link_cmd = &rls->is->commands[rls->is->ip];

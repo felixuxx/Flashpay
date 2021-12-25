@@ -67,7 +67,6 @@ TEH_RESPONSE_reply_unknown_denom_pub_hash (
  *
  * @param connection connection to the client
  * @param dph denomination public key hash
- * @param now timestamp to use
  * @param ec error code to use
  * @param oper name of the operation that is not allowed at this time
  * @return MHD result code
@@ -76,7 +75,6 @@ MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
   const struct TALER_DenominationHash *dph,
-  struct GNUNET_TIME_Timestamp now,
   enum TALER_ErrorCode ec,
   const char *oper);
 
@@ -90,15 +88,13 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
  * @param connection connection to the client
  * @param ec error code to return
  * @param coin_pub public key of the coin
- * @param tl transaction list to use to build reply
  * @return MHD result code
  */
 MHD_RESULT
 TEH_RESPONSE_reply_coin_insufficient_funds (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_EXCHANGEDB_TransactionList *tl);
+  const struct TALER_CoinSpendPublicKeyP *coin_pub);
 
 
 /**

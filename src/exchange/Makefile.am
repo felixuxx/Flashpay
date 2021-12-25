@@ -102,6 +102,7 @@ taler_exchange_httpd_SOURCES = \
   taler-exchange-httpd_metrics.c taler-exchange-httpd_metrics.h \
   taler-exchange-httpd_mhd.c taler-exchange-httpd_mhd.h \
   taler-exchange-httpd_recoup.c taler-exchange-httpd_recoup.h \
+  taler-exchange-httpd_recoup-refresh.c taler-exchange-httpd_recoup-refresh.h \
   taler-exchange-httpd_refreshes_reveal.c taler-exchange-httpd_refreshes_reveal.h \
   taler-exchange-httpd_refund.c taler-exchange-httpd_refund.h \
   taler-exchange-httpd_reserves_get.c taler-exchange-httpd_reserves_get.h \

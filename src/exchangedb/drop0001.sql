@@ -54,10 +54,21 @@ DROP TABLE IF EXISTS reserves CASCADE;
 DROP TABLE IF EXISTS denomination_revocations CASCADE;
 DROP TABLE IF EXISTS denominations CASCADE;
 
-DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,integer,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
+DROP FUNCTION IF EXISTS exchange_do_withdraw(bigint,int,bytea,bytea,bytea,bytea,bytea,bigint,bigint) ;
 
-DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bigint,bigint,bigint,int) ;
+DROP FUNCTION IF EXISTS exchange_do_withdraw_limit_check(bytea,bigint,bigint,int) ;
 
+DROP FUNCTION IF EXISTS exchange_do_deposit;
+
+DROP FUNCTION IF EXISTS exchange_do_melt;
+
+DROP FUNCTION IF EXISTS exchange_do_refund;
+
+DROP FUNCTION IF EXISTS exchange_do_recoup_to_coin;
+
+DROP FUNCTION IF EXISTS exchange_do_recoup_to_reserve;
+
+-- FIXME: drop other stored functions!
 
 -- And we're out of here...
 COMMIT;

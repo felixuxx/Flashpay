@@ -341,9 +341,12 @@ TEAH_DEPOSIT_CONFIRMATION_init (void)
 void
 TEAH_DEPOSIT_CONFIRMATION_done (void)
 {
-  GNUNET_CONTAINER_multihashmap_destroy (cache);
-  cache = NULL;
-  GNUNET_assert (0 == pthread_mutex_destroy (&lock));
+  if (NULL != cache)
+  {
+    GNUNET_CONTAINER_multihashmap_destroy (cache);
+    cache = NULL;
+    GNUNET_assert (0 == pthread_mutex_destroy (&lock));
+  }
 }
 
 

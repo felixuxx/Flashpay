@@ -43,6 +43,7 @@ libtalerexchange_la_SOURCES = \
   exchange_api_management_wire_enable.c \
   exchange_api_melt.c \
   exchange_api_recoup.c \
+  exchange_api_recoup_refresh.c \
   exchange_api_refresh_common.c exchange_api_refresh_common.h \
   exchange_api_refreshes_reveal.c \
   exchange_api_refund.c \

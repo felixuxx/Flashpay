@@ -2001,23 +2001,19 @@ struct TALER_EXCHANGE_RecoupHandle;
 
 /**
  * Callbacks of this type are used to return the final result of
- * submitting a refresh request to a exchange.  If the operation was
- * successful, this function returns the signatures over the coins
- * that were remelted.  The @a coin_privs and @a sigs arrays give the
- * coins in the same order (and should have the same length) in which
- * the original request specified the respective denomination keys.
+ * submitting a recoup request to a exchange.  If the operation was
+ * successful, this function returns the @a reserve_pub of the
+ * reserve that was credited.
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param reserve_pub public key of the reserve receiving the recoup, NULL if refreshed or on error
- * @param old_coin_pub public key of the dirty coin, NULL if not refreshed or on error
+ * @param reserve_pub public key of the reserve receiving the recoup
  */
 typedef void
 (*TALER_EXCHANGE_RecoupResultCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
-  const struct TALER_ReservePublicKeyP *reserve_pub,
-  const struct TALER_CoinSpendPublicKeyP *old_coin_pub);
+  const struct TALER_ReservePublicKeyP *reserve_pub);
 
 
 /**
@@ -2030,7 +2026,6 @@ typedef void
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param ps secret internals of the original planchet
  * @param amount value remaining on the coin that is being recouped
- * @param was_refreshed true if the coin in @a ps was refreshed
  * @param recoup_cb the callback to call when the final result for this request is available
  * @param recoup_cb_cls closure for @a recoup_cb
  * @return NULL
@@ -2043,7 +2038,6 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_DenominationSignature *denom_sig,
                        const struct TALER_PlanchetSecretsP *ps,
                        const struct TALER_Amount *amount,
-                       bool was_refreshed,
                        TALER_EXCHANGE_RecoupResultCallback recoup_cb,
                        void *recoup_cb_cls);
 
@@ -2056,6 +2050,70 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
  */
 void
 TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph);
+
+
+/* ********************* /recoup-refresh *********************** */
+
+
+/**
+ * @brief A /recoup-refresh Handle
+ */
+struct TALER_EXCHANGE_RecoupRefreshHandle;
+
+
+/**
+ * Callbacks of this type are used to return the final result of
+ * submitting a recoup-refresh request to a exchange.
+ *
+ * @param cls closure
+ * @param hr HTTP response data
+ * @param old_coin_pub public key of the dirty coin that was credited
+ */
+typedef void
+(*TALER_EXCHANGE_RecoupRefreshResultCallback) (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr,
+  const struct TALER_CoinSpendPublicKeyP *old_coin_pub);
+
+
+/**
+ * Ask the exchange to pay back a coin due to the exchange triggering
+ * the emergency recoup protocol for a given denomination.  The value
+ * of the coin will be refunded to the original coin that the
+ * revoked coin was refreshed from. The original coin is then
+ * considered a zombie.
+ *
+ * @param exchange the exchange handle; the exchange must be ready to operate
+ * @param pk kind of coin to pay back
+ * @param denom_sig signature over the coin by the exchange using @a pk
+ * @param ps secret internals of the original planchet
+ * @param amount value remaining on the coin that is being recouped
+ * @param recoup_cb the callback to call when the final result for this request is available
+ * @param recoup_cb_cls closure for @a recoup_cb
+ * @return NULL
+ *         if the inputs are invalid (i.e. denomination key not with this exchange).
+ *         In this case, the callback is not called.
+ */
+struct TALER_EXCHANGE_RecoupRefreshHandle *
+TALER_EXCHANGE_recoup_refresh (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_Amount *amount,
+  TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
+  void *recoup_cb_cls);
+
+
+/**
+ * Cancel a recoup-refresh request.  This function cannot be used on a request
+ * handle if the callback was already invoked.
+ *
+ * @param ph the recoup handle
+ */
+void
+TALER_EXCHANGE_recoup_refresh_cancel (
+  struct TALER_EXCHANGE_RecoupRefreshHandle *ph);
 
 
 /* *********************  /kyc* *********************** */

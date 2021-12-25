@@ -298,6 +298,9 @@ add_deposit (const struct Merchant *m)
 {
   struct Deposit d;
   struct TALER_EXCHANGEDB_Deposit deposit;
+  uint64_t known_coin_id;
+  struct TALER_DenominationHash dph;
+  struct TALER_AgeHash agh;
 
   RANDOMIZE (&d.coin.coin_pub);
   d.coin.denom_pub_hash = h_denom_pub;
@@ -306,7 +309,10 @@ add_deposit (const struct Merchant *m)
 
   if (0 >=
       plugin->ensure_coin_known (plugin->cls,
-                                 &d.coin))
+                                 &d.coin,
+                                 &known_coin_id,
+                                 &dph,
+                                 &agh))
   {
     GNUNET_break (0);
     global_ret = EXIT_FAILURE;

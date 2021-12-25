@@ -36,13 +36,6 @@
  */
 #define MAX_FRESH_COINS 256
 
-/**
- * How often do we at most retry the reveal transaction sequence?
- * Twice should really suffice in all cases (as the possible conflict
- * cannot happen more than once).
- */
-#define MAX_REVEAL_RETRIES 2
-
 
 /**
  * Send a response for "/refreshes/$RCH/reveal".
@@ -53,10 +46,10 @@
  * @return a MHD result code
  */
 static MHD_RESULT
-reply_refreshes_reveal_success (struct MHD_Connection *connection,
-                                unsigned int num_freshcoins,
-                                const struct
-                                TALER_BlindedDenominationSignature *sigs)
+reply_refreshes_reveal_success (
+  struct MHD_Connection *connection,
+  unsigned int num_freshcoins,
+  const struct TALER_BlindedDenominationSignature *sigs)
 {
   json_t *list;
 
@@ -121,157 +114,34 @@ struct RevealContext
   const struct TALER_RefreshCoinData *rcds;
 
   /**
-   * Signatures over the link data (of type
-   * #TALER_SIGNATURE_WALLET_COIN_LINK)
-   */
-  const struct TALER_CoinSpendSignatureP *link_sigs;
-
-  /**
-   * Envelopes with the signatures to be returned.  Initially NULL.
-   */
-  struct TALER_BlindedDenominationSignature *ev_sigs;
-
-  /**
    * Size of the @e dks, @e rcds and @e ev_sigs arrays (if non-NULL).
    */
   unsigned int num_fresh_coins;
-
-  /**
-   * Result from preflight checks. #GNUNET_NO for no result,
-   * #GNUNET_YES if preflight found previous successful operation,
-   * #GNUNET_SYSERR if prefight check failed hard (and generated
-   * an MHD response already).
-   */
-  int preflight_ok;
 
 };
 
 
 /**
- * Function called with information about a refresh order we already
- * persisted.  Stores the result in @a cls so we don't do the calculation
- * again.
- *
- * @param cls closure with a `struct RevealContext`
- * @param num_freshcoins size of the @a rrcs array
- * @param rrcs array of @a num_freshcoins information about coins to be created
- * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
- * @param tprivs array of @e num_tprivs transfer private keys
- * @param tp transfer public key information
- */
-static void
-check_exists_cb (void *cls,
-                 uint32_t num_freshcoins,
-                 const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
-                 unsigned int num_tprivs,
-                 const struct TALER_TransferPrivateKeyP *tprivs,
-                 const struct TALER_TransferPublicKeyP *tp)
-{
-  struct RevealContext *rctx = cls;
-
-  if (0 == num_freshcoins)
-  {
-    GNUNET_break (0);
-    return;
-  }
-  /* This should be a database invariant for us */
-  GNUNET_break (TALER_CNC_KAPPA - 1 == num_tprivs);
-  /* Given that the $RCH value matched, we don't actually need to check these
-     values (we checked before). However, if a client repeats a request with
-     invalid values the 2nd time, that's a protocol violation we should at least
-     log (but it's safe to ignore it). */
-  GNUNET_break_op (0 ==
-                   GNUNET_memcmp (tp,
-                                  &rctx->gamma_tp));
-  GNUNET_break_op (0 ==
-                   memcmp (tprivs,
-                           &rctx->transfer_privs,
-                           sizeof (struct TALER_TransferPrivateKeyP)
-                           * num_tprivs));
-  /* We usually sign early (optimistic!), but in case we change that *and*
-     we do find the operation in the database, we could use this: */
-  if (NULL == rctx->ev_sigs)
-  {
-    rctx->ev_sigs = GNUNET_new_array (num_freshcoins,
-                                      struct TALER_BlindedDenominationSignature);
-    for (unsigned int i = 0; i<num_freshcoins; i++)
-      TALER_blinded_denom_sig_deep_copy (&rctx->ev_sigs[i],
-                                         &rrcs[i].coin_sig);
-  }
-}
-
-
-/**
- * Check if the "/refreshes/$RCH/reveal" request was already successful
- * before.  If so, just return the old result.
- *
- * @param cls closure of type `struct RevealContext`
- * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-refreshes_reveal_preflight (void *cls,
-                            struct MHD_Connection *connection,
-                            MHD_RESULT *mhd_ret)
-{
-  struct RevealContext *rctx = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  /* Try to see if we already have given an answer before. */
-  qs = TEH_plugin->get_refresh_reveal (TEH_plugin->cls,
-                                       &rctx->rc,
-                                       &check_exists_cb,
-                                       rctx);
-  switch (qs)
-  {
-  case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-    return qs; /* continue normal execution */
-  case GNUNET_DB_STATUS_SOFT_ERROR:
-    return qs;
-  case GNUNET_DB_STATUS_HARD_ERROR:
-    GNUNET_break (qs);
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                           "refresh reveal");
-    rctx->preflight_ok = GNUNET_SYSERR;
-    return GNUNET_DB_STATUS_HARD_ERROR;
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-  default:
-    /* Hossa, already found our reply! */
-    GNUNET_assert (NULL != rctx->ev_sigs);
-    rctx->preflight_ok = GNUNET_YES;
-    return qs;
-  }
-}
-
-
-/**
- * Execute a "/refreshes/$RCH/reveal".  The client is revealing to us the
+ * Check client's revelation against the original commitment.
+ * The client is revealing to us the
  * transfer keys for @a #TALER_CNC_KAPPA-1 sets of coins.  Verify that the
  * revealed transfer keys would allow linkage to the blinded coins.
  *
- * IF it returns a non-error code, the transaction logic MUST
- * NOT queue a MHD response.  IF it returns an hard error, the
- * transaction logic MUST queue a MHD response and set @a mhd_ret.  IF
- * it returns the soft error code, the function MAY be called again to
- * retry and MUST not queue a MHD response.
+ * IF it returns #GNUNET_OK, the transaction logic MUST
+ * NOT queue a MHD response.  IF it returns an error, the
+ * transaction logic MUST queue a MHD response and set @a mhd_ret.
  *
- * @param cls closure of type `struct RevealContext`
+ * @param rctx our operation context
  * @param connection MHD request which triggered the transaction
  * @param[out] mhd_ret set to MHD response status for @a connection,
  *             if transaction failed (!)
- * @return transaction status
+ * @return #GNUNET_OK if commitment was OK
  */
-static enum GNUNET_DB_QueryStatus
-refreshes_reveal_transaction (void *cls,
-                              struct MHD_Connection *connection,
-                              MHD_RESULT *mhd_ret)
+static enum GNUNET_GenericReturnValue
+check_commitment (struct RevealContext *rctx,
+                  struct MHD_Connection *connection,
+                  MHD_RESULT *mhd_ret)
 {
-  struct RevealContext *rctx = cls;
-
   /* Verify commitment */
   {
     /* Note that the contents of rcs[melt.session.noreveal_index]
@@ -363,7 +233,7 @@ refreshes_reveal_transaction (void *cls,
           TALER_EC_EXCHANGE_REFRESHES_REVEAL_COMMITMENT_VIOLATION),
         GNUNET_JSON_pack_data_auto ("rc_expected",
                                     &rc_expected));
-      return GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
     }
   } /* end of checking "rc_expected" */
 
@@ -390,7 +260,7 @@ refreshes_reveal_transaction (void *cls,
                                                MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                TALER_EC_EXCHANGE_REFRESHES_REVEAL_COST_CALCULATION_OVERFLOW,
                                                NULL);
-        return GNUNET_DB_STATUS_HARD_ERROR;
+        return GNUNET_SYSERR;
       }
     }
     if (0 < TALER_amount_cmp (&refresh_cost,
@@ -401,60 +271,10 @@ refreshes_reveal_transaction (void *cls,
                                              MHD_HTTP_BAD_REQUEST,
                                              TALER_EC_EXCHANGE_REFRESHES_REVEAL_AMOUNT_INSUFFICIENT,
                                              NULL);
-      return GNUNET_DB_STATUS_HARD_ERROR;
+      return GNUNET_SYSERR;
     }
   }
-  return GNUNET_DB_STATUS_SUCCESS_NO_RESULTS;
-}
-
-
-/**
- * Persist result of a "/refreshes/$RCH/reveal" operation.
- *
- * @param cls closure of type `struct RevealContext`
- * @param connection MHD request which triggered the transaction
- * @param[out] mhd_ret set to MHD response status for @a connection,
- *             if transaction failed (!)
- * @return transaction status
- */
-static enum GNUNET_DB_QueryStatus
-refreshes_reveal_persist (void *cls,
-                          struct MHD_Connection *connection,
-                          MHD_RESULT *mhd_ret)
-{
-  struct RevealContext *rctx = cls;
-  enum GNUNET_DB_QueryStatus qs;
-
-  /* Persist operation result in DB */
-  {
-    struct TALER_EXCHANGEDB_RefreshRevealedCoin rrcs[rctx->num_fresh_coins];
-
-    for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
-    {
-      struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
-
-      rrc->denom_pub = rctx->dks[i]->denom_pub;
-      rrc->orig_coin_link_sig = rctx->link_sigs[i];
-      rrc->coin_ev = rctx->rcds[i].coin_ev;
-      rrc->coin_ev_size = rctx->rcds[i].coin_ev_size;
-      rrc->coin_sig = rctx->ev_sigs[i];
-    }
-    qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
-                                            &rctx->rc,
-                                            rctx->num_fresh_coins,
-                                            rrcs,
-                                            TALER_CNC_KAPPA - 1,
-                                            rctx->transfer_privs,
-                                            &rctx->gamma_tp);
-  }
-  if (GNUNET_DB_STATUS_HARD_ERROR == qs)
-  {
-    *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                           MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                           TALER_EC_GENERIC_DB_STORE_FAILED,
-                                           "refresh_reveal");
-  }
-  return qs;
+  return GNUNET_OK;
 }
 
 
@@ -481,9 +301,18 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   struct TALER_DenominationHash dk_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
-  enum GNUNET_GenericReturnValue res;
+  struct TALER_BlindedDenominationSignature ev_sigs[num_fresh_coins];
   MHD_RESULT ret;
   struct TEH_KeyStateHandle *ksh;
+  uint64_t melt_serial_id;
+
+  rctx->num_fresh_coins = num_fresh_coins;
+  memset (dks, 0, sizeof (dks));
+  memset (rcds, 0, sizeof (rcds));
+  memset (link_sigs, 0, sizeof (link_sigs));
+  memset (ev_sigs, 0, sizeof (ev_sigs));
+  rctx->dks = dks;
+  rctx->rcds = rcds;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
@@ -501,7 +330,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                    &dk_h[i]),
       GNUNET_JSON_spec_end ()
     };
-    MHD_RESULT mret;
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_array (connection,
                                       new_denoms_h_json,
@@ -509,15 +338,13 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                       i,
                                       -1);
     if (GNUNET_OK != res)
-    {
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-    }
     dks[i] = TEH_keys_denomination_by_hash2 (ksh,
                                              &dk_h[i],
                                              connection,
-                                             &mret);
+                                             &ret);
     if (NULL == dks[i])
-      return mret;
+      return ret;
 
     if (GNUNET_TIME_absolute_is_past (dks[i]->meta.expire_withdraw.abs_time))
     {
@@ -525,7 +352,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &dk_h[i],
-        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "REVEAL");
     }
@@ -535,7 +361,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &dk_h[i],
-        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "REVEAL");
     }
@@ -560,6 +385,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                 &rcd->coin_ev_size),
       GNUNET_JSON_spec_end ()
     };
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_array (connection,
                                       coin_evs,
@@ -582,7 +408,8 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
         (qs = TEH_plugin->get_melt (TEH_plugin->cls,
                                     &rctx->rc,
-                                    &rctx->melt)))
+                                    &rctx->melt,
+                                    &melt_serial_id)))
     {
       switch (qs)
       {
@@ -609,8 +436,6 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       }
       goto cleanup;
     }
-    /* Obtain basic information about the refresh operation and what
-       gamma we committed to. */
     if (rctx->melt.session.noreveal_index >= TALER_CNC_KAPPA)
     {
       GNUNET_break (0);
@@ -625,9 +450,11 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
     struct GNUNET_JSON_Specification link_spec[] = {
-      GNUNET_JSON_spec_fixed_auto (NULL, &link_sigs[i]),
+      GNUNET_JSON_spec_fixed_auto (NULL,
+                                   &link_sigs[i]),
       GNUNET_JSON_spec_end ()
     };
+    enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_array (connection,
                                       link_sigs_json,
@@ -656,27 +483,26 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     }
   }
 
-  rctx->num_fresh_coins = num_fresh_coins;
-  rctx->rcds = rcds;
-  rctx->dks = dks;
-  rctx->link_sigs = link_sigs;
+  if (GNUNET_OK !=
+      check_commitment (rctx,
+                        connection,
+                        &ret))
+    goto cleanup;
+
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "Optimistically creating %u signatures\n",
+              "Creating %u signatures\n",
               (unsigned int) rctx->num_fresh_coins);
   /* sign _early_ (optimistic!) to keep out of transaction scope! */
-  rctx->ev_sigs = GNUNET_new_array (rctx->num_fresh_coins,
-                                    struct TALER_BlindedDenominationSignature);
-  // FIXME: this is sequential, modify logic to enable parallel signing!
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
     enum TALER_ErrorCode ec = TALER_EC_NONE;
 
-    rctx->ev_sigs[i]
+    ev_sigs[i]
       = TEH_keys_denomination_sign (
           &dk_h[i],
-          rctx->rcds[i].coin_ev,
-          rctx->rcds[i].coin_ev_size,
+          rcds[i].coin_ev,
+          rcds[i].coin_ev_size,
           &ec);
     if (TALER_EC_NONE != ec)
     {
@@ -687,81 +513,50 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       goto cleanup;
     }
   }
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Signatures ready, starting DB interaction\n");
-  /* We try the three transactions a few times, as theoretically
-     the pre-check might be satisfied by a concurrent transaction
-     voiding our final commit due to uniqueness violation; naturally,
-     on hard errors we exit immediately */
-  for (unsigned int retries = 0; retries < MAX_REVEAL_RETRIES; retries++)
+  /* Persist operation result in DB */
   {
-    /* do transactional work */
-    rctx->preflight_ok = GNUNET_NO;
-    if ( (GNUNET_OK ==
-          TEH_DB_run_transaction (connection,
-                                  "reveal pre-check",
-                                  TEH_MT_REVEAL_PRECHECK,
-                                  &ret,
-                                  &refreshes_reveal_preflight,
-                                  rctx)) &&
-         (GNUNET_YES == rctx->preflight_ok) )
+    struct TALER_EXCHANGEDB_RefreshRevealedCoin rrcs[rctx->num_fresh_coins];
+    enum GNUNET_DB_QueryStatus qs;
+
+    for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
     {
-      /* Generate final (positive) response */
-      GNUNET_assert (NULL != rctx->ev_sigs);
-      ret = reply_refreshes_reveal_success (connection,
-                                            num_fresh_coins,
-                                            rctx->ev_sigs);
-      GNUNET_break (MHD_NO != ret);
-      goto cleanup;   /* aka 'break' */
+      struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
+
+      rrc->h_denom_pub = dk_h[i];
+      rrc->orig_coin_link_sig = link_sigs[i];
+      rrc->coin_ev = rcds[i].coin_ev;
+      rrc->coin_ev_size = rcds[i].coin_ev_size;
+      rrc->coin_sig = ev_sigs[i];
     }
-    if (GNUNET_SYSERR == rctx->preflight_ok)
+    qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
+                                            melt_serial_id,
+                                            num_fresh_coins,
+                                            rrcs,
+                                            TALER_CNC_KAPPA - 1,
+                                            rctx->transfer_privs,
+                                            &rctx->gamma_tp);
+    if (0 > qs)
     {
       GNUNET_break (0);
-      goto cleanup;   /* aka 'break' */
+      ret = TALER_MHD_reply_with_error (connection,
+                                        MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                        TALER_EC_GENERIC_DB_STORE_FAILED,
+                                        "insert_refresh_reveal");
+      goto cleanup;
     }
-    if (GNUNET_OK !=
-        TEH_DB_run_transaction (connection,
-                                "run reveal",
-                                TEH_MT_REVEAL,
-                                &ret,
-                                &refreshes_reveal_transaction,
-                                rctx))
-    {
-      /* reveal failed, too bad */
-      GNUNET_break_op (0);
-      goto cleanup;   /* aka 'break' */
-    }
-    if (GNUNET_OK ==
-        TEH_DB_run_transaction (connection,
-                                "persist reveal",
-                                TEH_MT_REVEAL_PERSIST,
-                                &ret,
-                                &refreshes_reveal_persist,
-                                rctx))
-    {
-      /* Generate final (positive) response */
-      GNUNET_assert (NULL != rctx->ev_sigs);
-      ret = reply_refreshes_reveal_success (connection,
-                                            num_fresh_coins,
-                                            rctx->ev_sigs);
-      break;
-    }
-    /* If we get here, the final transaction failed, possibly
-       due to a conflict between the pre-flight and us persisting
-       the result, so we go again. */
-  }   /* end for (retries...) */
+  }
 
+  /* Generate final (positive) response */
+  ret = reply_refreshes_reveal_success (connection,
+                                        num_fresh_coins,
+                                        ev_sigs);
 cleanup:
   GNUNET_break (MHD_NO != ret);
   /* free resources */
-  if (NULL != rctx->ev_sigs)
-  {
-    for (unsigned int i = 0; i<num_fresh_coins; i++)
-      TALER_blinded_denom_sig_free (&rctx->ev_sigs[i]);
-    GNUNET_free (rctx->ev_sigs);
-    rctx->ev_sigs = NULL; /* just to be safe... */
-  }
+  for (unsigned int i = 0; i<num_fresh_coins; i++)
+    TALER_blinded_denom_sig_free (&ev_sigs[i]);
   for (unsigned int i = 0; i<num_fresh_coins; i++)
     GNUNET_free (rcds[i].coin_ev);
   return ret;
@@ -828,7 +623,8 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
   for (unsigned int i = 0; i<num_tprivs; i++)
   {
     struct GNUNET_JSON_Specification trans_spec[] = {
-      GNUNET_JSON_spec_fixed_auto (NULL, &rctx->transfer_privs[i]),
+      GNUNET_JSON_spec_fixed_auto (NULL,
+                                   &rctx->transfer_privs[i]),
       GNUNET_JSON_spec_end ()
     };
     enum GNUNET_GenericReturnValue res;
@@ -861,11 +657,16 @@ TEH_handler_reveal (struct TEH_RequestContext *rc,
   json_t *new_denoms_h;
   struct RevealContext rctx;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("transfer_pub", &rctx.gamma_tp),
-    GNUNET_JSON_spec_json ("transfer_privs", &transfer_privs),
-    GNUNET_JSON_spec_json ("link_sigs", &link_sigs),
-    GNUNET_JSON_spec_json ("coin_evs", &coin_evs),
-    GNUNET_JSON_spec_json ("new_denoms_h", &new_denoms_h),
+    GNUNET_JSON_spec_fixed_auto ("transfer_pub",
+                                 &rctx.gamma_tp),
+    GNUNET_JSON_spec_json ("transfer_privs",
+                           &transfer_privs),
+    GNUNET_JSON_spec_json ("link_sigs",
+                           &link_sigs),
+    GNUNET_JSON_spec_json ("coin_evs",
+                           &coin_evs),
+    GNUNET_JSON_spec_json ("new_denoms_h",
+                           &new_denoms_h),
     GNUNET_JSON_spec_end ()
   };
 

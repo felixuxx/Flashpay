@@ -32,42 +32,15 @@
  *
  * @param coin the coin to make known
  * @param connection MHD request context
+ * @param[out] known_coin_id set to the unique ID for the coin in the DB
  * @param[out] mhd_ret set to MHD status on error
  * @return transaction status, negative on error (@a mhd_ret will be set in this case)
  */
 enum GNUNET_DB_QueryStatus
 TEH_make_coin_known (const struct TALER_CoinPublicInfo *coin,
                      struct MHD_Connection *connection,
+                     uint64_t *known_coin_id,
                      MHD_RESULT *mhd_ret);
-
-
-/**
- * Check that a coin has an adequate balance so that we can
- * commit the current transaction. If the balance is
- * insufficient for all transactions associated with the
- * coin, return a hard error.
- *
- * We first do a "fast" check using a stored procedure, and
- * only obtain the "full" data on failure (for performance).
- *
- * @param connection HTTP connection to report hard errors on
- * @param coin_pub coin to analyze
- * @param coin_value total value of the original coin (by denomination)
- * @param op_cost cost of the current operation (for error reporting)
- * @param check_recoup should we include recoup transactions in the check
- * @param zombie_required additional requirement that the coin must
- *          be a zombie coin, or also hard failure
- * @param[out] mhd_ret set to response status code, on hard error only
- * @return transaction status
- */
-enum GNUNET_DB_QueryStatus
-TEH_check_coin_balance (struct MHD_Connection *connection,
-                        const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                        const struct TALER_Amount *coin_value,
-                        const struct TALER_Amount *op_cost,
-                        bool check_recoup,
-                        bool zombie_required,
-                        MHD_RESULT *mhd_ret);
 
 
 /**

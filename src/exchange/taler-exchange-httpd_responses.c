@@ -122,25 +122,15 @@ TEH_RESPONSE_compile_transaction_history (
       {
         const struct TALER_EXCHANGEDB_MeltListEntry *melt =
           pos->details.melt;
-        struct TALER_RefreshMeltCoinAffirmationPS ms = {
-          .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT),
-          .purpose.size = htonl (sizeof (ms)),
-          .rc = melt->rc,
-          .h_denom_pub = melt->h_denom_pub,
-          .coin_pub = *coin_pub
-        };
 
-        TALER_amount_hton (&ms.amount_with_fee,
-                           &melt->amount_with_fee);
-        TALER_amount_hton (&ms.melt_fee,
-                           &melt->melt_fee);
 #if ENABLE_SANITY_CHECKS
-        /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                        &ms,
-                                        &melt->coin_sig.eddsa_signature,
-                                        &coin_pub->eddsa_pub))
+            TALER_wallet_melt_verify (&melt->amount_with_fee,
+                                      &melt->melt_fee,
+                                      &melt->rc,
+                                      &melt->h_denom_pub,
+                                      coin_pub,
+                                      &melt->coin_sig))
         {
           GNUNET_break (0);
           json_decref (history);
@@ -175,6 +165,7 @@ TEH_RESPONSE_compile_transaction_history (
         const struct TALER_EXCHANGEDB_RefundListEntry *refund =
           pos->details.refund;
         struct TALER_Amount value;
+        // FIXME: move to libtalerutil!
         struct TALER_RefundRequestPS rr = {
           .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
           .purpose.size = htonl (sizeof (rr)),
@@ -461,13 +452,14 @@ MHD_RESULT
 TEH_RESPONSE_reply_expired_denom_pub_hash (
   struct MHD_Connection *connection,
   const struct TALER_DenominationHash *dph,
-  struct GNUNET_TIME_Timestamp now,
   enum TALER_ErrorCode ec,
   const char *oper)
 {
   struct TALER_ExchangePublicKeyP epub;
   struct TALER_ExchangeSignatureP esig;
   enum TALER_ErrorCode ecr;
+  struct GNUNET_TIME_Timestamp now
+    = GNUNET_TIME_timestamp_get ();
   struct TALER_DenominationExpiredAffirmationPS dua = {
     .purpose.size = htonl (sizeof (dua)),
     .purpose.purpose = htonl (
@@ -525,13 +517,31 @@ MHD_RESULT
 TEH_RESPONSE_reply_coin_insufficient_funds (
   struct MHD_Connection *connection,
   enum TALER_ErrorCode ec,
-  const struct TALER_CoinSpendPublicKeyP *coin_pub,
-  const struct TALER_EXCHANGEDB_TransactionList *tl)
+  const struct TALER_CoinSpendPublicKeyP *coin_pub)
 {
+  struct TALER_EXCHANGEDB_TransactionList *tl;
+  enum GNUNET_DB_QueryStatus qs;
   json_t *history;
+
+  // FIXME: maybe start read-committed transaction here?
+  // => check all callers (that they aborted already!)
+  qs = TEH_plugin->get_coin_transactions (TEH_plugin->cls,
+                                          coin_pub,
+                                          GNUNET_NO,
+                                          &tl);
+  if (0 > qs)
+  {
+    return TALER_MHD_reply_with_error (
+      connection,
+      MHD_HTTP_INTERNAL_SERVER_ERROR,
+      TALER_EC_GENERIC_DB_FETCH_FAILED,
+      NULL);
+  }
 
   history = TEH_RESPONSE_compile_transaction_history (coin_pub,
                                                       tl);
+  TEH_plugin->free_coin_transaction_list (TEH_plugin->cls,
+                                          tl);
   if (NULL == history)
   {
     GNUNET_break (0);
@@ -542,7 +552,7 @@ TEH_RESPONSE_reply_coin_insufficient_funds (
   }
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
-    MHD_HTTP_CONFLICT,
+    TALER_ErrorCode_get_http_status_safe (ec),
     TALER_JSON_pack_ec (ec),
     GNUNET_JSON_pack_array_steal ("history",
                                   history));

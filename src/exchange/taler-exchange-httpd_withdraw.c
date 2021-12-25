@@ -94,7 +94,7 @@ struct WithdrawContext
   /**
    * Blinded planchet.
    */
-  char *blinded_msg;
+  void *blinded_msg;
 
   /**
    * Number of bytes in @e blinded_msg.
@@ -141,6 +141,7 @@ withdraw_transaction (void *cls,
   bool found = false;
   bool balance_ok = false;
   struct GNUNET_TIME_Timestamp now;
+  uint64_t ruuid;
 
   now = GNUNET_TIME_timestamp_get ();
   wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
@@ -150,7 +151,8 @@ withdraw_transaction (void *cls,
                                 now,
                                 &found,
                                 &balance_ok,
-                                &wc->kyc);
+                                &wc->kyc,
+                                &ruuid);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -174,6 +176,7 @@ withdraw_transaction (void *cls,
     struct TALER_Amount balance;
 
     TEH_plugin->rollback (TEH_plugin->cls);
+    // FIXME: maybe start read-committed here?
     if (GNUNET_OK !=
         TEH_plugin->start (TEH_plugin->cls,
                            "get_reserve_history on insufficient balance"))
@@ -232,7 +235,7 @@ withdraw_transaction (void *cls,
 
     qs2 = TEH_plugin->do_withdraw_limit_check (
       TEH_plugin->cls,
-      &wc->collectable.reserve_pub,
+      ruuid,
       GNUNET_TIME_absolute_subtract (now.abs_time,
                                      TEH_kyc_config.withdraw_period),
       &TEH_kyc_config.withdraw_limit,
@@ -249,6 +252,7 @@ withdraw_transaction (void *cls,
     }
     if (! below_limit)
     {
+      TEH_plugin->rollback (TEH_plugin->cls);
       *mhd_ret = TALER_MHD_REPLY_JSON_PACK (
         connection,
         MHD_HTTP_ACCEPTED,
@@ -313,7 +317,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   struct WithdrawContext wc;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_varsize ("coin_ev",
-                              (void **) &wc.blinded_msg,
+                              &wc.blinded_msg,
                               &wc.blinded_msg_len),
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &wc.collectable.reserve_sig),
@@ -398,7 +402,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
           &wc.collectable.denom_pub_hash,
-          GNUNET_TIME_timestamp_get (),
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
           "WITHDRAW");
       }
@@ -413,7 +416,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
         &wc.collectable.denom_pub_hash,
-        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "WITHDRAW");
     }
@@ -428,7 +430,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
         return TEH_RESPONSE_reply_expired_denom_pub_hash (
           rc->connection,
           &wc.collectable.denom_pub_hash,
-          GNUNET_TIME_timestamp_get (),
           TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
           "WITHDRAW");
       }
@@ -437,22 +438,21 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     }
   }
 
+  if (0 >
+      TALER_amount_add (&wc.collectable.amount_with_fee,
+                        &dk->meta.value,
+                        &dk->meta.fee_withdraw))
   {
-    if (0 >
-        TALER_amount_add (&wc.collectable.amount_with_fee,
-                          &dk->meta.value,
-                          &dk->meta.fee_withdraw))
-    {
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
-                                         NULL);
-    }
-    TALER_amount_hton (&wc.wsrd.amount_with_fee,
-                       &wc.collectable.amount_with_fee);
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
+                                       NULL);
   }
+  TALER_amount_hton (&wc.wsrd.amount_with_fee,
+                     &wc.collectable.amount_with_fee);
 
+  // FIXME: move this logic into libtalerutil!
   /* verify signature! */
   wc.wsrd.purpose.size
     = htonl (sizeof (wc.wsrd));
@@ -495,7 +495,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                     NULL);
   }
 
-  /* run transaction and sign (if not optimistically signed before) */
+  /* run transaction */
   {
     MHD_RESULT mhd_ret;
 

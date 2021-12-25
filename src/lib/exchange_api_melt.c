@@ -213,15 +213,10 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
                                       const json_t *json)
 {
   json_t *history;
-  struct TALER_Amount original_value;
-  struct TALER_Amount melt_value_with_fee;
   struct TALER_Amount total;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_json ("history", &history),
-    GNUNET_JSON_spec_fixed_auto ("coin_pub", &coin_pub),
-    TALER_JSON_spec_amount_any ("original_value", &original_value),
-    TALER_JSON_spec_amount_any ("requested_value", &melt_value_with_fee),
+    GNUNET_JSON_spec_json ("history",
+                           &history),
     GNUNET_JSON_spec_end ()
   };
   const struct MeltedCoin *mc;
@@ -240,25 +235,6 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
 
   /* Find out which coin was deemed problematic by the exchange */
   mc = &mh->md->melted_coin;
-
-  /* check basic coin properties */
-  if (0 != TALER_amount_cmp (&original_value,
-                             &mc->original_value))
-  {
-    /* We disagree on the value of the coin */
-    GNUNET_break_op (0);
-    json_decref (history);
-    return GNUNET_SYSERR;
-  }
-  if (0 != TALER_amount_cmp (&melt_value_with_fee,
-                             &mc->melt_amount_with_fee))
-  {
-    /* We disagree on the value of the coin */
-    GNUNET_break_op (0);
-    json_decref (history);
-    return GNUNET_SYSERR;
-  }
-
   /* verify coin history */
   memset (&h_denom_pub,
           0,
@@ -267,8 +243,8 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
                              "history");
   if (GNUNET_OK !=
       TALER_EXCHANGE_verify_coin_history (&mh->dki,
-                                          original_value.currency,
-                                          &coin_pub,
+                                          mc->original_value.currency,
+                                          &mh->coin_pub,
                                           history,
                                           &h_denom_pub,
                                           &total))
@@ -287,7 +263,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
     if (0 >
         TALER_amount_add (&total,
                           &total,
-                          &melt_value_with_fee))
+                          &mc->melt_amount_with_fee))
     {
       /* clearly not OK if our transaction would have caused
          the overflow... */
@@ -295,7 +271,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
     }
 
     if (0 >= TALER_amount_cmp (&total,
-                               &original_value))
+                               &mc->original_value))
     {
       /* transaction should have still fit */
       GNUNET_break (0);
@@ -488,7 +464,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                                       &coin_pub.eddsa_pub);
   melt_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
-                                &melt.h_denom_pub),
+                                &h_denom_pub),
     TALER_JSON_pack_denom_sig ("denom_sig",
                                &md->melted_coin.sig),
     GNUNET_JSON_pack_data_auto ("confirm_sig",
@@ -496,13 +472,13 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     TALER_JSON_pack_amount ("value_with_fee",
                             &md->melted_coin.melt_amount_with_fee),
     GNUNET_JSON_pack_data_auto ("rc",
-                                &melt.rc));
+                                &md->rc));
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
-      &melt.coin_pub,
+      &coin_pub,
       sizeof (struct TALER_CoinSpendPublicKeyP),
       pub_str,
       sizeof (pub_str));
@@ -520,7 +496,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   /* and now we can at last begin the actual request handling */
   mh = GNUNET_new (struct TALER_EXCHANGE_MeltHandle);
   mh->exchange = exchange;
-  mh->coin_pub = melt.coin_pub;
+  mh->coin_pub = coin_pub;
   mh->dki = *dki;
   memset (&mh->dki.key,
           0,

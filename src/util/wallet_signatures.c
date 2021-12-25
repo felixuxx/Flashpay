@@ -107,6 +107,7 @@ TALER_wallet_deposit_verify (
 void
 TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
                         const struct TALER_TransferPublicKeyP *transfer_pub,
+                        // FIXME: consider passing hash!
                         const void *coin_ev,
                         size_t coin_ev_size,
                         const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
@@ -132,6 +133,7 @@ enum GNUNET_GenericReturnValue
 TALER_wallet_link_verify (
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_TransferPublicKeyP *transfer_pub,
+  // FIXME: consider passing hash!
   const void *coin_ev,
   size_t coin_ev_size,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
@@ -189,6 +191,53 @@ TALER_wallet_recoup_sign (
 {
   struct TALER_RecoupRequestPS pr = {
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP),
+    .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
+    .h_denom_pub = *h_denom_pub,
+    .coin_blind = *coin_bks
+  };
+
+  TALER_amount_hton (&pr.recoup_amount,
+                     requested_amount);
+  GNUNET_CRYPTO_eddsa_sign (&coin_priv->eddsa_priv,
+                            &pr,
+                            &coin_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_recoup_refresh_verify (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_Amount *requested_amount,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_RecoupRequestPS pr = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP_REFRESH),
+    .purpose.size = htonl (sizeof (pr)),
+    .h_denom_pub = *h_denom_pub,
+    .coin_blind = *coin_bks
+  };
+
+  TALER_amount_hton (&pr.recoup_amount,
+                     requested_amount);
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_RECOUP_REFRESH,
+                                     &pr,
+                                     &coin_sig->eddsa_signature,
+                                     &coin_pub->eddsa_pub);
+}
+
+
+void
+TALER_wallet_recoup_refresh_sign (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_Amount *requested_amount,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CoinSpendSignatureP *coin_sig)
+{
+  struct TALER_RecoupRequestPS pr = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_RECOUP_REFRESH),
     .purpose.size = htonl (sizeof (struct TALER_RecoupRequestPS)),
     .h_denom_pub = *h_denom_pub,
     .coin_blind = *coin_bks

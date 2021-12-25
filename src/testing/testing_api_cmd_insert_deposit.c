@@ -235,26 +235,35 @@ insert_deposit_run (void *cls,
   deposit.wire_deadline = GNUNET_TIME_relative_to_timestamp (
     ids->wire_deadline);
   /* finally, actually perform the DB operation */
-  if ( (GNUNET_OK !=
-        ids->dbc->plugin->start (ids->dbc->plugin->cls,
-                                 "libtalertesting: insert deposit")) ||
-       (0 >
-        ids->dbc->plugin->ensure_coin_known (ids->dbc->plugin->cls,
-                                             &deposit.coin)) ||
-       (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-        ids->dbc->plugin->insert_deposit (ids->dbc->plugin->cls,
-                                          ids->exchange_timestamp,
-                                          &deposit)) ||
-       (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-        ids->dbc->plugin->commit (ids->dbc->plugin->cls)) )
   {
-    GNUNET_break (0);
-    ids->dbc->plugin->rollback (ids->dbc->plugin->cls);
-    GNUNET_free (deposit.receiver_wire_account);
-    TALER_denom_pub_free (&dpk);
-    TALER_denom_priv_free (&denom_priv);
-    TALER_TESTING_interpreter_fail (is);
-    return;
+    uint64_t known_coin_id;
+    struct TALER_DenominationHash dph;
+    struct TALER_AgeHash agh;
+
+    if ( (GNUNET_OK !=
+          ids->dbc->plugin->start (ids->dbc->plugin->cls,
+                                   "libtalertesting: insert deposit")) ||
+         (0 >
+          ids->dbc->plugin->ensure_coin_known (ids->dbc->plugin->cls,
+                                               &deposit.coin,
+                                               &known_coin_id,
+                                               &dph,
+                                               &agh)) ||
+         (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          ids->dbc->plugin->insert_deposit (ids->dbc->plugin->cls,
+                                            ids->exchange_timestamp,
+                                            &deposit)) ||
+         (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+          ids->dbc->plugin->commit (ids->dbc->plugin->cls)) )
+    {
+      GNUNET_break (0);
+      ids->dbc->plugin->rollback (ids->dbc->plugin->cls);
+      GNUNET_free (deposit.receiver_wire_account);
+      TALER_denom_pub_free (&dpk);
+      TALER_denom_priv_free (&denom_priv);
+      TALER_TESTING_interpreter_fail (is);
+      return;
+    }
   }
 
   TALER_denom_sig_free (&deposit.coin.denom_sig);

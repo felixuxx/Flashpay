@@ -47,6 +47,7 @@
  * @param connection connection to the client
  * @param coin_pub public key of the coin
  * @param h_wire hash of wire details
+ * @param h_extensions hash of applicable extensions
  * @param h_contract_terms hash of contract details
  * @param exchange_timestamp exchange's timestamp
  * @param refund_deadline until when this deposit be refunded
@@ -118,23 +119,21 @@ struct DepositContext
 
   /**
    * Our timestamp (when we received the request).
+   * Possibly updated by the transaction if the
+   * request is idempotent (was repeated).
    */
   struct GNUNET_TIME_Timestamp exchange_timestamp;
 
   /**
-   * Calculated hash over the wire details.
+   * Hash of the payto URI.
    */
-  struct TALER_MerchantWireHash h_wire;
+  struct TALER_PaytoHash h_payto;
 
   /**
-   * Value of the coin.
+   * Row of of the coin in the known_coins table.
    */
-  struct TALER_Amount value;
+  uint64_t known_coin_id;
 
-  /**
-   * payto:// URI of the credited account.
-   */
-  const char *payto_uri;
 };
 
 
@@ -157,15 +156,18 @@ deposit_transaction (void *cls,
                      MHD_RESULT *mhd_ret)
 {
   struct DepositContext *dc = cls;
-  const struct TALER_EXCHANGEDB_Deposit *deposit = dc->deposit;
-  struct TALER_Amount spent;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_Amount deposit_fee;
+  bool balance_ok;
+  bool in_conflict;
 
-  /* begin optimistically: assume this is a new deposit */
-  qs = TEH_plugin->insert_deposit (TEH_plugin->cls,
-                                   dc->exchange_timestamp,
-                                   deposit);
+  qs = TEH_plugin->do_deposit (TEH_plugin->cls,
+                               dc->deposit,
+                               dc->known_coin_id,
+                               &dc->h_payto,
+                               false, /* FIXME-OEC: extension blocked */
+                               &dc->exchange_timestamp,
+                               &balance_ok,
+                               &in_conflict);
   if (qs < 0)
   {
     if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
@@ -174,73 +176,30 @@ deposit_transaction (void *cls,
     *mhd_ret = TALER_MHD_reply_with_error (connection,
                                            MHD_HTTP_INTERNAL_SERVER_ERROR,
                                            TALER_EC_GENERIC_DB_STORE_FAILED,
-                                           NULL);
+                                           "deposit");
     return qs;
   }
-  if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
+  if (in_conflict)
   {
-    /* Check for idempotency: did we get this request before? */
-    qs = TEH_plugin->have_deposit (TEH_plugin->cls,
-                                   deposit,
-                                   &deposit_fee,
-                                   &dc->exchange_timestamp);
-    if (qs < 0)
-    {
-      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
-        return qs;
-      *mhd_ret = TALER_MHD_reply_with_error (connection,
-                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                             TALER_EC_GENERIC_DB_FETCH_FAILED,
-                                             "have_deposit");
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-    if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
-    {
-      /* Conflict on insert, but record does not exist?
-         That makes no sense. */
-      GNUNET_break (0);
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
-
-    {
-      struct TALER_Amount amount_without_fee;
-
-      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "/deposit replay, accepting again!\n");
-      GNUNET_assert (0 <=
-                     TALER_amount_subtract (&amount_without_fee,
-                                            &deposit->amount_with_fee,
-                                            &deposit_fee));
-      *mhd_ret = reply_deposit_success (connection,
-                                        &deposit->coin.coin_pub,
-                                        &dc->h_wire,
-                                        NULL /* h_extensions! */,
-                                        &deposit->h_contract_terms,
-                                        dc->exchange_timestamp,
-                                        deposit->refund_deadline,
-                                        deposit->wire_deadline,
-                                        &deposit->merchant_pub,
-                                        &amount_without_fee);
-      /* Note: we return "hard error" to ensure the wrapper
-         does not retry the transaction, and to also not generate
-         a "fresh" response (as we would on "success") */
-      return GNUNET_DB_STATUS_HARD_ERROR;
-    }
+    TEH_plugin->rollback (TEH_plugin->cls);
+    *mhd_ret
+      = TEH_RESPONSE_reply_coin_insufficient_funds (
+          connection,
+          TALER_EC_EXCHANGE_DEPOSIT_CONFLICTING_CONTRACT,
+          &dc->deposit->coin.coin_pub);
+    return GNUNET_DB_STATUS_HARD_ERROR;
   }
-
-  /* Start with zero cost, as we already added this melt transaction
-     to the DB, so we will see it again during the queries below. */
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_amount_set_zero (TEH_currency,
-                                        &spent));
-
-  return TEH_check_coin_balance (connection,
-                                 &deposit->coin.coin_pub,
-                                 &dc->value,
-                                 &deposit->amount_with_fee,
-                                 false, /* no need for recoup */
-                                 false, /* no need for zombie */
-                                 mhd_ret);
+  if (! balance_ok)
+  {
+    TEH_plugin->rollback (TEH_plugin->cls);
+    *mhd_ret
+      = TEH_RESPONSE_reply_coin_insufficient_funds (
+          connection,
+          TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS,
+          &dc->deposit->coin.coin_pub);
+    return GNUNET_DB_STATUS_HARD_ERROR;
+  }
+  return qs;
 }
 
 
@@ -263,9 +222,10 @@ TEH_handler_deposit (struct MHD_Connection *connection,
 {
   struct DepositContext dc;
   struct TALER_EXCHANGEDB_Deposit deposit;
+  const char *payto_uri;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("merchant_payto_uri",
-                             &dc.payto_uri),
+                             &payto_uri),
     GNUNET_JSON_spec_fixed_auto ("wire_salt",
                                  &deposit.wire_salt),
     TALER_JSON_spec_amount ("contribution",
@@ -290,6 +250,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                 &deposit.wire_deadline),
     GNUNET_JSON_spec_end ()
   };
+  struct TALER_MerchantWireHash h_wire;
 
   memset (&deposit,
           0,
@@ -316,7 +277,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   {
     char *emsg;
 
-    emsg = TALER_payto_validate (dc.payto_uri);
+    emsg = TALER_payto_validate (payto_uri);
     if (NULL != emsg)
     {
       MHD_RESULT ret;
@@ -331,7 +292,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
       return ret;
     }
   }
-  deposit.receiver_wire_account = (char *) dc.payto_uri;
   if (GNUNET_TIME_timestamp_cmp (deposit.refund_deadline,
                                  >,
                                  deposit.wire_deadline))
@@ -343,9 +303,12 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                        TALER_EC_EXCHANGE_DEPOSIT_REFUND_DEADLINE_AFTER_WIRE_DEADLINE,
                                        NULL);
   }
-  TALER_merchant_wire_signature_hash (dc.payto_uri,
+  deposit.receiver_wire_account = (char *) payto_uri;
+  TALER_payto_hash (payto_uri,
+                    &dc.h_payto);
+  TALER_merchant_wire_signature_hash (payto_uri,
                                       &deposit.wire_salt,
-                                      &dc.h_wire);
+                                      &h_wire);
   dc.deposit = &deposit;
 
   /* new deposit */
@@ -366,42 +329,30 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     if (GNUNET_TIME_absolute_is_past (dk->meta.expire_deposit.abs_time))
     {
       /* This denomination is past the expiration time for deposits */
-      struct GNUNET_TIME_Timestamp now;
-
-      now = GNUNET_TIME_timestamp_get ();
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &deposit.coin.denom_pub_hash,
-        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "DEPOSIT");
     }
     if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
     {
       /* This denomination is not yet valid */
-      struct GNUNET_TIME_Timestamp now;
-
-      now = GNUNET_TIME_timestamp_get ();
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &deposit.coin.denom_pub_hash,
-        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "DEPOSIT");
     }
     if (dk->recoup_possible)
     {
-      struct GNUNET_TIME_Timestamp now;
-
-      now = GNUNET_TIME_timestamp_get ();
       /* This denomination has been revoked */
       GNUNET_JSON_parse_free (spec);
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
         &deposit.coin.denom_pub_hash,
-        now,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
         "DEPOSIT");
     }
@@ -419,7 +370,6 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                          TALER_EC_EXCHANGE_DENOMINATION_SIGNATURE_INVALID,
                                          NULL);
     }
-    dc.value = dk->meta.value;
   }
   if (0 < TALER_amount_cmp (&deposit.deposit_fee,
                             &deposit.amount_with_fee))
@@ -435,7 +385,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
   if (GNUNET_OK !=
       TALER_wallet_deposit_verify (&deposit.amount_with_fee,
                                    &deposit.deposit_fee,
-                                   &dc.h_wire,
+                                   &h_wire,
                                    &deposit.h_contract_terms,
                                    NULL /* h_extensions! */,
                                    &deposit.coin.denom_pub_hash,
@@ -470,6 +420,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     /* make sure coin is 'known' in database */
     qs = TEH_make_coin_known (&deposit.coin,
                               connection,
+                              &dc.known_coin_id,
                               &mhd_ret);
     /* no transaction => no serialization failures should be possible */
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR != qs);
@@ -506,7 +457,7 @@ TEH_handler_deposit (struct MHD_Connection *connection,
                                           &deposit.deposit_fee));
     res = reply_deposit_success (connection,
                                  &deposit.coin.coin_pub,
-                                 &dc.h_wire,
+                                 &h_wire,
                                  NULL /* h_extensions! */,
                                  &deposit.h_contract_terms,
                                  dc.exchange_timestamp,

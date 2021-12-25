@@ -408,9 +408,9 @@ lrbt_cb_table_reserves_out (void *cls,
       TALER_PQ_result_spec_blinded_denom_sig (
         "denom_sig",
         &td.details.reserves_out.denom_sig),
-      GNUNET_PQ_result_spec_auto_from_type (
-        "reserve_pub",
-        &td.details.reserves_out.reserve_pub),
+      GNUNET_PQ_result_spec_uint64 (
+        "reserve_uuid",
+        &td.details.reserves_out.reserve_uuid),
       GNUNET_PQ_result_spec_auto_from_type (
         "reserve_sig",
         &td.details.reserves_out.reserve_sig),
@@ -732,9 +732,9 @@ lrbt_cb_table_refresh_commitments (void *cls,
       GNUNET_PQ_result_spec_uint32 (
         "noreveal_index",
         &td.details.refresh_commitments.noreveal_index),
-      GNUNET_PQ_result_spec_uint64 (
-        "old_known_coin_id",
-        &td.details.refresh_commitments.old_known_coin_id),
+      GNUNET_PQ_result_spec_auto_from_type (
+        "old_coin_pub",
+        &td.details.refresh_commitments.old_coin_pub),
       GNUNET_PQ_result_spec_end
     };
 
@@ -1219,7 +1219,7 @@ lrbt_cb_table_recoup (void *cls,
                                             &td.details.recoup.coin_blind),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &td.details.recoup.amount),
-      GNUNET_PQ_result_spec_timestamp ("timestamp",
+      GNUNET_PQ_result_spec_timestamp ("recoup_timestamp",
                                        &td.details.recoup.timestamp),
       GNUNET_PQ_result_spec_uint64 ("known_coin_id",
                                     &td.details.recoup.known_coin_id),
@@ -1274,7 +1274,7 @@ lrbt_cb_table_recoup_refresh (void *cls,
         &td.details.recoup_refresh.coin_blind),
       TALER_PQ_RESULT_SPEC_AMOUNT ("amount",
                                    &td.details.recoup_refresh.amount),
-      GNUNET_PQ_result_spec_timestamp ("timestamp",
+      GNUNET_PQ_result_spec_timestamp ("recoup_timestamp",
                                        &td.details.recoup_refresh.timestamp),
       GNUNET_PQ_result_spec_uint64 ("known_coin_id",
                                     &td.details.recoup_refresh.known_coin_id),

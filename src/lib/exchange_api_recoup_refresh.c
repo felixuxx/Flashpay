@@ -15,8 +15,8 @@
   <http://www.gnu.org/licenses/>
 */
 /**
- * @file lib/exchange_api_recoup.c
- * @brief Implementation of the /recoup request of the exchange's HTTP API
+ * @file lib/exchange_api_recoup_refresh.c
+ * @brief Implementation of the /recoup-refresh request of the exchange's HTTP API
  * @author Christian Grothoff
  */
 #include "platform.h"
@@ -35,7 +35,7 @@
 /**
  * @brief A Recoup Handle
  */
-struct TALER_EXCHANGE_RecoupHandle
+struct TALER_EXCHANGE_RecoupRefreshHandle
 {
 
   /**
@@ -67,7 +67,7 @@ struct TALER_EXCHANGE_RecoupHandle
   /**
    * Function to call with the result.
    */
-  TALER_EXCHANGE_RecoupResultCallback cb;
+  TALER_EXCHANGE_RecoupRefreshResultCallback cb;
 
   /**
    * Closure for @a cb.
@@ -83,7 +83,7 @@ struct TALER_EXCHANGE_RecoupHandle
 
 
 /**
- * Parse a recoup response.  If it is valid, call the callback.
+ * Parse a recoup-refresh response.  If it is valid, call the callback.
  *
  * @param ph recoup handle
  * @param json json reply with the signature
@@ -91,13 +91,14 @@ struct TALER_EXCHANGE_RecoupHandle
  *         #GNUNET_SYSERR if not (callback must still be called)
  */
 static enum GNUNET_GenericReturnValue
-process_recoup_response (const struct TALER_EXCHANGE_RecoupHandle *ph,
-                         const json_t *json)
+process_recoup_response (
+  const struct TALER_EXCHANGE_RecoupRefreshHandle *ph,
+  const json_t *json)
 {
-  struct TALER_ReservePublicKeyP reserve_pub;
-  struct GNUNET_JSON_Specification spec_withdraw[] = {
-    GNUNET_JSON_spec_fixed_auto ("reserve_pub",
-                                 &reserve_pub),
+  struct TALER_CoinSpendPublicKeyP old_coin_pub;
+  struct GNUNET_JSON_Specification spec_refresh[] = {
+    GNUNET_JSON_spec_fixed_auto ("old_coin_pub",
+                                 &old_coin_pub),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_EXCHANGE_HttpResponse hr = {
@@ -107,7 +108,7 @@ process_recoup_response (const struct TALER_EXCHANGE_RecoupHandle *ph,
 
   if (GNUNET_OK !=
       GNUNET_JSON_parse (json,
-                         spec_withdraw,
+                         spec_refresh,
                          NULL, NULL))
   {
     GNUNET_break_op (0);
@@ -115,25 +116,25 @@ process_recoup_response (const struct TALER_EXCHANGE_RecoupHandle *ph,
   }
   ph->cb (ph->cb_cls,
           &hr,
-          &reserve_pub);
+          &old_coin_pub);
   return GNUNET_OK;
 }
 
 
 /**
  * Function called when we're done processing the
- * HTTP /recoup request.
+ * HTTP /recoup-refresh request.
  *
- * @param cls the `struct TALER_EXCHANGE_RecoupHandle`
+ * @param cls the `struct TALER_EXCHANGE_RecoupRefreshHandle`
  * @param response_code HTTP response code, 0 on error
  * @param response parsed JSON result, NULL on error
  */
 static void
-handle_recoup_finished (void *cls,
-                        long response_code,
-                        const void *response)
+handle_recoup_refresh_finished (void *cls,
+                                long response_code,
+                                const void *response)
 {
-  struct TALER_EXCHANGE_RecoupHandle *ph = cls;
+  struct TALER_EXCHANGE_RecoupRefreshHandle *ph = cls;
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
     .reply = j,
@@ -156,7 +157,7 @@ handle_recoup_finished (void *cls,
       hr.http_status = 0;
       break;
     }
-    TALER_EXCHANGE_recoup_cancel (ph);
+    TALER_EXCHANGE_recoup_refresh_cancel (ph);
     return;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
@@ -206,7 +207,7 @@ handle_recoup_finished (void *cls,
              exchange is here. We should look at the key
              structure of ph->exchange, and find the smallest
              _currently withdrawable_ denomination and check
-             if the value remaining would suffice... *///
+             if the value remaining would suffice... */
           GNUNET_break_op (0);
           hr.http_status = 0;
           hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
@@ -234,7 +235,7 @@ handle_recoup_finished (void *cls,
       ph->cb (ph->cb_cls,
               &hr,
               NULL);
-      TALER_EXCHANGE_recoup_cancel (ph);
+      TALER_EXCHANGE_recoup_refresh_cancel (ph);
       return;
     }
   case MHD_HTTP_FORBIDDEN:
@@ -276,20 +277,21 @@ handle_recoup_finished (void *cls,
   ph->cb (ph->cb_cls,
           &hr,
           NULL);
-  TALER_EXCHANGE_recoup_cancel (ph);
+  TALER_EXCHANGE_recoup_refresh_cancel (ph);
 }
 
 
-struct TALER_EXCHANGE_RecoupHandle *
-TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
-                       const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                       const struct TALER_DenominationSignature *denom_sig,
-                       const struct TALER_PlanchetSecretsP *ps,
-                       const struct TALER_Amount *amount,
-                       TALER_EXCHANGE_RecoupResultCallback recoup_cb,
-                       void *recoup_cb_cls)
+struct TALER_EXCHANGE_RecoupRefreshHandle *
+TALER_EXCHANGE_recoup_refresh (
+  struct TALER_EXCHANGE_Handle *exchange,
+  const struct TALER_EXCHANGE_DenomPublicKey *pk,
+  const struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_Amount *amount,
+  TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
+  void *recoup_cb_cls)
 {
-  struct TALER_EXCHANGE_RecoupHandle *ph;
+  struct TALER_EXCHANGE_RecoupRefreshHandle *ph;
   struct GNUNET_CURL_Context *ctx;
   struct TALER_CoinSpendSignatureP coin_sig;
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -304,11 +306,11 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                                       &coin_pub.eddsa_pub);
   TALER_denom_pub_hash (&pk->key,
                         &h_denom_pub);
-  TALER_wallet_recoup_sign (&h_denom_pub,
-                            &ps->blinding_key,
-                            amount,
-                            &ps->coin_priv,
-                            &coin_sig);
+  TALER_wallet_recoup_refresh_sign (&h_denom_pub,
+                                    &ps->blinding_key,
+                                    amount,
+                                    &ps->coin_priv,
+                                    &coin_sig);
   recoup_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &h_denom_pub),
@@ -333,11 +335,11 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
     *end = '\0';
     GNUNET_snprintf (arg_str,
                      sizeof (arg_str),
-                     "/coins/%s/recoup",
+                     "/coins/%s/recoup-refresh",
                      pub_str);
   }
 
-  ph = GNUNET_new (struct TALER_EXCHANGE_RecoupHandle);
+  ph = GNUNET_new (struct TALER_EXCHANGE_RecoupRefreshHandle);
   ph->coin_pub = coin_pub;
   ph->exchange = exchange;
   ph->pk = *pk;
@@ -371,20 +373,21 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   }
   json_decref (recoup_obj);
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
-              "URL for recoup: `%s'\n",
+              "URL for recoup-refresh: `%s'\n",
               ph->url);
   ctx = TEAH_handle_to_context (exchange);
   ph->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   ph->ctx.headers,
-                                  &handle_recoup_finished,
+                                  &handle_recoup_refresh_finished,
                                   ph);
   return ph;
 }
 
 
 void
-TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph)
+TALER_EXCHANGE_recoup_refresh_cancel (
+  struct TALER_EXCHANGE_RecoupRefreshHandle *ph)
 {
   if (NULL != ph->job)
   {
@@ -397,4 +400,4 @@ TALER_EXCHANGE_recoup_cancel (struct TALER_EXCHANGE_RecoupHandle *ph)
 }
 
 
-/* end of exchange_api_recoup.c */
+/* end of exchange_api_recoup_refresh.c */

@@ -42,6 +42,7 @@
 #include "taler-exchange-httpd_metrics.h"
 #include "taler-exchange-httpd_mhd.h"
 #include "taler-exchange-httpd_recoup.h"
+#include "taler-exchange-httpd_recoup-refresh.h"
 #include "taler-exchange-httpd_refreshes_reveal.h"
 #include "taler-exchange-httpd_refund.h"
 #include "taler-exchange-httpd_reserves_get.h"
@@ -255,6 +256,10 @@ handle_post_coins (struct TEH_RequestContext *rc,
     {
       .op = "recoup",
       .handler = &TEH_handler_recoup
+    },
+    {
+      .op = "recoup-refresh",
+      .handler = &TEH_handler_recoup_refresh
     },
     {
       .op = "refund",

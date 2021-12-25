@@ -257,7 +257,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_BlindedCoinHash h_blind_ev;
       uint64_t denominations_serial;
       struct TALER_BlindedDenominationSignature denom_sig;
-      struct TALER_ReservePublicKeyP reserve_pub;
+      uint64_t reserve_uuid;
       struct TALER_ReserveSignatureP reserve_sig;
       struct GNUNET_TIME_Timestamp execution_date;
       struct TALER_Amount amount_with_fee;
@@ -303,7 +303,7 @@ struct TALER_EXCHANGEDB_TableData
     struct
     {
       struct TALER_RefreshCommitmentP rc;
-      uint64_t old_known_coin_id;
+      struct TALER_CoinSpendPublicKeyP old_coin_pub;
       struct TALER_CoinSpendSignatureP old_coin_sig;
       struct TALER_Amount amount_with_fee;
       uint32_t noreveal_index;
@@ -1037,7 +1037,7 @@ struct TALER_EXCHANGEDB_Deposit
 
   /**
    * Additional details for extensions relevant for this
-   * deposit operation.
+   * deposit operation, possibly NULL!
    */
   json_t *extension_details;
 
@@ -1625,9 +1625,9 @@ typedef enum GNUNET_GenericReturnValue
 struct TALER_EXCHANGEDB_RefreshRevealedCoin
 {
   /**
-   * Public denomination key of the coin.
+   * Hash of the public denomination key of the coin.
    */
-  struct TALER_DenominationPublicKey denom_pub;
+  struct TALER_DenominationHash h_denom_pub;
 
   /**
    * Signature of the original coin being refreshed over the
@@ -1725,18 +1725,12 @@ struct TALER_EXCHANGEDB_KycStatus
  * @param cls closure
  * @param num_freshcoins size of the @a rrcs array
  * @param rrcs array of @a num_freshcoins information about coins to be created
- * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
- * @param tprivs array of @e num_tprivs transfer private keys
- * @param tp transfer public key information
  */
 typedef void
 (*TALER_EXCHANGEDB_RefreshCallback)(
   void *cls,
   uint32_t num_freshcoins,
-  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
-  unsigned int num_tprivs,
-  const struct TALER_TransferPrivateKeyP *tprivs,
-  const struct TALER_TransferPublicKeyP *tp);
+  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs);
 
 
 /**
@@ -2401,20 +2395,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Get the KYC status for a bank account.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param payto_uri payto:// URI that identifies the bank account
-   * @param[out] kyc set to the KYC status of the reserve
-   * @return transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*get_kyc_status)(void *cls,
-                    const char *payto_uri,
-                    struct TALER_EXCHANGEDB_KycStatus *kyc);
-
-
-  /**
    * Get the @a kyc status and @a h_payto by UUID.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
@@ -2469,22 +2449,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Obtain the most recent @a wire_reference that was inserted via @e reserves_in_insert.
-   * Used by the wirewatch process when resuming.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param exchange_account_name name of the section in the exchange's configuration
-   *                       for the account that we are tracking here
-   * @param[out] wire_reference set to unique reference identifying the wire transfer
-   * @return transaction status code
-   */
-  enum GNUNET_DB_QueryStatus
-  (*get_latest_reserve_in_reference)(void *cls,
-                                     const char *exchange_account_name,
-                                     uint64_t *wire_reference);
-
-
-  /**
    * Locate the response for a withdraw request under the
    * key of the hash of the blinded message.  Used to ensure
    * idempotency of the request.
@@ -2503,30 +2467,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Check coin balance is sufficient to satisfy balance
-   * invariants.
-   *
-   * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param coin_pub coin to check
-   * @param coin_value value of the coin's denomination (avoids internal lookup)
-   * @param check_recoup include recoup and recoup_refresh tables in calculation
-   * @param zombie_required additionally require coin to be a zombie coin
-   * @param[out] balance_ok set to true if the balance was sufficient
-   * @param[out] zombie_ok set to true if the zombie requirement was satisfied
-   * @return query execution status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*do_check_coin_balance)(
-    void *cls,
-    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-    const struct TALER_Amount *coin_value,
-    bool check_recoup,
-    bool zombie_required,
-    bool *balance_ok,
-    bool *zombie_ok);
-
-
-  /**
    * Perform withdraw operation, checking for sufficient balance
    * and possibly persisting the withdrawal details.
    *
@@ -2537,6 +2477,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] found set to true if the reserve was found
    * @param[out] balance_ok set to true if the balance was sufficient
    * @param[out] kyc set to the KYC status of the reserve
+   * @param[out] ruuid set to the reserve's UUID (reserves table row)
    * @return query execution status
    */
   enum GNUNET_DB_QueryStatus
@@ -2546,7 +2487,8 @@ struct TALER_EXCHANGEDB_Plugin
     struct GNUNET_TIME_Timestamp now,
     bool *found,
     bool *balance_ok,
-    struct TALER_EXCHANGEDB_KycStatus *kyc_ok);
+    struct TALER_EXCHANGEDB_KycStatus *kyc_ok,
+    uint64_t *ruuid);
 
 
   /**
@@ -2554,7 +2496,7 @@ struct TALER_EXCHANGEDB_Plugin
    * checks after withdraw operation.
    *
    * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param reserve_pub reserve to check
+   * @param ruuid identifies the reserve to check
    * @param withdraw_start starting point to accumulate from
    * @param upper_limit maximum amount allowed
    * @param[out] below_limit set to true if the limit was not exceeded
@@ -2563,10 +2505,146 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*do_withdraw_limit_check)(
     void *cls,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
+    uint64_t ruuid,
     struct GNUNET_TIME_Absolute withdraw_start,
     const struct TALER_Amount *upper_limit,
     bool *below_limit);
+
+
+  /**
+   * Perform deposit operation, checking for sufficient balance
+   * of the coin and possibly persisting the deposit details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param deposit deposit operation details
+   * @param known_coin_id row of the coin in the known_coins table
+   * @param h_payto hash of the merchant's payto URI
+   * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
+   * @param[out] balance_ok set to true if the balance was sufficient
+   * @param[out] in_conflict set to true if the deposit conflicted
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_deposit)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_Deposit *deposit,
+    uint64_t known_coin_id,
+    const struct TALER_PaytoHash *h_payto,
+    bool extension_blocked,
+    struct GNUNET_TIME_Timestamp *exchange_timestamp,
+    bool *balance_ok,
+    bool *in_conflict);
+
+
+  /**
+   * Perform melt operation, checking for sufficient balance
+   * of the coin and possibly persisting the melt details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param[in,out] refresh refresh operation details; the noreveal_index
+   *                is set in case the coin was already melted before
+   * @param known_coin_id row of the coin in the known_coins table
+   * @param[in,out] zombie_required true if the melt must only succeed if the coin is a zombie, set to false if the requirement was satisfied
+   * @param[out] balance_ok set to true if the balance was sufficient
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_melt)(
+    void *cls,
+    struct TALER_EXCHANGEDB_Refresh *refresh,
+    uint64_t known_coin_id,
+    bool *zombie_required,
+    bool *balance_ok);
+
+
+  /**
+   * Perform refund operation, checking for sufficient deposits
+   * of the coin and possibly persisting the refund details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param refund refund operation details
+   * @param deposit_fee deposit fee applicable for the coin, possibly refunded
+   * @param known_coin_id row of the coin in the known_coins table
+   * @param[out] not_found set if the deposit was not found
+   * @param[out] refund_ok  set if the refund succeeded (below deposit amount)
+   * @param[out] gone if the merchant was already paid
+   * @param[out] conflict set if the refund ID was re-used
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_refund)(
+    void *cls,
+    const struct TALER_EXCHANGEDB_Refund *refund,
+    const struct TALER_Amount *deposit_fee,
+    uint64_t known_coin_id,
+    bool *not_found,
+    bool *refund_ok,
+    bool *gone,
+    bool *conflict);
+
+
+  /**
+   * Perform recoup operation, checking for sufficient deposits
+   * of the coin and possibly persisting the recoup details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param reserve_pub public key of the reserve to credit
+   * @param reserve_out_serial_id row in the reserves_out table justifying the recoup
+   * @param requested_amount the amount to be recouped
+   * @param coin_bks coin blinding key secret to persist
+   * @param coin_pub public key of the coin being recouped
+   * @param known_coin_id row of the @a coin_pub in the known_coins table
+   * @param coin_sig signature of the coin requesting the recoup
+   * @param[in,out] recoup_timestamp recoup timestamp, set if recoup existed
+   * @param[out] recoup_ok  set if the recoup succeeded (balance ok)
+   * @param[out] internal_failure set on internal failures
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_recoup)(
+    void *cls,
+    const struct TALER_ReservePublicKeyP *reserve_pub,
+    uint64_t reserve_out_serial_id,
+    const struct TALER_Amount *requested_amount,
+    const union TALER_DenominationBlindingKeyP *coin_bks,
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    uint64_t known_coin_id,
+    const struct TALER_CoinSpendSignatureP *coin_sig,
+    struct GNUNET_TIME_Timestamp *recoup_timestamp,
+    bool *recoup_ok,
+    bool *internal_failure);
+
+
+  /**
+   * Perform recoup-refresh operation, checking for sufficient deposits of the
+   * coin and possibly persisting the recoup-refresh details.
+   *
+   * @param cls the `struct PostgresClosure` with the plugin-specific state
+   * @param old_coin_pub public key of the old coin to credit
+   * @param rrc_serial row in the refresh_revealed_coins table justifying the recoup-refresh
+   * @param requested_amount the amount to be recouped
+   * @param coin_bks coin blinding key secret to persist
+   * @param coin_pub public key of the coin being recouped
+   * @param known_coin_id row of the @a coin_pub in the known_coins table
+   * @param coin_sig signature of the coin requesting the recoup
+   * @param[in,out] recoup_timestamp recoup timestamp, set if recoup existed
+   * @param[out] recoup_ok  set if the recoup-refresh succeeded (balance ok)
+   * @param[out] internal_failure set on internal failures
+   * @return query execution status
+   */
+  enum GNUNET_DB_QueryStatus
+  (*do_recoup_refresh)(
+    void *cls,
+    const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+    uint64_t rrc_serial,
+    const struct TALER_Amount *requested_amount,
+    const union TALER_DenominationBlindingKeyP *coin_bks,
+    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+    uint64_t known_coin_id,
+    const struct TALER_CoinSpendSignatureP *coin_sig,
+    struct GNUNET_TIME_Timestamp *recoup_timestamp,
+    bool *recoup_ok,
+    bool *internal_failure);
 
 
   /**
@@ -2584,27 +2662,6 @@ struct TALER_EXCHANGEDB_Plugin
                          const struct TALER_ReservePublicKeyP *reserve_pub,
                          struct TALER_Amount *balance,
                          struct TALER_EXCHANGEDB_ReserveHistory **rhp);
-
-
-  /**
-   * Find out all of the amounts that have been withdrawn
-   * so far from the same bank account that created the
-   * given reserve.
-   *
-   * @param cls closure
-   * @param reserve_pub reserve to select withdrawals by
-   * @param duration how far back should we select withdrawals
-   * @param cb function to call on each amount withdrawn
-   * @param cb_cls closure for @a cb
-   * @return transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*select_withdraw_amounts_by_account)(
-    void *cls,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
-    struct GNUNET_TIME_Relative duration,
-    TALER_EXCHANGEDB_WithdrawHistoryCallback cb,
-    void *cb_cls);
 
 
   /**
@@ -2635,6 +2692,9 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls database connection plugin state
    * @param coin the coin that must be made known
+   * @param[out] known_coin_id set to the unique row of the coin
+   * @param[out] denom_pub_hash set to the conflicting denomination hash on conflict
+   * @param[out] age_hash set to the conflicting age hash on conflict
    * @return database transaction status, non-negative on success
    */
   enum TALER_EXCHANGEDB_CoinKnownStatus
@@ -2662,10 +2722,18 @@ struct TALER_EXCHANGEDB_Plugin
     /**
      * Conflicting coin (different denomination key) already in database.
      */
-    TALER_EXCHANGEDB_CKS_CONFLICT = -3,
+    TALER_EXCHANGEDB_CKS_DENOM_CONFLICT = -3,
+
+    /**
+     * Conflicting coin (different age hash) already in database.
+     */
+    TALER_EXCHANGEDB_CKS_AGE_CONFLICT = -4,
   }
   (*ensure_coin_known)(void *cls,
-                       const struct TALER_CoinPublicInfo *coin);
+                       const struct TALER_CoinPublicInfo *coin,
+                       uint64_t *known_coin_id,
+                       struct TALER_DenominationHash *denom_pub_hash,
+                       struct TALER_AgeHash *age_hash);
 
 
   /**
@@ -2686,31 +2754,15 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the plugin closure
    * @param coin_pub the public key of the coin to search for
+   * @param[out] known_coin_id set to the ID of the coin in the known_coins table
    * @param[out] denom_hash where to store the hash of the coins denomination
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_coin_denomination)(void *cls,
                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                           uint64_t *known_coin_id,
                            struct TALER_DenominationHash *denom_hash);
-
-
-  /**
-   * Check if we have the specified deposit already in the database.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param deposit deposit to search for
-   * @param[out] deposit_fee set to the deposit fee the exchange charged
-   * @param[out] exchange_timestamp set to the time when the exchange received the deposit
-   * @return 1 if we know this operation,
-   *         0 if this exact deposit is unknown to us,
-   *         otherwise transaction error status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*have_deposit)(void *cls,
-                  const struct TALER_EXCHANGEDB_Deposit *deposit,
-                  struct TALER_Amount *deposit_fee,
-                  struct GNUNET_TIME_Timestamp *exchange_timestamp);
 
 
   /**
@@ -2728,6 +2780,7 @@ struct TALER_EXCHANGEDB_Plugin
    *         0 if this exact deposit is unknown to us,
    *         otherwise transaction error status
    */
+  // FIXME: rename!
   enum GNUNET_DB_QueryStatus
   (*have_deposit2)(
     void *cls,
@@ -2742,6 +2795,7 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Insert information about deposited coin into the database.
+   * Used in tests and for benchmarking.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param exchange_timestamp time the exchange received the deposit request
@@ -2756,6 +2810,7 @@ struct TALER_EXCHANGEDB_Plugin
 
   /**
    * Insert information about refunded coin into the database.
+   * Used in tests and for benchmarking.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param refund refund information to store
@@ -2874,18 +2929,6 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Store new melt commitment data.
-   *
-   * @param cls the @e cls of this struct with the plugin-specific state
-   * @param refresh_session operational data to store
-   * @return query status for the transaction
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_melt)(void *cls,
-                 const struct TALER_EXCHANGEDB_Refresh *refresh_session);
-
-
-  /**
    * Lookup melt commitment data under the given @a rc.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
@@ -2893,29 +2936,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @param[out] melt where to store the result; note that
    *             melt->session.coin.denom_sig will be set to NULL
    *             and is not fetched by this routine (as it is not needed by the client)
+   * @param[out] melt_serial_id set to the row ID of @a rc in the refresh_commitments table
    * @return transaction status
    */
   enum GNUNET_DB_QueryStatus
   (*get_melt)(void *cls,
               const struct TALER_RefreshCommitmentP *rc,
-              struct TALER_EXCHANGEDB_Melt *melt);
-
-
-  /**
-   * Lookup noreveal index of a previous melt operation under the given
-   * @a rc.
-   *
-   * @param cls the `struct PostgresClosure` with the plugin-specific state
-   * @param rc commitment hash to use to locate the operation
-   * @param[out] noreveal_index returns the "gamma" value selected by the
-   *             exchange which is the index of the transfer key that is
-   *             not to be revealed to the exchange
-   * @return transaction status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*get_melt_index)(void *cls,
-                    const struct TALER_RefreshCommitmentP *rc,
-                    uint32_t *noreveal_index);
+              struct TALER_EXCHANGEDB_Melt *melt,
+              uint64_t *melt_serial_id);
 
 
   /**
@@ -2924,7 +2952,7 @@ struct TALER_EXCHANGEDB_Plugin
    * we learned or created in the reveal step.
    *
    * @param cls the @e cls of this struct with the plugin-specific state
-   * @param rc identify commitment and thus refresh operation
+   * @param melt_serial_id row ID of the commitment / melt operation in refresh_commitments
    * @param num_rrcs number of coins to generate, size of the @a rrcs array
    * @param rrcs information about the new coins
    * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
@@ -2935,7 +2963,7 @@ struct TALER_EXCHANGEDB_Plugin
   enum GNUNET_DB_QueryStatus
   (*insert_refresh_reveal)(
     void *cls,
-    const struct TALER_RefreshCommitmentP *rc,
+    uint64_t melt_serial_id,
     uint32_t num_rrcs,
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
     unsigned int num_tprivs,
@@ -3461,70 +3489,20 @@ struct TALER_EXCHANGEDB_Plugin
 
 
   /**
-   * Function called to add a request for an emergency recoup for a
-   * coin.  The funds are to be added back to the reserve.
-   *
-   * @param cls closure
-   * @param reserve_pub public key of the reserve that is being refunded
-   * @param coin public information about a coin
-   * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
-   * @param coin_blind blinding key of the coin
-   * @param h_blind_ev blinded envelope, as calculated by the exchange
-   * @param amount total amount to be paid back
-   * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
-   * @param timestamp the timestamp to store
-   * @return transaction result status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_recoup_request)(
-    void *cls,
-    const struct TALER_ReservePublicKeyP *reserve_pub,
-    const struct TALER_CoinPublicInfo *coin,
-    const struct TALER_CoinSpendSignatureP *coin_sig,
-    const union TALER_DenominationBlindingKeyP *coin_blind,
-    const struct TALER_Amount *amount,
-    const struct TALER_BlindedCoinHash *h_blind_ev,
-    struct GNUNET_TIME_Timestamp timestamp);
-
-
-  /**
-   * Function called to add a request for an emergency recoup for a
-   * refreshed coin.  The funds are to be added back to the original coin.
-   *
-   * @param cls closure
-   * @param coin public information about the refreshed coin
-   * @param coin_sig signature of the coin of type #TALER_SIGNATURE_WALLET_COIN_RECOUP
-   * @param coin_blind blinding key of the coin
-   * @param h_blind_ev blinded envelope, as calculated by the exchange
-   * @param amount total amount to be paid back
-   * @param h_blind_ev hash of the blinded coin's envelope (must match reserves_out entry)
-   * @param timestamp a timestamp to store
-   * @return transaction result status
-   */
-  enum GNUNET_DB_QueryStatus
-  (*insert_recoup_refresh_request)(
-    void *cls,
-    const struct TALER_CoinPublicInfo *coin,
-    const struct TALER_CoinSpendSignatureP *coin_sig,
-    const union TALER_DenominationBlindingKeyP *coin_blind,
-    const struct TALER_Amount *amount,
-    const struct TALER_BlindedCoinHash *h_blind_ev,
-    struct GNUNET_TIME_Timestamp timestamp);
-
-
-  /**
    * Obtain information about which reserve a coin was generated
    * from given the hash of the blinded coin.
    *
    * @param cls closure
    * @param h_blind_ev hash of the blinded coin
    * @param[out] reserve_pub set to information about the reserve (on success only)
+   * @param[out] reserve_out_serial_id set to row of the @a h_blind_ev in reserves_out
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_reserve_by_h_blind)(void *cls,
                             const struct TALER_BlindedCoinHash *h_blind_ev,
-                            struct TALER_ReservePublicKeyP *reserve_pub);
+                            struct TALER_ReservePublicKeyP *reserve_pub,
+                            uint64_t *reserve_out_serial_id);
 
 
   /**
@@ -3534,12 +3512,14 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls closure
    * @param h_blind_ev hash of the blinded coin
    * @param[out] old_coin_pub set to information about the old coin (on success only)
+   * @param[out] rrc_serial set to the row of the @a h_blind_ev in the refresh_revealed_coins table
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*get_old_coin_by_h_blind)(void *cls,
                              const struct TALER_BlindedCoinHash *h_blind_ev,
-                             struct TALER_CoinSpendPublicKeyP *old_coin_pub);
+                             struct TALER_CoinSpendPublicKeyP *old_coin_pub,
+                             uint64_t *rrc_serial);
 
 
   /**

@@ -14,8 +14,8 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_recoup.c
- * @brief Handle /recoup requests; parses the POST and JSON and
+ * @file taler-exchange-httpd_recoup-refresh.c
+ * @brief Handle /recoup-refresh requests; parses the POST and JSON and
  *        verifies the coin signature before handing things off
  *        to the database.
  * @author Christian Grothoff
@@ -29,26 +29,23 @@
 #include "taler_json_lib.h"
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_db.h"
-#include "taler-exchange-httpd_recoup.h"
+#include "taler-exchange-httpd_recoup-refresh.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler-exchange-httpd_keys.h"
 #include "taler_exchangedb_lib.h"
 
+
 /**
- * Closure for #recoup_transaction.
+ * Closure for #recoup_refresh_transaction().
  */
 struct RecoupContext
 {
-  /**
-   * Hash of the blinded coin.
-   */
-  struct TALER_BlindedCoinHash h_blind;
 
   /**
-   * Set by #recoup_transaction() to the reserve that will
-   * receive the recoup, if #refreshed is #GNUNET_NO.
+   * Set by #recoup_transaction() to the old coin that will
+   * receive the recoup.
    */
-  struct TALER_ReservePublicKeyP reserve_pub;
+  struct TALER_CoinSpendPublicKeyP old_coin_pub;
 
   /**
    * Details about the coin.
@@ -71,14 +68,14 @@ struct RecoupContext
   const struct TALER_Amount *requested_amount;
 
   /**
-   * Unique ID of the withdraw operation in the reserves_out table.
-   */
-  uint64_t reserve_out_serial_id;
-
-  /**
    * Unique ID of the coin in the known_coins table.
    */
   uint64_t known_coin_id;
+
+  /**
+   * Unique ID of the refresh reveal context of the melt for the new coin.
+   */
+  uint64_t rrc_serial;
 
   /**
    * Set by #recoup_transaction to the timestamp when the recoup
@@ -90,9 +87,9 @@ struct RecoupContext
 
 
 /**
- * Execute a "recoup".  The validity of the coin and signature have
- * already been checked.  The database must now check that the coin is
- * not (double) spent, and execute the transaction.
+ * Execute a "recoup-refresh".  The validity of the coin and signature have
+ * already been checked.  The database must now check that the coin is not
+ * (double) spent, and execute the transaction.
  *
  * IF it returns a non-error code, the transaction logic MUST
  * NOT queue a MHD response.  IF it returns an hard error, the
@@ -107,9 +104,9 @@ struct RecoupContext
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus
-recoup_transaction (void *cls,
-                    struct MHD_Connection *connection,
-                    MHD_RESULT *mhd_ret)
+recoup_refresh_transaction (void *cls,
+                            struct MHD_Connection *connection,
+                            MHD_RESULT *mhd_ret)
 {
   struct RecoupContext *pc = cls;
   enum GNUNET_DB_QueryStatus qs;
@@ -118,17 +115,17 @@ recoup_transaction (void *cls,
 
   /* Finally, store new refund data */
   pc->now = GNUNET_TIME_timestamp_get ();
-  qs = TEH_plugin->do_recoup (TEH_plugin->cls,
-                              &pc->reserve_pub,
-                              pc->reserve_out_serial_id,
-                              pc->requested_amount,
-                              pc->coin_bks,
-                              &pc->coin->coin_pub,
-                              pc->known_coin_id,
-                              pc->coin_sig,
-                              &pc->now,
-                              &recoup_ok,
-                              &internal_failure);
+  qs = TEH_plugin->do_recoup_refresh (TEH_plugin->cls,
+                                      &pc->old_coin_pub,
+                                      pc->rrc_serial,
+                                      pc->requested_amount,
+                                      pc->coin_bks,
+                                      &pc->coin->coin_pub,
+                                      pc->known_coin_id,
+                                      pc->coin_sig,
+                                      &pc->now,
+                                      &recoup_ok,
+                                      &internal_failure);
   if (0 > qs)
   {
     if (GNUNET_DB_STATUS_HARD_ERROR == qs)
@@ -136,7 +133,7 @@ recoup_transaction (void *cls,
         connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_GENERIC_DB_FETCH_FAILED,
-        "do_recoup");
+        "do_recoup_refresh");
     return qs;
   }
 
@@ -147,7 +144,7 @@ recoup_transaction (void *cls,
       connection,
       MHD_HTTP_INTERNAL_SERVER_ERROR,
       TALER_EC_GENERIC_DB_INVARIANT_FAILURE,
-      "do_recoup");
+      "coin transaction history");
     return GNUNET_DB_STATUS_HARD_ERROR;
   }
   if (! recoup_ok)
@@ -177,7 +174,7 @@ recoup_transaction (void *cls,
  * @return MHD result code
  */
 static MHD_RESULT
-verify_and_execute_recoup (
+verify_and_execute_recoup_refresh (
   struct MHD_Connection *connection,
   const struct TALER_CoinPublicInfo *coin,
   const union TALER_DenominationBlindingKeyP *coin_bks,
@@ -187,6 +184,7 @@ verify_and_execute_recoup (
   struct RecoupContext pc;
   const struct TEH_DenominationKey *dk;
   MHD_RESULT mret;
+  struct TALER_BlindedCoinHash h_blind;
 
   /* check denomination exists and is in recoup mode */
   dk = TEH_keys_denomination_by_hash (&coin->denom_pub_hash,
@@ -201,7 +199,7 @@ verify_and_execute_recoup (
       connection,
       &coin->denom_pub_hash,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
-      "RECOUP");
+      "RECOUP-REFRESH");
   }
   if (GNUNET_TIME_absolute_is_future (dk->meta.start.abs_time))
   {
@@ -210,7 +208,7 @@ verify_and_execute_recoup (
       connection,
       &coin->denom_pub_hash,
       TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
-      "RECOUP");
+      "RECOUP-REFRESH");
   }
   if (! dk->recoup_possible)
   {
@@ -218,8 +216,8 @@ verify_and_execute_recoup (
     return TEH_RESPONSE_reply_expired_denom_pub_hash (
       connection,
       &coin->denom_pub_hash,
-      TALER_EC_EXCHANGE_RECOUP_NOT_ELIGIBLE,
-      "RECOUP");
+      TALER_EC_EXCHANGE_RECOUP_REFRESH_NOT_ELIGIBLE,
+      "RECOUP-REFRESH");
   }
 
   /* check denomination signature */
@@ -227,7 +225,7 @@ verify_and_execute_recoup (
       TALER_test_coin_valid (coin,
                              &dk->denom_pub))
   {
-    GNUNET_break_op (0);
+    TALER_LOG_WARNING ("Invalid coin passed for recoup\n");
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_FORBIDDEN,
@@ -237,17 +235,17 @@ verify_and_execute_recoup (
 
   /* check recoup request signature */
   if (GNUNET_OK !=
-      TALER_wallet_recoup_verify (&coin->denom_pub_hash,
-                                  coin_bks,
-                                  requested_amount,
-                                  &coin->coin_pub,
-                                  coin_sig))
+      TALER_wallet_recoup_refresh_verify (&coin->denom_pub_hash,
+                                          coin_bks,
+                                          requested_amount,
+                                          &coin->coin_pub,
+                                          coin_sig))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_FORBIDDEN,
-      TALER_EC_EXCHANGE_RECOUP_SIGNATURE_INVALID,
+      TALER_EC_EXCHANGE_RECOUP_REFRESH_SIGNATURE_INVALID,
       NULL);
   }
 
@@ -269,12 +267,12 @@ verify_and_execute_recoup (
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
-        TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
+        TALER_EC_EXCHANGE_RECOUP_REFRESH_BLINDING_FAILED,
         NULL);
     }
     TALER_coin_ev_hash (coin_ev,
                         coin_ev_size,
-                        &pc.h_blind);
+                        &h_blind);
     GNUNET_free (coin_ev);
   }
 
@@ -301,10 +299,10 @@ verify_and_execute_recoup (
   {
     enum GNUNET_DB_QueryStatus qs;
 
-    qs = TEH_plugin->get_reserve_by_h_blind (TEH_plugin->cls,
-                                             &pc.h_blind,
-                                             &pc.reserve_pub,
-                                             &pc.reserve_out_serial_id);
+    qs = TEH_plugin->get_old_coin_by_h_blind (TEH_plugin->cls,
+                                              &h_blind,
+                                              &pc.old_coin_pub,
+                                              &pc.rrc_serial);
     if (0 > qs)
     {
       GNUNET_break (0);
@@ -312,17 +310,17 @@ verify_and_execute_recoup (
         connection,
         MHD_HTTP_INTERNAL_SERVER_ERROR,
         TALER_EC_GENERIC_DB_FETCH_FAILED,
-        "get_reserve_by_h_blind");
+        "get_old_coin_by_h_blind");
     }
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Recoup requested for unknown envelope %s\n",
-                  GNUNET_h2s (&pc.h_blind.hash));
+                  "Recoup-refresh requested for unknown envelope %s\n",
+                  GNUNET_h2s (&h_blind.hash));
       return TALER_MHD_reply_with_error (
         connection,
         MHD_HTTP_NOT_FOUND,
-        TALER_EC_EXCHANGE_RECOUP_WITHDRAW_NOT_FOUND,
+        TALER_EC_EXCHANGE_RECOUP_REFRESH_MELT_NOT_FOUND,
         NULL);
     }
   }
@@ -333,10 +331,10 @@ verify_and_execute_recoup (
 
     if (GNUNET_OK !=
         TEH_DB_run_transaction (connection,
-                                "run recoup",
+                                "run recoup-refresh",
                                 TEH_MT_OTHER,
                                 &mhd_ret,
-                                &recoup_transaction,
+                                &recoup_refresh_transaction,
                                 &pc))
       return mhd_ret;
   }
@@ -344,14 +342,14 @@ verify_and_execute_recoup (
   return TALER_MHD_REPLY_JSON_PACK (connection,
                                     MHD_HTTP_OK,
                                     GNUNET_JSON_pack_data_auto (
-                                      "reserve_pub",
-                                      &pc.reserve_pub));
+                                      "old_coin_pub",
+                                      &pc.old_coin_pub));
 }
 
 
 /**
- * Handle a "/coins/$COIN_PUB/recoup" request.  Parses the JSON, and, if
- * successful, passes the JSON data to #verify_and_execute_recoup() to further
+ * Handle a "/coins/$COIN_PUB/recoup-refresh" request.  Parses the JSON, and, if
+ * successful, passes the JSON data to #verify_and_execute_recoup_refresh() to further
  * check the details of the operation specified.  If everything checks out,
  * this will ultimately lead to the refund being executed, or rejected.
  *
@@ -361,9 +359,9 @@ verify_and_execute_recoup (
  * @return MHD result code
   */
 MHD_RESULT
-TEH_handler_recoup (struct MHD_Connection *connection,
-                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                    const json_t *root)
+TEH_handler_recoup_refresh (struct MHD_Connection *connection,
+                            const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                            const json_t *root)
 {
   enum GNUNET_GenericReturnValue ret;
   struct TALER_CoinPublicInfo coin;
@@ -399,15 +397,15 @@ TEH_handler_recoup (struct MHD_Connection *connection,
   {
     MHD_RESULT res;
 
-    res = verify_and_execute_recoup (connection,
-                                     &coin,
-                                     &coin_bks,
-                                     &coin_sig,
-                                     &amount);
+    res = verify_and_execute_recoup_refresh (connection,
+                                             &coin,
+                                             &coin_bks,
+                                             &coin_sig,
+                                             &amount);
     GNUNET_JSON_parse_free (spec);
     return res;
   }
 }
 
 
-/* end of taler-exchange-httpd_recoup.c */
+/* end of taler-exchange-httpd_recoup-refresh.c */

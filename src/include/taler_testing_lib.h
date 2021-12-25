@@ -1747,7 +1747,6 @@ TALER_TESTING_cmd_refund (const char *label,
  *        offers a coin and reserve private key.  May specify
  *        the index of the coin using "$LABEL#$INDEX" syntax.
  *        Here, $INDEX must be a non-negative number.
- * @param melt_reference NULL if coin was not refreshed, otherwise label of the melt operation
  * @param amount how much do we expect to recoup, NULL for nothing
  * @return the command.
  */
@@ -1755,8 +1754,28 @@ struct TALER_TESTING_Command
 TALER_TESTING_cmd_recoup (const char *label,
                           unsigned int expected_response_code,
                           const char *coin_reference,
-                          const char *melt_reference,
                           const char *amount);
+
+
+/**
+ * Make a "recoup-refresh" command.
+ *
+ * @param label the command label
+ * @param expected_response_code expected HTTP status code
+ * @param coin_reference reference to any command which
+ *        offers a coin and reserve private key.  May specify
+ *        the index of the coin using "$LABEL#$INDEX" syntax.
+ *        Here, $INDEX must be a non-negative number.
+ * @param melt_reference label of the melt operation
+ * @param amount how much do we expect to recoup, NULL for nothing
+ * @return the command.
+ */
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_recoup_refresh (const char *label,
+                                  unsigned int expected_response_code,
+                                  const char *coin_reference,
+                                  const char *melt_reference,
+                                  const char *amount);
 
 
 /**

@@ -263,6 +263,11 @@
  */
 #define TALER_SIGNATURE_WALLET_ACCOUNT_SETUP 1205
 
+/**
+ * Signature using a coin key requesting recoup-refresh.
+ */
+#define TALER_SIGNATURE_WALLET_COIN_RECOUP_REFRESH 1206
+
 
 /******************************/
 /* Security module signatures */

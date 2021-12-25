@@ -52,7 +52,7 @@ COMMENT ON COLUMN denominations.age_restrictions
 COMMENT ON COLUMN denominations.denominations_serial
   IS 'needed for exchange-auditor replication logic';
 
-CREATE INDEX IF NOT EXISTS denominations_expire_legal_index
+CREATE INDEX IF NOT EXISTS denominations_by_expire_legal_index
   ON denominations
   (expire_legal);
 
@@ -67,13 +67,13 @@ COMMENT ON TABLE denomination_revocations
 
 
 CREATE TABLE IF NOT EXISTS wire_targets
-(wire_target_serial_id BIGSERIAL UNIQUE
-,h_payto BYTEA NOT NULL CHECK (LENGTH(h_payto)=64)
-,payto_uri VARCHAR NOT NULL
-,kyc_ok BOOLEAN NOT NULL DEFAULT (FALSE)
-,external_id VARCHAR
-,PRIMARY KEY (h_payto)
-);
+  (wire_target_serial_id BIGSERIAL -- UNIQUE
+  ,h_payto BYTEA PRIMARY KEY CHECK (LENGTH(h_payto)=64)
+  ,payto_uri VARCHAR NOT NULL
+  ,kyc_ok BOOLEAN NOT NULL DEFAULT (FALSE)
+  ,external_id VARCHAR
+  )
+  PARTITION BY HASH (h_payto);
 COMMENT ON TABLE wire_targets
   IS 'All senders and recipients of money via the exchange';
 COMMENT ON COLUMN wire_targets.payto_uri
@@ -84,7 +84,9 @@ COMMENT ON COLUMN wire_targets.kyc_ok
   IS 'true if the KYC check was passed successfully';
 COMMENT ON COLUMN wire_targets.external_id
   IS 'Name of the user that was used for OAuth 2.0-based legitimization';
-
+CREATE TABLE IF NOT EXISTS wire_targets_default
+  PARTITION OF wire_targets
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
 CREATE TABLE IF NOT EXISTS reserves
   (reserve_uuid BIGSERIAL
@@ -95,122 +97,134 @@ CREATE TABLE IF NOT EXISTS reserves
   ,gc_date INT8 NOT NULL
   )
   PARTITION BY HASH (reserve_pub);
-
 COMMENT ON TABLE reserves
   IS 'Summarizes the balance of a reserve. Updated when new funds are added or withdrawn.';
+COMMENT ON COLUMN reserves.reserve_pub
+  IS 'EdDSA public key of the reserve. Knowledge of the private key implies ownership over the balance.';
+COMMENT ON COLUMN reserves.current_balance_val
+  IS 'Current balance remaining with the reserve';
 COMMENT ON COLUMN reserves.expiration_date
   IS 'Used to trigger closing of reserves that have not been drained after some time';
 COMMENT ON COLUMN reserves.gc_date
   IS 'Used to forget all information about a reserve during garbage collection';
+CREATE TABLE IF NOT EXISTS reserves_default
+  PARTITION OF reserves
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-CREATE TABLE reserves_0 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 0);
-CREATE TABLE reserves_1 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 1);
-CREATE TABLE reserves_2 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 2);
-CREATE TABLE reserves_3 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 3);
-CREATE TABLE reserves_4 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 4);
-CREATE TABLE reserves_5 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 5);
-CREATE TABLE reserves_6 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 6);
-CREATE TABLE reserves_7 PARTITION OF reserves FOR VALUES WITH (MODULUS 8, REMAINDER 7);
-
-
-
-CREATE INDEX IF NOT EXISTS reserves_expiration_index
+CREATE INDEX IF NOT EXISTS reserves_by_expiration_index
   ON reserves
   (expiration_date
   ,current_balance_val
   ,current_balance_frac
   );
-COMMENT ON INDEX reserves_expiration_index
+COMMENT ON INDEX reserves_by_expiration_index
   IS 'used in get_expired_reserves';
-
-CREATE INDEX IF NOT EXISTS reserves_gc_index
+CREATE INDEX IF NOT EXISTS reserves_by_reserve_uuid_index
+  ON reserves
+  (reserve_uuid);
+CREATE INDEX IF NOT EXISTS reserves_by_gc_date_index
   ON reserves
   (gc_date);
-COMMENT ON INDEX reserves_gc_index
+COMMENT ON INDEX reserves_by_gc_date_index
   IS 'for reserve garbage collection';
 
 
 CREATE TABLE IF NOT EXISTS reserves_in
-  (reserve_in_serial_id BIGSERIAL UNIQUE
-  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
+  (reserve_in_serial_id BIGSERIAL -- UNIQUE
+  ,reserve_pub BYTEA PRIMARY KEY REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,wire_reference INT8 NOT NULL
   ,credit_val INT8 NOT NULL
   ,credit_frac INT4 NOT NULL
-  ,wire_source_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id)
+  ,wire_source_serial_id INT8 NOT NULL -- REFERENCES wire_targets (wire_target_serial_id)
   ,exchange_account_section TEXT NOT NULL
   ,execution_date INT8 NOT NULL
-  ,PRIMARY KEY (reserve_pub, wire_reference)
-  );
+  )
+  PARTITION BY HASH (reserve_pub);
 COMMENT ON TABLE reserves_in
   IS 'list of transfers of funds into the reserves, one per incoming wire transfer';
 COMMENT ON COLUMN reserves_in.wire_source_serial_id
   IS 'Identifies the debited bank account and KYC status';
-CREATE INDEX IF NOT EXISTS reserves_in_execution_index
+COMMENT ON COLUMN reserves_in.reserve_pub
+  IS 'Public key of the reserve. Private key signifies ownership of the remaining balance.';
+COMMENT ON COLUMN reserves_in.credit_val
+  IS 'Amount that was transferred into the reserve';
+CREATE TABLE IF NOT EXISTS reserves_in_default
+  PARTITION OF reserves_in
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+CREATE INDEX IF NOT EXISTS reserves_in_by_reserve_in_serial_id_index
+  ON reserves_in
+  (reserve_in_serial_id);
+CREATE INDEX IF NOT EXISTS reserves_in_by_exchange_account_section_execution_date_index
   ON reserves_in
   (exchange_account_section
   ,execution_date
   );
-CREATE INDEX IF NOT EXISTS reserves_in_exchange_account_serial
+CREATE INDEX IF NOT EXISTS reserves_in_by_exchange_account_reserve_in_serial_id_index
   ON reserves_in
   (exchange_account_section,
   reserve_in_serial_id DESC
   );
 
 
-
 CREATE TABLE IF NOT EXISTS reserves_close
-  (close_uuid BIGSERIAL PRIMARY KEY
+  (close_uuid BIGSERIAL -- UNIQUE / PRIMARY KEY
   ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
   ,execution_date INT8 NOT NULL
   ,wtid BYTEA NOT NULL CHECK (LENGTH(wtid)=32)
-  ,wire_target_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id)
+  ,wire_target_serial_id INT8 NOT NULL -- REFERENCES wire_targets (wire_target_serial_id)
   ,amount_val INT8 NOT NULL
   ,amount_frac INT4 NOT NULL
   ,closing_fee_val INT8 NOT NULL
-  ,closing_fee_frac INT4 NOT NULL);
+  ,closing_fee_frac INT4 NOT NULL)
+  PARTITION BY HASH (reserve_pub);
 COMMENT ON TABLE reserves_close
   IS 'wire transfers executed by the reserve to close reserves';
 COMMENT ON COLUMN reserves_close.wire_target_serial_id
   IS 'Identifies the credited bank account (and KYC status). Note that closing does not depend on KYC.';
+CREATE TABLE IF NOT EXISTS reserves_close_default
+  PARTITION OF reserves_close
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-CREATE INDEX IF NOT EXISTS reserves_close_by_uuid
+CREATE INDEX IF NOT EXISTS reserves_close_by_close_uuid_index
+  ON reserves_close
+  (close_uuid);
+CREATE INDEX IF NOT EXISTS reserves_close_by_reserve_pub_index
   ON reserves_close
   (reserve_pub);
 
 
 CREATE TABLE IF NOT EXISTS reserves_out
-  (reserve_out_serial_id BIGSERIAL UNIQUE
+  (reserve_out_serial_id BIGSERIAL -- UNIQUE
   ,h_blind_ev BYTEA PRIMARY KEY CHECK (LENGTH(h_blind_ev)=64)
   ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial)
   ,denom_sig BYTEA NOT NULL
-  ,reserve_pub BYTEA NOT NULL REFERENCES reserves (reserve_pub) ON DELETE CASCADE
+  ,reserve_uuid INT8 NOT NULL -- REFERENCES reserves (reserve_uuid) ON DELETE CASCADE
   ,reserve_sig BYTEA NOT NULL CHECK (LENGTH(reserve_sig)=64)
   ,execution_date INT8 NOT NULL
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
-  );
+  )
+  PARTITION BY HASH (h_blind_ev);
 COMMENT ON TABLE reserves_out
   IS 'Withdraw operations performed on reserves.';
 COMMENT ON COLUMN reserves_out.h_blind_ev
   IS 'Hash of the blinded coin, used as primary key here so that broken clients that use a non-random coin or blinding factor fail to withdraw (otherwise they would fail on deposit when the coin is not unique there).';
 COMMENT ON COLUMN reserves_out.denominations_serial
   IS 'We do not CASCADE ON DELETE here, we may keep the denomination data alive';
+CREATE TABLE IF NOT EXISTS reserves_out_default
+  PARTITION OF reserves_out
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-CREATE INDEX IF NOT EXISTS reserves_out_reserve_pub_index
+CREATE INDEX IF NOT EXISTS reserves_out_by_reserve_out_serial_id_index
   ON reserves_out
-  (reserve_pub);
-COMMENT ON INDEX reserves_out_reserve_pub_index
-  IS 'for get_reserves_out';
+  (reserve_out_serial_id);
+CREATE INDEX IF NOT EXISTS reserves_out_by_reserve_uuid_and_execution_date_index
+  ON reserves_out
+  (reserve_uuid, execution_date);
+COMMENT ON INDEX reserves_out_by_reserve_uuid_and_execution_date_index
+  IS 'for get_reserves_out and exchange_do_withdraw_limit_check';
 
-CREATE INDEX IF NOT EXISTS reserves_out_execution_date
-  ON reserves_out
-  (execution_date);
-
-CREATE INDEX IF NOT EXISTS reserves_out_for_get_withdraw_info
-  ON reserves_out
-  (denominations_serial
-  ,h_blind_ev
-  );
 
 CREATE TABLE IF NOT EXISTS auditors
   (auditor_uuid BIGSERIAL UNIQUE
@@ -297,67 +311,78 @@ COMMENT ON COLUMN extensions.config
 
 
 CREATE TABLE IF NOT EXISTS known_coins
-  (known_coin_id BIGSERIAL UNIQUE
+  (known_coin_id BIGSERIAL -- UNIQUE
+  ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
   ,coin_pub BYTEA NOT NULL PRIMARY KEY CHECK (LENGTH(coin_pub)=32)
   ,age_hash BYTEA CHECK (LENGTH(age_hash)=32)
-  ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
   ,denom_sig BYTEA NOT NULL
-  );
+  ,remaining_val INT8 NOT NULL
+  ,remaining_frac INT4 NOT NULL
+  )
+  PARTITION BY HASH (coin_pub); -- FIXME: or include denominations_serial? or multi-level partitioning?
 COMMENT ON TABLE known_coins
   IS 'information about coins and their signatures, so we do not have to store the signatures more than once if a coin is involved in multiple operations';
+COMMENT ON COLUMN known_coins.denominations_serial
+  IS 'Denomination of the coin, determines the value of the original coin and applicable fees for coin-specific operations.';
 COMMENT ON COLUMN known_coins.coin_pub
   IS 'EdDSA public key of the coin';
+COMMENT ON COLUMN known_coins.remaining_val
+  IS 'Value of the coin that remains to be spent';
 COMMENT ON COLUMN known_coins.age_hash
   IS 'Optional hash for age restrictions as per DD 24 (active if denom_type has the respective bit set)';
 COMMENT ON COLUMN known_coins.denom_sig
   IS 'This is the signature of the exchange that affirms that the coin is a valid coin. The specific signature type depends on denom_type of the denomination.';
+CREATE TABLE IF NOT EXISTS known_coins_default
+  PARTITION OF known_coins
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-CREATE INDEX IF NOT EXISTS known_coins_by_denomination
+CREATE INDEX IF NOT EXISTS known_coins_by_known_coin_id_index
   ON known_coins
-  (denominations_serial);
-CREATE INDEX IF NOT EXISTS known_coins_by_hashed_coin_pub
-  ON known_coins
-  USING HASH (coin_pub);
+  (known_coin_id);
 
 
 CREATE TABLE IF NOT EXISTS refresh_commitments
-  (melt_serial_id BIGSERIAL UNIQUE
+  (melt_serial_id BIGSERIAL -- UNIQUE
   ,rc BYTEA PRIMARY KEY CHECK (LENGTH(rc)=64)
-  ,old_known_coin_id INT8 NOT NULL REFERENCES known_coins (known_coin_id) ON DELETE CASCADE
+  ,old_coin_pub BYTEA NOT NULL REFERENCES known_coins (coin_pub) ON DELETE CASCADE
   ,old_coin_sig BYTEA NOT NULL CHECK(LENGTH(old_coin_sig)=64)
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
   ,noreveal_index INT4 NOT NULL
-  );
+  )
+  PARTITION BY HASH (rc);
 COMMENT ON TABLE refresh_commitments
   IS 'Commitments made when melting coins and the gamma value chosen by the exchange.';
 COMMENT ON COLUMN refresh_commitments.noreveal_index
   IS 'The gamma value chosen by the exchange in the cut-and-choose protocol';
 COMMENT ON COLUMN refresh_commitments.rc
   IS 'Commitment made by the client, hash over the various client inputs in the cut-and-choose protocol';
-COMMENT ON COLUMN refresh_commitments.old_known_coin_id
+COMMENT ON COLUMN refresh_commitments.old_coin_pub
   IS 'Coin being melted in the refresh process.';
+CREATE TABLE IF NOT EXISTS refresh_commitments_default
+  PARTITION OF refresh_commitments
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-CREATE INDEX IF NOT EXISTS refresh_commitments_old_coin_id_index
+CREATE INDEX IF NOT EXISTS refresh_commitments_by_melt_serial_id_index
   ON refresh_commitments
-  (old_known_coin_id);
-CREATE INDEX IF NOT EXISTS known_coins_by_hashed_rc
+  (melt_serial_id);
+CREATE INDEX IF NOT EXISTS refresh_commitments_by_old_coin_pub_index
   ON refresh_commitments
-  USING HASH (rc);
+  (old_coin_pub);
 
 
 CREATE TABLE IF NOT EXISTS refresh_revealed_coins
-  (rrc_serial BIGSERIAL UNIQUE
-  ,melt_serial_id INT8 NOT NULL REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE
+  (rrc_serial BIGSERIAL -- UNIQUE
+  ,melt_serial_id INT8 NOT NULL -- REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE
   ,freshcoin_index INT4 NOT NULL
   ,link_sig BYTEA NOT NULL CHECK(LENGTH(link_sig)=64)
   ,denominations_serial INT8 NOT NULL REFERENCES denominations (denominations_serial) ON DELETE CASCADE
-  ,coin_ev BYTEA UNIQUE NOT NULL
-  ,h_coin_ev BYTEA NOT NULL CHECK(LENGTH(h_coin_ev)=64)
+  ,coin_ev BYTEA NOT NULL -- UNIQUE
+  ,h_coin_ev BYTEA NOT NULL CHECK(LENGTH(h_coin_ev)=64) -- UNIQUE
   ,ev_sig BYTEA NOT NULL
-  ,PRIMARY KEY (melt_serial_id, freshcoin_index)
-  ,UNIQUE (h_coin_ev)
-  );
+  --  ,PRIMARY KEY (melt_serial_id, freshcoin_index) -- done per shard
+  )
+  PARTITION BY HASH (melt_serial_id);
 COMMENT ON TABLE refresh_revealed_coins
   IS 'Revelations about the new coins that are to be created during a melting session.';
 COMMENT ON COLUMN refresh_revealed_coins.rrc_serial
@@ -372,18 +397,28 @@ COMMENT ON COLUMN refresh_revealed_coins.h_coin_ev
   IS 'hash of the envelope of the new coin to be signed (for lookups)';
 COMMENT ON COLUMN refresh_revealed_coins.ev_sig
   IS 'exchange signature over the envelope';
+CREATE TABLE IF NOT EXISTS refresh_revealed_coins_default
+  PARTITION OF refresh_revealed_coins
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+-- We do require this primary key on each shard!
+ALTER TABLE refresh_revealed_coins_default
+  ADD PRIMARY KEY (melt_serial_id, freshcoin_index);
 
-CREATE INDEX IF NOT EXISTS refresh_revealed_coins_denominations_index
+CREATE INDEX IF NOT EXISTS refresh_revealed_coins_by_rrc_serial_index
   ON refresh_revealed_coins
-  (denominations_serial);
+  (rrc_serial);
+CREATE INDEX IF NOT EXISTS refresh_revealed_coins_by_melt_serial_id_index
+  ON refresh_revealed_coins
+  (melt_serial_id);
 
 
 CREATE TABLE IF NOT EXISTS refresh_transfer_keys
-  (rtc_serial BIGSERIAL UNIQUE
-  ,melt_serial_id INT8 PRIMARY KEY REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE
+  (rtc_serial BIGSERIAL -- UNIQUE
+  ,melt_serial_id INT8 PRIMARY KEY -- REFERENCES refresh_commitments (melt_serial_id) ON DELETE CASCADE
   ,transfer_pub BYTEA NOT NULL CHECK(LENGTH(transfer_pub)=32)
   ,transfer_privs BYTEA NOT NULL
-  );
+  )
+  PARTITION BY HASH (melt_serial_id);
 COMMENT ON TABLE refresh_transfer_keys
   IS 'Transfer keys of a refresh operation (the data revealed to the exchange).';
 COMMENT ON COLUMN refresh_transfer_keys.rtc_serial
@@ -394,14 +429,14 @@ COMMENT ON COLUMN refresh_transfer_keys.transfer_pub
   IS 'transfer public key for the gamma index';
 COMMENT ON COLUMN refresh_transfer_keys.transfer_privs
   IS 'array of TALER_CNC_KAPPA - 1 transfer private keys that have been revealed, with the gamma entry being skipped';
+CREATE TABLE IF NOT EXISTS refresh_transfer_keys_default
+  PARTITION OF refresh_transfer_keys
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-CREATE INDEX IF NOT EXISTS refresh_transfer_keys_coin_tpub
+CREATE INDEX IF NOT EXISTS refresh_transfer_keys_by_rtc_serial_index
   ON refresh_transfer_keys
-  (melt_serial_id
-  ,transfer_pub
-  );
-COMMENT ON INDEX refresh_transfer_keys_coin_tpub
-  IS 'for get_link (unsure if this helps or hurts for performance as there should be very few transfer public keys per rc, but at least in theory this helps the ORDER BY clause)';
+  (rtc_serial);
+
 
 CREATE TABLE IF NOT EXISTS extension_details
   (extension_details_serial_id BIGSERIAL PRIMARY KEY
@@ -413,9 +448,9 @@ COMMENT ON COLUMN extension_details.extension_options
 
 
 CREATE TABLE IF NOT EXISTS deposits
-  (deposit_serial_id BIGSERIAL PRIMARY KEY
+  (deposit_serial_id BIGSERIAL -- PRIMARY KEY
   ,shard INT8 NOT NULL
-  ,known_coin_id INT8 NOT NULL REFERENCES known_coins (known_coin_id) ON DELETE CASCADE
+  ,known_coin_id INT8 NOT NULL -- REFERENCES known_coins (known_coin_id) ON DELETE CASCADE
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
   ,wallet_timestamp INT8 NOT NULL
@@ -426,19 +461,25 @@ CREATE TABLE IF NOT EXISTS deposits
   ,h_contract_terms BYTEA NOT NULL CHECK (LENGTH(h_contract_terms)=64)
   ,coin_sig BYTEA NOT NULL CHECK (LENGTH(coin_sig)=64)
   ,wire_salt BYTEA NOT NULL CHECK (LENGTH(wire_salt)=16)
-  ,wire_target_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id)
+  ,wire_target_serial_id INT8 NOT NULL -- REFERENCES wire_targets (wire_target_serial_id)
   ,tiny BOOLEAN NOT NULL DEFAULT FALSE
   ,done BOOLEAN NOT NULL DEFAULT FALSE
   ,extension_blocked BOOLEAN NOT NULL DEFAULT FALSE
-  ,extension_details_serial_id INT8 REFERENCES extension_details (extension_details_serial_id)
-  ,UNIQUE (known_coin_id, merchant_pub, h_contract_terms)
-  );
+  ,extension_details_serial_id INT8 REFERENCES extension_details (extension_details_serial_id) ON DELETE CASCADE
+  ,UNIQUE (shard, known_coin_id, merchant_pub, h_contract_terms)
+  )
+  PARTITION BY HASH (shard);
+CREATE TABLE IF NOT EXISTS deposits_default
+  PARTITION OF deposits
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
 COMMENT ON TABLE deposits
   IS 'Deposits we have received and for which we need to make (aggregate) wire transfers (and manage refunds).';
 COMMENT ON COLUMN deposits.shard
   IS 'Used for load sharding. Should be set based on h_payto and merchant_pub. 64-bit value because we need an *unsigned* 32-bit value.';
 COMMENT ON COLUMN deposits.wire_target_serial_id
-  IS 'Identifies the target bank account and KYC status';COMMENT ON COLUMN deposits.wire_salt
+  IS 'Identifies the target bank account and KYC status';
+COMMENT ON COLUMN deposits.wire_salt
   IS 'Salt used when hashing the payto://-URI to get the h_wire';
 COMMENT ON COLUMN deposits.done
   IS 'Set to TRUE once we have included this deposit in some aggregate wire transfer to the merchant';
@@ -449,15 +490,12 @@ COMMENT ON COLUMN deposits.extension_details_serial_id
 COMMENT ON COLUMN deposits.tiny
   IS 'Set to TRUE if we decided that the amount is too small to ever trigger a wire transfer by itself (requires real aggregation)';
 
-CREATE INDEX IF NOT EXISTS deposits_coin_pub_merchant_contract_index
+-- FIXME: check if we can ALWAYS include the shard in the WHERE clauses,
+-- thereby resulting in a much better use of the index: we could do (shard,deposit_serial_id)!
+CREATE INDEX IF NOT EXISTS deposits_deposit_by_serial_id_index
   ON deposits
-  (known_coin_id
-  ,merchant_pub
-  ,h_contract_terms
-  );
-COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
-  IS 'for get_deposit_for_wtid and test_deposit_done';
-CREATE INDEX IF NOT EXISTS deposits_get_ready_index
+  (deposit_serial_id);
+CREATE INDEX IF NOT EXISTS deposits_for_get_ready_index
   ON deposits
   (shard ASC
   ,done
@@ -465,9 +503,11 @@ CREATE INDEX IF NOT EXISTS deposits_get_ready_index
   ,tiny
   ,wire_deadline ASC
   );
-COMMENT ON INDEX deposits_coin_pub_merchant_contract_index
+COMMENT ON INDEX deposits_for_get_ready_index
   IS 'for deposits_get_ready';
-CREATE INDEX IF NOT EXISTS deposits_iterate_matching_index
+-- FIXME: check if we can ALWAYS include the shard in the WHERE clauses,
+-- thereby resulting in a much better use of the index: we could do (shard,merchant_pub, ...)!
+CREATE INDEX IF NOT EXISTS deposits_for_iterate_matching_index
   ON deposits
   (merchant_pub
   ,wire_target_serial_id
@@ -475,57 +515,87 @@ CREATE INDEX IF NOT EXISTS deposits_iterate_matching_index
   ,extension_blocked
   ,refund_deadline ASC
   );
-COMMENT ON INDEX deposits_iterate_matching_index
+COMMENT ON INDEX deposits_for_iterate_matching_index
   IS 'for deposits_iterate_matching';
 
 
 CREATE TABLE IF NOT EXISTS refunds
-  (refund_serial_id BIGSERIAL UNIQUE
-  ,deposit_serial_id INT8 NOT NULL REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE
+  (refund_serial_id BIGSERIAL -- UNIQUE
+  ,deposit_serial_id INT8 NOT NULL -- REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE
   ,merchant_sig BYTEA NOT NULL CHECK(LENGTH(merchant_sig)=64)
   ,rtransaction_id INT8 NOT NULL
   ,amount_with_fee_val INT8 NOT NULL
   ,amount_with_fee_frac INT4 NOT NULL
-  ,PRIMARY KEY (deposit_serial_id, rtransaction_id)
-  );
+  -- ,PRIMARY KEY (deposit_serial_id, rtransaction_id) -- done per shard!
+  )
+  PARTITION BY HASH (deposit_serial_id);
 COMMENT ON TABLE refunds
   IS 'Data on coins that were refunded. Technically, refunds always apply against specific deposit operations involving a coin. The combination of coin_pub, merchant_pub, h_contract_terms and rtransaction_id MUST be unique, and we usually select by coin_pub so that one goes first.';
 COMMENT ON COLUMN refunds.deposit_serial_id
   IS 'Identifies ONLY the merchant_pub, h_contract_terms and known_coin_id. Multiple deposits may match a refund, this only identifies one of them.';
 COMMENT ON COLUMN refunds.rtransaction_id
   IS 'used by the merchant to make refunds unique in case the same coin for the same deposit gets a subsequent (higher) refund';
+CREATE TABLE IF NOT EXISTS refunds_default
+  PARTITION OF refunds
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+ALTER TABLE refunds_default
+  ADD PRIMARY KEY (deposit_serial_id, rtransaction_id);
+
+CREATE INDEX IF NOT EXISTS refunds_by_refund_serial_id_index
+  ON refunds
+  (refund_serial_id);
 
 
 CREATE TABLE IF NOT EXISTS wire_out
-  (wireout_uuid BIGSERIAL PRIMARY KEY
+  (wireout_uuid BIGSERIAL -- PRIMARY KEY
   ,execution_date INT8 NOT NULL
   ,wtid_raw BYTEA UNIQUE NOT NULL CHECK (LENGTH(wtid_raw)=32)
-  ,wire_target_serial_id INT8 NOT NULL REFERENCES wire_targets (wire_target_serial_id)
+  ,wire_target_serial_id INT8 NOT NULL -- REFERENCES wire_targets (wire_target_serial_id)
   ,exchange_account_section TEXT NOT NULL
   ,amount_val INT8 NOT NULL
   ,amount_frac INT4 NOT NULL
-  );
+  )
+  PARTITION BY HASH (wtid_raw);
 COMMENT ON TABLE wire_out
   IS 'wire transfers the exchange has executed';
 COMMENT ON COLUMN wire_out.exchange_account_section
   IS 'identifies the configuration section with the debit account of this payment';
 COMMENT ON COLUMN wire_out.wire_target_serial_id
   IS 'Identifies the credited bank account and KYC status';
+CREATE TABLE IF NOT EXISTS wire_out_default
+  PARTITION OF wire_out
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
+
+CREATE INDEX IF NOT EXISTS wire_out_by_wireout_uuid_index
+  ON wire_out
+  (wireout_uuid);
+CREATE INDEX IF NOT EXISTS wire_out_by_wire_target_serial_id_index
+  ON wire_out
+  (wire_target_serial_id);
+
+
 
 CREATE TABLE IF NOT EXISTS aggregation_tracking
-  (aggregation_serial_id BIGSERIAL UNIQUE
-  ,deposit_serial_id INT8 PRIMARY KEY REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE
+  (aggregation_serial_id BIGSERIAL -- UNIQUE
+  ,deposit_serial_id INT8 PRIMARY KEY -- REFERENCES deposits (deposit_serial_id) ON DELETE CASCADE
   ,wtid_raw BYTEA CONSTRAINT wire_out_ref REFERENCES wire_out(wtid_raw) ON DELETE CASCADE DEFERRABLE
-  );
+  )
+  PARTITION BY HASH (deposit_serial_id);
 COMMENT ON TABLE aggregation_tracking
   IS 'mapping from wire transfer identifiers (WTID) to deposits (and back)';
 COMMENT ON COLUMN aggregation_tracking.wtid_raw
   IS 'We first create entries in the aggregation_tracking table and then finally the wire_out entry once we know the total amount. Hence the constraint must be deferrable and we cannot use a wireout_uuid here, because we do not have it when these rows are created. Changing the logic to first INSERT a dummy row into wire_out and then UPDATEing that row in the same transaction would theoretically reduce per-deposit storage costs by 5 percent (24/~460 bytes).';
+CREATE TABLE IF NOT EXISTS aggregation_tracking_default
+  PARTITION OF aggregation_tracking
+  FOR VALUES WITH (MODULUS 1, REMAINDER 0);
 
-CREATE INDEX IF NOT EXISTS aggregation_tracking_wtid_index
+CREATE INDEX IF NOT EXISTS aggregation_tracking_by_aggregation_serial_id_index
+  ON aggregation_tracking
+  (aggregation_serial_id);
+CREATE INDEX IF NOT EXISTS aggregation_tracking_by_wtid_raw_index
   ON aggregation_tracking
   (wtid_raw);
-COMMENT ON INDEX aggregation_tracking_wtid_index
+COMMENT ON INDEX aggregation_tracking_by_wtid_raw_index
   IS 'for lookup_transactions';
 
 
@@ -546,52 +616,58 @@ COMMENT ON TABLE wire_fee
 COMMENT ON COLUMN wire_fee.wire_fee_serial
   IS 'needed for exchange-auditor replication logic';
 
-CREATE INDEX IF NOT EXISTS wire_fee_gc_index
+CREATE INDEX IF NOT EXISTS wire_fee_by_end_date_index
   ON wire_fee
   (end_date);
 
 
 CREATE TABLE IF NOT EXISTS recoup
-  (recoup_uuid BIGSERIAL UNIQUE
-  ,known_coin_id INT8 NOT NULL REFERENCES known_coins (known_coin_id)
+  (recoup_uuid BIGSERIAL -- UNIQUE
+  ,known_coin_id INT8 NOT NULL -- REFERENCES known_coins (known_coin_id)
   ,coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)
   ,coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)
   ,amount_val INT8 NOT NULL
   ,amount_frac INT4 NOT NULL
-  ,timestamp INT8 NOT NULL
-  ,reserve_out_serial_id INT8 NOT NULL REFERENCES reserves_out (reserve_out_serial_id) ON DELETE CASCADE
-  );
+  ,recoup_timestamp INT8 NOT NULL
+  ,reserve_out_serial_id INT8 NOT NULL -- REFERENCES reserves_out (reserve_out_serial_id) ON DELETE CASCADE
+  )
+  PARTITION BY RANGE (known_coin_id);
 COMMENT ON TABLE recoup
   IS 'Information about recoups that were executed between a coin and a reserve. In this type of recoup, the amount is credited back to the reserve from which the coin originated.';
 COMMENT ON COLUMN recoup.known_coin_id
-  IS 'Coin that is being debited in the recoup. Do not CASCADE ON DROP on the known_coin_id, as we may keep the coin alive!';
+  IS 'Coin that is being debited in the recoup. Do not CASCADE ON DROP on the coin_pub, as we may keep the coin alive!';
 COMMENT ON COLUMN recoup.reserve_out_serial_id
   IS 'Identifies the h_blind_ev of the recouped coin and provides the link to the credited reserve.';
 COMMENT ON COLUMN recoup.coin_sig
   IS 'Signature by the coin affirming the recoup, of type TALER_SIGNATURE_WALLET_COIN_RECOUP';
 COMMENT ON COLUMN recoup.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the withdraw operation.';
+CREATE TABLE IF NOT EXISTS recoup_default
+  PARTITION OF recoup
+  DEFAULT;
 
-CREATE INDEX IF NOT EXISTS recoup_by_h_blind_ev
+CREATE INDEX IF NOT EXISTS recoup_by_recoup_uuid_index
+  ON recoup
+  (recoup_uuid);
+CREATE INDEX IF NOT EXISTS recoup_by_reserve_out_serial_id_index
   ON recoup
   (reserve_out_serial_id);
-CREATE INDEX IF NOT EXISTS recoup_for_by_reserve
+CREATE INDEX IF NOT EXISTS recoup_by_known_coin_id_index
   ON recoup
-  (known_coin_id
-  ,reserve_out_serial_id
-  );
+  (known_coin_id);
 
 
 CREATE TABLE IF NOT EXISTS recoup_refresh
-  (recoup_refresh_uuid BIGSERIAL UNIQUE
-  ,known_coin_id INT8 NOT NULL REFERENCES known_coins (known_coin_id)
+  (recoup_refresh_uuid BIGSERIAL -- UNIQUE
+  ,known_coin_id INT8 NOT NULL -- REFERENCES known_coins (known_coin_id)
   ,coin_sig BYTEA NOT NULL CHECK(LENGTH(coin_sig)=64)
   ,coin_blind BYTEA NOT NULL CHECK(LENGTH(coin_blind)=32)
   ,amount_val INT8 NOT NULL
   ,amount_frac INT4 NOT NULL
-  ,timestamp INT8 NOT NULL
-  ,rrc_serial INT8 NOT NULL UNIQUE REFERENCES refresh_revealed_coins (rrc_serial) ON DELETE CASCADE
-  );
+  ,recoup_timestamp INT8 NOT NULL
+  ,rrc_serial INT8 NOT NULL -- REFERENCES refresh_revealed_coins (rrc_serial) ON DELETE CASCADE -- UNIQUE
+  )
+  PARTITION BY RANGE (known_coin_id);
 COMMENT ON TABLE recoup_refresh
   IS 'Table of coins that originated from a refresh operation and that were recouped. Links the (fresh) coin to the melted operation (and thus the old coin). A recoup on a refreshed coin credits the old coin and debits the fresh coin.';
 COMMENT ON COLUMN recoup_refresh.known_coin_id
@@ -600,24 +676,29 @@ COMMENT ON COLUMN recoup_refresh.rrc_serial
   IS 'Link to the refresh operation. Also identifies the h_blind_ev of the recouped coin (as h_coin_ev).';
 COMMENT ON COLUMN recoup_refresh.coin_blind
   IS 'Denomination blinding key used when creating the blinded coin from the planchet. Secret revealed during the recoup to provide the linkage between the coin and the refresh operation.';
+CREATE TABLE IF NOT EXISTS recoup_refresh_default
+  PARTITION OF recoup_refresh
+  DEFAULT;
 
-CREATE INDEX IF NOT EXISTS recoup_refresh_by_h_blind_ev
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_recoup_refresh_uuid_index
+  ON recoup_refresh
+  (recoup_refresh_uuid);
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_rrc_serial_index
   ON recoup_refresh
   (rrc_serial);
-CREATE INDEX IF NOT EXISTS recoup_refresh_for_by_reserve
+CREATE INDEX IF NOT EXISTS recoup_refresh_by_known_coin_id_index
   ON recoup_refresh
-  (known_coin_id
-  ,rrc_serial
-  );
+  (known_coin_id);
 
 
 CREATE TABLE IF NOT EXISTS prewire
   (prewire_uuid BIGSERIAL PRIMARY KEY
-  ,type TEXT NOT NULL
+  ,wire_method TEXT NOT NULL
   ,finished BOOLEAN NOT NULL DEFAULT false
   ,failed BOOLEAN NOT NULL DEFAULT false
   ,buf BYTEA NOT NULL
-  );
+  )
+  PARTITION BY RANGE (prewire_uuid);
 COMMENT ON TABLE prewire
   IS 'pre-commit data for wire transfers we are about to execute';
 COMMENT ON COLUMN prewire.failed
@@ -626,17 +707,20 @@ COMMENT ON COLUMN prewire.finished
   IS 'set to TRUE once bank confirmed receiving the wire transfer request';
 COMMENT ON COLUMN prewire.buf
   IS 'serialized data to send to the bank to execute the wire transfer';
+CREATE TABLE IF NOT EXISTS prewire_default
+  PARTITION OF prewire
+  DEFAULT;
 
-CREATE INDEX IF NOT EXISTS prepare_iteration_index
+CREATE INDEX IF NOT EXISTS prewire_by_finished_index
   ON prewire
   (finished);
-COMMENT ON INDEX prepare_iteration_index
+COMMENT ON INDEX prewire_by_finished_index
   IS 'for gc_prewire';
-
-CREATE INDEX IF NOT EXISTS prepare_get_index
+-- FIXME: find a way to combine these two indices?
+CREATE INDEX IF NOT EXISTS prewire_by_failed_finished_index
   ON prewire
   (failed,finished);
-COMMENT ON INDEX prepare_get_index
+COMMENT ON INDEX prewire_by_failed_finished_index
   IS 'for wire_prepare_data_get';
 
 
@@ -684,7 +768,7 @@ COMMENT ON COLUMN work_shards.end_row
 COMMENT ON COLUMN work_shards.job_name
   IS 'unique name of the job the workers on this shard are performing';
 
-CREATE INDEX IF NOT EXISTS work_shards_index
+CREATE INDEX IF NOT EXISTS work_shards_by_job_name_completed_last_attempt_index
   ON work_shards
   (job_name
   ,completed
@@ -716,7 +800,7 @@ COMMENT ON COLUMN revolving_work_shards.end_row
 COMMENT ON COLUMN revolving_work_shards.job_name
   IS 'unique name of the job the workers on this shard are performing';
 
-CREATE INDEX IF NOT EXISTS revolving_work_shards_index
+CREATE INDEX IF NOT EXISTS revolving_work_shards_by_job_name_active_last_attempt_index
   ON revolving_work_shards
   (job_name
   ,active
@@ -740,7 +824,8 @@ CREATE OR REPLACE FUNCTION exchange_do_withdraw(
   OUT reserve_found BOOLEAN,
   OUT balance_ok BOOLEAN,
   OUT kycok BOOLEAN,
-  OUT account_uuid INT8)
+  OUT account_uuid INT8,
+  OUT ruuid INT8)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -752,6 +837,11 @@ DECLARE
 DECLARE
   reserve_frac INT4;
 BEGIN
+-- Shards: reserves by reserve_pub (SELECT)
+--         reserves_out (INSERT, with CONFLICT detection) by h_blind_ev
+--         reserves by reserve_pub (UPDATE)
+--         reserves_in by reserve_pub (SELECT)
+--         wire_targets by wire_target_serial_id
 
 SELECT denominations_serial INTO denom_serial
   FROM denominations
@@ -764,6 +854,7 @@ THEN
   balance_ok=FALSE;
   kycok=FALSE;
   account_uuid=0;
+  ruuid=0;
   ASSERT false, 'denomination unknown';
   RETURN;
 END IF;
@@ -771,12 +862,13 @@ END IF;
 SELECT
    current_balance_val
   ,current_balance_frac
-  ,expiration_date
   ,gc_date
+  ,reserve_uuid
  INTO
    reserve_val
   ,reserve_frac
   ,reserve_gc
+  ,ruuid
   FROM reserves
  WHERE reserves.reserve_pub=rpub;
 
@@ -787,6 +879,7 @@ THEN
   balance_ok=FALSE;
   kycok=FALSE;
   account_uuid=0;
+  ruuid=0;
   RETURN;
 END IF;
 
@@ -796,7 +889,7 @@ INSERT INTO reserves_out
   (h_blind_ev
   ,denominations_serial
   ,denom_sig
-  ,reserve_pub
+  ,reserve_uuid
   ,reserve_sig
   ,execution_date
   ,amount_with_fee_val
@@ -805,7 +898,7 @@ VALUES
   (h_coin_envelope
   ,denom_serial
   ,denom_sig
-  ,rpub
+  ,ruuid
   ,reserve_sig
   ,now
   ,amount_val
@@ -882,7 +975,7 @@ COMMENT ON FUNCTION exchange_do_withdraw(INT8, INT4, BYTEA, BYTEA, BYTEA, BYTEA,
 
 
 CREATE OR REPLACE FUNCTION exchange_do_withdraw_limit_check(
-  IN rpub BYTEA,
+  IN ruuid INT8,
   IN start_time INT8,
   IN upper_limit_val INT8,
   IN upper_limit_frac INT4,
@@ -894,6 +987,10 @@ DECLARE
 DECLARE
   total_frac INT8; -- INT4 could overflow during accumulation!
 BEGIN
+-- NOTE: Read-only, but crosses shards.
+-- Shards: reserves by reserve_pub
+--         reserves_out by reserve_uuid -- crosses shards!!
+
 
 SELECT
    SUM(amount_with_fee_val) -- overflow here is not plausible
@@ -902,7 +999,7 @@ SELECT
    total_val
   ,total_frac
   FROM reserves_out
- WHERE reserves_out.reserve_pub=rpub
+ WHERE reserve_uuid=ruuid
    AND execution_date > start_time;
 
 -- normalize result
@@ -915,199 +1012,882 @@ below_limit = (total_val < upper_limit_val) OR
               (total_frac <= upper_limit_frac) );
 END $$;
 
-COMMENT ON FUNCTION exchange_do_withdraw_limit_check(BYTEA, INT8, INT8, INT4)
+COMMENT ON FUNCTION exchange_do_withdraw_limit_check(INT8, INT8, INT8, INT4)
   IS 'Check whether the withdrawals from the given reserve since the given time are below the given threshold';
 
 
 
-CREATE OR REPLACE FUNCTION exchange_do_check_coin_balance(
-  IN denom_val INT8, -- value of the denomination of the coin
-  IN denom_frac INT4, -- value of the denomination of the coin
-  IN in_coin_pub BYTEA, -- coin public key
-  IN check_recoup BOOLEAN, -- do we need to check the recoup table?
-  IN zombie_required BOOLEAN, -- do we need a zombie coin?
-  OUT balance_ok BOOLEAN, -- balance satisfied?
-  OUT zombie_ok BOOLEAN) -- zombie satisfied?
+
+CREATE OR REPLACE FUNCTION exchange_do_deposit(
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_h_contract_terms BYTEA,
+  IN in_wire_salt BYTEA,
+  IN in_wallet_timestamp INT8,
+  IN in_exchange_timestamp INT8,
+  IN in_refund_deadline INT8,
+  IN in_wire_deadline INT8,
+  IN in_merchant_pub BYTEA,
+  IN in_receiver_wire_account VARCHAR,
+  IN in_h_payto BYTEA,
+  IN in_known_coin_id INT8,
+  IN in_coin_pub BYTEA,
+  IN in_coin_sig BYTEA,
+  IN in_shard INT8,
+  IN in_extension_blocked BOOLEAN,
+  IN in_extension_details VARCHAR,
+  OUT out_exchange_timestamp INT8,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_conflict BOOLEAN)
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  coin_uuid INT8; -- known_coin_id of coin_pub
+  wtsi INT8; -- wire target serial id
 DECLARE
-  tmp_val INT8; -- temporary result
-DECLARE
-  tmp_frac INT8; -- temporary result
-DECLARE
-  spent_val INT8; -- how much of coin was spent?
-DECLARE
-  spent_frac INT8; -- how much of coin was spent?
-DECLARE
-  unspent_val INT8; -- how much of coin was refunded?
-DECLARE
-  unspent_frac INT8; -- how much of coin was refunded?
+  xdi INT8; -- eXstension details serial id
 BEGIN
+-- Shards: INSERT extension_details (by extension_details_serial_id)
+--         INSERT wire_targets (by h_payto), on CONFLICT DO NOTHING;
+--         INSERT deposits (by shard + known_coin_id, merchant_pub, h_contract_terms), ON CONFLICT DO NOTHING;
+--         UPDATE known_coins (by coin_pub)
 
--- Note: possible future optimization: get the coin_uuid from the previous
--- 'ensure_coin_known' and pass that here instead of the coin_pub. Might help
--- a tiny bit with performance.
-SELECT known_coin_id INTO coin_uuid
-  FROM known_coins
- WHERE coin_pub=in_coin_pub;
+IF NOT NULL in_extension_details
+THEN
+  INSERT INTO extension_details
+  (extension_options)
+  VALUES
+    (in_extension_details)
+  RETURNING extension_details_serial_id INTO xdi;
+ELSE
+  xdi=NULL;
+END IF;
+
+
+INSERT INTO wire_targets
+  (h_payto
+  ,payto_uri)
+  VALUES
+  (in_h_payto
+  ,in_receiver_wire_account)
+ON CONFLICT (h_payto) DO NOTHING
+  RETURNING wire_target_serial_id INTO wtsi;
 
 IF NOT FOUND
 THEN
-  -- coin unknown, should be impossible!
-  balance_ok=FALSE;
-  zombie_ok=FALSE;
-  ASSERT false, 'coin unknown';
+  SELECT wire_target_serial_id
+  INTO wtsi
+  FROM wire_targets
+  WHERE h_payto=in_h_payto;
+END IF;
+
+
+INSERT INTO deposits
+  (shard
+  ,known_coin_id
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,wallet_timestamp
+  ,exchange_timestamp
+  ,refund_deadline
+  ,wire_deadline
+  ,merchant_pub
+  ,h_contract_terms
+  ,coin_sig
+  ,wire_salt
+  ,wire_target_serial_id
+  ,extension_blocked
+  ,extension_details_serial_id
+  )
+  VALUES
+  (in_shard
+  ,in_known_coin_id
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac
+  ,in_wallet_timestamp
+  ,in_exchange_timestamp
+  ,in_refund_deadline
+  ,in_wire_deadline
+  ,in_merchant_pub
+  ,in_h_contract_terms
+  ,in_coin_sig
+  ,in_wire_salt
+  ,wtsi
+  ,in_extension_blocked
+  ,xdi)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'coin_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  -- We do select over merchant_pub and h_contract_terms
+  -- primarily here to maximally use the existing index.
+  SELECT
+     exchange_timestamp
+   INTO
+     out_exchange_timestamp
+   FROM deposits
+   WHERE
+     shard=in_shard AND
+     known_coin_id=in_known_coin_id AND
+     merchant_pub=in_merchant_pub AND
+     h_contract_terms=in_h_contract_terms AND
+     coin_sig=in_coin_sig;
+
+  IF NOT FOUND
+  THEN
+    -- Deposit exists, but with differences. Not allowed.
+    out_balance_ok=FALSE;
+    out_conflict=TRUE;
+    RETURN;
+  END IF;
+
+  -- Idempotent request known, return success.
+  out_balance_ok=TRUE;
+  out_conflict=FALSE;
+
   RETURN;
 END IF;
 
 
-spent_val = 0;
-spent_frac = 0;
-unspent_val = denom_val;
-unspent_frac = denom_frac;
+out_exchange_timestamp=in_exchange_timestamp;
 
-SELECT
-   SUM(amount_with_fee_val) -- overflow here is not plausible
-  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
-  INTO
-   tmp_val
-  ,tmp_frac
-  FROM deposits
- WHERE known_coin_id=coin_uuid;
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_with_fee_frac
+       + CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_with_fee_val
+       - CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub
+    AND ( (remaining_val > in_amount_with_fee_val) OR
+          ( (remaining_frac >= in_amount_with_fee_frac) AND
+            (remaining_val >= in_amount_with_fee_val) ) );
 
-IF tmp_val IS NOT NULL
+IF NOT FOUND
 THEN
-  spent_val = spent_val + tmp_val;
-  spent_frac = spent_frac + tmp_frac;
+  -- Insufficient balance.
+  out_balance_ok=FALSE;
+  out_conflict=FALSE;
+  RETURN;
 END IF;
 
-SELECT
-   SUM(amount_with_fee_val) -- overflow here is not plausible
-  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
-  INTO
-   tmp_val
-  ,tmp_frac
-  FROM refresh_commitments
- WHERE old_known_coin_id=coin_uuid;
-
-IF tmp_val IS NOT NULL
-THEN
-  spent_val = spent_val + tmp_val;
-  spent_frac = spent_frac + tmp_frac;
-END IF;
-
-
-SELECT
-   SUM(rf.amount_with_fee_val) -- overflow here is not plausible
-  ,SUM(CAST(rf.amount_with_fee_frac AS INT8)) -- compute using 64 bits
-  INTO
-   tmp_val
-  ,tmp_frac
-  FROM deposits
-  JOIN refunds rf
-    USING (deposit_serial_id)
-  WHERE
-    known_coin_id=coin_uuid;
-IF tmp_val IS NOT NULL
-THEN
-  unspent_val = unspent_val + tmp_val;
-  unspent_frac = unspent_frac + tmp_frac;
-END IF;
-
--- Note: even if 'check_recoup' is true, the tables below
--- are in practice likely empty (as they only apply if
--- the exchange (ever) had to revoke keys).
-IF check_recoup
-THEN
-
-  SELECT
-     SUM(amount_val) -- overflow here is not plausible
-    ,SUM(CAST(amount_frac AS INT8)) -- compute using 64 bits
-    INTO
-     tmp_val
-    ,tmp_frac
-    FROM recoup_refresh
-   WHERE known_coin_id=coin_uuid;
-
-  IF tmp_val IS NOT NULL
-  THEN
-    spent_val = spent_val + tmp_val;
-    spent_frac = spent_frac + tmp_frac;
-  END IF;
-
-  SELECT
-     SUM(amount_val) -- overflow here is not plausible
-    ,SUM(CAST(amount_frac AS INT8)) -- compute using 64 bits
-    INTO
-     tmp_val
-    ,tmp_frac
-    FROM recoup
-   WHERE known_coin_id=coin_uuid;
-
-  IF tmp_val IS NOT NULL
-  THEN
-    spent_val = spent_val + tmp_val;
-    spent_frac = spent_frac + tmp_frac;
-  END IF;
-
-  SELECT
-     SUM(amount_val) -- overflow here is not plausible
-    ,SUM(CAST(amount_frac AS INT8)) -- compute using 64 bits
-    INTO
-     tmp_val
-    ,tmp_frac
-    FROM recoup_refresh
-    JOIN refresh_revealed_coins rrc
-        USING (rrc_serial)
-    JOIN refresh_commitments rfc
-         ON (rrc.melt_serial_id = rfc.melt_serial_id)
-   WHERE rfc.old_known_coin_id=coin_uuid;
-
-  IF tmp_val IS NOT NULL
-  THEN
-    unspent_val = unspent_val + tmp_val;
-    unspent_frac = unspent_frac + tmp_frac;
-  END IF;
-
-  IF ( (0 < tmp_val) OR (0 < tmp_frac) )
-  THEN
-    -- There was a transaction that justifies the zombie
-    -- status, clear the flag
-    zombie_required=FALSE;
-  END IF;
-
-END IF;
-
-
--- normalize results
-spent_val = spent_val + spent_frac / 100000000;
-spent_frac = spent_frac % 100000000;
-unspent_val = unspent_val + unspent_frac / 100000000;
-unspent_frac = unspent_frac % 100000000;
-
--- Actually check if the coin balance is sufficient. Verbosely. ;-)
-IF (unspent_val > spent_val)
-THEN
-  balance_ok=TRUE;
-ELSE
-  IF (unspent_val = spent_val) AND (unspent_frac >= spent_frac)
-  THEN
-    balance_ok=TRUE;
-  ELSE
-    balance_ok=FALSE;
-  END IF;
-END IF;
-
-zombie_ok = NOT zombie_required;
+-- Everything fine, return success!
+out_balance_ok=TRUE;
+out_conflict=FALSE;
 
 END $$;
 
-COMMENT ON FUNCTION exchange_do_check_coin_balance(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
-  IS 'Checks whether the coin has sufficient balance for all the operations associated with it';
 
 
+CREATE OR REPLACE FUNCTION exchange_do_melt(
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_rc BYTEA,
+  IN in_old_coin_pub BYTEA,
+  IN in_old_coin_sig BYTEA,
+  IN in_known_coin_id INT8, -- not used, but that's OK
+  IN in_noreveal_index INT4,
+  IN in_zombie_required BOOLEAN,
+  OUT out_balance_ok BOOLEAN,
+  OUT out_zombie_bad BOOLEAN,
+  OUT out_noreveal_index INT4)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+-- Shards: INSERT refresh_commitments (by rc)
+-- (rare:) SELECT refresh_commitments (by old_coin_pub) -- crosses shards!
+-- (rare:) SEELCT refresh_revealed_coins (by melt_serial_id)
+-- (rare:) PERFORM recoup_refresh (by rrc_serial) -- crosses shards!
+--         UPDATE known_coins (by coin_pub)
+
+INSERT INTO refresh_commitments
+  (rc
+  ,old_coin_pub
+  ,old_coin_sig
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,noreveal_index
+  )
+  VALUES
+  (in_rc
+  ,in_old_coin_pub
+  ,in_old_coin_sig
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac
+  ,in_noreveal_index)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  out_noreveal_index=-1;
+  SELECT
+     noreveal_index
+    INTO
+     out_noreveal_index
+    FROM refresh_commitments
+   WHERE rc=in_rc;
+  out_balance_ok=FOUND;
+  out_zombie_bad=FALSE; -- zombie is OK
+  RETURN;
+END IF;
+
+
+IF in_zombie_required
+THEN
+  -- Check if this coin was part of a refresh
+  -- operation that was subsequently involved
+  -- in a recoup operation.  We begin by all
+  -- refresh operations our coin was involved
+  -- with, then find all associated reveal
+  -- operations, and then see if any of these
+  -- reveal operations was involved in a recoup.
+  PERFORM
+    FROM recoup_refresh
+   WHERE rrc_serial IN
+    (SELECT rrc_serial
+       FROM refresh_revealed_coins
+      WHERE melt_serial_id IN
+      (SELECT melt_serial_id
+         FROM refresh_commitments
+        WHERE old_coin_pub=in_old_coin_pub));
+  IF NOT FOUND
+  THEN
+    out_zombie_bad=TRUE;
+    out_balance_ok=FALSE;
+    RETURN;
+  END IF;
+END IF;
+
+out_zombie_bad=FALSE; -- zombie is OK
+
+
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_with_fee_frac
+       + CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_with_fee_val
+       - CASE
+         WHEN remaining_frac < in_amount_with_fee_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_old_coin_pub
+    AND ( (remaining_val > in_amount_with_fee_val) OR
+          ( (remaining_frac >= in_amount_with_fee_frac) AND
+            (remaining_val >= in_amount_with_fee_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Insufficient balance.
+  out_noreveal_index=-1;
+  out_balance_ok=FALSE;
+  RETURN;
+END IF;
+
+-- Everything fine, return success!
+out_balance_ok=TRUE;
+out_noreveal_index=in_noreveal_index;
+
+END $$;
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_refund(
+  IN in_amount_with_fee_val INT8,
+  IN in_amount_with_fee_frac INT4,
+  IN in_amount_val INT8,
+  IN in_amount_frac INT4,
+  IN in_deposit_fee_val INT8,
+  IN in_deposit_fee_frac INT4,
+  IN in_h_contract_terms BYTEA,
+  IN in_rtransaction_id INT8,
+  IN in_deposit_shard INT8,
+  IN in_known_coin_id INT8,
+  IN in_coin_pub BYTEA,
+  IN in_merchant_pub BYTEA,
+  IN in_merchant_sig BYTEA,
+  OUT out_not_found BOOLEAN,
+  OUT out_refund_ok BOOLEAN,
+  OUT out_gone BOOLEAN,
+  OUT out_conflict BOOLEAN)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  dsi INT8; -- ID of deposit being refunded
+DECLARE
+  tmp_val INT8; -- total amount refunded
+DECLARE
+  tmp_frac INT8; -- total amount refunded
+DECLARE
+  deposit_val INT8; -- amount that was originally deposited
+DECLARE
+  deposit_frac INT8; -- amount that was originally deposited
+BEGIN
+-- Shards: SELECT deposits (by shard, known_coin_id,h_contract_terms, merchant_pub)
+--         INSERT refunds (by deposit_serial_id, rtransaction_id) ON CONFLICT DO NOTHING
+--         SELECT refunds (by deposit_serial_id)
+--         UPDATE known_coins (by coin_pub)
+
+SELECT
+   deposit_serial_id
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  ,done
+INTO
+   dsi
+  ,deposit_val
+  ,deposit_frac
+  ,out_gone
+FROM deposits
+WHERE shard=in_deposit_shard
+  AND known_coin_id=in_known_coin_id
+  AND h_contract_terms=in_h_contract_terms
+  AND merchant_pub=in_merchant_pub;
+
+IF NOT FOUND
+THEN
+  -- No matching deposit found!
+  out_refund_ok=FALSE;
+  out_conflict=FALSE;
+  out_not_found=TRUE;
+  out_gone=FALSE;
+  RETURN;
+END IF;
+
+
+INSERT INTO refunds
+  (deposit_serial_id
+  ,merchant_sig
+  ,rtransaction_id
+  ,amount_with_fee_val
+  ,amount_with_fee_frac
+  )
+  VALUES
+  (dsi
+  ,in_merchant_sig
+  ,in_rtransaction_id
+  ,in_amount_with_fee_val
+  ,in_amount_with_fee_frac)
+  ON CONFLICT DO NOTHING;
+
+IF NOT FOUND
+THEN
+  -- Idempotency check: see if an identical record exists.
+  -- Note that by checking 'coin_sig', we implicitly check
+  -- identity over everything that the signature covers.
+  -- We do select over merchant_pub and h_contract_terms
+  -- primarily here to maximally use the existing index.
+   PERFORM
+   FROM refunds
+   WHERE
+     deposit_serial_id=dsi AND
+     rtransaction_id=in_rtransaction_id AND
+     amount_with_fee_val=in_amount_with_fee_val AND
+     amount_with_fee_frac=in_amount_with_fee_frac;
+
+  IF NOT FOUND
+  THEN
+    -- Deposit exists, but have conflicting refund.
+    out_refund_ok=FALSE;
+    out_conflict=TRUE;
+    out_not_found=FALSE;
+    RETURN;
+  END IF;
+
+  -- Idempotent request known, return success.
+  out_refund_ok=TRUE;
+  out_conflict=FALSE;
+  out_not_found=FALSE;
+  out_gone=FALSE;
+  RETURN;
+END IF;
+
+
+IF out_gone
+THEN
+  -- money already sent to the merchant. Tough luck.
+  out_refund_ok=FALSE;
+  out_conflict=FALSE;
+  out_not_found=FALSE;
+  RETURN;
+END IF;
+
+
+
+-- Check refund balance invariant.
+SELECT
+   SUM(amount_with_fee_val) -- overflow here is not plausible
+  ,SUM(CAST(amount_with_fee_frac AS INT8)) -- compute using 64 bits
+  INTO
+   tmp_val
+  ,tmp_frac
+  FROM refunds
+  WHERE
+    deposit_serial_id=dsi;
+IF tmp_val IS NULL
+THEN
+  RAISE NOTICE 'failed to sum up existing refunds';
+  out_refund_ok=FALSE;
+  out_conflict=FALSE;
+  out_not_found=FALSE;
+  RETURN;
+END IF;
+
+-- Normalize result before continuing
+tmp_val = tmp_val + tmp_frac / 100000000;
+tmp_frac = tmp_frac % 100000000;
+
+-- Actually check if the deposits are sufficient for the refund. Verbosely. ;-)
+IF (tmp_val < deposit_val)
+THEN
+  out_refund_ok=TRUE;
+ELSE
+  IF (tmp_val = deposit_val) AND (tmp_frac <= deposit_frac)
+  THEN
+    out_refund_ok=TRUE;
+  ELSE
+    out_refund_ok=FALSE;
+  END IF;
+END IF;
+
+IF (tmp_val = deposit_val) AND (tmp_frac = deposit_frac)
+THEN
+  -- Refunds have reached the full value of the original
+  -- deposit. Also refund the deposit fee.
+  in_amount_frac = in_amount_frac + in_deposit_fee_frac;
+  in_amount_val = in_amount_val + in_deposit_fee_val;
+
+  -- Normalize result before continuing
+  in_amount_val = in_amount_val + in_amount_frac / 100000000;
+  in_amount_frac = in_amount_frac % 100000000;
+END IF;
+
+-- Update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac+in_amount_frac
+       - CASE
+         WHEN remaining_frac+in_amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val+in_amount_val
+       + CASE
+         WHEN remaining_frac+in_amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub;
+
+
+out_conflict=FALSE;
+out_not_found=FALSE;
+
+END $$;
+
+-- COMMENT ON FUNCTION exchange_do_refund(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
+--  IS 'Executes a refund operation, checking that the corresponding deposit was sufficient to cover the refunded amount';
+
+
+CREATE OR REPLACE FUNCTION exchange_do_recoup_to_reserve(
+  IN in_reserve_pub BYTEA,
+  IN in_reserve_out_serial_id INT8,
+  IN in_amount_val INT8,
+  IN in_amount_frac INT4,
+  IN in_coin_blind BYTEA,
+  IN in_coin_pub BYTEA,
+  IN in_known_coin_id INT8,
+  IN in_coin_sig BYTEA,
+  IN in_reserve_gc INT8,
+  IN in_reserve_expiration INT8,
+  IN in_recoup_timestamp INT8,
+  OUT out_recoup_ok BOOLEAN,
+  OUT out_internal_failure BOOLEAN,
+  OUT out_recoup_timestamp INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  tmp_val INT8; -- previous amount recouped
+DECLARE
+  tmp_frac INT8; -- previous amount recouped
+BEGIN
+-- Shards: SELECT known_coins (by coin_pub)
+--         SELECT recoup (by known_coin_id)
+--         UPDATE reserves (by reserve_pub)
+--         INSERT recoup (by known_coin_id)
+
+out_internal_failure=FALSE;
+
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_frac
+       + CASE
+         WHEN remaining_frac < in_amount_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_val
+       - CASE
+         WHEN remaining_frac < in_amount_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub
+    AND ( (remaining_val > in_amount_val) OR
+          ( (remaining_frac >= in_amount_frac) AND
+            (remaining_val >= in_amount_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Check if we already recouped this coin before!
+  SELECT
+       amount_val
+      ,amount_frac
+      ,recoup_timestamp
+    INTO
+       tmp_val
+      ,tmp_frac
+      ,out_recoup_timestamp
+    FROM recoup
+    WHERE known_coin_id=in_known_coin_id;
+
+  IF FOUND
+  THEN
+    -- Idempotent request, all OK!
+    out_recoup_ok= (tmp_val = in_amount_val) AND
+                   (tmp_frac = in_amount_frac);
+    RETURN;
+  END IF;
+
+  out_recoup_ok=FALSE;
+  RETURN;
+END IF;
+
+
+-- Credit the reserve and update reserve timers.
+UPDATE reserves
+  SET
+    current_balance_frac=current_balance_frac+in_amount_frac
+       - CASE
+         WHEN current_balance_frac+in_amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    current_balance_val=current_balance_val+in_amount_val
+       + CASE
+         WHEN current_balance_frac+in_amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END,
+    gc_date=GREATEST(gc_date, in_reserve_gc),
+    expiration_date=GREATEST(expiration_date, in_reserve_expiration)
+  WHERE reserve_pub=in_reserve_pub;
+
+
+IF NOT FOUND
+THEN
+  RAISE NOTICE 'failed to increase reserve balance from recoup';
+  out_recoup_ok=FALSE;
+  out_internal_failure=TRUE;
+  RETURN;
+END IF;
+
+
+INSERT INTO recoup
+  (known_coin_id
+  ,coin_sig
+  ,coin_blind
+  ,amount_val
+  ,amount_frac
+  ,recoup_timestamp
+  ,reserve_out_serial_id
+  )
+VALUES
+  (in_known_coin_id
+  ,in_coin_sig
+  ,in_coin_blind
+  ,in_amount_val
+  ,in_amount_frac
+  ,in_recoup_timestamp
+  ,in_reserve_out_serial_id);
+
+-- Normal end, everything is fine.
+out_recoup_ok=TRUE;
+out_recoup_timestamp=in_recoup_timestamp;
+
+END $$;
+
+-- COMMENT ON FUNCTION exchange_do_recoup_to_reserve(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
+--  IS 'Executes a recoup of a coin that was withdrawn from a reserve';
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION exchange_do_recoup_to_coin(
+  IN in_old_coin_pub BYTEA,
+  IN in_rrc_serial INT8,
+  IN in_amount_val INT8,
+  IN in_amount_frac INT4,
+  IN in_coin_blind BYTEA,
+  IN in_coin_pub BYTEA,
+  IN in_known_coin_id INT8,
+  IN in_coin_sig BYTEA,
+  IN in_recoup_timestamp INT8,
+  OUT out_recoup_ok BOOLEAN,
+  OUT out_internal_failure BOOLEAN,
+  OUT out_recoup_timestamp INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  tmp_val INT8; -- previous amount recouped
+DECLARE
+  tmp_frac INT8; -- previous amount recouped
+BEGIN
+
+-- Shards: UPDATE known_coins (by coin_pub)
+--         SELECT recoup_refresh (by known_coin_id)
+--         UPDATE known_coins (by coin_pub)
+--         INSERT recoup_refresh (by known_coin_id)
+
+
+out_internal_failure=FALSE;
+
+-- Check and update balance of the coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac-in_amount_frac
+       + CASE
+         WHEN remaining_frac < in_amount_frac
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val-in_amount_val
+       - CASE
+         WHEN remaining_frac < in_amount_frac
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_coin_pub
+    AND ( (remaining_val > in_amount_val) OR
+          ( (remaining_frac >= in_amount_frac) AND
+            (remaining_val >= in_amount_val) ) );
+
+IF NOT FOUND
+THEN
+  -- Check if we already recouped this coin before!
+  SELECT
+       amount_val
+      ,amount_frac
+      ,recoup_timestamp
+    INTO
+       tmp_val
+      ,tmp_frac
+      ,out_recoup_timestamp
+    FROM recoup_refresh
+    WHERE known_coin_id=in_known_coin_id;
+
+  IF FOUND
+  THEN
+    -- Idempotent request, all OK!
+    out_recoup_ok= (tmp_val = in_amount_val) AND
+                   (tmp_frac = in_amount_frac);
+    RETURN;
+  END IF;
+
+  -- Insufficient balance, not idempotent.
+  out_recoup_ok=FALSE;
+  RETURN;
+END IF;
+
+
+-- Credit the old coin.
+UPDATE known_coins
+  SET
+    remaining_frac=remaining_frac+in_amount_frac
+       - CASE
+         WHEN remaining_frac+in_amount_frac >= 100000000
+         THEN 100000000
+         ELSE 0
+         END,
+    remaining_val=remaining_val+in_amount_val
+       + CASE
+         WHEN remaining_frac+in_amount_frac >= 100000000
+         THEN 1
+         ELSE 0
+         END
+  WHERE coin_pub=in_old_coin_pub;
+
+
+IF NOT FOUND
+THEN
+  RAISE NOTICE 'failed to increase old coin balance from recoup';
+  out_recoup_ok=FALSE;
+  out_internal_failure=TRUE;
+  RETURN;
+END IF;
+
+
+INSERT INTO recoup_refresh
+  (known_coin_id
+  ,coin_sig
+  ,coin_blind
+  ,amount_val
+  ,amount_frac
+  ,recoup_timestamp
+  ,rrc_serial
+  )
+VALUES
+  (in_known_coin_id
+  ,in_coin_sig
+  ,in_coin_blind
+  ,in_amount_val
+  ,in_amount_frac
+  ,in_recoup_timestamp
+  ,in_rrc_serial);
+
+-- Normal end, everything is fine.
+out_recoup_ok=TRUE;
+out_recoup_timestamp=in_recoup_timestamp;
+
+END $$;
+
+
+-- COMMENT ON FUNCTION exchange_do_recoup_to_coin(INT8, INT4, BYTEA, BOOLEAN, BOOLEAN)
+--  IS 'Executes a recoup-refresh of a coin that was obtained from a refresh-reveal process';
+
+
+
+CREATE OR REPLACE PROCEDURE exchange_do_gc(
+  IN in_ancient_date INT8,
+  IN in_now INT8)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  reserve_uuid_min INT8; -- minimum reserve UUID still alive
+DECLARE
+  melt_min INT8; -- minimum melt still alive
+DECLARE
+  coin_min INT8; -- minimum known_coin still alive
+DECLARE
+  deposit_min INT8; -- minimum deposit still alive
+DECLARE
+  reserve_out_min INT8; -- minimum reserve_out still alive
+BEGIN
+
+DELETE FROM prewire
+  WHERE finished=TRUE;
+
+DELETE FROM wire_fee
+  WHERE end_date < in_ancient_date;
+
+-- TODO: use closing fee as threshold?
+DELETE FROM reserves
+  WHERE gc_date < in_now
+    AND current_balance_val = 0
+    AND current_balance_frac = 0;
+
+SELECT
+     reserve_out_serial_id
+  INTO
+     reserve_out_min
+  FROM reserves_out
+  ORDER BY reserve_out_serial_id ASC
+  LIMIT 1;
+
+DELETE FROM recoup
+  WHERE reserve_out_serial_id < reserve_out_min;
+
+
+SELECT
+     reserve_uuid
+  INTO
+     reserve_uuid_min
+  FROM reserves
+  ORDER BY reserve_uuid ASC
+  LIMIT 1;
+
+DELETE FROM reserves_out
+  WHERE reserve_uuid < reserve_uuid_min;
+
+
+DELETE FROM denominations
+  WHERE expire_legal < in_now
+    AND denominations_serial NOT IN
+      (SELECT DISTINCT denominations_serial
+         FROM reserves_out)
+    AND denominations_serial NOT IN
+      (SELECT DISTINCT denominations_serial
+         FROM known_coins
+        WHERE known_coin_id IN
+          (SELECT DISTINCT known_coin_id
+             FROM recoup))
+    AND denominations_serial NOT IN
+      (SELECT DISTINCT denominations_serial
+         FROM known_coins
+        WHERE known_coin_id IN
+          (SELECT DISTINCT known_coin_id
+             FROM recoup_refresh));
+
+SELECT
+     melt_serial_id
+  INTO
+     melt_min
+  FROM refresh_commitments
+  ORDER BY melt_serial_id ASC
+  LIMIT 1;
+
+DELETE FROM refresh_revealed_coins
+  WHERE melt_serial_id < melt_min;
+
+DELETE FROM refresh_transfer_keys
+  WHERE melt_serial_id < melt_min;
+
+SELECT
+     known_coin_id
+  INTO
+     coin_min
+  FROM known_coins
+  ORDER BY known_coin_id ASC
+  LIMIT 1;
+
+DELETE FROM deposits
+  WHERE known_coin_id < coin_min;
+
+SELECT
+     deposit_serial_id
+  INTO
+     deposit_min
+  FROM deposits
+  ORDER BY deposit_serial_id ASC
+  LIMIT 1;
+
+DELETE FROM refunds
+  WHERE deposit_serial_id < deposit_min;
+
+DELETE FROM aggregation_tracking
+  WHERE deposit_serial_id < deposit_min;
+
+
+END $$;
 
 
 -- Complete transaction

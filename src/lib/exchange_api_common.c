@@ -546,17 +546,17 @@ TALER_EXCHANGE_verify_coin_history (
     else if (0 == strcasecmp (type,
                               "MELT"))
     {
-      struct TALER_RefreshMeltCoinAffirmationPS rm;
       struct TALER_CoinSpendSignatureP sig;
+      struct TALER_RefreshCommitmentP rc;
       struct GNUNET_JSON_Specification spec[] = {
         GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("rc",
-                                     &rm.rc),
+                                     &rc),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     &rm.h_denom_pub),
-        TALER_JSON_spec_amount_any_nbo ("melt_fee",
-                                        &rm.melt_fee),
+                                     h_denom_pub),
+        TALER_JSON_spec_amount_any ("melt_fee",
+                                    &fee),
         GNUNET_JSON_spec_end ()
       };
 
@@ -568,26 +568,9 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      rm.purpose.size = htonl (sizeof (rm));
-      rm.purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_MELT);
-      TALER_amount_hton (&rm.amount_with_fee,
-                         &amount);
-      rm.coin_pub = *coin_pub;
-      if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_MELT,
-                                      &rm,
-                                      &sig.eddsa_signature,
-                                      &coin_pub->eddsa_pub))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      *h_denom_pub = rm.h_denom_pub;
       if (NULL != dk)
       {
         /* check that melt fee matches our expectations from /keys! */
-        TALER_amount_ntoh (&fee,
-                           &rm.melt_fee);
         if ( (GNUNET_YES !=
               TALER_amount_cmp_currency (&fee,
                                          &dk->fee_refresh)) ||
@@ -598,6 +581,17 @@ TALER_EXCHANGE_verify_coin_history (
           GNUNET_break_op (0);
           return GNUNET_SYSERR;
         }
+      }
+      if (GNUNET_OK !=
+          TALER_wallet_melt_verify (&amount,
+                                    &fee,
+                                    &rc,
+                                    h_denom_pub,
+                                    coin_pub,
+                                    &sig))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
       }
       add = GNUNET_YES;
     }

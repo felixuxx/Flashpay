@@ -1093,18 +1093,9 @@ struct RevealContext
 static void
 reveal_data_cb (void *cls,
                 uint32_t num_freshcoins,
-                const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs,
-                unsigned int num_tprivs,
-                const struct TALER_TransferPrivateKeyP *tprivs,
-                const struct TALER_TransferPublicKeyP *tp)
+                const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs)
 {
   struct RevealContext *rctx = cls;
-
-  /* Note: optimization using custom database accessor API could avoid
-     fetching these fields -- and we */
-  (void) num_tprivs;
-  (void) tprivs;
-  (void) tp;
 
   rctx->num_freshcoins = num_freshcoins;
   rctx->new_issues = GNUNET_new_array (
@@ -1117,9 +1108,8 @@ reveal_data_cb (void *cls,
     enum GNUNET_DB_QueryStatus qs;
 
     /* lookup new coin denomination key */
-    qs = TALER_ARL_get_denomination_info (&rrcs[i].denom_pub,
-                                          &rctx->new_issues[i],
-                                          NULL);
+    qs = TALER_ARL_get_denomination_info_by_hash (&rrcs[i].h_denom_pub,
+                                                  &rctx->new_issues[i]);
     if (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS == qs)
     {
       report_row_inconsistency ("refresh_reveal",
@@ -1287,13 +1277,16 @@ refresh_session_cb (void *cls,
 
   /* verify melt signature */
   {
-    const struct TALER_DenominationHash h_denom_pub;
+    struct TALER_DenominationHash h_denom_pub;
+    struct TALER_Amount fee_refresh;
 
     TALER_denom_pub_hash (denom_pub,
-                          &rmc.h_denom_pub);
+                          &h_denom_pub);
+    TALER_amount_ntoh (&fee_refresh,
+                       &issue->fee_refresh);
     if (GNUNET_OK !=
-        TALER_wallet_melt_verify (&rmc.amount_with_fee,
-                                  &issue->fee_refresh,
+        TALER_wallet_melt_verify (amount_with_fee,
+                                  &fee_refresh,
                                   rc,
                                   &h_denom_pub,
                                   coin_pub,
