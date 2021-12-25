@@ -1673,6 +1673,9 @@ run (void *cls)
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                   ccoin->coin_ev,
                                   ccoin->coin_ev_size);
+      GNUNET_CRYPTO_hash (ccoin->coin_ev,
+                          ccoin->coin_ev_size,
+                          &ccoin->coin_envelope_hash.hash);
       TALER_denom_pub_hash (&new_dkp[cnt]->pub,
                             &ccoin->h_denom_pub);
       GNUNET_assert (GNUNET_OK ==

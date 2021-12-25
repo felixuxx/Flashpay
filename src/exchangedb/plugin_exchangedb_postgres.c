@@ -6091,7 +6091,7 @@ postgres_insert_refresh_reveal (
       GNUNET_PQ_query_param_auto_from_type (&rrc->h_denom_pub),
       GNUNET_PQ_query_param_fixed_size (rrc->coin_ev,
                                         rrc->coin_ev_size),
-      GNUNET_PQ_query_param_auto_from_type (&rrc->h_coin_ev),
+      GNUNET_PQ_query_param_auto_from_type (&rrc->coin_envelope_hash),
       TALER_PQ_query_param_blinded_denom_sig (&rrc->coin_sig),
       GNUNET_PQ_query_param_end
     };
