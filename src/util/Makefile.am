@@ -76,6 +76,7 @@ libtalerutil_la_SOURCES = \
   getopt.c \
   lang.c \
   iban.c \
+  merchant_signatures.c \
   mhd.c \
   offline_signatures.c \
   payto.c \

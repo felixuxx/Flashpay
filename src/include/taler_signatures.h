@@ -631,12 +631,6 @@ struct TALER_RefundRequestPS
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   /**
-   * The Merchant's public key.  Allows the merchant to later refund
-   * the transaction or to inquire about the wire transfer identifier.
-   */
-  struct TALER_MerchantPublicKeyP merchant;
-
-  /**
    * Merchant-generated transaction ID for the refund.
    */
   uint64_t rtransaction_id GNUNET_PACKED;

@@ -1897,6 +1897,50 @@ TALER_wallet_recoup_refresh_sign (
   struct TALER_CoinSpendSignatureP *coin_sig);
 
 
+/* ********************* merchant signing ************************** */
+
+
+/**
+ * Create merchant signature approving a refund.
+ *
+ * @param coin_pub coin to be refunded
+ * @param h_contract_terms contract to be refunded
+ * @param rtransaction_id unique ID for this (partial) refund
+ * @param amount amount to be refunded
+ * @param merchant_priv private key to sign with
+ * @param[out] merchant_sig where to write the signature
+ */
+void
+TALER_merchant_refund_sign (
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  uint64_t rtransaction_id,
+  const struct TALER_Amount *amount,
+  const struct TALER_MerchantPrivateKeyP *merchant_priv,
+  struct TALER_MerchantSignatureP *merchant_sig);
+
+
+/**
+ * Verify merchant signature approving a refund.
+ *
+ * @param coin_pub coin to be refunded
+ * @param h_contract_terms contract to be refunded
+ * @param rtransaction_id unique ID for this (partial) refund
+ * @param amount amount to be refunded
+ * @param merchant_pub public key of the merchant
+ * @param merchant_sig signature to verify
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_merchant_refund_verify (
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_PrivateContractHash *h_contract_terms,
+  uint64_t rtransaction_id,
+  const struct TALER_Amount *amount,
+  const struct TALER_MerchantPublicKeyP *merchant_pub,
+  const struct TALER_MerchantSignatureP *merchant_sig);
+
+
 /* ********************* offline signing ************************** */
 
 

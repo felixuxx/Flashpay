@@ -598,25 +598,23 @@ TALER_EXCHANGE_verify_coin_history (
     else if (0 == strcasecmp (type,
                               "REFUND"))
     {
+      struct TALER_PrivateContractHash h_contract_terms;
+      struct TALER_MerchantPublicKeyP merchant_pub;
       struct TALER_MerchantSignatureP sig;
       struct TALER_Amount refund_fee;
       struct TALER_Amount sig_amount;
-      struct TALER_RefundRequestPS rr = {
-        .purpose.size = htonl (sizeof (rr)),
-        .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
-        .coin_pub = *coin_pub
-      };
+      uint64_t rtransaction_id;
       struct GNUNET_JSON_Specification spec[] = {
         TALER_JSON_spec_amount_any ("refund_fee",
                                     &refund_fee),
         GNUNET_JSON_spec_fixed_auto ("merchant_sig",
                                      &sig),
         GNUNET_JSON_spec_fixed_auto ("h_contract_terms",
-                                     &rr.h_contract_terms),
+                                     &h_contract_terms),
         GNUNET_JSON_spec_fixed_auto ("merchant_pub",
-                                     &rr.merchant),
+                                     &merchant_pub),
         GNUNET_JSON_spec_uint64 ("rtransaction_id",
-                                 &rr.rtransaction_id),
+                                 &rtransaction_id),
         GNUNET_JSON_spec_end ()
       };
 
@@ -636,16 +634,13 @@ TALER_EXCHANGE_verify_coin_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      TALER_amount_hton (&rr.refund_amount,
-                         &sig_amount);
-      rr.rtransaction_id = GNUNET_htonll (rr.rtransaction_id);
-      TALER_amount_hton (&rr.refund_amount,
-                         &sig_amount);
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                      &rr,
-                                      &sig.eddsa_sig,
-                                      &rr.merchant.eddsa_pub))
+          TALER_merchant_refund_verify (coin_pub,
+                                        &h_contract_terms,
+                                        rtransaction_id,
+                                        &sig_amount,
+                                        &merchant_pub,
+                                        &sig))
       {
         GNUNET_break_op (0);
         return GNUNET_SYSERR;

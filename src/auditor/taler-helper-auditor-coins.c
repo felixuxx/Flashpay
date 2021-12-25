@@ -1794,41 +1794,30 @@ refund_cb (void *cls,
   }
 
   /* verify refund signature */
+  if (GNUNET_OK !=
+      TALER_merchant_refund_verify (coin_pub,
+                                    h_contract_terms,
+                                    rtransaction_id,
+                                    amount_with_fee,
+                                    merchant_pub,
+                                    merchant_sig))
   {
-    struct TALER_RefundRequestPS rr = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
-      .purpose.size = htonl (sizeof (rr)),
-      .h_contract_terms = *h_contract_terms,
-      .coin_pub = *coin_pub,
-      .merchant = *merchant_pub,
-      .rtransaction_id = GNUNET_htonll (rtransaction_id),
-    };
-
-    TALER_amount_hton (&rr.refund_amount,
-                       amount_with_fee);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                    &rr,
-                                    &merchant_sig->eddsa_sig,
-                                    &merchant_pub->eddsa_pub))
-    {
-      TALER_ARL_report (report_bad_sig_losses,
-                        GNUNET_JSON_PACK (
-                          GNUNET_JSON_pack_string ("operation",
-                                                   "refund"),
-                          GNUNET_JSON_pack_uint64 ("row",
-                                                   rowid),
-                          TALER_JSON_pack_amount ("loss",
-                                                  amount_with_fee),
-                          GNUNET_JSON_pack_data_auto ("coin_pub",
-                                                      coin_pub)));
-      TALER_ARL_amount_add (&total_bad_sig_loss,
-                            &total_bad_sig_loss,
-                            amount_with_fee);
-      if (TALER_ARL_do_abort ())
-        return GNUNET_SYSERR;
-      return GNUNET_OK;
-    }
+    TALER_ARL_report (report_bad_sig_losses,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_string ("operation",
+                                                 "refund"),
+                        GNUNET_JSON_pack_uint64 ("row",
+                                                 rowid),
+                        TALER_JSON_pack_amount ("loss",
+                                                amount_with_fee),
+                        GNUNET_JSON_pack_data_auto ("coin_pub",
+                                                    coin_pub)));
+    TALER_ARL_amount_add (&total_bad_sig_loss,
+                          &total_bad_sig_loss,
+                          amount_with_fee);
+    if (TALER_ARL_do_abort ())
+      return GNUNET_SYSERR;
+    return GNUNET_OK;
   }
 
   TALER_amount_ntoh (&refund_fee,

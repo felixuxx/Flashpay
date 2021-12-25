@@ -209,31 +209,19 @@ verify_and_execute_refund (struct MHD_Connection *connection,
     .refund = refund
   };
 
-  // FIXME: move to libtalerutil!
+  if (GNUNET_OK !=
+      TALER_merchant_refund_verify (&refund->coin.coin_pub,
+                                    &refund->details.h_contract_terms,
+                                    refund->details.rtransaction_id,
+                                    &refund->details.refund_amount,
+                                    &refund->details.merchant_pub,
+                                    &refund->details.merchant_sig))
   {
-    struct TALER_RefundRequestPS rr = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
-      .purpose.size = htonl (sizeof (rr)),
-      .h_contract_terms = refund->details.h_contract_terms,
-      .coin_pub = refund->coin.coin_pub,
-      .merchant = refund->details.merchant_pub,
-      .rtransaction_id = GNUNET_htonll (refund->details.rtransaction_id)
-    };
-
-    TALER_amount_hton (&rr.refund_amount,
-                       &refund->details.refund_amount);
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                    &rr,
-                                    &refund->details.merchant_sig.eddsa_sig,
-                                    &refund->details.merchant_pub.eddsa_pub))
-    {
-      TALER_LOG_WARNING ("Invalid signature on refund request\n");
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_EXCHANGE_REFUND_MERCHANT_SIGNATURE_INVALID,
-                                         NULL);
-    }
+    TALER_LOG_WARNING ("Invalid signature on refund request\n");
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_FORBIDDEN,
+                                       TALER_EC_EXCHANGE_REFUND_MERCHANT_SIGNATURE_INVALID,
+                                       NULL);
   }
 
   /* Fetch the coin's denomination (hash) */

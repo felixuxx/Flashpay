@@ -165,25 +165,15 @@ TEH_RESPONSE_compile_transaction_history (
         const struct TALER_EXCHANGEDB_RefundListEntry *refund =
           pos->details.refund;
         struct TALER_Amount value;
-        // FIXME: move to libtalerutil!
-        struct TALER_RefundRequestPS rr = {
-          .purpose.purpose = htonl (TALER_SIGNATURE_MERCHANT_REFUND),
-          .purpose.size = htonl (sizeof (rr)),
-          .h_contract_terms = refund->h_contract_terms,
-          .coin_pub = *coin_pub,
-          .merchant = refund->merchant_pub,
-          .rtransaction_id = GNUNET_htonll (refund->rtransaction_id)
-        };
 
-        TALER_amount_hton (&rr.refund_amount,
-                           &refund->refund_amount);
 #if ENABLE_SANITY_CHECKS
-        /* internal sanity check before we hand out a bogus sig... */
         if (GNUNET_OK !=
-            GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MERCHANT_REFUND,
-                                        &rr,
-                                        &refund->merchant_sig.eddsa_sig,
-                                        &refund->merchant_pub.eddsa_pub))
+            TALER_merchant_refund_verify (coin_pub,
+                                          &refund->h_contract_terms,
+                                          refund->rtransaction_id,
+                                          &refund->refund_amount,
+                                          &refund->merchant_pub,
+                                          &refund->merchant_sig))
         {
           GNUNET_break (0);
           json_decref (history);
