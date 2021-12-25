@@ -1648,7 +1648,7 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
   /**
    * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
    */
-  char *coin_ev;
+  void *coin_ev;
 
   /**
    * Number of bytes in @e coin_ev.

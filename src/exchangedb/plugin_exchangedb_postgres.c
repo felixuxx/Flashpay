@@ -6084,7 +6084,6 @@ postgres_insert_refresh_reveal (
   for (uint32_t i = 0; i<num_rrcs; i++)
   {
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
-    struct TALER_BlindedCoinHash h_coin_ev;
     struct GNUNET_PQ_QueryParam params[] = {
       GNUNET_PQ_query_param_uint64 (&melt_serial_id),
       GNUNET_PQ_query_param_uint32 (&i),
@@ -6092,15 +6091,12 @@ postgres_insert_refresh_reveal (
       GNUNET_PQ_query_param_auto_from_type (&rrc->h_denom_pub),
       GNUNET_PQ_query_param_fixed_size (rrc->coin_ev,
                                         rrc->coin_ev_size),
-      GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
+      GNUNET_PQ_query_param_auto_from_type (&rrc->h_coin_ev),
       TALER_PQ_query_param_blinded_denom_sig (&rrc->coin_sig),
       GNUNET_PQ_query_param_end
     };
     enum GNUNET_DB_QueryStatus qs;
 
-    GNUNET_CRYPTO_hash (rrc->coin_ev,
-                        rrc->coin_ev_size,
-                        &h_coin_ev.hash);
     qs = GNUNET_PQ_eval_prepared_non_select (pg->conn,
                                              "insert_refresh_revealed_coin",
                                              params);

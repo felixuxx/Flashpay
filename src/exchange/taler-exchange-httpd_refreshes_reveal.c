@@ -49,7 +49,7 @@ static MHD_RESULT
 reply_refreshes_reveal_success (
   struct MHD_Connection *connection,
   unsigned int num_freshcoins,
-  const struct TALER_BlindedDenominationSignature *sigs)
+  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs)
 {
   json_t *list;
 
@@ -63,7 +63,7 @@ reply_refreshes_reveal_success (
 
     obj = GNUNET_JSON_PACK (
       TALER_JSON_pack_blinded_denom_sig ("ev_sig",
-                                         &sigs[freshcoin_index]));
+                                         &rrcs[freshcoin_index].coin_sig));
     GNUNET_assert (0 ==
                    json_array_append_new (list,
                                           obj));
@@ -111,7 +111,7 @@ struct RevealContext
   /**
    * Envelopes to be signed.
    */
-  const struct TALER_RefreshCoinData *rcds;
+  struct TALER_RefreshCoinData *rcds;
 
   /**
    * Size of the @e dks, @e rcds and @e ev_sigs arrays (if non-NULL).
@@ -160,7 +160,7 @@ check_commitment (struct RevealContext *rctx,
       {
         /* Take these coin envelopes from the client */
         rce->transfer_pub = rctx->gamma_tp;
-        rce->new_coins = (struct TALER_RefreshCoinData *) rctx->rcds;
+        rce->new_coins = rctx->rcds;
         off = 1;
       }
       else
@@ -297,25 +297,17 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   /* We know num_fresh_coins is bounded by #MAX_FRESH_COINS, so this is safe */
-  // FIXME: messy to have so many arrays -- and then
-  // later we copy them around! Avoidable!?!
   const struct TEH_DenominationKey *dks[num_fresh_coins];
-  struct TALER_DenominationHash dk_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
-  struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
-  struct TALER_BlindedDenominationSignature ev_sigs[num_fresh_coins];
-  struct TALER_BlindedCoinHash h_blind_ev[num_fresh_coins];
+  struct TALER_EXCHANGEDB_RefreshRevealedCoin rrcs[num_fresh_coins];
   MHD_RESULT ret;
   struct TEH_KeyStateHandle *ksh;
   uint64_t melt_serial_id;
 
-  rctx->num_fresh_coins = num_fresh_coins;
   memset (dks, 0, sizeof (dks));
+  memset (rrcs, 0, sizeof (rrcs));
   memset (rcds, 0, sizeof (rcds));
-  memset (link_sigs, 0, sizeof (link_sigs));
-  memset (ev_sigs, 0, sizeof (ev_sigs));
-  rctx->dks = dks;
-  rctx->rcds = rcds;
+  rctx->num_fresh_coins = num_fresh_coins;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
@@ -330,7 +322,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   {
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed_auto (NULL,
-                                   &dk_h[i]),
+                                   &rrcs[i].h_denom_pub),
       GNUNET_JSON_spec_end ()
     };
     enum GNUNET_GenericReturnValue res;
@@ -343,7 +335,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (GNUNET_OK != res)
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     dks[i] = TEH_keys_denomination_by_hash2 (ksh,
-                                             &dk_h[i],
+                                             &rrcs[i].h_denom_pub,
                                              connection,
                                              &ret);
     if (NULL == dks[i])
@@ -354,7 +346,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       /* This denomination is past the expiration time for withdraws */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        &dk_h[i],
+        &rrcs[i].h_denom_pub,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "REVEAL");
     }
@@ -363,7 +355,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       /* This denomination is not yet valid */
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         connection,
-        &dk_h[i],
+        &rrcs[i].h_denom_pub,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "REVEAL");
     }
@@ -381,11 +373,11 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   /* Parse coin envelopes */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
   {
-    struct TALER_RefreshCoinData *rcd = &rcds[i];
+    struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_varsize (NULL,
-                                &rcd->coin_ev,
-                                &rcd->coin_ev_size),
+                                &rrc->coin_ev,
+                                &rrc->coin_ev_size),
       GNUNET_JSON_spec_end ()
     };
     enum GNUNET_GenericReturnValue res;
@@ -398,13 +390,12 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (GNUNET_OK != res)
     {
       for (unsigned int j = 0; j<i; j++)
-        GNUNET_free (rcds[j].coin_ev);
+        GNUNET_free (rrcs[j].coin_ev);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
-    GNUNET_CRYPTO_hash (rcd->coin_ev,
-                        rcd->coin_ev_size,
-                        &h_blind_ev[i].hash);
-    rcd->dk = &dks[i]->denom_pub;
+    GNUNET_CRYPTO_hash (rrc->coin_ev,
+                        rrc->coin_ev_size,
+                        &rrc->coin_envelope_hash.hash);
   }
 
   /* lookup old_coin_pub in database */
@@ -457,7 +448,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   {
     struct GNUNET_JSON_Specification link_spec[] = {
       GNUNET_JSON_spec_fixed_auto (NULL,
-                                   &link_sigs[i]),
+                                   &rrcs[i].orig_coin_link_sig),
       GNUNET_JSON_spec_end ()
     };
     enum GNUNET_GenericReturnValue res;
@@ -469,14 +460,14 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                       -1);
     if (GNUNET_OK != res)
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
-    /* Check link_sigs[i] signature */
+    /* Check signature */
     if (GNUNET_OK !=
         TALER_wallet_link_verify (
-          &dk_h[i],
+          &rrcs[i].h_denom_pub,
           &rctx->gamma_tp,
-          &h_blind_ev[i],
+          &rrcs[i].coin_envelope_hash,
           &rctx->melt.session.coin.coin_pub,
-          &link_sigs[i]))
+          &rrcs[i].orig_coin_link_sig))
     {
       GNUNET_break_op (0);
       ret = TALER_MHD_reply_with_error (
@@ -488,24 +479,35 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     }
   }
 
+  /* prepare for check_commitment */
+  for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
+  {
+    const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
+    struct TALER_RefreshCoinData *rcd = &rcds[i];
+
+    rcd->coin_ev = rrc->coin_ev;
+    rcd->coin_ev_size = rrc->coin_ev_size;
+    rcd->dk = &dks[i]->denom_pub;
+  }
+  rctx->dks = dks;
+  rctx->rcds = rcds;
   if (GNUNET_OK !=
       check_commitment (rctx,
                         connection,
                         &ret))
     goto cleanup;
 
-
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Creating %u signatures\n",
               (unsigned int) rctx->num_fresh_coins);
-  /* sign _early_ (optimistic!) to keep out of transaction scope! */
+  /* create fresh coin signatures */
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
     enum TALER_ErrorCode ec = TALER_EC_NONE;
 
-    ev_sigs[i]
+    rrcs[i].coin_sig
       = TEH_keys_denomination_sign (
-          &dk_h[i],
+          &rrcs[i].h_denom_pub,
           rcds[i].coin_ev,
           rcds[i].coin_ev_size,
           &ec);
@@ -522,19 +524,14 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
               "Signatures ready, starting DB interaction\n");
   /* Persist operation result in DB */
   {
-    struct TALER_EXCHANGEDB_RefreshRevealedCoin rrcs[rctx->num_fresh_coins];
     enum GNUNET_DB_QueryStatus qs;
 
     for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
 
-      rrc->h_denom_pub = dk_h[i];
-      rrc->orig_coin_link_sig = link_sigs[i];
       rrc->coin_ev = rcds[i].coin_ev;
       rrc->coin_ev_size = rcds[i].coin_ev_size;
-      rrc->coin_sig = ev_sigs[i];
-      rrc->coin_envelope_hash = h_blind_ev[i];
     }
     qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
                                             melt_serial_id,
@@ -543,6 +540,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                             TALER_CNC_KAPPA - 1,
                                             rctx->transfer_privs,
                                             &rctx->gamma_tp);
+    /* 0 == qs is ok, as we did not check for repeated requests */
     if (0 > qs)
     {
       GNUNET_break (0);
@@ -557,14 +555,17 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   /* Generate final (positive) response */
   ret = reply_refreshes_reveal_success (connection,
                                         num_fresh_coins,
-                                        ev_sigs);
+                                        rrcs);
 cleanup:
   GNUNET_break (MHD_NO != ret);
   /* free resources */
   for (unsigned int i = 0; i<num_fresh_coins; i++)
-    TALER_blinded_denom_sig_free (&ev_sigs[i]);
-  for (unsigned int i = 0; i<num_fresh_coins; i++)
-    GNUNET_free (rcds[i].coin_ev);
+  {
+    struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
+
+    TALER_blinded_denom_sig_free (&rrc->coin_sig);
+    GNUNET_free (rrc->coin_ev);
+  }
   return ret;
 }
 
