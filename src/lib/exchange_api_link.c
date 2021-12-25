@@ -138,6 +138,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinPubHash c_hash;
     struct TALER_CoinSpendPublicKeyP old_coin_pub;
+    struct TALER_BlindedCoinHash coin_envelope_hash;
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);
@@ -151,11 +152,14 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
+    GNUNET_CRYPTO_hash (pd.coin_ev,
+                        pd.coin_ev_size,
+                        &coin_envelope_hash.hash);
+
     if (GNUNET_OK !=
         TALER_wallet_link_verify (&pd.denom_pub_hash,
                                   trans_pub,
-                                  pd.coin_ev,
-                                  pd.coin_ev_size,
+                                  &coin_envelope_hash,
                                   &old_coin_pub,
                                   &link_sig))
     {

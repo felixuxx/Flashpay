@@ -133,9 +133,7 @@ enum GNUNET_GenericReturnValue
 TALER_wallet_link_verify (
   const struct TALER_DenominationHash *h_denom_pub,
   const struct TALER_TransferPublicKeyP *transfer_pub,
-  // FIXME: consider passing hash!
-  const void *coin_ev,
-  size_t coin_ev_size,
+  const struct TALER_BlindedCoinHash *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -143,12 +141,10 @@ TALER_wallet_link_verify (
     .purpose.size = htonl (sizeof (ldp)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
     .h_denom_pub = *h_denom_pub,
-    .transfer_pub = *transfer_pub
+    .transfer_pub = *transfer_pub,
+    .coin_envelope_hash = *h_coin_ev
   };
 
-  GNUNET_CRYPTO_hash (coin_ev,
-                      coin_ev_size,
-                      &ldp.coin_envelope_hash.hash);
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_COIN_LINK,
                                 &ldp,

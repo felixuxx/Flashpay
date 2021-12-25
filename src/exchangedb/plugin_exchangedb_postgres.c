@@ -906,6 +906,7 @@ prepare_statements (struct PostgresClosure *pg)
       "SELECT "
       " rrc.freshcoin_index"
       ",denom.denom_pub_hash"
+      ",rrc.h_coin_ev"
       ",rrc.link_sig"
       ",rrc.coin_ev"
       ",rrc.ev_sig"
@@ -6113,8 +6114,7 @@ postgres_insert_refresh_reveal (
       GNUNET_PQ_query_param_auto_from_type (tp),
       GNUNET_PQ_query_param_fixed_size (
         tprivs,
-        num_tprivs
-        * sizeof (struct TALER_TransferPrivateKeyP)),
+        num_tprivs * sizeof (struct TALER_TransferPrivateKeyP)),
       GNUNET_PQ_query_param_end
     };
 
@@ -6199,6 +6199,8 @@ add_revealed_coins (void *cls,
                                               &rrc->h_denom_pub),
         GNUNET_PQ_result_spec_auto_from_type ("link_sig",
                                               &rrc->orig_coin_link_sig),
+        GNUNET_PQ_result_spec_auto_from_type ("h_coin_ev",
+                                              &rrc->coin_envelope_hash),
         GNUNET_PQ_result_spec_variable_size ("coin_ev",
                                              (void **) &rrc->coin_ev,
                                              &rrc->coin_ev_size),

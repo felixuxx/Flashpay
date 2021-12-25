@@ -297,11 +297,14 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
   /* We know num_fresh_coins is bounded by #MAX_FRESH_COINS, so this is safe */
+  // FIXME: messy to have so many arrays -- and then
+  // later we copy them around! Avoidable!?!
   const struct TEH_DenominationKey *dks[num_fresh_coins];
   struct TALER_DenominationHash dk_h[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_CoinSpendSignatureP link_sigs[num_fresh_coins];
   struct TALER_BlindedDenominationSignature ev_sigs[num_fresh_coins];
+  struct TALER_BlindedCoinHash h_blind_ev[num_fresh_coins];
   MHD_RESULT ret;
   struct TEH_KeyStateHandle *ksh;
   uint64_t melt_serial_id;
@@ -398,6 +401,9 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
         GNUNET_free (rcds[j].coin_ev);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
+    GNUNET_CRYPTO_hash (rcd->coin_ev,
+                        rcd->coin_ev_size,
+                        &h_blind_ev[i].hash);
     rcd->dk = &dks[i]->denom_pub;
   }
 
@@ -468,8 +474,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
         TALER_wallet_link_verify (
           &dk_h[i],
           &rctx->gamma_tp,
-          rcds[i].coin_ev,
-          rcds[i].coin_ev_size,
+          &h_blind_ev[i],
           &rctx->melt.session.coin.coin_pub,
           &link_sigs[i]))
     {
@@ -529,6 +534,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
       rrc->coin_ev = rcds[i].coin_ev;
       rrc->coin_ev_size = rcds[i].coin_ev_size;
       rrc->coin_sig = ev_sigs[i];
+      rrc->coin_envelope_hash = h_blind_ev[i];
     }
     qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
                                             melt_serial_id,
