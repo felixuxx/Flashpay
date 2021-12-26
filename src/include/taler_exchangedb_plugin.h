@@ -4022,7 +4022,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
-  (*delete_revolving_shards)(void *cls);
+  (*delete_shard_locks)(void *cls);
 
   /**
    * TODO-oec: add function for adding extension config

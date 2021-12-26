@@ -105,7 +105,7 @@ run (void *cls,
     if (clear_shards)
     {
       if (0 >
-          plugin->delete_revolving_shards (plugin->cls))
+          plugin->delete_shard_locks (plugin->cls))
       {
         fprintf (stderr,
                  "Clearing revolving shards failed!\n");

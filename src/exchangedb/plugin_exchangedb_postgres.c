@@ -2743,11 +2743,6 @@ prepare_statements (struct PostgresClosure *pg)
       "   AND start_row=$2"
       "   AND end_row=$3",
       3),
-    /* Used in #postgres_delete_revolving_shards() */
-    GNUNET_PQ_make_prepare (
-      "delete_revolving_shards",
-      "DELETE FROM revolving_work_shards",
-      0),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -11385,16 +11380,17 @@ postgres_release_revolving_shard (void *cls,
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
-postgres_delete_revolving_shards (void *cls)
+postgres_delete_shard_locks (void *cls)
 {
   struct PostgresClosure *pg = cls;
-  struct GNUNET_PQ_QueryParam params[] = {
-    GNUNET_PQ_query_param_end
+  struct GNUNET_PQ_ExecuteStatement es[] = {
+    GNUNET_PQ_make_execute ("DELETE FROM work_shards;"),
+    GNUNET_PQ_make_execute ("DELETE FROM revolving_work_shards;"),
+    GNUNET_PQ_EXECUTE_STATEMENT_END
   };
 
-  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
-                                             "delete_revolving_shards",
-                                             params);
+  return GNUNET_PQ_exec_statements (pg->conn,
+                                    es);
 }
 
 
@@ -11630,8 +11626,8 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_begin_revolving_shard;
   plugin->release_revolving_shard
     = &postgres_release_revolving_shard;
-  plugin->delete_revolving_shards
-    = &postgres_delete_revolving_shards;
+  plugin->delete_shard_locks
+    = &postgres_delete_shard_locks;
   return plugin;
 }
 
