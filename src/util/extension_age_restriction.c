@@ -38,12 +38,12 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
   char *groups;
   enum TALER_Extension_ReturnValue ret = TALER_Extension_ERROR_SYS;
 
-  if ((GNUNET_NO == GNUNET_CONFIGURATION_have_value (cfg,
-                                                     TALER_EXTENSION_SECTION_AGE_RESTRICTION,
-                                                     "ENABLED")) ||
-      (GNUNET_NO == GNUNET_CONFIGURATION_get_value_yesno (cfg,
-                                                          TALER_EXTENSION_SECTION_AGE_RESTRICTION,
-                                                          "ENABLED")))
+  if ((GNUNET_YES != GNUNET_CONFIGURATION_have_value (cfg,
+                                                      TALER_EXTENSION_SECTION_AGE_RESTRICTION,
+                                                      "ENABLED")) ||
+      (GNUNET_YES != GNUNET_CONFIGURATION_get_value_yesno (cfg,
+                                                           TALER_EXTENSION_SECTION_AGE_RESTRICTION,
+                                                           "ENABLED")))
   {
     /* Age restriction is not enabled */
     mask->mask = 0;

@@ -22,6 +22,7 @@
 #define TALER_EXTENSIONS_H
 
 #include <gnunet/gnunet_util_lib.h>
+#include "taler_crypto_lib.h"
 
 
 #define TALER_EXTENSION_SECTION_PREFIX "exchange-extension-"
@@ -36,8 +37,8 @@ enum TALER_Extension_ReturnValue
 
 enum TALER_Extension_Type
 {
-  TALER_Extension_Peer2Peer = 0,
-  TALER_Extension_AgeRestriction = 1,
+  TALER_Extension_AgeRestriction = 0,
+  TALER_Extension_Peer2Peer = 1,
   TALER_Extension_Max = 2
 };
 
@@ -47,40 +48,11 @@ struct TALER_Extension
   char *name;
   bool critical;
   void *config;
-  size_t config_size;
 };
-
-struct TALER_Peer2Peer_Config
-{
-  // FIXME
-};
-
-/**
- * TEH_extensions is the global manifest with the list supported extensions,
- * sorted by TALER_Extension_Type.
- *
- * TODO: Mutex?
- *
- **/
-struct TALER_Extension TEH_extensions[TALER_Extension_Max] = {
-  [TALER_Extension_Peer2Peer] = {
-    .type = TALER_Extension_Peer2Peer,
-    .name = "peer2peer",
-    .critical = false,
-    .config_size = sizeof(struct TALER_Peer2Peer_Config),
-  },
-  [TALER_Extension_AgeRestriction] = {
-    .type = TALER_Extension_AgeRestriction,
-    .name = "age_restriction",
-    .critical = false,
-    .config_size = sizeof(struct TALER_AgeMask),
-  },
-};
-
 
 /*
  * TALER Peer2Peer Extension
- * FIXME
+ * FIXME oec
  */
 
 

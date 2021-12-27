@@ -97,6 +97,10 @@
  */
 #define TALER_SIGNATURE_MASTER_WIRE_DETAILS 1030
 
+/**
+ * Set the configuration of an extension (age-restriction or peer2peer)
+ */
+#define TALER_SIGNATURE_MASTER_EXTENSION 1031
 
 /*********************************************/
 /* Exchange online signatures (with signing key) */
@@ -960,6 +964,42 @@ struct TALER_MasterDelWirePS
 
 };
 
+
+/*
+ * @brief Signature made by the exchange offline key over the
+ * configuration of the age restriction extension.
+ */
+struct TALER_MasterExtensionAgeRestrictionPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_EXTENSION.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  /**
+   * Bit mask representing the lits of age groups, see TALER_AgeMask for a
+   * description.
+   */
+  struct TALER_AgeMask mask;
+};
+
+#if 0
+/*
+ * @brief Signature made by the exchange offline key over the
+ * configuration of the peer2peer extension.
+ */
+struct TALER_MasterExtensionPeer2PeerPS
+{
+  /**
+   * Purpose is #TALER_SIGNATURE_MASTER_EXTENSION.   Signed
+   * by a `struct TALER_MasterPublicKeyP` using EdDSA.
+   */
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
+
+  // TODO oec
+};
+#endif
 
 /**
  * @brief Information about a denomination key. Denomination keys

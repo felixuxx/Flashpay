@@ -53,6 +53,7 @@
 #include "taler-exchange-httpd_withdraw.h"
 #include "taler_exchangedb_lib.h"
 #include "taler_exchangedb_plugin.h"
+#include "taler_extensions.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
 /**
@@ -147,6 +148,25 @@ int TEH_check_invariants_flag;
 bool TEH_suicide;
 
 /**
+ * The global manifest with the list supported extensions, sorted by
+ * TALER_Extension_Type.
+ **/
+const struct TALER_Extension TEH_extensions[TALER_Extension_Max] = {
+  [TALER_Extension_Peer2Peer] = {
+    .type = TALER_Extension_Peer2Peer,
+    .name = "peer2peer",
+    .critical = false,
+    .config = NULL, // disabled per default
+  },
+  [TALER_Extension_AgeRestriction] = {
+    .type = TALER_Extension_AgeRestriction,
+    .name = "age_restriction",
+    .critical = false,
+    .config = NULL, // disabled per default
+  },
+};
+
+/**
  * Value to return from main()
  */
 static int global_ret;
@@ -183,7 +203,6 @@ struct GNUNET_CURL_Context *TEH_curl_ctx;
  * GNUnet event loop.
  */
 static struct GNUNET_CURL_RescheduleContext *exchange_curl_rc;
-
 
 /**
  * Signature of functions that handle operations on coins.

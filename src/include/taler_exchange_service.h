@@ -2680,7 +2680,7 @@ TALER_EXCHANGE_post_management_keys_cancel (
 struct TALER_EXCHANGE_ManagementPostExtensionsData
 {
   struct TALER_Extension *extensions;
-  struct TALER_MasterSignatureP *extension_sigs;
+  struct TALER_MasterSignatureP *extensions_sigs;
   uint32_t num_extensions;
 };
 

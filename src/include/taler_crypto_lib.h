@@ -2518,4 +2518,36 @@ TALER_merchant_wire_signature_make (
   struct TALER_MerchantSignatureP *merch_sig);
 
 
+/* **************** /management/extensions offline signing **************** */
+
+/**
+ * Create a signature for age restriction groups
+ *
+ * @param mask The bitmask representing age groups
+ * @param master_priv private key to sign with
+ * @param[out] master_sig where to write the signature
+ */
+void
+TALER_exchange_offline_extension_agemask_sign (
+  const struct TALER_AgeMask mask,
+  const struct TALER_MasterPrivateKeyP *master_priv,
+  struct TALER_MasterSignatureP *master_sig);
+
+
+/**
+ * Verify the signature in @a master_sig.
+ *
+ * @param mask bit mask representing an age group for age restriction
+ * @param master_pub master public key of the exchange
+ * @param master_sig signature of the exchange
+ * @return #GNUNET_OK if signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_offline_extension_agemask_verify (
+  const struct TALER_AgeMask mask,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig
+  );
+
+
 #endif

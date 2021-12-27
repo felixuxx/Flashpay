@@ -26,6 +26,7 @@
 #include <microhttpd.h>
 #include "taler_json_lib.h"
 #include "taler_crypto_lib.h"
+#include "taler_extensions.h"
 #include <gnunet/gnunet_mhd_compat.h>
 
 
@@ -199,6 +200,11 @@ extern volatile bool MHD_terminating;
  * Context for all CURL operations (useful to the event loop)
  */
 extern struct GNUNET_CURL_Context *TEH_curl_ctx;
+
+/**
+ * The manifest of the available extensions
+ */
+extern const struct TALER_Extension TEH_extensions[TALER_Extension_Max];
 
 /**
  * @brief Struct describing an URL and the handler for it.

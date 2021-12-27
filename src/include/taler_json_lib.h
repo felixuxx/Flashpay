@@ -542,6 +542,18 @@ TALER_deposit_extension_hash (const json_t *extensions,
                               struct TALER_ExtensionContractHash *ech);
 
 
+/**
+ * Parses a JSON object { "extension": "age_restriction", "mask": <uint32> }.
+ *
+ * @param root is the json object
+ * @param[out] mask on succes, will contain the age mask
+ * @return GNUNET_OK on success and GNUNET_SYSERR on failure.
+ */
+enum GNUNET_GenericReturnValue
+TALER_agemask_parse_json (const json_t *root,
+                          struct TALER_AgeMask *mask);
+
+
 #endif /* TALER_JSON_LIB_H_ */
 
 /* End of taler_json_lib.h */

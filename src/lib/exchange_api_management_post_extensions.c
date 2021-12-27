@@ -130,11 +130,10 @@ TALER_EXCHANGE_management_post_extensions (
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ManagementPostExtensionsHandle *ph;
-  //  FIXME-oec: TODO!
   CURL *eh = NULL;
-  json_t *body;
+  json_t *body = NULL;
   json_t *extensions = NULL;
-  json_t *extension_sigs = NULL;
+  json_t *extensions_sigs = NULL;
 
   ph = GNUNET_new (struct TALER_EXCHANGE_ManagementPostExtensionsHandle);
   ph->cb = cb;
@@ -156,16 +155,18 @@ TALER_EXCHANGE_management_post_extensions (
   {
     json_t *config;
     const struct TALER_AgeMask *mask;
-    const struct TALER_Extension *ext
-      = &pkd->extensions[i];
+    const struct TALER_Extension *ext = &pkd->extensions[i];
 
     switch (ext->type)
     {
     // TODO: case TALER_Extension_Peer2Peer
     case TALER_Extension_AgeRestriction:
-      mask = (struct TALER_AgeMask *) (&ext->config);
-      config = GNUNET_JSON_PACK (GNUNET_JSON_pack_data_auto ("mask",
-                                                             &mask->mask));
+      mask = (const struct TALER_AgeMask *) (&ext->config);
+      config = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_string ("extension",
+                                 ext->name),
+        GNUNET_JSON_pack_data_auto ("mask",
+                                    &mask->mask));
       GNUNET_assert (NULL != config);
       break;
     default:
@@ -177,22 +178,22 @@ TALER_EXCHANGE_management_post_extensions (
                    json_array_append_new (
                      extensions,
                      GNUNET_JSON_PACK (
-                       GNUNET_JSON_pack_data_auto ("extension",
+                       GNUNET_JSON_pack_data_auto ("name",
                                                    &ext->name),
                        GNUNET_JSON_pack_data_auto ("config",
                                                    config)
                        )));
   }
-  extension_sigs = json_array ();
-  GNUNET_assert (NULL != extension_sigs);
+  extensions_sigs = json_array ();
+  GNUNET_assert (NULL != extensions_sigs);
   for (unsigned int i = 0; i<pkd->num_extensions; i++)
   {
     const struct TALER_MasterSignatureP *sks
-      = &pkd->extension_sigs[i];
+      = &pkd->extensions_sigs[i];
 
     GNUNET_assert (0 ==
                    json_array_append_new (
-                     extension_sigs,
+                     extensions_sigs,
                      GNUNET_JSON_PACK (
                        GNUNET_JSON_pack_data_auto ("extension_sig",
                                                    &sks->eddsa_signature))));
@@ -200,8 +201,8 @@ TALER_EXCHANGE_management_post_extensions (
   body = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_array_steal ("extensions",
                                   extensions),
-    GNUNET_JSON_pack_array_steal ("extension_sigs",
-                                  extension_sigs));
+    GNUNET_JSON_pack_array_steal ("extensions_sigs",
+                                  extensions_sigs));
   eh = curl_easy_init ();
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=
