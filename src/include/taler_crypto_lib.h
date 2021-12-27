@@ -918,7 +918,7 @@ TALER_cs_withdraw_nonce_derive (const struct
  * @param[out] bs blinding secret to initialize
  * @param cipher algorithm to use (CS or RSA)
  * @param ... If CS signature, R_0 and R_1 (TALER_DenominationCsPublicR)
- * and the coins private key is needed
+ * and the coins private key (TALER_CoinSpendPrivateKeyP) is needed
  */
 void
 TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
@@ -936,7 +936,7 @@ TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
  * @param[out] denom_priv where to write the private key
  * @param[out] deonm_pub where to write the public key
  * @param cipher which type of cipher to use
- * @param ... cipher-specific parameters
+ * @param ... RSA key size (eg. 2048/3072/4096)
  * @return #GNUNET_OK on success, #GNUNET_NO if parameters were invalid
  */
 enum GNUNET_GenericReturnValue
@@ -990,7 +990,8 @@ TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
  * @param[out] c_hash resulting hashed coin
  * @param[out] coin_ev blinded coin to submit
  * @param[out] coin_ev_size number of bytes in @a coin_ev
- * @param ... cipher-specific parameters
+ * @param ... if CS algorithm, r_pub (TALER_DenominationCsPublicR) is needed to blind and
+ * r_pub_blind (TALER_DenominationCsPublicR) is an additional out parameter.
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1026,7 +1027,7 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
  * @param bdenom_sig the blinded signature
  * @param bks blinding secret to use
  * @param denom_pub public key used for signing
- * @param ... cipher-specific parameters
+ * @param ... If CS algorithm, r_pub_blind (TALER_DenominationCsPublicR) is an additional param
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1405,7 +1406,8 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
  *               other withdraw operations
- * @param ... cipher-specific parameters
+ * @param ... if CS algorithm, r_pub (TALER_DenominationCsPublicR) is needed to blind and
+ * r_pub_blind (TALER_DenominationCsPublicR) is an additional out parameter.
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1425,7 +1427,8 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
  * @param ps secrets from #TALER_planchet_prepare()
  * @param c_hash hash of the coin's public key for verification of the signature
  * @param[out] coin set to the details of the fresh coin
- * @param ... cipher-specific parameters
+ * @param ... If CS algorithm, r_pub_blind (TALER_DenominationCsPublicR) is an additional param
+
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
