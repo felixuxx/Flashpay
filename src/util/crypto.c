@@ -247,7 +247,7 @@ TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
 /**
  * @brief setup a random planchet
  * In Case of RSA planchet, the bks gets set
- * In Case of Schnorr this will be set in future
+ * In Case of Clause Schnorr this will be set in future
  */
 void
 TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
@@ -307,11 +307,9 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
     {
       va_list ap;
       va_start (ap, pd);
-      struct TALER_WithdrawNonce *nonce;
       struct TALER_DenominationCsPublicR *r_pub;
       struct TALER_DenominationCsPublicR *blinded_r_pub;
 
-      nonce = va_arg (ap, struct TALER_WithdrawNonce *);
       r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
       blinded_r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
 
@@ -322,7 +320,6 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                              &coin_pub,
                              c_hash,
                              &pd->blinded_planchet,
-                             nonce,
                              r_pub,
                              blinded_r_pub))
       {
@@ -373,14 +370,14 @@ TALER_planchet_to_coin (
       va_list ap;
       va_start (ap, coin);
 
-      struct TALER_DenominationCsPublicR *r_pub_dash;
-      r_pub_dash = va_arg (ap, struct TALER_DenominationCsPublicR *);
+      struct TALER_DenominationCsPublicR *r_pub_blind;
+      r_pub_blind = va_arg (ap, struct TALER_DenominationCsPublicR *);
       if (GNUNET_OK !=
           TALER_denom_sig_unblind (&sig,
                                    blind_sig,
                                    &ps->blinding_key,
                                    dk,
-                                   r_pub_dash))
+                                   r_pub_blind))
       {
         GNUNET_break_op (0);
         va_end (ap);
@@ -403,6 +400,7 @@ TALER_planchet_to_coin (
     TALER_denom_sig_free (&sig);
     return GNUNET_SYSERR;
   }
+
   coin->sig = sig;
   coin->coin_priv = ps->coin_priv;
   return GNUNET_OK;

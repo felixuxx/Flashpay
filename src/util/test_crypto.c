@@ -149,7 +149,6 @@ test_planchets_cs (void)
   struct TALER_WithdrawNonce nonce;
   struct TALER_DenominationCsPublicR r_pub;
   struct TALER_DenominationCsPublicR r_pub_blind;
-  struct TALER_DenominationCsPrivateR priv_r;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
 
@@ -174,30 +173,25 @@ test_planchets_cs (void)
                                          &ps,
                                          &c_hash,
                                          &pd,
-                                         &nonce,
                                          &r_pub,
                                          &r_pub_blind));
-  // TODO: Remove r_secret if not needed
-  GNUNET_assert (GNUNET_OK ==
-                 TALER_denom_cs_derive_r_secret (&nonce,
-                                                 &dk_priv,
-                                                 &priv_r));
+
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
                                            &pd.blinded_planchet,
                                            &nonce));
 
-  // GNUNET_assert (GNUNET_OK ==
-  //                TALER_planchet_to_coin (&dk_pub,
-  //                                        &blind_sig,
-  //                                        &ps,
-  //                                        &c_hash,
-  //                                        &coin,
-  //                                        &r_pub_blind));
+  GNUNET_assert (GNUNET_OK ==
+                 TALER_planchet_to_coin (&dk_pub,
+                                         &blind_sig,
+                                         &ps,
+                                         &c_hash,
+                                         &coin,
+                                         &r_pub_blind));
 
   TALER_blinded_denom_sig_free (&blind_sig);
-  // TALER_denom_sig_free (&coin.sig);
+  TALER_denom_sig_free (&coin.sig);
   TALER_denom_priv_free (&dk_priv);
   TALER_denom_pub_free (&dk_pub);
   return 0;

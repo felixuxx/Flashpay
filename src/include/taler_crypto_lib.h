@@ -353,12 +353,12 @@ struct TALER_CoinSpendSignatureP
 
 /**
  * @brief Type of blinding keys for Taler.
- * must be 32 bytes
+ * must be 32 bytes (DB)
  */
 union TALER_DenominationBlindingKeyP
 {
   /**
-   * Clause Schnorr Signatures have 2 blinding secrets, each containing two unpredictable values.
+   * Clause Schnorr Signatures have 2 blinding secrets, each containing two unpredictable values. (must be 32 bytes)
    */
   struct GNUNET_CRYPTO_CsNonce nonce;
 
@@ -618,10 +618,9 @@ struct TALER_DenominationSignature
 };
 
 /**
- * The Sign Answer for Clause B lind Schnorr signature.
+ * The Sign Answer for Clause Blind Schnorr signature.
  * The sign operation returns a parameter @param b and the signature
  * scalar @param s_scalar.
- * The function does not return the whole signature, due to that is only the blinded s_scalar.
  */
 struct TALER_BlindedDenominationCsSignAnswer
 {
@@ -833,57 +832,6 @@ struct TALER_DenominationCsPrivateR
   struct GNUNET_CRYPTO_CsRSecret r[2];
 };
 
-/**
- * @brief RSA Parameters to create blinded messages
- *
- */
-struct TALER_DenominationBlindMessageRsaParams
-{
-  /**
-   * blinded message to be signed
-   * Note: is malloc()'ed!
-   */
-  void **coin_ev;
-
-  /**
-   * size of the blinded message to be signed
-   */
-  size_t *coin_ev_size;
-};
-
-
-/**
- * @brief CS Parameters to create blinded messages
- *
- */
-struct TALER_DenominationBlindMessageCsParams
-{
-
-};
-
-/**
- * @brief Type including Parameters to create blinded message
- *
- */
-struct TALER_DenominationBlindMessageParams
-{
-  /**
-   * Details, depending on @e cipher.
-   */
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     */
-    struct TALER_DenominationBlindMessageCsParams cs_blind_msg_params;
-
-    /**
-     * If we use #TALER_DENOMINATION_RSA in @a cipher.
-     */
-    struct TALER_DenominationBlindMessageRsaParams rsa_blind_msg_params;
-
-  } details;
-};
 
 /**
  * @brief Public information about a coin (including the public key
@@ -968,6 +916,9 @@ TALER_cs_withdraw_nonce_derive (const struct
  * Create a blinding secret @a bs for @a cipher.
  *
  * @param[out] bs blinding secret to initialize
+ * @param cipher algorithm to use (CS or RSA)
+ * @param ... If CS signature, R_0 and R_1 (TALER_DenominationCsPublicR)
+ * and the coins private key is needed
  */
 void
 TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
@@ -1014,20 +965,6 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
 
 
 /**
- * Function for CS signatures to derive the secret r_0 and r_1
- *
- * @param nonce withdraw nonce from a client
- * @param denom_priv denomination privkey as long-term secret
- * @param r the resulting r_0 and r_1
- * @return enum GNUNET_GenericReturnValue, returns SYSERR when denom key has wrong type
- */
-enum GNUNET_GenericReturnValue
-TALER_denom_cs_derive_r_secret (const struct TALER_WithdrawNonce *nonce,
-                                const struct
-                                TALER_DenominationPrivateKey *denom_priv,
-                                struct TALER_DenominationCsPrivateR *r);
-
-/**
  * @brief Function for CS signatures to derive public R_0 and R_1
  *
  * @param nonce withdraw nonce from a client
@@ -1053,6 +990,7 @@ TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
  * @param[out] c_hash resulting hashed coin
  * @param[out] coin_ev blinded coin to submit
  * @param[out] coin_ev_size number of bytes in @a coin_ev
+ * @param ... cipher-specific parameters
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1070,8 +1008,8 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
  *
  * @param[out] denom_sig where to write the signature
  * @param denom_priv private key to use for signing
- * @param blinded_msg message to sign
- * @param blinded_msg_size number of bytes in @a blinded_msg
+ * @param blinded_planchet the planchet already blinded
+ * @param ... If CS signature, a TALER_WithdrawNonce is needed
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1088,6 +1026,7 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
  * @param bdenom_sig the blinded signature
  * @param bks blinding secret to use
  * @param denom_pub public key used for signing
+ * @param ... cipher-specific parameters
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1125,7 +1064,7 @@ TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
  * @a denom_dst.
  *
  * @param[out] denom_dst target to copy to
- * @param denom_str public key to copy
+ * @param denom_src public key to copy
  */
 void
 TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
@@ -1137,7 +1076,7 @@ TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
  * @a denom_dst.
  *
  * @param[out] denom_dst target to copy to
- * @param denom_str public key to copy
+ * @param denom_src public key to copy
  */
 void
 TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
@@ -1149,7 +1088,7 @@ TALER_denom_sig_deep_copy (struct TALER_DenominationSignature *denom_dst,
  * @a denom_dst.
  *
  * @param[out] denom_dst target to copy to
- * @param denom_str public key to copy
+ * @param denom_src public key to copy
  */
 void
 TALER_blinded_denom_sig_deep_copy (
@@ -1466,6 +1405,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
  *               other withdraw operations
+ * @param ... cipher-specific parameters
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1485,6 +1425,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
  * @param ps secrets from #TALER_planchet_prepare()
  * @param c_hash hash of the coin's public key for verification of the signature
  * @param[out] coin set to the details of the fresh coin
+ * @param ... cipher-specific parameters
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue

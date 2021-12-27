@@ -82,25 +82,6 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
 
 
 enum GNUNET_GenericReturnValue
-TALER_denom_cs_derive_r_secret (const struct TALER_WithdrawNonce *nonce,
-                                const struct
-                                TALER_DenominationPrivateKey *denom_priv,
-                                struct TALER_DenominationCsPrivateR *r)
-{
-  if (denom_priv->cipher != TALER_DENOMINATION_CS)
-  {
-    GNUNET_break (0);
-    return GNUNET_SYSERR;
-  }
-
-  GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
-                             &denom_priv->details.cs_private_key,
-                             r->r);
-  return GNUNET_OK;
-}
-
-
-enum GNUNET_GenericReturnValue
 TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
                                 const struct
                                 TALER_DenominationPrivateKey *denom_priv,
@@ -216,26 +197,19 @@ TALER_denom_sig_unblind (
     {
       va_list ap;
       va_start (ap, denom_pub);
-      struct TALER_DenominationCsPublicR *r_pub_dash;
-      r_pub_dash = va_arg (ap, struct TALER_DenominationCsPublicR *);
+      struct TALER_DenominationCsPublicR *r_pub_blind;
+      r_pub_blind = va_arg (ap, struct TALER_DenominationCsPublicR *);
 
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce, bs);
 
-      struct GNUNET_CRYPTO_CsS s_scalar;
-
       GNUNET_CRYPTO_cs_unblind (&bdenom_sig->details.blinded_cs_answer.s_scalar,
                                 &bs[bdenom_sig->details.blinded_cs_answer.b],
-                                &s_scalar);
+                                &denom_sig->details.cs_signature.s_scalar);
 
-      // TODO: This seems to work, but is this a good idea?
-      // Not working:
-      // denom_sig->details.cs_signature.r_point = r_pub_dash->r_pub[bdenom_sig->details.blinded_cs_answer.b];
-      GNUNET_memcpy (&denom_sig->details.cs_signature, &s_scalar, sizeof(struct
-                                                                         GNUNET_CRYPTO_CsS));
-      GNUNET_memcpy (&denom_sig->details.cs_signature + sizeof(struct
-                                                               GNUNET_CRYPTO_CsS),
-                     &r_pub_dash->r_pub[bdenom_sig->details.blinded_cs_answer.b],
+      GNUNET_memcpy (&denom_sig->details.cs_signature.r_point,
+                     &r_pub_blind->r_pub[bdenom_sig->details.blinded_cs_answer.b
+                     ],
                      sizeof(struct GNUNET_CRYPTO_CsRPublic));
 
       denom_sig->cipher = TALER_DENOMINATION_CS;
@@ -362,16 +336,14 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
     {
       va_list ap;
       va_start (ap, blinded_planchet);
-      struct TALER_WithdrawNonce *nonce;
       struct TALER_DenominationCsPublicR *r_pub;
       struct TALER_DenominationCsPublicR *blinded_r_pub;
 
-      nonce = va_arg (ap, struct TALER_WithdrawNonce *);
       r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
       blinded_r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
 
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
-      GNUNET_CRYPTO_cs_blinding_secrets_derive (&nonce->nonce, bs);
+      GNUNET_CRYPTO_cs_blinding_secrets_derive (&coin_bks->nonce, bs);
 
       GNUNET_CRYPTO_cs_calc_blinded_c (bs,
                                        r_pub->r_pub,
@@ -422,11 +394,12 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
     if (GNUNET_OK !=
         GNUNET_CRYPTO_cs_verify (&denom_sig->details.cs_signature,
                                  &denom_pub->details.cs_public_key,
-                                 c_hash,
-                                 sizeof(*c_hash)))
+                                 &c_hash->hash,
+                                 sizeof(struct GNUNET_HashCode)))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Coin signature is invalid\n");
+      // return GNUNET_YES;
       return GNUNET_NO;
     }
     return GNUNET_YES;
