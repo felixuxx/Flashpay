@@ -547,7 +547,7 @@ TALER_deposit_extension_hash (const json_t *extensions,
  *
  * @param root is the json object
  * @param[out] mask on succes, will contain the age mask
- * @return GNUNET_OK on success and GNUNET_SYSERR on failure.
+ * @return #GNUNET_OK on success and #GNUNET_SYSERR on failure.
  */
 enum GNUNET_GenericReturnValue
 TALER_agemask_parse_json (const json_t *root,

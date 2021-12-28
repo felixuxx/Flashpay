@@ -24,12 +24,6 @@
 #include <ltdl.h>
 
 
-/**
- * Initialize the plugin.
- *
- * @param cfg configuration to use
- * @return #GNUNET_OK on success
- */
 struct TALER_EXCHANGEDB_Plugin *
 TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
@@ -62,11 +56,6 @@ TALER_EXCHANGEDB_plugin_load (const struct GNUNET_CONFIGURATION_Handle *cfg)
 }
 
 
-/**
- * Shutdown the plugin.
- *
- * @param plugin the plugin to unload
- */
 void
 TALER_EXCHANGEDB_plugin_unload (struct TALER_EXCHANGEDB_Plugin *plugin)
 {
