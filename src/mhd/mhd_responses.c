@@ -371,8 +371,7 @@ TALER_MHD_make_error (enum TALER_ErrorCode ec,
                       const char *detail)
 {
   return TALER_MHD_MAKE_JSON_PACK (
-    GNUNET_JSON_pack_uint64 ("code", ec),
-    GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec)),
+    TALER_MHD_PACK_EC (ec),
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_string ("detail", detail)));
 }
@@ -387,8 +386,7 @@ TALER_MHD_reply_with_error (struct MHD_Connection *connection,
   return TALER_MHD_REPLY_JSON_PACK (
     connection,
     http_status,
-    GNUNET_JSON_pack_uint64 ("code", ec),
-    GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec)),
+    TALER_MHD_PACK_EC (ec),
     GNUNET_JSON_pack_allow_null (
       GNUNET_JSON_pack_string ("detail", detail)));
 }

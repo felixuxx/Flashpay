@@ -250,6 +250,17 @@ TALER_MHD_make_json_pack (const char *fmt,
 
 
 /**
+ * Pack Taler error code @a ec and associated hint into a
+ * JSON object.
+ *
+ * @param ec error code to pack
+ * @return packer array entries (two!)
+ */
+#define TALER_MHD_PACK_EC(ec) \
+  GNUNET_JSON_pack_uint64 ("code", ec), \
+  GNUNET_JSON_pack_string ("hint", TALER_ErrorCode_get_hint (ec))
+
+/**
  * Create a response indicating an internal error.
  *
  * @param ec error code to return
