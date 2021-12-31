@@ -146,9 +146,6 @@ test_planchets_cs (void)
   struct TALER_DenominationPublicKey dk_pub;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHash c_hash;
-  struct TALER_WithdrawNonce nonce;
-  struct TALER_DenominationCsPublicR r_pub;
-  struct TALER_DenominationCsPublicR r_pub_blind;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
 
@@ -158,37 +155,37 @@ test_planchets_cs (void)
                                           TALER_DENOMINATION_CS));
 
   TALER_planchet_setup_random (&ps, TALER_DENOMINATION_CS);
-  TALER_cs_withdraw_nonce_derive (&ps.coin_priv, &nonce);
+  TALER_cs_withdraw_nonce_derive (&ps.coin_priv,
+                                  &pd.blinded_planchet.details.
+                                  cs_blinded_planchet.nonce);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_denom_cs_derive_r_public (&nonce,
-                                                 &dk_priv,
-                                                 &r_pub));
+                 TALER_denom_cs_derive_r_public (
+                   &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
+                   &dk_priv,
+                   &ps.cs_r_pub));
+  // TODO: eliminate r_pubs parameter
   TALER_blinding_secret_create (&ps.blinding_key,
                                 TALER_DENOMINATION_CS,
                                 &ps.coin_priv,
-                                &r_pub);
+                                &ps.cs_r_pub);
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
                                          &ps,
                                          &c_hash,
-                                         &pd,
-                                         &r_pub,
-                                         &r_pub_blind));
+                                         &pd));
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
-                                           &pd.blinded_planchet,
-                                           &nonce));
+                                           &pd.blinded_planchet));
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_to_coin (&dk_pub,
                                          &blind_sig,
                                          &ps,
                                          &c_hash,
-                                         &coin,
-                                         &r_pub_blind));
+                                         &coin));
 
   TALER_blinded_denom_sig_free (&blind_sig);
   TALER_denom_sig_free (&coin.sig);

@@ -753,6 +753,18 @@ struct TALER_BlindedRsaPlanchet
 
 
 /**
+ * Withdraw nonce for CS denominations
+ */
+struct TALER_WithdrawNonce
+{
+  /**
+   * 32 bit nonce to include in withdrawals
+   */
+  struct GNUNET_CRYPTO_CsNonce nonce;
+};
+
+
+/**
  * @brief CS Parameters to create blinded signature
  *
  */
@@ -762,6 +774,11 @@ struct TALER_BlindedCsPlanchet
    * The Clause Schnorr c_0 and c_1 containing the blinded message
    */
   struct GNUNET_CRYPTO_CsC c[2];
+
+  /**
+   * Public Nonce
+   */
+  struct TALER_WithdrawNonce nonce;
 };
 
 /**
@@ -791,17 +808,6 @@ struct TALER_BlindedPlanchet
     struct TALER_BlindedRsaPlanchet rsa_blinded_planchet;
 
   } details;
-};
-
-/**
- * Withdraw nonce for CS denominations
- */
-struct TALER_WithdrawNonce
-{
-  /**
-   * 32 bit nonce to include in withdrawals
-   */
-  struct GNUNET_CRYPTO_CsNonce nonce;
 };
 
 /**
@@ -1016,8 +1022,7 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
 enum GNUNET_GenericReturnValue
 TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
                           const struct TALER_DenominationPrivateKey *denom_priv,
-                          const struct TALER_BlindedPlanchet *blinded_planchet,
-                          ...);
+                          const struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**
@@ -1235,6 +1240,17 @@ struct TALER_PlanchetSecretsP
    */
   union TALER_DenominationBlindingKeyP blinding_key;
 
+  // only used in case of CS:
+
+  /**
+   * (non-blinded) r_pub
+   */
+  struct TALER_DenominationCsPublicR cs_r_pub;
+
+  /**
+   * blinded r_pub
+   */
+  struct TALER_DenominationCsPublicR cs_r_pub_blinded;
 };
 
 
@@ -1406,16 +1422,13 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
  *               other withdraw operations
- * @param ... if CS algorithm, r_pub (TALER_DenominationCsPublicR) is needed to blind and
- * r_pub_blind (TALER_DenominationCsPublicR) is an additional out parameter.
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
-                        const struct TALER_PlanchetSecretsP *ps,
+                        struct TALER_PlanchetSecretsP *ps,
                         struct TALER_CoinPubHash *c_hash,
-                        struct TALER_PlanchetDetail *pd,
-                        ...);
+                        struct TALER_PlanchetDetail *pd);
 
 
 /**
@@ -1427,18 +1440,15 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
  * @param ps secrets from #TALER_planchet_prepare()
  * @param c_hash hash of the coin's public key for verification of the signature
  * @param[out] coin set to the details of the fresh coin
- * @param ... If CS algorithm, r_pub_blind (TALER_DenominationCsPublicR) is an additional param
-
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_planchet_to_coin (
-  const struct TALER_DenominationPublicKey *dk,
-  const struct TALER_BlindedDenominationSignature *blind_sig,
-  const struct TALER_PlanchetSecretsP *ps,
-  const struct TALER_CoinPubHash *c_hash,
-  struct TALER_FreshCoin *coin,
-  ...);
+TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
+                        const struct
+                        TALER_BlindedDenominationSignature *blind_sig,
+                        const struct TALER_PlanchetSecretsP *ps,
+                        const struct TALER_CoinPubHash *c_hash,
+                        struct TALER_FreshCoin *coin);
 
 
 /* ****************** Refresh crypto primitives ************* */

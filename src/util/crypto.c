@@ -262,6 +262,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
     GNUNET_break (0);
     return;
   case TALER_DENOMINATION_RSA:
+    // TODO: replace with call to TALER_blinding_secret_create
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                                 &ps->blinding_key.rsa_bks,
                                 sizeof (struct
@@ -278,10 +279,9 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
 
 enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
-                        const struct TALER_PlanchetSecretsP *ps,
+                        struct TALER_PlanchetSecretsP *ps,
                         struct TALER_CoinPubHash *c_hash,
-                        struct TALER_PlanchetDetail *pd,
-                        ...)
+                        struct TALER_PlanchetDetail *pd)
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
@@ -305,14 +305,6 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
     break;
   case TALER_DENOMINATION_CS:
     {
-      va_list ap;
-      va_start (ap, pd);
-      struct TALER_DenominationCsPublicR *r_pub;
-      struct TALER_DenominationCsPublicR *blinded_r_pub;
-
-      r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
-      blinded_r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
-
       if (GNUNET_OK !=
           TALER_denom_blind (dk,
                              &ps->blinding_key,
@@ -320,14 +312,12 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                              &coin_pub,
                              c_hash,
                              &pd->blinded_planchet,
-                             r_pub,
-                             blinded_r_pub))
+                             &ps->cs_r_pub,
+                             &ps->cs_r_pub_blinded))
       {
-        va_end (ap);
         GNUNET_break (0);
         return GNUNET_SYSERR;
       }
-      va_end (ap);
       break;
     }
   default:
@@ -342,13 +332,12 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 
 
 enum GNUNET_GenericReturnValue
-TALER_planchet_to_coin (
-  const struct TALER_DenominationPublicKey *dk,
-  const struct TALER_BlindedDenominationSignature *blind_sig,
-  const struct TALER_PlanchetSecretsP *ps,
-  const struct TALER_CoinPubHash *c_hash,
-  struct TALER_FreshCoin *coin,
-  ...)
+TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
+                        const struct
+                        TALER_BlindedDenominationSignature *blind_sig,
+                        const struct TALER_PlanchetSecretsP *ps,
+                        const struct TALER_CoinPubHash *c_hash,
+                        struct TALER_FreshCoin *coin)
 {
   struct TALER_DenominationSignature sig;
 
@@ -367,23 +356,16 @@ TALER_planchet_to_coin (
     break;
   case TALER_DENOMINATION_CS:
     {
-      va_list ap;
-      va_start (ap, coin);
-
-      struct TALER_DenominationCsPublicR *r_pub_blind;
-      r_pub_blind = va_arg (ap, struct TALER_DenominationCsPublicR *);
       if (GNUNET_OK !=
           TALER_denom_sig_unblind (&sig,
                                    blind_sig,
                                    &ps->blinding_key,
                                    dk,
-                                   r_pub_blind))
+                                   &ps->cs_r_pub_blinded))
       {
         GNUNET_break_op (0);
-        va_end (ap);
         return GNUNET_SYSERR;
       }
-      va_end (ap);
     }
     break;
   default:
