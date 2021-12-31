@@ -262,11 +262,7 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
     GNUNET_break (0);
     return;
   case TALER_DENOMINATION_RSA:
-    // TODO: replace with call to TALER_blinding_secret_create
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
-                                &ps->blinding_key.rsa_bks,
-                                sizeof (struct
-                                        GNUNET_CRYPTO_RsaBlindingKeySecret));
+    TALER_blinding_secret_create (&ps->blinding_key, cipher);
     return;
   case TALER_DENOMINATION_CS:
     // Will be set in a later stage for Clause Blind Schnorr Scheme
@@ -304,22 +300,20 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
     }
     break;
   case TALER_DENOMINATION_CS:
+    if (GNUNET_OK !=
+        TALER_denom_blind (dk,
+                           &ps->blinding_key,
+                           NULL,   /* FIXME-Oec */
+                           &coin_pub,
+                           c_hash,
+                           &pd->blinded_planchet,
+                           &ps->cs_r_pub,
+                           &ps->cs_r_pub_blinded))
     {
-      if (GNUNET_OK !=
-          TALER_denom_blind (dk,
-                             &ps->blinding_key,
-                             NULL, /* FIXME-Oec */
-                             &coin_pub,
-                             c_hash,
-                             &pd->blinded_planchet,
-                             &ps->cs_r_pub,
-                             &ps->cs_r_pub_blinded))
-      {
-        GNUNET_break (0);
-        return GNUNET_SYSERR;
-      }
-      break;
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
     }
+    break;
   default:
     GNUNET_break (0);
     return GNUNET_SYSERR;
@@ -355,17 +349,15 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
     }
     break;
   case TALER_DENOMINATION_CS:
+    if (GNUNET_OK !=
+        TALER_denom_sig_unblind (&sig,
+                                 blind_sig,
+                                 &ps->blinding_key,
+                                 dk,
+                                 &ps->cs_r_pub_blinded))
     {
-      if (GNUNET_OK !=
-          TALER_denom_sig_unblind (&sig,
-                                   blind_sig,
-                                   &ps->blinding_key,
-                                   dk,
-                                   &ps->cs_r_pub_blinded))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
     }
     break;
   default:
