@@ -81,7 +81,7 @@ TALER_exchange_secmod_rsa_sign (
   struct TALER_DenominationKeyAnnouncementPS dka = {
     .purpose.purpose = htonl (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY),
     .purpose.size = htonl (sizeof (dka)),
-    .h_rsa = *h_rsa,
+    .h_denom.hash = h_rsa->hash,
     .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
     .duration_withdraw = GNUNET_TIME_relative_hton (duration)
   };
@@ -108,7 +108,7 @@ TALER_exchange_secmod_rsa_verify (
   struct TALER_DenominationKeyAnnouncementPS dka = {
     .purpose.purpose = htonl (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY),
     .purpose.size = htonl (sizeof (dka)),
-    .h_rsa = *h_rsa,
+    .h_denom.hash = h_rsa->hash,
     .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
     .duration_withdraw = GNUNET_TIME_relative_hton (duration)
   };
@@ -118,6 +118,61 @@ TALER_exchange_secmod_rsa_verify (
                       &dka.h_section_name);
   return
     GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_RSA_DENOMINATION_KEY,
+                                &dka,
+                                &secm_sig->eddsa_signature,
+                                &secm_pub->eddsa_pub);
+}
+
+
+void
+TALER_exchange_secmod_cs_sign (
+  const struct TALER_CsPubHashP *h_cs,
+  const char *section_name,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePrivateKeyP *secm_priv,
+  struct TALER_SecurityModuleSignatureP *secm_sig)
+{
+  struct TALER_DenominationKeyAnnouncementPS dka = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_SM_CS_DENOMINATION_KEY),
+    .purpose.size = htonl (sizeof (dka)),
+    .h_denom.hash = h_cs->hash,
+    .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
+    .duration_withdraw = GNUNET_TIME_relative_hton (duration)
+  };
+
+  GNUNET_CRYPTO_hash (section_name,
+                      strlen (section_name) + 1,
+                      &dka.h_section_name);
+  GNUNET_CRYPTO_eddsa_sign (&secm_priv->eddsa_priv,
+                            &dka,
+                            &secm_sig->eddsa_signature);
+
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_secmod_cs_verify (
+  const struct TALER_CsPubHashP *h_cs,
+  const char *section_name,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePublicKeyP *secm_pub,
+  const struct TALER_SecurityModuleSignatureP *secm_sig)
+{
+  struct TALER_DenominationKeyAnnouncementPS dka = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_SM_CS_DENOMINATION_KEY),
+    .purpose.size = htonl (sizeof (dka)),
+    .h_denom.hash = h_cs->hash,
+    .anchor_time = GNUNET_TIME_timestamp_hton (start_sign),
+    .duration_withdraw = GNUNET_TIME_relative_hton (duration)
+  };
+
+  GNUNET_CRYPTO_hash (section_name,
+                      strlen (section_name) + 1,
+                      &dka.h_section_name);
+  return
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_SM_CS_DENOMINATION_KEY,
                                 &dka,
                                 &secm_sig->eddsa_signature,
                                 &secm_pub->eddsa_pub);

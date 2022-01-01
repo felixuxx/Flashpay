@@ -409,6 +409,20 @@ struct TALER_WireSalt
 
 
 /**
+ * Hash used to represent an CS public key.  Does not include age
+ * restrictions and is ONLY for CS.  Used ONLY for interactions with the CS
+ * security module.
+ */
+struct TALER_CsPubHashP
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+
+/**
  * Hash used to represent an RSA public key.  Does not include age
  * restrictions and is ONLY for RSA.  Used ONLY for interactions with the RSA
  * security module.
@@ -2441,6 +2455,47 @@ TALER_exchange_secmod_rsa_sign (
 enum GNUNET_GenericReturnValue
 TALER_exchange_secmod_rsa_verify (
   const struct TALER_RsaPubHashP *h_rsa,
+  const char *section_name,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePublicKeyP *secm_pub,
+  const struct TALER_SecurityModuleSignatureP *secm_sig);
+
+
+/**
+ * Create security module denomination signature.
+ *
+ * @param h_cs hash of the CS public key to sign
+ * @param section_name name of the section in the configuration
+ * @param start_sign starting point of validity for signing
+ * @param duration how long will the key be in use
+ * @param secm_priv security module key to sign with
+ * @param[out] secm_sig where to write the signature
+ */
+void
+TALER_exchange_secmod_cs_sign (
+  const struct TALER_CsPubHashP *h_cs,
+  const char *section_name,
+  struct GNUNET_TIME_Timestamp start_sign,
+  struct GNUNET_TIME_Relative duration,
+  const struct TALER_SecurityModulePrivateKeyP *secm_priv,
+  struct TALER_SecurityModuleSignatureP *secm_sig);
+
+
+/**
+ * Verify security module denomination signature.
+ *
+ * @param h_cs hash of the public key to validate
+ * @param section_name name of the section in the configuration
+ * @param start_sign starting point of validity for signing
+ * @param duration how long will the key be in use
+ * @param secm_pub public key to verify against
+ * @param secm_sig the signature the signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_secmod_cs_verify (
+  const struct TALER_CsPubHashP *h_cs,
   const char *section_name,
   struct GNUNET_TIME_Timestamp start_sign,
   struct GNUNET_TIME_Relative duration,

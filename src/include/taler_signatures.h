@@ -287,6 +287,11 @@
  */
 #define TALER_SIGNATURE_SM_SIGNING_KEY 1251
 
+/**
+ * Signature on a denomination key announcement.
+ */
+#define TALER_SIGNATURE_SM_CS_DENOMINATION_KEY 1252
+
 /*******************/
 /* Test signatures */
 /*******************/
@@ -341,7 +346,7 @@ struct TALER_DenominationKeyAnnouncementPS
   /**
    * Hash of the denomination public key.
    */
-  struct TALER_RsaPubHashP h_rsa;
+  struct TALER_DenominationHash h_denom;
 
   /**
    * Hash of the section name in the configuration of this denomination.
