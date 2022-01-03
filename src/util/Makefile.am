@@ -12,17 +12,20 @@ pkgcfgdir = $(prefix)/share/taler/config.d/
 pkgcfg_DATA = \
   paths.conf \
   taler-exchange-secmod-eddsa.conf \
-  taler-exchange-secmod-rsa.conf
+  taler-exchange-secmod-rsa.conf \
+  taler-exchange-secmod-cs.conf
 
 EXTRA_DIST = \
   $(pkgcfg_DATA) \
   taler-config.in \
   test_helper_eddsa.conf \
-  test_helper_rsa.conf
+  test_helper_rsa.conf \
+  test_helper_cs.conf
 
 bin_PROGRAMS = \
   taler-exchange-secmod-eddsa \
-  taler-exchange-secmod-rsa
+  taler-exchange-secmod-rsa \
+  taler-exchange-secmod-cs
 
 bin_SCRIPTS = \
   taler-config
@@ -42,6 +45,16 @@ taler_exchange_secmod_rsa_SOURCES = \
   taler-exchange-secmod-rsa.c taler-exchange-secmod-rsa.h \
   secmod_common.c secmod_common.h
 taler_exchange_secmod_rsa_LDADD = \
+  libtalerutil.la \
+  -lgnunetutil \
+  -lpthread \
+  $(LIBGCRYPT_LIBS) \
+  $(XLIB)
+
+taler_exchange_secmod_cs_SOURCES = \
+  taler-exchange-secmod-cs.c taler-exchange-secmod-cs.h \
+  secmod_common.c secmod_common.h
+taler_exchange_secmod_cs_LDADD = \
   libtalerutil.la \
   -lgnunetutil \
   -lpthread \
@@ -68,6 +81,7 @@ libtalerutil_la_SOURCES = \
   crypto.c \
   crypto_helper_common.c crypto_helper_common.h \
   crypto_helper_rsa.c \
+  crypto_helper_cs.c \
   crypto_helper_esign.c \
   crypto_wire.c \
   denom.c \
@@ -105,6 +119,7 @@ check_PROGRAMS = \
  test_crypto \
  test_helper_eddsa \
  test_helper_rsa \
+ test_helper_cs \
  test_payto \
  test_url
 
@@ -139,6 +154,12 @@ test_helper_eddsa_LDADD = \
 test_helper_rsa_SOURCES = \
   test_helper_rsa.c
 test_helper_rsa_LDADD = \
+  -lgnunetutil \
+  libtalerutil.la
+
+test_helper_cs_SOURCES = \
+  test_helper_cs.c
+test_helper_cs_LDADD = \
   -lgnunetutil \
   libtalerutil.la
 

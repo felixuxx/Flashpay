@@ -235,6 +235,22 @@ TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
 }
 
 
+/**
+ * Hash @a cs. key
+ *
+ * @param cs key to hash
+ * @param[out] h_cs where to write the result
+ */
+void
+TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
+                   struct TALER_CsPubHashP *h_cs)
+{
+  GNUNET_CRYPTO_hash (cs,
+                      sizeof(*cs),
+                      &h_cs->hash);
+}
+
+
 void
 TALER_denom_pub_hash (const struct TALER_DenominationPublicKey *denom_pub,
                       struct TALER_DenominationHash *denom_hash)

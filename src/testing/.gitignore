@@ -33,3 +33,5 @@ test_taler_exchange_httpd_home/.local/share/taler/exchange-offline/secm_tofus.pu
 test_taler_exchange_httpd_home/.local/share/taler/exchange-secmod-eddsa/
 test_taler_exchange_httpd_home/.local/share/taler/exchange-secmod-rsa/
 test_kyc_api
+test_helper_cs_home/
+test_helper_rsa_home/
