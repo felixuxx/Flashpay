@@ -206,17 +206,20 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
     struct TALER_DenominationPublicKey denom_pub;
     struct TALER_CsPubHashP h_cs;
 
-    denom_pub.cipher = TALER_DENOMINATION_RSA;
-    denom_pub.details.rsa_public_key
-      = GNUNET_CRYPTO_rsa_public_key_decode (buf,
-                                             ntohs (kan->pub_size));
-    if (NULL == denom_pub.details.rsa_public_key)
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-    GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.details.rsa_public_key,
-                                       &h_cs.hash);
+    denom_pub.cipher = TALER_DENOMINATION_CS;
+
+    memcpy (&denom_pub.details.cs_public_key, buf, ntohs (kan->pub_size));
+    TALER_cs_pub_hash (&denom_pub.details.cs_public_key, &h_cs);
+    // enom_pub.details.rsa_public_key
+    //   = GNUNET_CRYPTO_rsa_public_key_decode (buf,
+    //                                          ntohs (kan->pub_size));
+    // if (NULL == denom_pub.details.rsa_public_key)
+    // {
+    //   GNUNET_break_op (0);
+    //   return GNUNET_SYSERR;
+    // }
+    // GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.details.rsa_public_key,
+    //                                    &h_cs.hash);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Received CS key %s (%s)\n",
                 GNUNET_h2s (&h_cs.hash),

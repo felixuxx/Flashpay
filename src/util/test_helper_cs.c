@@ -600,17 +600,18 @@ run_test (void)
            " Done (%u keys)\n",
            num_keys);
   ret = 0;
-  if (0 == ret)
-    ret = test_revocation (dh);
-  if (0 == ret)
-    ret = test_signing (dh);
-  if (0 == ret)
-    ret = perf_signing (dh,
-                        "sequential");
+  // TODO: implement other tests
+  // if (0 == ret)
+  //   ret = test_revocation (dh);
+  // if (0 == ret)
+  //   ret = test_signing (dh);
+  // if (0 == ret)
+  //   ret = perf_signing (dh,
+  //                       "sequential");
   TALER_CRYPTO_helper_cs_disconnect (dh);
   free_keys ();
-  if (0 == ret)
-    ret = par_signing (cfg);
+  // if (0 == ret)
+  //   ret = par_signing (cfg);
   /* clean up our state */
   GNUNET_CONFIGURATION_destroy (cfg);
   return ret;
@@ -684,6 +685,8 @@ main (int argc,
                 (int) code);
     ret = 5;
   }
+  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+              "I am here");
   GNUNET_OS_process_destroy (helper);
   return ret;
 }
