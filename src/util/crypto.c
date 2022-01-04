@@ -319,6 +319,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
     return GNUNET_SYSERR;
   }
 
+  pd->blinded_planchet.cipher = dk->cipher;
   TALER_denom_pub_hash (dk,
                         &pd->denom_pub_hash);
   return GNUNET_OK;
@@ -334,6 +335,12 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
                         struct TALER_FreshCoin *coin)
 {
   struct TALER_DenominationSignature sig;
+
+  if (dk->cipher != blind_sig->cipher)
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
 
   switch (dk->cipher)
   {

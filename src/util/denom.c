@@ -112,6 +112,13 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
   memset (denom_sig,
           0,
           sizeof (*denom_sig));
+
+  if (blinded_planchet->cipher != denom_priv->cipher)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+
   switch (denom_priv->cipher)
   {
   case TALER_DENOMINATION_INVALID:
@@ -394,6 +401,7 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
+
   switch (denom_pub->cipher)
   {
   case TALER_DENOMINATION_INVALID:

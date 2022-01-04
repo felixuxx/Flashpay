@@ -1444,7 +1444,8 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
  * @param ps secret planchet internals (for #TALER_planchet_to_coin)
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
- *               other withdraw operations
+ *               other withdraw operations, pd->blinded_planchet.cipher will be set
+ *               to cipher from dk
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
