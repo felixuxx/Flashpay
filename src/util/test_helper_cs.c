@@ -601,8 +601,8 @@ run_test (void)
            num_keys);
   ret = 0;
   // TODO: implement other tests
-  // if (0 == ret)
-  //   ret = test_revocation (dh);
+  if (0 == ret)
+    ret = test_revocation (dh);
   // if (0 == ret)
   //   ret = test_signing (dh);
   // if (0 == ret)
