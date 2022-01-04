@@ -256,6 +256,133 @@ test_revocation (struct TALER_CRYPTO_CsDenominationHelper *dh)
 
 
 /**
+ * Test R derivation logic.
+ *
+ * @param dh handle to the helper
+ * @return 0 on success
+ */
+static int
+test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
+{
+  struct TALER_DenominationCsPublicR r_pub;
+  enum TALER_ErrorCode ec;
+  bool success = false;
+  struct TALER_PlanchetSecretsP ps;
+  struct TALER_CoinPubHash c_hash;
+
+  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_RSA);
+  for (unsigned int i = 0; i<MAX_KEYS; i++)
+  {
+    if (! keys[i].valid)
+      continue;
+    // TODO: insert assertion into other checks
+    GNUNET_assert (TALER_DENOMINATION_CS == keys[i].denom_pub.cipher);
+    {
+      struct TALER_PlanchetDetail pd;
+      pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+
+      TALER_cs_withdraw_nonce_derive (&ps.coin_priv,
+                                      &pd.blinded_planchet.details.
+                                      cs_blinded_planchet.nonce);
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Requesting R derivation with key %s\n",
+                  GNUNET_h2s (&keys[i].h_cs.hash));
+      r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
+                                               &keys[i].h_cs,
+                                               &pd.blinded_planchet.details.
+                                               cs_blinded_planchet.nonce,
+                                               &ec);
+    }
+    switch (ec)
+    {
+    case TALER_EC_NONE:
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_remaining (
+                                      keys[i].start_time.abs_time),
+                                    >,
+                                    GNUNET_TIME_UNIT_SECONDS))
+      {
+        /* key worked too early */
+        GNUNET_break (0);
+        return 4;
+      }
+      if (GNUNET_TIME_relative_cmp (GNUNET_TIME_absolute_get_duration (
+                                      keys[i].start_time.abs_time),
+                                    >,
+                                    keys[i].validity_duration))
+      {
+        /* key worked too later */
+        GNUNET_break (0);
+        return 5;
+      }
+
+      // since R is part of the signature creation process, it can't be tested fully here
+      // instead it will be further tested in the signature creation process
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Received valid R for key %s\n",
+                  GNUNET_h2s (&keys[i].h_cs.hash));
+      success = true;
+      break;
+    case TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY:
+      /* This 'failure' is expected, we're testing also for the
+         error handling! */
+      if ( (GNUNET_TIME_relative_is_zero (
+              GNUNET_TIME_absolute_get_remaining (
+                keys[i].start_time.abs_time))) &&
+           (GNUNET_TIME_relative_cmp (
+              GNUNET_TIME_absolute_get_duration (
+                keys[i].start_time.abs_time),
+              <,
+              keys[i].validity_duration)) )
+      {
+        /* key should have worked! */
+        GNUNET_break (0);
+        return 6;
+      }
+      break;
+    default:
+      /* unexpected error */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Unexpected error %d\n",
+                  ec);
+      return 7;
+    }
+  }
+  if (! success)
+  {
+    /* no valid key for signing found, also bad */
+    GNUNET_break (0);
+    return 16;
+  }
+
+  /* check R derivation does not work if the key is unknown */
+  {
+    struct TALER_CsPubHashP rnd;
+    struct TALER_WithdrawNonce nonce;
+
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &rnd,
+                                sizeof (rnd));
+    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
+                                &nonce,
+                                sizeof (nonce));
+    r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
+                                             &rnd,
+                                             &nonce,
+                                             &ec);
+    if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
+    {
+      GNUNET_break (0);
+      return 17;
+    }
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "R derivation with invalid key %s failed as desired\n",
+                GNUNET_h2s (&rnd.hash));
+  }
+  return 0;
+}
+
+
+/**
  * Test signing logic.
  *
  * @param dh handle to the helper
@@ -600,9 +727,11 @@ run_test (void)
            " Done (%u keys)\n",
            num_keys);
   ret = 0;
-  // TODO: implement other tests
   if (0 == ret)
     ret = test_revocation (dh);
+  if (0 == ret)
+    ret = test_r_derive (dh);
+  // TODO: implement other tests
   // if (0 == ret)
   //   ret = test_signing (dh);
   // if (0 == ret)
@@ -685,6 +814,7 @@ main (int argc,
                 (int) code);
     ret = 5;
   }
+  // TODO: remove
   GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
               "I am here");
   GNUNET_OS_process_destroy (helper);

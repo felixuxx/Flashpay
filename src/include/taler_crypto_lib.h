@@ -1800,7 +1800,7 @@ TALER_CRYPTO_helper_cs_sign (
 
 
 /**
- * Ask the helper to revoke the public key associated with @param h_denom_pub .
+ * Ask the helper to revoke the public key associated with @param h_cs .
  * Will cause the helper to tell all clients that the key is now unavailable,
  * and to create a replacement key.
  *
@@ -1812,12 +1812,36 @@ TALER_CRYPTO_helper_cs_sign (
  * callback.
  *
  * @param dh helper to process connection
- * @param h_rsa hash of the RSA public key to revoke
+ * @param h_cs hash of the CS public key to revoke
  */
 void
 TALER_CRYPTO_helper_cs_revoke (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CsPubHashP *h_cs);
+
+
+/**
+ * Ask the helper to derive R using the @param nonce and denomination key
+ * associated with @param h_cs.
+ *
+ * This operation will block until the R has been obtained.  Should
+ * this process receive a signal (that is not ignored) while the operation is
+ * pending, the operation will fail.  Note that the helper may still believe
+ * that it created the signature. Thus, signals may result in a small
+ * differences in the signature counters.  Retrying in this case may work.
+ *
+ * @param dh helper to process connection
+ * @param h_cs hash of the CS public key to revoke
+ * @param nonce witdhraw nonce
+ * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
+ * @return R, the value inside the structure will be NULL on failure,
+ *         see @a ec for details about the failure
+ */
+struct TALER_DenominationCsPublicR
+TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
+                                 const struct TALER_CsPubHashP *h_cs,
+                                 const struct TALER_WithdrawNonce *nonce,
+                                 enum TALER_ErrorCode *ec);
 
 
 /**

@@ -618,7 +618,6 @@ handle_r_derive_request (struct TES_Client *client,
                          &rdf.header);
   }
 
-  // TODO: print nonce too?
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received request to derive R with key %s\n",
               GNUNET_h2s (&rdr->h_cs.hash));
@@ -692,7 +691,7 @@ cs_work_dispatch (struct TES_Client *client,
     return handle_revoke_request (
       client,
       (const struct TALER_CRYPTO_CsRevokeRequest *) hdr);
-  case TALER_HELPER_CS_MT_RES_RDERIVE:
+  case TALER_HELPER_CS_MT_REQ_RDERIVE:
     if (msize != sizeof (struct TALER_CRYPTO_CsRDeriveRequest))
     {
       GNUNET_break_op (0);
