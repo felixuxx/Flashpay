@@ -156,7 +156,10 @@ struct TALER_CRYPTO_CsRDeriveRequest
    */
   struct TALER_CsPubHashP h_cs;
 
-  /* followed by Withdraw nonce to derive R  */
+  /**
+   * Withdraw nonce to derive R from
+   */
+  struct TALER_WithdrawNonce nonce;
 };
 
 /**
@@ -215,7 +218,10 @@ struct TALER_CRYPTO_RDeriveResponse
    */
   uint32_t reserved;
 
-  /* followed by derived R */
+  /**
+   * derived R
+   */
+  struct TALER_DenominationCsPublicR r_pub;
 };
 
 

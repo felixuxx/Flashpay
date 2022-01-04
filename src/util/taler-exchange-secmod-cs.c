@@ -566,6 +566,100 @@ handle_revoke_request (struct TES_Client *client,
 
 
 /**
+ * Handle @a client request @a sr to create signature. Create the
+ * signature using the respective key and return the result to
+ * the client.
+ *
+ * @param client the client making the request
+ * @param sr the request details
+ * @return #GNUNET_OK on success
+ */
+static enum GNUNET_GenericReturnValue
+handle_r_derive_request (struct TES_Client *client,
+                         const struct TALER_CRYPTO_CsRDeriveRequest *rdr)
+{
+  struct DenominationKey *dk;
+  struct TALER_DenominationCsPrivateR r_priv;
+  struct TALER_DenominationCsPublicR r_pub;
+  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+
+  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
+  dk = GNUNET_CONTAINER_multihashmap_get (keys,
+                                          &rdr->h_cs.hash);
+  if (NULL == dk)
+  {
+    struct TALER_CRYPTO_RDeriveFailure rdf = {
+      .header.size = htons (sizeof (rdr)),
+      .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE),
+      .ec = htonl (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN)
+    };
+
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "R Derive request failed, denomination key %s unknown\n",
+                GNUNET_h2s (&rdr->h_cs.hash));
+    return TES_transmit (client->csock,
+                         &rdf.header);
+  }
+  if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
+  {
+    /* it is too early */
+    struct TALER_CRYPTO_RDeriveFailure rdf = {
+      .header.size = htons (sizeof (rdr)),
+      .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE),
+      .ec = htonl (TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY)
+    };
+
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "R Derive request failed, denomination key %s is not yet valid\n",
+                GNUNET_h2s (&rdr->h_cs.hash));
+    return TES_transmit (client->csock,
+                         &rdf.header);
+  }
+
+  // TODO: print nonce too?
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received request to derive R with key %s\n",
+              GNUNET_h2s (&rdr->h_cs.hash));
+  GNUNET_assert (dk->rc < UINT_MAX);
+  dk->rc++;
+  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+  GNUNET_CRYPTO_cs_r_derive (&rdr->nonce.nonce,
+                             &dk->denom_priv,
+                             r_priv.r);
+  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[0], &r_pub.r_pub[0]);
+  GNUNET_CRYPTO_cs_r_get_public (&r_priv.r[1], &r_pub.r_pub[1]);
+  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
+  GNUNET_assert (dk->rc > 0);
+  dk->rc--;
+  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+
+  {
+    struct TALER_CRYPTO_RDeriveResponse rdr;
+    enum GNUNET_GenericReturnValue ret;
+
+    rdr.header.size = htons (sizeof (struct TALER_CRYPTO_RDeriveResponse));
+    rdr.header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE);
+    rdr.r_pub = r_pub;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Sending CS Derived R after %s\n",
+                GNUNET_TIME_relative2s (
+                  GNUNET_TIME_absolute_get_duration (now),
+                  GNUNET_YES));
+    ret = TES_transmit (client->csock,
+                        &rdr.header);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Sent CS Derived R after %s\n",
+                GNUNET_TIME_relative2s (
+                  GNUNET_TIME_absolute_get_duration (now),
+                  GNUNET_YES));
+    return ret;
+  }
+}
+
+
+/**
  * Handle @a hdr message received from @a client.
  *
  * @param client the client that received the message
@@ -598,6 +692,15 @@ cs_work_dispatch (struct TES_Client *client,
     return handle_revoke_request (
       client,
       (const struct TALER_CRYPTO_CsRevokeRequest *) hdr);
+  case TALER_HELPER_CS_MT_RES_RDERIVE:
+    if (msize != sizeof (struct TALER_CRYPTO_CsRDeriveRequest))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+    return handle_r_derive_request (client,
+                                    (const struct
+                                     TALER_CRYPTO_CsRDeriveRequest *) hdr);
   default:
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
