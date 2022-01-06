@@ -416,11 +416,13 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
  *
  * @param keys array of keys to search
  * @param amount coin value to look for
+ * @param cipher denomination cipher
  * @return NULL if no matching key was found
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
-                       const struct TALER_Amount *amount)
+                       const struct TALER_Amount *amount,
+                       const enum TALER_DenominationCipher cipher)
 {
   struct GNUNET_TIME_Timestamp now;
   struct TALER_EXCHANGE_DenomPublicKey *pk;
@@ -430,6 +432,8 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
   {
     pk = &keys->denom_keys[i];
+    if (cipher != pk->key.cipher)
+      continue;
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          (GNUNET_TIME_timestamp_cmp (now,
@@ -446,6 +450,8 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
   {
     pk = &keys->denom_keys[i];
+    if (cipher != pk->key.cipher)
+      continue;
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          (GNUNET_TIME_timestamp_cmp (now,
@@ -463,6 +469,25 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
         (unsigned long long) now.abs_time.abs_value_us,
         (unsigned long long) pk->valid_from.abs_time.abs_value_us,
         (unsigned long long) pk->withdraw_valid_until.abs_time.abs_value_us);
+      GNUNET_free (str);
+      return NULL;
+    }
+  }
+  // do 3rd pass to check if cipher type is to blame for failure
+  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
+  {
+    pk = &keys->denom_keys[i];
+    if ( (0 == TALER_amount_cmp (amount,
+                                 &pk->value)) &&
+         (cipher != pk->key.cipher) )
+    {
+      GNUNET_log
+        (GNUNET_ERROR_TYPE_WARNING,
+        "Have denomination key for `%s', but with wrong"
+        " cipher type %d vs %d\n",
+        str,
+        cipher,
+        pk->key.cipher);
       GNUNET_free (str);
       return NULL;
     }
@@ -608,9 +633,9 @@ TALER_TESTING_setup_with_exchange (TALER_TESTING_Main main_cb,
  * @param[in] helpers the process handles.
  */
 static void
-stop_helpers (struct GNUNET_OS_Process *helpers[2])
+stop_helpers (struct GNUNET_OS_Process *helpers[3])
 {
-  for (unsigned int i = 0; i<2; i++)
+  for (unsigned int i = 0; i<3; i++)
   {
     if (NULL == helpers[i])
       continue;
@@ -632,7 +657,7 @@ stop_helpers (struct GNUNET_OS_Process *helpers[2])
  */
 static enum GNUNET_GenericReturnValue
 start_helpers (const char *config_filename,
-               struct GNUNET_OS_Process *helpers[2])
+               struct GNUNET_OS_Process *helpers[3])
 {
   char *dir;
   const struct GNUNET_OS_ProjectData *pd;
@@ -678,9 +703,26 @@ start_helpers (const char *config_filename,
                                           NULL);
     GNUNET_free (fn);
   }
+  {
+    char *fn;
+
+    GNUNET_asprintf (&fn,
+                     "%s/%s",
+                     dir,
+                     "taler-exchange-secmod-cs");
+    helpers[2] = GNUNET_OS_start_process (GNUNET_OS_INHERIT_STD_ALL,
+                                          NULL, NULL, NULL,
+                                          fn,
+                                          "taler-exchange-secmod-cs",
+                                          "-c", config_filename,
+                                          "-L", "INFO",
+                                          NULL);
+    GNUNET_free (fn);
+  }
   GNUNET_free (dir);
   if ( (NULL == helpers[0]) ||
-       (NULL == helpers[1]) )
+       (NULL == helpers[1]) ||
+       (NULL == helpers[2]) )
   {
     stop_helpers (helpers);
     return GNUNET_SYSERR;
@@ -696,7 +738,7 @@ TALER_TESTING_setup_with_exchange_cfg (
 {
   const struct TALER_TESTING_SetupContext *setup_ctx = cls;
   struct GNUNET_OS_Process *exchanged;
-  struct GNUNET_OS_Process *helpers[2];
+  struct GNUNET_OS_Process *helpers[3];
   unsigned long long port;
   char *serve;
   char *base_url;

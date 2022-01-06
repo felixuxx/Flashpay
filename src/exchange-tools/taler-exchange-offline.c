@@ -2531,10 +2531,10 @@ do_download (char *const *args)
  *         #GNUNET_SYSERR if keys changed from what we remember or other error
  */
 static int
-tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
+tofu_check (const struct TALER_SecurityModulePublicKeyP secm[3])
 {
   char *fn;
-  struct TALER_SecurityModulePublicKeyP old[2];
+  struct TALER_SecurityModulePublicKeyP old[3];
   ssize_t ret;
 
   if (GNUNET_OK !=
@@ -2608,7 +2608,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
       GNUNET_free (key);
       if (0 !=
           GNUNET_memcmp (&k,
-                         &secm[1]))
+                         &secm[2]))
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "ESIGN security module key does not match SECM_ESIGN_PUBKEY in configuration\n");
@@ -2643,6 +2643,37 @@ tofu_check (const struct TALER_SecurityModulePublicKeyP secm[2])
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "DENOM security module key does not match SECM_DENOM_PUBKEY in configuration\n");
+        return GNUNET_SYSERR;
+      }
+    }
+    if (GNUNET_OK ==
+        GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                               "exchange-offline",
+                                               "SECM_DENOM_CS_PUBKEY",
+                                               &key))
+    {
+      struct TALER_SecurityModulePublicKeyP k;
+
+      if (GNUNET_OK !=
+          GNUNET_STRINGS_string_to_data (key,
+                                         strlen (key),
+                                         &k,
+                                         sizeof (k)))
+      {
+        GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
+                                   "exchange-offline",
+                                   "SECM_DENOM_CS_PUBKEY",
+                                   "key malformed");
+        GNUNET_free (key);
+        return GNUNET_SYSERR;
+      }
+      GNUNET_free (key);
+      if (0 !=
+          GNUNET_memcmp (&k,
+                         &secm[1]))
+      {
+        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                    "DENOM security module key does not match SECM_DENOM_CS_PUBKEY in configuration\n");
         return GNUNET_SYSERR;
       }
     }
@@ -2766,11 +2797,13 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
  * Output @a denomkeys for human consumption.
  *
  * @param secm_pub security module public key used to sign the denominations
+ *                 element 0: RSA
+ *                 element 1: CS
  * @param denomkeys keys to output
  * @return #GNUNET_OK on success
  */
 static int
-show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
+show_denomkeys (const struct TALER_SecurityModulePublicKeyP secm_pub[2],
                 const json_t *denomkeys)
 {
   size_t index;
@@ -2863,8 +2896,22 @@ show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                                section_name,
                                                stamp_start,
                                                duration,
-                                               secm_pub,
+                                               &secm_pub[0],
                                                &secm_sig);
+      }
+      break;
+    case TALER_DENOMINATION_CS:
+      {
+        struct TALER_CsPubHashP h_cs;
+
+        TALER_cs_pub_hash (&denom_pub.details.cs_public_key,
+                           &h_cs);
+        ok = TALER_exchange_secmod_cs_verify (&h_cs,
+                                              section_name,
+                                              stamp_start,
+                                              duration,
+                                              &secm_pub[1],
+                                              &secm_sig);
       }
       break;
     default:
@@ -3018,7 +3065,7 @@ do_show (char *const *args)
   json_t *denomkeys;
   json_t *signkeys;
   struct TALER_MasterPublicKeyP mpub;
-  struct TALER_SecurityModulePublicKeyP secm[2];
+  struct TALER_SecurityModulePublicKeyP secm[3];
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("future_denoms",
                            &denomkeys),
@@ -3028,8 +3075,10 @@ do_show (char *const *args)
                                  &mpub),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
                                  &secm[0]),
-    GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+    GNUNET_JSON_spec_fixed_auto ("denom_secmod_cs_public_key",
                                  &secm[1]),
+    GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+                                 &secm[2]),
     GNUNET_JSON_spec_end ()
   };
 
@@ -3079,7 +3128,7 @@ do_show (char *const *args)
     return;
   }
   if ( (GNUNET_OK !=
-        show_signkeys (&secm[1],
+        show_signkeys (&secm[2],
                        signkeys)) ||
        (GNUNET_OK !=
         show_denomkeys (&secm[0],
@@ -3200,12 +3249,14 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
  * Sign @a denomkeys with offline key.
  *
  * @param secm_pub security module public key used to sign the denominations
+ *                 element 0: RSA
+ *                 element 1: CS
  * @param denomkeys keys to output
  * @param[in,out] result array where to output the signatures
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
-sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
+sign_denomkeys (const struct TALER_SecurityModulePublicKeyP secm_pub[2],
                 const json_t *denomkeys,
                 json_t *result)
 {
@@ -3300,8 +3351,32 @@ sign_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                                               section_name,
                                               stamp_start,
                                               duration,
-                                              secm_pub,
+                                              &secm_pub[0],
                                               &secm_sig))
+        {
+          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                      "Invalid security module signature for denomination key %s (aborting)\n",
+                      GNUNET_h2s (&h_denom_pub.hash));
+          global_ret = EXIT_FAILURE;
+          test_shutdown ();
+          GNUNET_JSON_parse_free (spec);
+          return GNUNET_SYSERR;
+        }
+      }
+      break;
+    case TALER_DENOMINATION_CS:
+      {
+        struct TALER_CsPubHashP h_cs;
+
+        TALER_cs_pub_hash (&denom_pub.details.cs_public_key,
+                           &h_cs);
+        if (GNUNET_OK !=
+            TALER_exchange_secmod_cs_verify (&h_cs,
+                                             section_name,
+                                             stamp_start,
+                                             duration,
+                                             &secm_pub[1],
+                                             &secm_sig))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                       "Invalid security module signature for denomination key %s (aborting)\n",
@@ -3364,7 +3439,7 @@ do_sign (char *const *args)
   json_t *denomkeys;
   json_t *signkeys;
   struct TALER_MasterPublicKeyP mpub;
-  struct TALER_SecurityModulePublicKeyP secm[2];
+  struct TALER_SecurityModulePublicKeyP secm[3];
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("future_denoms",
                            &denomkeys),
@@ -3374,8 +3449,10 @@ do_sign (char *const *args)
                                  &mpub),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
                                  &secm[0]),
-    GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+    GNUNET_JSON_spec_fixed_auto ("denom_secmod_cs_public_key",
                                  &secm[1]),
+    GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
+                                 &secm[2]),
     GNUNET_JSON_spec_end ()
   };
 
@@ -3436,7 +3513,7 @@ do_sign (char *const *args)
     GNUNET_assert (NULL != signkey_sig_array);
     GNUNET_assert (NULL != denomkey_sig_array);
     if ( (GNUNET_OK !=
-          sign_signkeys (&secm[1],
+          sign_signkeys (&secm[2],
                          signkeys,
                          signkey_sig_array)) ||
          (GNUNET_OK !=

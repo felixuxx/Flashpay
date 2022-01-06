@@ -1112,6 +1112,17 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
                     void *res_cb_cls);
 
 
+/**
+ *
+ * Cancel a CS R request.  This function cannot be used
+ * on a request handle if a response is already served for it.
+ *
+ * @param csrh the withdraw handle
+ */
+void
+TALER_EXCHANGE_csr_cancel (struct TALER_EXCHANGE_CsRHandle *csrh);
+
+
 /* ********************* GET /reserves/$RESERVE_PUB *********************** */
 
 
@@ -2576,9 +2587,14 @@ struct TALER_EXCHANGE_FutureKeys
   struct TALER_SecurityModulePublicKeyP signkey_secmod_public_key;
 
   /**
-   * Public key of the denomination security module.
+   * Public key of the RSA denomination security module.
    */
   struct TALER_SecurityModulePublicKeyP denom_secmod_public_key;
+
+  /**
+   * Public key of the CS denomination security module.
+   */
+  struct TALER_SecurityModulePublicKeyP denom_secmod_cs_public_key;
 
   /**
    * Offline master public key used by this exchange.

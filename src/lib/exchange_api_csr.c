@@ -90,13 +90,16 @@ struct TALER_EXCHANGE_CsRHandle
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
-csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
-        const json_t *json,
+csr_ok (const json_t *json,
         struct TALER_EXCHANGE_CsRResponse *csrr)
 {
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_csr ("r_pub_0", &csrr->details.success.r_pubs.r_pub[0]),
-    TALER_JSON_spec_csr ("r_pub_1", &csrr->details.success.r_pubs.r_pub[1]),
+    GNUNET_JSON_spec_fixed ("r_pub_0",
+                            &csrr->details.success.r_pubs.r_pub[0],
+                            sizeof (struct GNUNET_CRYPTO_CsRPublic)),
+    GNUNET_JSON_spec_fixed ("r_pub_1",
+                            &csrr->details.success.r_pubs.r_pub[1],
+                            sizeof (struct GNUNET_CRYPTO_CsRPublic)),
     GNUNET_JSON_spec_end ()
   };
 
@@ -109,34 +112,8 @@ csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
     return GNUNET_SYSERR;
   }
 
-  /* r_pubs are valid, return it to the application */
-  csrh->cb (csrh->cb_cls,
-            csrr);
-  /* make sure callback isn't called again after return */
-  csrh->cb = NULL;
   GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
-}
-
-
-/**
- *
- * Cancel a CS R request.  This function cannot be used
- * on a request handle if a response is already served for it.
- *
- * @param csrh the withdraw handle
- */
-void
-TALER_EXCHANGE_csr_cancel (struct TALER_EXCHANGE_CsRHandle *csrh)
-{
-  if (NULL != csrh->job)
-  {
-    GNUNET_CURL_job_cancel (csrh->job);
-    csrh->job = NULL;
-  }
-  GNUNET_free (csrh->url);
-  TALER_curl_easy_post_finished (&csrh->post_ctx);
-  GNUNET_free (csrh);
 }
 
 
@@ -170,8 +147,7 @@ handle_csr_finished (void *cls,
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
-        csr_ok (csrh,
-                j,
+        csr_ok (j,
                 &csrr))
     {
       GNUNET_break_op (0);
@@ -179,9 +155,7 @@ handle_csr_finished (void *cls,
       csrr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       break;
     }
-    GNUNET_assert (NULL == csrh->cb);
-    TALER_EXCHANGE_csr_cancel (csrh);
-    return;
+    break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
@@ -190,8 +164,8 @@ handle_csr_finished (void *cls,
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, the exchange basically just says
-       that it doesn't know the /csr.  Can happen if the exchange
-       doesn't support Clause Schnorr.
+       that it doesn't know the /csr endpoint or denomination.
+       Can happen if the exchange doesn't support Clause Schnorr.
        We should simply pass the JSON reply to the application. */
     csrr.hr.ec = TALER_JSON_get_error_code (j);
     csrr.hr.hint = TALER_JSON_get_error_hint (j);
@@ -221,12 +195,9 @@ handle_csr_finished (void *cls,
                 (int) hr.ec);
     break;
   }
-  if (NULL != csrh->cb)
-  {
-    csrh->cb (csrh->cb_cls,
-              &csrr);
-    csrh->cb = NULL;
-  }
+  csrh->cb (csrh->cb_cls,
+            &csrr);
+  csrh->cb = NULL;
   TALER_EXCHANGE_csr_cancel (csrh);
 }
 
@@ -304,4 +275,18 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
   }
 
   return csrh;
+}
+
+
+void
+TALER_EXCHANGE_csr_cancel (struct TALER_EXCHANGE_CsRHandle *csrh)
+{
+  if (NULL != csrh->job)
+  {
+    GNUNET_CURL_job_cancel (csrh->job);
+    csrh->job = NULL;
+  }
+  GNUNET_free (csrh->url);
+  TALER_curl_easy_post_finished (&csrh->post_ctx);
+  GNUNET_free (csrh);
 }

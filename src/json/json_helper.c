@@ -273,6 +273,26 @@ parse_denom_pub (void *cls,
       }
       return GNUNET_OK;
     }
+  case TALER_DENOMINATION_CS:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_fixed ("cs_public_key",
+                                &denom_pub->details.cs_public_key,
+                                sizeof (denom_pub->details.cs_public_key)),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
   default:
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -686,7 +706,7 @@ TALER_JSON_parse_agemask (const json_t *root,
   {
     return GNUNET_SYSERR;
   }
-
+//FIXME:
   return GNUNET_OK;
 /**
  * Parse given JSON object to CS R.

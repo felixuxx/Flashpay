@@ -92,6 +92,8 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                  &fk.master_pub),
     GNUNET_JSON_spec_fixed_auto ("denom_secmod_public_key",
                                  &fk.denom_secmod_public_key),
+    GNUNET_JSON_spec_fixed_auto ("denom_secmod_cs_public_key",
+                                 &fk.denom_secmod_cs_public_key),
     GNUNET_JSON_spec_fixed_auto ("signkey_secmod_public_key",
                                  &fk.signkey_secmod_public_key),
     GNUNET_JSON_spec_end ()
@@ -236,6 +238,26 @@ handle_ok (struct TALER_EXCHANGE_ManagementGetKeysHandle *gh,
                                                 duration,
                                                 &fk.denom_secmod_public_key,
                                                 &denom_key->denom_secmod_sig))
+          {
+            GNUNET_break_op (0);
+            ok = false;
+            break;
+          }
+        }
+        break;
+      case TALER_DENOMINATION_CS:
+        {
+          struct TALER_CsPubHashP h_cs;
+
+          TALER_cs_pub_hash (&denom_key->key.details.cs_public_key,
+                             &h_cs);
+          if (GNUNET_OK !=
+              TALER_exchange_secmod_cs_verify (&h_cs,
+                                               section_name,
+                                               denom_key->valid_from,
+                                               duration,
+                                               &fk.denom_secmod_cs_public_key,
+                                               &denom_key->denom_secmod_sig))
           {
             GNUNET_break_op (0);
             ok = false;

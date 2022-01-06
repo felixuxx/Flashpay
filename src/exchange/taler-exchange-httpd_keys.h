@@ -185,6 +185,23 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
 
 
 /**
+ * Request to derive CS r_pub using the denomination corresponding to @a h_denom_pub
+ * and @a nonce.
+ *
+ * @param h_denom_pub hash of the public key to use to derive r_pub
+ * @param nonce withdraw/refresh nonce
+ * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
+ * @return r_pub, the value inside the structure will be NULL on failure,
+ *         see @a ec for details about the failure
+ */
+struct TALER_DenominationCsPublicR
+TEH_keys_denomination_cs_r_pub (const struct
+                                TALER_DenominationHash *h_denom_pub,
+                                const struct TALER_WithdrawNonce *nonce,
+                                enum TALER_ErrorCode *ec);
+
+
+/**
  * Revoke the public key associated with @param h_denom_pub .
  * This function should be called AFTER the database was
  * updated, as it also triggers #TEH_keys_update_states().

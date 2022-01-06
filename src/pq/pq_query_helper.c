@@ -194,7 +194,9 @@ qconv_denom_pub (void *cls,
       denom_pub->details.rsa_public_key,
       &tbuf);
     break;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    tlen = sizeof (denom_pub->details.cs_public_key);
+    break;
   default:
     GNUNET_assert (0);
   }
@@ -211,7 +213,11 @@ qconv_denom_pub (void *cls,
             tlen);
     GNUNET_free (tbuf);
     break;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    memcpy (&buf[sizeof (be)],
+            &denom_pub->details.cs_public_key,
+            tlen);
+    break;
   default:
     GNUNET_assert (0);
   }

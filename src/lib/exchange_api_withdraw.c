@@ -73,6 +73,11 @@ struct TALER_EXCHANGE_WithdrawHandle
    */
   struct TALER_CoinPubHash c_hash;
 
+  /**
+   * Handler for the CS R request (only used for TALER_DENOMINATION_CS denominations)
+   */
+  struct TALER_EXCHANGE_CsRHandle *csrh;
+
 };
 
 
@@ -148,6 +153,37 @@ handle_reserve_withdraw_finished (
 
 
 /**
+ * Function called when stage 1 of CS withdraw is finished (request r_pub's)
+ *
+ * @param cls
+ */
+static void
+withdraw_cs_stage_two_callback (void *cls,
+                                const struct TALER_EXCHANGE_CsRResponse *csrr)
+{
+  struct TALER_EXCHANGE_WithdrawHandle *wh = cls;
+  // TODO: this should only be set for non-OK cases
+  struct TALER_EXCHANGE_WithdrawResponse wr = {
+    .hr = csrr->hr
+  };
+
+  // switch (csrr->hr.http_status)
+  // {
+  // case MHD_HTTP_OK:
+  //   // TODO: implement rest of withdraw
+  //   break;
+  // default:
+  //   break;
+  // }
+
+  // TODO: this should only be called for non-OK cases
+  wh->cb (wh->cb_cls,
+          &wr);
+  TALER_EXCHANGE_withdraw_cancel (wh);
+}
+
+
+/**
  * Withdraw a coin from the exchange using a /reserve/withdraw request.  Note
  * that to ensure that no money is lost in case of hardware failures,
  * the caller must have committed (most of) the arguments to disk
@@ -183,31 +219,54 @@ TALER_EXCHANGE_withdraw (
   wh->cb_cls = res_cb_cls;
   wh->pk = *pk;
   wh->ps = *ps;
-  if (GNUNET_OK !=
-      TALER_planchet_prepare (&pk->key,
-                              ps,
-                              &wh->c_hash,
-                              &pd))
+  wh->csrh = NULL;
+  switch (pk->key.cipher)
   {
+  case TALER_DENOMINATION_RSA:
+    if (GNUNET_OK !=
+        TALER_planchet_prepare (&pk->key,
+                                ps,
+                                &wh->c_hash,
+                                &pd))
+    {
+      GNUNET_break (0);
+      GNUNET_free (wh);
+      return NULL;
+    }
+    TALER_denom_pub_deep_copy (&wh->pk.key,
+                               &pk->key);
+    wh->wh2 = TALER_EXCHANGE_withdraw2 (exchange,
+                                        &pd,
+                                        reserve_priv,
+                                        &handle_reserve_withdraw_finished,
+                                        wh);
+    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    return wh;
+  case TALER_DENOMINATION_CS:
+    struct TALER_WithdrawNonce nonce;
+    TALER_cs_withdraw_nonce_derive (&ps->coin_priv, &nonce);
+    wh->csrh = TALER_EXCHANGE_csr (exchange,
+                                   pk,
+                                   &nonce,
+                                   &withdraw_cs_stage_two_callback,
+                                   wh);
+    return wh;
+  default:
     GNUNET_break (0);
     GNUNET_free (wh);
     return NULL;
   }
-  TALER_denom_pub_deep_copy (&wh->pk.key,
-                             &pk->key);
-  wh->wh2 = TALER_EXCHANGE_withdraw2 (exchange,
-                                      &pd,
-                                      reserve_priv,
-                                      &handle_reserve_withdraw_finished,
-                                      wh);
-  GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
-  return wh;
 }
 
 
 void
 TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh)
 {
+  if (NULL != wh->csrh)
+  {
+    TALER_EXCHANGE_csr_cancel (wh->csrh);
+    wh->csrh = NULL;
+  }
   if (NULL != wh->wh2)
   {
     TALER_EXCHANGE_withdraw2_cancel (wh->wh2);

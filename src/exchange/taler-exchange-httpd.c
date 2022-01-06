@@ -30,6 +30,7 @@
 #include <limits.h>
 #include "taler_mhd_lib.h"
 #include "taler-exchange-httpd_auditors.h"
+#include "taler-exchange-httpd_csr.h"
 #include "taler-exchange-httpd_deposit.h"
 #include "taler-exchange-httpd_deposits_get.h"
 #include "taler-exchange-httpd_extensions.h"
@@ -909,6 +910,13 @@ handle_mhd_request (void *cls,
       .url = "wire",
       .method = MHD_HTTP_METHOD_GET,
       .handler.get = &TEH_handler_wire
+    },
+    /* request R, used in clause schnorr withdraw and refresh */
+    {
+      .url = "csr",
+      .method = MHD_HTTP_METHOD_POST,
+      .handler.post = &TEH_handler_csr,
+      .nargs = 0
     },
     /* Withdrawing coins / interaction with reserves */
     {

@@ -406,6 +406,60 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
+  /**
+   * Test CS withdrawal plus spending.
+   */
+  struct TALER_TESTING_Command withdraw_cs[] = {
+    /**
+     * Move money to the exchange's bank account.
+     */
+    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-1",
+                              "EUR:6.02"),
+    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-1",
+                                                 "EUR:6.02",
+                                                 bc.user42_payto,
+                                                 bc.exchange_payto,
+                                                 "create-reserve-1"),
+    /**
+     * Make a reserve exist, according to the previous
+     * transfer.
+     */
+    CMD_EXEC_WIREWATCH ("wirewatch-1"),
+    /**
+     * Withdraw EUR:5.
+     */
+    TALER_TESTING_cmd_withdraw_cs_amount ("withdraw-cs-coin-1",
+                                          "create-reserve-1",
+                                          "EUR:5",
+                                          MHD_HTTP_OK),
+    // TODO: rest of the tests
+    // /**
+    //  * Withdraw EUR:1 using the SAME private coin key as for the previous coin
+    //  * (in violation of the specification, to be detected on spending!).
+    //  */
+    // TALER_TESTING_cmd_withdraw_amount_reuse_key ("withdraw-coin-1x",
+    //                                              "create-reserve-1",
+    //                                              "EUR:1",
+    //                                              "withdraw-coin-1",
+    //                                              MHD_HTTP_OK),
+    // /**
+    //  * Check the reserve is depleted.
+    //  */
+    // TALER_TESTING_cmd_status ("status-1",
+    //                           "create-reserve-1",
+    //                           "EUR:0",
+    //                           MHD_HTTP_OK),
+    // /*
+    //  * Try to overdraw.
+    //  */
+    // TALER_TESTING_cmd_withdraw_amount ("withdraw-coin-2",
+    //                                    "create-reserve-1",
+    //                                    "EUR:5",
+    //                                    MHD_HTTP_CONFLICT),
+    TALER_TESTING_cmd_end ()
+  };
+
+  // TODO: CS related tests
 
   /**
    * This block checks whether a wire deadline
@@ -953,6 +1007,9 @@ run (void *cls,
                                refresh),
       TALER_TESTING_cmd_batch ("track",
                                track),
+      TALER_TESTING_cmd_batch ("withdraw-cs",
+                               withdraw_cs),
+      // TODO: Clause Schnorr related tests
       TALER_TESTING_cmd_batch ("unaggregation",
                                unaggregation),
       TALER_TESTING_cmd_batch ("aggregation",

@@ -68,6 +68,17 @@ TALER_JSON_pack_denom_pub (
           GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
                                            pk->details.rsa_public_key));
     break;
+  case TALER_DENOMINATION_CS:
+    ps.object
+      = GNUNET_JSON_PACK (
+          GNUNET_JSON_pack_uint64 ("cipher",
+                                   TALER_DENOMINATION_CS),
+          GNUNET_JSON_pack_uint64 ("age_mask",
+                                   pk->age_mask.mask),
+          GNUNET_JSON_pack_data_varsize ("cs_public_key",
+                                         &pk->details.cs_public_key,
+                                         sizeof (pk->details.cs_public_key)));
+    break;
   default:
     GNUNET_assert (0);
   }
@@ -94,6 +105,7 @@ TALER_JSON_pack_denom_sig (
           GNUNET_JSON_pack_rsa_signature ("rsa_signature",
                                           sig->details.rsa_signature));
     break;
+  // TODO: case TALER_DENOMINATION_CS:
   default:
     GNUNET_assert (0);
   }
@@ -120,6 +132,7 @@ TALER_JSON_pack_blinded_denom_sig (
           GNUNET_JSON_pack_rsa_signature ("blinded_rsa_signature",
                                           sig->details.blinded_rsa_signature));
     break;
+  // TODO: case TALER_DENOMINATION_CS:
   default:
     GNUNET_assert (0);
   }

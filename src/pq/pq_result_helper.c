@@ -425,7 +425,16 @@ extract_denom_pub (void *cls,
       return GNUNET_SYSERR;
     }
     return GNUNET_OK;
-  // FIXME: add CS case!
+  case TALER_DENOMINATION_CS:
+    if (sizeof (pk->details.cs_public_key) != len)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    memcpy (&pk->details.cs_public_key,
+            res,
+            len);
+    return GNUNET_OK;
   default:
     GNUNET_break (0);
   }

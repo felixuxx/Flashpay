@@ -1048,8 +1048,10 @@ melt_run (void *cls,
         TALER_TESTING_interpreter_fail (rms->is);
         return;
       }
-      fresh_pk = TALER_TESTING_find_pk
-                   (TALER_EXCHANGE_get_keys (is->exchange), &fresh_amount);
+      fresh_pk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
+                                        &fresh_amount,
+                                        // FIXME: replace hardcoded value
+                                        TALER_DENOMINATION_RSA);
       if (NULL == fresh_pk)
       {
         GNUNET_break (0);

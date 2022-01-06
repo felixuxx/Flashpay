@@ -103,6 +103,11 @@ struct HelperDenomination
      */
     struct TALER_RsaPubHashP h_rsa;
 
+    /**
+     * Hash of the CS key.
+     */
+    struct TALER_CsPubHashP h_cs;
+
   } h_details;
 
   /**
@@ -188,7 +193,12 @@ struct HelperState
   /**
    * Handle for the denom/RSA helper.
    */
-  struct TALER_CRYPTO_RsaDenominationHelper *dh;
+  struct TALER_CRYPTO_RsaDenominationHelper *rsadh;
+
+  /**
+   * Handle for the denom/CS helper.
+   */
+  struct TALER_CRYPTO_CsDenominationHelper *csdh;
 
   /**
    * Map from H(denom_pub) to `struct HelperDenomination` entries.
@@ -199,6 +209,11 @@ struct HelperState
    * Map from H(rsa_pub) to `struct HelperDenomination` entries.
    */
   struct GNUNET_CONTAINER_MultiHashMap *rsa_keys;
+
+  /**
+   * Map from H(cs_pub) to `struct HelperDenomination` entries.
+   */
+  struct GNUNET_CONTAINER_MultiHashMap *cs_keys;
 
   /**
    * Map from `struct TALER_ExchangePublicKey` to `struct HelperSignkey`
@@ -424,7 +439,12 @@ static struct GNUNET_TIME_Relative signkey_legal_duration;
 /**
  * RSA security module public key, all zero if not known.
  */
-static struct TALER_SecurityModulePublicKeyP denom_sm_pub;
+static struct TALER_SecurityModulePublicKeyP denom_rsa_sm_pub;
+
+/**
+ * CS security module public key, all zero if not known.
+ */
+static struct TALER_SecurityModulePublicKeyP denom_cs_sm_pub;
 
 /**
  * EdDSA security module public key, all zero if not known.
@@ -541,6 +561,7 @@ check_dk (void *cls,
   if (TALER_DENOMINATION_RSA == dk->denom_pub.cipher)
     GNUNET_assert (GNUNET_CRYPTO_rsa_public_key_check (
                      dk->denom_pub.details.rsa_public_key));
+  // nothing to do for TALER_DENOMINATION_CS
   return GNUNET_OK;
 }
 
@@ -609,19 +630,43 @@ clear_response_cache (struct TEH_KeyStateHandle *ksh)
  * @param sm_pub RSA security module public key to check
  */
 static void
-check_denom_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
+check_denom_rsa_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
 {
   if (0 !=
       GNUNET_memcmp (sm_pub,
-                     &denom_sm_pub))
+                     &denom_rsa_sm_pub))
   {
-    if (! GNUNET_is_zero (&denom_sm_pub))
+    if (! GNUNET_is_zero (&denom_rsa_sm_pub))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Our RSA security module changed its key. This must not happen.\n");
       GNUNET_assert (0);
     }
-    denom_sm_pub = *sm_pub; /* TOFU ;-) */
+    denom_rsa_sm_pub = *sm_pub; /* TOFU ;-) */
+  }
+}
+
+
+/**
+ * Check that the given CS security module's public key is the one
+ * we have pinned.  If it does not match, we die hard.
+ *
+ * @param sm_pub RSA security module public key to check
+ */
+static void
+check_denom_cs_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
+{
+  if (0 !=
+      GNUNET_memcmp (sm_pub,
+                     &denom_cs_sm_pub))
+  {
+    if (! GNUNET_is_zero (&denom_cs_sm_pub))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Our CS security module changed its key. This must not happen.\n");
+      GNUNET_assert (0);
+    }
+    denom_cs_sm_pub = *sm_pub; /* TOFU ;-) */
   }
 }
 
@@ -712,6 +757,8 @@ destroy_key_helpers (struct HelperState *hs)
                                          hs);
   GNUNET_CONTAINER_multihashmap_destroy (hs->rsa_keys);
   hs->rsa_keys = NULL;
+  GNUNET_CONTAINER_multihashmap_destroy (hs->cs_keys);
+  hs->cs_keys = NULL;
   GNUNET_CONTAINER_multihashmap_destroy (hs->denom_keys);
   hs->denom_keys = NULL;
   GNUNET_CONTAINER_multipeermap_iterate (hs->esign_keys,
@@ -719,10 +766,15 @@ destroy_key_helpers (struct HelperState *hs)
                                          hs);
   GNUNET_CONTAINER_multipeermap_destroy (hs->esign_keys);
   hs->esign_keys = NULL;
-  if (NULL != hs->dh)
+  if (NULL != hs->rsadh)
   {
-    TALER_CRYPTO_helper_rsa_disconnect (hs->dh);
-    hs->dh = NULL;
+    TALER_CRYPTO_helper_rsa_disconnect (hs->rsadh);
+    hs->rsadh = NULL;
+  }
+  if (NULL != hs->csdh)
+  {
+    TALER_CRYPTO_helper_cs_disconnect (hs->csdh);
+    hs->csdh = NULL;
   }
   if (NULL != hs->esh)
   {
@@ -795,7 +847,7 @@ load_age_mask (const char*section_name)
  *                 zero if the key has been revoked or purged
  * @param validity_duration how long does the key remain available for signing;
  *                 zero if the key has been revoked or purged
- * @param h_denom_pub hash of the @a denom_pub that is available (or was purged)
+ * @param h_rsa hash of the @a denom_pub that is available (or was purged)
  * @param denom_pub the public key itself, NULL if the key was revoked or purged
  * @param sm_pub public key of the security module, NULL if the key was revoked or purged
  * @param sm_sig signature from the security module, NULL if the key was revoked or purged
@@ -832,7 +884,7 @@ helper_rsa_cb (
     return;
   }
   GNUNET_assert (NULL != sm_pub);
-  check_denom_sm_pub (sm_pub);
+  check_denom_rsa_sm_pub (sm_pub);
   hd = GNUNET_new (struct HelperDenomination);
   hd->start_time = start_time;
   hd->validity_duration = validity_duration;
@@ -859,6 +911,87 @@ helper_rsa_cb (
     GNUNET_CONTAINER_multihashmap_put (
       hs->rsa_keys,
       &hd->h_details.h_rsa.hash,
+      hd,
+      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+}
+
+
+/**
+ * Function called with information about available CS keys for signing. Usually
+ * only called once per key upon connect. Also called again in case a key is
+ * being revoked, in that case with an @a end_time of zero.
+ *
+ * @param cls closure with the `struct HelperState *`
+ * @param section_name name of the denomination type in the configuration;
+ *                 NULL if the key has been revoked or purged
+ * @param start_time when does the key become available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param validity_duration how long does the key remain available for signing;
+ *                 zero if the key has been revoked or purged
+ * @param h_cs hash of the @a denom_pub that is available (or was purged)
+ * @param denom_pub the public key itself, NULL if the key was revoked or purged
+ * @param sm_pub public key of the security module, NULL if the key was revoked or purged
+ * @param sm_sig signature from the security module, NULL if the key was revoked or purged
+ *               The signature was already verified against @a sm_pub.
+ */
+static void
+helper_cs_cb (
+  void *cls,
+  const char *section_name,
+  struct GNUNET_TIME_Timestamp start_time,
+  struct GNUNET_TIME_Relative validity_duration,
+  const struct TALER_CsPubHashP *h_cs,
+  const struct TALER_DenominationPublicKey *denom_pub,
+  const struct TALER_SecurityModulePublicKeyP *sm_pub,
+  const struct TALER_SecurityModuleSignatureP *sm_sig)
+{
+  struct HelperState *hs = cls;
+  struct HelperDenomination *hd;
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "CS helper announces key %s for denomination type %s with validity %s\n",
+              GNUNET_h2s (&h_cs->hash),
+              section_name,
+              GNUNET_STRINGS_relative_time_to_string (validity_duration,
+                                                      GNUNET_NO));
+  key_generation++;
+  TEH_resume_keys_requests (false);
+  hd = GNUNET_CONTAINER_multihashmap_get (hs->cs_keys,
+                                          &h_cs->hash);
+  if (NULL != hd)
+  {
+    /* should be just an update (revocation!), so update existing entry */
+    hd->validity_duration = validity_duration;
+    return;
+  }
+  GNUNET_assert (NULL != sm_pub);
+  check_denom_cs_sm_pub (sm_pub);
+  hd = GNUNET_new (struct HelperDenomination);
+  hd->start_time = start_time;
+  hd->validity_duration = validity_duration;
+  hd->h_details.h_cs = *h_cs;
+  hd->sm_sig = *sm_sig;
+  GNUNET_assert (TALER_DENOMINATION_CS == denom_pub->cipher);
+  TALER_denom_pub_deep_copy (&hd->denom_pub,
+                             denom_pub);
+  GNUNET_assert (TALER_DENOMINATION_CS == hd->denom_pub.cipher);
+  /* load the age mask for the denomination, if applicable */
+  hd->denom_pub.age_mask = load_age_mask (section_name);
+  TALER_denom_pub_hash (&hd->denom_pub,
+                        &hd->h_denom_pub);
+  hd->section_name = GNUNET_strdup (section_name);
+  GNUNET_assert (
+    GNUNET_OK ==
+    GNUNET_CONTAINER_multihashmap_put (
+      hs->denom_keys,
+      &hd->h_denom_pub.hash,
+      hd,
+      GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
+  GNUNET_assert (
+    GNUNET_OK ==
+    GNUNET_CONTAINER_multihashmap_put (
+      hs->cs_keys,
+      &hd->h_details.h_cs.hash,
       hd,
       GNUNET_CONTAINER_MULTIHASHMAPOPTION_UNIQUE_ONLY));
 }
@@ -940,13 +1073,24 @@ setup_key_helpers (struct HelperState *hs)
   hs->rsa_keys
     = GNUNET_CONTAINER_multihashmap_create (1024,
                                             GNUNET_YES);
+  hs->cs_keys
+    = GNUNET_CONTAINER_multihashmap_create (1024,
+                                            GNUNET_YES);
   hs->esign_keys
     = GNUNET_CONTAINER_multipeermap_create (32,
                                             GNUNET_NO /* MUST BE NO! */);
-  hs->dh = TALER_CRYPTO_helper_rsa_connect (TEH_cfg,
-                                            &helper_rsa_cb,
-                                            hs);
-  if (NULL == hs->dh)
+  hs->rsadh = TALER_CRYPTO_helper_rsa_connect (TEH_cfg,
+                                               &helper_rsa_cb,
+                                               hs);
+  if (NULL == hs->rsadh)
+  {
+    destroy_key_helpers (hs);
+    return GNUNET_SYSERR;
+  }
+  hs->csdh = TALER_CRYPTO_helper_cs_connect (TEH_cfg,
+                                             &helper_cs_cb,
+                                             hs);
+  if (NULL == hs->csdh)
   {
     destroy_key_helpers (hs);
     return GNUNET_SYSERR;
@@ -971,7 +1115,8 @@ setup_key_helpers (struct HelperState *hs)
 static void
 sync_key_helpers (struct HelperState *hs)
 {
-  TALER_CRYPTO_helper_rsa_poll (hs->dh);
+  TALER_CRYPTO_helper_rsa_poll (hs->rsadh);
+  TALER_CRYPTO_helper_cs_poll (hs->csdh);
   TALER_CRYPTO_helper_esign_poll (hs->esh);
 }
 
@@ -2292,15 +2437,55 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
   switch (hd->denom_pub.cipher)
   {
   case TALER_DENOMINATION_RSA:
-    return TALER_CRYPTO_helper_rsa_sign (ksh->helpers->dh,
+    return TALER_CRYPTO_helper_rsa_sign (ksh->helpers->rsadh,
                                          &hd->h_details.h_rsa,
                                          msg,
                                          msg_size,
                                          ec);
+  // TODO: case TALER_DENOMINATION_CS:
   default:
     *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
     return none;
   }
+}
+
+
+struct TALER_DenominationCsPublicR
+TEH_keys_denomination_cs_r_pub (const struct
+                                TALER_DenominationHash *h_denom_pub,
+                                const struct TALER_WithdrawNonce *nonce,
+                                enum TALER_ErrorCode *ec)
+{
+  struct TEH_KeyStateHandle *ksh;
+  struct TALER_DenominationCsPublicR none;
+  struct HelperDenomination *hd;
+
+  memset (&none,
+          0,
+          sizeof (none));
+  ksh = TEH_keys_get_state ();
+  if (NULL == ksh)
+  {
+    *ec = TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
+    return none;
+  }
+  hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
+                                          &h_denom_pub->hash);
+  if (NULL == hd)
+  {
+    *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
+    return none;
+  }
+  if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
+  {
+    *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+    return none;
+  }
+
+  return TALER_CRYPTO_helper_cs_r_derive (ksh->helpers->csdh,
+                                          &hd->h_details.h_cs,
+                                          nonce,
+                                          ec);
 }
 
 
@@ -2326,8 +2511,13 @@ TEH_keys_denomination_revoke (const struct TALER_DenominationHash *h_denom_pub)
   switch (hd->denom_pub.cipher)
   {
   case TALER_DENOMINATION_RSA:
-    TALER_CRYPTO_helper_rsa_revoke (ksh->helpers->dh,
+    TALER_CRYPTO_helper_rsa_revoke (ksh->helpers->rsadh,
                                     &hd->h_details.h_rsa);
+    TEH_keys_update_states ();
+    return;
+  case TALER_DENOMINATION_CS:
+    TALER_CRYPTO_helper_cs_revoke (ksh->helpers->csdh,
+                                   &hd->h_details.h_cs);
     TEH_keys_update_states ();
     return;
   default:
@@ -2923,7 +3113,14 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
       .signkeys = json_array ()
     };
 
-    if (GNUNET_is_zero (&denom_sm_pub))
+    if (GNUNET_is_zero (&denom_rsa_sm_pub))
+    {
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_GATEWAY,
+                                         TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE,
+                                         NULL);
+    }
+    if (GNUNET_is_zero (&denom_cs_sm_pub))
     {
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_GATEWAY,
@@ -2954,7 +3151,9 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
       GNUNET_JSON_pack_data_auto ("master_pub",
                                   &TEH_master_public_key),
       GNUNET_JSON_pack_data_auto ("denom_secmod_public_key",
-                                  &denom_sm_pub),
+                                  &denom_rsa_sm_pub),
+      GNUNET_JSON_pack_data_auto ("denom_secmod_cs_public_key",
+                                  &denom_cs_sm_pub),
       GNUNET_JSON_pack_data_auto ("signkey_secmod_public_key",
                                   &esign_sm_pub));
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
