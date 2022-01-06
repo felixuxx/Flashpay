@@ -270,15 +270,15 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
   struct TALER_PlanchetSecretsP ps;
   struct TALER_CoinPubHash c_hash;
 
-  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_RSA);
+  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_CS);
   for (unsigned int i = 0; i<MAX_KEYS; i++)
   {
+    struct TALER_PlanchetDetail pd;
     if (! keys[i].valid)
       continue;
     // TODO: insert assertion into other checks
     GNUNET_assert (TALER_DENOMINATION_CS == keys[i].denom_pub.cipher);
     {
-      struct TALER_PlanchetDetail pd;
       pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
 
       TALER_cs_withdraw_nonce_derive (&ps.coin_priv,
@@ -315,11 +315,22 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
         return 5;
       }
 
-      // since R is part of the signature creation process, it can't be tested fully here
-      // instead it will be further tested in the signature creation process
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Received valid R for key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
+      ps.cs_r_pub = r_pub;
+      TALER_blinding_secret_create (&ps.blinding_key,
+                                    TALER_DENOMINATION_CS,
+                                    &ps.coin_priv,
+                                    &ps.cs_r_pub);
+      // TODO: sometimes the tests fail here in a calculation in gnunet. needs to be further analysed.
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_planchet_prepare (&keys[i].denom_pub,
+                                             &ps,
+                                             &c_hash,
+                                             &pd));
+      GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                  "Successfully prepared planchet");
       success = true;
       break;
     case TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY:
@@ -397,15 +408,29 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
   struct TALER_PlanchetSecretsP ps;
   struct TALER_CoinPubHash c_hash;
 
-  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_RSA);
+  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_CS);
   for (unsigned int i = 0; i<MAX_KEYS; i++)
   {
     if (! keys[i].valid)
       continue;
     {
       struct TALER_PlanchetDetail pd;
-      pd.blinded_planchet.cipher = TALER_DENOMINATION_RSA;
+      pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
       // keys[i].denom_pub.cipher = TALER_DENOMINATION_CS;
+
+      TALER_cs_withdraw_nonce_derive (&ps.coin_priv,
+                                      &pd.blinded_planchet.details.
+                                      cs_blinded_planchet.nonce);
+      ps.cs_r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
+                                                     &keys[i].h_cs,
+                                                     &pd.blinded_planchet.
+                                                     details.
+                                                     cs_blinded_planchet.nonce,
+                                                     &ec);
+      TALER_blinding_secret_create (&ps.blinding_key,
+                                    TALER_DENOMINATION_CS,
+                                    &ps.coin_priv,
+                                    &ps.cs_r_pub);
 
       GNUNET_assert (GNUNET_YES ==
                      TALER_planchet_prepare (&keys[i].denom_pub,
@@ -413,20 +438,13 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                              &c_hash,
                                              &pd));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                  "Requesting signature over %u bytes with key %s\n",
-                  (unsigned
-                   int) pd.blinded_planchet.details.rsa_blinded_planchet.
-                  blinded_msg_size,
+                  "Requesting signature with key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
       ds = TALER_CRYPTO_helper_cs_sign (dh,
                                         &keys[i].h_cs,
-                                        pd.blinded_planchet.details.
-                                        rsa_blinded_planchet.blinded_msg,
-                                        pd.blinded_planchet.details.
-                                        rsa_blinded_planchet.blinded_msg_size,
+                                        &pd.blinded_planchet.details.
+                                        cs_blinded_planchet,
                                         &ec);
-      GNUNET_free (
-        pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
     }
     switch (ec)
     {
@@ -456,7 +474,8 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
             TALER_denom_sig_unblind (&rs,
                                      &ds,
                                      &ps.blinding_key,
-                                     &keys[i].denom_pub))
+                                     &keys[i].denom_pub,
+                                     &ps.cs_r_pub_blinded))
         {
           GNUNET_break (0);
           return 6;
@@ -513,15 +532,23 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
 
   /* check signing does not work if the key is unknown */
   {
+    struct TALER_PlanchetDetail pd;
     struct TALER_CsPubHashP rnd;
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,
                                 sizeof (rnd));
+    pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+    GNUNET_assert (GNUNET_YES ==
+                   TALER_planchet_prepare (&keys[0].denom_pub,
+                                           &ps,
+                                           &c_hash,
+                                           &pd));
+
     ds = TALER_CRYPTO_helper_cs_sign (dh,
                                       &rnd,
-                                      "Hello",
-                                      strlen ("Hello"),
+                                      &pd.blinded_planchet.details.
+                                      cs_blinded_planchet,
                                       &ec);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
@@ -553,7 +580,7 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
   struct GNUNET_TIME_Relative duration;
   struct TALER_PlanchetSecretsP ps;
 
-  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_RSA);
+  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_CS);
   duration = GNUNET_TIME_UNIT_ZERO;
   TALER_CRYPTO_helper_cs_poll (dh);
   for (unsigned int j = 0; j<NUM_SIGN_PERFS;)
@@ -575,6 +602,23 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
       {
         struct TALER_CoinPubHash c_hash;
         struct TALER_PlanchetDetail pd;
+        pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+
+
+        TALER_cs_withdraw_nonce_derive (&ps.coin_priv,
+                                        &pd.blinded_planchet.details.
+                                        cs_blinded_planchet.nonce);
+
+        ps.cs_r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
+                                                       &keys[i].h_cs,
+                                                       &pd.blinded_planchet.
+                                                       details.
+                                                       cs_blinded_planchet.nonce,
+                                                       &ec);
+        TALER_blinding_secret_create (&ps.blinding_key,
+                                      TALER_DENOMINATION_CS,
+                                      &ps.coin_priv,
+                                      &ps.cs_r_pub);
 
         GNUNET_assert (GNUNET_YES ==
                        TALER_planchet_prepare (&keys[i].denom_pub,
@@ -589,11 +633,8 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
 
           ds = TALER_CRYPTO_helper_cs_sign (dh,
                                             &keys[i].h_cs,
-                                            pd.blinded_planchet.details.
-                                            rsa_blinded_planchet.blinded_msg,
-                                            pd.blinded_planchet.details.
-                                            rsa_blinded_planchet.
-                                            blinded_msg_size,
+                                            &pd.blinded_planchet.details.
+                                            cs_blinded_planchet,
                                             &ec);
           if (TALER_EC_NONE != ec)
             break;
@@ -605,8 +646,6 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
           if (NUM_SIGN_PERFS <= j)
             break;
         }
-        GNUNET_free (
-          pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
       }
     } /* for i */
   } /* for j */
@@ -731,16 +770,15 @@ run_test (void)
     ret = test_revocation (dh);
   if (0 == ret)
     ret = test_r_derive (dh);
-  // TODO: implement other tests
-  // if (0 == ret)
-  //   ret = test_signing (dh);
-  // if (0 == ret)
-  //   ret = perf_signing (dh,
-  //                       "sequential");
+  if (0 == ret)
+    ret = test_signing (dh);
+  if (0 == ret)
+    ret = perf_signing (dh,
+                        "sequential");
   TALER_CRYPTO_helper_cs_disconnect (dh);
   free_keys ();
-  // if (0 == ret)
-  //   ret = par_signing (cfg);
+  if (0 == ret)
+    ret = par_signing (cfg);
   /* clean up our state */
   GNUNET_CONFIGURATION_destroy (cfg);
   return ret;
@@ -814,9 +852,6 @@ main (int argc,
                 (int) code);
     ret = 5;
   }
-  // TODO: remove
-  GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-              "I am here");
   GNUNET_OS_process_destroy (helper);
   return ret;
 }

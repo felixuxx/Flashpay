@@ -240,8 +240,6 @@ generate_response (struct DenominationKey *dk)
   void *p;
   size_t tlen;
 
-  // buf_len = GNUNET_CRYPTO_rsa_public_key_encode (dk->denom_pub,
-  //                                                &buf);
   GNUNET_assert (sizeof(dk->denom_pub) < UINT16_MAX);
   GNUNET_assert (nlen < UINT16_MAX);
   tlen = sizeof(dk->denom_pub) + nlen + sizeof (*an);
@@ -284,64 +282,66 @@ static enum GNUNET_GenericReturnValue
 handle_sign_request (struct TES_Client *client,
                      const struct TALER_CRYPTO_CsSignRequest *sr)
 {
-  return GNUNET_OK;
-  // struct DenominationKey *dk;
-  // const void *blinded_msg = &sr[1];
-  // size_t blinded_msg_size = ntohs (sr->header.size) - sizeof (*sr);
-  // struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
-  // struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
+  struct DenominationKey *dk;
+  struct GNUNET_CRYPTO_CsRSecret r[2];
 
-  // GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
-  // dk = GNUNET_CONTAINER_multihashmap_get (keys,
-  //                                         &sr->h_cs.hash);
-  // if (NULL == dk)
-  // {
-  //   struct TALER_CRYPTO_SignFailure sf = {
-  //     .header.size = htons (sizeof (sr)),
-  //     .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
-  //     .ec = htonl (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN)
-  //   };
+  struct TALER_BlindedDenominationCsSignAnswer cs_answer;
+  struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
 
-  //   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  //   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-  //               "Signing request failed, denomination key %s unknown\n",
-  //               GNUNET_h2s (&sr->h_cs.hash));
-  //   return TES_transmit (client->csock,
-  //                        &sf.header);
-  // }
-  // if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
-  // {
-  //   /* it is too early */
-  //   struct TALER_CRYPTO_SignFailure sf = {
-  //     .header.size = htons (sizeof (sr)),
-  //     .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
-  //     .ec = htonl (TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY)
-  //   };
+  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
+  dk = GNUNET_CONTAINER_multihashmap_get (keys,
+                                          &sr->h_cs.hash);
+  if (NULL == dk)
+  {
+    struct TALER_CRYPTO_SignFailure sf = {
+      .header.size = htons (sizeof (sr)),
+      .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
+      .ec = htonl (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN)
+    };
 
-  //   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  //   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-  //               "Signing request failed, denomination key %s is not yet valid\n",
-  //               GNUNET_h2s (&sr->h_cs.hash));
-  //   return TES_transmit (client->csock,
-  //                        &sf.header);
-  // }
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signing request failed, denomination key %s unknown\n",
+                GNUNET_h2s (&sr->h_cs.hash));
+    return TES_transmit (client->csock,
+                         &sf.header);
+  }
+  if (GNUNET_TIME_absolute_is_future (dk->anchor.abs_time))
+  {
+    /* it is too early */
+    struct TALER_CRYPTO_SignFailure sf = {
+      .header.size = htons (sizeof (sr)),
+      .header.type = htons (TALER_HELPER_CS_MT_RES_SIGN_FAILURE),
+      .ec = htonl (TALER_EC_EXCHANGE_DENOMINATION_HELPER_TOO_EARLY)
+    };
 
-  // GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-  //             "Received request to sign over %u bytes with key %s\n",
-  //             (unsigned int) blinded_msg_size,
-  //             GNUNET_h2s (&sr->h_cs.hash));
-  // GNUNET_assert (dk->rc < UINT_MAX);
-  // dk->rc++;
-  // GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  // rsa_signature
-  //   = GNUNET_CRYPTO_rsa_sign_blinded (dk->denom_priv,
-  //                                     blinded_msg,
-  //                                     blinded_msg_size);
-  // GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
-  // GNUNET_assert (dk->rc > 0);
-  // dk->rc--;
-  // GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-  // if (NULL == rsa_signature)
+    GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Signing request failed, denomination key %s is not yet valid\n",
+                GNUNET_h2s (&sr->h_cs.hash));
+    return TES_transmit (client->csock,
+                         &sf.header);
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Received request to sign over bytes with key %s\n",
+              GNUNET_h2s (&sr->h_cs.hash));
+  GNUNET_assert (dk->rc < UINT_MAX);
+  dk->rc++;
+  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+
+  GNUNET_CRYPTO_cs_r_derive (&sr->planchet.nonce.nonce, &dk->denom_priv, r);
+  cs_answer.b = GNUNET_CRYPTO_cs_sign_derive (&dk->denom_priv,
+                                              r,
+                                              sr->planchet.c,
+                                              &sr->planchet.nonce.nonce,
+                                              &cs_answer.s_scalar);
+
+  GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));
+  GNUNET_assert (dk->rc > 0);
+  dk->rc--;
+  GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
+  // if (NULL == cs_answer)
   // {
   //   struct TALER_CRYPTO_SignFailure sf = {
   //     .header.size = htons (sizeof (sf)),
@@ -355,40 +355,32 @@ handle_sign_request (struct TES_Client *client,
   //                        &sf.header);
   // }
 
-  // {
-  //   struct TALER_CRYPTO_SignResponse *sr;
-  //   void *buf;
-  //   size_t buf_size;
-  //   size_t tsize;
-  //   enum GNUNET_GenericReturnValue ret;
+  {
+    struct TALER_CRYPTO_SignResponse *sr;
+    size_t tsize;
+    enum GNUNET_GenericReturnValue ret;
 
-  //   buf_size = GNUNET_CRYPTO_rsa_signature_encode (rsa_signature,
-  //                                                  &buf);
-  //   GNUNET_CRYPTO_rsa_signature_free (rsa_signature);
-  //   tsize = sizeof (*sr) + buf_size;
-  //   GNUNET_assert (tsize < UINT16_MAX);
-  //   sr = GNUNET_malloc (tsize);
-  //   sr->header.size = htons (tsize);
-  //   sr->header.type = htons (TALER_HELPER_CS_MT_RES_SIGNATURE);
-  //   memcpy (&sr[1],
-  //           buf,
-  //           buf_size);
-  //   GNUNET_free (buf);
-  //   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-  //               "Sending CS signature after %s\n",
-  //               GNUNET_TIME_relative2s (
-  //                 GNUNET_TIME_absolute_get_duration (now),
-  //                 GNUNET_YES));
-  //   ret = TES_transmit (client->csock,
-  //                       &sr->header);
-  //   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-  //               "Sent CS signature after %s\n",
-  //               GNUNET_TIME_relative2s (
-  //                 GNUNET_TIME_absolute_get_duration (now),
-  //                 GNUNET_YES));
-  //   GNUNET_free (sr);
-  //   return ret;
-  // }
+    tsize = sizeof (*sr) + sizeof(cs_answer);
+    GNUNET_assert (tsize < UINT16_MAX);
+    sr = GNUNET_malloc (tsize);
+    sr->header.size = htons (tsize);
+    sr->header.type = htons (TALER_HELPER_CS_MT_RES_SIGNATURE);
+    sr->cs_answer = cs_answer;
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Sending CS signature after %s\n",
+                GNUNET_TIME_relative2s (
+                  GNUNET_TIME_absolute_get_duration (now),
+                  GNUNET_YES));
+    ret = TES_transmit (client->csock,
+                        &sr->header);
+    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+                "Sent CS signature after %s\n",
+                GNUNET_TIME_relative2s (
+                  GNUNET_TIME_absolute_get_duration (now),
+                  GNUNET_YES));
+    GNUNET_free (sr);
+    return ret;
+  }
 }
 
 
@@ -409,28 +401,11 @@ setup_key (struct DenominationKey *dk,
 
   GNUNET_CRYPTO_cs_private_key_generate (&priv);
   GNUNET_CRYPTO_cs_private_key_get_public (&priv, &pub);
+  // TODO: Add nullcheck?
 
   TALER_cs_pub_hash (&pub,
                      &dk->h_cs);
-  // priv = GNUNET_CRYPTO_rsa_private_key_create (denom->rsa_keysize);
-  // if (NULL == priv)
-  // {
-  //   GNUNET_break (0);
-  //   GNUNET_SCHEDULER_shutdown ();
-  //   global_ret = EXIT_FAILURE;
-  //   return GNUNET_SYSERR;
-  // }
-  // pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
-  // if (NULL == pub)
-  // {
-  //   GNUNET_break (0);
-  //   GNUNET_CRYPTO_rsa_private_key_free (priv);
-  //   return GNUNET_SYSERR;
-  // }
-  // buf_size = GNUNET_CRYPTO_rsa_private_key_encode (priv,
-  //                                                  &buf);
-  // TALER_rsa_pub_hash (pub,
-  //                     &dk->h_cs);
+
   GNUNET_asprintf (&dk->filename,
                    "%s/%s/%llu",
                    keydir,
@@ -674,7 +649,7 @@ cs_work_dispatch (struct TES_Client *client,
   switch (ntohs (hdr->type))
   {
   case TALER_HELPER_CS_MT_REQ_SIGN:
-    if (msize <= sizeof (struct TALER_CRYPTO_CsSignRequest))
+    if (msize < sizeof (struct TALER_CRYPTO_CsSignRequest))
     {
       GNUNET_break_op (0);
       return GNUNET_SYSERR;
@@ -1144,17 +1119,9 @@ parse_key (struct Denomination *denom,
     return;
   }
 
+  // TODO: memcpy or cast?
   memcpy (&priv, buf, sizeof(priv));
-  // priv = GNUNET_CRYPTO_rsa_private_key_decode (buf,
-  //                                              buf_size);
-  // if (NULL == priv)
-  // {
-  //   /* Parser failure. */
-  //   GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
-  //               "File `%s' is malformed, skipping\n",
-  //               filename);
-  //   return;
-  // }
+
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "privkey %zu\n",
               sizeof(priv));
@@ -1167,14 +1134,8 @@ parse_key (struct Denomination *denom,
     struct DenominationKey *dk;
     struct DenominationKey *before;
 
+    // TODO: Add check if pubkey is set?
     GNUNET_CRYPTO_cs_private_key_get_public (&priv, &pub);
-    // pub = GNUNET_CRYPTO_rsa_private_key_get_public (priv);
-    // if (NULL == pub)
-    // {
-    //   GNUNET_break (0);
-    //   GNUNET_CRYPTO_rsa_private_key_free (priv);
-    //   return;
-    // }
     dk = GNUNET_new (struct DenominationKey);
     dk->denom_priv = priv;
     dk->denom = denom;

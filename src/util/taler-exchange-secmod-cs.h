@@ -133,7 +133,12 @@ struct TALER_CRYPTO_CsSignRequest
    */
   struct TALER_CsPubHashP h_cs;
 
-  /* followed by message to sign */
+  /**
+   * Planchet containing message to sign
+   * and nonce to derive R from
+   */
+  struct TALER_BlindedCsPlanchet planchet;
+
 };
 
 /**
@@ -200,7 +205,10 @@ struct TALER_CRYPTO_SignResponse
    */
   uint32_t reserved;
 
-  /* followed by CS signature */
+  /**
+   * Contains the blindided s and the chosen b
+   */
+  struct TALER_BlindedDenominationCsSignAnswer cs_answer;
 };
 
 /**

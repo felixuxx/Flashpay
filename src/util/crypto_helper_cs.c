@@ -210,16 +210,6 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
 
     memcpy (&denom_pub.details.cs_public_key, buf, ntohs (kan->pub_size));
     TALER_cs_pub_hash (&denom_pub.details.cs_public_key, &h_cs);
-    // enom_pub.details.rsa_public_key
-    //   = GNUNET_CRYPTO_rsa_public_key_decode (buf,
-    //                                          ntohs (kan->pub_size));
-    // if (NULL == denom_pub.details.rsa_public_key)
-    // {
-    //   GNUNET_break_op (0);
-    //   return GNUNET_SYSERR;
-    // }
-    // GNUNET_CRYPTO_rsa_public_key_hash (denom_pub.details.rsa_public_key,
-    //                                    &h_cs.hash);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Received CS key %s (%s)\n",
                 GNUNET_h2s (&h_cs.hash),
@@ -394,8 +384,7 @@ struct TALER_BlindedDenominationSignature
 TALER_CRYPTO_helper_cs_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CsPubHashP *h_cs,
-  const void *msg,
-  size_t msg_size,
+  const struct TALER_BlindedCsPlanchet *blinded_planchet,
   enum TALER_ErrorCode *ec)
 {
   struct TALER_BlindedDenominationSignature ds = {
@@ -416,7 +405,7 @@ TALER_CRYPTO_helper_cs_sign (
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting signature\n");
   {
-    char buf[sizeof (struct TALER_CRYPTO_CsSignRequest) + msg_size];
+    char buf[sizeof (struct TALER_CRYPTO_CsSignRequest)];
     struct TALER_CRYPTO_CsSignRequest *sr
       = (struct TALER_CRYPTO_CsSignRequest *) buf;
 
@@ -424,9 +413,7 @@ TALER_CRYPTO_helper_cs_sign (
     sr->header.type = htons (TALER_HELPER_CS_MT_REQ_SIGN);
     sr->reserved = htonl (0);
     sr->h_cs = *h_cs;
-    memcpy (&sr[1],
-            msg,
-            msg_size);
+    sr->planchet = *blinded_planchet;
     if (GNUNET_OK !=
         TALER_crypto_helper_send_all (dh->sock,
                                       buf,
@@ -511,24 +498,13 @@ more:
         {
           const struct TALER_CRYPTO_SignResponse *sr =
             (const struct TALER_CRYPTO_SignResponse *) buf;
-          struct GNUNET_CRYPTO_RsaSignature *rsa_signature;
-
-          rsa_signature = GNUNET_CRYPTO_rsa_signature_decode (
-            &sr[1],
-            msize - sizeof (*sr));
-          if (NULL == rsa_signature)
-          {
-            GNUNET_break_op (0);
-            do_disconnect (dh);
-            *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-            goto end;
-          }
+          // TODO: add nullcheck
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "Received signature\n");
           *ec = TALER_EC_NONE;
           finished = true;
-          ds.cipher = TALER_DENOMINATION_RSA;
-          ds.details.blinded_rsa_signature = rsa_signature;
+          ds.cipher = TALER_DENOMINATION_CS;
+          ds.details.blinded_cs_answer = sr->cs_answer;
           break;
         }
       case TALER_HELPER_CS_MT_RES_SIGN_FAILURE:
