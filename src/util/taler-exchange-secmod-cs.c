@@ -1081,7 +1081,6 @@ parse_key (struct Denomination *denom,
            const void *buf,
            size_t buf_size)
 {
-  struct GNUNET_CRYPTO_CsPrivateKey priv;
   char *anchor_s;
   char dummy;
   unsigned long long anchor_ll;
@@ -1119,8 +1118,9 @@ parse_key (struct Denomination *denom,
     return;
   }
 
-  // TODO: memcpy or cast?
-  memcpy (&priv, buf, sizeof(priv));
+  const struct GNUNET_CRYPTO_CsPrivateKey priv
+    = *((struct GNUNET_CRYPTO_CsPrivateKey *) buf);
+//  memcpy (&priv, buf, sizeof(priv));
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "privkey %zu\n",

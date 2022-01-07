@@ -264,7 +264,6 @@ test_revocation (struct TALER_CRYPTO_CsDenominationHelper *dh)
 static int
 test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
 {
-  struct TALER_DenominationCsPublicR r_pub;
   enum TALER_ErrorCode ec;
   bool success = false;
   struct TALER_PlanchetSecretsP ps;
@@ -287,11 +286,12 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Requesting R derivation with key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
-      r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
-                                               &keys[i].h_cs,
-                                               &pd.blinded_planchet.details.
-                                               cs_blinded_planchet.nonce,
-                                               &ec);
+      ps.cs_r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
+                                                     &keys[i].h_cs,
+                                                     &pd.blinded_planchet.
+                                                     details.
+                                                     cs_blinded_planchet.nonce,
+                                                     &ec);
     }
     switch (ec)
     {
@@ -318,12 +318,11 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Received valid R for key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
-      ps.cs_r_pub = r_pub;
+
       TALER_blinding_secret_create (&ps.blinding_key,
                                     TALER_DENOMINATION_CS,
                                     &ps.coin_priv,
                                     &ps.cs_r_pub);
-      // TODO: sometimes the tests fail here in a calculation in gnunet. needs to be further analysed.
       GNUNET_assert (GNUNET_OK ==
                      TALER_planchet_prepare (&keys[i].denom_pub,
                                              &ps,
@@ -376,10 +375,10 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &nonce,
                                 sizeof (nonce));
-    r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
-                                             &rnd,
-                                             &nonce,
-                                             &ec);
+    ps.cs_r_pub = TALER_CRYPTO_helper_cs_r_derive (dh,
+                                                   &rnd,
+                                                   &nonce,
+                                                   &ec);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
       GNUNET_break (0);
