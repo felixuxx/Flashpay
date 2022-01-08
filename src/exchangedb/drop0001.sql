@@ -27,6 +27,7 @@ SELECT _v.unregister_patch('exchange-0001');
 
 -- Drops for exchange-0001.sql
 DROP TABLE IF EXISTS revolving_work_shards CASCADE;
+DROP TABLE IF EXISTS extensions CASCADE;
 DROP TABLE IF EXISTS auditors CASCADE;
 DROP TABLE IF EXISTS auditor_denom_sigs CASCADE;
 DROP TABLE IF EXISTS exchange_sign_keys CASCADE;
