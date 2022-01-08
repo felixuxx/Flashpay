@@ -491,66 +491,40 @@ TALER_exchange_offline_wire_fee_verify (
 
 
 void
-TALER_exchange_offline_extension_agemask_sign (
-  const struct TALER_AgeMask mask,
+TALER_exchange_offline_extension_config_hash_sign (
+  const struct TALER_ExtensionConfigHash h_config,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
-  struct TALER_MasterExtensionAgeRestrictionPS ar = {
+  struct TALER_MasterExtensionConfigurationPS ec = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_EXTENSION),
-    .purpose.size = htonl (sizeof(ar)),
-    .mask = mask
+    .purpose.size = htonl (sizeof(ec)),
+    .h_config = h_config
   };
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
-                            &ar,
+                            &ec,
                             &master_sig->eddsa_signature);
 }
 
 
 enum GNUNET_GenericReturnValue
-TALER_exchange_offline_extension_agemask_verify (
-  const struct TALER_AgeMask mask,
+TALER_exchange_offline_extension_config_hash_verify (
+  const struct TALER_ExtensionConfigHash h_config,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   )
 {
-  struct TALER_MasterExtensionAgeRestrictionPS ar = {
+  struct TALER_MasterExtensionConfigurationPS ec = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_EXTENSION),
-    .purpose.size = htonl (sizeof(ar)),
-    .mask = mask
+    .purpose.size = htonl (sizeof(ec)),
+    .h_config = h_config
   };
-  return
-    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_EXTENSION,
-                                &ar,
-                                &master_sig->eddsa_signature,
-                                &master_pub->eddsa_pub);
+
+  return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_EXTENSION,
+                                     &ec,
+                                     &master_sig->eddsa_signature,
+                                     &master_pub->eddsa_pub);
 }
 
-
-#if 0
-/* TODO peer2peer */
-void
-TALER_exchange_offline_extension_p2p_sign (
-  // TODO
-  const struct TALER_MasterPrivateKeyP *master_priv,
-  struct TALER_MasterSignatureP *master_sig)
-{
-  // TODO
-}
-
-
-enum GNUNET_GenericReturnValue
-TALER_exchange_offline_extension_p2p_verify (
-  // TODO
-  const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_MasterSignatureP *master_sig,
-  )
-{
-  // TODO
-  return GNUNET_FALSE;
-}
-
-
-#endif
 
 /* end of offline_signatures.c */

@@ -29,21 +29,17 @@
 #include "taler-exchange-httpd_management.h"
 #include "taler-exchange-httpd_responses.h"
 #include "taler_extensions.h"
+#include "taler_dbevents.h"
 
 
+/**
+ * Extension carries the necessary data for a particular extension.
+ *
+ */
 struct Extension
 {
   enum TALER_Extension_Type type;
-  json_t *config_json;
-
-  // This union contains the parsed configuration for each extension.
-  union
-  {
-    // configuration for the age restriction
-    struct TALER_AgeMask mask;
-
-    /* TODO oec - peer2peer config */
-  };
+  json_t *config;
 };
 
 /**
@@ -55,6 +51,38 @@ struct SetExtensionsContext
   struct Extension *extensions;
   struct TALER_MasterSignatureP *extensions_sigs;
 };
+
+
+/**
+ * @brief verifies the signature a configuration with the offline master key.
+ *
+ * @param config configuration of an extension given as JSON object
+ * @param master_priv offline master public key of the exchange
+ * @param[out] master_sig  signature
+ * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
+ */
+static enum GNUNET_GenericReturnValue
+config_verify (
+  const json_t *config,
+  const struct TALER_MasterPublicKeyP *master_pub,
+  const struct TALER_MasterSignatureP *master_sig
+  )
+{
+  enum GNUNET_GenericReturnValue ret;
+  struct TALER_ExtensionConfigHash h_config;
+
+  ret = TALER_extension_config_hash (config, &h_config);
+  if (GNUNET_OK != ret)
+  {
+    GNUNET_break (0);
+    return ret;
+  }
+
+  return TALER_exchange_offline_extension_config_hash_verify (h_config,
+                                                              master_pub,
+                                                              master_sig);
+}
+
 
 /**
  * Function implementing database transaction to set the configuration of
@@ -77,9 +105,68 @@ set_extensions (void *cls,
                 struct MHD_Connection *connection,
                 MHD_RESULT *mhd_ret)
 {
-  // struct SetExtensionContext *sec = cls;
+  struct SetExtensionsContext *sec = cls;
 
-  // TODO oec
+  /* save the configurations of all extensions */
+  for (uint32_t i = 0; i<sec->num_extensions; i++)
+  {
+    struct Extension *ext = &sec->extensions[i];
+    struct TALER_MasterSignatureP *sig = &sec->extensions_sigs[i];
+    enum GNUNET_DB_QueryStatus qs;
+    char *config;
+
+    /* Sanity check.
+     * TODO: replace with general API to retrieve the extension-handler
+     */
+    if (0 > ext->type || TALER_Extension_Max <= ext->type)
+    {
+      GNUNET_break (0);
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+
+    config = json_dumps (ext->config, JSON_COMPACT | JSON_SORT_KEYS);
+    if (NULL == config)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_JSON_INVALID,
+                                             "convert configuration to string");
+      return GNUNET_DB_STATUS_HARD_ERROR;
+    }
+
+    qs = TEH_plugin->set_extension_config (
+      TEH_plugin->cls,
+      TEH_extensions[ext->type]->name,
+      config,
+      sig);
+
+    if (qs < 0)
+    {
+      if (GNUNET_DB_STATUS_SOFT_ERROR == qs)
+        return qs;
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                             MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                             TALER_EC_GENERIC_DB_STORE_FAILED,
+                                             "save extension configuration");
+    }
+
+    /* Success, trigger event */
+    {
+      enum TALER_Extension_Type *type = &sec->extensions[i].type;
+      struct GNUNET_DB_EventHeaderP ev = {
+        .size = htons (sizeof (ev)),
+        .type = htons (TALER_DBEVENT_EXCHANGE_EXTENSIONS_UPDATED)
+      };
+      TEH_plugin->event_notify (TEH_plugin->cls,
+                                &ev,
+                                type,
+                                sizeof(*type));
+    }
+
+  }
+
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* only 'success', so >=0, matters here */
 }
 
@@ -92,50 +179,51 @@ TEH_handler_management_post_extensions (
   struct SetExtensionsContext sec = {0};
   json_t *extensions;
   json_t *extensions_sigs;
-  struct GNUNET_JSON_Specification spec[] = {
+  struct GNUNET_JSON_Specification top_spec[] = {
     GNUNET_JSON_spec_json ("extensions",
                            &extensions),
     GNUNET_JSON_spec_json ("extensions_sigs",
                            &extensions_sigs),
     GNUNET_JSON_spec_end ()
   };
-  bool ok;
   MHD_RESULT ret;
 
+  // Parse the top level json structure
   {
     enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_data (connection,
                                      root,
-                                     spec);
+                                     top_spec);
     if (GNUNET_SYSERR == res)
       return MHD_NO; /* hard failure */
     if (GNUNET_NO == res)
       return MHD_YES; /* failure */
   }
 
+  // Ensure we have two arrays of the same size
   if (! (json_is_array (extensions) &&
          json_is_array (extensions_sigs)) )
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
+    GNUNET_JSON_parse_free (top_spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_BAD_REQUEST,
       TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "array expected for extensions and extensions_sig");
+      "array expected for extensions and extensions_sigs");
   }
 
   sec.num_extensions = json_array_size (extensions_sigs);
   if (json_array_size (extensions) != sec.num_extensions)
   {
     GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (spec);
+    GNUNET_JSON_parse_free (top_spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_BAD_REQUEST,
       TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "arrays extensions and extensions_sig are not of equal size");
+      "arrays extensions and extensions_sigs are not of the same size");
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -145,116 +233,59 @@ TEH_handler_management_post_extensions (
                                      struct Extension);
   sec.extensions_sigs = GNUNET_new_array (sec.num_extensions,
                                           struct TALER_MasterSignatureP);
-  ok = true;
 
+  // Now parse individual extensions and signatures from those arrays.
   for (unsigned int i = 0; i<sec.num_extensions; i++)
   {
+    // 1. parse the extension out of the json
+    enum GNUNET_GenericReturnValue res;
+    const struct TALER_Extension *extension;
+    const char *name;
+    struct GNUNET_JSON_Specification ext_spec[] = {
+      GNUNET_JSON_spec_string ("extension",
+                               &name),
+      GNUNET_JSON_spec_json ("config",
+                             &sec.extensions[i].config),
+      GNUNET_JSON_spec_end ()
+    };
 
-    // 1. parse the extension
+    res = TALER_MHD_parse_json_array (connection,
+                                      extensions,
+                                      ext_spec,
+                                      i,
+                                      -1);
+    if (GNUNET_SYSERR == res)
     {
-      enum GNUNET_GenericReturnValue res;
-      const char *name;
-      struct GNUNET_JSON_Specification ispec[] = {
-        GNUNET_JSON_spec_string ("extension",
-                                 &name),
-        GNUNET_JSON_spec_json ("config",
-                               &sec.extensions[i].config_json),
-        GNUNET_JSON_spec_end ()
-      };
-
-      res = TALER_MHD_parse_json_array (connection,
-                                        extensions,
-                                        ispec,
-                                        i,
-                                        -1);
-      if (GNUNET_SYSERR == res)
-      {
-        ret = MHD_NO; /* hard failure */
-        ok = false;
-        break;
-      }
-      if (GNUNET_NO == res)
-      {
-        ret = MHD_YES;
-        ok = false;
-        break;
-      }
-
-      // Make sure name refers to a supported extension
-      {
-        bool found = false;
-        for (unsigned int k = 0; k < TALER_Extension_Max; k++)
-        {
-          if (0 == strncmp (name,
-                            TEH_extensions[k].name,
-                            strlen (TEH_extensions[k].name)))
-          {
-            sec.extensions[i].type = TEH_extensions[k].type;
-            found = true;
-            break;
-          }
-        }
-
-        if (! found)
-        {
-          GNUNET_free (sec.extensions);
-          GNUNET_free (sec.extensions_sigs);
-          GNUNET_JSON_parse_free (spec);
-          GNUNET_JSON_parse_free (ispec);
-          return TALER_MHD_reply_with_error (
-            connection,
-            MHD_HTTP_BAD_REQUEST,
-            TALER_EC_GENERIC_PARAMETER_MALFORMED,
-            "invalid extension type");
-        }
-      }
-
-      // We have a JSON object for the extension.  Increment its refcount and
-      // free the parser.
-      // TODO: is this correct?
-      json_incref (sec.extensions[i].config_json);
-      GNUNET_JSON_parse_free (ispec);
-
-      // Make sure the config is sound
-      {
-        switch (sec.extensions[i].type)
-        {
-        case TALER_Extension_AgeRestriction:
-          if (GNUNET_OK != TALER_agemask_parse_json (
-                sec.extensions[i].config_json,
-                &sec.extensions[i].mask))
-          {
-            GNUNET_free (sec.extensions);
-            GNUNET_free (sec.extensions_sigs);
-            GNUNET_JSON_parse_free (spec);
-            return TALER_MHD_reply_with_error (
-              connection,
-              MHD_HTTP_BAD_REQUEST,
-              TALER_EC_GENERIC_PARAMETER_MALFORMED,
-              "invalid mask for age restriction");
-          }
-          break;
-
-        case TALER_Extension_Peer2Peer:   /* TODO */
-          ok = false;
-          ret = MHD_NO;
-          goto BREAK;
-
-        default:
-          /* not reachable */
-          GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                      "shouldn't be reached in handler for /management/extensions\n");
-          ok = false;
-          ret = MHD_NO;
-          goto BREAK;
-        }
-      }
+      ret = MHD_NO; /* hard failure */
+      goto CLEANUP;
+    }
+    if (GNUNET_NO == res)
+    {
+      ret = MHD_YES;
+      goto CLEANUP;
     }
 
-    // 2. parse the signature
+    /* 2. Make sure name refers to a supported extension */
+    if (GNUNET_OK != TALER_extension_get_by_name (name,
+                                                  (const struct
+                                                   TALER_Extension **)
+                                                  TEH_extensions,
+                                                  &extension))
+    {
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "invalid extension type");
+      goto CLEANUP;
+    }
+
+    sec.extensions[i].type = extension->type;
+
+    /* 3. Extract the signature out of the json array */
     {
       enum GNUNET_GenericReturnValue res;
-      struct GNUNET_JSON_Specification ispec[] = {
+      struct GNUNET_JSON_Specification sig_spec[] = {
         GNUNET_JSON_spec_fixed_auto (NULL,
                                      &sec.extensions_sigs[i]),
         GNUNET_JSON_spec_end ()
@@ -262,81 +293,61 @@ TEH_handler_management_post_extensions (
 
       res = TALER_MHD_parse_json_array (connection,
                                         extensions_sigs,
-                                        ispec,
+                                        sig_spec,
                                         i,
                                         -1);
       if (GNUNET_SYSERR == res)
       {
         ret = MHD_NO; /* hard failure */
-        ok = false;
-        break;
+        goto CLEANUP;
       }
       if (GNUNET_NO == res)
       {
         ret = MHD_YES;
-        ok = false;
-        break;
+        goto CLEANUP;
       }
     }
 
-    // 3. verify the signature
-    {
-      enum GNUNET_GenericReturnValue res;
-
-      switch (sec.extensions[i].type)
-      {
-      case TALER_Extension_AgeRestriction:
-        res = TALER_exchange_offline_extension_agemask_verify (
-          sec.extensions[i].mask,
+    /* 4. Verify the signature of the config */
+    if (GNUNET_OK != config_verify (
+          sec.extensions[i].config,
           &TEH_master_public_key,
-          &sec.extensions_sigs[i]);
-        if (GNUNET_OK != res)
-        {
-          GNUNET_free (sec.extensions);
-          GNUNET_free (sec.extensions_sigs);
-          GNUNET_JSON_parse_free (spec);
-          return TALER_MHD_reply_with_error (
-            connection,
-            MHD_HTTP_BAD_REQUEST,
-            TALER_EC_GENERIC_PARAMETER_MALFORMED,
-            "invalid signature for age mask");
-        }
-        break;
-
-      case TALER_Extension_Peer2Peer:   /* TODO */
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "Peer2peer not yet supported in handler for /management/extensions\n");
-        ok = false;
-        ret = MHD_NO;
-        goto BREAK;
-
-      default:
-        GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                    "shouldn't be reached in handler for /management/extensions\n");
-        ok = false;
-        ret = MHD_NO;
-        /* not reachable */
-        goto BREAK;
-      }
+          &sec.extensions_sigs[i]))
+    {
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "invalid signature for extension");
+      goto CLEANUP;
     }
-  }
 
-BREAK:
-  if (! ok)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failure to handle /management/extensions\n");
-    GNUNET_free (sec.extensions);
-    GNUNET_free (sec.extensions_sigs);
-    GNUNET_JSON_parse_free (spec);
-    return ret;
-  }
+    /* 5. Make sure the config is sound */
+    if (GNUNET_OK != extension->test_config (sec.extensions[i].config))
+    {
+      GNUNET_JSON_parse_free (ext_spec);
+      ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "invalid configuration for extension");
+      goto CLEANUP;
 
+    }
+
+    /* We have a validly signed JSON object for the extension.
+     * Increment its refcount and free the parser for the extension.
+     */
+    json_incref (sec.extensions[i].config);
+    GNUNET_JSON_parse_free (ext_spec);
+
+  } /* for-loop */
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received %u extensions\n",
               sec.num_extensions);
 
+  // now run the transaction to persist the configurations
   {
     enum GNUNET_GenericReturnValue res;
 
@@ -347,19 +358,29 @@ BREAK:
                                   &set_extensions,
                                   &sec);
 
-    GNUNET_free (sec.extensions);
-    GNUNET_free (sec.extensions_sigs);
-    GNUNET_JSON_parse_free (spec);
     if (GNUNET_SYSERR == res)
-      return ret;
+      goto CLEANUP;
   }
 
-  return TALER_MHD_reply_static (
+  ret = TALER_MHD_reply_static (
     connection,
     MHD_HTTP_NO_CONTENT,
     NULL,
     NULL,
     0);
+
+CLEANUP:
+  for (unsigned int i = 0; i < sec.num_extensions; i++)
+  {
+    if (NULL != sec.extensions[i].config)
+    {
+      json_decref (sec.extensions[i].config);
+    }
+  }
+  GNUNET_free (sec.extensions);
+  GNUNET_free (sec.extensions_sigs);
+  GNUNET_JSON_parse_free (top_spec);
+  return ret;
 }
 
 

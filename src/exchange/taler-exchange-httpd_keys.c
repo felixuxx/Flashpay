@@ -736,10 +736,6 @@ destroy_key_helpers (struct HelperState *hs)
  * Looks up the AGE_RESTRICTED setting for a denomination in the config and
  * returns the age restriction (mask) accordingly.
  *
- * FIXME: The mask is currently taken from the config.  However, It MUST come
- * from the database where it has been persisted after a signed call to the
- * /management/extension API (TODO).
- *
  * @param section_name Section in the configuration for the particular
  *    denomination.
  */
@@ -748,15 +744,13 @@ load_age_mask (const char*section_name)
 {
   static const struct TALER_AgeMask null_mask = {0};
   struct TALER_AgeMask age_mask = {0};
+  const struct TALER_Extension *age_ext =
+    TEH_extensions[TALER_Extension_AgeRestriction];
 
-  /* FIXME-oec: get age_mask from database, not from config */
-  if (TALER_Extension_OK != TALER_get_age_mask (TEH_cfg, &age_mask))
+  // Get the age mask from the extension, if configured
+  if (NULL != age_ext->config)
   {
-    GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
-                               TALER_EXTENSION_SECTION_AGE_RESTRICTION,
-                               "AGE_GROUPS",
-                               "must be of form a:b:...:n:m, where 0<a<b<...<n<m<32\n");
-    return null_mask;
+    age_mask = *(struct TALER_AgeMask *) age_ext->config;
   }
 
   if (age_mask.mask == 0)
@@ -1450,7 +1444,6 @@ struct DenomKeyCtx
    * valid denomination keys?
    */
   struct GNUNET_TIME_Relative min_dk_frequency;
-
 };
 
 
@@ -1613,6 +1606,7 @@ setup_general_response_headers (struct TEH_KeyStateHandle *ksh,
  * @param signkeys list of sign keys to return
  * @param recoup list of revoked keys to return
  * @param denoms list of denominations to return
+ * @param age_restricted_denoms list of age restricted denominations to return, can be NULL
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
@@ -1621,7 +1615,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
             struct GNUNET_TIME_Timestamp last_cpd,
             json_t *signkeys,
             json_t *recoup,
-            json_t *denoms)
+            json_t *denoms,
+            json_t *age_restricted_denoms)
 {
   struct KeysResponseData krd;
   struct TALER_ExchangePublicKeyP exchange_pub;
@@ -1693,6 +1688,8 @@ create_krd (struct TEH_KeyStateHandle *ksh,
     GNUNET_JSON_pack_data_auto ("eddsa_sig",
                                 &exchange_sig));
   GNUNET_assert (NULL != keys);
+
+  // Set wallet limit if KYC is configured
   if ( (TEH_KYC_NONE != TEH_kyc_config.mode) &&
        (GNUNET_OK ==
         TALER_amount_is_valid (&TEH_kyc_config.wallet_balance_limit)) )
@@ -1705,6 +1702,40 @@ create_krd (struct TEH_KeyStateHandle *ksh,
         TALER_JSON_from_amount (
           &TEH_kyc_config.wallet_balance_limit)));
   }
+
+  // Signal support for the age-restriction extension, if so configured, and
+  // add the array of age-restricted denominations.
+  if (TEH_extension_enabled (TALER_Extension_AgeRestriction) &&
+      NULL != age_restricted_denoms)
+  {
+    struct TALER_AgeMask *mask;
+    json_t *config;
+
+    mask = (struct
+            TALER_AgeMask *) TEH_extensions[TALER_Extension_AgeRestriction]->
+           config;
+    config = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_bool ("critical", false),
+      GNUNET_JSON_pack_string ("version", "1"),
+      GNUNET_JSON_pack_string ("age_groups", TALER_age_mask_to_string (mask)));
+    GNUNET_assert (NULL != config);
+    GNUNET_assert (
+      0 ==
+      json_object_set_new (
+        keys,
+        "age_restriction",
+        config));
+
+    GNUNET_assert (
+      0 ==
+      json_object_set_new (
+        keys,
+        "age_restricted_denoms",
+        age_restricted_denoms));
+  }
+
+  // TODO: signal support and configuration for the P2P extension, once
+  // implemented.
 
   {
     char *keys_json;
@@ -1772,7 +1803,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
 {
   json_t *recoup;
   struct SignKeyCtx sctx;
-  json_t *denoms;
+  json_t *denoms = NULL;
+  json_t *age_restricted_denoms = NULL;
   struct GNUNET_TIME_Timestamp last_cpd;
   struct GNUNET_CONTAINER_Heap *heap;
   struct GNUNET_HashContext *hash_context;
@@ -1802,6 +1834,14 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   }
   denoms = json_array ();
   GNUNET_assert (NULL != denoms);
+
+  // If age restriction is enabled, initialize the array of age restricted denoms.
+  if (TEH_extension_enabled (TALER_Extension_AgeRestriction))
+  {
+    age_restricted_denoms = json_array ();
+    GNUNET_assert (NULL != age_restricted_denoms);
+  }
+
   last_cpd = GNUNET_TIME_UNIT_ZERO_TS;
   hash_context = GNUNET_CRYPTO_hash_context_start ();
   {
@@ -1826,7 +1866,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                         last_cpd,
                         sctx.signkeys,
                         recoup,
-                        denoms))
+                        denoms,
+                        age_restricted_denoms))
         {
           GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                       "Failed to generate key response data for %s\n",
@@ -1837,6 +1878,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
             /* intentionally empty */;
           GNUNET_CONTAINER_heap_destroy (heap);
           json_decref (denoms);
+          if (NULL != age_restricted_denoms)
+            json_decref (age_restricted_denoms);
           json_decref (sctx.signkeys);
           json_decref (recoup);
           return GNUNET_SYSERR;
@@ -1846,10 +1889,12 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
       GNUNET_CRYPTO_hash_context_read (hash_context,
                                        &dk->h_denom_pub,
                                        sizeof (struct GNUNET_HashCode));
-      GNUNET_assert (
-        0 ==
-        json_array_append_new (
-          denoms,
+
+      {
+        json_t *denom;
+        json_t *array;
+
+        denom =
           GNUNET_JSON_PACK (
             GNUNET_JSON_pack_data_auto ("master_sig",
                                         &dk->master_sig),
@@ -1872,7 +1917,26 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
             TALER_JSON_pack_amount ("fee_refresh",
                                     &dk->meta.fee_refresh),
             TALER_JSON_pack_amount ("fee_refund",
-                                    &dk->meta.fee_refund))));
+                                    &dk->meta.fee_refund));
+
+        /* Put the denom into the correct array - denoms or age_restricted_denoms -
+         * depending on the settings and the properties of the denomination */
+        if (NULL != age_restricted_denoms &&
+            0 != dk->meta.age_restrictions.mask)
+        {
+          array = age_restricted_denoms;
+        }
+        else
+        {
+          array = denoms;
+        }
+
+        GNUNET_assert (
+          0 ==
+          json_array_append_new (
+            array,
+            denom));
+      }
     }
   }
   GNUNET_CONTAINER_heap_destroy (heap);
@@ -1888,12 +1952,15 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
                     last_cpd,
                     sctx.signkeys,
                     recoup,
-                    denoms))
+                    denoms,
+                    age_restricted_denoms))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                   "Failed to generate key response data for %s\n",
                   GNUNET_TIME_timestamp2s (last_cpd));
       json_decref (denoms);
+      if (NULL != age_restricted_denoms)
+        json_decref (age_restricted_denoms);
       json_decref (sctx.signkeys);
       json_decref (recoup);
       return GNUNET_SYSERR;
@@ -1909,6 +1976,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   json_decref (sctx.signkeys);
   json_decref (recoup);
   json_decref (denoms);
+  if (NULL != age_restricted_denoms)
+    json_decref (age_restricted_denoms);
   return GNUNET_OK;
 }
 

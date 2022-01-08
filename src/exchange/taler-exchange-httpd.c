@@ -1,18 +1,18 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2014-2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU Affero General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU Affero General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
 
-  You should have received a copy of the GNU Affero General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU Affero General Public License along with
+   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+ */
 /**
  * @file taler-exchange-httpd.c
  * @brief Serve the HTTP interface of the exchange
@@ -148,23 +148,9 @@ int TEH_check_invariants_flag;
 bool TEH_suicide;
 
 /**
- * The global manifest with the list supported extensions, sorted by
- * TALER_Extension_Type.
- **/
-const struct TALER_Extension TEH_extensions[TALER_Extension_Max] = {
-  [TALER_Extension_Peer2Peer] = {
-    .type = TALER_Extension_Peer2Peer,
-    .name = "peer2peer",
-    .critical = false,
-    .config = NULL, // disabled per default
-  },
-  [TALER_Extension_AgeRestriction] = {
-    .type = TALER_Extension_AgeRestriction,
-    .name = "age_restriction",
-    .critical = false,
-    .config = NULL, // disabled per default
-  },
-};
+ * Global register of extensions
+ */
+struct TALER_Extension **TEH_extensions;
 
 /**
  * Value to return from main()
@@ -485,7 +471,7 @@ proceed_with_handler (struct TEH_RequestContext *rc,
     if (GNUNET_SYSERR == res)
     {
       GNUNET_assert (NULL == root);
-      return MHD_NO;  /* bad upload, could not even generate error */
+      return MHD_NO; /* bad upload, could not even generate error */
     }
     if ( (GNUNET_NO == res) ||
          (NULL == root) )
@@ -528,8 +514,8 @@ proceed_with_handler (struct TEH_RequestContext *rc,
                          sizeof (emsg),
                          "Got %u/%u segments for %s request ('%s')",
                          (NULL == args[i - 1])
-                         ? i - 1
-                         : i + ((NULL != fin) ? 1 : 0),
+       ? i - 1
+       : i + ((NULL != fin) ? 1 : 0),
                          rh->nargs,
                          rh->url,
                          url);
@@ -553,7 +539,7 @@ proceed_with_handler (struct TEH_RequestContext *rc,
                               root,
                               args);
     else /* We also only have "POST" or "GET" in the API for at this point
-            (OPTIONS/HEAD are taken care of earlier) */
+      (OPTIONS/HEAD are taken care of earlier) */
       ret = rh->handler.get (rc,
                              args);
   }
@@ -1120,7 +1106,7 @@ handle_mhd_request (void *cls,
 
   if (0 == strcasecmp (method,
                        MHD_HTTP_METHOD_HEAD))
-    method = MHD_HTTP_METHOD_GET;   /* treat HEAD as GET here, MHD will do the rest */
+    method = MHD_HTTP_METHOD_GET; /* treat HEAD as GET here, MHD will do the rest */
 
   /* parse first part of URL */
   {
@@ -1954,8 +1940,8 @@ run (void *cls,
                           MHD_OPTION_CONNECTION_TIMEOUT,
                           connection_timeout,
                           (0 == allow_address_reuse)
-                          ? MHD_OPTION_END
-                          : MHD_OPTION_LISTENING_ADDRESS_REUSE,
+                    ? MHD_OPTION_END
+                    : MHD_OPTION_LISTENING_ADDRESS_REUSE,
                           (unsigned int) allow_address_reuse,
                           MHD_OPTION_END);
   if (NULL == mhd)

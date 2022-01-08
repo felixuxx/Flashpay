@@ -1009,4 +1009,14 @@ TALER_deposit_extension_hash (const json_t *extensions,
 }
 
 
+enum GNUNET_GenericReturnValue
+TALER_extension_config_hash (const json_t *config,
+                             struct TALER_ExtensionConfigHash *ech)
+{
+  return dump_and_hash (config,
+                        "taler-extension-configuration",
+                        &ech->hash);
+}
+
+
 /* End of json/json.c */

@@ -153,32 +153,17 @@ TALER_EXCHANGE_management_post_extensions (
   GNUNET_assert (NULL != extensions);
   for (unsigned int i = 0; i<pkd->num_extensions; i++)
   {
-    json_t *config;
-    const struct TALER_AgeMask *mask;
+    const json_t *config;
     const struct TALER_Extension *ext = &pkd->extensions[i];
 
-    switch (ext->type)
-    {
-    // TODO: case TALER_Extension_Peer2Peer
-    case TALER_Extension_AgeRestriction:
-      mask = (const struct TALER_AgeMask *) (&ext->config);
-      config = GNUNET_JSON_PACK (
-        GNUNET_JSON_pack_string ("extension",
-                                 ext->name),
-        GNUNET_JSON_pack_data_auto ("mask",
-                                    &mask->mask));
-      GNUNET_assert (NULL != config);
-      break;
-    default:
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Extension not supported.\n");
-    }
+    config = ext->config_to_json (ext);
 
+    GNUNET_assert (NULL != config);
     GNUNET_assert (0 ==
                    json_array_append_new (
                      extensions,
                      GNUNET_JSON_PACK (
-                       GNUNET_JSON_pack_data_auto ("name",
+                       GNUNET_JSON_pack_data_auto ("extension",
                                                    &ext->name),
                        GNUNET_JSON_pack_data_auto ("config",
                                                    config)

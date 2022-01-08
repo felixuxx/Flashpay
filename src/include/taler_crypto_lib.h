@@ -542,6 +542,19 @@ struct TALER_PickupIdentifierP
 };
 
 
+/**
+ * @brief Salted hash over the JSON object representing the configuration of an
+ * extension.
+ */
+struct TALER_ExtensionConfigHash
+{
+  /**
+   * Actual hash value.
+   */
+  struct GNUNET_HashCode hash;
+};
+
+
 GNUNET_NETWORK_STRUCT_END
 
 
@@ -2521,30 +2534,31 @@ TALER_merchant_wire_signature_make (
 /* **************** /management/extensions offline signing **************** */
 
 /**
- * Create a signature for age restriction groups
+ * Create a signature for the hash of the configuration of an extension
  *
- * @param mask The bitmask representing age groups
+ * @param h_config hash of the JSON object representing the configuration
  * @param master_priv private key to sign with
  * @param[out] master_sig where to write the signature
  */
 void
-TALER_exchange_offline_extension_agemask_sign (
-  const struct TALER_AgeMask mask,
+TALER_exchange_offline_extension_config_hash_sign (
+  const struct TALER_ExtensionConfigHash h_config,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
 
 /**
- * Verify the signature in @a master_sig.
+ * Verify the signature in @a master_sig of the given hash, taken over the JSON
+ * blob representing the configuration of an extension
  *
- * @param mask bit mask representing an age group for age restriction
+ * @param h_config hash of the JSON blob of a configuration of an extension
  * @param master_pub master public key of the exchange
  * @param master_sig signature of the exchange
  * @return #GNUNET_OK if signature is valid
  */
 enum GNUNET_GenericReturnValue
-TALER_exchange_offline_extension_agemask_verify (
-  const struct TALER_AgeMask mask,
+TALER_exchange_offline_extension_config_hash_verify (
+  const struct TALER_ExtensionConfigHash h_config,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   );

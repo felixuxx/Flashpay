@@ -532,7 +532,7 @@ TALER_JSON_wire_to_payto (const json_t *wire_s);
 
 
 /**
- * Hash @a extensions.
+ * Hash @a extensions in deposits.
  *
  * @param extensions contract extensions to hash
  * @param[out] ech where to write the extension hash
@@ -541,6 +541,16 @@ void
 TALER_deposit_extension_hash (const json_t *extensions,
                               struct TALER_ExtensionContractHash *ech);
 
+/**
+ * Hash the @a config of an extension, given as JSON
+ *
+ * @param config configuration of the extension
+ * @param[out] eh where to write the extension hash
+ * @return GNUNET_OK on success, GNUNET_SYSERR on failure
+ */
+enum GNUNET_GenericReturnValue
+TALER_extension_config_hash (const json_t *config,
+                             struct TALER_ExtensionConfigHash *eh);
 
 /**
  * Parses a JSON object { "extension": "age_restriction", "mask": <uint32> }.
@@ -552,7 +562,6 @@ TALER_deposit_extension_hash (const json_t *extensions,
 enum GNUNET_GenericReturnValue
 TALER_agemask_parse_json (const json_t *root,
                           struct TALER_AgeMask *mask);
-
 
 #endif /* TALER_JSON_LIB_H_ */
 

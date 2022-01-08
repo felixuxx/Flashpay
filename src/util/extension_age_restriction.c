@@ -23,7 +23,6 @@
 #include "taler_extensions.h"
 #include "stdint.h"
 
-
 /**
  *
  * @param cfg Handle to the GNUNET configuration
@@ -137,12 +136,14 @@ TALER_parse_age_group_string (char *groups,
 
 
 /**
+ * Encodes the age mask into a string, like "8:10:12:14:16:18:21"
+ *
  * @param mask Age mask
  * @return String representation of the age mask, allocated by GNUNET_malloc.
  *         Can be used as value in the TALER config.
  */
 char *
-TALER_age_mask_to_string (struct TALER_AgeMask *m)
+TALER_age_mask_to_string (const struct TALER_AgeMask *m)
 {
   uint32_t mask = m->mask;
   unsigned int n = 0;

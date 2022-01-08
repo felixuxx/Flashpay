@@ -1,18 +1,18 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2014--2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2014--2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU General Public License along with
+   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+ */
 
 /**
  * @file plugin_exchangedb_postgres.c
@@ -211,7 +211,7 @@ prepare_statements (struct PostgresClosure *pg)
   enum GNUNET_GenericReturnValue ret;
   struct GNUNET_PQ_PreparedStatement ps[] = {
     /* Used in #postgres_insert_denomination_info() and
-       #postgres_add_denomination_key() */
+     #postgres_add_denomination_key() */
     GNUNET_PQ_make_prepare (
       "denomination_insert",
       "INSERT INTO denominations "
@@ -222,8 +222,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",expire_withdraw"
       ",expire_deposit"
       ",expire_legal"
-      ",coin_val"                                                                  /* value of this denom */
-      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",coin_val"                                                /* value of this denom */
+      ",coin_frac"                                                /* fractional value of this denom */
       ",fee_withdraw_val"
       ",fee_withdraw_frac"
       ",fee_deposit_val"
@@ -245,8 +245,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",expire_withdraw"
       ",expire_deposit"
       ",expire_legal"
-      ",coin_val"                                                                  /* value of this denom */
-      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",coin_val"                                                /* value of this denom */
+      ",coin_frac"                                                /* fractional value of this denom */
       ",fee_withdraw_val"
       ",fee_withdraw_frac"
       ",fee_deposit_val"
@@ -268,8 +268,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",expire_withdraw"
       ",expire_deposit"
       ",expire_legal"
-      ",coin_val"                                                                  /* value of this denom */
-      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",coin_val"                                                /* value of this denom */
+      ",coin_frac"                                                /* fractional value of this denom */
       ",fee_withdraw_val"
       ",fee_withdraw_frac"
       ",fee_deposit_val"
@@ -332,8 +332,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",expire_withdraw"
       ",expire_deposit"
       ",expire_legal"
-      ",coin_val"                                                                  /* value of this denom */
-      ",coin_frac"                                                                  /* fractional value of this denom */
+      ",coin_val"                                                /* value of this denom */
+      ",coin_frac"                                                /* fractional value of this denom */
       ",fee_withdraw_val"
       ",fee_withdraw_frac"
       ",fee_deposit_val"
@@ -766,7 +766,7 @@ prepare_statements (struct PostgresClosure *pg)
 
        See also:
        https://stackoverflow.com/questions/34708509/how-to-use-returning-with-on-conflict-in-postgresql/37543015#37543015
-    */
+     */
     GNUNET_PQ_make_prepare (
       "insert_known_coin",
       "WITH dd"
@@ -2743,6 +2743,23 @@ prepare_statements (struct PostgresClosure *pg)
       "   AND start_row=$2"
       "   AND end_row=$3",
       3),
+    /* Used in #postgres_set_extension_config */
+    GNUNET_PQ_make_prepare (
+      "set_extension_config",
+      "WITH upsert AS "
+      " (UPDATE extensions "
+      "    SET  config=$2 "
+      "         config_sig=$3 "
+      "   WHERE name=$1 RETURNING *) "
+      "INSERT INTO extensions (config, config_sig) VALUES ($2, $3) "
+      "WHERE NOT EXISTS (SELECT * FROM upsert);",
+      3),
+    /* Used in #postgres_get_extension_config */
+    GNUNET_PQ_make_prepare (
+      "get_extension_config",
+      "SELECT (config) FROM extensions"
+      " WHERE name=$1;",
+      1),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
 
@@ -3396,11 +3413,11 @@ dominations_cb_helper (void *cls,
 
 
 /**
-* Function called to invoke @a cb on every known denomination key (revoked
-* and non-revoked) that has been signed by the master key. Runs in its own
-* read-only transaction.
-*
-*
+ * Function called to invoke @a cb on every known denomination key (revoked
+ * and non-revoked) that has been signed by the master key. Runs in its own
+ * read-only transaction.
+ *
+ *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param cb function to call on each denomination key
  * @param cb_cls closure for @a cb
@@ -3513,7 +3530,7 @@ postgres_iterate_active_signkeys (void *cls,
                                   void *cb_cls)
 {
   struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute now = {0};
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end
@@ -3600,7 +3617,7 @@ auditors_cb_helper (void *cls,
 /**
  * Function called to invoke @a cb on every active auditor. Disabled
  * auditors are skipped. Runs in its own read-only transaction.
-  *
+ *
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param cb function to call on each active auditor
  * @param cb_cls closure for @a cb
@@ -4470,6 +4487,8 @@ compute_shard (const struct TALER_MerchantPublicKeyP *merchant_pub)
  * Perform deposit operation, checking for sufficient balance
  * of the coin and possibly persisting the deposit details.
  *
+ * FIXME: parameters missing in description!
+ *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param deposit deposit operation details
  * @param known_coin_id row of the coin in the known_coins table
@@ -4908,7 +4927,7 @@ add_bank_to_exchange (void *cls,
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_BANK_TO_EXCHANGE;
     tail->details.bank = bt;
-  }   /* end of 'while (0 < rows)' */
+  } /* end of 'while (0 < rows)' */
 }
 
 
@@ -5033,7 +5052,7 @@ add_recoup (void *cls,
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_RECOUP_COIN;
     tail->details.recoup = recoup;
-  }   /* end of 'while (0 < rows)' */
+  } /* end of 'while (0 < rows)' */
 }
 
 
@@ -5093,7 +5112,7 @@ add_exchange_to_bank (void *cls,
     tail = append_rh (rhc);
     tail->type = TALER_EXCHANGEDB_RO_EXCHANGE_TO_BANK;
     tail->details.closing = closing;
-  }   /* end of 'while (0 < rows)' */
+  } /* end of 'while (0 < rows)' */
 }
 
 
@@ -5361,7 +5380,7 @@ postgres_get_ready_deposit (void *cls,
                             void *deposit_cb_cls)
 {
   struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute now = {0};
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_uint64 (&start_shard_row),
@@ -6260,7 +6279,7 @@ postgres_get_refresh_reveal (void *cls,
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
     goto cleanup;
   case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:
-  default:   /* can have more than one result */
+  default: /* can have more than one result */
     break;
   }
   switch (grctx.qs)
@@ -6269,7 +6288,7 @@ postgres_get_refresh_reveal (void *cls,
   case GNUNET_DB_STATUS_SOFT_ERROR:
     goto cleanup;
   case GNUNET_DB_STATUS_SUCCESS_NO_RESULTS:
-  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT:   /* should be impossible */
+  case GNUNET_DB_STATUS_SUCCESS_ONE_RESULT: /* should be impossible */
     break;
   }
 
@@ -11395,6 +11414,68 @@ postgres_delete_shard_locks (void *cls)
 
 
 /**
+ * Function called to save the configuration of an extension
+ * (age-restriction, peer2peer, ...).  After succesfull storage of the
+ * configuration it triggers the corresponding event.
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param extension_name the name of the extension
+ * @param config JSON object of the configuration as string
+ * @param config_sig signature of the configuration by the offline master key
+ * @return transaction status code
+ */
+enum GNUNET_DB_QueryStatus
+postgres_set_extension_config (void *cls,
+                               const char *extension_name,
+                               const char *config,
+                               const struct TALER_MasterSignatureP *config_sig)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (extension_name),
+    GNUNET_PQ_query_param_string (config),
+    GNUNET_PQ_query_param_auto_from_type (config_sig),
+    GNUNET_PQ_query_param_end
+  };
+
+  return GNUNET_PQ_eval_prepared_non_select (pg->conn,
+                                             "set_extension_config",
+                                             params);
+}
+
+
+/**
+ * Function called to get the configuration of an extension
+ * (age-restriction, peer2peer, ...)
+ *
+ * @param cls the @e cls of this struct with the plugin-specific state
+ * @param extension_name the name of the extension
+ * @param[out] config JSON object of the configuration as string
+ * @return transaction status code
+ */
+enum GNUNET_DB_QueryStatus
+postgres_get_extension_config (void *cls,
+                               const char *extension_name,
+                               char **config)
+{
+  struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam params[] = {
+    GNUNET_PQ_query_param_string (extension_name),
+    GNUNET_PQ_query_param_end
+  };
+  struct GNUNET_PQ_ResultSpec rs[] = {
+    GNUNET_PQ_result_spec_string ("config", config),
+    GNUNET_PQ_result_spec_end
+  };
+
+  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                   "get_extension_config",
+                                                   params,
+                                                   rs);
+}
+
+
+/**
  * Initialize Postgres database subsystem.
  *
  * @param cls a configuration instance
@@ -11628,6 +11709,10 @@ libtaler_plugin_exchangedb_postgres_init (void *cls)
     = &postgres_release_revolving_shard;
   plugin->delete_shard_locks
     = &postgres_delete_shard_locks;
+  plugin->set_extension_config
+    = &postgres_set_extension_config;
+  plugin->get_extension_config
+    = &postgres_get_extension_config;
   return plugin;
 }
 

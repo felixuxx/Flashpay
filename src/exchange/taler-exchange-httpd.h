@@ -202,9 +202,12 @@ extern volatile bool MHD_terminating;
 extern struct GNUNET_CURL_Context *TEH_curl_ctx;
 
 /**
- * The manifest of the available extensions
+ * The manifest of the available extensions, NULL terminated
  */
-extern const struct TALER_Extension TEH_extensions[TALER_Extension_Max];
+extern struct TALER_Extension **TEH_extensions;
+
+#define TEH_extension_enabled(ext) (0 <= ext && TALER_Extension_Max > ext && \
+                                    NULL != TEH_extensions[ext]->config)
 
 /**
  * @brief Struct describing an URL and the handler for it.

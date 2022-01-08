@@ -40,12 +40,4 @@ TEH_extensions_init (void);
 void
 TEH_extensions_done (void);
 
-/**
- * Something changed in the database. Rebuild the extension state metadata.
- * This function should be called if the exchange learns about a new signature
- * from our master key.
- */
-void
-TEH_extensions_update_state (void);
-
 #endif
