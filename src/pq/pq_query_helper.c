@@ -290,7 +290,9 @@ qconv_denom_sig (void *cls,
       denom_sig->details.rsa_signature,
       &tbuf);
     break;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    tlen = sizeof (denom_sig->details.cs_signature);
+    break;
   default:
     GNUNET_assert (0);
   }
@@ -307,7 +309,11 @@ qconv_denom_sig (void *cls,
             tlen);
     GNUNET_free (tbuf);
     break;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    memcpy (&buf[sizeof (be)],
+            &denom_sig->details.cs_signature,
+            tlen);
+    break;
   default:
     GNUNET_assert (0);
   }
@@ -380,7 +386,9 @@ qconv_blinded_denom_sig (void *cls,
       denom_sig->details.blinded_rsa_signature,
       &tbuf);
     break;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    tlen = sizeof (denom_sig->details.blinded_cs_answer);
+    break;
   default:
     GNUNET_assert (0);
   }
@@ -397,7 +405,11 @@ qconv_blinded_denom_sig (void *cls,
             tlen);
     GNUNET_free (tbuf);
     break;
-  // TODO: add case for Clause-Schnorr
+  case TALER_DENOMINATION_CS:
+    memcpy (&buf[sizeof (be)],
+            &denom_sig->details.blinded_cs_answer,
+            tlen);
+    break;
   default:
     GNUNET_assert (0);
   }

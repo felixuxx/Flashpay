@@ -37,10 +37,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
                  const json_t *root,
                  const char *const args[])
 {
-  // TODO: should we have something similar to struct WithdrawContext?
-  // as far as I can tell this isn't necessary because we don't have
-  // other functions that the context should be passed to
-  // struct CsRContext csrc;
   struct TALER_WithdrawNonce nonce;
   struct TALER_DenominationHash denom_pub_hash;
   struct TALER_DenominationCsPublicR r_pub;

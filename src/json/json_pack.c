@@ -125,14 +125,21 @@ TALER_JSON_pack_blinded_denom_sig (
   switch (sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    ps.object
-      = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_uint64 ("cipher",
-                                   TALER_DENOMINATION_RSA),
-          GNUNET_JSON_pack_rsa_signature ("blinded_rsa_signature",
-                                          sig->details.blinded_rsa_signature));
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_RSA),
+      GNUNET_JSON_pack_rsa_signature ("blinded_rsa_signature",
+                                      sig->details.blinded_rsa_signature));
     break;
-  // TODO: case TALER_DENOMINATION_CS:
+  case TALER_DENOMINATION_CS:
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_uint64 ("b",
+                               sig->details.blinded_cs_answer.b),
+      GNUNET_JSON_pack_data_auto ("s",
+                                  &sig->details.blinded_cs_answer.s_scalar));
+    break;
   default:
     GNUNET_assert (0);
   }

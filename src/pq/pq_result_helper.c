@@ -670,7 +670,16 @@ extract_blinded_denom_sig (void *cls,
       return GNUNET_SYSERR;
     }
     return GNUNET_OK;
-  // FIXME: add CS case!
+  case TALER_DENOMINATION_CS:
+    if (sizeof (sig->details.blinded_cs_answer) != len)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    memcpy (&sig->details.blinded_cs_answer,
+            res,
+            len);
+    return GNUNET_OK;
   default:
     GNUNET_break (0);
   }

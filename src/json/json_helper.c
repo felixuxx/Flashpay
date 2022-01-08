@@ -388,6 +388,7 @@ parse_denom_sig (void *cls,
       }
       return GNUNET_OK;
     }
+  // TODO: case TALER_DENOMINATION_CS:
   default:
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -483,6 +484,29 @@ parse_blinded_denom_sig (void *cls,
       }
       return GNUNET_OK;
     }
+  case TALER_DENOMINATION_CS:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_uint32 ("b",
+                                 &denom_sig->details.blinded_cs_answer.b),
+        GNUNET_JSON_spec_fixed_auto ("s",
+                                     &denom_sig->details.blinded_cs_answer.
+                                     s_scalar),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
+    break;
   default:
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

@@ -437,11 +437,26 @@ TALER_EXCHANGE_withdraw2 (
 
     TALER_amount_hton (&req.amount_with_fee,
                        &wh->requested_amount);
-    TALER_coin_ev_hash (
-      pd->blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
-      pd->blinded_planchet.details.rsa_blinded_planchet.
-      blinded_msg_size,
-      &req.h_coin_envelope);
+    switch (dk->key.cipher)
+    {
+    case TALER_DENOMINATION_RSA:
+      TALER_coin_ev_hash (
+        pd->blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
+        pd->blinded_planchet.details.rsa_blinded_planchet.
+        blinded_msg_size,
+        &req.h_coin_envelope);
+      break;
+    case TALER_DENOMINATION_CS:
+      TALER_coin_ev_hash (
+        &pd->blinded_planchet.details.cs_blinded_planchet,
+        sizeof (pd->blinded_planchet.details.cs_blinded_planchet),
+        &req.h_coin_envelope);
+      break;
+    default:
+      GNUNET_break (0);
+      GNUNET_free (wh);
+      return NULL;
+    }
     GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
                               &req,
                               &reserve_sig.eddsa_signature);
@@ -449,17 +464,44 @@ TALER_EXCHANGE_withdraw2 (
 
   {
     json_t *withdraw_obj;
-
-    withdraw_obj = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_data_auto ("denom_pub_hash",
-                                  &pd->denom_pub_hash),
-      GNUNET_JSON_pack_data_varsize ("coin_ev",
-                                     pd->blinded_planchet.details.
-                                     rsa_blinded_planchet.blinded_msg,
-                                     pd->blinded_planchet.details.
-                                     rsa_blinded_planchet.blinded_msg_size),
-      GNUNET_JSON_pack_data_auto ("reserve_sig",
-                                  &reserve_sig));
+    switch (dk->key.cipher)
+    {
+    case TALER_DENOMINATION_RSA:
+      withdraw_obj = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                    &pd->denom_pub_hash),
+        GNUNET_JSON_pack_data_varsize ("coin_ev",
+                                       pd->blinded_planchet.details.
+                                       rsa_blinded_planchet.blinded_msg,
+                                       pd->blinded_planchet.details.
+                                       rsa_blinded_planchet.blinded_msg_size),
+        GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                    &reserve_sig));
+      break;
+    case TALER_DENOMINATION_CS:
+      json_t *coin_ev_object = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("nonce",
+                                    &pd->blinded_planchet.details.
+                                    cs_blinded_planchet.nonce),
+        GNUNET_JSON_pack_data_auto ("c0",
+                                    &pd->blinded_planchet.details.
+                                    cs_blinded_planchet.c[0]),
+        GNUNET_JSON_pack_data_auto ("c1",
+                                    &pd->blinded_planchet.details.
+                                    cs_blinded_planchet.c[1]));
+      withdraw_obj = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("denom_pub_hash",
+                                    &pd->denom_pub_hash),
+        GNUNET_JSON_pack_object_steal ("coin_ev",
+                                       coin_ev_object),
+        GNUNET_JSON_pack_data_auto ("reserve_sig",
+                                    &reserve_sig));
+      break;
+    default:
+      GNUNET_break (0);
+      GNUNET_free (wh);
+      return NULL;
+    }
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Attempting to withdraw from reserve %s\n",
                 TALER_B2S (&wh->reserve_pub));

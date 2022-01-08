@@ -266,13 +266,6 @@ reserve_withdraw_cb (void *cls,
   switch (wr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    // TODO: remove
-    // temporary make test successful when CS
-    if (TALER_DENOMINATION_CS == ws->cipher)
-    {
-      break;
-    }
-
     TALER_denom_sig_deep_copy (&ws->sig,
                                &wr->details.success.sig);
     if (0 != ws->total_backoff.rel_value_us)
@@ -661,12 +654,37 @@ TALER_TESTING_cmd_withdraw_amount_reuse_key (
   const char *coin_ref,
   unsigned int expected_response_code)
 {
+  // TODO: ATM this is hardcoded to RSA denominations
+  // (use TALER_TESTING_cmd_withdraw_cs_amount for Clause Schnorr)
   struct TALER_TESTING_Command cmd;
 
   cmd = TALER_TESTING_cmd_withdraw_amount (label,
                                            reserve_reference,
                                            amount,
                                            expected_response_code);
+  {
+    struct WithdrawState *ws = cmd.cls;
+
+    ws->reuse_coin_key_ref = coin_ref;
+  }
+  return cmd;
+}
+
+
+struct TALER_TESTING_Command
+TALER_TESTING_cmd_withdraw_cs_amount_reuse_key (
+  const char *label,
+  const char *reserve_reference,
+  const char *amount,
+  const char *coin_ref,
+  unsigned int expected_response_code)
+{
+  struct TALER_TESTING_Command cmd;
+
+  cmd = TALER_TESTING_cmd_withdraw_cs_amount (label,
+                                              reserve_reference,
+                                              amount,
+                                              expected_response_code);
   {
     struct WithdrawState *ws = cmd.cls;
 

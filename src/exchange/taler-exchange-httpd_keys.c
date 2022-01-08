@@ -2442,7 +2442,19 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
                                          msg,
                                          msg_size,
                                          ec);
-  // TODO: case TALER_DENOMINATION_CS:
+  case TALER_DENOMINATION_CS:
+    if (sizeof (struct TALER_BlindedCsPlanchet) != msg_size)
+    {
+      *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+      return none;
+    }
+    struct TALER_BlindedCsPlanchet *blinded_cs_planchet = ((struct
+                                                            TALER_BlindedCsPlanchet
+                                                            *) msg);
+    return TALER_CRYPTO_helper_cs_sign (ksh->helpers->csdh,
+                                        &hd->h_details.h_cs,
+                                        blinded_cs_planchet,
+                                        ec);
   default:
     *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
     return none;
