@@ -2746,13 +2746,9 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_set_extension_config */
     GNUNET_PQ_make_prepare (
       "set_extension_config",
-      "WITH upsert AS "
-      " (UPDATE extensions "
-      "    SET  config=$2 "
-      "         config_sig=$3 "
-      "   WHERE name=$1 RETURNING *) "
-      "INSERT INTO extensions (config, config_sig) VALUES ($2, $3) "
-      "WHERE NOT EXISTS (SELECT * FROM upsert);",
+      "INSERT INTO extensions (name, config, config_sig) VALUES ($1, $2, $3) "
+      "ON CONFLICT (name) "
+      "DO UPDATE SET (config, config_sig) = ($2, $3)",
       3),
     /* Used in #postgres_get_extension_config */
     GNUNET_PQ_make_prepare (
