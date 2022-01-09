@@ -181,10 +181,8 @@ withdraw_cs_stage_two_callback (void *cls,
   {
   case MHD_HTTP_OK:
     wh->ps.cs_r_pub = csrr->details.success.r_pubs;
-    TALER_blinding_secret_create (&wh->ps.blinding_key,
-                                  wh->pk.key.cipher,
-                                  &wh->ps.coin_priv,
-                                  &wh->ps.cs_r_pub);
+    TALER_planchet_blinding_secret_create (&wh->ps,
+                                           wh->pk.key.cipher);
     if (GNUNET_OK !=
         TALER_planchet_prepare (&wh->pk.key,
                                 &wh->ps,

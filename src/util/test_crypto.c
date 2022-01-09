@@ -164,10 +164,8 @@ test_planchets_cs (void)
                    &dk_priv,
                    &ps.cs_r_pub));
   // TODO: eliminate r_pubs parameter
-  TALER_blinding_secret_create (&ps.blinding_key,
-                                TALER_DENOMINATION_CS,
-                                &ps.coin_priv,
-                                &ps.cs_r_pub);
+  TALER_planchet_blinding_secret_create (&ps,
+                                         TALER_DENOMINATION_CS);
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,

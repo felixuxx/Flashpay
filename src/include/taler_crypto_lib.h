@@ -941,19 +941,6 @@ TALER_cs_withdraw_nonce_derive (const struct
                                 TALER_CoinSpendPrivateKeyP *coin_priv,
                                 struct TALER_WithdrawNonce *nonce);
 
-/**
- * Create a blinding secret @a bs for @a cipher.
- *
- * @param[out] bs blinding secret to initialize
- * @param cipher algorithm to use (CS or RSA)
- * @param ... If CS signature, R_0 and R_1 (TALER_DenominationCsPublicR)
- * and the coins private key (TALER_CoinSpendPrivateKeyP) is needed
- */
-void
-TALER_blinding_secret_create (union TALER_DenominationBlindingKeyP *bs,
-                              enum TALER_DenominationCipher cipher,
-                              ...);
-
 
 /**
  * Initialize denomination public-private key pair.
@@ -1436,6 +1423,14 @@ void
 TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
                              enum TALER_DenominationCipher cipher);
 
+/**
+ * Create a blinding secret @a bs for @a cipher.
+ *
+ * @param[out] ps planchet with blinding secret to initialize
+ */
+void
+TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
+                                       enum TALER_DenominationCipher cipher);
 
 /**
  * Prepare a planchet for tipping.  Creates and blinds a coin.
