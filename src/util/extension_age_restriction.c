@@ -80,7 +80,7 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @return Error if string was invalid, OK otherwise.
  */
 enum TALER_Extension_ReturnValue
-TALER_parse_age_group_string (char *groups,
+TALER_parse_age_group_string (const char *groups,
                               struct TALER_AgeMask *mask)
 {
   enum TALER_Extension_ReturnValue ret = TALER_Extension_ERROR_SYS;

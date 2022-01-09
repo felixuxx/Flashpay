@@ -110,7 +110,7 @@ TALER_extension_get_by_name (const char *name,
  * @return Error, if age groups were invalid, OK otherwise.
  */
 enum TALER_Extension_ReturnValue
-TALER_parse_age_group_string (char *groups,
+TALER_parse_age_group_string (const char *groups,
                               struct TALER_AgeMask *mask);
 
 /**

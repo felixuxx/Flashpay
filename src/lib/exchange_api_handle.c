@@ -30,6 +30,7 @@
 #include "taler_exchange_service.h"
 #include "taler_auditor_service.h"
 #include "taler_signatures.h"
+#include "taler_extensions.h"
 #include "exchange_api_handle.h"
 #include "exchange_api_curl_defaults.h"
 #include "backoff.h"
@@ -344,6 +345,7 @@ parse_json_denomkey (struct TALER_EXCHANGE_DenomPublicKey *denom_key,
                                &denom_key->key),
     GNUNET_JSON_spec_end ()
   };
+
 
   if (GNUNET_OK !=
       GNUNET_JSON_parse (denom_key_obj,
@@ -761,6 +763,7 @@ decode_keys_json (const json_t *resp_obj,
       return GNUNET_SYSERR;
     }
   }
+
   /* parse the master public key and issue date of the response */
   if (check_sig)
     hash_context = GNUNET_CRYPTO_hash_context_start ();
@@ -791,63 +794,142 @@ decode_keys_json (const json_t *resp_obj,
     }
   }
 
+  /* Parse the supported extension(s): age-restriction. */
+  /* TODO: maybe lift this into a FP in TALER_Extension ? */
+  {
+    json_t *age_restriction = json_object_get (resp_obj,
+                                               "age_restriction");
+
+    if (NULL != age_restriction)
+    {
+      bool critical;
+      const char *version;
+      const char *age_groups;
+      struct GNUNET_JSON_Specification spec[] = {
+        GNUNET_JSON_spec_bool ("critical",
+                               &critical),
+        GNUNET_JSON_spec_string ("version",
+                                 &version),
+        GNUNET_JSON_spec_string ("age_groups",
+                                 &age_groups),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (age_restriction,
+                             spec,
+                             NULL, NULL))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+
+      if (critical || // do we care?
+          0 != strncmp (version, "1", 1) ) /* TODO: better compatibility check */
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+
+      if (TALER_Extension_OK !=
+          TALER_parse_age_group_string (age_groups,
+                                        &key_data->age_mask))
+      {
+        // TODO: print more specific error?
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+    }
+  }
+
   /* parse the denomination keys, merging with the
      possibly EXISTING array as required (/keys cherry picking) */
   {
-    json_t *denom_keys_array;
-    json_t *denom_key_obj;
-    unsigned int index;
-
-    EXITIF (NULL == (denom_keys_array =
-                       json_object_get (resp_obj,
-                                        "denoms")));
-    EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
-
-    json_array_foreach (denom_keys_array, index, denom_key_obj) {
-      struct TALER_EXCHANGE_DenomPublicKey dk;
-      bool found = false;
-
-      memset (&dk,
-              0,
-              sizeof (dk));
-      EXITIF (GNUNET_SYSERR ==
-              parse_json_denomkey (&dk,
-                                   check_sig,
-                                   denom_key_obj,
-                                   &key_data->master_pub,
-                                   hash_context));
-
-      for (unsigned int j = 0;
-           j<key_data->num_denom_keys;
-           j++)
-      {
-        if (0 == denoms_cmp (&dk,
-                             &key_data->denom_keys[j]))
-        {
-          found = true;
-          break;
-        }
-      }
-      if (found)
-      {
-        /* 0:0:0 did not support /keys cherry picking */
-        TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
-        TALER_denom_pub_free (&dk.key);
-        continue;
-      }
-      if (key_data->denom_keys_size == key_data->num_denom_keys)
-        GNUNET_array_grow (key_data->denom_keys,
-                           key_data->denom_keys_size,
-                           key_data->denom_keys_size * 2 + 2);
-      key_data->denom_keys[key_data->num_denom_keys++] = dk;
-
-      /* Update "last_denom_issue_date" */
-      TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
-                       GNUNET_TIME_timestamp2s (dk.valid_from));
-      key_data->last_denom_issue_date
-        = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
-                                     dk.valid_from);
+    /* The denominations can be in "denoms" and (optionally) in
+     * "age_restricted_denoms"
+     */
+    struct
+    { char *name;
+      bool is_optional_age_restriction;} hive[2] = {
+      { "denoms",                false },
+      { "age_restricted_denoms", true  },
     };
+
+    for (size_t s = 0; s < sizeof(hive) / sizeof(hive[0]); s++)
+    {
+      json_t *denom_keys_array;
+      json_t *denom_key_obj;
+      unsigned int index;
+
+      denom_keys_array = json_object_get (resp_obj,
+                                          hive[s].name);
+
+      EXITIF (NULL == denom_keys_array &&
+              ! hive[s].is_optional_age_restriction);
+
+      if (NULL == denom_keys_array &&
+          hive[s].is_optional_age_restriction)
+        continue;
+
+      /* if "age_restricted_denoms" exists, age-restriction better be enabled
+       * (that is: mask non-zero) */
+      EXITIF (NULL != denom_keys_array &&
+              hive[s].is_optional_age_restriction &&
+              0 == key_data->age_mask.mask);
+
+      EXITIF (JSON_ARRAY != json_typeof (denom_keys_array));
+
+      json_array_foreach (denom_keys_array, index, denom_key_obj) {
+        struct TALER_EXCHANGE_DenomPublicKey dk;
+        bool found = false;
+
+        memset (&dk,
+                0,
+                sizeof (dk));
+        EXITIF (GNUNET_SYSERR ==
+                parse_json_denomkey (&dk,
+                                     check_sig,
+                                     denom_key_obj,
+                                     &key_data->master_pub,
+                                     hash_context));
+
+        /* Mark age restriction according where we got this denomination from,
+         * "denoms" or "age_restricted_denoms" */
+        if (hive[s].is_optional_age_restriction)
+          dk.age_restricted = true;
+
+        for (unsigned int j = 0;
+             j<key_data->num_denom_keys;
+             j++)
+        {
+          if (0 == denoms_cmp (&dk,
+                               &key_data->denom_keys[j]))
+          {
+            found = true;
+            break;
+          }
+        }
+        if (found)
+        {
+          /* 0:0:0 did not support /keys cherry picking */
+          TALER_LOG_DEBUG ("Skipping denomination key: already know it\n");
+          TALER_denom_pub_free (&dk.key);
+          continue;
+        }
+        if (key_data->denom_keys_size == key_data->num_denom_keys)
+          GNUNET_array_grow (key_data->denom_keys,
+                             key_data->denom_keys_size,
+                             key_data->denom_keys_size * 2 + 2);
+        key_data->denom_keys[key_data->num_denom_keys++] = dk;
+
+        /* Update "last_denom_issue_date" */
+        TALER_LOG_DEBUG ("Adding denomination key that is valid_until %s\n",
+                         GNUNET_TIME_timestamp2s (dk.valid_from));
+        key_data->last_denom_issue_date
+          = GNUNET_TIME_timestamp_max (key_data->last_denom_issue_date,
+                                       dk.valid_from);
+      };
+    }
   }
 
   /* parse the auditor information */

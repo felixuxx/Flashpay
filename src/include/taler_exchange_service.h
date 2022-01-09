@@ -159,6 +159,11 @@ struct TALER_EXCHANGE_DenomPublicKey
    * revoked by the exchange.
    */
   bool revoked;
+
+  /**
+   * Is the denomination age-restricted?
+   */
+  bool age_restricted;
 };
 
 
@@ -281,6 +286,11 @@ struct TALER_EXCHANGE_Keys
    * Used to fetch /keys incrementally.
    */
   struct GNUNET_TIME_Timestamp last_denom_issue_date;
+
+  /**
+   * If age restriction is enabled on the exchange, we get an non-zero age_mask
+   */
+  struct TALER_AgeMask age_mask;
 
   /**
    * Length of the @e sign_keys array (number of valid entries).
