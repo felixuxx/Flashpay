@@ -98,14 +98,21 @@ TALER_JSON_pack_denom_sig (
   switch (sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    ps.object
-      = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_uint64 ("cipher",
-                                   TALER_DENOMINATION_RSA),
-          GNUNET_JSON_pack_rsa_signature ("rsa_signature",
-                                          sig->details.rsa_signature));
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_RSA),
+      GNUNET_JSON_pack_rsa_signature ("rsa_signature",
+                                      sig->details.rsa_signature));
     break;
-  // TODO: case TALER_DENOMINATION_CS:
+  case TALER_DENOMINATION_CS:
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_data_auto ("cs_signature_r",
+                                  &sig->details.cs_signature.r_point),
+      GNUNET_JSON_pack_data_auto ("cs_signature_s",
+                                  &sig->details.cs_signature.s_scalar));
+    break;
   default:
     GNUNET_assert (0);
   }

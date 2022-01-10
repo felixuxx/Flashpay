@@ -552,7 +552,16 @@ extract_denom_sig (void *cls,
       return GNUNET_SYSERR;
     }
     return GNUNET_OK;
-  // FIXME: add CS case!
+  case TALER_DENOMINATION_CS:
+    if (sizeof (sig->details.cs_signature) != len)
+    {
+      GNUNET_break (0);
+      return GNUNET_SYSERR;
+    }
+    memcpy (&sig->details.cs_signature,
+            res,
+            len);
+    return GNUNET_OK;
   default:
     GNUNET_break (0);
   }

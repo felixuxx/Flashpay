@@ -356,6 +356,14 @@ TEH_handler_deposit (struct MHD_Connection *connection,
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
         "DEPOSIT");
     }
+    if (dk->denom_pub.cipher != deposit.coin.denom_sig.cipher)
+    {
+      /* denomination cipher and denomination signature cipher not the same */
+      GNUNET_JSON_parse_free (spec);
+      return TEH_RESPONSE_reply_unknown_denom_pub_hash (
+        connection,
+        &deposit.coin.denom_pub_hash);
+    }
 
     deposit.deposit_fee = dk->meta.fee_deposit;
     /* check coin signature */

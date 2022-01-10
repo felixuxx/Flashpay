@@ -388,7 +388,27 @@ parse_denom_sig (void *cls,
       }
       return GNUNET_OK;
     }
-  // TODO: case TALER_DENOMINATION_CS:
+  case TALER_DENOMINATION_CS:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_fixed_auto ("cs_signature_r",
+                                     &denom_sig->details.cs_signature.r_point),
+        GNUNET_JSON_spec_fixed_auto ("cs_signature_s",
+                                     &denom_sig->details.cs_signature.s_scalar),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
   default:
     GNUNET_break_op (0);
     return GNUNET_SYSERR;

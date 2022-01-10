@@ -625,10 +625,8 @@ TALER_denom_pub_cmp (const struct TALER_DenominationPublicKey *denom1,
     return GNUNET_CRYPTO_rsa_public_key_cmp (denom1->details.rsa_public_key,
                                              denom2->details.rsa_public_key);
   case TALER_DENOMINATION_CS:
-    return 0 == GNUNET_memcmp (&denom1->details.cs_public_key,
-                               &denom2->details.cs_public_key)
-           ? GNUNET_OK
-           : GNUNET_SYSERR;
+    return GNUNET_memcmp (&denom1->details.cs_public_key,
+                          &denom2->details.cs_public_key);
   default:
     GNUNET_assert (0);
   }
@@ -650,10 +648,8 @@ TALER_denom_sig_cmp (const struct TALER_DenominationSignature *sig1,
     return GNUNET_CRYPTO_rsa_signature_cmp (sig1->details.rsa_signature,
                                             sig2->details.rsa_signature);
   case TALER_DENOMINATION_CS:
-    return 0 == GNUNET_memcmp (&sig1->details.cs_signature,
-                               &sig2->details.cs_signature)
-           ? GNUNET_OK
-           : GNUNET_SYSERR;
+    return GNUNET_memcmp (&sig1->details.cs_signature,
+                          &sig2->details.cs_signature);
   default:
     GNUNET_assert (0);
   }
@@ -676,10 +672,8 @@ TALER_blinded_denom_sig_cmp (
     return GNUNET_CRYPTO_rsa_signature_cmp (sig1->details.blinded_rsa_signature,
                                             sig2->details.blinded_rsa_signature);
   case TALER_DENOMINATION_CS:
-    return 0 == GNUNET_memcmp (&sig1->details.blinded_cs_answer,
-                               &sig2->details.blinded_cs_answer)
-           ? GNUNET_OK
-           : GNUNET_SYSERR;
+    return GNUNET_memcmp (&sig1->details.blinded_cs_answer,
+                          &sig2->details.blinded_cs_answer);
   default:
     GNUNET_assert (0);
   }
