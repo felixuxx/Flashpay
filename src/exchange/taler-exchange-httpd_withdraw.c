@@ -40,6 +40,7 @@
  *
  * @param connection connection to the client
  * @param ebalance expected balance based on our database
+ * @param withdraw_amount amount that the client requested to withdraw
  * @param rh reserve history to return
  * @return MHD result code
  */
@@ -47,6 +48,7 @@ static MHD_RESULT
 reply_withdraw_insufficient_funds (
   struct MHD_Connection *connection,
   const struct TALER_Amount *ebalance,
+  const struct TALER_Amount *withdraw_amount,
   const struct TALER_EXCHANGEDB_ReserveHistory *rh)
 {
   json_t *json_history;
@@ -76,6 +78,8 @@ reply_withdraw_insufficient_funds (
     TALER_JSON_pack_ec (TALER_EC_EXCHANGE_WITHDRAW_INSUFFICIENT_FUNDS),
     TALER_JSON_pack_amount ("balance",
                             &balance),
+    TALER_JSON_pack_amount ("requested_amount",
+                            withdraw_amount),
     GNUNET_JSON_pack_array_steal ("history",
                                   json_history));
 }
@@ -174,6 +178,7 @@ withdraw_transaction (void *cls,
   {
     struct TALER_EXCHANGEDB_ReserveHistory *rh;
     struct TALER_Amount balance;
+    struct TALER_Amount requested_amount;
 
     TEH_plugin->rollback (TEH_plugin->cls);
     // FIXME: maybe start read-committed here?
@@ -204,8 +209,11 @@ withdraw_transaction (void *cls,
                                                "reserve history");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
+    TALER_amount_ntoh (&requested_amount,
+                       &wc->wsrd.amount_with_fee);
     *mhd_ret = reply_withdraw_insufficient_funds (connection,
                                                   &balance,
+                                                  &requested_amount,
                                                   rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
