@@ -918,7 +918,7 @@ END IF;
 -- Check reserve balance is sufficient.
 IF (reserve_val > amount_val)
 THEN
-  IF (reserve_frac > amount_frac)
+  IF (reserve_frac >= amount_frac)
   THEN
     reserve_val=reserve_val - amount_val;
     reserve_frac=reserve_frac - amount_frac;
