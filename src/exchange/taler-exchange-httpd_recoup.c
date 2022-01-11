@@ -66,11 +66,6 @@ struct RecoupContext
   const struct TALER_CoinSpendSignatureP *coin_sig;
 
   /**
-   * The amount requested to be recouped.
-   */
-  const struct TALER_Amount *requested_amount;
-
-  /**
    * Unique ID of the withdraw operation in the reserves_out table.
    */
   uint64_t reserve_out_serial_id;
@@ -121,7 +116,6 @@ recoup_transaction (void *cls,
   qs = TEH_plugin->do_recoup (TEH_plugin->cls,
                               &pc->reserve_pub,
                               pc->reserve_out_serial_id,
-                              pc->requested_amount,
                               pc->coin_bks,
                               &pc->coin->coin_pub,
                               pc->known_coin_id,
@@ -173,7 +167,6 @@ recoup_transaction (void *cls,
  * @param coin information about the coin
  * @param coin_bks blinding data of the coin (to be checked)
  * @param coin_sig signature of the coin
- * @param requested_amount requested amount to be recouped
  * @return MHD result code
  */
 static MHD_RESULT
@@ -181,8 +174,7 @@ verify_and_execute_recoup (
   struct MHD_Connection *connection,
   const struct TALER_CoinPublicInfo *coin,
   const union TALER_DenominationBlindingKeyP *coin_bks,
-  const struct TALER_CoinSpendSignatureP *coin_sig,
-  const struct TALER_Amount *requested_amount)
+  const struct TALER_CoinSpendSignatureP *coin_sig)
 {
   struct RecoupContext pc;
   const struct TEH_DenominationKey *dk;
@@ -239,7 +231,6 @@ verify_and_execute_recoup (
   if (GNUNET_OK !=
       TALER_wallet_recoup_verify (&coin->denom_pub_hash,
                                   coin_bks,
-                                  requested_amount,
                                   &coin->coin_pub,
                                   coin_sig))
   {
@@ -281,7 +272,6 @@ verify_and_execute_recoup (
   pc.coin_sig = coin_sig;
   pc.coin_bks = coin_bks;
   pc.coin = coin;
-  pc.requested_amount = requested_amount;
 
   {
     MHD_RESULT mhd_ret = MHD_NO;
@@ -369,7 +359,6 @@ TEH_handler_recoup (struct MHD_Connection *connection,
   struct TALER_CoinPublicInfo coin;
   union TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
-  struct TALER_Amount amount;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &coin.denom_pub_hash),
@@ -379,9 +368,6 @@ TEH_handler_recoup (struct MHD_Connection *connection,
                                  &coin_bks),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
                                  &coin_sig),
-    TALER_JSON_spec_amount ("amount",
-                            TEH_currency,
-                            &amount),
     GNUNET_JSON_spec_end ()
   };
 
@@ -402,8 +388,7 @@ TEH_handler_recoup (struct MHD_Connection *connection,
     res = verify_and_execute_recoup (connection,
                                      &coin,
                                      &coin_bks,
-                                     &coin_sig,
-                                     &amount);
+                                     &coin_sig);
     GNUNET_JSON_parse_free (spec);
     return res;
   }

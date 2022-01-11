@@ -714,7 +714,6 @@ handle_recoup_by_reserve (
   if (GNUNET_OK !=
       TALER_wallet_recoup_verify (&coin->denom_pub_hash,
                                   coin_blind,
-                                  amount,
                                   &coin->coin_pub,
                                   coin_sig))
   {

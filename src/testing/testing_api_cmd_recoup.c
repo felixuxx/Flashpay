@@ -318,7 +318,6 @@ recoup_run (void *cls,
                                   denom_pub,
                                   coin_sig,
                                   &planchet,
-                                  &ps->reserve_history.amount,
                                   &recoup_cb,
                                   ps);
   GNUNET_assert (NULL != ps->ph);

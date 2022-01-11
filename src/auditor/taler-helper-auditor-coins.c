@@ -1896,7 +1896,7 @@ refund_cb (void *cls,
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 check_recoup (struct CoinContext *cc,
               const char *operation,
               uint64_t rowid,
@@ -1962,7 +1962,6 @@ check_recoup (struct CoinContext *cc,
   if (GNUNET_OK !=
       TALER_wallet_recoup_verify (&coin->denom_pub_hash,
                                   coin_blind,
-                                  amount,
                                   &coin->coin_pub,
                                   coin_sig))
   {
@@ -2084,7 +2083,7 @@ recoup_cb (void *cls,
  * @param coin_blind blinding factor used to blind the coin
  * @return #GNUNET_OK to continue to iterate, #GNUNET_SYSERR to stop
  */
-static int
+static enum GNUNET_GenericReturnValue
 recoup_refresh_cb (void *cls,
                    uint64_t rowid,
                    struct GNUNET_TIME_Timestamp timestamp,

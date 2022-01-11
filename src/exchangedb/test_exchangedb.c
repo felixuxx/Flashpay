@@ -1766,7 +1766,6 @@ run (void *cls)
             plugin->do_recoup_refresh (plugin->cls,
                                        &deposit.coin.coin_pub,
                                        rrc_serial,
-                                       &value,
                                        &coin_bks,
                                        &new_coin.coin_pub,
                                        new_known_coin_id,
@@ -1786,7 +1785,6 @@ run (void *cls)
     struct TALER_EXCHANGEDB_KycStatus kyc;
     bool recoup_ok;
     bool internal_failure;
-    struct TALER_Amount requested_amount;
     struct GNUNET_TIME_Timestamp recoup_timestamp
       = GNUNET_TIME_timestamp_get ();
 
@@ -1795,13 +1793,11 @@ run (void *cls)
             plugin->reserves_get (plugin->cls,
                                   &pre_reserve,
                                   &kyc));
-    requested_amount = value;
     FAILIF (! TALER_amount_is_zero (&pre_reserve.balance));
     FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
             plugin->do_recoup (plugin->cls,
                                &reserve_pub,
                                reserve_out_serial_id,
-                               &requested_amount,
                                &coin_blind,
                                &deposit.coin.coin_pub,
                                known_coin_id,

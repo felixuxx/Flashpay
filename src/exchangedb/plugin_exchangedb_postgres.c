@@ -636,8 +636,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_recoup_ok AS recoup_ok"
       ",out_internal_failure AS internal_failure"
       " FROM exchange_do_recoup_to_reserve"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11);",
-      11),
+      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
+      9),
     /* Used in #postgres_do_recoup_refresh() to recoup a coin to a zombie coin. */
     GNUNET_PQ_make_prepare (
       "call_recoup_refresh",
@@ -646,8 +646,8 @@ prepare_statements (struct PostgresClosure *pg)
       ",out_recoup_ok AS recoup_ok"
       ",out_internal_failure AS internal_failure"
       " FROM exchange_do_recoup_to_coin"
-      " ($1,$2,$3,$4,$5,$6,$7,$8,$9);",
-      9),
+      " ($1,$2,$3,$4,$5,$6,$7);",
+      7),
     /* Used in #postgres_get_withdraw_info() to
        locate the response for a /reserve/withdraw request
        using the hash of the blinded message.  Used to
@@ -4674,7 +4674,6 @@ postgres_do_refund (
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param reserve_pub public key of the reserve to credit
  * @param reserve_out_serial_id row in the reserves_out table justifying the recoup
- * @param requested_amount the amount to be recouped
  * @param coin_bks coin blinding key secret to persist
  * @param coin_pub public key of the coin being recouped
  * @param known_coin_id row of the @a coin_pub in the known_coins table
@@ -4689,7 +4688,6 @@ postgres_do_recoup (
   void *cls,
   const struct TALER_ReservePublicKeyP *reserve_pub,
   uint64_t reserve_out_serial_id,
-  const struct TALER_Amount *requested_amount,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   uint64_t known_coin_id,
@@ -4706,7 +4704,6 @@ postgres_do_recoup (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (reserve_pub),
     GNUNET_PQ_query_param_uint64 (&reserve_out_serial_id),
-    TALER_PQ_query_param_amount (requested_amount),
     GNUNET_PQ_query_param_auto_from_type (coin_bks),
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_uint64 (&known_coin_id),
@@ -4743,7 +4740,6 @@ postgres_do_recoup (
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param old_coin_pub public key of the old coin to credit
  * @param rrc_serial row in the refresh_revealed_coins table justifying the recoup-refresh
- * @param requested_amount the amount to be recouped
  * @param coin_bks coin blinding key secret to persist
  * @param coin_pub public key of the coin being recouped
  * @param known_coin_id row of the @a coin_pub in the known_coins table
@@ -4758,7 +4754,6 @@ postgres_do_recoup_refresh (
   void *cls,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   uint64_t rrc_serial,
-  const struct TALER_Amount *requested_amount,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,
   uint64_t known_coin_id,
@@ -4771,7 +4766,6 @@ postgres_do_recoup_refresh (
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_auto_from_type (old_coin_pub),
     GNUNET_PQ_query_param_uint64 (&rrc_serial),
-    TALER_PQ_query_param_amount (requested_amount),
     GNUNET_PQ_query_param_auto_from_type (coin_bks),
     GNUNET_PQ_query_param_auto_from_type (coin_pub),
     GNUNET_PQ_query_param_uint64 (&known_coin_id),

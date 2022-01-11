@@ -726,7 +726,6 @@ TALER_EXCHANGE_verify_coin_history (
       if (GNUNET_OK !=
           TALER_wallet_recoup_verify (h_denom_pub,
                                       &coin_bks,
-                                      &recoup_amount,
                                       coin_pub,
                                       &coin_sig))
       {
@@ -796,7 +795,6 @@ TALER_EXCHANGE_verify_coin_history (
       if (GNUNET_OK !=
           TALER_wallet_recoup_verify (h_denom_pub,
                                       &coin_bks,
-                                      &recoup_amount,
                                       coin_pub,
                                       &coin_sig))
       {

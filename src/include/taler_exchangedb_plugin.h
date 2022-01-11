@@ -2596,7 +2596,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the `struct PostgresClosure` with the plugin-specific state
    * @param reserve_pub public key of the reserve to credit
    * @param reserve_out_serial_id row in the reserves_out table justifying the recoup
-   * @param requested_amount the amount to be recouped
    * @param coin_bks coin blinding key secret to persist
    * @param coin_pub public key of the coin being recouped
    * @param known_coin_id row of the @a coin_pub in the known_coins table
@@ -2611,7 +2610,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_ReservePublicKeyP *reserve_pub,
     uint64_t reserve_out_serial_id,
-    const struct TALER_Amount *requested_amount,
     const union TALER_DenominationBlindingKeyP *coin_bks,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     uint64_t known_coin_id,
@@ -2628,7 +2626,6 @@ struct TALER_EXCHANGEDB_Plugin
    * @param cls the `struct PostgresClosure` with the plugin-specific state
    * @param old_coin_pub public key of the old coin to credit
    * @param rrc_serial row in the refresh_revealed_coins table justifying the recoup-refresh
-   * @param requested_amount the amount to be recouped
    * @param coin_bks coin blinding key secret to persist
    * @param coin_pub public key of the coin being recouped
    * @param known_coin_id row of the @a coin_pub in the known_coins table
@@ -2643,7 +2640,6 @@ struct TALER_EXCHANGEDB_Plugin
     void *cls,
     const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
     uint64_t rrc_serial,
-    const struct TALER_Amount *requested_amount,
     const union TALER_DenominationBlindingKeyP *coin_bks,
     const struct TALER_CoinSpendPublicKeyP *coin_pub,
     uint64_t known_coin_id,

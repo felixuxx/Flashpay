@@ -1507,6 +1507,7 @@ struct TALER_RecoupRequestPS
 {
   /**
    * Purpose is #TALER_SIGNATURE_WALLET_COIN_RECOUP
+   * or #TALER_SIGNATURE_WALLET_COIN_RECOUP_REFRESH.
    */
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
@@ -1519,11 +1520,6 @@ struct TALER_RecoupRequestPS
    * Blinding factor that was used to withdraw the coin.
    */
   union TALER_DenominationBlindingKeyP coin_blind;
-
-  /**
-   * How much of the coin's value will be recouped?
-   */
-  struct TALER_AmountNBO recoup_amount;
 
 };
 

@@ -287,7 +287,6 @@ TALER_EXCHANGE_recoup_refresh (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_PlanchetSecretsP *ps,
-  const struct TALER_Amount *amount,
   TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
   void *recoup_cb_cls)
 {
@@ -308,7 +307,6 @@ TALER_EXCHANGE_recoup_refresh (
                         &h_denom_pub);
   TALER_wallet_recoup_refresh_sign (&h_denom_pub,
                                     &ps->blinding_key,
-                                    amount,
                                     &ps->coin_priv,
                                     &coin_sig);
   recoup_obj = GNUNET_JSON_PACK (
@@ -316,8 +314,6 @@ TALER_EXCHANGE_recoup_refresh (
                                 &h_denom_pub),
     TALER_JSON_pack_denom_sig ("denom_sig",
                                denom_sig),
-    TALER_JSON_pack_amount ("amount",
-                            amount),
     GNUNET_JSON_pack_data_auto ("coin_sig",
                                 &coin_sig),
     GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",

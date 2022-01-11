@@ -1508,8 +1508,6 @@ END $$;
 CREATE OR REPLACE FUNCTION exchange_do_recoup_to_reserve(
   IN in_reserve_pub BYTEA,
   IN in_reserve_out_serial_id INT8,
-  IN in_amount_val INT8,
-  IN in_amount_frac INT4,
   IN in_coin_blind BYTEA,
   IN in_coin_pub BYTEA,
   IN in_known_coin_id INT8,
@@ -1523,76 +1521,71 @@ CREATE OR REPLACE FUNCTION exchange_do_recoup_to_reserve(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  tmp_val INT8; -- previous amount recouped
+  tmp_val INT8; -- amount recouped
 DECLARE
-  tmp_frac INT8; -- previous amount recouped
+  tmp_frac INT8; -- amount recouped
 BEGIN
 -- Shards: SELECT known_coins (by coin_pub)
 --         SELECT recoup (by known_coin_id)
+--         UPDATE known_coins (by coin_pub)
 --         UPDATE reserves (by reserve_pub)
 --         INSERT recoup (by known_coin_id)
 
 out_internal_failure=FALSE;
 
--- Check and update balance of the coin.
-UPDATE known_coins
-  SET
-    remaining_frac=remaining_frac-in_amount_frac
-       + CASE
-         WHEN remaining_frac < in_amount_frac
-         THEN 100000000
-         ELSE 0
-         END,
-    remaining_val=remaining_val-in_amount_val
-       - CASE
-         WHEN remaining_frac < in_amount_frac
-         THEN 1
-         ELSE 0
-         END
-  WHERE coin_pub=in_coin_pub
-    AND ( (remaining_val > in_amount_val) OR
-          ( (remaining_frac >= in_amount_frac) AND
-            (remaining_val >= in_amount_val) ) );
+
+-- Check remaining balance of the coin.
+SELECT
+   remaining_frac
+  ,remaining_val
+ INTO
+   tmp_frac
+  ,tmp_val
+FROM known_coins
+  WHERE coin_pub=in_coin_pub;
 
 IF NOT FOUND
 THEN
-  -- Check if we already recouped this coin before!
-  SELECT
-       amount_val
-      ,amount_frac
-      ,recoup_timestamp
-    INTO
-       tmp_val
-      ,tmp_frac
-      ,out_recoup_timestamp
-    FROM recoup
-    WHERE known_coin_id=in_known_coin_id;
-
-  IF FOUND
-  THEN
-    -- Idempotent request, all OK!
-    out_recoup_ok= (tmp_val = in_amount_val) AND
-                   (tmp_frac = in_amount_frac);
-    RETURN;
-  END IF;
-
+  out_internal_failure=TRUE;
   out_recoup_ok=FALSE;
   RETURN;
 END IF;
+
+IF tmp_val + tmp_frac = 0
+THEN
+  -- Check for idempotency
+  SELECT
+    recoup_timestamp
+  INTO
+    out_recoup_timestamp
+    FROM recoup
+    WHERE known_coin_id=in_known_coin_id;
+
+  out_recoup_ok=FOUND;
+  RETURN;
+END IF;
+
+
+-- Update balance of the coin.
+UPDATE known_coins
+  SET
+     remaining_frac=0
+    ,remaining_val=0
+  WHERE coin_pub=in_coin_pub;
 
 
 -- Credit the reserve and update reserve timers.
 UPDATE reserves
   SET
-    current_balance_frac=current_balance_frac+in_amount_frac
+    current_balance_frac=current_balance_frac+tmp_frac
        - CASE
-         WHEN current_balance_frac+in_amount_frac >= 100000000
+         WHEN current_balance_frac+tmp_frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    current_balance_val=current_balance_val+in_amount_val
+    current_balance_val=current_balance_val+tmp_val
        + CASE
-         WHEN current_balance_frac+in_amount_frac >= 100000000
+         WHEN current_balance_frac+tmp_frac >= 100000000
          THEN 1
          ELSE 0
          END,
@@ -1604,7 +1597,7 @@ UPDATE reserves
 IF NOT FOUND
 THEN
   RAISE NOTICE 'failed to increase reserve balance from recoup';
-  out_recoup_ok=FALSE;
+  out_recoup_ok=TRUE;
   out_internal_failure=TRUE;
   RETURN;
 END IF;
@@ -1623,8 +1616,8 @@ VALUES
   (in_known_coin_id
   ,in_coin_sig
   ,in_coin_blind
-  ,in_amount_val
-  ,in_amount_frac
+  ,tmp_val
+  ,tmp_frac
   ,in_recoup_timestamp
   ,in_reserve_out_serial_id);
 
@@ -1645,8 +1638,6 @@ END $$;
 CREATE OR REPLACE FUNCTION exchange_do_recoup_to_coin(
   IN in_old_coin_pub BYTEA,
   IN in_rrc_serial INT8,
-  IN in_amount_val INT8,
-  IN in_amount_frac INT4,
   IN in_coin_blind BYTEA,
   IN in_coin_pub BYTEA,
   IN in_known_coin_id INT8,
@@ -1658,9 +1649,9 @@ CREATE OR REPLACE FUNCTION exchange_do_recoup_to_coin(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  tmp_val INT8; -- previous amount recouped
+  tmp_val INT8; -- amount recouped
 DECLARE
-  tmp_frac INT8; -- previous amount recouped
+  tmp_frac INT8; -- amount recouped
 BEGIN
 
 -- Shards: UPDATE known_coins (by coin_pub)
@@ -1671,66 +1662,57 @@ BEGIN
 
 out_internal_failure=FALSE;
 
--- Check and update balance of the coin.
-UPDATE known_coins
-  SET
-    remaining_frac=remaining_frac-in_amount_frac
-       + CASE
-         WHEN remaining_frac < in_amount_frac
-         THEN 100000000
-         ELSE 0
-         END,
-    remaining_val=remaining_val-in_amount_val
-       - CASE
-         WHEN remaining_frac < in_amount_frac
-         THEN 1
-         ELSE 0
-         END
-  WHERE coin_pub=in_coin_pub
-    AND ( (remaining_val > in_amount_val) OR
-          ( (remaining_frac >= in_amount_frac) AND
-            (remaining_val >= in_amount_val) ) );
+
+-- Check remaining balance of the coin.
+SELECT
+   remaining_frac
+  ,remaining_val
+ INTO
+   tmp_frac
+  ,tmp_val
+FROM known_coins
+  WHERE coin_pub=in_coin_pub;
 
 IF NOT FOUND
 THEN
-  -- Check if we already recouped this coin before!
-  SELECT
-       amount_val
-      ,amount_frac
-      ,recoup_timestamp
-    INTO
-       tmp_val
-      ,tmp_frac
-      ,out_recoup_timestamp
-    FROM recoup_refresh
-    WHERE known_coin_id=in_known_coin_id;
-
-  IF FOUND
-  THEN
-    -- Idempotent request, all OK!
-    out_recoup_ok= (tmp_val = in_amount_val) AND
-                   (tmp_frac = in_amount_frac);
-    RETURN;
-  END IF;
-
-  -- Insufficient balance, not idempotent.
+  out_internal_failure=TRUE;
   out_recoup_ok=FALSE;
   RETURN;
 END IF;
+
+IF tmp_val + tmp_frac = 0
+THEN
+  -- Check for idempotency
+  SELECT
+      recoup_timestamp
+    INTO
+      out_recoup_timestamp
+    FROM recoup_refresh
+    WHERE known_coin_id=in_known_coin_id;
+  out_recoup_ok=FOUND;
+  RETURN;
+END IF;
+
+-- Update balance of the coin.
+UPDATE known_coins
+  SET
+     remaining_frac=0
+    ,remaining_val=0
+  WHERE coin_pub=in_coin_pub;
 
 
 -- Credit the old coin.
 UPDATE known_coins
   SET
-    remaining_frac=remaining_frac+in_amount_frac
+    remaining_frac=remaining_frac+tmp_frac
        - CASE
-         WHEN remaining_frac+in_amount_frac >= 100000000
+         WHEN remaining_frac+tmp_frac >= 100000000
          THEN 100000000
          ELSE 0
          END,
-    remaining_val=remaining_val+in_amount_val
+    remaining_val=remaining_val+tmp_val
        + CASE
-         WHEN remaining_frac+in_amount_frac >= 100000000
+         WHEN remaining_frac+tmp_frac >= 100000000
          THEN 1
          ELSE 0
          END
@@ -1740,7 +1722,7 @@ UPDATE known_coins
 IF NOT FOUND
 THEN
   RAISE NOTICE 'failed to increase old coin balance from recoup';
-  out_recoup_ok=FALSE;
+  out_recoup_ok=TRUE;
   out_internal_failure=TRUE;
   RETURN;
 END IF;
@@ -1759,8 +1741,8 @@ VALUES
   (in_known_coin_id
   ,in_coin_sig
   ,in_coin_blind
-  ,in_amount_val
-  ,in_amount_frac
+  ,tmp_val
+  ,tmp_frac
   ,in_recoup_timestamp
   ,in_rrc_serial);
 

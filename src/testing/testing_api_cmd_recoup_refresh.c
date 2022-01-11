@@ -309,7 +309,6 @@ recoup_refresh_run (void *cls,
                                           denom_pub,
                                           coin_sig,
                                           &planchet,
-                                          &ps->amount,
                                           recoup_refresh_cb,
                                           ps);
   GNUNET_assert (NULL != ps->ph);
