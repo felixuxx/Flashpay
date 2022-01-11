@@ -49,40 +49,7 @@ struct SetExtensionsContext
 {
   uint32_t num_extensions;
   struct Extension *extensions;
-  struct TALER_MasterSignatureP *extensions_sigs;
 };
-
-
-/**
- * @brief verifies the signature a configuration with the offline master key.
- *
- * @param config configuration of an extension given as JSON object
- * @param master_priv offline master public key of the exchange
- * @param[out] master_sig  signature
- * @return GNUNET_OK on success, GNUNET_SYSERR otherwise
- */
-static enum GNUNET_GenericReturnValue
-config_verify (
-  const json_t *config,
-  const struct TALER_MasterPublicKeyP *master_pub,
-  const struct TALER_MasterSignatureP *master_sig
-  )
-{
-  enum GNUNET_GenericReturnValue ret;
-  struct TALER_ExtensionConfigHash h_config;
-
-  ret = TALER_extension_config_hash (config, &h_config);
-  if (GNUNET_OK != ret)
-  {
-    GNUNET_break (0);
-    return ret;
-  }
-
-  return TALER_exchange_offline_extension_config_hash_verify (h_config,
-                                                              master_pub,
-                                                              master_sig);
-}
-
 
 /**
  * Function implementing database transaction to set the configuration of
@@ -111,14 +78,13 @@ set_extensions (void *cls,
   for (uint32_t i = 0; i<sec->num_extensions; i++)
   {
     struct Extension *ext = &sec->extensions[i];
-    struct TALER_MasterSignatureP *sig = &sec->extensions_sigs[i];
     enum GNUNET_DB_QueryStatus qs;
     char *config;
 
     /* Sanity check.
-     * TODO: replace with general API to retrieve the extension-handler
+     * TODO: This will not work anymore, once we have plugable extensions
      */
-    if (0 > ext->type || TALER_Extension_Max <= ext->type)
+    if (0 > ext->type || TALER_Extension_MaxPredefined <= ext->type)
     {
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
@@ -138,8 +104,7 @@ set_extensions (void *cls,
     qs = TEH_plugin->set_extension_config (
       TEH_plugin->cls,
       TEH_extensions[ext->type]->name,
-      config,
-      sig);
+      config);
 
     if (qs < 0)
     {
@@ -176,19 +141,19 @@ TEH_handler_management_post_extensions (
   struct MHD_Connection *connection,
   const json_t *root)
 {
-  struct SetExtensionsContext sec = {0};
+  MHD_RESULT ret;
   json_t *extensions;
-  json_t *extensions_sigs;
+  struct TALER_MasterSignatureP sig = {0};
   struct GNUNET_JSON_Specification top_spec[] = {
     GNUNET_JSON_spec_json ("extensions",
                            &extensions),
-    GNUNET_JSON_spec_json ("extensions_sigs",
-                           &extensions_sigs),
+    GNUNET_JSON_spec_fixed_auto ("extensions_sig",
+                                 &sig),
     GNUNET_JSON_spec_end ()
   };
-  MHD_RESULT ret;
+  struct SetExtensionsContext sec = {0};
 
-  // Parse the top level json structure
+  /* Parse the top level json structure */
   {
     enum GNUNET_GenericReturnValue res;
 
@@ -201,153 +166,106 @@ TEH_handler_management_post_extensions (
       return MHD_YES; /* failure */
   }
 
-  // Ensure we have two arrays of the same size
-  if (! (json_is_array (extensions) &&
-         json_is_array (extensions_sigs)) )
+  /* Ensure we have an object */
+  if (! json_is_object (extensions))
   {
-    GNUNET_break_op (0);
     GNUNET_JSON_parse_free (top_spec);
     return TALER_MHD_reply_with_error (
       connection,
       MHD_HTTP_BAD_REQUEST,
       TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "array expected for extensions and extensions_sigs");
+      "invalid object");
   }
 
-  sec.num_extensions = json_array_size (extensions_sigs);
-  if (json_array_size (extensions) != sec.num_extensions)
+  /* Verify the signature */
   {
-    GNUNET_break_op (0);
-    GNUNET_JSON_parse_free (top_spec);
-    return TALER_MHD_reply_with_error (
-      connection,
-      MHD_HTTP_BAD_REQUEST,
-      TALER_EC_GENERIC_PARAMETER_MALFORMED,
-      "arrays extensions and extensions_sigs are not of the same size");
+    struct TALER_ExtensionConfigHash h_config;
+    if (GNUNET_OK != TALER_extension_config_hash (extensions, &h_config))
+    {
+      GNUNET_JSON_parse_free (top_spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "invalid object, non-hashable");
+    }
+
+    if (GNUNET_OK != TALER_exchange_offline_extension_config_hash_verify (
+          &h_config,
+          &TEH_master_public_key,
+          &sig))
+    {
+      GNUNET_JSON_parse_free (top_spec);
+      return TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_GENERIC_PARAMETER_MALFORMED,
+        "invalid signuture");
+    }
   }
+
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received /management/extensions\n");
 
+  sec.num_extensions = json_object_size (extensions);
   sec.extensions = GNUNET_new_array (sec.num_extensions,
                                      struct Extension);
-  sec.extensions_sigs = GNUNET_new_array (sec.num_extensions,
-                                          struct TALER_MasterSignatureP);
 
-  // Now parse individual extensions and signatures from those arrays.
-  for (unsigned int i = 0; i<sec.num_extensions; i++)
+  /* Now parse individual extensions and signatures from those objects. */
   {
-    // 1. parse the extension out of the json
-    enum GNUNET_GenericReturnValue res;
     const struct TALER_Extension *extension;
     const char *name;
-    struct GNUNET_JSON_Specification ext_spec[] = {
-      GNUNET_JSON_spec_string ("extension",
-                               &name),
-      GNUNET_JSON_spec_json ("config",
-                             &sec.extensions[i].config),
-      GNUNET_JSON_spec_end ()
-    };
+    json_t *config;
+    int idx = 0;
 
-    res = TALER_MHD_parse_json_array (connection,
-                                      extensions,
-                                      ext_spec,
-                                      i,
-                                      -1);
-    if (GNUNET_SYSERR == res)
-    {
-      ret = MHD_NO; /* hard failure */
-      goto CLEANUP;
-    }
-    if (GNUNET_NO == res)
-    {
-      ret = MHD_YES;
-      goto CLEANUP;
-    }
+    json_object_foreach (extensions, name, config){
 
-    /* 2. Make sure name refers to a supported extension */
-    if (GNUNET_OK != TALER_extension_get_by_name (name,
-                                                  (const struct
-                                                   TALER_Extension **)
-                                                  TEH_extensions,
-                                                  &extension))
-    {
-      ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_BAD_REQUEST,
-        TALER_EC_GENERIC_PARAMETER_MALFORMED,
-        "invalid extension type");
-      goto CLEANUP;
-    }
-
-    sec.extensions[i].type = extension->type;
-
-    /* 3. Extract the signature out of the json array */
-    {
-      enum GNUNET_GenericReturnValue res;
-      struct GNUNET_JSON_Specification sig_spec[] = {
-        GNUNET_JSON_spec_fixed_auto (NULL,
-                                     &sec.extensions_sigs[i]),
-        GNUNET_JSON_spec_end ()
-      };
-
-      res = TALER_MHD_parse_json_array (connection,
-                                        extensions_sigs,
-                                        sig_spec,
-                                        i,
-                                        -1);
-      if (GNUNET_SYSERR == res)
+      /* 1. Make sure name refers to a supported extension */
+      if (GNUNET_OK != TALER_extension_get_by_name (name,
+                                                    (const struct
+                                                     TALER_Extension **)
+                                                    TEH_extensions,
+                                                    &extension))
       {
-        ret = MHD_NO; /* hard failure */
+        ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_BAD_REQUEST,
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          "invalid extension type");
         goto CLEANUP;
       }
-      if (GNUNET_NO == res)
+
+      sec.extensions[idx].config = config;
+      sec.extensions[idx].type = extension->type;
+
+      /* 2. Make sure the config is sound */
+      if (GNUNET_OK != extension->test_config (sec.extensions[idx].config))
       {
-        ret = MHD_YES;
+        ret = TALER_MHD_reply_with_error (
+          connection,
+          MHD_HTTP_BAD_REQUEST,
+          TALER_EC_GENERIC_PARAMETER_MALFORMED,
+          "invalid configuration for extension");
         goto CLEANUP;
+
       }
-    }
 
-    /* 4. Verify the signature of the config */
-    if (GNUNET_OK != config_verify (
-          sec.extensions[i].config,
-          &TEH_master_public_key,
-          &sec.extensions_sigs[i]))
-    {
-      ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_BAD_REQUEST,
-        TALER_EC_GENERIC_PARAMETER_MALFORMED,
-        "invalid signature for extension");
-      goto CLEANUP;
-    }
+      /* We have a validly signed JSON object for the extension.  Increment its
+       * refcount.
+       */
+      json_incref (sec.extensions[idx].config);
+      idx++;
 
-    /* 5. Make sure the config is sound */
-    if (GNUNET_OK != extension->test_config (sec.extensions[i].config))
-    {
-      GNUNET_JSON_parse_free (ext_spec);
-      ret = TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_BAD_REQUEST,
-        TALER_EC_GENERIC_PARAMETER_MALFORMED,
-        "invalid configuration for extension");
-      goto CLEANUP;
+    } /* json_object_foreach */
+  }
 
-    }
-
-    /* We have a validly signed JSON object for the extension.
-     * Increment its refcount and free the parser for the extension.
-     */
-    json_incref (sec.extensions[i].config);
-    GNUNET_JSON_parse_free (ext_spec);
-
-  } /* for-loop */
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received %u extensions\n",
               sec.num_extensions);
 
-  // now run the transaction to persist the configurations
+  /* now run the transaction to persist the configurations */
   {
     enum GNUNET_GenericReturnValue res;
 
@@ -378,7 +296,6 @@ CLEANUP:
     }
   }
   GNUNET_free (sec.extensions);
-  GNUNET_free (sec.extensions_sigs);
   GNUNET_JSON_parse_free (top_spec);
   return ret;
 }

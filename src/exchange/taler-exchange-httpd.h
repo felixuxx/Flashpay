@@ -206,7 +206,9 @@ extern struct GNUNET_CURL_Context *TEH_curl_ctx;
  */
 extern struct TALER_Extension **TEH_extensions;
 
-#define TEH_extension_enabled(ext) (0 <= ext && TALER_Extension_Max > ext && \
+/* TODO: this will not work anymore, once we have plugable extensions */
+#define TEH_extension_enabled(ext) (0 <= ext && TALER_Extension_MaxPredefined > \
+                                    ext && \
                                     NULL != TEH_extensions[ext]->config)
 
 /**

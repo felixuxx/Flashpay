@@ -492,14 +492,14 @@ TALER_exchange_offline_wire_fee_verify (
 
 void
 TALER_exchange_offline_extension_config_hash_sign (
-  const struct TALER_ExtensionConfigHash h_config,
+  const struct TALER_ExtensionConfigHash *h_config,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig)
 {
   struct TALER_MasterExtensionConfigurationPS ec = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_EXTENSION),
     .purpose.size = htonl (sizeof(ec)),
-    .h_config = h_config
+    .h_config = *h_config
   };
   GNUNET_CRYPTO_eddsa_sign (&master_priv->eddsa_priv,
                             &ec,
@@ -509,7 +509,7 @@ TALER_exchange_offline_extension_config_hash_sign (
 
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_extension_config_hash_verify (
-  const struct TALER_ExtensionConfigHash h_config,
+  const struct TALER_ExtensionConfigHash *h_config,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   )
@@ -517,7 +517,7 @@ TALER_exchange_offline_extension_config_hash_verify (
   struct TALER_MasterExtensionConfigurationPS ec = {
     .purpose.purpose = htonl (TALER_SIGNATURE_MASTER_EXTENSION),
     .purpose.size = htonl (sizeof(ec)),
-    .h_config = h_config
+    .h_config = *h_config
   };
 
   return GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_MASTER_EXTENSION,

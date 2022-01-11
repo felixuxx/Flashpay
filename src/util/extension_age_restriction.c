@@ -30,12 +30,12 @@
  * @return Error if extension for age restriction was set, but age groups were
  *         invalid, OK otherwise.
  */
-enum TALER_Extension_ReturnValue
+enum GNUNET_GenericReturnValue
 TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
                     struct TALER_AgeMask *mask)
 {
   char *groups;
-  enum TALER_Extension_ReturnValue ret = TALER_Extension_ERROR_SYS;
+  enum GNUNET_GenericReturnValue ret = GNUNET_SYSERR;
 
   if ((GNUNET_YES != GNUNET_CONFIGURATION_have_value (cfg,
                                                       TALER_EXTENSION_SECTION_AGE_RESTRICTION,
@@ -46,7 +46,7 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
   {
     /* Age restriction is not enabled */
     mask->mask = 0;
-    return TALER_Extension_OK;
+    return GNUNET_OK;
   }
 
   /* Age restriction is enabled, extract age groups */
@@ -56,13 +56,13 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
                                                           &groups))
   {
     /* FIXME: log error? */
-    return TALER_Extension_ERROR_SYS;
+    return GNUNET_SYSERR;
   }
   if (groups == NULL)
   {
     /* No groups defined in config, return default_age_mask */
     mask->mask = TALER_EXTENSION_DEFAULT_AGE_MASK;
-    return TALER_Extension_OK;
+    return GNUNET_OK;
   }
 
   ret = TALER_parse_age_group_string (groups, mask);
@@ -79,59 +79,46 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
  * @param[out] mask Bit representation of the age groups.
  * @return Error if string was invalid, OK otherwise.
  */
-enum TALER_Extension_ReturnValue
+enum GNUNET_GenericReturnValue
 TALER_parse_age_group_string (const char *groups,
                               struct TALER_AgeMask *mask)
 {
-  enum TALER_Extension_ReturnValue ret = TALER_Extension_ERROR_SYS;
-  char *pos;
+
+  const char *pos = groups;
   unsigned int prev = 0;
-  unsigned int val;
-  char dummy;
+  unsigned int val = 0;
+  char c;
 
-  while (1)
+  while (*pos)
   {
-    pos = strchr (groups, ':');
-    if (NULL != pos)
+    c = *pos++;
+    if (':' == c)
     {
-      *pos = 0;
+      if (prev >= val)
+        return GNUNET_SYSERR;
+
+      mask->mask |= 1 << val;
+      prev = val;
+      val = 0;
+      continue;
     }
 
-    if (1 != sscanf (groups,
-                     "%u%c",
-                     &val,
-                     &dummy))
-    {
-      /* Invalid input */
-      mask->mask = 0;
-      ret = TALER_Extension_ERROR_PARSING;
-      break;
-    }
-    else if ((0 >= val) || (32 <= val) || (prev >= val))
-    {
-      /* Invalid value */
-      mask->mask = 0;
-      ret = TALER_Extension_ERROR_INVALID;
-      break;
-    }
+    if ('0'>c || '9'<c)
+      return GNUNET_SYSERR;
 
-    /* Set the corresponding bit in the mask */
-    mask->mask |= 1 << val;
+    val = 10 * val + c - '0';
 
-    if (NULL == pos)
-    {
-      /* We reached the end. Mark zeroth age-group and exit. */
-      mask->mask |= 1;
-      ret = TALER_Extension_OK;
-      break;
-    }
-
-    prev = val;
-    *pos = ':';
-    groups = pos + 1;
+    if (0>=val || 32<=val)
+      return GNUNET_SYSERR;
   }
 
-  return ret;
+  if (0>val || 32<=val || prev>=val)
+    return GNUNET_SYSERR;
+
+  mask->mask |= (1 << val);
+  mask->mask |= 1; // mark zeroth group, too
+
+  return GNUNET_OK;
 }
 
 

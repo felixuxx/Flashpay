@@ -796,7 +796,7 @@ static enum GNUNET_GenericReturnValue
 postgres_gc (void *cls)
 {
   struct PostgresClosure *pg = cls;
-  struct GNUNET_TIME_Absolute now;
+  struct GNUNET_TIME_Absolute now = {0};
   struct GNUNET_PQ_QueryParam params_time[] = {
     GNUNET_PQ_query_param_absolute_time (&now),
     GNUNET_PQ_query_param_end

@@ -831,7 +831,7 @@ decode_keys_json (const json_t *resp_obj,
         return GNUNET_SYSERR;
       }
 
-      if (TALER_Extension_OK !=
+      if (GNUNET_OK !=
           TALER_parse_age_group_string (age_groups,
                                         &key_data->age_mask))
       {

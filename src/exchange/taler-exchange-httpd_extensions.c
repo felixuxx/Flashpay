@@ -116,11 +116,12 @@ static struct TALER_Extension **
 get_known_extensions ()
 {
 
-  struct TALER_Extension **list = GNUNET_new_array (TALER_Extension_Max + 1,
-                                                    struct TALER_Extension *);
+  struct TALER_Extension **list = GNUNET_new_array (
+    TALER_Extension_MaxPredefined + 1,
+    struct TALER_Extension *);
   list[TALER_Extension_AgeRestriction] = &extension_age_restriction;
   list[TALER_Extension_Peer2Peer] = &extension_peer2peer;
-  list[TALER_Extension_Max] = NULL;
+  list[TALER_Extension_MaxPredefined] = NULL;
 
   return list;
 }
@@ -160,7 +161,8 @@ extension_update_event_cb (void *cls,
   }
 
   type = *(enum TALER_Extension_Type *) extra;
-  if (type <0 || type >= TALER_Extension_Max)
+  /* TODO: This check will not work once we have plugable extensions */
+  if (type <0 || type >= TALER_Extension_MaxPredefined)
   {
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,

@@ -4026,15 +4026,13 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param extension_name the name of the extension
-   * @param config JSON object of the configuration as string
-   * @param config_sig signature of the configuration by the offline master key
+   * @param config JSON object of the configuration as string, maybe NULL (== disabled extension)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus
   (*set_extension_config)(void *cls,
                           const char *extension_name,
-                          const char *config,
-                          const struct TALER_MasterSignatureP *config_sig);
+                          const char *config);
 
   /**
    * Function called to retrieve the configuration of an extension
@@ -4042,8 +4040,7 @@ struct TALER_EXCHANGEDB_Plugin
    *
    * @param cls the @e cls of this struct with the plugin-specific state
    * @param extension_name the name of the extension
-   * @param[out] config JSON object of the configuration as string
-   * @param[out] config_sig signature of the configuration by the master key
+   * @param[out] config JSON object of the configuration as string, maybe NULL (== disabled extension)
    * @return transaction status code
    */
   enum GNUNET_DB_QueryStatus

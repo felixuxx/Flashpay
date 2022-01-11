@@ -2745,15 +2745,17 @@ prepare_statements (struct PostgresClosure *pg)
     /* Used in #postgres_set_extension_config */
     GNUNET_PQ_make_prepare (
       "set_extension_config",
-      "INSERT INTO extensions (name, config, config_sig) VALUES ($1, $2, $3) "
+      "INSERT INTO extensions (name, config) VALUES ($1, $2) "
       "ON CONFLICT (name) "
-      "DO UPDATE SET (config, config_sig) = ($2, $3)",
-      3),
+      "DO UPDATE SET config=$2",
+      2),
     /* Used in #postgres_get_extension_config */
     GNUNET_PQ_make_prepare (
       "get_extension_config",
-      "SELECT (config) FROM extensions"
-      " WHERE name=$1;",
+      "SELECT "
+      " config "
+      "FROM extensions"
+      "   WHERE name=$1;",
       1),
     GNUNET_PQ_PREPARED_STATEMENT_END
   };
@@ -11410,20 +11412,20 @@ postgres_delete_shard_locks (void *cls)
  * @param cls the @e cls of this struct with the plugin-specific state
  * @param extension_name the name of the extension
  * @param config JSON object of the configuration as string
- * @param config_sig signature of the configuration by the offline master key
  * @return transaction status code
  */
 enum GNUNET_DB_QueryStatus
 postgres_set_extension_config (void *cls,
                                const char *extension_name,
-                               const char *config,
-                               const struct TALER_MasterSignatureP *config_sig)
+                               const char *config)
 {
   struct PostgresClosure *pg = cls;
+  struct GNUNET_PQ_QueryParam pcfg = (NULL == config || 0 == *config) ?
+                                     GNUNET_PQ_query_param_null () :
+                                     GNUNET_PQ_query_param_string (config);
   struct GNUNET_PQ_QueryParam params[] = {
     GNUNET_PQ_query_param_string (extension_name),
-    GNUNET_PQ_query_param_string (config),
-    GNUNET_PQ_query_param_auto_from_type (config_sig),
+    pcfg,
     GNUNET_PQ_query_param_end
   };
 
@@ -11452,15 +11454,24 @@ postgres_get_extension_config (void *cls,
     GNUNET_PQ_query_param_string (extension_name),
     GNUNET_PQ_query_param_end
   };
+  bool is_null;
   struct GNUNET_PQ_ResultSpec rs[] = {
-    GNUNET_PQ_result_spec_string ("config", config),
+    GNUNET_PQ_result_spec_allow_null (
+      GNUNET_PQ_result_spec_string ("config", config),
+      &is_null),
     GNUNET_PQ_result_spec_end
   };
+  enum GNUNET_DB_QueryStatus qs;
 
-  return GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
-                                                   "get_extension_config",
-                                                   params,
-                                                   rs);
+  qs = GNUNET_PQ_eval_prepared_singleton_select (pg->conn,
+                                                 "get_extension_config",
+                                                 params,
+                                                 rs);
+  if (is_null)
+  {
+    *config = NULL;
+  }
+  return qs;
 }
 
 

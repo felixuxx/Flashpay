@@ -1,19 +1,19 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2015-2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see
-  <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU General Public License along with
+   TALER; see the file COPYING.  If not, see
+   <http://www.gnu.org/licenses/>
+ */
 /**
  * @file lib/exchange_api_management_post_extensions.c
  * @brief functions to handle the settings for extensions (p2p and age restriction)
@@ -125,15 +125,13 @@ struct TALER_EXCHANGE_ManagementPostExtensionsHandle *
 TALER_EXCHANGE_management_post_extensions (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_EXCHANGE_ManagementPostExtensionsData *pkd,
-  TALER_EXCHANGE_ManagementPostKeysCallback cb,
+  struct TALER_EXCHANGE_ManagementPostExtensionsData *ped,
+  TALER_EXCHANGE_ManagementPostExtensionsCallback cb,
   void *cb_cls)
 {
   struct TALER_EXCHANGE_ManagementPostExtensionsHandle *ph;
   CURL *eh = NULL;
   json_t *body = NULL;
-  json_t *extensions = NULL;
-  json_t *extensions_sigs = NULL;
 
   ph = GNUNET_new (struct TALER_EXCHANGE_ManagementPostExtensionsHandle);
   ph->cb = cb;
@@ -149,45 +147,13 @@ TALER_EXCHANGE_management_post_extensions (
     GNUNET_free (ph);
     return NULL;
   }
-  extensions = json_array ();
-  GNUNET_assert (NULL != extensions);
-  for (unsigned int i = 0; i<pkd->num_extensions; i++)
-  {
-    const json_t *config;
-    const struct TALER_Extension *ext = &pkd->extensions[i];
 
-    config = ext->config_to_json (ext);
-
-    GNUNET_assert (NULL != config);
-    GNUNET_assert (0 ==
-                   json_array_append_new (
-                     extensions,
-                     GNUNET_JSON_PACK (
-                       GNUNET_JSON_pack_data_auto ("extension",
-                                                   &ext->name),
-                       GNUNET_JSON_pack_data_auto ("config",
-                                                   config)
-                       )));
-  }
-  extensions_sigs = json_array ();
-  GNUNET_assert (NULL != extensions_sigs);
-  for (unsigned int i = 0; i<pkd->num_extensions; i++)
-  {
-    const struct TALER_MasterSignatureP *sks
-      = &pkd->extensions_sigs[i];
-
-    GNUNET_assert (0 ==
-                   json_array_append_new (
-                     extensions_sigs,
-                     GNUNET_JSON_PACK (
-                       GNUNET_JSON_pack_data_auto ("extension_sig",
-                                                   &sks->eddsa_signature))));
-  }
   body = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_array_steal ("extensions",
-                                  extensions),
-    GNUNET_JSON_pack_array_steal ("extensions_sigs",
-                                  extensions_sigs));
+    GNUNET_JSON_pack_object_steal ("extensions",
+                                   ped->extensions),
+    GNUNET_JSON_pack_data_auto ("extensions_sigs",
+                                &ped->extensions_sig));
+
   eh = curl_easy_init ();
   GNUNET_assert (NULL != eh);
   if (GNUNET_OK !=

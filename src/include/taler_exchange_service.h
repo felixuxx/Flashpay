@@ -2682,12 +2682,14 @@ TALER_EXCHANGE_post_management_keys_cancel (
 
 /**
  * Information needed for a POST /management/extensions operation.
+ *
+ * It represents the interface ExchangeKeysResponse as defined in
+ * https://docs.taler.net/design-documents/006-extensions.html#exchange
  */
 struct TALER_EXCHANGE_ManagementPostExtensionsData
 {
-  struct TALER_Extension *extensions;
-  struct TALER_MasterSignatureP *extensions_sigs;
-  uint32_t num_extensions;
+  json_t *extensions;
+  struct TALER_MasterSignatureP extensions_sig;
 };
 
 /**
@@ -2708,11 +2710,12 @@ struct TALER_EXCHANGE_ManagementPostExtensionsHandle;
 
 
 /**
- * FIXME-oec: Provide correct explanation of this function.
+ * Uploads the configurations of enabled extensions to the exchange, signed
+ * with the master key.
  *
  * @param ctx the context
  * @param url HTTP base URL for the exchange
- * @param pkd signature data to POST
+ * @param ped signature data to POST
  * @param cb function to call with the exchange's result
  * @param cb_cls closure for @a cb
  * @return the request handle; NULL upon error
@@ -2721,7 +2724,7 @@ struct TALER_EXCHANGE_ManagementPostExtensionsHandle *
 TALER_EXCHANGE_management_post_extensions (
   struct GNUNET_CURL_Context *ctx,
   const char *url,
-  const struct TALER_EXCHANGE_ManagementPostExtensionsData *pkd,
+  struct TALER_EXCHANGE_ManagementPostExtensionsData *ped,
   TALER_EXCHANGE_ManagementPostExtensionsCallback cb,
   void *cb_cls);
 

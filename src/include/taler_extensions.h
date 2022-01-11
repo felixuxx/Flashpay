@@ -28,29 +28,22 @@
 
 #define TALER_EXTENSION_SECTION_PREFIX "exchange-extension-"
 
-enum TALER_Extension_ReturnValue
-{
-  TALER_Extension_OK = 0,
-  TALER_Extension_ERROR_PARSING = 1,
-  TALER_Extension_ERROR_INVALID = 2,
-  TALER_Extension_ERROR_SYS = 3
-};
-
 enum TALER_Extension_Type
 {
   TALER_Extension_AgeRestriction = 0,
   TALER_Extension_Peer2Peer = 1,
-  TALER_Extension_Max = 2 // Must be last
+  TALER_Extension_MaxPredefined = 2 // Must be last
 };
 
 /*
- * TODO oec: documentation
+ * Represents the implementation of an extension.
  */
 struct TALER_Extension
 {
   enum TALER_Extension_Type type;
   char *name;
   bool critical;
+  bool enabled;
   void *config;
 
   enum GNUNET_GenericReturnValue (*test_config)(const json_t *config);
@@ -68,7 +61,7 @@ struct TALER_Extension
  * Finds and returns a supported extension by a given name.
  *
  * @param name name of the extension to lookup
- * @param extensions list of TALER_Extensions as haystack, terminated by an entry of type TALER_Extension_Max
+ * @param extensions list of TALER_Extensions as haystack, terminated by a NULL-entry
  * @param[out] ext set to the extension, if found, NULL otherwise
  * @return GNUNET_OK if extension was found, GNUNET_NO otherwise
  */
@@ -109,7 +102,7 @@ TALER_extension_get_by_name (const char *name,
  * @param[out] mask Mask representation for age restriction.
  * @return Error, if age groups were invalid, OK otherwise.
  */
-enum TALER_Extension_ReturnValue
+enum GNUNET_GenericReturnValue
 TALER_parse_age_group_string (const char *groups,
                               struct TALER_AgeMask *mask);
 
@@ -133,7 +126,7 @@ TALER_age_mask_to_string (const struct TALER_AgeMask *mask);
  * @return Error if extension for age restriction was set but age groups were
  *         invalid, OK otherwise.
  */
-enum TALER_Extension_ReturnValue
+enum GNUNET_GenericReturnValue
 TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
                     struct TALER_AgeMask *mask);
 

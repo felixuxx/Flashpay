@@ -2536,7 +2536,7 @@ TALER_merchant_wire_signature_make (
  */
 void
 TALER_exchange_offline_extension_config_hash_sign (
-  const struct TALER_ExtensionConfigHash h_config,
+  const struct TALER_ExtensionConfigHash *h_config,
   const struct TALER_MasterPrivateKeyP *master_priv,
   struct TALER_MasterSignatureP *master_sig);
 
@@ -2552,7 +2552,7 @@ TALER_exchange_offline_extension_config_hash_sign (
  */
 enum GNUNET_GenericReturnValue
 TALER_exchange_offline_extension_config_hash_verify (
-  const struct TALER_ExtensionConfigHash h_config,
+  const struct TALER_ExtensionConfigHash *h_config,
   const struct TALER_MasterPublicKeyP *master_pub,
   const struct TALER_MasterSignatureP *master_sig
   );

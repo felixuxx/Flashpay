@@ -109,6 +109,63 @@ mark_prepare_cb (void *cls,
 
 
 /**
+ * Simple check that config retrieval and setting for extensions work
+ */
+static enum GNUNET_GenericReturnValue
+test_extension_config (void)
+{
+  char *config;
+
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
+          plugin->get_extension_config (plugin->cls,
+                                        "fnord",
+                                        &config));
+
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->set_extension_config (plugin->cls,
+                                        "fnord",
+                                        "bar"));
+
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->get_extension_config (plugin->cls,
+                                        "fnord",
+                                        &config));
+
+  FAILIF (0 != strcmp ("bar", config));
+
+  /* let's do this again! */
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->set_extension_config (plugin->cls,
+                                        "fnord",
+                                        "buzz"));
+
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->get_extension_config (plugin->cls,
+                                        "fnord",
+                                        &config));
+
+  FAILIF (0 != strcmp ("buzz", config));
+
+  /* let's do this again, with NULL */
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->set_extension_config (plugin->cls,
+                                        "fnord",
+                                        NULL));
+
+  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
+          plugin->get_extension_config (plugin->cls,
+                                        "fnord",
+                                        &config));
+
+  FAILIF (NULL != config);
+
+  return GNUNET_OK;
+drop:
+  return GNUNET_SYSERR;
+}
+
+
+/**
  * Test API relating to persisting the wire plugins preparation data.
  *
  * @return #GNUNET_OK on success
@@ -1334,6 +1391,10 @@ run (void *cls)
                                                  0,
                                                  &recoup_cb,
                                                  NULL));
+  /* simple extension check */
+  FAILIF (GNUNET_OK !=
+          test_extension_config ());
+
   RND_BLK (&reserve_pub);
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
@@ -1406,27 +1467,36 @@ run (void *cls)
   {
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinSpendPublicKeyP coin_pub;
+    struct TALER_AgeHash age_hash;
+    struct TALER_AgeHash *p_ah[2] = {NULL, &age_hash};
 
-    RND_BLK (&coin_pub);
-    TALER_blinding_secret_create (&bks);
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_blind (&dkp->pub,
-                                      &bks,
-                                      NULL, /* FIXME-Oec */
-                                      &coin_pub,
-                                      &c_hash,
-                                      &pd.coin_ev,
-                                      &pd.coin_ev_size));
-    TALER_coin_ev_hash (pd.coin_ev,
-                        pd.coin_ev_size,
-                        &cbc.h_coin_envelope);
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_sign_blinded (&cbc.sig,
-                                             &dkp->priv,
-                                             pd.coin_ev,
-                                             pd.coin_ev_size));
-    GNUNET_free (pd.coin_ev);
+    /* Call TALER_denom_blind()/TALER_denom_sign_blinded() twice, once without
+     * age_hash, once with age_hash */
+    RND_BLK (&age_hash);
+    for (size_t i = 0; i < sizeof(p_ah) / sizeof(p_ah[0]); i++)
+    {
+      RND_BLK (&coin_pub);
+      TALER_blinding_secret_create (&bks);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_denom_blind (&dkp->pub,
+                                        &bks,
+                                        p_ah[i],
+                                        &coin_pub,
+                                        &c_hash,
+                                        &pd.coin_ev,
+                                        &pd.coin_ev_size));
+      TALER_coin_ev_hash (pd.coin_ev,
+                          pd.coin_ev_size,
+                          &cbc.h_coin_envelope);
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_denom_sign_blinded (&cbc.sig,
+                                               &dkp->priv,
+                                               pd.coin_ev,
+                                               pd.coin_ev_size));
+      GNUNET_free (pd.coin_ev);
+    }
   }
+
   cbc.reserve_pub = reserve_pub;
   cbc.amount_with_fee = value;
   GNUNET_assert (GNUNET_OK ==

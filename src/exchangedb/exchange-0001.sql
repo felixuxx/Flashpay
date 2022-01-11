@@ -297,17 +297,14 @@ COMMENT ON TABLE signkey_revocations
 CREATE TABLE IF NOT EXISTS extensions
   (extension_id BIGSERIAL UNIQUE
   ,name VARCHAR NOT NULL UNIQUE
-  ,config BYTEA NOT NULL
-  ,config_sig BYTEA NOT NULL
+  ,config BYTEA
   );
 COMMENT ON TABLE extensions
   IS 'Configurations of the activated extensions';
 COMMENT ON COLUMN extensions.name
   IS 'Name of the extension';
 COMMENT ON COLUMN extensions.config
-  IS 'Configuration of the extension as JSON-blob';
-COMMENT ON COLUMN extensions.config
-  IS 'Signature of the configuration of an extension, signed with the master key of the exchange';
+  IS 'Configuration of the extension as JSON-blob, maybe NULL';
 
 
 CREATE TABLE IF NOT EXISTS known_coins

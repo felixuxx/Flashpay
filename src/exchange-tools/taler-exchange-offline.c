@@ -1,18 +1,18 @@
 /*
-  This file is part of TALER
-  Copyright (C) 2020, 2021 Taler Systems SA
+   This file is part of TALER
+   Copyright (C) 2020, 2021 Taler Systems SA
 
-  TALER is free software; you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation; either version 3, or (at your option) any later version.
+   TALER is free software; you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free Software
+   Foundation; either version 3, or (at your option) any later version.
 
-  TALER is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+   TALER is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
-*/
+   You should have received a copy of the GNU General Public License along with
+   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
+ */
 /**
  * @file taler-exchange-offline.c
  * @brief Support for operations involving the exchange's offline master key.
@@ -20,8 +20,10 @@
  */
 #include <platform.h>
 #include <gnunet/gnunet_json_lib.h>
+#include <gnunet/gnunet_util_lib.h>
 #include "taler_json_lib.h"
 #include "taler_exchange_service.h"
+#include "taler_extensions.h"
 
 /**
  * Name of the input for the 'sign' and 'show' operation.
@@ -92,6 +94,11 @@
  * and should be incremented whenever the JSON format of the 'argument' changes.
  */
 #define OP_SETUP "exchange-setup-0"
+
+/**
+ * sign the enabled and configured extensions.
+ */
+#define OP_EXTENSIONS "exchange-extensions-0"
 
 
 /**
@@ -392,6 +399,32 @@ struct UploadKeysRequest
   size_t idx;
 };
 
+/**
+ * Ongoing /management/extensions request.
+ */
+struct UploadExtensionsRequest
+{
+  /**
+   * Kept in a DLL.
+   */
+  struct UploadExtensionsRequest *next;
+
+  /**
+   * Kept in a DLL.
+   */
+  struct UploadExtensionsRequest *prev;
+
+  /**
+   * Operation handle.
+   */
+  struct TALER_EXCHANGE_ManagementPostExtensionsHandle *h;
+
+  /**
+   * Operation index.
+   */
+  size_t idx;
+};
+
 
 /**
  * Next work item to perform.
@@ -483,6 +516,15 @@ static struct UploadKeysRequest *ukr_head;
  */
 static struct UploadKeysRequest *ukr_tail;
 
+/**
+ * Active extensions upload requests.
+ */
+static struct UploadExtensionsRequest *uer_head;
+
+/**
+ * Active extensions upload requests.
+ */
+static struct UploadExtensionsRequest *uer_tail;
 
 /**
  * Shutdown task. Invoked when the application is being terminated.
@@ -615,6 +657,21 @@ do_shutdown (void *cls)
       GNUNET_free (ukr);
     }
   }
+  {
+    struct UploadExtensionsRequest *uer;
+
+    while (NULL != (uer = uer_head))
+    {
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Aborting incomplete extensions signature upload #%u\n",
+                  (unsigned int) uer->idx);
+      TALER_EXCHANGE_post_management_extensions_cancel (uer->h);
+      GNUNET_CONTAINER_DLL_remove (uer_head,
+                                   uer_tail,
+                                   uer);
+      GNUNET_free (uer);
+    }
+  }
   if (NULL != out)
   {
     json_dumpf (out,
@@ -667,6 +724,7 @@ test_shutdown (void)
        (NULL == wdr_head) &&
        (NULL == wfr_head) &&
        (NULL == ukr_head) &&
+       (NULL == uer_head) &&
        (NULL == mgkh) &&
        (NULL == nxt) )
     GNUNET_SCHEDULER_shutdown ();
@@ -1662,6 +1720,136 @@ upload_keys (const char *exchange_url,
 
 
 /**
+ * Function called with information about the post upload extensions operation result.
+ *
+ * @param cls closure with a `struct UploadExtensionsRequest`
+ * @param hr HTTP response data
+ */
+static void
+extensions_cb (
+  void *cls,
+  const struct TALER_EXCHANGE_HttpResponse *hr)
+{
+  struct UploadExtensionsRequest *uer = cls;
+
+  if (MHD_HTTP_NO_CONTENT != hr->http_status)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Upload failed for command %u with status %u: %s (%s)\n",
+                (unsigned int) uer->idx,
+                hr->http_status,
+                TALER_ErrorCode_get_hint (hr->ec),
+                hr->hint);
+    global_ret = EXIT_FAILURE;
+  }
+  GNUNET_CONTAINER_DLL_remove (uer_head,
+                               uer_tail,
+                               uer);
+  GNUNET_free (uer);
+  test_shutdown ();
+}
+
+
+/**
+ * Upload extension configuration
+ *
+ * @param exchange_url base URL of the exchange
+ * @param idx index of the operation we are performing (for logging)
+ * @param value arguments for POSTing configurations of extensions
+ */
+static void
+upload_extensions (const char *exchange_url,
+                   size_t idx,
+                   const json_t *value)
+{
+  json_t *extensions;
+  struct TALER_MasterSignatureP sig;
+  const char *err_name;
+  unsigned int err_line;
+  struct GNUNET_JSON_Specification spec[] = {
+    GNUNET_JSON_spec_json ("extensions",
+                           &extensions),
+    GNUNET_JSON_spec_fixed_auto ("extensions_sig",
+                                 &sig),
+    GNUNET_JSON_spec_end ()
+  };
+
+  /* 1. Parse the signed extensions */
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (value,
+                         spec,
+                         &err_name,
+                         &err_line))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Invalid input to set extensions: %s#%u at %u (skipping)\n",
+                err_name,
+                err_line,
+                (unsigned int) idx);
+    json_dumpf (value,
+                stderr,
+                JSON_INDENT (2));
+    global_ret = EXIT_FAILURE;
+    test_shutdown ();
+    return;
+  }
+
+  /* 2. Verify the signature */
+  {
+    struct TALER_ExtensionConfigHash h_config;
+
+    if (GNUNET_OK != TALER_extension_config_hash (extensions, &h_config))
+    {
+      GNUNET_JSON_parse_free (spec);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "couldn't hash extensions\n");
+      global_ret = EXIT_FAILURE;
+      test_shutdown ();
+      return;
+    }
+
+    if (GNUNET_OK !=
+        load_offline_key (GNUNET_NO))
+      return;
+
+    if (GNUNET_OK != TALER_exchange_offline_extension_config_hash_verify (
+          &h_config,
+          &master_pub,
+          &sig))
+    {
+      GNUNET_JSON_parse_free (spec);
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "invalid signature for extensions\n");
+      global_ret = EXIT_FAILURE;
+      test_shutdown ();
+      return;
+    }
+  }
+
+  /* 3. Upload the extensions */
+  {
+    struct TALER_EXCHANGE_ManagementPostExtensionsData ped = {
+      .extensions = extensions,
+      .extensions_sig = sig,
+    };
+    struct UploadExtensionsRequest *uer = GNUNET_new (struct
+                                                      UploadExtensionsRequest);
+    uer->idx = idx;
+    uer->h = TALER_EXCHANGE_management_post_extensions (
+      ctx,
+      exchange_url,
+      &ped,
+      &extensions_cb,
+      uer);
+    GNUNET_CONTAINER_DLL_insert (uer_head,
+                                 uer_tail,
+                                 uer);
+  }
+  GNUNET_JSON_parse_free (spec);
+}
+
+
+/**
  * Perform uploads based on the JSON in #out.
  *
  * @param exchange_url base URL of the exchange to use
@@ -1701,6 +1889,10 @@ trigger_upload (const char *exchange_url)
     {
       .key = OP_UPLOAD_SIGS,
       .cb = &upload_keys
+    },
+    {
+      .key = OP_EXTENSIONS,
+      .cb = &upload_extensions
     },
     /* array termination */
     {
@@ -3314,6 +3506,297 @@ do_setup (char *const *args)
 }
 
 
+/**
+ * struct extension carries the information about an extension together with
+ * callbacks to parse the configuration and marshal it as JSON
+ */
+struct extension
+{
+  char *name;
+  bool enabled;
+  bool critical;
+  char *version;
+  void *config;
+
+  enum GNUNET_GenericReturnValue (*parse_config)(struct extension *this,
+                                                 const char *section);
+  json_t *(*config_json)(const struct extension *this);
+};
+
+#define EXT_PREFIX "exchange-extension-"
+
+#define DEFAULT_AGE_GROUPS "8:10:12:14:16:18:21"
+
+static enum GNUNET_GenericReturnValue
+age_restriction_parse_config (struct extension *this, const char *section)
+{
+  char *age_groups = NULL;
+  struct TALER_AgeMask mask = {0};
+  enum GNUNET_GenericReturnValue ret;
+
+  ret = GNUNET_CONFIGURATION_get_value_yesno (kcfg, section, "ENABLED");
+
+  this->enabled = (GNUNET_YES == ret);
+
+  if (! this->enabled)
+    return GNUNET_OK;
+
+  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string (kcfg,
+                                                          section,
+                                                          "AGE_GROUPS",
+                                                          &age_groups))
+    age_groups = DEFAULT_AGE_GROUPS;
+
+  if (GNUNET_OK != TALER_parse_age_group_string (age_groups, &mask))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               section,
+                               "AGE_GROUPS");
+    test_shutdown ();
+    global_ret = EXIT_NOTCONFIGURED;
+    return GNUNET_SYSERR;
+  }
+
+  /* Don't look here. We just store the mask in/as the pointer .*/
+  this->config = (void *) (size_t) mask.mask;
+  return GNUNET_OK;
+}
+
+
+static json_t *
+age_restriction_json (const struct extension *this)
+{
+  struct TALER_AgeMask mask;
+  json_t *conf;
+
+  if (! this->enabled)
+    return NULL;
+
+  /* Don't look here. We just restore the mask from/as the pointer .*/
+  mask.mask = (uint32_t) (size_t) this->config;
+
+  conf = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_string (
+      "age_groups",
+      TALER_age_mask_to_string (&mask)));
+
+  return GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_bool ("critical",
+                           this->critical),
+    GNUNET_JSON_pack_string ("version",
+                             this->version),
+    GNUNET_JSON_pack_object_steal ("config", conf));
+}
+
+
+static struct extension extensions[] = {
+  {
+    .name = "age_restriction",
+    .version = "1",
+    .config = 0,
+    .parse_config = &age_restriction_parse_config,
+    .config_json = &age_restriction_json,
+  },
+  /* TODO: add p2p here */
+  {0},
+};
+
+
+static const struct extension*
+get_extension (const char *extension)
+{
+  for (const struct extension *known = extensions;
+       NULL != known->name;
+       known++)
+  {
+    if (0 == strncasecmp (extension,
+                          known->name,
+                          strlen (known->name)))
+      return known;
+  }
+  return NULL;
+}
+
+
+static void
+collect_extensions (void *cls, const char *section)
+{
+  json_t *obj = (json_t *) cls;
+  const char *name;
+  const struct extension *extension;
+
+  if (0 != global_ret)
+    return;
+
+  if (0 != strncasecmp (section,
+                        EXT_PREFIX,
+                        sizeof(EXT_PREFIX) - 1))
+  {
+    return;
+  }
+
+  name = section + sizeof(EXT_PREFIX) - 1;
+
+  if (NULL == (extension = get_extension (name)))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Unsupported extension `%s` (section [%s]).\n", name,
+                section);
+    test_shutdown ();
+    global_ret = EXIT_NOTCONFIGURED;
+    return;
+  }
+
+  if (GNUNET_OK != extension->parse_config ((struct extension *) extension,
+                                            section))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Couldn't parse configuration for extension `%s` (section [%s]).\n",
+                name,
+                section);
+    test_shutdown ();
+    global_ret = EXIT_NOTCONFIGURED;
+    return;
+  }
+
+  json_object_set (obj, name, extension->config_json (extension));
+}
+
+
+/*
+ * Print the current extensions as configured
+ */
+static void
+do_extensions_show (char *const *args)
+{
+
+  json_t *obj = json_object ();
+  json_t *exts = json_object ();
+
+  GNUNET_CONFIGURATION_iterate_sections (kcfg,
+                                         &collect_extensions,
+                                         exts);
+  json_object_set (obj, "extensions", exts);
+
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE, "%s\n",
+              json_dumps (obj, JSON_INDENT (2)));
+
+  json_decref (obj);
+}
+
+
+/*
+ * Sign the configurations of the enabled extensions
+ */
+static void
+do_extensions_sign (char *const *args)
+{
+  json_t *obj = json_object ();
+  json_t *extensions = json_object ();
+  struct TALER_ExtensionConfigHash h_config;
+  struct TALER_MasterSignatureP sig;
+
+  GNUNET_CONFIGURATION_iterate_sections (kcfg,
+                                         &collect_extensions,
+                                         extensions);
+
+  // TODO: check size of extensions?
+  if (GNUNET_OK != TALER_extension_config_hash (extensions, &h_config))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "error while hashing config for extensions\n");
+    return;
+  }
+
+  if (GNUNET_OK !=
+      load_offline_key (GNUNET_NO))
+    return;
+
+
+  TALER_exchange_offline_extension_config_hash_sign (&h_config,
+                                                     &master_priv,
+                                                     &sig);
+  json_object_set (obj, "extensions", extensions);
+  json_object_update (obj,
+                      GNUNET_JSON_PACK (
+                        GNUNET_JSON_pack_data_auto (
+                          "extensions_sig",
+                          &sig)));
+
+  output_operation (OP_EXTENSIONS, obj);
+}
+
+
+static void
+cmd_handler (char *const *args, const struct SubCommand *cmds)
+{
+  nxt = NULL;
+  for (unsigned int i = 0; NULL != cmds[i].name; i++)
+  {
+    if (0 == strcasecmp (cmds[i].name,
+                         args[0]))
+    {
+      cmds[i].cb (&args[1]);
+      return;
+    }
+  }
+
+  if (0 != strcasecmp ("help",
+                       args[0]))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "Unexpected command `%s'\n",
+                args[0]);
+    global_ret = EXIT_INVALIDARGUMENT;
+  }
+
+  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+              "Supported subcommands:\n");
+  for (unsigned int i = 0; NULL != cmds[i].name; i++)
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
+                "- %s: %s\n",
+                cmds[i].name,
+                cmds[i].help);
+  }
+}
+
+
+static void
+do_work_extensions (char *const *args)
+{
+  struct SubCommand cmds[] = {
+    {
+      .name = "show",
+      .help =
+        "show the extensions in the Taler-config and their configured parameters",
+      .cb = &do_extensions_show
+    },
+    {
+      .name = "sign",
+      .help =
+        "sign the configuration of the extensions and publish it with the exchange",
+      .cb = &do_extensions_sign
+    },
+    {
+      .name = NULL,
+    }
+  };
+
+  if (NULL == args[0])
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "You must provide a subcommand: `show` or `sign`.\n");
+    test_shutdown ();
+    global_ret = EXIT_INVALIDARGUMENT;
+    return;
+  }
+
+  cmd_handler (args, cmds);
+  next (args + 1);
+}
+
+
 static void
 work (void *cls)
 {
@@ -3390,6 +3873,11 @@ work (void *cls)
         "upload operation result to exchange (to be performed online!)",
       .cb = &do_upload
     },
+    {
+      .name = "extensions",
+      .help = "subcommands for extension handling",
+      .cb = &do_work_extensions
+    },
     /* list terminator */
     {
       .name = NULL,
@@ -3397,34 +3885,7 @@ work (void *cls)
   };
   (void) cls;
 
-  nxt = NULL;
-  for (unsigned int i = 0; NULL != cmds[i].name; i++)
-  {
-    if (0 == strcasecmp (cmds[i].name,
-                         args[0]))
-    {
-      cmds[i].cb (&args[1]);
-      return;
-    }
-  }
-
-  if (0 != strcasecmp ("help",
-                       args[0]))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "Unexpected command `%s'\n",
-                args[0]);
-    global_ret = EXIT_INVALIDARGUMENT;
-  }
-  GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-              "Supported subcommands:\n");
-  for (unsigned int i = 0; NULL != cmds[i].name; i++)
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE,
-                "- %s: %s\n",
-                cmds[i].name,
-                cmds[i].help);
-  }
+  cmd_handler (args, cmds);
 }
 
 
