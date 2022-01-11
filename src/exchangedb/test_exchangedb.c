@@ -578,12 +578,13 @@ test_melting (void)
     struct TALER_PlanchetSecretsP ps;
 
     RND_BLK (&refresh_session.coin.coin_pub);
-    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA);
+    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA, NULL);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dkp->pub,
                                       &ps.blinding_key,
                                       NULL, /* FIXME-Oec */
                                       &refresh_session.coin.coin_pub,
+                                      NULL, /* Not needed in RSA */
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK ==
@@ -1713,13 +1714,14 @@ run (void *cls)
       GNUNET_free (pd.coin_ev);
     }
     RND_BLK (&coin_pub);
-    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA);
+    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA,NULL);
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dkp->pub,
                                       &ps.blinding_key,
                                       NULL, /* FIXME-Oec */
                                       &coin_pub,
+                                      NULL, /* Not needed in RSA */
                                       &c_hash,
                                       &pd.blinded_planchet));
     TALER_coin_ev_hash (

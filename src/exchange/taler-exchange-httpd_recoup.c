@@ -254,6 +254,7 @@ verify_and_execute_recoup (
                            coin_bks,
                            NULL, /* FIXME-Oec: TALER_AgeHash * */
                            &coin->coin_pub,
+                           NULL, /* in RSA Case not needed*/
                            &c_hash,
                            &blinded_planchet))
     {

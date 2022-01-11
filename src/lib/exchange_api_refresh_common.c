@@ -432,6 +432,7 @@ TALER_EXCHANGE_refresh_prepare (
                                     fc);
       if (GNUNET_OK !=
           TALER_planchet_prepare (&md.fresh_pks[j],
+                                  NULL, /* not needed in RSA*/
                                   fc,
                                   &c_hash,
                                   &pd))

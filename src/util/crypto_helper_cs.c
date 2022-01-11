@@ -175,7 +175,6 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
     = (const struct TALER_CRYPTO_CsKeyAvailableNotification *) hdr;
   const char *buf = (const char *) &kan[1];
   const char *section_name;
-  uint16_t ps;
   uint16_t snl;
 
   if (sizeof (*kan) > ntohs (hdr->size))
@@ -183,9 +182,8 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  ps = ntohs (kan->pub_size);
   snl = ntohs (kan->section_name_len);
-  if (ntohs (hdr->size) != sizeof (*kan) + ps + snl)
+  if (ntohs (hdr->size) != sizeof (*kan) + snl)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -195,7 +193,7 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  section_name = &buf[ps];
+  section_name = buf;
   if ('\0' != section_name[snl - 1])
   {
     GNUNET_break_op (0);
@@ -207,8 +205,8 @@ handle_mt_avail (struct TALER_CRYPTO_CsDenominationHelper *dh,
     struct TALER_CsPubHashP h_cs;
 
     denom_pub.cipher = TALER_DENOMINATION_CS;
+    denom_pub.details.cs_public_key = kan->denom_pub;
 
-    memcpy (&denom_pub.details.cs_public_key, buf, ntohs (kan->pub_size));
     TALER_cs_pub_hash (&denom_pub.details.cs_public_key, &h_cs);
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Received CS key %s (%s)\n",

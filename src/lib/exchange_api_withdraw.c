@@ -74,6 +74,11 @@ struct TALER_EXCHANGE_WithdrawHandle
   struct TALER_PlanchetDetail pd;
 
   /**
+   * Values of the @cipher selected
+   */
+  struct TALER_ExchangeWithdrawValues alg_values;
+
+  /**
    * Denomination key we are withdrawing.
    */
   struct TALER_EXCHANGE_DenomPublicKey pk;
@@ -122,6 +127,7 @@ handle_reserve_withdraw_finished (
                                   blind_sig,
                                   &wh->ps,
                                   &wh->c_hash,
+                                  &wh->alg_values,
                                   &fc))
       {
         wr.hr.http_status = 0;
@@ -180,11 +186,14 @@ withdraw_cs_stage_two_callback (void *cls,
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    wh->ps.cs_r_pub = csrr->details.success.r_pubs;
+    wh->alg_values.cipher = TALER_DENOMINATION_CS;
+    wh->alg_values.details.cs_values.r_pub = csrr->details.success.r_pubs;
     TALER_planchet_blinding_secret_create (&wh->ps,
-                                           wh->pk.key.cipher);
+                                           wh->pk.key.cipher,
+                                           &wh->alg_values);
     if (GNUNET_OK !=
         TALER_planchet_prepare (&wh->pk.key,
+                                &wh->alg_values,
                                 &wh->ps,
                                 &wh->c_hash,
                                 &wh->pd))
@@ -256,6 +265,7 @@ TALER_EXCHANGE_withdraw (
   case TALER_DENOMINATION_RSA:
     if (GNUNET_OK !=
         TALER_planchet_prepare (&pk->key,
+                                NULL, /* not needed in RSA*/
                                 ps,
                                 &wh->c_hash,
                                 &wh->pd))

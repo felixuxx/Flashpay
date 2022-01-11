@@ -190,6 +190,7 @@ check_commitment (struct RevealContext *rctx,
                                         &ps);
           GNUNET_assert (GNUNET_OK ==
                          TALER_planchet_prepare (rcd->dk,
+                                                 NULL, /* not needed in RSA*/
                                                  &ps,
                                                  &c_hash,
                                                  &pd));

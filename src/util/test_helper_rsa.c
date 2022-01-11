@@ -282,6 +282,7 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
 
       GNUNET_assert (GNUNET_YES ==
                      TALER_planchet_prepare (&keys[i].denom_pub,
+                                             NULL, /* not needed in RSA*/
                                              &ps,
                                              &c_hash,
                                              &pd));
@@ -451,6 +452,7 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
 
         GNUNET_assert (GNUNET_YES ==
                        TALER_planchet_prepare (&keys[i].denom_pub,
+                                               NULL, /* not needed in RSA*/
                                                &ps,
                                                &c_hash,
                                                &pd));

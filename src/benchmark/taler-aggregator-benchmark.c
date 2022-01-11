@@ -519,12 +519,13 @@ run (void *cls,
     }
 
 
-    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA);
+    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA, NULL);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&denom_pub,
                                       &ps.blinding_key,
                                       NULL, /* FIXME-oec */
                                       &coin_pub,
+                                      NULL, /* Not needed in RSA */
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK ==

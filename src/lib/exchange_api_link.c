@@ -144,6 +144,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                         &old_coin_pub.eddsa_pub);
     if (GNUNET_OK !=
         TALER_planchet_prepare (&rpub,
+                                NULL, /* not needed in RSA*/
                                 &fc,
                                 &c_hash,
                                 &pd))

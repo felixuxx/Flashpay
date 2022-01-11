@@ -52,14 +52,9 @@ struct TALER_CRYPTO_CsKeyAvailableNotification
   struct GNUNET_MessageHeader header;
 
   /**
-   * Number of bytes of the public key.
-   */
-  uint16_t pub_size;
-
-  /**
    * Number of bytes of the section name.
    */
-  uint16_t section_name_len;
+  uint32_t section_name_len;
 
   /**
    * When does the key become available?
@@ -82,7 +77,10 @@ struct TALER_CRYPTO_CsKeyAvailableNotification
    */
   struct TALER_SecurityModuleSignatureP secm_sig;
 
-  /* followed by @e pub_size bytes of the CS public key */
+  /**
+   * Denomination Public key
+   */
+  struct GNUNET_CRYPTO_CsPublicKey denom_pub;
 
   /* followed by @e section_name bytes of the configuration section name
      of the denomination of this key */

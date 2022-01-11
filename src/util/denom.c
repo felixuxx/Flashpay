@@ -170,8 +170,7 @@ TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
   const union TALER_DenominationBlindingKeyP *bks,
-  const struct TALER_DenominationPublicKey *denom_pub,
-  ...)
+  const struct TALER_DenominationPublicKey *denom_pub)
 {
   if (bdenom_sig->cipher != denom_pub->cipher)
   {
@@ -198,25 +197,35 @@ TALER_denom_sig_unblind (
     return GNUNET_OK;
   case TALER_DENOMINATION_CS:
     {
-      va_list ap;
-      va_start (ap, denom_pub);
-      struct TALER_DenominationCsPublicR *r_pub_blind;
-      r_pub_blind = va_arg (ap, struct TALER_DenominationCsPublicR *);
-
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
+      // struct TALER_DenominationCsPublicR r_pub_blind;
+      // struct GNUNET_CRYPTO_CsC c[2];
+      // struct TALER_CoinPubHash c_hash;
+
+      // TALER_coin_pub_hash (coin_pub,
+      //                      age_commitment_hash,
+      //                      c_hash);
+
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce, bs);
+
+      // GNUNET_CRYPTO_cs_calc_blinded_c (bs,
+      //                                  &alg_values->r_pub,
+      //                                  &denom_pub->details.cs_public_key,
+      //                                  &c_hash->hash,
+      //                                  sizeof(struct GNUNET_HashCode),
+      //                                  c,
+      //                                  r_pub_blind->r_pub);
 
       GNUNET_CRYPTO_cs_unblind (&bdenom_sig->details.blinded_cs_answer.s_scalar,
                                 &bs[bdenom_sig->details.blinded_cs_answer.b],
                                 &denom_sig->details.cs_signature.s_scalar);
 
-      GNUNET_memcpy (&denom_sig->details.cs_signature.r_point,
-                     &r_pub_blind->r_pub[bdenom_sig->details.blinded_cs_answer.b
-                     ],
-                     sizeof(struct GNUNET_CRYPTO_CsRPublic));
+      // GNUNET_memcpy (&denom_sig->details.cs_signature.r_point,
+      //                &r_pub_blind.r_pub[bdenom_sig->details.blinded_cs_answer.b
+      //                ],
+      //                sizeof(struct GNUNET_CRYPTO_CsRPublic));
 
       denom_sig->cipher = TALER_DENOMINATION_CS;
-      va_end (ap);
       return GNUNET_OK;
     }
   default:
@@ -333,9 +342,9 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const union TALER_DenominationBlindingKeyP *coin_bks,
                    const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                   const struct TALER_ExchangeWithdrawValues *alg_values,
                    struct TALER_CoinPubHash *c_hash,
-                   struct TALER_BlindedPlanchet *blinded_planchet,
-                   ...)
+                   struct TALER_BlindedPlanchet *blinded_planchet)
 {
   TALER_coin_pub_hash (coin_pub,
                        age_commitment_hash,
@@ -361,27 +370,19 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
   case TALER_DENOMINATION_CS:
     {
       blinded_planchet->cipher = dk->cipher;
-      va_list ap;
-      va_start (ap, blinded_planchet);
-      struct TALER_DenominationCsPublicR *r_pub;
-      struct TALER_DenominationCsPublicR *blinded_r_pub;
-
-      r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
-      blinded_r_pub = va_arg (ap, struct TALER_DenominationCsPublicR *);
-
+      struct TALER_DenominationCsPublicR blinded_r_pub;
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
+
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&coin_bks->nonce, bs);
 
       GNUNET_CRYPTO_cs_calc_blinded_c (bs,
-                                       r_pub->r_pub,
+                                       alg_values->details.cs_values.r_pub.r_pub,
                                        &dk->details.cs_public_key,
                                        &c_hash->hash,
                                        sizeof(struct GNUNET_HashCode),
                                        blinded_planchet->details.
                                        cs_blinded_planchet.c,
-                                       blinded_r_pub->r_pub);
-
-      va_end (ap);
+                                       blinded_r_pub.r_pub);
       return GNUNET_OK;
     }
   default:

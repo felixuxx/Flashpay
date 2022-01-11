@@ -175,6 +175,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                                 &blind_sig,
                                 fc,
                                 &coin_hash,
+                                NULL, /* Not needed in RSA case */
                                 &coin))
     {
       GNUNET_break_op (0);
@@ -358,6 +359,7 @@ TALER_EXCHANGE_refreshes_reveal (
 
     if (GNUNET_OK !=
         TALER_planchet_prepare (&md->fresh_pks[i],
+                                NULL, /* not needed in RSA*/
                                 &md->fresh_coins[noreveal_index][i],
                                 &c_hash,
                                 &pd))

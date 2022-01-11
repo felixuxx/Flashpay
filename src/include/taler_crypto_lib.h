@@ -923,6 +923,43 @@ struct TALER_TrackTransferDetails
 
 
 /**
+ * @brief Type of CS Values for withdrawal
+ */
+struct TALER_ExchangeWithdrawCsValues
+{
+  /**
+   * (non-blinded) r_pub
+   */
+  struct TALER_DenominationCsPublicR r_pub;
+};
+
+/**
+ * @brief Type of algorithm specific Values for withdrawal
+ */
+struct TALER_ExchangeWithdrawValues
+{
+
+  /**
+   * Type of the signature.
+   */
+  enum TALER_DenominationCipher cipher;
+
+  /**
+   * Details, depending on @e cipher.
+   */
+  union
+  {
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     */
+    struct TALER_ExchangeWithdrawCsValues cs_values;
+
+  } details;
+
+};
+
+
+/**
  * Free internals of @a denom_pub, but not @a denom_pub itself.
  *
  * @param[in] denom_pub key to free
@@ -1003,11 +1040,10 @@ TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
  * @param coin_bks blinding secret to use
  * @param age_commitment_hash hash of the age commitment to be used for the coin. NULL if no commitment is made.
  * @param coin_pub public key of the coin to blind
+ * @param alg_values algorithm specific values to blind the planchet
  * @param[out] c_hash resulting hashed coin
  * @param[out] coin_ev blinded coin to submit
  * @param[out] coin_ev_size number of bytes in @a coin_ev
- * @param ... if CS algorithm, r_pub (TALER_DenominationCsPublicR) is needed to blind and
- * r_pub_blind (TALER_DenominationCsPublicR) is an additional out parameter.
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1015,9 +1051,9 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
                    const union TALER_DenominationBlindingKeyP *coin_bks,
                    const struct TALER_AgeHash *age_commitment_hash,
                    const struct TALER_CoinSpendPublicKeyP *coin_pub,
+                   const struct TALER_ExchangeWithdrawValues *alg_values,
                    struct TALER_CoinPubHash *c_hash,
-                   struct TALER_BlindedPlanchet *blinded_planchet,
-                   ...);
+                   struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**
@@ -1042,7 +1078,7 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
  * @param bdenom_sig the blinded signature
  * @param bks blinding secret to use
  * @param denom_pub public key used for signing
- * @param ... If CS algorithm, r_pub_blind (TALER_DenominationCsPublicR) is an additional param
+ * @param alg_values algorithm specific values
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1050,8 +1086,7 @@ TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
   const union TALER_DenominationBlindingKeyP *bks,
-  const struct TALER_DenominationPublicKey *denom_pub,
-  ...);
+  const struct TALER_DenominationPublicKey *denom_pub);
 
 
 /**
@@ -1249,18 +1284,6 @@ struct TALER_PlanchetSecretsP
    * The blinding key. must be 32 byte
    */
   union TALER_DenominationBlindingKeyP blinding_key;
-
-  // only used in case of CS:
-
-  /**
-   * (non-blinded) r_pub
-   */
-  struct TALER_DenominationCsPublicR cs_r_pub;
-
-  /**
-   * blinded r_pub
-   */
-  struct TALER_DenominationCsPublicR cs_r_pub_blinded;
 };
 
 
@@ -1430,7 +1453,9 @@ TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
  */
 void
 TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
-                                       enum TALER_DenominationCipher cipher);
+                                       enum TALER_DenominationCipher cipher,
+                                       const struct
+                                       TALER_ExchangeWithdrawValues *alg_values);
 
 /**
  * Prepare a planchet for tipping.  Creates and blinds a coin.
@@ -1445,6 +1470,7 @@ TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
  */
 enum GNUNET_GenericReturnValue
 TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
+                        const struct TALER_ExchangeWithdrawValues *alg_values,
                         struct TALER_PlanchetSecretsP *ps,
                         struct TALER_CoinPubHash *c_hash,
                         struct TALER_PlanchetDetail *pd);
@@ -1467,6 +1493,7 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
                         TALER_BlindedDenominationSignature *blind_sig,
                         const struct TALER_PlanchetSecretsP *ps,
                         const struct TALER_CoinPubHash *c_hash,
+                        const struct TALER_ExchangeWithdrawValues *alg_values,
                         struct TALER_FreshCoin *coin);
 
 

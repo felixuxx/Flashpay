@@ -242,15 +242,15 @@ generate_response (struct DenominationKey *dk)
 
   GNUNET_assert (sizeof(dk->denom_pub) < UINT16_MAX);
   GNUNET_assert (nlen < UINT16_MAX);
-  tlen = sizeof(dk->denom_pub) + nlen + sizeof (*an);
+  tlen = nlen + sizeof (*an);
   GNUNET_assert (tlen < UINT16_MAX);
   an = GNUNET_malloc (tlen);
   an->header.size = htons ((uint16_t) tlen);
   an->header.type = htons (TALER_HELPER_CS_MT_AVAIL);
-  an->pub_size = htons ((uint16_t) sizeof(dk->denom_pub));
   an->section_name_len = htons ((uint16_t) nlen);
   an->anchor_time = GNUNET_TIME_timestamp_hton (dk->anchor);
   an->duration_withdraw = GNUNET_TIME_relative_hton (denom->duration_withdraw);
+  an->denom_pub = dk->denom_pub;
   TALER_exchange_secmod_cs_sign (&dk->h_cs,
                                  denom->section,
                                  dk->anchor,
@@ -260,9 +260,6 @@ generate_response (struct DenominationKey *dk)
   an->secm_pub = TES_smpub;
   p = (void *) &an[1];
   memcpy (p,
-          &dk->denom_pub,
-          sizeof(dk->denom_pub));
-  memcpy (p + sizeof(dk->denom_pub),
           denom->section,
           nlen);
   dk->an = an;
@@ -1078,8 +1075,7 @@ update_denominations (void *cls)
 static void
 parse_key (struct Denomination *denom,
            const char *filename,
-           const void *buf,
-           size_t buf_size)
+           const struct GNUNET_CRYPTO_CsPrivateKey *priv)
 {
   char *anchor_s;
   char dummy;
@@ -1117,27 +1113,15 @@ parse_key (struct Denomination *denom,
                 filename);
     return;
   }
-
-  const struct GNUNET_CRYPTO_CsPrivateKey priv
-    = *((struct GNUNET_CRYPTO_CsPrivateKey *) buf);
-//  memcpy (&priv, buf, sizeof(priv));
-
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "privkey %zu\n",
-              sizeof(priv));
-  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-              "privkey %zu\n",
-              buf_size);
-
   {
     struct GNUNET_CRYPTO_CsPublicKey pub;
     struct DenominationKey *dk;
     struct DenominationKey *before;
 
     // TODO: Add check if pubkey is set?
-    GNUNET_CRYPTO_cs_private_key_get_public (&priv, &pub);
+    GNUNET_CRYPTO_cs_private_key_get_public (priv, &pub);
     dk = GNUNET_new (struct DenominationKey);
-    dk->denom_priv = priv;
+    dk->denom_priv = *priv;
     dk->denom = denom;
     dk->anchor = anchor;
     dk->filename = GNUNET_strdup (filename);
@@ -1270,7 +1254,7 @@ import_key (void *cls,
     GNUNET_break (0 == close (fd));
     return GNUNET_OK;
   }
-  if (sbuf.st_size > 16 * 1024)
+  if (sbuf.st_size != sizeof(struct GNUNET_CRYPTO_CsPrivateKey))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "File `%s' too big to be a private key\n",
@@ -1292,8 +1276,7 @@ import_key (void *cls,
   }
   parse_key (denom,
              filename,
-             ptr,
-             (size_t) sbuf.st_size);
+             (const struct GNUNET_CRYPTO_CsPrivateKey *) ptr);
   GNUNET_DISK_file_unmap (map);
   GNUNET_DISK_file_close (fh);
   return GNUNET_OK;

@@ -111,6 +111,7 @@ test_planchets_rsa (void)
   TALER_planchet_setup_random (&ps, TALER_DENOMINATION_RSA);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
+                                         NULL, /* not needed in RSA*/
                                          &ps,
                                          &c_hash,
                                          &pd));
@@ -123,6 +124,7 @@ test_planchets_rsa (void)
                                          &blind_sig,
                                          &ps,
                                          &c_hash,
+                                         NULL, /* Not needed in RSA case */
                                          &coin));
   TALER_blinded_denom_sig_free (&blind_sig);
   TALER_denom_sig_free (&coin.sig);
@@ -148,6 +150,7 @@ test_planchets_cs (void)
   struct TALER_CoinPubHash c_hash;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
+  struct TALER_ExchangeWithdrawValues alg_values;
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dk_priv,
@@ -162,13 +165,15 @@ test_planchets_cs (void)
                  TALER_denom_cs_derive_r_public (
                    &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
                    &dk_priv,
-                   &ps.cs_r_pub));
+                   &alg_values.details.cs_values.r_pub));
   // TODO: eliminate r_pubs parameter
   TALER_planchet_blinding_secret_create (&ps,
-                                         TALER_DENOMINATION_CS);
+                                         TALER_DENOMINATION_CS,
+                                         &alg_values);
 
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
+                                         &alg_values,
                                          &ps,
                                          &c_hash,
                                          &pd));
@@ -183,6 +188,7 @@ test_planchets_cs (void)
                                          &blind_sig,
                                          &ps,
                                          &c_hash,
+                                         &alg_values,
                                          &coin));
 
   TALER_blinded_denom_sig_free (&blind_sig);
