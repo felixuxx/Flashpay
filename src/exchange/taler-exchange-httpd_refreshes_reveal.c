@@ -507,6 +507,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
     enum TALER_ErrorCode ec = TALER_EC_NONE;
+    //FIXME:
 
     rrcs[i].coin_sig
       = TEH_keys_denomination_sign (
@@ -514,6 +515,15 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
           rcds[i].coin_ev,
           rcds[i].coin_ev_size,
           &ec);
+    struct TEH_SignDetails sign_details;
+
+    // FIXME: implement cipher handling
+    sign_details.cipher = TALER_DENOMINATION_RSA;
+    sign_details.details.rsa_message.msg = rctx->rcds[i].coin_ev;
+    sign_details.details.rsa_message.msg_size = rctx->rcds[i].coin_ev_size;
+    rctx->ev_sigs[i] = TEH_keys_denomination_sign (&dk_h[i],
+                                                   &sign_details,
+                                                   &ec);
     if (TALER_EC_NONE != ec)
     {
       GNUNET_break (0);

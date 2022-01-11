@@ -82,6 +82,42 @@ struct TEH_DenominationKey
 };
 
 
+struct TEH_SignDetails_RSA
+{
+  /**
+   * message to sign
+   */
+  const void *msg;
+
+  /**
+   * number of bytes in msg
+   */
+  size_t msg_size;
+};
+
+
+struct TEH_SignDetails
+{
+  /**
+   * Cipher type of the message
+   */
+  enum TALER_DenominationCipher cipher;
+
+  union
+  {
+    /**
+     * If we use #TALER_DENOMINATION_RSA in @a cipher.
+     */
+    struct TEH_SignDetails_RSA rsa_message;
+
+    /**
+     * If we use #TALER_DENOMINATION_CS in @a cipher.
+     */
+    struct TALER_BlindedCsPlanchet cs_message;
+  } details;
+};
+
+
 /**
  * Snapshot of the (coin and signing) keys (including private keys) of
  * the exchange.  There can be multiple instances of this struct, as it is
@@ -179,8 +215,7 @@ TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
  */
 struct TALER_BlindedDenominationSignature
 TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
-                            const void *msg,
-                            size_t msg_size,
+                            const struct TEH_SignDetails *msg,
                             enum TALER_ErrorCode *ec);
 
 

@@ -2410,8 +2410,7 @@ TEH_keys_denomination_by_hash2 (
 
 struct TALER_BlindedDenominationSignature
 TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
-                            const void *msg,
-                            size_t msg_size,
+                            const struct TEH_SignDetails *msg,
                             enum TALER_ErrorCode *ec)
 {
   struct TEH_KeyStateHandle *ksh;
@@ -2434,26 +2433,23 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
     *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
     return none;
   }
+  if (msg->cipher != hd->denom_pub.cipher)
+  {
+    *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
+    return none;
+  }
   switch (hd->denom_pub.cipher)
   {
   case TALER_DENOMINATION_RSA:
     return TALER_CRYPTO_helper_rsa_sign (ksh->helpers->rsadh,
                                          &hd->h_details.h_rsa,
-                                         msg,
-                                         msg_size,
+                                         msg->details.rsa_message.msg,
+                                         msg->details.rsa_message.msg_size,
                                          ec);
   case TALER_DENOMINATION_CS:
-    if (sizeof (struct TALER_BlindedCsPlanchet) != msg_size)
-    {
-      *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-      return none;
-    }
-    struct TALER_BlindedCsPlanchet *blinded_cs_planchet = ((struct
-                                                            TALER_BlindedCsPlanchet
-                                                            *) msg);
     return TALER_CRYPTO_helper_cs_sign (ksh->helpers->csdh,
                                         &hd->h_details.h_cs,
-                                        blinded_cs_planchet,
+                                        &msg->details.cs_message,
                                         ec);
   default:
     *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
