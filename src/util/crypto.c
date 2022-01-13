@@ -352,33 +352,35 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
     }
     break;
   case TALER_DENOMINATION_CS:
-    struct GNUNET_CRYPTO_CsC c[2];
-    struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
-    struct TALER_DenominationCsPublicR r_pub_blind;
-
-    GNUNET_CRYPTO_cs_blinding_secrets_derive (&ps->blinding_key.nonce, bs);
-
-    GNUNET_CRYPTO_cs_calc_blinded_c (bs,
-                                     alg_values->details.cs_values.r_pub.r_pub,
-                                     &dk->details.cs_public_key,
-                                     &c_hash->hash,
-                                     sizeof(struct GNUNET_HashCode),
-                                     c,
-                                     r_pub_blind.r_pub);
-
-    sig.details.cs_signature.r_point
-      = r_pub_blind.r_pub[blind_sig->details.blinded_cs_answer.b];
-
-    if (GNUNET_OK !=
-        TALER_denom_sig_unblind (&sig,
-                                 blind_sig,
-                                 &ps->blinding_key,
-                                 dk))
     {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
+      struct GNUNET_CRYPTO_CsC c[2];
+      struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
+      struct TALER_DenominationCsPublicR r_pub_blind;
+
+      GNUNET_CRYPTO_cs_blinding_secrets_derive (&ps->blinding_key.nonce, bs);
+
+      GNUNET_CRYPTO_cs_calc_blinded_c (bs,
+                                       alg_values->details.cs_values.r_pub.r_pub,
+                                       &dk->details.cs_public_key,
+                                       &c_hash->hash,
+                                       sizeof(struct GNUNET_HashCode),
+                                       c,
+                                       r_pub_blind.r_pub);
+
+      sig.details.cs_signature.r_point
+        = r_pub_blind.r_pub[blind_sig->details.blinded_cs_answer.b];
+
+      if (GNUNET_OK !=
+          TALER_denom_sig_unblind (&sig,
+                                   blind_sig,
+                                   &ps->blinding_key,
+                                   dk))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      break;
     }
-    break;
   default:
     GNUNET_break (0);
     return GNUNET_SYSERR;
