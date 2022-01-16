@@ -505,8 +505,8 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
     return GNUNET_OK;
   case TALER_DENOMINATION_CS:
     GNUNET_CRYPTO_hash (
-      &blinded_planchet->details.cs_blinded_planchet,
-      sizeof (blinded_planchet->details.cs_blinded_planchet),
+      &blinded_planchet->details.cs_blinded_planchet.nonce,
+      sizeof (blinded_planchet->details.cs_blinded_planchet.nonce),
       &bch->hash);
     return GNUNET_OK;
   default:
