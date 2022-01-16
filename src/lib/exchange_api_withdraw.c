@@ -206,14 +206,16 @@ withdraw_cs_stage_two_callback (void *cls,
                                         wh);
     break;
   default:
-    // the CSR request went wrong -> serve response to the callback
-    struct TALER_EXCHANGE_WithdrawResponse wr = {
-      .hr = csrr->hr
-    };
-    wh->cb (wh->cb_cls,
-            &wr);
-    TALER_EXCHANGE_withdraw_cancel (wh);
-    break;
+    {
+      // the CSR request went wrong -> serve response to the callback
+      struct TALER_EXCHANGE_WithdrawResponse wr = {
+        .hr = csrr->hr
+      };
+      wh->cb (wh->cb_cls,
+              &wr);
+      TALER_EXCHANGE_withdraw_cancel (wh);
+      break;
+    }
   }
 }
 
