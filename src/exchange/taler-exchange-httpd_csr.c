@@ -54,16 +54,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
 
   (void) args;
 
-  memset (&nonce,
-          0,
-          sizeof (nonce));
-  memset (&denom_pub_hash,
-          0,
-          sizeof (denom_pub_hash));
-  memset (&r_pub,
-          0,
-          sizeof (r_pub));
-
   // parse input
   {
     enum GNUNET_GenericReturnValue res;
@@ -78,7 +68,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
 
   // check denomination referenced by denom_pub_hash
   {
-    MHD_RESULT mret;
     struct TEH_KeyStateHandle *ksh;
 
     ksh = TEH_keys_get_state ();
@@ -88,7 +77,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING,
                                          NULL);
-      return mret;
     }
     dk = TEH_keys_denomination_by_hash2 (ksh,
                                          &denom_pub_hash,
@@ -134,17 +122,16 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     if (TALER_DENOMINATION_CS != dk->denom_pub.cipher)
     {
       // denomination is valid but not CS
-      return TEH_RESPONSE_reply_unknown_denom_pub_hash (
+      return TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
         rc->connection,
         &denom_pub_hash);
     }
   }
 
   // derive r_pub
-  ec = TALER_EC_NONE;
-  r_pub = TEH_keys_denomination_cs_r_pub (&denom_pub_hash,
-                                          &nonce,
-                                          &ec);
+  ec = TEH_keys_denomination_cs_r_pub (&denom_pub_hash,
+                                       &nonce,
+                                       &r_pub);
   if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);
@@ -154,20 +141,15 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
   }
 
   // send response
-  {
-    MHD_RESULT ret;
-
-    ret = TALER_MHD_REPLY_JSON_PACK (
-      rc->connection,
-      MHD_HTTP_OK,
-      GNUNET_JSON_pack_data_varsize ("r_pub_0",
-                                     &r_pub.r_pub[0],
-                                     sizeof(struct GNUNET_CRYPTO_CsRPublic)),
-      GNUNET_JSON_pack_data_varsize ("r_pub_1",
-                                     &r_pub.r_pub[1],
-                                     sizeof(struct GNUNET_CRYPTO_CsRPublic)));
-    return ret;
-  }
+  return TALER_MHD_REPLY_JSON_PACK (
+    rc->connection,
+    MHD_HTTP_OK,
+    GNUNET_JSON_pack_data_varsize ("r_pub_0",
+                                   &r_pub.r_pub[0],
+                                   sizeof(struct GNUNET_CRYPTO_CsRPublic)),
+    GNUNET_JSON_pack_data_varsize ("r_pub_1",
+                                   &r_pub.r_pub[1],
+                                   sizeof(struct GNUNET_CRYPTO_CsRPublic)));
 }
 
 

@@ -974,7 +974,6 @@ helper_cs_cb (
   GNUNET_assert (TALER_DENOMINATION_CS == denom_pub->cipher);
   TALER_denom_pub_deep_copy (&hd->denom_pub,
                              denom_pub);
-  GNUNET_assert (TALER_DENOMINATION_CS == hd->denom_pub.cipher);
   /* load the age mask for the denomination, if applicable */
   hd->denom_pub.age_mask = load_age_mask (section_name);
   TALER_denom_pub_hash (&hd->denom_pub,
@@ -2458,42 +2457,37 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
 }
 
 
-struct TALER_DenominationCsPublicR
+enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub (const struct
                                 TALER_DenominationHash *h_denom_pub,
                                 const struct TALER_WithdrawNonce *nonce,
-                                enum TALER_ErrorCode *ec)
+                                struct TALER_DenominationCsPublicR *r_pub)
 {
   struct TEH_KeyStateHandle *ksh;
-  struct TALER_DenominationCsPublicR none;
   struct HelperDenomination *hd;
+  enum TALER_ErrorCode r_derive_ec;
 
-  memset (&none,
-          0,
-          sizeof (none));
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
   {
-    *ec = TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
-    return none;
+    return TALER_EC_EXCHANGE_GENERIC_KEYS_MISSING;
   }
   hd = GNUNET_CONTAINER_multihashmap_get (ksh->helpers->denom_keys,
                                           &h_denom_pub->hash);
   if (NULL == hd)
   {
-    *ec = TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
-    return none;
+    return TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN;
   }
   if (TALER_DENOMINATION_CS != hd->denom_pub.cipher)
   {
-    *ec = TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
-    return none;
+    return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
 
-  return TALER_CRYPTO_helper_cs_r_derive (ksh->helpers->csdh,
-                                          &hd->h_details.h_cs,
-                                          nonce,
-                                          ec);
+  *r_pub = TALER_CRYPTO_helper_cs_r_derive (ksh->helpers->csdh,
+                                            &hd->h_details.h_cs,
+                                            nonce,
+                                            &r_derive_ec);
+  return r_derive_ec;
 }
 
 

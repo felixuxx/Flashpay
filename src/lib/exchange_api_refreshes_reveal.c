@@ -138,6 +138,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
     struct TALER_BlindedDenominationSignature blind_sig;
+    struct TALER_ExchangeWithdrawValues alg_values;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_CoinPubHash coin_hash;
     struct GNUNET_JSON_Specification spec[] = {
@@ -170,12 +171,14 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     TALER_coin_pub_hash (&coin_pub,
                          NULL, /* FIXME-Oec */
                          &coin_hash);
+    // TODO: implement cipher handling
+    alg_values.cipher = TALER_DENOMINATION_RSA;
     if (GNUNET_OK !=
         TALER_planchet_to_coin (pk,
                                 &blind_sig,
                                 fc,
                                 &coin_hash,
-                                NULL, /* Not needed in RSA case */
+                                &alg_values,
                                 &coin))
     {
       GNUNET_break_op (0);
@@ -347,6 +350,7 @@ TALER_EXCHANGE_refreshes_reveal (
   for (unsigned int i = 0; i<md->num_fresh_coins; i++)
   {
     struct TALER_DenominationHash denom_hash;
+    struct TALER_ExchangeWithdrawValues alg_values;
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinPubHash c_hash;
 
@@ -357,9 +361,11 @@ TALER_EXCHANGE_refreshes_reveal (
                                           GNUNET_JSON_from_data_auto (
                                             &denom_hash)));
 
+    // TODO: implement cipher handling
+    alg_values.cipher = TALER_DENOMINATION_RSA;
     if (GNUNET_OK !=
         TALER_planchet_prepare (&md->fresh_pks[i],
-                                NULL, /* not needed in RSA*/
+                                &alg_values,
                                 &md->fresh_coins[noreveal_index][i],
                                 &c_hash,
                                 &pd))
@@ -395,7 +401,7 @@ TALER_EXCHANGE_refreshes_reveal (
                        link_sigs,
                        GNUNET_JSON_from_data_auto (&link_sig)));
     }
-    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
   }
 
   /* build array of transfer private keys */

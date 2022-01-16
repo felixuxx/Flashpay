@@ -155,6 +155,47 @@ TALER_JSON_pack_blinded_denom_sig (
 
 
 struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_blinded_planchet (
+  const char *name,
+  const struct TALER_BlindedPlanchet *blinded_planchet)
+{
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  switch (blinded_planchet->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_RSA),
+      GNUNET_JSON_pack_data_varsize (
+        "rsa_blinded_planchet",
+        blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
+        blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size));
+    break;
+  case TALER_DENOMINATION_CS:
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_data_auto (
+        "cs_nonce",
+        &blinded_planchet->details.cs_blinded_planchet.nonce),
+      GNUNET_JSON_pack_data_auto (
+        "cs_blinded_c0",
+        &blinded_planchet->details.cs_blinded_planchet.c[0]),
+      GNUNET_JSON_pack_data_auto (
+        "cs_blinded_c1",
+        &blinded_planchet->details.cs_blinded_planchet.c[1]));
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+  return ps;
+}
+
+
+struct GNUNET_JSON_PackSpec
 TALER_JSON_pack_amount (const char *name,
                         const struct TALER_Amount *amount)
 {

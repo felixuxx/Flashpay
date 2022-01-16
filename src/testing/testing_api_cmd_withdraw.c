@@ -121,6 +121,11 @@ struct WithdrawState
   struct TALER_PlanchetSecretsP ps;
 
   /**
+   * Withdraw Values used for planchet creation
+   */
+  struct TALER_ExchangeWithdrawValues alg_values;
+
+  /**
    * Reserve history entry that corresponds to this operation.
    * Will be of type #TALER_EXCHANGE_RTT_WITHDRAWAL.
    */
@@ -391,9 +396,10 @@ withdraw_run (void *cls,
   ws->reserve_payto_uri
     = TALER_payto_from_reserve (ws->exchange_url,
                                 &ws->reserve_pub);
+  ws->alg_values.cipher = ws->cipher;
   if (NULL == ws->reuse_coin_key_ref)
   {
-    TALER_planchet_setup_random (&ws->ps, ws->cipher);
+    TALER_planchet_setup_random (&ws->ps, &ws->alg_values);
   }
   else
   {
@@ -414,7 +420,7 @@ withdraw_run (void *cls,
                    TALER_TESTING_get_trait_coin_priv (cref,
                                                       index,
                                                       &coin_priv));
-    TALER_planchet_setup_random (&ws->ps, ws->cipher);
+    TALER_planchet_setup_random (&ws->ps, &ws->alg_values);
     ws->ps.coin_priv = *coin_priv;
   }
   if (NULL == ws->pk)
@@ -449,6 +455,7 @@ withdraw_run (void *cls,
                                      ws->pk,
                                      rp,
                                      &ws->ps,
+                                     &ws->alg_values,
                                      &reserve_withdraw_cb,
                                      ws);
   if (NULL == ws->wsh)

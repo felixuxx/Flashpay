@@ -135,6 +135,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   *coin_priv = fc.coin_priv;
   /* verify link_sig */
   {
+    struct TALER_ExchangeWithdrawValues alg_values;
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinPubHash c_hash;
     struct TALER_CoinSpendPublicKeyP old_coin_pub;
@@ -142,9 +143,11 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);
+    // TODO: implement cipher handling
+    alg_values.cipher = TALER_DENOMINATION_RSA;
     if (GNUNET_OK !=
         TALER_planchet_prepare (&rpub,
-                                NULL, /* not needed in RSA*/
+                                &alg_values,
                                 &fc,
                                 &c_hash,
                                 &pd))
@@ -169,12 +172,11 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                   &link_sig))
     {
       GNUNET_break_op (0);
-      GNUNET_free (
-        pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+      TALER_blinded_planchet_free (&pd.blinded_planchet);
       GNUNET_JSON_parse_free (spec);
       return GNUNET_SYSERR;
     }
-    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
   }
 
   /* clean up */

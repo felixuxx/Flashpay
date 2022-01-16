@@ -332,36 +332,8 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                  &wc.collectable.reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &wc.collectable.denom_pub_hash),
-    GNUNET_JSON_spec_end ()
-  };
-  // holds pointer to coin_ev_rsa/cs_spec for freeing
-  struct GNUNET_JSON_Specification *coin_ev_spec = NULL;
-  struct GNUNET_JSON_Specification coin_ev_rsa_spec[] = {
-    GNUNET_JSON_spec_varsize (
-      "coin_ev",
-      (void **) &wc.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
-      &wc.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size),
-    GNUNET_JSON_spec_end ()
-  };
-  json_t *coin_ev_cs_json;
-  struct GNUNET_JSON_Specification coin_ev_cs_json_spec[] = {
-    GNUNET_JSON_spec_json ("coin_ev",
-                           &coin_ev_cs_json),
-    GNUNET_JSON_spec_end ()
-  };
-  struct GNUNET_JSON_Specification coin_ev_cs_spec[] = {
-    GNUNET_JSON_spec_fixed (
-      "nonce",
-      &wc.blinded_planchet.details.cs_blinded_planchet.nonce,
-      sizeof (wc.blinded_planchet.details.cs_blinded_planchet.nonce)),
-    GNUNET_JSON_spec_fixed (
-      "c0",
-      &wc.blinded_planchet.details.cs_blinded_planchet.c[0],
-      sizeof (wc.blinded_planchet.details.cs_blinded_planchet.c[0])),
-    GNUNET_JSON_spec_fixed (
-      "c1",
-      &wc.blinded_planchet.details.cs_blinded_planchet.c[1],
-      sizeof (wc.blinded_planchet.details.cs_blinded_planchet.c[1])),
+    TALER_JSON_spec_blinded_planchet ("coin_ev",
+                                      &wc.blinded_planchet),
     GNUNET_JSON_spec_end ()
   };
   enum TALER_ErrorCode ec;
@@ -492,36 +464,14 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     enum GNUNET_GenericReturnValue res;
     wc.blinded_planchet.cipher = dk->denom_pub.cipher;
     switch (wc.blinded_planchet.cipher)
+
+    if (dk->denom_pub.cipher != wc.blinded_planchet.cipher)
     {
-    case TALER_DENOMINATION_RSA:
-      res = TALER_MHD_parse_json_data (rc->connection,
-                                       root,
-                                       coin_ev_rsa_spec);
-      if (GNUNET_OK != res)
-        return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-      coin_ev_spec = coin_ev_rsa_spec;
-      break;
-    case TALER_DENOMINATION_CS:
-      // coin_ev for CS is nested
-      res = TALER_MHD_parse_json_data (rc->connection,
-                                       root,
-                                       coin_ev_cs_json_spec);
-      if (GNUNET_OK != res)
-        return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-      res = TALER_MHD_parse_json_data (rc->connection,
-                                       coin_ev_cs_json,
-                                       coin_ev_cs_spec);
-      GNUNET_JSON_parse_free (coin_ev_cs_json_spec);
-      if (GNUNET_OK != res)
-        return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
-      coin_ev_spec = coin_ev_cs_spec;
-      break;
-    default:
-      GNUNET_break (0);
+      /* denomination cipher and blinded planchet cipher not the same */
       GNUNET_JSON_parse_free (spec);
       return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
                                          NULL);
     }
   }
@@ -533,8 +483,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                           &dk->meta.fee_withdraw))
     {
       GNUNET_JSON_parse_free (spec);
-      if (NULL != coin_ev_spec)
-        GNUNET_JSON_parse_free (coin_ev_spec);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_INTERNAL_SERVER_ERROR,
                                          TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
@@ -554,27 +502,13 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
   wc.wsrd.h_denomination_pub
     = wc.collectable.denom_pub_hash;
-  switch (wc.blinded_planchet.cipher)
+  if (GNUNET_OK != TALER_coin_ev_hash (&wc.blinded_planchet,
+                                       &wc.wsrd.h_coin_envelope))
   {
-  case TALER_DENOMINATION_RSA:
-    TALER_coin_ev_hash (
-      wc.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
-      wc.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size,
-      &wc.wsrd.h_coin_envelope);
-    break;
-  case TALER_DENOMINATION_CS:
-    TALER_coin_ev_hash (
-      &wc.blinded_planchet.details.cs_blinded_planchet,
-      sizeof (wc.blinded_planchet.details.cs_blinded_planchet),
-      &wc.wsrd.h_coin_envelope);
-    break;
-  default:
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
-    if (NULL != coin_ev_spec)
-      GNUNET_JSON_parse_free (coin_ev_spec);
     return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_FORBIDDEN,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
                                        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
                                        NULL);
   }
@@ -588,8 +522,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     TALER_LOG_WARNING (
       "Client supplied invalid signature for withdraw request\n");
     GNUNET_JSON_parse_free (spec);
-    if (NULL != coin_ev_spec)
-      GNUNET_JSON_parse_free (coin_ev_spec);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_FORBIDDEN,
                                        TALER_EC_EXCHANGE_WITHDRAW_RESERVE_SIGNATURE_INVALID,
@@ -618,8 +550,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     default:
       GNUNET_break (0);
       GNUNET_JSON_parse_free (spec);
-      if (NULL != coin_ev_spec)
-        GNUNET_JSON_parse_free (coin_ev_spec);
       return TALER_MHD_reply_with_error (rc->connection,
                                          MHD_HTTP_FORBIDDEN,
                                          TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
@@ -634,8 +564,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
-    if (NULL != coin_ev_spec)
-      GNUNET_JSON_parse_free (coin_ev_spec);
     return TALER_MHD_reply_with_ec (rc->connection,
                                     ec,
                                     NULL);
@@ -657,16 +585,12 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
          (or we might have done it optimistically above). */
       TALER_blinded_denom_sig_free (&wc.collectable.sig);
       GNUNET_JSON_parse_free (spec);
-      if (NULL != coin_ev_spec)
-        GNUNET_JSON_parse_free (coin_ev_spec);
       return mhd_ret;
     }
   }
 
   /* Clean up and send back final response */
   GNUNET_JSON_parse_free (spec);
-  if (NULL != coin_ev_spec)
-    GNUNET_JSON_parse_free (coin_ev_spec);
 
   {
     MHD_RESULT ret;

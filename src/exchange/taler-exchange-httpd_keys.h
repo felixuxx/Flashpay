@@ -229,11 +229,11 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
  * @return r_pub, the value inside the structure will be NULL on failure,
  *         see @a ec for details about the failure
  */
-struct TALER_DenominationCsPublicR
+enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub (const struct
                                 TALER_DenominationHash *h_denom_pub,
                                 const struct TALER_WithdrawNonce *nonce,
-                                enum TALER_ErrorCode *ec);
+                                struct TALER_DenominationCsPublicR *r_pub);
 
 
 /**

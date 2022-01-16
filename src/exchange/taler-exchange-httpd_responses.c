@@ -491,6 +491,53 @@ TEH_RESPONSE_reply_expired_denom_pub_hash (
 }
 
 
+MHD_RESULT
+TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
+  struct MHD_Connection *connection,
+  const struct TALER_DenominationHash *dph)
+{
+  struct TALER_ExchangePublicKeyP epub;
+  struct TALER_ExchangeSignatureP esig;
+  struct GNUNET_TIME_Timestamp now;
+  enum TALER_ErrorCode ec;
+
+  now = GNUNET_TIME_timestamp_get ();
+  {
+    struct TALER_DenominationUnknownAffirmationPS dua = {
+      .purpose.size = htonl (sizeof (dua)),
+      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN),
+      .timestamp = GNUNET_TIME_timestamp_hton (now),
+      .h_denom_pub = *dph,
+    };
+
+    ec = TEH_keys_exchange_sign (&dua,
+                                 &epub,
+                                 &esig);
+  }
+  if (TALER_EC_NONE != ec)
+  {
+    GNUNET_break (0);
+    return TALER_MHD_reply_with_error (connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       ec,
+                                       NULL);
+  }
+  return TALER_MHD_REPLY_JSON_PACK (
+    connection,
+    MHD_HTTP_NOT_FOUND,
+    TALER_JSON_pack_ec (
+      TALER_EC_EXCHANGE_GENERIC_INVALID_DENOMINATION_CIPHER_FOR_OPERATION),
+    GNUNET_JSON_pack_timestamp ("timestamp",
+                                now),
+    GNUNET_JSON_pack_data_auto ("exchange_pub",
+                                &epub),
+    GNUNET_JSON_pack_data_auto ("exchange_sig",
+                                &esig),
+    GNUNET_JSON_pack_data_auto ("h_denom_pub",
+                                dph));
+}
+
+
 /**
  * Send proof that a request is invalid to client because of
  * insufficient funds.  This function will create a message with all

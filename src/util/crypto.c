@@ -209,11 +209,10 @@ TALER_cs_withdraw_nonce_derive (const struct
 
 void
 TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
-                                       enum TALER_DenominationCipher cipher,
                                        const struct
                                        TALER_ExchangeWithdrawValues *alg_values)
 {
-  switch (cipher)
+  switch (alg_values->cipher)
   {
   case TALER_DENOMINATION_INVALID:
     GNUNET_break (0);
@@ -244,18 +243,20 @@ TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
  */
 void
 TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
-                             enum TALER_DenominationCipher cipher)
+                             const struct
+                             TALER_ExchangeWithdrawValues *alg_values)
 {
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps->coin_priv,
                               sizeof (struct TALER_CoinSpendPrivateKeyP));
-  switch (cipher)
+  switch (alg_values->cipher)
   {
   case TALER_DENOMINATION_INVALID:
     GNUNET_break (0);
     return;
   case TALER_DENOMINATION_RSA:
-    TALER_planchet_blinding_secret_create (ps, TALER_DENOMINATION_RSA, NULL);
+    TALER_planchet_blinding_secret_create (ps,
+                                           alg_values);
     return;
   case TALER_DENOMINATION_CS:
     // Will be set in a later stage for Clause Blind Schnorr Scheme
@@ -275,6 +276,8 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 {
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
+  GNUNET_assert (alg_values->cipher == dk->cipher);
+
   GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
 
@@ -286,7 +289,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                            &ps->blinding_key,
                            NULL, /* FIXME-Oec */
                            &coin_pub,
-                           NULL, /* RSA has no alg Values */
+                           alg_values,
                            c_hash,
                            &pd->blinded_planchet))
     {
@@ -317,6 +320,23 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
   TALER_denom_pub_hash (dk,
                         &pd->denom_pub_hash);
   return GNUNET_OK;
+}
+
+
+void
+TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet)
+{
+  switch (blinded_planchet->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    GNUNET_free (blinded_planchet->details.rsa_blinded_planchet.blinded_msg);
+    break;
+  case TALER_DENOMINATION_CS:
+    // nothing to do for CS
+    break;
+  default:
+    GNUNET_break (0);
+  }
 }
 
 
@@ -471,14 +491,28 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 }
 
 
-void
-TALER_coin_ev_hash (const void *coin_ev,
-                    size_t coin_ev_size,
+enum GNUNET_GenericReturnValue
+TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                     struct TALER_BlindedCoinHash *bch)
 {
-  GNUNET_CRYPTO_hash (coin_ev,
-                      coin_ev_size,
-                      &bch->hash);
+  switch (blinded_planchet->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    GNUNET_CRYPTO_hash (
+      blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
+      blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size,
+      &bch->hash);
+    return GNUNET_OK;
+  case TALER_DENOMINATION_CS:
+    GNUNET_CRYPTO_hash (
+      &blinded_planchet->details.cs_blinded_planchet,
+      sizeof (blinded_planchet->details.cs_blinded_planchet),
+      &bch->hash);
+    return GNUNET_OK;
+  default:
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
 }
 
 

@@ -186,10 +186,8 @@ withdraw_cs_stage_two_callback (void *cls,
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    wh->alg_values.cipher = TALER_DENOMINATION_CS;
     wh->alg_values.details.cs_values.r_pub = csrr->details.success.r_pubs;
     TALER_planchet_blinding_secret_create (&wh->ps,
-                                           wh->pk.key.cipher,
                                            &wh->alg_values);
     if (GNUNET_OK !=
         TALER_planchet_prepare (&wh->pk.key,
@@ -244,6 +242,7 @@ TALER_EXCHANGE_withdraw (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_PlanchetSecretsP *ps,
+  struct TALER_ExchangeWithdrawValues *alg_values,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls)
 {
@@ -255,6 +254,7 @@ TALER_EXCHANGE_withdraw (
   wh->cb_cls = res_cb_cls;
   wh->reserve_priv = reserve_priv;
   wh->ps = *ps;
+  wh->alg_values = *alg_values,
   wh->pk = *pk;
   wh->csrh = NULL;
 
@@ -265,7 +265,7 @@ TALER_EXCHANGE_withdraw (
   case TALER_DENOMINATION_RSA:
     if (GNUNET_OK !=
         TALER_planchet_prepare (&pk->key,
-                                NULL, /* not needed in RSA*/
+                                &wh->alg_values,
                                 ps,
                                 &wh->c_hash,
                                 &wh->pd))
@@ -279,9 +279,7 @@ TALER_EXCHANGE_withdraw (
                                         wh->reserve_priv,
                                         &handle_reserve_withdraw_finished,
                                         wh);
-    GNUNET_free (
-      wh->pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
-    return wh;
+    break;
   case TALER_DENOMINATION_CS:
     TALER_cs_withdraw_nonce_derive (&ps->coin_priv,
                                     &wh->pd.blinded_planchet.details.
@@ -292,12 +290,14 @@ TALER_EXCHANGE_withdraw (
                                    cs_blinded_planchet.nonce,
                                    &withdraw_cs_stage_two_callback,
                                    wh);
-    return wh;
+    break;
   default:
     GNUNET_break (0);
     GNUNET_free (wh);
     return NULL;
   }
+  TALER_blinded_planchet_free (&wh->pd.blinded_planchet);
+  return wh;
 }
 
 

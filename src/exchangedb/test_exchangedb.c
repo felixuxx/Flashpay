@@ -576,22 +576,25 @@ test_melting (void)
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
     struct TALER_PlanchetSecretsP ps;
+    struct TALER_ExchangeWithdrawValues alg_values;
 
     RND_BLK (&refresh_session.coin.coin_pub);
-    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA, NULL);
+    alg_values.cipher = TALER_DENOMINATION_RSA;
+    TALER_planchet_blinding_secret_create (&ps,
+                                           &alg_values);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dkp->pub,
                                       &ps.blinding_key,
                                       NULL, /* FIXME-Oec */
                                       &refresh_session.coin.coin_pub,
-                                      NULL, /* Not needed in RSA */
+                                      &alg_values,
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sign_blinded (&bds,
                                              &dkp->priv,
                                              &pd.blinded_planchet));
-    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sig_unblind (&refresh_session.coin.denom_sig,
                                             &bds,
@@ -1713,27 +1716,28 @@ run (void *cls)
                                                pd.coin_ev_size));
       GNUNET_free (pd.coin_ev);
     }
+    struct TALER_ExchangeWithdrawValues alg_values;
+
     RND_BLK (&coin_pub);
-    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA,NULL);
+    alg_values.cipher = TALER_DENOMINATION_RSA;
+    TALER_planchet_blinding_secret_create (&ps,
+                                           &alg_values);
 
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dkp->pub,
                                       &ps.blinding_key,
                                       NULL, /* FIXME-Oec */
                                       &coin_pub,
-                                      NULL, /* Not needed in RSA */
+                                      &alg_values,
                                       &c_hash,
                                       &pd.blinded_planchet));
-    TALER_coin_ev_hash (
-      pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
-      pd.blinded_planchet.details.rsa_blinded_planchet.
-      blinded_msg_size,
-      &cbc.h_coin_envelope);
+    GNUNET_assert (GNUNET_OK == TALER_coin_ev_hash (&pd.blinded_planchet,
+                                                    &cbc.h_coin_envelope));
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sign_blinded (&cbc.sig,
                                              &dkp->priv,
                                              &pd.blinded_planchet));
-    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
   }
 
   cbc.reserve_pub = reserve_pub;

@@ -1230,13 +1230,12 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
 /**
  * Compute the hash of a blinded coin.
  *
- * @param coin_ev blinded coin
- * @param coin_ev_size number of bytes in @a coin_ev
+ * @param blinded_planchet blinded planchet
  * @param[out] bch where to write the hash
+ * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occured
  */
-void
-TALER_coin_ev_hash (const void *coin_ev,
-                    size_t coin_ev_size,
+enum GNUNET_GenericReturnValue
+TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                     struct TALER_BlindedCoinHash *bch);
 
 
@@ -1441,19 +1440,21 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
  * Setup information for a fresh coin.
  *
  * @param[out] ps value to initialize
+ * @oaram alg_values WitdrawValues containing cipher
  */
 void
 TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
-                             enum TALER_DenominationCipher cipher);
+                             const struct
+                             TALER_ExchangeWithdrawValues *alg_values);
 
 /**
  * Create a blinding secret @a bs for @a cipher.
  *
  * @param[out] ps planchet with blinding secret to initialize
+ * @param alg_values withdraw values containing cipher and additional CS values
  */
 void
 TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
-                                       enum TALER_DenominationCipher cipher,
                                        const struct
                                        TALER_ExchangeWithdrawValues *alg_values);
 
@@ -1474,6 +1475,16 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         struct TALER_PlanchetSecretsP *ps,
                         struct TALER_CoinPubHash *c_hash,
                         struct TALER_PlanchetDetail *pd);
+
+
+/**
+ * Frees blinded message inside blinded planchet depending on blinded_planchet->cipher
+ * Does not free the @a blinded_planchet itself!
+ *
+ * @param blinded_planchet blnded planchet
+ */
+void
+TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**

@@ -202,21 +202,24 @@ insert_deposit_run (void *cls,
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
     struct TALER_PlanchetSecretsP ps;
+    struct TALER_ExchangeWithdrawValues alg_values;
 
-    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA, NULL);
+    alg_values.cipher = TALER_DENOMINATION_RSA;
+    TALER_planchet_blinding_secret_create (&ps,
+                                           &alg_values);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&dpk,
                                       &ps.blinding_key,
                                       NULL, /* FIXME-Oec */
                                       &deposit.coin.coin_pub,
-                                      NULL, /* Not needed in RSA */
+                                      &alg_values,
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sign_blinded (&bds,
                                              &denom_priv,
                                              &pd.blinded_planchet));
-    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sig_unblind (&deposit.coin.denom_sig,
                                             &bds,

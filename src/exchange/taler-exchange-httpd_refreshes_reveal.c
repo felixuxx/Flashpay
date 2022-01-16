@@ -181,6 +181,7 @@ check_commitment (struct RevealContext *rctx,
         {
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
           struct TALER_PlanchetSecretsP ps;
+          struct TALER_ExchangeWithdrawValues alg_values;
           struct TALER_PlanchetDetail pd;
           struct TALER_CoinPubHash c_hash;
 
@@ -188,9 +189,11 @@ check_commitment (struct RevealContext *rctx,
           TALER_planchet_setup_refresh (&ts,
                                         j,
                                         &ps);
+          // TODO: implement cipher handling
+          alg_values.cipher = TALER_DENOMINATION_RSA;
           GNUNET_assert (GNUNET_OK ==
                          TALER_planchet_prepare (rcd->dk,
-                                                 NULL, /* not needed in RSA*/
+                                                 &alg_values,
                                                  &ps,
                                                  &c_hash,
                                                  &pd));

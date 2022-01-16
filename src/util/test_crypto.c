@@ -87,6 +87,7 @@ test_planchets_rsa (void)
   struct TALER_PlanchetSecretsP ps;
   struct TALER_DenominationPrivateKey dk_priv;
   struct TALER_DenominationPublicKey dk_pub;
+  struct TALER_ExchangeWithdrawValues alg_values;
   struct TALER_PlanchetDetail pd;
   struct TALER_BlindedDenominationSignature blind_sig;
   struct TALER_FreshCoin coin;
@@ -108,10 +109,12 @@ test_planchets_rsa (void)
                                           &dk_pub,
                                           TALER_DENOMINATION_RSA,
                                           1024));
-  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_RSA);
+  alg_values.cipher = TALER_DENOMINATION_RSA;
+  TALER_planchet_setup_random (&ps,
+                               &alg_values);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
-                                         NULL, /* not needed in RSA*/
+                                         &alg_values,
                                          &ps,
                                          &c_hash,
                                          &pd));
@@ -124,7 +127,7 @@ test_planchets_rsa (void)
                                          &blind_sig,
                                          &ps,
                                          &c_hash,
-                                         NULL, /* Not needed in RSA case */
+                                         &alg_values,
                                          &coin));
   TALER_blinded_denom_sig_free (&blind_sig);
   TALER_denom_sig_free (&coin.sig);
@@ -157,7 +160,9 @@ test_planchets_cs (void)
                                           &dk_pub,
                                           TALER_DENOMINATION_CS));
 
-  TALER_planchet_setup_random (&ps, TALER_DENOMINATION_CS);
+  alg_values.cipher = TALER_DENOMINATION_CS;
+  TALER_planchet_setup_random (&ps,
+                               &alg_values);
   TALER_cs_withdraw_nonce_derive (&ps.coin_priv,
                                   &pd.blinded_planchet.details.
                                   cs_blinded_planchet.nonce);
@@ -166,9 +171,7 @@ test_planchets_cs (void)
                    &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
                    &dk_priv,
                    &alg_values.details.cs_values.r_pub));
-  // TODO: eliminate r_pubs parameter
   TALER_planchet_blinding_secret_create (&ps,
-                                         TALER_DENOMINATION_CS,
                                          &alg_values);
 
   GNUNET_assert (GNUNET_OK ==

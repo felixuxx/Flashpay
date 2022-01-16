@@ -491,6 +491,7 @@ run (void *cls,
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
     struct TALER_PlanchetSecretsP ps;
+    struct TALER_ExchangeWithdrawValues alg_values;
     struct TALER_CoinSpendPublicKeyP coin_pub;
 
     RANDOMIZE (&coin_pub);
@@ -519,20 +520,21 @@ run (void *cls,
     }
 
 
-    TALER_planchet_blinding_secret_create (&ps, TALER_DENOMINATION_RSA, NULL);
+    TALER_planchet_blinding_secret_create (&ps,
+                                           &alg_values);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_blind (&denom_pub,
                                       &ps.blinding_key,
                                       NULL, /* FIXME-oec */
                                       &coin_pub,
-                                      NULL, /* Not needed in RSA */
+                                      &alg_values,
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sign_blinded (&bds,
                                              &pk,
                                              &pd.blinded_planchet));
-    GNUNET_free (pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    TALER_blinded_planchet_free (&pd.blinded_planchet);
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sig_unblind (&denom_sig,
                                             &bds,

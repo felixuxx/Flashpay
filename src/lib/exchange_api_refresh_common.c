@@ -424,15 +424,18 @@ TALER_EXCHANGE_refresh_prepare (
     {
       struct TALER_PlanchetSecretsP *fc = &md.fresh_coins[i][j];
       struct TALER_RefreshCoinData *rcd = &rce[i].new_coins[j];
+      struct TALER_ExchangeWithdrawValues alg_values;
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHash c_hash;
 
       TALER_planchet_setup_refresh (&trans_sec[i],
                                     j,
                                     fc);
+      // TODO: implement cipher handling
+      alg_values.cipher = TALER_DENOMINATION_RSA;
       if (GNUNET_OK !=
           TALER_planchet_prepare (&md.fresh_pks[j],
-                                  NULL, /* not needed in RSA*/
+                                  &alg_values,
                                   fc,
                                   &c_hash,
                                   &pd))

@@ -265,12 +265,16 @@ verify_and_execute_recoup (
         TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
         NULL);
     }
-    TALER_coin_ev_hash (
-      blinded_planchet.details.rsa_blinded_planchet.blinded_msg,
-      blinded_planchet.details.rsa_blinded_planchet.
-      blinded_msg_size,
-      &pc.h_blind);
-    GNUNET_free (blinded_planchet.details.rsa_blinded_planchet.blinded_msg);
+    if (GNUNET_OK != TALER_coin_ev_hash (&blinded_planchet,
+                                         &pc.h_blind))
+    {
+      GNUNET_break (0);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+                                         NULL);
+    }
+    TALER_blinded_planchet_free (&blinded_planchet);
   }
 
   pc.coin_sig = coin_sig;

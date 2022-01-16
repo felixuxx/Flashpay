@@ -360,9 +360,10 @@ TEH_handler_deposit (struct MHD_Connection *connection,
     {
       /* denomination cipher and denomination signature cipher not the same */
       GNUNET_JSON_parse_free (spec);
-      return TEH_RESPONSE_reply_unknown_denom_pub_hash (
-        connection,
-        &deposit.coin.denom_pub_hash);
+      return TALER_MHD_reply_with_error (connection,
+                                         MHD_HTTP_BAD_REQUEST,
+                                         TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
+                                         NULL);
     }
 
     deposit.deposit_fee = dk->meta.fee_deposit;

@@ -119,6 +119,20 @@ TALER_JSON_pack_blinded_denom_sig (
 
 /**
  * Generate packer instruction for a JSON field of type
+ * blinded planchet.
+ *
+ * @param name name of the field to add to the object
+ * @param blinded_planchet blinded planchet
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_blinded_planchet (
+  const char *name,
+  const struct TALER_BlindedPlanchet *blinded_planchet);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
  * amount.
  *
  * @param name name of the field to add to the object
@@ -258,6 +272,19 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_denom_sig (
   const char *field,
   struct TALER_BlindedDenominationSignature *sig);
+
+
+/**
+ * Generate line in parser specification for a
+ * blinded planchet.
+ *
+ * @param field name of the field
+ * @param[out] blinded_planchet the blinded planchet to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_blinded_planchet (const char *field,
+                                  struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**
