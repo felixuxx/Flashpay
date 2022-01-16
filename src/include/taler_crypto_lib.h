@@ -44,6 +44,26 @@ struct TALER_SecurityModulePublicKeyP
   struct GNUNET_CRYPTO_EddsaPublicKey eddsa_pub;
 };
 
+/**
+ * @brief Set of the public keys of the security modules
+ */
+struct TALER_SecurityModulePublicKeySetP
+{
+  /**
+   * Public key of the RSA security module
+   */
+  struct TALER_SecurityModulePublicKeyP rsa;
+
+  /**
+   * Public key of the CS security module
+   */
+  struct TALER_SecurityModulePublicKeyP cs;
+
+  /**
+   * Public key of the eddsa security module
+   */
+  struct TALER_SecurityModulePublicKeyP eddsa;
+};
 
 /**
  * @brief Type of private keys for Taler security modules (software or hardware).
