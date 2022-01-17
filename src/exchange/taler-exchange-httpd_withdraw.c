@@ -503,7 +503,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   wc.wsrd.h_denomination_pub
     = wc.collectable.denom_pub_hash;
   if (GNUNET_OK != TALER_coin_ev_hash (&wc.blinded_planchet,
-                                       &dk->denom_pub,
+                                       &wc.collectable.denom_pub_hash,
                                        &wc.wsrd.h_coin_envelope))
   {
     GNUNET_break (0);

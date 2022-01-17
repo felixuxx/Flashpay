@@ -266,7 +266,7 @@ verify_and_execute_recoup (
         NULL);
     }
     if (GNUNET_OK != TALER_coin_ev_hash (&blinded_planchet,
-                                         &dk->denom_pub,
+                                         &coin->denom_pub_hash,
                                          &pc.h_blind))
     {
       GNUNET_break (0);

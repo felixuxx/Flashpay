@@ -1732,7 +1732,7 @@ run (void *cls)
                                       &c_hash,
                                       &pd.blinded_planchet));
     GNUNET_assert (GNUNET_OK == TALER_coin_ev_hash (&pd.blinded_planchet,
-                                                    &dkp->pub,
+                                                    &cbc.denom_pub_hash,
                                                     &cbc.h_coin_envelope));
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sign_blinded (&cbc.sig,

@@ -1264,7 +1264,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  */
 enum GNUNET_GenericReturnValue
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
-                    const struct TALER_DenominationPublicKey *denom_pub,
+                    const struct TALER_DenominationHash *denom_hash,
                     struct TALER_BlindedCoinHash *bch);
 
 
