@@ -1258,11 +1258,13 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * Compute the hash of a blinded coin.
  *
  * @param blinded_planchet blinded planchet
+ * @param denom_pub denomination publick key
  * @param[out] bch where to write the hash
  * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occured
  */
 enum GNUNET_GenericReturnValue
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
+                    const struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_BlindedCoinHash *bch);
 
 

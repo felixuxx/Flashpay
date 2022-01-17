@@ -502,22 +502,43 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
 
 enum GNUNET_GenericReturnValue
 TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
+                    const struct TALER_DenominationPublicKey *denom_pub,
                     struct TALER_BlindedCoinHash *bch)
 {
   switch (blinded_planchet->cipher)
   {
   case TALER_DENOMINATION_RSA:
+    // FIXME: Include denom_pub into hash
     GNUNET_CRYPTO_hash (
       blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
       blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size,
       &bch->hash);
     return GNUNET_OK;
   case TALER_DENOMINATION_CS:
-    GNUNET_CRYPTO_hash (
-      &blinded_planchet->details.cs_blinded_planchet.nonce,
-      sizeof (blinded_planchet->details.cs_blinded_planchet.nonce),
-      &bch->hash);
-    return GNUNET_OK;
+    {
+      char delim = ':';
+      size_t buf_len = sizeof(denom_pub->details.cs_public_key)
+                       + sizeof (blinded_planchet->details.cs_blinded_planchet.
+                                 nonce)
+                       + sizeof(delim);
+      void*buf = GNUNET_malloc (buf_len);
+      memcpy (buf,
+              &denom_pub->details.cs_public_key,
+              sizeof(denom_pub->details.cs_public_key));
+      memcpy (buf + sizeof(denom_pub->details.cs_public_key),
+              &delim,
+              sizeof(delim));
+      memcpy (buf + sizeof(denom_pub->details.cs_public_key) + sizeof(delim),
+              &blinded_planchet->details.cs_blinded_planchet.nonce,
+              sizeof (blinded_planchet->details.cs_blinded_planchet.nonce));
+      GNUNET_CRYPTO_hash (
+        buf,
+        buf_len,
+        &bch->hash);
+      GNUNET_free (buf);
+      return GNUNET_OK;
+    }
+
   default:
     GNUNET_break (0);
     return GNUNET_SYSERR;

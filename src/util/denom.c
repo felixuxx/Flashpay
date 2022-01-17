@@ -198,33 +198,11 @@ TALER_denom_sig_unblind (
   case TALER_DENOMINATION_CS:
     {
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
-      // struct TALER_DenominationCsPublicR r_pub_blind;
-      // struct GNUNET_CRYPTO_CsC c[2];
-      // struct TALER_CoinPubHash c_hash;
-
-      // TALER_coin_pub_hash (coin_pub,
-      //                      age_commitment_hash,
-      //                      c_hash);
-
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce, bs);
-
-      // GNUNET_CRYPTO_cs_calc_blinded_c (bs,
-      //                                  &alg_values->r_pub,
-      //                                  &denom_pub->details.cs_public_key,
-      //                                  &c_hash->hash,
-      //                                  sizeof(struct GNUNET_HashCode),
-      //                                  c,
-      //                                  r_pub_blind->r_pub);
 
       GNUNET_CRYPTO_cs_unblind (&bdenom_sig->details.blinded_cs_answer.s_scalar,
                                 &bs[bdenom_sig->details.blinded_cs_answer.b],
                                 &denom_sig->details.cs_signature.s_scalar);
-
-      // GNUNET_memcpy (&denom_sig->details.cs_signature.r_point,
-      //                &r_pub_blind.r_pub[bdenom_sig->details.blinded_cs_answer.b
-      //                ],
-      //                sizeof(struct GNUNET_CRYPTO_CsRPublic));
-
       denom_sig->cipher = TALER_DENOMINATION_CS;
       return GNUNET_OK;
     }
