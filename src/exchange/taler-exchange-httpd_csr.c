@@ -37,13 +37,13 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
                  const json_t *root,
                  const char *const args[])
 {
-  struct TALER_WithdrawNonce nonce;
+  struct TALER_CsNonce nonce;
   struct TALER_DenominationHash denom_pub_hash;
   struct TALER_DenominationCsPublicR r_pub;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed ("nonce",
                             &nonce,
-                            sizeof (struct TALER_WithdrawNonce)),
+                            sizeof (struct TALER_CsNonce)),
     GNUNET_JSON_spec_fixed ("denom_pub_hash",
                             &denom_pub_hash,
                             sizeof (struct TALER_DenominationHash)),

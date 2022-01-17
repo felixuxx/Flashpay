@@ -205,7 +205,7 @@ handle_csr_finished (void *cls,
 struct TALER_EXCHANGE_CsRHandle *
 TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
                     const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                    const struct TALER_WithdrawNonce *nonce,
+                    const struct TALER_CsNonce *nonce,
                     TALER_EXCHANGE_CsRCallback res_cb,
                     void *res_cb_cls)
 {
@@ -229,7 +229,7 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
     csr_obj = GNUNET_JSON_PACK (GNUNET_JSON_pack_data_varsize ("nonce",
                                                                nonce,
                                                                sizeof(struct
-                                                                      TALER_WithdrawNonce)),
+                                                                      TALER_CsNonce)),
                                 GNUNET_JSON_pack_data_varsize ("denom_pub_hash",
                                                                &pk->h_key,
                                                                sizeof(struct

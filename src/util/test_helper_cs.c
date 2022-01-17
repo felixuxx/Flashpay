@@ -371,7 +371,7 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
   /* check R derivation does not work if the key is unknown */
   {
     struct TALER_CsPubHashP rnd;
-    struct TALER_WithdrawNonce nonce;
+    struct TALER_CsNonce nonce;
 
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,

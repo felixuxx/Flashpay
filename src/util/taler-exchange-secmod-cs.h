@@ -162,7 +162,7 @@ struct TALER_CRYPTO_CsRDeriveRequest
   /**
    * Withdraw nonce to derive R from
    */
-  struct TALER_WithdrawNonce nonce;
+  struct TALER_CsNonce nonce;
 };
 
 /**

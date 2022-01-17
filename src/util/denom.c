@@ -83,7 +83,7 @@ TALER_denom_priv_create (struct TALER_DenominationPrivateKey *denom_priv,
 
 
 enum GNUNET_GenericReturnValue
-TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
+TALER_denom_cs_derive_r_public (const struct TALER_CsNonce *nonce,
                                 const struct
                                 TALER_DenominationPrivateKey *denom_priv,
                                 struct TALER_DenominationCsPublicR *r_pub)

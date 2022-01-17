@@ -1107,7 +1107,7 @@ typedef void
 struct TALER_EXCHANGE_CsRHandle *
 TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
                     const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                    const struct TALER_WithdrawNonce *nonce,
+                    const struct TALER_CsNonce *nonce,
                     TALER_EXCHANGE_CsRCallback res_cb,
                     void *res_cb_cls);
 

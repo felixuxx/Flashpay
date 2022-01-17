@@ -191,7 +191,7 @@ cs_blinding_seed_derive (const struct
 void
 TALER_cs_withdraw_nonce_derive (const struct
                                 TALER_CoinSpendPrivateKeyP *coin_priv,
-                                struct TALER_WithdrawNonce *nonce)
+                                struct TALER_CsNonce *nonce)
 {
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_hkdf (nonce,
@@ -204,6 +204,15 @@ TALER_cs_withdraw_nonce_derive (const struct
                                      sizeof(*coin_priv),
                                      NULL,
                                      0));
+}
+
+
+void
+TALER_cs_withdraw_nonce_generate (struct TALER_CsNonce *nonce)
+{
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                              nonce,
+                              sizeof (*nonce));
 }
 
 

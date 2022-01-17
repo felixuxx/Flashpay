@@ -283,9 +283,17 @@ TALER_EXCHANGE_withdraw (
                                         wh);
     break;
   case TALER_DENOMINATION_CS:
-    TALER_cs_withdraw_nonce_derive (&ps->coin_priv,
-                                    &wh->pd.blinded_planchet.details.
-                                    cs_blinded_planchet.nonce);
+    wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+
+    /**
+     * This part is a bit hacky..
+     * due to the reason that Withdraw tests use the same private key coin to sign,
+     * the same Withdraw nonce will be derived.
+     * In a normal withdrawal TALER_cs_withdraw_nonce_derive is used.
+     * As a hacky solution, we generate the nonce here randomly.
+     */
+    TALER_cs_withdraw_nonce_generate (&wh->pd.blinded_planchet.details.
+                                      cs_blinded_planchet.nonce);
     wh->csrh = TALER_EXCHANGE_csr (exchange,
                                    pk,
                                    &wh->pd.blinded_planchet.details.

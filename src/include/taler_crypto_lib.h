@@ -798,7 +798,7 @@ struct TALER_BlindedRsaPlanchet
 /**
  * Withdraw nonce for CS denominations
  */
-struct TALER_WithdrawNonce
+struct TALER_CsNonce
 {
   /**
    * 32 bit nonce to include in withdrawals
@@ -821,7 +821,7 @@ struct TALER_BlindedCsPlanchet
   /**
    * Public Nonce
    */
-  struct TALER_WithdrawNonce nonce;
+  struct TALER_CsNonce nonce;
 };
 
 /**
@@ -988,7 +988,7 @@ void
 TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
 /**
- * @brief Method to generate withdraw nonce
+ * @brief Method to derive withdraw nonce
  *
  * @param coin_priv private key of the coin
  * @param nonce withdraw nonce included in the request to generate R_0 and R_1
@@ -996,8 +996,16 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 void
 TALER_cs_withdraw_nonce_derive (const struct
                                 TALER_CoinSpendPrivateKeyP *coin_priv,
-                                struct TALER_WithdrawNonce *nonce);
+                                struct TALER_CsNonce *nonce);
 
+
+/**
+ * @brief Method to generate a random withdraw nonce used in refresh protocol
+ *
+ * @param nonce withdraw nonce included in the request to generate R_0 and R_1
+ */
+void
+TALER_cs_withdraw_nonce_generate (struct TALER_CsNonce *nonce);
 
 /**
  * Initialize denomination public-private key pair.
@@ -1047,7 +1055,7 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
  */
 
 enum GNUNET_GenericReturnValue
-TALER_denom_cs_derive_r_public (const struct TALER_WithdrawNonce *nonce,
+TALER_denom_cs_derive_r_public (const struct TALER_CsNonce *nonce,
                                 const struct
                                 TALER_DenominationPrivateKey *denom_priv,
                                 struct TALER_DenominationCsPublicR *r_pub);
@@ -1082,7 +1090,6 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
  * @param[out] denom_sig where to write the signature
  * @param denom_priv private key to use for signing
  * @param blinded_planchet the planchet already blinded
- * @param ... If CS signature, a TALER_WithdrawNonce is needed
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1892,7 +1899,7 @@ TALER_CRYPTO_helper_cs_revoke (
 struct TALER_DenominationCsPublicR
 TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                  const struct TALER_CsPubHashP *h_cs,
-                                 const struct TALER_WithdrawNonce *nonce,
+                                 const struct TALER_CsNonce *nonce,
                                  enum TALER_ErrorCode *ec);
 
 
