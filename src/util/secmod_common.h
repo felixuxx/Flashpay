@@ -155,10 +155,22 @@ struct TES_Client
    */
   int csock;
 
+#ifdef __linux__
   /**
    * Event socket.
    */
   int esock;
+#else
+  /**
+   * Input end of the event pipe.
+   */
+  int esock_in;
+
+  /**
+   * Output end of the event pipe.
+   */
+  int esock_out;
+#endif
 };
 
 

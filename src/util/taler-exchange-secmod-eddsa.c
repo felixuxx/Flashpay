@@ -37,7 +37,6 @@
 #include "taler-exchange-secmod-eddsa.h"
 #include <gcrypt.h>
 #include <pthread.h>
-#include <sys/eventfd.h>
 #include "taler_error_codes.h"
 #include "taler_signatures.h"
 #include "secmod_common.h"

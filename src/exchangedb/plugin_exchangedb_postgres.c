@@ -31,7 +31,6 @@
 #include "taler_exchangedb_plugin.h"
 #include <poll.h>
 #include <pthread.h>
-#include <sys/eventfd.h>
 #include <libpq-fe.h>
 
 #include "plugin_exchangedb_common.c"

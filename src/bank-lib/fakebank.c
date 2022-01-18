@@ -26,7 +26,6 @@
 #include "platform.h"
 #include <pthread.h>
 #include <poll.h>
-#include <sys/eventfd.h>
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
 #include "taler_mhd_lib.h"
@@ -414,11 +413,25 @@ struct TALER_FAKEBANK_Handle
    */
   uint16_t port;
 
+#ifdef __linux__
   /**
    * Event FD to signal @a lp_thread a change in
    * @a lp_heap.
    */
   int lp_event;
+#else
+  /**
+   * Pipe input to signal @a lp_thread a change in
+   * @a lp_heap.
+   */
+  int lp_event_in;
+
+  /**
+   * Pipe output to signal @a lp_thread a change in
+   * @a lp_heap.
+   */
+  int lp_event_out;
+#endif
 
   /**
    * Set to true once we are shutting down.
@@ -480,7 +493,11 @@ lp_trigger (struct LongPoller *lp,
   MHD_resume_connection (lp->conn);
   GNUNET_free (lp);
   h->mhd_again = true;
+#ifdef __linux__
   if (-1 != h->lp_event)
+#else
+  if (-1 != h->lp_event_in && -1 != h->lp_event_out)
+#endif
   {
     if (NULL != h->mhd_task)
       GNUNET_SCHEDULER_cancel (h->mhd_task);
@@ -541,7 +558,11 @@ lp_expiration_thread (void *cls)
                    pthread_mutex_unlock (&h->big_lock));
     {
       struct pollfd p = {
+#ifdef __linux__
         .fd = h->lp_event,
+#else
+        .fd = h->lp_event_out,
+#endif
         .events = POLLIN
       };
       int ret;
@@ -561,7 +582,11 @@ lp_expiration_thread (void *cls)
         uint64_t ev;
         ssize_t iret;
 
+#ifdef __linux__
         iret = read (h->lp_event,
+#else
+        iret = read (h->lp_event_out,
+#endif
                      &ev,
                      sizeof (ev));
         if (-1 == iret)
@@ -995,7 +1020,7 @@ make_transfer (
     if (NULL != t)
     {
       if ( (debit_acc != t->debit_account) ||
-           (credit_acc != t->credit_account) ||
+            (credit_acc != t->credit_account) ||
            (0 != TALER_amount_cmp (amount,
                                    &t->amount)) ||
            (T_DEBIT != t->type) ||
@@ -1208,7 +1233,11 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
     h->mhd_rfd = NULL;
   }
 #endif
+#ifdef __linux__
   if (-1 != h->lp_event)
+#else
+  if (-1 != h->lp_event_in && -1 != h->lp_event_out)
+#endif
   {
     uint64_t val = 1;
     void *ret;
@@ -1221,7 +1250,11 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
       lp_trigger (lp,
                   h);
     GNUNET_break (sizeof (val) ==
+#ifdef __linux__
                   write (h->lp_event,
+#else
+                  write (h->lp_event_in,
+#endif
                          &val,
                          sizeof (val)));
     GNUNET_assert (0 ==
@@ -1230,8 +1263,15 @@ TALER_FAKEBANK_stop (struct TALER_FAKEBANK_Handle *h)
                   pthread_join (h->lp_thread,
                                 &ret));
     GNUNET_break (NULL == ret);
+#ifdef __linux__
     GNUNET_break (0 == close (h->lp_event));
     h->lp_event = -1;
+#else
+    GNUNET_break (0 == close (h->lp_event_in));
+    GNUNET_break (0 == close (h->lp_event_out));
+    h->lp_event_in = -1;
+    h->lp_event_out = -1;
+#endif
   }
   else
   {
@@ -1343,19 +1383,19 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                 &json);
   switch (pr)
   {
-  case GNUNET_JSON_PR_OUT_OF_MEMORY:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_CONTINUE:
-    return MHD_YES;
-  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_JSON_INVALID:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_SUCCESS:
-    break;
+    case GNUNET_JSON_PR_OUT_OF_MEMORY:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_CONTINUE:
+      return MHD_YES;
+    case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_JSON_INVALID:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_SUCCESS:
+      break;
   }
   {
     const char *debit_account;
@@ -1467,19 +1507,19 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
                                 &json);
   switch (pr)
   {
-  case GNUNET_JSON_PR_OUT_OF_MEMORY:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_CONTINUE:
-    return MHD_YES;
-  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_JSON_INVALID:
-    GNUNET_break (0);
-    return MHD_NO;
-  case GNUNET_JSON_PR_SUCCESS:
-    break;
+    case GNUNET_JSON_PR_OUT_OF_MEMORY:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_CONTINUE:
+      return MHD_YES;
+    case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_JSON_INVALID:
+      GNUNET_break (0);
+      return MHD_NO;
+    case GNUNET_JSON_PR_SUCCESS:
+      break;
   }
   {
     struct GNUNET_HashCode uuid;
@@ -1794,12 +1834,20 @@ reschedule_lp_timeout (struct TALER_FAKEBANK_Handle *h,
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Scheduling timeout task for %s\n",
               GNUNET_STRINGS_absolute_time_to_string (t));
+#ifdef __linux__
   if (-1 != h->lp_event)
+#else
+  if (-1 != h->lp_event_in && -1 != h->lp_event_out)
+#endif
   {
     uint64_t num = 1;
 
     GNUNET_break (sizeof (num) ==
+#ifdef __linux__
                   write (h->lp_event,
+#else
+                  write (h->lp_event_in,
+#endif
                          &num,
                          sizeof (num)));
   }
@@ -1922,7 +1970,7 @@ handle_debit_history (struct TALER_FAKEBANK_Handle *h,
     /* If account does not match, linear scan for
        first matching account. */
     while ( (! overflow) &&
-            (NULL != t) &&
+             (NULL != t) &&
             (t->debit_account != acc) )
     {
       skip = false;
@@ -2453,7 +2501,12 @@ schedule_httpd (struct TALER_FAKEBANK_Handle *h)
   MHD_UNSIGNED_LONG_LONG timeout;
   struct GNUNET_TIME_Relative tv;
 
+#ifdef __linux__
   GNUNET_assert (-1 == h->lp_event);
+#else
+  GNUNET_assert (-1 == h->lp_event_in);
+  GNUNET_assert (-1 == h->lp_event_out);
+#endif
   FD_ZERO (&rs);
   FD_ZERO (&ws);
   FD_ZERO (&es);
@@ -2525,7 +2578,12 @@ run_mhd (void *cls)
     h->mhd_again = false;
     MHD_run (h->mhd_bank);
   }
+#ifdef __linux__
   GNUNET_assert (-1 == h->lp_event);
+#else
+  GNUNET_assert (-1 == h->lp_event_in);
+  GNUNET_assert (-1 == h->lp_event_out);
+#endif
   schedule_httpd (h);
 }
 
@@ -2558,8 +2616,15 @@ TALER_FAKEBANK_start2 (uint16_t port,
   }
   GNUNET_assert (strlen (currency) < TALER_CURRENCY_LEN);
   h = GNUNET_new (struct TALER_FAKEBANK_Handle);
+#ifdef __linux__
   h->lp_event = -1;
+#else
+  h->lp_event_in = -1;
+  h->lp_event_out = -1;
+#endif
+#if EPOLL_SUPPORT
   h->mhd_fd = -1;
+#endif
   h->port = port;
   h->ram_limit = ram_limit;
   h->serial_counter = 0;
@@ -2642,6 +2707,7 @@ TALER_FAKEBANK_start2 (uint16_t port,
   }
   else
   {
+#ifdef __linux__
     h->lp_event = eventfd (0,
                            EFD_CLOEXEC);
     if (-1 == h->lp_event)
@@ -2651,6 +2717,20 @@ TALER_FAKEBANK_start2 (uint16_t port,
       TALER_FAKEBANK_stop (h);
       return NULL;
     }
+#else
+    {
+      int pipefd[2];
+      if (0 != pipe (pipefd))
+      {
+        GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
+                             "pipe");
+        TALER_FAKEBANK_stop (h);
+        return NULL;
+      }
+      h->lp_event_out = pipefd[0];
+      h->lp_event_in = pipefd[1];
+    }
+#endif
     if (0 !=
         pthread_create (&h->lp_thread,
                         NULL,
@@ -2659,8 +2739,15 @@ TALER_FAKEBANK_start2 (uint16_t port,
     {
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_ERROR,
                            "pthread_create");
+#ifdef __linux__
       GNUNET_break (0 == close (h->lp_event));
       h->lp_event = -1;
+#else
+      GNUNET_break (0 == close (h->lp_event_in));
+      GNUNET_break (0 == close (h->lp_event_out));
+      h->lp_event_in = -1;
+      h->lp_event_out = -1;
+#endif
       TALER_FAKEBANK_stop (h);
       return NULL;
     }

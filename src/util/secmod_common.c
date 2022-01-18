@@ -23,7 +23,9 @@
 #include "taler_signatures.h"
 #include "secmod_common.h"
 #include <poll.h>
+#ifdef __linux__
 #include <sys/eventfd.h>
+#endif
 
 
 /**
@@ -217,7 +219,11 @@ TES_wake_clients (void)
        client = client->next)
   {
     GNUNET_assert (sizeof (num) ==
+#ifdef __linux__
                    write (client->esock,
+#else
+                   write (client->esock_in,
+#endif
                           &num,
                           sizeof (num)));
   }
@@ -243,7 +249,7 @@ TES_read_work (void *cls,
     recv_size = recv (client->csock,
                       &buf[off],
                       sizeof (client->iobuf) - off,
-                      0);
+                              0);
     if (-1 == recv_size)
     {
       if ( (0 == off) &&
@@ -309,7 +315,11 @@ TES_await_ready (struct TES_Client *client)
       .events = POLLIN
     },
     {
+#ifdef __linux__
       .fd = client->esock,
+#else
+      .fd = client->esock_out,
+#endif
       .events = POLLIN
     },
   };
@@ -324,13 +334,21 @@ TES_await_ready (struct TES_Client *client)
                          "poll");
   for (int i = 0; i<2; i++)
   {
+#ifdef __linux__
     if ( (pfds[i].fd == client->esock) &&
+#else
+    if ( (pfds[i].fd == client->esock_out) &&
+#endif
          (POLLIN == pfds[i].revents) )
     {
       uint64_t num;
 
       GNUNET_assert (sizeof (num) ==
+#ifdef __linux__
                      read (client->esock,
+#else
+                     read (client->esock_out,
+#endif
                            &num,
                            sizeof (num)));
       return true;
@@ -349,7 +367,12 @@ TES_free_client (struct TES_Client *client)
                                client);
   GNUNET_assert (0 == pthread_mutex_unlock (&TES_clients_lock));
   GNUNET_break (0 == close (client->csock));
+#ifdef __linux__
   GNUNET_break (0 == close (client->esock));
+#else
+  GNUNET_break (0 == close (client->esock_in));
+  GNUNET_break (0 == close (client->esock_out));
+#endif
   pthread_detach (client->worker);
   GNUNET_free (client);
 }
@@ -401,7 +424,11 @@ listen_job (void *cls)
 {
   const struct TES_Callbacks *cb = cls;
   int s;
+#ifdef __linux__
   int e;
+#else
+  int e[2];
+#endif
   struct sockaddr_storage sa;
   socklen_t sa_len = sizeof (sa);
 
@@ -418,6 +445,7 @@ listen_job (void *cls)
                          "accept");
     return;
   }
+#ifdef __linux__
   e = eventfd (0,
                EFD_CLOEXEC);
   if (-1 == e)
@@ -427,13 +455,27 @@ listen_job (void *cls)
     GNUNET_break (0 == close (s));
     return;
   }
+#else
+  if (0 != pipe (e))
+  {
+    GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
+                         "pipe");
+    GNUNET_break (0 == close (s));
+    return;
+  }
+#endif
   {
     struct TES_Client *client;
 
     client = GNUNET_new (struct TES_Client);
     client->cb = *cb;
     client->csock = s;
+#ifdef __linux__
     client->esock = e;
+#else
+    client->esock_in = e[1];
+    client->esock_out = e[0];
+#endif
     GNUNET_assert (0 == pthread_mutex_lock (&TES_clients_lock));
     GNUNET_CONTAINER_DLL_insert (TES_clients_head,
                                  TES_clients_tail,

@@ -435,4 +435,18 @@ const char *
 TALER_yna_to_string (enum TALER_EXCHANGE_YesNoAll yna);
 
 
+#ifdef __APPLE__
+/**
+ * Returns the first occurence of `c` in `s`, or returns the null-byte
+ * terminating the string if it does not occur.
+ *
+ * @param s the string to search in
+ * @param c the character to search for
+ * @return char* the first occurence of `c` in `s`
+ */
+char * strchrnul (const char *s, int c);
+
+#endif
+
+
 #endif

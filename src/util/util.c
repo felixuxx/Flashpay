@@ -46,4 +46,21 @@ TALER_b2s (const void *buf,
 }
 
 
+#ifdef __APPLE__
+char *
+strchrnul (const char *s,
+           int c)
+{
+  char *value;
+  value = strchr (s,
+                  c);
+  if (NULL == value)
+    value = &s[strlen (s)];
+  return value;
+}
+
+
+#endif
+
+
 /* end of util.c */
