@@ -26,6 +26,9 @@
 #include "platform.h"
 #include <pthread.h>
 #include <poll.h>
+#ifdef __linux__
+#include <sys/eventfd.h>
+#endif
 #include "taler_fakebank_lib.h"
 #include "taler_bank_service.h"
 #include "taler_mhd_lib.h"
