@@ -206,6 +206,11 @@ extern struct GNUNET_CURL_Context *TEH_curl_ctx;
  */
 extern struct TALER_Extension **TEH_extensions;
 
+/*
+ * Signature of the offline master key of all enabled extensions' configuration
+ */
+extern struct TALER_MasterSignatureP TEH_extensions_sig;
+
 /* TODO: this will not work anymore, once we have plugable extensions */
 #define TEH_extension_enabled(ext) (0 <= ext && TALER_Extension_MaxPredefined > \
                                     ext && \

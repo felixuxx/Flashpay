@@ -49,6 +49,7 @@ struct SetExtensionsContext
 {
   uint32_t num_extensions;
   struct Extension *extensions;
+  struct TALER_MasterSignatureP extensions_sig;
 };
 
 /**
@@ -132,6 +133,9 @@ set_extensions (void *cls,
 
   }
 
+  /* All extensions configured, update the signature */
+  TEH_extensions_sig = sec->extensions_sig;
+
   return GNUNET_DB_STATUS_SUCCESS_ONE_RESULT; /* only 'success', so >=0, matters here */
 }
 
@@ -143,15 +147,14 @@ TEH_handler_management_post_extensions (
 {
   MHD_RESULT ret;
   json_t *extensions;
-  struct TALER_MasterSignatureP sig = {0};
+  struct SetExtensionsContext sec = {0};
   struct GNUNET_JSON_Specification top_spec[] = {
     GNUNET_JSON_spec_json ("extensions",
                            &extensions),
     GNUNET_JSON_spec_fixed_auto ("extensions_sig",
-                                 &sig),
+                                 &sec.extensions_sig),
     GNUNET_JSON_spec_end ()
   };
-  struct SetExtensionsContext sec = {0};
 
   /* Parse the top level json structure */
   {
@@ -193,7 +196,7 @@ TEH_handler_management_post_extensions (
     if (GNUNET_OK != TALER_exchange_offline_extension_config_hash_verify (
           &h_config,
           &TEH_master_public_key,
-          &sig))
+          &sec.extensions_sig))
     {
       GNUNET_JSON_parse_free (top_spec);
       return TALER_MHD_reply_with_error (
@@ -248,7 +251,6 @@ TEH_handler_management_post_extensions (
           TALER_EC_GENERIC_PARAMETER_MALFORMED,
           "invalid configuration for extension");
         goto CLEANUP;
-
       }
 
       /* We have a validly signed JSON object for the extension.  Increment its

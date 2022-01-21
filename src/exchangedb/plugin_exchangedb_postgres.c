@@ -11455,6 +11455,7 @@ postgres_get_extension_config (void *cls,
     GNUNET_PQ_query_param_end
   };
   bool is_null;
+  *config = NULL;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_allow_null (
       GNUNET_PQ_result_spec_string ("config", config),
@@ -11467,10 +11468,6 @@ postgres_get_extension_config (void *cls,
                                                  "get_extension_config",
                                                  params,
                                                  rs);
-  if (is_null)
-  {
-    *config = NULL;
-  }
   return qs;
 }
 

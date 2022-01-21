@@ -1703,29 +1703,79 @@ create_krd (struct TEH_KeyStateHandle *ksh,
           &TEH_kyc_config.wallet_balance_limit)));
   }
 
-  // Signal support for the age-restriction extension, if so configured, and
-  // add the array of age-restricted denominations.
+  // Signal support for the configured, enabled extensions.
+  {
+    json_t *extensions = json_object ();
+    bool has_extensions;
+
+    /* Fill in the configurations of the enabled extensions */
+    for (struct TALER_Extension **it = TEH_extensions;
+         NULL != *it;
+         it++)
+    {
+      const struct TALER_Extension *extension = *it;
+      json_t *ext;
+      json_t *config_json;
+      int r;
+
+      /* skip if not configured == disabled */
+      if (NULL == extension->config)
+        continue;
+
+      has_extensions = true;
+
+      GNUNET_assert (NULL != extension->config_json);
+
+      config_json = json_copy (extension->config_json);
+      GNUNET_assert (NULL != config_json);
+
+      ext = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_bool ("critical",
+                               extension->critical),
+        GNUNET_JSON_pack_string ("version",
+                                 extension->version),
+        GNUNET_JSON_pack_object_steal ("config",
+                                       config_json)
+        );
+      GNUNET_assert (NULL != ext);
+
+      r = json_object_set_new (
+        extensions,
+        extension->name,
+        ext);
+
+      GNUNET_assert (0 == r);
+    }
+
+    /* Update the keys object with the extensions */
+    if (has_extensions)
+    {
+      json_t *sig;
+      int r;
+
+      r = json_object_set_new (
+        keys,
+        "extensions",
+        extensions);
+      GNUNET_assert (0 == r);
+
+      /* add extensions_sig */
+      sig = GNUNET_JSON_PACK (
+        GNUNET_JSON_pack_data_auto ("extensions_sig",
+                                    &TEH_extensions_sig));
+
+      /* update the keys object with extensions_sig */
+      r = json_object_update (keys, sig);
+      GNUNET_assert (0 == r);
+    }
+  }
+
+
+  // Special case for age restrictions: if enabled, provide the lits of
+  // age-restricted denominations.
   if (TEH_extension_enabled (TALER_Extension_AgeRestriction) &&
       NULL != age_restricted_denoms)
   {
-    struct TALER_AgeMask *mask;
-    json_t *config;
-
-    mask = (struct
-            TALER_AgeMask *) TEH_extensions[TALER_Extension_AgeRestriction]->
-           config;
-    config = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_bool ("critical", false),
-      GNUNET_JSON_pack_string ("version", "1"),
-      GNUNET_JSON_pack_string ("age_groups", TALER_age_mask_to_string (mask)));
-    GNUNET_assert (NULL != config);
-    GNUNET_assert (
-      0 ==
-      json_object_set_new (
-        keys,
-        "age_restriction",
-        config));
-
     GNUNET_assert (
       0 ==
       json_object_set_new (
@@ -1734,8 +1784,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
         age_restricted_denoms));
   }
 
-  // TODO: signal support and configuration for the P2P extension, once
-  // implemented.
 
   {
     char *keys_json;

@@ -153,6 +153,13 @@ bool TEH_suicide;
 struct TALER_Extension **TEH_extensions;
 
 /**
+ * Signature of the configuration of all enabled extensions,
+ * signed by the exchange's offline master key with purpose
+ * TALER_SIGNATURE_MASTER_EXTENSION.
+ */
+struct TALER_MasterSignatureP TEH_extensions_sig;
+
+/**
  * Value to return from main()
  */
 static int global_ret;

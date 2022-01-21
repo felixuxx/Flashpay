@@ -31,26 +31,27 @@
 enum TALER_Extension_Type
 {
   TALER_Extension_AgeRestriction = 0,
-  TALER_Extension_Peer2Peer = 1,
-  TALER_Extension_MaxPredefined = 2 // Must be last
+  TALER_Extension_MaxPredefined = 1 // Must be last of the predefined
 };
 
 /*
  * Represents the implementation of an extension.
+ * TODO: add documentation
  */
 struct TALER_Extension
 {
   enum TALER_Extension_Type type;
   char *name;
   bool critical;
-  bool enabled;
+  char *version;
   void *config;
+  json_t *config_json;
 
+  void (*disable)(struct TALER_Extension *this);
   enum GNUNET_GenericReturnValue (*test_config)(const json_t *config);
   enum GNUNET_GenericReturnValue (*parse_and_set_config)(struct
                                                          TALER_Extension *this,
-                                                         const json_t *config);
-  json_t *(*config_to_json)(const struct TALER_Extension *this);
+                                                         json_t *config);
 };
 
 /**
@@ -132,8 +133,7 @@ TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
 
 
 /*
- * TALER Peer2Peer Extension
- * TODO oec
+ * TODO: Add Peer2Peer Extension
  */
 
 #endif
