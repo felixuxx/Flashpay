@@ -72,8 +72,6 @@ libtalerutil_la_SOURCES = \
   crypto_wire.c \
   denom.c \
   exchange_signatures.c \
-  extensions.c \
-  extension_age_restriction.c \
   getopt.c \
   lang.c \
   iban.c \

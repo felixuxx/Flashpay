@@ -57,6 +57,7 @@ libtalerexchange_la_LIBADD = \
   $(top_builddir)/src/json/libtalerjson.la \
   $(top_builddir)/src/curl/libtalercurl.la \
   $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/extensions/libtalerextensions.la \
   -lgnunetcurl \
   -lgnunetjson \
   -lgnunetutil \

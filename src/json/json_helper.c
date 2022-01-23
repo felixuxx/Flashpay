@@ -660,7 +660,7 @@ TALER_JSON_spec_i18n_str (const char *name,
 
 
 enum GNUNET_GenericReturnValue
-TALER_agemask_parse_json (const json_t *root,
+TALER_JSON_parse_agemask (const json_t *root,
                           struct TALER_AgeMask *mask)
 {
   const char *name;

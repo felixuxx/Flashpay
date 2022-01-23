@@ -79,14 +79,14 @@ set_extensions (void *cls,
   for (uint32_t i = 0; i<sec->num_extensions; i++)
   {
     struct Extension *ext = &sec->extensions[i];
+    const struct TALER_Extension *taler_ext;
     enum GNUNET_DB_QueryStatus qs;
     char *config;
 
-    /* Sanity check.
-     * TODO: This will not work anymore, once we have plugable extensions
-     */
-    if (0 > ext->type || TALER_Extension_MaxPredefined <= ext->type)
+    taler_ext = TALER_extensions_get_by_type (ext->type);
+    if (NULL == taler_ext)
     {
+      /* No such extension found */
       GNUNET_break (0);
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
@@ -104,7 +104,7 @@ set_extensions (void *cls,
 
     qs = TEH_plugin->set_extension_config (
       TEH_plugin->cls,
-      TEH_extensions[ext->type]->name,
+      taler_ext->name,
       config);
 
     if (qs < 0)
@@ -183,17 +183,11 @@ TEH_handler_management_post_extensions (
   /* Verify the signature */
   {
     struct TALER_ExtensionConfigHash h_config;
-    if (GNUNET_OK != TALER_extension_config_hash (extensions, &h_config))
-    {
-      GNUNET_JSON_parse_free (top_spec);
-      return TALER_MHD_reply_with_error (
-        connection,
-        MHD_HTTP_BAD_REQUEST,
-        TALER_EC_GENERIC_PARAMETER_MALFORMED,
-        "invalid object, non-hashable");
-    }
 
-    if (GNUNET_OK != TALER_exchange_offline_extension_config_hash_verify (
+    if (GNUNET_OK !=
+        TALER_JSON_extensions_config_hash (extensions, &h_config) ||
+        GNUNET_OK !=
+        TALER_exchange_offline_extension_config_hash_verify (
           &h_config,
           &TEH_master_public_key,
           &sec.extensions_sig))
@@ -207,7 +201,6 @@ TEH_handler_management_post_extensions (
     }
   }
 
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received /management/extensions\n");
 
@@ -217,7 +210,7 @@ TEH_handler_management_post_extensions (
 
   /* Now parse individual extensions and signatures from those objects. */
   {
-    const struct TALER_Extension *extension;
+    const struct TALER_Extension *extension = NULL;
     const char *name;
     json_t *config;
     int idx = 0;
@@ -225,11 +218,8 @@ TEH_handler_management_post_extensions (
     json_object_foreach (extensions, name, config){
 
       /* 1. Make sure name refers to a supported extension */
-      if (GNUNET_OK != TALER_extension_get_by_name (name,
-                                                    (const struct
-                                                     TALER_Extension **)
-                                                    TEH_extensions,
-                                                    &extension))
+      extension = TALER_extensions_get_by_name (name);
+      if (NULL == extension)
       {
         ret = TALER_MHD_reply_with_error (
           connection,
@@ -243,7 +233,9 @@ TEH_handler_management_post_extensions (
       sec.extensions[idx].type = extension->type;
 
       /* 2. Make sure the config is sound */
-      if (GNUNET_OK != extension->test_config (sec.extensions[idx].config))
+      if (GNUNET_OK !=
+          extension->test_json_config (
+            sec.extensions[idx].config))
       {
         ret = TALER_MHD_reply_with_error (
           connection,

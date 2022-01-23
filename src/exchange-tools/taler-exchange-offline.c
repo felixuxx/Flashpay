@@ -1798,7 +1798,8 @@ upload_extensions (const char *exchange_url,
   {
     struct TALER_ExtensionConfigHash h_config;
 
-    if (GNUNET_OK != TALER_extension_config_hash (extensions, &h_config))
+    if (GNUNET_OK !=
+        TALER_JSON_extensions_config_hash (extensions, &h_config))
     {
       GNUNET_JSON_parse_free (spec);
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -3506,163 +3507,6 @@ do_setup (char *const *args)
 }
 
 
-/**
- * struct extension carries the information about an extension together with
- * callbacks to parse the configuration and marshal it as JSON
- */
-struct extension
-{
-  char *name;
-  bool enabled;
-  bool critical;
-  char *version;
-  void *config;
-
-  enum GNUNET_GenericReturnValue (*parse_config)(struct extension *this,
-                                                 const char *section);
-  json_t *(*config_json)(const struct extension *this);
-};
-
-#define EXT_PREFIX "exchange-extension-"
-
-#define DEFAULT_AGE_GROUPS "8:10:12:14:16:18:21"
-
-static enum GNUNET_GenericReturnValue
-age_restriction_parse_config (struct extension *this, const char *section)
-{
-  char *age_groups = NULL;
-  struct TALER_AgeMask mask = {0};
-  enum GNUNET_GenericReturnValue ret;
-
-  ret = GNUNET_CONFIGURATION_get_value_yesno (kcfg, section, "ENABLED");
-
-  this->enabled = (GNUNET_YES == ret);
-
-  if (! this->enabled)
-    return GNUNET_OK;
-
-  if (GNUNET_OK != GNUNET_CONFIGURATION_get_value_string (kcfg,
-                                                          section,
-                                                          "AGE_GROUPS",
-                                                          &age_groups))
-    age_groups = DEFAULT_AGE_GROUPS;
-
-  if (GNUNET_OK != TALER_parse_age_group_string (age_groups, &mask))
-  {
-    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
-                               section,
-                               "AGE_GROUPS");
-    test_shutdown ();
-    global_ret = EXIT_NOTCONFIGURED;
-    return GNUNET_SYSERR;
-  }
-
-  /* Don't look here. We just store the mask in/as the pointer .*/
-  this->config = (void *) (size_t) mask.mask;
-  return GNUNET_OK;
-}
-
-
-static json_t *
-age_restriction_json (const struct extension *this)
-{
-  struct TALER_AgeMask mask;
-  json_t *conf;
-
-  if (! this->enabled)
-    return NULL;
-
-  /* Don't look here. We just restore the mask from/as the pointer .*/
-  mask.mask = (uint32_t) (size_t) this->config;
-
-  conf = GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_string (
-      "age_groups",
-      TALER_age_mask_to_string (&mask)));
-
-  return GNUNET_JSON_PACK (
-    GNUNET_JSON_pack_bool ("critical",
-                           this->critical),
-    GNUNET_JSON_pack_string ("version",
-                             this->version),
-    GNUNET_JSON_pack_object_steal ("config", conf));
-}
-
-
-static struct extension extensions[] = {
-  {
-    .name = "age_restriction",
-    .version = "1",
-    .config = 0,
-    .parse_config = &age_restriction_parse_config,
-    .config_json = &age_restriction_json,
-  },
-  /* TODO: add p2p here */
-  {0},
-};
-
-
-static const struct extension*
-get_extension (const char *extension)
-{
-  for (const struct extension *known = extensions;
-       NULL != known->name;
-       known++)
-  {
-    if (0 == strncasecmp (extension,
-                          known->name,
-                          strlen (known->name)))
-      return known;
-  }
-  return NULL;
-}
-
-
-static void
-collect_extensions (void *cls, const char *section)
-{
-  json_t *obj = (json_t *) cls;
-  const char *name;
-  const struct extension *extension;
-
-  if (0 != global_ret)
-    return;
-
-  if (0 != strncasecmp (section,
-                        EXT_PREFIX,
-                        sizeof(EXT_PREFIX) - 1))
-  {
-    return;
-  }
-
-  name = section + sizeof(EXT_PREFIX) - 1;
-
-  if (NULL == (extension = get_extension (name)))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Unsupported extension `%s` (section [%s]).\n", name,
-                section);
-    test_shutdown ();
-    global_ret = EXIT_NOTCONFIGURED;
-    return;
-  }
-
-  if (GNUNET_OK != extension->parse_config ((struct extension *) extension,
-                                            section))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Couldn't parse configuration for extension `%s` (section [%s]).\n",
-                name,
-                section);
-    test_shutdown ();
-    global_ret = EXIT_NOTCONFIGURED;
-    return;
-  }
-
-  json_object_set (obj, name, extension->config_json (extension));
-}
-
-
 /*
  * Print the current extensions as configured
  */
@@ -3672,10 +3516,21 @@ do_extensions_show (char *const *args)
 
   json_t *obj = json_object ();
   json_t *exts = json_object ();
+  const struct TALER_Extension *it;
 
-  GNUNET_CONFIGURATION_iterate_sections (kcfg,
-                                         &collect_extensions,
-                                         exts);
+  TALER_extensions_init ();
+  if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "error while loading taler config for extensions\n");
+    return;
+  }
+
+  for (it = TALER_extensions_get_head ();
+       NULL != it;
+       it = it->next)
+    json_object_set (exts, it->name, it->config_to_json (it));
+
   json_object_set (obj, "extensions", exts);
 
   GNUNET_log (GNUNET_ERROR_TYPE_MESSAGE, "%s\n",
@@ -3695,13 +3550,24 @@ do_extensions_sign (char *const *args)
   json_t *extensions = json_object ();
   struct TALER_ExtensionConfigHash h_config;
   struct TALER_MasterSignatureP sig;
+  const struct TALER_Extension *it;
 
-  GNUNET_CONFIGURATION_iterate_sections (kcfg,
-                                         &collect_extensions,
-                                         extensions);
+  TALER_extensions_init ();
 
-  // TODO: check size of extensions?
-  if (GNUNET_OK != TALER_extension_config_hash (extensions, &h_config))
+  if (GNUNET_OK != TALER_extensions_load_taler_config (kcfg))
+  {
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "error while loading taler config for extensions\n");
+    return;
+  }
+
+  for (it = TALER_extensions_get_head ();
+       NULL != it;
+       it = it->next)
+    json_object_set (extensions, it->name, it->config_to_json (it));
+
+  if (GNUNET_OK !=
+      TALER_JSON_extensions_config_hash (extensions, &h_config))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "error while hashing config for extensions\n");

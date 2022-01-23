@@ -549,8 +549,8 @@ TALER_deposit_extension_hash (const json_t *extensions,
  * @return GNUNET_OK on success, GNUNET_SYSERR on failure
  */
 enum GNUNET_GenericReturnValue
-TALER_extension_config_hash (const json_t *config,
-                             struct TALER_ExtensionConfigHash *eh);
+TALER_JSON_extensions_config_hash (const json_t *config,
+                                   struct TALER_ExtensionConfigHash *eh);
 
 /**
  * Parses a JSON object { "extension": "age_restriction", "mask": <uint32> }.
@@ -560,7 +560,7 @@ TALER_extension_config_hash (const json_t *config,
  * @return #GNUNET_OK on success and #GNUNET_SYSERR on failure.
  */
 enum GNUNET_GenericReturnValue
-TALER_agemask_parse_json (const json_t *root,
+TALER_JSON_parse_agemask (const json_t *root,
                           struct TALER_AgeMask *mask);
 
 #endif /* TALER_JSON_LIB_H_ */

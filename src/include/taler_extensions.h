@@ -40,6 +40,9 @@ enum TALER_Extension_Type
  */
 struct TALER_Extension
 {
+  /* simple linked list */
+  struct TALER_Extension *next;
+
   enum TALER_Extension_Type type;
   char *name;
   bool critical;
@@ -48,28 +51,125 @@ struct TALER_Extension
   json_t *config_json;
 
   void (*disable)(struct TALER_Extension *this);
-  enum GNUNET_GenericReturnValue (*test_config)(const json_t *config);
-  enum GNUNET_GenericReturnValue (*parse_and_set_config)(struct
-                                                         TALER_Extension *this,
-                                                         json_t *config);
+
+  enum GNUNET_GenericReturnValue (*test_json_config)(
+    const json_t *config);
+
+  enum GNUNET_GenericReturnValue (*load_json_config)(
+    struct TALER_Extension *this,
+    json_t *config);
+
+  json_t *(*config_to_json)(
+    const struct TALER_Extension *this);
+
+  enum GNUNET_GenericReturnValue (*load_taler_config)(
+    struct TALER_Extension *this,
+    const struct GNUNET_CONFIGURATION_Handle *cfg);
 };
 
 /**
  * Generic functions for extensions
  */
 
+void
+TALER_extensions_init ();
+
+/*
+ * Sets the configuration of the extensions from the given TALER configuration
+ *
+ * @param cfg Handle to the TALER configuration
+ * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
+ *         or any particular configuration couldn't be parsed.
+ */
+enum GNUNET_GenericReturnValue
+TALER_extensions_load_taler_config (
+  const struct GNUNET_CONFIGURATION_Handle *cfg);
+
+/*
+ * Returns the head of the linked list of extensions
+ */
+const struct TALER_Extension *
+TALER_extensions_get_head ();
+
+/*
+ * Adds an extension to the linked list of extensions
+ *
+ * @param new_extension the new extension to be added
+ * @return GNUNET_OK on success, GNUNET_SYSERR if the extension is invalid
+ * (missing fields), GNUNET_NO if there is already an extension with that name
+ * or type.
+ */
+enum GNUNET_GenericReturnValue
+TALER_extensions_add (
+  const struct TALER_Extension *new_extension);
+
+/**
+ * Finds and returns a supported extension by a given type.
+ *
+ * @param type type of the extension to lookup
+ * @return extension found, or NULL (should not happen!)
+ */
+const struct TALER_Extension *
+TALER_extensions_get_by_type (
+  enum TALER_Extension_Type type);
+
+
 /**
  * Finds and returns a supported extension by a given name.
  *
  * @param name name of the extension to lookup
- * @param extensions list of TALER_Extensions as haystack, terminated by a NULL-entry
- * @param[out] ext set to the extension, if found, NULL otherwise
- * @return GNUNET_OK if extension was found, GNUNET_NO otherwise
+ * @return the extension, if found, NULL otherwise
+ */
+const struct TALER_Extension *
+TALER_extensions_get_by_name (
+  const char *name);
+
+#define TALER_extensions_is_enabled(ext) (NULL != (ext)->config)
+
+/**
+ * Check if a given type of an extension is enabled
+ *
+ * @param type type of to check
+ * @return true enabled, false if not enabled, will assert if type is not found.
+ */
+bool
+TALER_extensions_is_enabled_type (
+  enum TALER_Extension_Type type);
+
+
+/*
+ * Verify the signature of a given JSON object for extensions with the master
+ * key of the exchange.
+ *
+ * The JSON object must be of type ExchangeKeysResponse as described in
+ * https://docs.taler.net/design-documents/006-extensions.html#exchange
+ *
+ * @param extensions JSON object with the extension configuration
+ * @param extensions_sig signature of the hash of the JSON object
+ * @param master_pub public key to verify the signature
+ * @return GNUNET_OK on success, GNUNET_SYSERR when hashing of the JSON fails
+ * and GNUNET_NO if the signature couldn't be verified.
  */
 enum GNUNET_GenericReturnValue
-TALER_extension_get_by_name (const char *name,
-                             const struct TALER_Extension **extensions,
-                             const struct TALER_Extension **ext);
+TALER_extensions_verify_json_config_signature (
+  json_t *extensions,
+  struct TALER_MasterSignatureP *extensions_sig,
+  struct TALER_MasterPublicKeyP *master_pub);
+
+/*
+ * Sets the configuration of the extensions from a given JSON object.
+ *
+ * The JSON object must be of type ExchangeKeysResponse as described in
+ * https://docs.taler.net/design-documents/006-extensions.html#exchange
+ *
+ * @param cfg Handle to the TALER configuration
+ * @return GNUNET_OK on success, GNUNET_SYSERR if unknown extensions were found
+ *         or any particular configuration couldn't be parsed.
+ */
+enum GNUNET_GenericReturnValue
+TALER_extensions_load_json_config (
+  json_t *extensions);
+
 
 /*
  * TALER Age Restriction Extension
@@ -82,9 +182,11 @@ TALER_extension_get_by_name (const char *name,
  * The default age mask represents the age groups
  * 0-7, 8-9, 10-11, 12-13, 14-15, 16-17, 18-20, 21-...
  */
-#define TALER_EXTENSION_DEFAULT_AGE_MASK (1 | 1 << 8 | 1 << 10 | 1 << 12 | 1    \
-                                                << 14 | 1 << 16 | 1 << 18 | 1 \
-                                                << 21)
+#define TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_MASK (1 | 1 << 8 | 1 << 10 \
+                                                          | 1 << 12 | 1 << 14 \
+                                                          | 1 << 16 | 1 << 18 \
+                                                          | 1 << 21)
+#define TALER_EXTENSION_AGE_RESTRICTION_DEFAULT_AGE_GROUPS "8:10:12:14:16:18:21"
 
 /**
  * @brief Parses a string as a list of age groups.
@@ -104,8 +206,9 @@ TALER_extension_get_by_name (const char *name,
  * @return Error, if age groups were invalid, OK otherwise.
  */
 enum GNUNET_GenericReturnValue
-TALER_parse_age_group_string (const char *groups,
-                              struct TALER_AgeMask *mask);
+TALER_parse_age_group_string (
+  const char *groups,
+  struct TALER_AgeMask *mask);
 
 /**
  * Encodes the age mask into a string, like "8:10:12:14:16:18:21"
@@ -115,21 +218,8 @@ TALER_parse_age_group_string (const char *groups,
  *         Can be used as value in the TALER config.
  */
 char *
-TALER_age_mask_to_string (const struct TALER_AgeMask *mask);
-
-
-/**
- * @brief Reads the age groups from the configuration and sets the
- * corresponding age mask.
- *
- * @param cfg
- * @param[out] mask for age restriction, will be set to 0 if age restriction is disabled.
- * @return Error if extension for age restriction was set but age groups were
- *         invalid, OK otherwise.
- */
-enum GNUNET_GenericReturnValue
-TALER_get_age_mask (const struct GNUNET_CONFIGURATION_Handle *cfg,
-                    struct TALER_AgeMask *mask);
+TALER_age_mask_to_string (
+  const struct TALER_AgeMask *mask);
 
 
 /*

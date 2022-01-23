@@ -3159,5 +3159,4 @@ void
 TALER_EXCHANGE_add_auditor_denomination_cancel (
   struct TALER_EXCHANGE_AuditorAddDenominationHandle *ah);
 
-
 #endif  /* _TALER_EXCHANGE_SERVICE_H */

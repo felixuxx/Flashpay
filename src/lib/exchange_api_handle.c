@@ -795,50 +795,39 @@ decode_keys_json (const json_t *resp_obj,
   }
 
   /* Parse the supported extension(s): age-restriction. */
-  /* TODO: maybe lift this into a FP in TALER_Extension ? */
+  /* TODO: maybe lift all this into a FP in TALER_Extension ? */
   {
-    json_t *age_restriction = json_object_get (resp_obj,
-                                               "age_restriction");
+    struct TALER_MasterSignatureP extensions_sig = {0};
+    json_t *extensions = NULL;
+    struct GNUNET_JSON_Specification ext_spec[] = {
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_json ("extensions",
+                               &extensions)),
+      GNUNET_JSON_spec_mark_optional (
+        GNUNET_JSON_spec_fixed_auto (
+          "extensions_sig",
+          &extensions_sig)),
+      GNUNET_JSON_spec_end ()
+    };
 
-    if (NULL != age_restriction)
+    /* 1. Search for extensions in the response to /keys */
+    EXITIF (GNUNET_OK !=
+            GNUNET_JSON_parse (resp_obj,
+                               ext_spec,
+                               NULL, NULL));
+
+    if (NULL != extensions)
     {
-      bool critical;
-      const char *version;
-      const char *age_groups;
-      struct GNUNET_JSON_Specification spec[] = {
-        GNUNET_JSON_spec_bool ("critical",
-                               &critical),
-        GNUNET_JSON_spec_string ("version",
-                                 &version),
-        GNUNET_JSON_spec_string ("age_groups",
-                                 &age_groups),
-        GNUNET_JSON_spec_end ()
-      };
+      /* 2. We have an extensions object. Verify its signature. */
+      EXITIF (GNUNET_OK !=
+              TALER_extensions_verify_json_config_signature (
+                extensions,
+                &extensions_sig,
+                &key_data->master_pub));
 
-      if (GNUNET_OK !=
-          GNUNET_JSON_parse (age_restriction,
-                             spec,
-                             NULL, NULL))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-
-      if (critical || // do we care?
-          0 != strncmp (version, "1", 1) ) /* TODO: better compatibility check */
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-
-      if (GNUNET_OK !=
-          TALER_parse_age_group_string (age_groups,
-                                        &key_data->age_mask))
-      {
-        // TODO: print more specific error?
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
+      /* 3. Parse and set the the configuration of the extensions accordingly */
+      EXITIF (GNUNET_OK !=
+              TALER_extensions_load_json_config (extensions));
     }
   }
 

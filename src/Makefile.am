@@ -18,6 +18,7 @@ SUBDIRS = \
   include \
   util \
   json \
+  extensions \
   curl \
   $(PQ_DIR) \
   $(SQ_DIR) \

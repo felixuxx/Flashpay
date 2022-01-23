@@ -28,106 +28,6 @@
 #include <jansson.h>
 
 /**
- * @brief implements the TALER_Extension.disable interface.
- */
-void
-age_restriction_disable (struct TALER_Extension *this)
-{
-  if (NULL == this)
-    return;
-
-  this->config = NULL;
-
-  if (NULL != this->config_json)
-  {
-    json_decref (this->config_json);
-    this->config_json = NULL;
-  }
-}
-
-
-/**
- * @brief implements the TALER_Extension.parse_and_set_config interface.
- * @param this if NULL, only tests the configuration
- * @param config the configuration as json
- */
-static enum GNUNET_GenericReturnValue
-age_restriction_parse_and_set_config (struct TALER_Extension *this,
-                                      json_t *config)
-{
-  struct TALER_AgeMask mask = {0};
-  enum GNUNET_GenericReturnValue ret;
-
-  ret = TALER_agemask_parse_json (config, &mask);
-  if (GNUNET_OK != ret)
-    return ret;
-
-  /* only testing the parser */
-  if (this == NULL)
-    return GNUNET_OK;
-
-  if (TALER_Extension_AgeRestriction != this->type)
-    return GNUNET_SYSERR;
-
-  if (NULL != this->config)
-    GNUNET_free (this->config);
-
-  this->config = GNUNET_malloc (sizeof(struct TALER_AgeMask));
-  GNUNET_memcpy (this->config, &mask, sizeof(struct TALER_AgeMask));
-
-  if (NULL != this->config_json)
-    json_decref (this->config_json);
-
-  this->config_json = config;
-
-  return GNUNET_OK;
-}
-
-
-/**
- * @brief implements the TALER_Extension.test_config interface.
- */
-static enum GNUNET_GenericReturnValue
-age_restriction_test_config (const json_t *config)
-{
-  struct TALER_AgeMask mask = {0};
-
-  return TALER_agemask_parse_json (config, &mask);
-}
-
-
-/* The extension for age restriction */
-static struct TALER_Extension extension_age_restriction = {
-  .type = TALER_Extension_AgeRestriction,
-  .name = "age_restriction",
-  .critical = false,
-  .version = "1",
-  .config = NULL,   // disabled per default
-  .config_json = NULL,
-  .disable = &age_restriction_disable,
-  .test_config = &age_restriction_test_config,
-  .parse_and_set_config = &age_restriction_parse_and_set_config,
-};
-
-/**
- * Create a list with the extensions for Age Restriction (and later Peer2Peer,
- * ...)
- */
-static struct TALER_Extension **
-get_known_extensions ()
-{
-
-  struct TALER_Extension **list = GNUNET_new_array (
-    TALER_Extension_MaxPredefined + 1,
-    struct TALER_Extension *);
-  list[TALER_Extension_AgeRestriction] = &extension_age_restriction;
-  list[TALER_Extension_MaxPredefined] = NULL;
-
-  return list;
-}
-
-
-/**
  * Handler listening for extensions updates by other exchange
  * services.
  */
@@ -148,6 +48,7 @@ extension_update_event_cb (void *cls,
 {
   (void) cls;
   enum TALER_Extension_Type type;
+  const struct TALER_Extension *extension;
 
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Received extensions update event\n");
@@ -161,12 +62,15 @@ extension_update_event_cb (void *cls,
   }
 
   type = *(enum TALER_Extension_Type *) extra;
-  /* TODO: This check will not work once we have plugable extensions */
-  if (type <0 || type >= TALER_Extension_MaxPredefined)
+
+
+  /* Get the corresponding extension */
+  extension = TALER_extensions_get_by_type (type);
+  if (NULL == extension)
   {
     GNUNET_break (0);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Oops, incorrect type for TALER_Extension_type\n");
+                "Oops, unknown extension type: %d\n", type);
     return;
   }
 
@@ -174,12 +78,9 @@ extension_update_event_cb (void *cls,
   {
     char *config_str = NULL;
     enum GNUNET_DB_QueryStatus qs;
-    struct TALER_Extension *extension;
     json_error_t err;
     json_t *config;
     enum GNUNET_GenericReturnValue ret;
-
-    extension  = TEH_extensions[type];
 
     qs = TEH_plugin->get_extension_config (TEH_plugin->cls,
                                            extension->name,
@@ -193,10 +94,10 @@ extension_update_event_cb (void *cls,
       return;
     }
 
-    // No config found -> extension is disabled
+    // No config found -> disable extension
     if (NULL == config_str)
     {
-      extension->disable (extension);
+      extension->disable ((struct TALER_Extension *) extension);
       return;
     }
 
@@ -214,7 +115,10 @@ extension_update_event_cb (void *cls,
     }
 
     // Call the parser for the extension
-    ret = extension->parse_and_set_config (extension, config);
+    ret = extension->load_json_config (
+      (struct TALER_Extension *) extension,
+      config);
+
     if (GNUNET_OK != ret)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -229,8 +133,7 @@ extension_update_event_cb (void *cls,
 enum GNUNET_GenericReturnValue
 TEH_extensions_init ()
 {
-  /* Populate the known extensions. */
-  TEH_extensions = get_known_extensions ();
+  TALER_extensions_init ();
 
   /* Set the event handler for updates */
   struct GNUNET_DB_EventHeaderP ev = {
@@ -249,8 +152,10 @@ TEH_extensions_init ()
   }
 
   /* Trigger the initial load of configuration from the db */
-  for (struct TALER_Extension **it = TEH_extensions; NULL != *it; it++)
-    extension_update_event_cb (NULL, &(*it)->type, sizeof((*it)->type));
+  for (const struct TALER_Extension *it = TALER_extensions_get_head ();
+       NULL != it->next;
+       it = it->next)
+    extension_update_event_cb (NULL, &it->type, sizeof(it->type));
 
   return GNUNET_OK;
 }

@@ -148,11 +148,6 @@ int TEH_check_invariants_flag;
 bool TEH_suicide;
 
 /**
- * Global register of extensions
- */
-struct TALER_Extension **TEH_extensions;
-
-/**
  * Signature of the configuration of all enabled extensions,
  * signed by the exchange's offline master key with purpose
  * TALER_SIGNATURE_MASTER_EXTENSION.

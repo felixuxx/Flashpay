@@ -744,14 +744,14 @@ load_age_mask (const char*section_name)
 {
   static const struct TALER_AgeMask null_mask = {0};
   struct TALER_AgeMask age_mask = {0};
+  /* TODO: optimize by putting this into global? */
   const struct TALER_Extension *age_ext =
-    TEH_extensions[TALER_Extension_AgeRestriction];
+    TALER_extensions_get_by_type (TALER_Extension_AgeRestriction);
 
   // Get the age mask from the extension, if configured
-  if (NULL != age_ext->config)
-  {
+  /* TODO: optimize by putting this into global? */
+  if (TALER_extensions_is_enabled (age_ext))
     age_mask = *(struct TALER_AgeMask *) age_ext->config;
-  }
 
   if (age_mask.mask == 0)
   {
@@ -1706,14 +1706,14 @@ create_krd (struct TEH_KeyStateHandle *ksh,
   // Signal support for the configured, enabled extensions.
   {
     json_t *extensions = json_object ();
-    bool has_extensions;
+    bool has_extensions = false;
+    bool age_restriction_enabled = false;
 
     /* Fill in the configurations of the enabled extensions */
-    for (struct TALER_Extension **it = TEH_extensions;
-         NULL != *it;
-         it++)
+    for (const struct TALER_Extension *extension = TALER_extensions_get_head ();
+         NULL != extension;
+         extension = extension->next)
     {
-      const struct TALER_Extension *extension = *it;
       json_t *ext;
       json_t *config_json;
       int r;
@@ -1722,7 +1722,10 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       if (NULL == extension->config)
         continue;
 
+      /* flag our findings so far */
       has_extensions = true;
+      age_restriction_enabled = (extension->type ==
+                                 TALER_Extension_AgeRestriction);
 
       GNUNET_assert (NULL != extension->config_json);
 
@@ -1743,7 +1746,6 @@ create_krd (struct TEH_KeyStateHandle *ksh,
         extensions,
         extension->name,
         ext);
-
       GNUNET_assert (0 == r);
     }
 
@@ -1768,20 +1770,20 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       r = json_object_update (keys, sig);
       GNUNET_assert (0 == r);
     }
-  }
 
+    // Special case for age restrictions: if enabled, provide the lits of
+    // age-restricted denominations.
+    if (age_restriction_enabled &&
+        NULL != age_restricted_denoms)
+    {
+      GNUNET_assert (
+        0 ==
+        json_object_set_new (
+          keys,
+          "age_restricted_denoms",
+          age_restricted_denoms));
+    }
 
-  // Special case for age restrictions: if enabled, provide the lits of
-  // age-restricted denominations.
-  if (TEH_extension_enabled (TALER_Extension_AgeRestriction) &&
-      NULL != age_restricted_denoms)
-  {
-    GNUNET_assert (
-      0 ==
-      json_object_set_new (
-        keys,
-        "age_restricted_denoms",
-        age_restricted_denoms));
   }
 
 
@@ -1884,7 +1886,8 @@ finish_keys_response (struct TEH_KeyStateHandle *ksh)
   GNUNET_assert (NULL != denoms);
 
   // If age restriction is enabled, initialize the array of age restricted denoms.
-  if (TEH_extension_enabled (TALER_Extension_AgeRestriction))
+  /* TODO: optimize by putting this into global? */
+  if (TALER_extensions_is_enabled_type (TALER_Extension_AgeRestriction))
   {
     age_restricted_denoms = json_array ();
     GNUNET_assert (NULL != age_restricted_denoms);
