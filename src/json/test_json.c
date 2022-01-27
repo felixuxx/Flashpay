@@ -160,7 +160,7 @@ test_contract (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_part_forget (c1,
                                                   "k2"));
-  json_dumpf (c1, stderr, JSON_INDENT (2));
+  // json_dumpf (c1, stderr, JSON_INDENT (2));
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_hash (c1,
                                            &h2));
@@ -182,7 +182,7 @@ test_contract (void)
   GNUNET_assert (GNUNET_OK ==
                  TALER_JSON_contract_hash (c1,
                                            &h1));
-  json_dumpf (c1, stderr, JSON_INDENT (2));
+  // json_dumpf (c1, stderr, JSON_INDENT (2));
   json_decref (c1);
   {
     char *s;
@@ -331,6 +331,57 @@ test_contract (void)
 
 
 static int
+test_json_canon (void)
+{
+  {
+    json_t *c1;
+    char *canon;
+    c1 = json_pack ("{s:s}",
+                    "k1", "Hello\nWorld");
+
+    canon = TALER_JSON_canonicalize (c1);
+    GNUNET_assert (NULL != canon);
+
+    printf ("canon: '%s'\n", canon);
+
+    GNUNET_assert (0 == strcmp (canon,
+                                "{\"k1\":\"Hello\\nWorld\"}"));
+  }
+  {
+    json_t *c1;
+    char *canon;
+    c1 = json_pack ("{s:s}",
+                    "k1", "Testing “unicode” characters");
+
+    canon = TALER_JSON_canonicalize (c1);
+    GNUNET_assert (NULL != canon);
+
+    printf ("canon: '%s'\n", canon);
+
+    GNUNET_assert (0 == strcmp (canon,
+                                "{\"k1\":\"Testing “unicode” characters\"}"));
+  }
+  {
+    json_t *c1;
+    char *canon;
+    c1 = json_pack ("{s:s}",
+                    "k1", "low range \x05 chars");
+
+    canon = TALER_JSON_canonicalize (c1);
+    GNUNET_assert (NULL != canon);
+
+    printf ("canon: '%s'\n", canon);
+
+    GNUNET_assert (0 == strcmp (canon,
+                                "{\"k1\":\"low range \\u0005 chars\"}"));
+  }
+
+
+  return 0;
+}
+
+
+static int
 test_rfc8785 (void)
 {
   struct TALER_PrivateContractHash h1;
@@ -348,7 +399,7 @@ test_rfc8785 (void)
                                              sizeof (h1));
     if (0 !=
         strcmp (s,
-                "J678K3PW9Y3DG63Z3T7ZYR2P7CEXMVZ2SFPQMABACK9TJRYREPP82542PCJ0P7Y7FAQAMWECDX50XH1RBTWHX6SSJHH6FXRV0JCS6R8"))
+                "531S33T8ZRGW6548G7T67PMDNGS4Z1D8A2GMB87G3PNKYTW6KGF7Q99XVCGXBKVA2HX6PR5ENJ1PQ5ZTYMMXQB6RM7S82VP7ZG2X5G8"))
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Invalid reference hash: %s\n",
@@ -376,6 +427,8 @@ main (int argc,
   if (0 != test_amount ())
     return 1;
   if (0 != test_contract ())
+    return 2;
+  if (0 != test_json_canon ())
     return 2;
   if (0 != test_rfc8785 ())
     return 2;

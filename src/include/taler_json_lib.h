@@ -563,6 +563,12 @@ enum GNUNET_GenericReturnValue
 TALER_JSON_parse_agemask (const json_t *root,
                           struct TALER_AgeMask *mask);
 
+/**
+ * Canonicalize a JSON input to a string according to RFC 8785.
+ */
+char *
+TALER_JSON_canonicalize (const json_t *input);
+
 #endif /* TALER_JSON_LIB_H_ */
 
 /* End of taler_json_lib.h */

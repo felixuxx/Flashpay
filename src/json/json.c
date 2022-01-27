@@ -144,6 +144,9 @@ rfc8785encode (char **inp)
     if ( (1 == mbl) &&
          (val <= 0x1F) )
     {
+      /* Should not happen, as input is produced by
+       * JSON stringification */
+      GNUNET_break (0);
       lowdump (&buf,
                val);
     }
@@ -192,6 +195,12 @@ rfc8785encode (char **inp)
                                  rlen);
           }
         }
+        break;
+      default:
+        mbl = 2;
+        GNUNET_buffer_write (&buf,
+                             pos,
+                             mbl);
         break;
       }
     }
@@ -1006,6 +1015,24 @@ TALER_deposit_extension_hash (const json_t *extensions,
                  dump_and_hash (extensions,
                                 "taler-contract-extensions",
                                 &ech->hash));
+}
+
+
+char *
+TALER_JSON_canonicalize (const json_t *input)
+{
+  char *wire_enc;
+
+  if (NULL == (wire_enc = json_dumps (input,
+                                      JSON_ENCODE_ANY
+                                      | JSON_COMPACT
+                                      | JSON_SORT_KEYS)))
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  rfc8785encode (&wire_enc);
+  return wire_enc;
 }
 
 
