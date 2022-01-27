@@ -78,27 +78,27 @@ lowdump (struct GNUNET_Buffer *buf,
   {
   case 0x8:
     GNUNET_buffer_write (buf,
-                         "\b",
+                         "\\b",
                          2);
     break;
   case 0x9:
     GNUNET_buffer_write (buf,
-                         "\t",
+                         "\\t",
                          2);
     break;
   case 0xA:
     GNUNET_buffer_write (buf,
-                         "\n",
+                         "\\n",
                          2);
     break;
   case 0xC:
     GNUNET_buffer_write (buf,
-                         "\f",
+                         "\\f",
                          2);
     break;
   case 0xD:
     GNUNET_buffer_write (buf,
-                         "\r",
+                         "\\r",
                          2);
     break;
   default:
