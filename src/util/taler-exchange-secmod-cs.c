@@ -43,6 +43,8 @@
 #include <poll.h>
 
 
+#define TALER_CFG_CIPHER_LEN 3
+
 /**
  * Information we keep per denomination.
  */
@@ -1360,6 +1362,7 @@ load_denominations (void *cls,
   struct LoadContext *ctx = cls;
   struct Denomination *denom;
   bool wake = true;
+  char *cipher;
 
   if ( (0 != strncasecmp (denomination_alias,
                           "coin_",
@@ -1368,6 +1371,26 @@ load_denominations (void *cls,
                           "coin-",
                           strlen ("coin-"))) )
     return; /* not a denomination type definition */
+  if (GNUNET_OK !=
+      GNUNET_CONFIGURATION_get_value_string (ctx->cfg,
+                                             denomination_alias,
+                                             "CIPHER",
+                                             &cipher))
+  {
+    GNUNET_log_config_missing (GNUNET_ERROR_TYPE_ERROR,
+                               denomination_alias,
+                               "CIPHER");
+    return;
+  }
+  if (strlen (cipher) > TALER_CFG_CIPHER_LEN)
+  {
+    return; /* Cipher length must be smaller than TALER_CFG_CIPHER_LEN */
+  }
+  if (0 != strcmp (cipher, "CS"))
+  {
+    return; /* Ignore denominations of other types than CS*/
+  }
+
   denom = GNUNET_new (struct Denomination);
   if (GNUNET_OK !=
       parse_denomination_cfg (ctx->cfg,
