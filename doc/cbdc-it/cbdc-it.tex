@@ -75,6 +75,8 @@ Traduzione: Dora Scilipoti, con contributi da Luca Saiu
 
 %\tableofcontents
 
+\bibpunct{(}{)}{ e }{a}{}{,}
+
 \section{Introduzione}\label{1.-introduzione}
 
 Dall'avvento dei personal computer negli anni ottanta, e più
@@ -425,7 +427,7 @@ alla banca centrale di delegare questi compiti. Tutti i servizi di
 assistenza e manutenzione di tali conti potrebbero essere affidati ad
 operatori esterni~\cite[][]{Bindseil}, oppure le banche commerciali potrebbero
 essere obbligate per legge ad aprire conti presso la banca centrale per i
-propri clienti~\cite{Berentsen}.
+propri clienti~\cite[][]{Berentsen}.
 
 Una CBDC basata su conti darebbe potenzialmente alla banca centrale
 l'accesso a molti dati aggiuntivi. Uno dei motivi di preoccupazione è
@@ -470,7 +472,6 @@ economici per eviatare corse agli sportelli.
 
 % References to Kumhof, Bindseil below should render like this:
 % valore (Kumhof & Noone, 2018 e Bindseil, 2020).
-\bibpunct{(}{)}{ e }{a}{}{,}
 
 Esistono anche proposte per ridurre il rischio di disintermediazione
 restringendo o scoraggiando l'uso della CBDC come riserva di valore. Una
@@ -480,18 +481,22 @@ variabile ai conti in CBDC, in modo che il rendimento sia sempre
 sufficientemente inferiore a quello dei conti nelle banche commerciali,
 arrivando eventualmente fino a tassi negativi, in modo da rendere la CBDC
 meno attraente come riserva di valore~\cite[][]{Kumhof,Bindseil}. Oltre a ciò,
-per evitare le corse agli sportelli \cite[][]{Kumhof} suggeriscono che la
+per evitare le corse agli sportelli \cite{Kumhof} suggeriscono che la
 CBDC non dovrebbe essere emessa a fronte di depositi bancari ma solo a
 fronte di obbligazioni come i titoli di stato. Nel complesso, una CBDC
 basata su conti richiederebbe un'analisi più approfondita di queste
 problematiche.
 
 % Back to default style.
-\bibpunct{(}{)}{ e }{,}{}{,}
+%\bibpunct{(}{)}{ e }{,}{}{,}
 
 
 \subsection{CBDC Basata su token e legata al hardware}
 \label{cbdc-basata-su-token-e-legata-al-hardware}
+
+% References to Wojtczuk,Johnston,Lapid below do not render correctly in pdf. Should be:
+% compromesse (si veda, ad esempio, Wojtczuk & Rutkowska 2009, Johnston 2010 e Lapid & Wool 2018).
+% but we can only either use "," or "e", but not switch AFAIK.
 
 In alternativa ai conti deposito, una banca centrale potrebbe emettere
 token elettronici. Tecnicamente ciò richiede un sistema per garantire che
@@ -514,6 +519,10 @@ intermediari bancari che eseguano i controlli per la conoscenza dei
 clienti e le procedure per la lotta al riciclaggio di denaro e al
 finanziamento del terrorismo renderebbe difficile la lotta alla
 criminalità.
+
+% References to Soukup,Garcia,Kasper,CCC below do not render correctly in pdf. Should be:
+% L’esperienza (si veda, ad esempio, Soukup & Muff 2007, Garcia et al. 2008, Kasper et al. 2010 e CCC e.V. 2017) suggerisce
+% but we can only either use "," or "e", but not switch AFAIK.
 
 Le schede SIM sono oggi il mezzo più ampiamente disponibile per un
 sistema di pagamento sicuro basato su hardware, ma comportano anche
@@ -791,7 +800,7 @@ atomici nei protocolli \textit{interledger} o allo scambio equo nei
 tradizionali sistemi \textit{e-cash}.
 
 La costruzione matematica più comune per un protocollo di scambio di
-chiavi è la costruzione~\cite{Diffie}), che
+chiavi è la costruzione~\cite{Diffie}, che
 consente a due parti di derivare una chiave segreta condivisa. A tale
 scopo, condividono due parametri di dominio $p$ e $g$, che possono
 essere pubblici, dove $p$ è un numero primo grande e $g$ è una radice
@@ -1065,10 +1074,7 @@ molti anni di 1–10 kilobyte per transazione. Gli esperimenti su un
 prototipo di GNU Taler che utilizzava i prezzi di \textit{Amazon Web Service}
 hanno stabilito che il costo del sistema (archiviazione, larghezza di
 banda e capacità di calcolo) su larga scala sarebbe inferiore a
-0,0001 USD per transazione (per i dettagli sui dati, si veda~\citet{Dold}).
-
-% In the reference for Dold, the year 2019 should be either not between parentesis
-% or there should be a comma after Dold: Dold, 2019.
+0,0001 USD per transazione~\cite[per i dettagli sui dati, si veda][]{Dold}.
 
 \section{Considerazioni normative e politiche}
     \label{5.-considerazioni-normative-e-politiche}
@@ -1144,7 +1150,7 @@ sulla CBDC per limitare il suo fascino come riserva di valore, come
 suggerisce~\cite{Bindseil}. Si tratterebbe infatti della diretta attuazione
 dell'idea di Silvio Gesell di applicare una tassa di possesso sulla moneta,
 notoriamente citata da~\cite{Keynes} e ripresa da~\cite{Goodfriend},
-\cite{Buiter}, e~\cite{Agarwal}.
+\cite{Buiter} e~\cite{Agarwal}.
 
 Per quanto riguarda le implicazioni in termini di politica monetaria,
 non dovrebbero esserci cambiamenti reali perché la nostra CBDC è
@@ -1273,6 +1279,6 @@ contempo i vantaggi del passaggio al digitale.
 
 \newpage
 \bibliographystyle{agsm}
-\bibliography{cbdc}
+\bibliography{cbdc-it}
 
 \end{document}
