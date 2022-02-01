@@ -2,7 +2,7 @@
 % and/or extra space between lines/paragraphs?
 
 %\renewcommand{\abstractname}{Sommario}
-%\renewcommand{\refname}{Opere di consultazione}
+%\renewcommand{\refname}{Riferimenti bibliografici}
 
 \documentclass{article}
 \usepackage[T1]{fontenc}
@@ -122,13 +122,13 @@ un'infrastruttura di pagamento neutrale per incoraggiare la concorrenza,
 l'efficienza e l'innovazione. Nel complesso, è probabile che i costi e i 
 benefici di una CBDC al dettaglio differiscano da un paese all'altro. Per 
 il punto di vista della Banca nazionale svizzera, che non ha in programma 
-l'emissione di una CBDC al dettaglio,~\cite[si veda][]{Jordan}.
+l'emissione di una CBDC al dettaglio, si veda~\cite{Jordan}.
 
 Nel presente documento analizziamo la CBDC al dettaglio, ma senza 
 affrontare la questione se una banca centrale \emph{debba o meno} emetterla. 
 Ci concentriamo invece sul possibile design di una CBCD. L'interesse 
 per la progettazione di CBDC è recentemente aumentato 
-considerevolmente (\cite[si, veda ad esempio,][]{Allen,BoE}). Il design che 
+considerevolmente~\cite[si, veda ad esempio,][]{Allen,BoE}. Il design che 
 proponiamo differisce notevolmente da altre proposte. Il nostro sistema 
 si basa sulla tecnologia eCash descritta da~\cite{Chaum1983,Chaum1990}, 
 migliorandola. In particolare, proponiamo una CBDC basata su token, solo 
@@ -158,7 +158,7 @@ tutela della privacy richieda così tanta potenza di calcolo da rendere
 impraticabile la sua implementazione su dispositivi 
 portatili~\cite[vedi][]{Allen}. Sebbene questo possa essere vero nel 
 caso di una tecnologia di registro distribuito, dove la tracciabilità 
-delle transazioni è necessaria per prevenire la doppia spesa~\cite{Narayanan}, 
+delle transazioni è necessaria per prevenire la doppia spesa~\citet{Narayanan}, 
 non lo è nel caso proposto in questo documento, dove si ha un protocollo 
 di firma cieca di tipo Chaum e la partecipazione di una banca centrale. 
 La nostra CBDC, basata su firme cieche e un'architettura a due livelli, 
@@ -339,11 +339,13 @@ vulnerabile ai rischi di insolvenza del credito e di liquidità della
 relativa banca. Tale rischio può essere evitato effettuando i depositi 
 presso la banca centrale in modo che siano le riserve di quest'ultima a 
 garantire la \textit{stablecoin}. Tali \textit{stablecoin} sono state 
-chiamate «CBDC sintetiche»~\cite{Adrian}. È importante sottolineare che 
+chiamate «CBDC sintetiche»~\cite[][]{Adrian}. È importante sottolineare che 
 queste \textit{stablecoin} non sono moneta di banca centrale e quindi 
 non costituiscono una CBDC in quanto non sono registrate come passività 
 della banca centrale e, pertanto, rimangono soggette al rischio di 
 controparte, ovvero al rischio di fallimento dell'emittente.
+
+% Not sure the reference to Adrian above is fixed correctly. 
 
 Se una \textit{stablecoin} non è rimborsabile ad un prezzo fisso, la sua 
 stabilità rispetto all'attivo sottostante non è garantita. Se la 
@@ -355,7 +357,9 @@ della moneta dipenderà dal valore patrimoniale netto del fondo, ma il
 suo valore effettivo può variare. Se ci sono partecipanti autorizzati 
 a creare e riscattare \textit{stablecoin} e quindi ad agire come 
 arbitraggisti, come nel caso degli ETF e come previsto per la 
-Diem~\cite{Libra}, la deviazione si presume minima.
+Diem~\cite[][]{Libra}, la deviazione si presume minima.
+
+% Not sure the reference to Libra above is fixed correctly.
 
 Nel complesso, le \textit{stablecoin} hanno maggiori possibilità di 
 diventare moneta rispetto alle criptovalute, soprattutto se 
@@ -388,7 +392,7 @@ banche centrali investono notevoli risorse nelle caratteristiche di
 sicurezza delle banconote.
 
 È stato suggerito che la distinzione tra sistemi basati su conti e 
-quelli basati su token non sia applicabile alle monete digitali~\cite{Garratt}. 
+quelli basati su token non sia applicabile alle monete digitali~\cite[][]{Garratt}. 
 Noi al contrario riteniamo che ci sia una differenza significativa. La 
 differenza essenziale risiede nelle informazioni contenute nell'attivo. 
 In un sistema basato su conti, gli attivi (i conti) sono riconducìbili  
@@ -402,6 +406,8 @@ l'uso di token, Bitcoin è un sistema basato su conti. L'unica differenza
 tra un sistema tradizionale basato su conti e una \textit{blockchain} è 
 che i conti non sono conservati in un database centrale ma in un 
 database decentralizzato di solo accodamento.}
+
+% Not sure the reference to Garratt above is fixed correctly.
 
 \subsection{CBDC basata su conti}\label{cbdc-basata-su-conti}
 
@@ -419,9 +425,11 @@ fatto che probabilmente oggi non sono disposte ad eseguire l'autenticazione
 dei cittadini su larga scala, qualsiasi CBDC basata su conti richiederebbe 
 alla banca centrale di delegare questi compiti. Tutti i servizi di 
 assistenza e manutenzione di tali conti potrebbero essere affidati ad  
-operatori esterni~\cite{Bindseil}, oppure le banche commerciali potrebbero 
+operatori esterni~\cite[][]{Bindseil}, oppure le banche commerciali potrebbero 
 essere obbligate per legge ad aprire conti presso la banca centrale per i
 propri clienti~\cite{Berentsen}.
+
+% Not sure the references to Bindseil, and Berentsen, above are fixed correctly.
 
 Una CBDC basata su conti darebbe potenzialmente alla banca centrale 
 l'accesso a molti dati aggiuntivi. Uno dei motivi di preoccupazione è 
@@ -445,12 +453,14 @@ che comporterebbe due rischi. In primo luogo, potrebbe minacciare la base
 dei depositi delle banche e, all'estremo, portare alla disintermediazione 
 bancaria. Ciò potrebbe influire negativamente sulla disponibilità di 
 credito per il settore privato e, di conseguenza, sull'attività 
-economica~\cite{Agur}. La disintermediazione delle banche potrebbe anche 
+economica~\cite[][]{Agur}. La disintermediazione delle banche potrebbe anche 
 condurre alla centralizzazione dell'allocazione del credito all'interno 
 della banca centrale, con ripercussioni negative sulla produttività e 
 sulla crescita economica. In secondo luogo, la possibilità per le persone 
 di trasferire i propri depositi nel porto sicuro di una banca centrale 
 potrebbe accelerare le corse agli sportelli nei periodi di crisi economica.
+
+% Not sure the reference to Agur above is fixed correctly.
 
 Vi sono però argomentazioni contrarie. \cite{Brunnermeier} 
 sostengono che i trasferimenti di fondi dai depositi ai conti 
@@ -472,11 +482,16 @@ variabile ai conti in CBDC, in modo che il rendimento sia sempre
 sufficientemente inferiore a quello dei conti nelle banche commerciali, 
 arrivando eventualmente fino a tassi negativi, in modo da rendere la CBDC 
 meno attraente come riserva di valore~\cite{Kumhof,Bindseil}. Oltre a ciò, 
-per evitare le corse agli sportelli \cite{Kumhof} suggeriscono che la 
+per evitare le corse agli sportelli \cite[][]{Kumhof} suggeriscono che la 
 CBDC non dovrebbe essere emessa a fronte di depositi bancari ma solo a 
 fronte di obbligazioni come i titoli di stato. Nel complesso, una CBDC 
 basata su conti richiederebbe un'analisi più approfondita di queste 
 problematiche.
+
+% References to Kumhof, Bindseil above should render like this:
+% valore (Kumhof & Noone, 2018 e Bindseil, 2020).
+
+% Not sure the reference to Kumhof above is fixed correctly.
 
 \subsection{CBDC Basata su token e legata al hardware}
 \label{cbdc-basata-su-token-e-legata-al-hardware}
@@ -512,7 +527,7 @@ e che consenta transazioni offline --- e quindi il furto mediante
 clonazione delle informazioni in esso contenute --- sarà l'obiettivo di 
 attacchi di contraffazione riusciti non appena il valore economico 
 dell'attacco risulti sostanziale. Tali attacchi provengono anche da 
-utenti che forzano il proprio hardware ~\cite[si veda anche]{Allen}. Per 
+utenti che forzano il proprio hardware~\cite[vedi][]{Allen}. Per 
 limitare l'impatto di una compromissione, i sistemi con carte di pagamento 
 che sono stati precedentemente implementati dependono dalla resistenza 
 alle manomissioni in combinazione con il rilevamento delle frodi. 
@@ -579,11 +594,13 @@ commerciali autenticano i clienti quando ritirano CBDC così come i
 venditori o beneficiari quando le ricevono. Quando spendono CBDC, 
 invece, i clienti o pagatori devono solo autorizzare le transazioni senza 
 bisogno di identificarsi. I pagamenti risultano più economici, più facili 
-e più veloci, evitando al contempo interferenze con la privacy~\cite{Dold}. 
+e più veloci, evitando al contempo interferenze con la privacy~\cite[][]{Dold}. 
 L'autenticazione dei clienti quando ritirano CBDC, nonché dei venditori 
 o beneficiari quando le ricevono, consente altresì di adempire alle 
 normative sulla conoscenza dei clienti e sulla lotta al riciclaggio di 
 denaro e al finanziamento del terrorismo.
+
+% Not sure the reference to Dold above is fixed correctly.
 
 La CBDC che si propone in questo documento è un vero e proprio 
 strumento digitale al portatore perché quando l'utente preleva una 
@@ -611,7 +628,7 @@ proprio strumento digitale al portatore.
 
 Nell'analisi che segue forniamo una panoramica approfondita della 
 tecnologia e mostriamo come si può integrare con il sistema bancario 
-esistente per creare una CBDC.  \cite{Dold} fornisce ulteriori 
+esistente per creare una CBDC.  \citet{Dold} fornisce ulteriori 
 dettagli.
 
 \subsection{Componenti fondamentali}\label{componenti-fondamentali}
@@ -637,12 +654,14 @@ Nella nostra proposta il messaggio è una moneta o una banconota con un
 numero di serie, e la firma della banca centrale ne attesta la 
 validità. Sebbene GNU Taler utilizzi per impostazione predefinita le 
 moderne firme EdDSA~\cite[vedi][]{Bernstein2012}, qui presentiamo un 
-semplice schema di firma crittografica basato su RSA~\cite{Rivest}, un 
+semplice schema di firma crittografica basato su RSA~\cite[][]{Rivest}, un 
 sistema crittografico ben studiato.\footnote{Per un'analisi della 
 lunga storia del crittosistema RSA e uno studio degli attacchi a questo 
 sistema, si veda~\cite{Boneh}.} Tuttavia, in linea di principio, è 
 possibile utilizzare qualsiasi tecnologia di firma crittografica 
 (DSA, ECDSA, EdDSA, RSA, ecc.)
+
+% Not sure the reference to Rivest above is fixed correctly.
 
 Per generare una chiave RSA, il firmatario prende prima due grandi 
 numeri primi indipendenti $p$ e $q$ e calcola $n = \emph{pq}$, 
@@ -778,7 +797,7 @@ atomici nei protocolli \textit{interledger} o allo scambio equo nei
 tradizionali sistemi \textit{e-cash}.
 
 La costruzione matematica più comune per un protocollo di scambio di 
-chiavi è la costruzione Diffie-Hellman(~\cite{Diffie}), che 
+chiavi è la costruzione~\cite{Diffie}), che 
 consente a due parti di derivare una chiave segreta condivisa. A tale 
 scopo, condividono due parametri di dominio $p$ e $g$, che possono 
 essere pubblici, dove $p$ è un numero primo grande e $g$ è una radice 
@@ -1052,7 +1071,10 @@ molti anni di 1–10 kilobyte per transazione. Gli esperimenti su un
 prototipo di GNU Taler che utilizzava i prezzi di \textit{Amazon Web Service} 
 hanno stabilito che il costo del sistema (archiviazione, larghezza di 
 banda e capacità di calcolo) su larga scala sarebbe inferiore a 
-0,0001 USD per transazione (per i dettagli sui dati, si veda~\cite{Dold})).
+0,0001 USD per transazione (per i dettagli sui dati, si veda~\citet{Dold}).
+
+% In the reference for Dold, the year 2019 should be either not between parentesis 
+% or there should be a comma after Dold: Dold, 2019. 
 
 \section{Considerazioni normative e politiche}
     \label{5.-considerazioni-normative-e-politiche}
@@ -1157,7 +1179,7 @@ comprendono protocolli per dare il resto o rendere divisibili le monete.
 Un secondo problema riguarda gli errori nelle transazioni dovuti ad 
 interruzioni della rete. In questo caso, il sistema deve garantire che 
 i fondi rimangano in possesso del consumatore senza pregiudicare la 
-privacy. L'\textit{Endorsed E-Cash} proposto da\cite{Camenisch2007}, 
+privacy. L'\textit{Endorsed E-Cash} proposto da~\cite{Camenisch2007}, 
 così come da~\cite{Dold}, affrontano entrambi questo problema. Molte 
 delle soluzioni violano le garanzie sulla privacy per i clienti che 
 utilizzano queste funzionalità e tutte, tranne Taler, violano il 
