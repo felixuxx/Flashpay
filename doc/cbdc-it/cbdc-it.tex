@@ -445,7 +445,7 @@ cospicuo per gli attacchi: anche l'accesso in sola lettura ad una parte
 del database potrebbe creare rischi significativi per le persone i cui
 dati sarebbero esposti.
 
-Se dovessero forniri conti bancari per il pubblico, le banche centrali
+Se dovessero fornire conti bancari per il pubblico, le banche centrali
 entrerebbero in diretta concorrenza con le banche commerciali, competizione
 che comporterebbe due rischi. In primo luogo, potrebbe minacciare la base
 dei depositi delle banche e, all'estremo, portare alla disintermediazione
@@ -535,7 +535,7 @@ attacchi di contraffazione riusciti non appena il valore economico
 dell'attacco risulti sostanziale. Tali attacchi provengono anche da
 utenti che forzano il proprio hardware~\cite[vedi][]{Allen}. Per
 limitare l'impatto di una compromissione, i sistemi con carte di pagamento
-che sono stati precedentemente implementati dependono dalla resistenza
+che sono stati precedentemente implementati dipendono dalla resistenza
 alle manomissioni in combinazione con il rilevamento delle frodi.
 Tuttavia, il rilevamento delle frodi richiede la capacità di identificare
 i pagatori e tenere traccia dei clienti, il che non è compatibile con la
@@ -855,7 +855,7 @@ Se si usa Diffie-Hellman come protocollo per lo scambio di chiavi, si
 ottiene
 $T_{i} \equiv g^{t_{i}} \mod p$.
 
-Il risultato sono tre trasferimenti
+Il risultato {\`e} composto da tre trasferimenti
 $K_{i} \equiv \emph{KX}(c,t_{i})$. Il protocollo di scambio di chiavi
 può essere utilizzato in diversi modi per ottenere lo stesso valore
 $K_{i} \equiv \emph{KX}(C,t_{i}) = \emph{KX}(c,T_{i})$.
@@ -1007,6 +1007,10 @@ private che utilizza per firmare le monete e altri messaggi di
 protocollo. Se le chiavi di firma della banca centrale dovessero
 essere compromesse, ad esempio da un computer quantistico, da un
 attacco fisico ai \textit{datacenter} o anche da qualche nuovo algoritmo
+% FIXME:
+% forme alternative:
+% 1) "rimborsare AGLI utenti ... tutte le monete non spese"
+% 2) "rimborsare gli utenti ... DI tutte le monete non spese"
 imprevisto, è possibile rimborsare gli utenti --- in tutta sicurezza e
 senza compromettere la privacy --- tutte le monete non spese. La banca
 centrale annuncerebbe la revoca della chiave tramite l'\textit{Application
@@ -1068,6 +1072,12 @@ una singola transazione è in genere di circa 1–10 kilobyte. Pertanto,
 i \textit{datacenter} di oggi, che scambiano informazioni a 400 Gbit/s,
 possono supportare milioni di transazioni al secondo.
 
+%FIXME:
+%
+% Sotto appare "Probabilmente + congiuntivo".  Suggerirei
+% di cambiarlo con una forma all'indicativo.  Qui si trova
+% una discussione a riguardo:
+% https://italian.stackexchange.com/questions/3653/probabilmente-indicativo-o-congiuntivo
 Infine, il costo totale del sistema è basso. Probabilmente il costo
 principale sia rappresentato dall'archiviazione sicura per
 molti anni di 1–10 kilobyte per transazione. Gli esperimenti su un
@@ -1114,7 +1124,7 @@ prelevare, oppure limitare l'importo totale di CBDC che le banche
 commerciali possono convertire.
 
 La disintermediazione del settore bancario è uno dei rischi di
-instabilità finanziaria spesso sollevato per quanto riguarda la BCDC
+instabilità finanziaria spesso sollevato per quanto riguarda la CBDC
 al dettaglio. In particolare, una CBDC al dettaglio potrebbe
 facilitare l'accumulo di ingenti somme di denaro della banca
 centrale, il che potrebbe avere un impatto negativo sul finanziamento
@@ -1133,7 +1143,7 @@ molto alta è probabilmente un rischio meno accettabile. Pertanto, non
 ci aspettiamo un accaparramento significativamente maggiore rispetto a
 quello del denaro fisico.
 
-Tuttavia, se l'accumulo o la massiccia conversioni dei depositi
+Tuttavia, se l'accumulo o la massiccia conversione dei depositi
 bancari in CBDC dovessero destare proccupazione, la banca centrale
 avrebbe diverse opzioni. Come si è spiegato, secondo il progetto
 proposto le banche centrali fissano una data di scadenza per tutte le
@@ -1155,7 +1165,7 @@ notoriamente citata da~\cite{Keynes} e ripresa da~\cite{Goodfriend},
 Per quanto riguarda le implicazioni in termini di politica monetaria,
 non dovrebbero esserci cambiamenti reali perché la nostra CBDC è
 progettata per replicare il contante piuttosto che i depositi bancari.
-L'emissione, il prelievo e il deposito della nostra CBCD corrispondono
+L'emissione, il prelievo e il deposito della nostra CBDC corrispondono
 esattamente all'emissione, al prelievo e al deposito di banconote. È
 possibile che la velocità di circolazione di una CBDC al dettaglio sia
 diversa da quella del contante fisico, ma questo non dovrebbe
@@ -1204,7 +1214,7 @@ Per quanto riguarda i sistemi di pagamento per le CBDC, \cite{Danezis}
 hanno progettato un \textit{ledger} scalabile per RSCoin. Si tratta
 fondamentalmente di un sistema RTGS che viene protetto utilizzando la
 stessa crittografia che si usa in Bitcoin. Come Taler, il design utilizza
-il \textit{sharding} del database per consentire la scalabilità lineare.
+lo \textit{sharding} del database per consentire la scalabilità lineare.
 Tuttavia, la soluzione di Danezis e Meiklejohn non prevede alcuna
 disposizione per la privacy e manca di elementi per l'integrazione
 pratica del design con i sistemi e i processi bancari esistenti.
