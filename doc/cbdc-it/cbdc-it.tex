@@ -1,17 +1,13 @@
-% The Spanish pdf looks too crowded. For Italian, maybe bigger font
-% and/or extra space between lines/paragraphs?
-
-%\renewcommand{\abstractname}{Sommario}
-%\renewcommand{\refname}{Riferimenti bibliografici}
-
 \documentclass{article}
 \usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{amsmath}
 \usepackage{hyperref}
 \usepackage{graphicx}
 \usepackage{natbib}
 \usepackage[italian]{babel}
+%\usepackage{babelbib}
 \title{Come emettere una moneta digitale di banca centrale}
 \author{David Chaum\footnote{david@chaum.com} \\
   xx Network \and
@@ -22,8 +18,6 @@
   Banca Nazionale Svizzera}
 \date{Questa versione: febbraio 2022 \\
       Prima versione:  maggio 2020}
-
-
 
 \addto\captionsitalian{\renewcommand{\figurename}{Diagramma}}
 
@@ -75,7 +69,7 @@ Traduzione: Dora Scilipoti, con contributi da Luca Saiu
 
 %\tableofcontents
 
-\bibpunct{(}{)}{ e }{a}{}{,}
+%\bibpunct{(}{)}{ e }{a}{}{,}
 
 \section{Introduzione}\label{1.-introduzione}
 
@@ -92,8 +86,7 @@ conseguente lancio di Bitcoin avvenuto con successo hanno inaugurato
 una nuova era di ricerca e sviluppo di valute digitali. La piattaforma
 CoinMarketCap elenca oltre 5.000 criptovalute. Recentemente le banche
 centrali hanno iniziato a considerare, o almeno a studiare,
-l'emissione di monete
-digitali~\cite[vedi][]{AuerBoehme,AuerCornelli,Boar,Kiff,Mancini-Griffoli}.
+l'emissione di monete digitali~\cite[vedi][]{AuerBoehme,AuerCornelli,Boar,Kiff,Mancini-Griffoli}.
 
 Attualmente le banche centrali emettono due tipi di moneta: (i)
 riserve sotto forma di conti di regolamento presso le banche centrali,
@@ -120,7 +113,8 @@ per il sistema attuale, a seconda di come è progettata. Più una CBDC
 compete con i depositi delle banche commerciali, maggiore è la minaccia
 ai finanziamenti bancari, con effetti potenzialmente negativi sul credito
 bancario e sull'attività economica~\cite[vedi][]{Agur}. Tuttavia, una
-CBDC al dettaglio potrebbe anche essere vantaggiosa~\cite[vedi][]{Bordo,Berentsen,Bindseil,Niepelt,Riksbank,BoE}.
+CBDC al dettaglio potrebbe anche essere 
+vantaggiosa~\cite[vedi][]{Bordo,Berentsen,Bindseil,Niepelt,Riksbank,BoE}.
 Mettere a disposizione di tutti una moneta elettronica di banca centrale
 esente dal rischio di controparte potrebbe migliorare la stabilità e la
 resilienza del sistema di pagamenti al dettaglio. Potrebbe inoltre fornire
@@ -134,9 +128,9 @@ Nel presente documento analizziamo la CBDC al dettaglio, ma senza
 affrontare la questione se una banca centrale \emph{debba o meno} emetterla.
 Ci concentriamo invece sul possibile design di una CBCD. L'interesse
 per la progettazione di CBDC è recentemente aumentato
-considerevolmente~\cite[si, veda ad esempio,][]{Allen,BoE}. Il design che
+considerevolmente (si veda, ad esempio, ~\cite{Allen} e \cite{BoE}). Il design che
 proponiamo differisce notevolmente da altre proposte. Il nostro sistema
-si basa sulla tecnologia eCash descritta da~\cite{Chaum1983,Chaum1990},
+si basa sulla tecnologia eCash descritta da~\cite{Chaum1983} e \cite{Chaum1990},
 migliorandola. In particolare, proponiamo una CBDC basata su token, solo
 con software e senza tecnologia di registro distribuito. La DLT è
 un'architettura interessante in assenza di un operatore centrale o se le
@@ -164,7 +158,7 @@ tutela della privacy richieda così tanta potenza di calcolo da rendere
 impraticabile la sua implementazione su dispositivi
 portatili~\cite[vedi][]{Allen}. Sebbene questo possa essere vero nel
 caso di una tecnologia di registro distribuito, dove la tracciabilità
-delle transazioni è necessaria per prevenire la doppia spesa~\citet{Narayanan},
+delle transazioni è necessaria per prevenire la doppia spesa~\cite[][]{Narayanan},
 non lo è nel caso proposto in questo documento, dove si ha un protocollo
 di firma cieca di tipo Chaum e la partecipazione di una banca centrale.
 La nostra CBDC, basata su firme cieche e un'architettura a due livelli,
@@ -355,8 +349,8 @@ Se una \textit{stablecoin} non è rimborsabile ad un prezzo fisso, la sua
 stabilità rispetto all'attivo sottostante non è garantita. Se la
 \textit{stablecoin} rappresenta comunque una quota di proprietà
 dell'attivo sottostante, lo schema ricorda quello di un fondo comune di
-investimento chiuso o di un fondo indicizzato quotato (\textit{Exchange-
-Traded Fund} - ETF) e si applicano i relativi rischi. Il valore
+investimento chiuso o di un fondo indicizzato quotato (\textit{Exchange-Traded 
+Fund} - ETF) e si applicano i relativi rischi. Il valore
 della moneta dipenderà dal valore patrimoniale netto del fondo, ma il
 suo valore effettivo può variare. Se ci sono partecipanti autorizzati
 a creare e riscattare \textit{stablecoin} e quindi ad agire come
@@ -421,7 +415,7 @@ gestione del processo iniziale di conoscenza del cliente, ma anche
 l'autenticazione dei clienti per le transazioni bancarie, la gestione
 delle frodi e delle autenticazioni false positive e false negative.
 Data la scarsa presenza fisica delle banche centrali nella società e il
-fatto che probabilmente oggi non sono disposte ad eseguire l'autenticazione
+fatto che probabilmente oggi non siano disposte ad eseguire l'autenticazione
 dei cittadini su larga scala, qualsiasi CBDC basata su conti richiederebbe
 alla banca centrale di delegare questi compiti. Tutti i servizi di
 assistenza e manutenzione di tali conti potrebbero essere affidati ad
@@ -471,7 +465,9 @@ sarebbero costrette a consolidare la sicurezza dei propri modelli
 economici per eviatare corse agli sportelli.
 
 % References to Kumhof, Bindseil below should render like this:
-% valore (Kumhof & Noone, 2018 e Bindseil, 2020).
+% valore (Kumhof &amp; Noone, 2018 e Bindseil, 2020).
+% This was fixed by replacing "," with "and" to separate authors in the bib file.
+% It also fixed {Kumhof} to render as "Kumhof & Noone".
 
 Esistono anche proposte per ridurre il rischio di disintermediazione
 restringendo o scoraggiando l'uso della CBDC come riserva di valore. Una
@@ -481,7 +477,7 @@ variabile ai conti in CBDC, in modo che il rendimento sia sempre
 sufficientemente inferiore a quello dei conti nelle banche commerciali,
 arrivando eventualmente fino a tassi negativi, in modo da rendere la CBDC
 meno attraente come riserva di valore~\cite[][]{Kumhof,Bindseil}. Oltre a ciò,
-per evitare le corse agli sportelli \cite{Kumhof} suggeriscono che la
+per evitare le corse agli sportelli \citet{Kumhof} suggeriscono che la
 CBDC non dovrebbe essere emessa a fronte di depositi bancari ma solo a
 fronte di obbligazioni come i titoli di stato. Nel complesso, una CBDC
 basata su conti richiederebbe un'analisi più approfondita di queste
@@ -495,8 +491,10 @@ problematiche.
 \label{cbdc-basata-su-token-e-legata-al-hardware}
 
 % References to Wojtczuk,Johnston,Lapid below do not render correctly in pdf. Should be:
-% compromesse (si veda, ad esempio, Wojtczuk & Rutkowska 2009, Johnston 2010 e Lapid & Wool 2018).
+% compromesse (si veda, ad esempio, Wojtczuk &amp; Rutkowska 2009, Johnston 2010 e Lapid &amp; Wool 2018).
 % but we can only either use "," or "e", but not switch AFAIK.
+% This was fixed by replacing "," with "and" to separate authors in the bib file.
+% It also fixed {Katzenbeisser} to render as  "Katzenbeisser et al."
 
 In alternativa ai conti deposito, una banca centrale potrebbe emettere
 token elettronici. Tecnicamente ciò richiede un sistema per garantire che
@@ -507,8 +505,9 @@ possibili per la prevenzione della copia digitale. Le funzioni
 fisicamente non clonabili, tuttavia, non possono essere scambiate su
 Internet (eliminando di fatto l'uso principale delle CBDC) e le precedenti
 funzionalità di sicurezza nell'hardware per la prevenzione della copia
-sono state ripetutamente compromesse~\cite[si veda, ad esempio,][]{Wojtczuk,Johnston,Lapid}.
-
+sono state ripetutamente 
+compromesse~\cite[si veda, ad esempio,][]{Wojtczuk,Johnston,Lapid}.
+                                   
 Un vantaggio fondamentale delle CBDC basate su token rispetto a quelle
 basate su conti è che i sistemi tokenizzati funzionerebbero offline,
 ovvero, gli utenti potrebbero scambiare token (\textit{peer-to-peer})
@@ -521,12 +520,13 @@ finanziamento del terrorismo renderebbe difficile la lotta alla
 criminalità.
 
 % References to Soukup,Garcia,Kasper,CCC below do not render correctly in pdf. Should be:
-% L’esperienza (si veda, ad esempio, Soukup & Muff 2007, Garcia et al. 2008, Kasper et al. 2010 e CCC e.V. 2017) suggerisce
+% L’esperienza (si veda, ad esempio, Soukup &amp; Muff 2007, Garcia et al. 2008, Kasper et al. 2010 e CCC e.V. 2017) suggerisce
 % but we can only either use "," or "e", but not switch AFAIK.
+% This was fixed by replacing "," with "and" to separate authors in the bib file.
 
 Le schede SIM sono oggi il mezzo più ampiamente disponibile per un
 sistema di pagamento sicuro basato su hardware, ma comportano anche
-dei rischi. L'esperienza~\cite[si veda, ad esempio,][]{Soukup,Garcia,Kasper,CCC}
+dei rischi. L'esperienza~\cite[si veda, ad esempio,][]{Soukup,Garcia,Kasper,CCC} 
 suggerisce che qualsiasi dispositivo economicamente riproducibile in grado
 di memorizzare token con valore monetario, che una persona possa possedere
 e che consenta transazioni offline --- e quindi il furto mediante
@@ -855,7 +855,7 @@ Se si usa Diffie-Hellman come protocollo per lo scambio di chiavi, si
 ottiene
 $T_{i} \equiv g^{t_{i}} \mod p$.
 
-Il risultato {\`e} composto da tre trasferimenti
+Il risultato è composto da tre trasferimenti
 $K_{i} \equiv \emph{KX}(c,t_{i})$. Il protocollo di scambio di chiavi
 può essere utilizzato in diversi modi per ottenere lo stesso valore
 $K_{i} \equiv \emph{KX}(C,t_{i}) = \emph{KX}(c,T_{i})$.
@@ -955,6 +955,16 @@ del cliente. Infine, il dispositivo del cliente (9) utilizza $b$ per
 rimuovere l'accecamento dalla firma ($\to$ $f$) e salva la moneta appena
 coniata $(c, s)$.
 
+Per spendere CBDC, la procedura è analoga al pagamento in contanti.  
+Tuttavia, per consolidare la transazione, il venditore deve depositare 
+la moneta. La procedura per spendere CBDC è illustrata nel diagramma 2.
+
+\begin{figure}[h!]
+  \includegraphics[width=\textwidth]{diagramma2-it.png}
+  \caption{Spendere e depositare CBDC}
+  \label{fig:fig2}
+\end{figure}
+
 Un cliente e un venditore negoziano un contratto commerciale. Il
 cliente (1) utilizza una moneta elettronica per firmare il contratto o
 l'atto di vendita con la chiave privata $c$ della moneta e trasmette la
@@ -978,12 +988,6 @@ senso alla banca commerciale. Quindi la banca commerciale (7)
 accredita la moneta sul conto del venditore e (8) gli invia una
 notifica. Il venditore (9) consegna il prodotto o servizio al cliente.
 L'intera operazione richiede poche centinaia di millisecondi.
-
-\begin{figure}[h!]
-  \includegraphics[width=\textwidth]{diagramma2-it.png}
-  \caption{Spendere e depositare CBDC}
-  \label{fig:fig2}
-\end{figure}
 
 \hypertarget{considerazioni-sulla-sicurezza}{%
 \subsection{Considerazioni sulla sicurezza}
@@ -1011,7 +1015,8 @@ attacco fisico ai \textit{datacenter} o anche da qualche nuovo algoritmo
 % forme alternative:
 % 1) "rimborsare AGLI utenti ... tutte le monete non spese"
 % 2) "rimborsare gli utenti ... DI tutte le monete non spese"
-imprevisto, è possibile rimborsare gli utenti --- in tutta sicurezza e
+%FIXED
+imprevisto, è possibile rimborsare agli utenti --- in tutta sicurezza e
 senza compromettere la privacy --- tutte le monete non spese. La banca
 centrale annuncerebbe la revoca della chiave tramite l'\textit{Application
 Programming Interface} (API), che verrebbe rilevata dai portafogli,
@@ -1078,8 +1083,9 @@ possono supportare milioni di transazioni al secondo.
 % di cambiarlo con una forma all'indicativo.  Qui si trova
 % una discussione a riguardo:
 % https://italian.stackexchange.com/questions/3653/probabilmente-indicativo-o-congiuntivo
+% Not incorrect but FIXED anyway.
 Infine, il costo totale del sistema è basso. Probabilmente il costo
-principale sia rappresentato dall'archiviazione sicura per
+principale è rappresentato dall'archiviazione sicura per
 molti anni di 1–10 kilobyte per transazione. Gli esperimenti su un
 prototipo di GNU Taler che utilizzava i prezzi di \textit{Amazon Web Service}
 hanno stabilito che il costo del sistema (archiviazione, larghezza di
