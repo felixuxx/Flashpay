@@ -1609,6 +1609,8 @@ struct TALER_EXCHANGE_MeltHandle;
  *
  * @param cls closure
  * @param hr HTTP response data
+ * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, 0 if the operation failed
+ * @param alg_values array @a num_coins of exchange values contributed to the refresh operation
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT32_MAX on error
  * @param sign_key exchange key used to sign @a full_response, or NULL
@@ -1617,6 +1619,8 @@ typedef void
 (*TALER_EXCHANGE_MeltCallback) (
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
+  unsigned int num_coins,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   uint32_t noreveal_index,
   const struct TALER_ExchangePublicKeyP *sign_key);
 
@@ -1670,7 +1674,7 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh);
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param num_coins number of fresh coins created, length of the @a exchange_vals, @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
  * @param exchange_vals array of contributions from the exchange on the refreshes
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
@@ -1681,7 +1685,6 @@ typedef void
   const struct TALER_EXCHANGE_HttpResponse *hr,
   unsigned int num_coins,
   const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-  const struct TALER_ExchangeWithdrawValues *exchange_vals,
   const struct TALER_DenominationSignature *sigs);
 
 
@@ -1703,6 +1706,8 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param ps the fresh secret that defines the refresh operation
  * @param rd the refresh data that characterizes the refresh operation
+ * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, must match value in @a rd
+ * @param alg_values array @a num_coins of exchange values contributed to the refresh operation
  * @param noreveal_index response from the exchange to the
  *        #TALER_EXCHANGE_melt() invocation
  * @param reveal_cb the callback to call with the final result of the
@@ -1716,6 +1721,8 @@ TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PlanchetSecretsP *ps,
   const struct TALER_EXCHANGE_RefreshData *rd,
+  unsigned int num_coins,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls);

@@ -95,12 +95,14 @@ struct TALER_EXCHANGE_RefreshesRevealHandle
  *
  * @param rrh operation handle
  * @param json reply from the exchange
- * @param[out] sigs array of length `num_fresh_coins`, initialized to contain RSA signatures
+ * @param[out] sigs array of length `num_fresh_coins`, initialized to contain the coin private keys
+ * @param[out] sigs array of length `num_fresh_coins`, initialized to contain signatures
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
 refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                    const json_t *json,
+                   struct TALER_CoinSpendPrivateKeyP *coin_privs,
                    struct TALER_DenominationSignature *sigs)
 {
   json_t *jsona;
@@ -165,6 +167,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
 
     /* needed to verify the signature, and we didn't store it earlier,
        hence recomputing it here... */
+    coin_privs[i] = fc->coin_priv;
     GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     /* FIXME-Oec: Age commitment hash. */
@@ -223,13 +226,15 @@ handle_refresh_reveal_finished (void *cls,
   case MHD_HTTP_OK:
     {
       struct TALER_DenominationSignature sigs[rrh->md->num_fresh_coins];
-      int ret;
+      struct TALER_CoinSpendPrivateKeyP coin_privs[rrh->md->num_fresh_coins];
+      enum GNUNET_GenericReturnValue ret;
 
       memset (sigs,
               0,
               sizeof (sigs));
       ret = refresh_reveal_ok (rrh,
                                j,
+                               coin_privs,
                                sigs);
       if (GNUNET_OK != ret)
       {
@@ -241,7 +246,7 @@ handle_refresh_reveal_finished (void *cls,
         rrh->reveal_cb (rrh->reveal_cb_cls,
                         &hr,
                         rrh->md->num_fresh_coins,
-                        rrh->md->fresh_coins[rrh->noreveal_index],
+                        coin_privs,
                         sigs);
         rrh->reveal_cb = NULL;
       }
@@ -300,6 +305,8 @@ TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_PlanchetSecretsP *ps,
   const struct TALER_EXCHANGE_RefreshData *rd,
+  unsigned int num_coins,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls)
@@ -363,11 +370,9 @@ TALER_EXCHANGE_refreshes_reveal (
                                           GNUNET_JSON_from_data_auto (
                                             &denom_hash)));
 
-    // TODO: implement cipher handling
-    alg_values.cipher = TALER_DENOMINATION_RSA;
     if (GNUNET_OK !=
         TALER_planchet_prepare (&md.fresh_pks[i],
-                                &alg_values,
+                                &rrh->exchange_vals[i],
                                 &md.fresh_coins[noreveal_index][i],
                                 &c_hash,
                                 &pd))
@@ -452,6 +457,8 @@ TALER_EXCHANGE_refreshes_reveal (
   }
   /* finally, we can actually issue the request */
   rrh = GNUNET_new (struct TALER_EXCHANGE_RefreshesRevealHandle);
+  rrh->exchange_vals = GNUNET_new_array (struct TALER_ExchangeWithdrawValues,
+                                         md.num_fresh_coins);
   rrh->exchange = exchange;
   rrh->noreveal_index = noreveal_index;
   rrh->reveal_cb = reveal_cb;
@@ -505,6 +512,7 @@ TALER_EXCHANGE_refreshes_reveal_cancel (
   GNUNET_free (rrh->url);
   TALER_curl_easy_post_finished (&rrh->ctx);
   TALER_EXCHANGE_free_melt_data_ (rrh->md); /* does not free 'md' itself */
+  GNUNET_free (rrh->exchange_vals);
   GNUNET_free (rrh->md);
   GNUNET_free (rrh);
 }
