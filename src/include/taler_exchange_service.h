@@ -1063,6 +1063,11 @@ struct TALER_EXCHANGE_CsRResponse
     struct
     {
       /**
+       * Length of the @e alg_values array.
+       */
+      unsigned int arg_values_len;
+
+      /**
        * Values contributed by the exchange for the
        * respective coin's withdraw operation.
        */
