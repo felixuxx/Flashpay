@@ -38,10 +38,9 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_exchange_api.conf"
+static char *config_file;
 
-#define CONFIG_FILE_EXPIRE_RESERVE_NOW \
-  "test_exchange_api_expire_reserve_now.conf"
+static char *config_file_expire_reserve_now;
 
 
 /**
@@ -62,7 +61,7 @@ static struct TALER_TESTING_BankConfiguration bc;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_wirewatch (label, config_file)
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with
@@ -71,8 +70,8 @@ static struct TALER_TESTING_BankConfiguration bc;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", CONFIG_FILE), \
-  TALER_TESTING_cmd_exec_transfer (label "-transfer", CONFIG_FILE)
+  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_file), \
+  TALER_TESTING_cmd_exec_transfer (label "-transfer", config_file)
 
 
 /**
@@ -679,7 +678,7 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-0-EUR:5",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
-                              CONFIG_FILE),
+                              config_file),
     /* Recoup coin to reserve */
     TALER_TESTING_cmd_recoup ("recoup-1",
                               MHD_HTTP_OK,
@@ -779,14 +778,14 @@ run (void *cls,
                                                  bc.exchange_payto,
                                                  "short-lived-reserve"),
     TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
-                                      CONFIG_FILE_EXPIRE_RESERVE_NOW),
+                                      config_file_expire_reserve_now),
     TALER_TESTING_cmd_exec_closer ("close-reserves",
-                                   CONFIG_FILE_EXPIRE_RESERVE_NOW,
+                                   config_file_expire_reserve_now,
                                    "EUR:5",
                                    "EUR:0.01",
                                    "short-lived-reserve"),
     TALER_TESTING_cmd_exec_transfer ("close-reserves-transfer",
-                                     CONFIG_FILE_EXPIRE_RESERVE_NOW),
+                                     config_file_expire_reserve_now),
 
     TALER_TESTING_cmd_status ("short-lived-status",
                               "short-lived-reserve",
@@ -836,7 +835,7 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-1-EUR:1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
-                              CONFIG_FILE),
+                              config_file),
     /* Check recoup is failing for the coin with the reused coin key */
     TALER_TESTING_cmd_recoup ("recoup-2x",
                               MHD_HTTP_CONFLICT,
@@ -891,145 +890,6 @@ run (void *cls,
     TALER_TESTING_cmd_end ()
   };
 
-  /**
-   * Test CS withdrawal plus spending.
-   */
-  struct TALER_TESTING_Command withdraw_cs[] = {
-    /**
-     * Move money to the exchange's bank account.
-     */
-    CMD_TRANSFER_TO_EXCHANGE ("create-reserve-cs-1",
-                              "EUR:6.02"),
-    TALER_TESTING_cmd_check_bank_admin_transfer ("check-create-reserve-cs-1",
-                                                 "EUR:6.02",
-                                                 bc.user42_payto,
-                                                 bc.exchange_payto,
-                                                 "create-reserve-cs-1"),
-    /**
-     * Make a reserve exist, according to the previous
-     * transfer.
-     */
-    CMD_EXEC_WIREWATCH ("wirewatch-cs-1"),
-    /**
-     * Withdraw EUR:5.
-     */
-    TALER_TESTING_cmd_withdraw_cs_amount ("withdraw-cs-coin-1",
-                                          "create-reserve-cs-1",
-                                          "EUR:5",
-                                          MHD_HTTP_OK),
-    /**
-     * Withdraw EUR:1 using the SAME private coin key as for the previous coin
-     * (in violation of the specification, to be detected on spending!).
-     */
-    TALER_TESTING_cmd_withdraw_cs_amount_reuse_key ("withdraw-cs-coin-1x",
-                                                    "create-reserve-cs-1",
-                                                    "EUR:1",
-                                                    "withdraw-cs-coin-1",
-                                                    MHD_HTTP_OK),
-    /**
-     * Check the reserve is depleted.
-     */
-    TALER_TESTING_cmd_status ("status-cs-1",
-                              "create-reserve-cs-1",
-                              "EUR:0",
-                              MHD_HTTP_OK),
-    /*
-     * Try to overdraw.
-     */
-    TALER_TESTING_cmd_withdraw_cs_amount ("withdraw-cs-coin-2",
-                                          "create-reserve-cs-1",
-                                          "EUR:5",
-                                          MHD_HTTP_CONFLICT),
-    // TODO: add test for nonce reuse
-    TALER_TESTING_cmd_end ()
-  };
-
-  struct TALER_TESTING_Command spend_cs[] = {
-    /**
-     * Spend the coin.
-     */
-    TALER_TESTING_cmd_deposit ("deposit-cs-simple",
-                               "withdraw-cs-coin-1",
-                               0,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:5",
-                               MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit_replay ("deposit-cs-simple-replay",
-                                      "deposit-cs-simple",
-                                      MHD_HTTP_OK),
-    TALER_TESTING_cmd_deposit ("deposit-cs-reused-coin-key-failure",
-                               "withdraw-cs-coin-1x",
-                               0,
-                               bc.user42_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:1",
-                               MHD_HTTP_CONFLICT),
-    /**
-     * Try to double spend using different wire details.
-     */
-    TALER_TESTING_cmd_deposit ("deposit-cs-double-1",
-                               "withdraw-cs-coin-1",
-                               0,
-                               bc.user43_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:5",
-                               MHD_HTTP_CONFLICT),
-    /* Try to double spend using a different transaction id.
-     * The test needs the contract terms to differ. This
-     * is currently the case because of the "timestamp" field,
-     * which is set automatically by #TALER_TESTING_cmd_deposit().
-     * This could theoretically fail if at some point a deposit
-     * command executes in less than 1 ms. *///
-    TALER_TESTING_cmd_deposit ("deposit-cs-double-1",
-                               "withdraw-cs-coin-1",
-                               0,
-                               bc.user43_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:5",
-                               MHD_HTTP_CONFLICT),
-    /**
-     * Try to double spend with different proposal.
-     */
-    TALER_TESTING_cmd_deposit ("deposit-cs-double-2",
-                               "withdraw-cs-coin-1",
-                               0,
-                               bc.user43_payto,
-                               "{\"items\":[{\"name\":\"ice cream\",\"value\":2}]}",
-                               GNUNET_TIME_UNIT_ZERO,
-                               "EUR:5",
-                               MHD_HTTP_CONFLICT),
-    TALER_TESTING_cmd_end ()
-  };
-
-  // TODO: CS refresh
-
-  struct TALER_TESTING_Command track_cs[] = {
-    /* Try resolving a deposit's WTID, as we never triggered
-     * execution of transactions, the answer should be that
-     * the exchange knows about the deposit, but has no WTID yet.
-     *///
-    TALER_TESTING_cmd_track_transaction ("deposit-cs-wtid-found",
-                                         "deposit-cs-simple",
-                                         0,
-                                         MHD_HTTP_ACCEPTED,
-                                         NULL),
-    /* Try resolving a deposit's WTID for a failed deposit.
-     * As the deposit failed, the answer should be that the
-     * exchange does NOT know about the deposit.
-     */
-    TALER_TESTING_cmd_track_transaction ("deposit-cs-wtid-failing",
-                                         "deposit-cs-double-2",
-                                         0,
-                                         MHD_HTTP_NOT_FOUND,
-                                         NULL),
-    TALER_TESTING_cmd_end ()
-  };
-
 #define RESERVE_OPEN_CLOSE_CHUNK 4
 #define RESERVE_OPEN_CLOSE_ITERATIONS 3
 
@@ -1047,10 +907,10 @@ run (void *cls,
                                   "EUR:20");
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 1]
       = TALER_TESTING_cmd_exec_wirewatch ("reserve-open-close-wirewatch",
-                                          CONFIG_FILE_EXPIRE_RESERVE_NOW);
+                                          config_file_expire_reserve_now);
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
       = TALER_TESTING_cmd_exec_closer ("reserve-open-close-aggregation",
-                                       CONFIG_FILE_EXPIRE_RESERVE_NOW,
+                                       config_file_expire_reserve_now,
                                        "EUR:19.99",
                                        "EUR:0.01",
                                        "reserve-open-close-key");
@@ -1074,9 +934,9 @@ run (void *cls,
                                   MHD_HTTP_NO_CONTENT,
                                   false),
       TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                                CONFIG_FILE),
+                                                config_file),
       TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
-                                                CONFIG_FILE,
+                                                config_file,
                                                 "EUR:0.01",
                                                 "EUR:0.01"),
       TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
@@ -1099,13 +959,6 @@ run (void *cls,
                                refund),
       TALER_TESTING_cmd_batch ("recoup",
                                recoup),
-      TALER_TESTING_cmd_batch ("withdraw-cs",
-                               withdraw_cs),
-      TALER_TESTING_cmd_batch ("spend-cs",
-                               spend_cs),
-      // TODO: Clause Schnorr refresh
-      TALER_TESTING_cmd_batch ("track-cs",
-                               track_cs),
       TALER_TESTING_cmd_batch ("reserve-open-close",
                                reserve_open_close),
       /* End the suite. */
@@ -1123,25 +976,34 @@ int
 main (int argc,
       char *const *argv)
 {
+  const char *cipher;
+
   (void) argc;
-  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api",
+  GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
+  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+  GNUNET_assert (NULL != cipher);
+  GNUNET_asprintf (&config_file,
+                   "test_exchange_api-%s.conf",
+                   cipher);
+  GNUNET_asprintf (&config_file_expire_reserve_now,
+                   "test_exchange_api_expire_reserve_now-%s.conf",
+                   cipher);
   /* Check fakebank port is available and get config */
   if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+      TALER_TESTING_prepare_fakebank (config_file,
                                       "exchange-account-2",
                                       &bc))
     return 77;
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+  switch (TALER_TESTING_prepare_exchange (config_file,
                                           GNUNET_YES,
                                           &ec))
   {
@@ -1158,7 +1020,7 @@ main (int argc,
          */
         TALER_TESTING_setup_with_exchange (&run,
                                            NULL,
-                                           CONFIG_FILE))
+                                           config_file))
       return 1;
     break;
   default:

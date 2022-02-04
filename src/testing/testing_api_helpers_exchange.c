@@ -411,18 +411,9 @@ TALER_TESTING_prepare_exchange (const char *config_filename,
 }
 
 
-/**
- * Find denomination key matching the given amount.
- *
- * @param keys array of keys to search
- * @param amount coin value to look for
- * @param cipher denomination cipher
- * @return NULL if no matching key was found
- */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
-                       const struct TALER_Amount *amount,
-                       const enum TALER_DenominationCipher cipher)
+                       const struct TALER_Amount *amount)
 {
   struct GNUNET_TIME_Timestamp now;
   struct TALER_EXCHANGE_DenomPublicKey *pk;
@@ -432,8 +423,6 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
   {
     pk = &keys->denom_keys[i];
-    if (cipher != pk->key.cipher)
-      continue;
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          (GNUNET_TIME_timestamp_cmp (now,
@@ -450,8 +439,6 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
   for (unsigned int i = 0; i<keys->num_denom_keys; i++)
   {
     pk = &keys->denom_keys[i];
-    if (cipher != pk->key.cipher)
-      continue;
     if ( (0 == TALER_amount_cmp (amount,
                                  &pk->value)) &&
          (GNUNET_TIME_timestamp_cmp (now,
@@ -469,25 +456,6 @@ TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
         (unsigned long long) now.abs_time.abs_value_us,
         (unsigned long long) pk->valid_from.abs_time.abs_value_us,
         (unsigned long long) pk->withdraw_valid_until.abs_time.abs_value_us);
-      GNUNET_free (str);
-      return NULL;
-    }
-  }
-  // do 3rd pass to check if cipher type is to blame for failure
-  for (unsigned int i = 0; i<keys->num_denom_keys; i++)
-  {
-    pk = &keys->denom_keys[i];
-    if ( (0 == TALER_amount_cmp (amount,
-                                 &pk->value)) &&
-         (cipher != pk->key.cipher) )
-    {
-      GNUNET_log
-        (GNUNET_ERROR_TYPE_WARNING,
-        "Have denomination key for `%s', but with wrong"
-        " cipher type %d vs %d\n",
-        str,
-        cipher,
-        pk->key.cipher);
       GNUNET_free (str);
       return NULL;
     }

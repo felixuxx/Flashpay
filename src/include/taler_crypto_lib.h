@@ -987,6 +987,17 @@ struct TALER_ExchangeWithdrawValues
 void
 TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
+
+/**
+ * Create private key for a Taler coin.
+ *
+ * @param[out] coin_priv private key to initialize
+ */
+void
+TALER_planchet_setup_coin_priv (
+  struct TALER_CoinSpendPrivateKeyP *coin_priv);
+
+
 /**
  * @brief Method to derive withdraw nonce
  *
@@ -1472,9 +1483,9 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
  * @oaram alg_values WitdrawValues containing cipher
  */
 void
-TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
-                             const struct
-                             TALER_ExchangeWithdrawValues *alg_values);
+TALER_planchet_setup_random (
+  struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_ExchangeWithdrawValues *alg_values);
 
 /**
  * Create a blinding secret @a bs for @a cipher.

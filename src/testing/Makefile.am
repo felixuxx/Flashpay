@@ -114,16 +114,23 @@ AM_TESTS_ENVIRONMENT=export TALER_PREFIX=$${TALER_PREFIX:-@libdir@};export PATH=
 
 .NOTPARALLEL:
 check_PROGRAMS = \
-  test_auditor_api \
-  test_auditor_api_version \
+  test_auditor_api_cs \
+  test_auditor_api_rsa \
+  test_auditor_api_version_rsa \
+  test_auditor_api_version_cs \
   test_bank_api_with_fakebank \
   test_bank_api_with_pybank \
   test_bank_api_with_nexus \
-  test_exchange_api \
-  test_exchange_api_keys_cherry_picking \
-  test_exchange_api_revocation \
-  test_exchange_api_overlapping_keys_bug \
-  test_exchange_management_api \
+  test_exchange_api_cs \
+  test_exchange_api_rsa \
+  test_exchange_api_keys_cherry_picking_cs \
+  test_exchange_api_keys_cherry_picking_rsa \
+  test_exchange_api_revocation_cs \
+  test_exchange_api_revocation_rsa \
+  test_exchange_api_overlapping_keys_bug_cs \
+  test_exchange_api_overlapping_keys_bug_rsa \
+  test_exchange_management_api_cs \
+  test_exchange_management_api_rsa \
   test_kyc_api \
   test_taler_exchange_aggregator-postgres \
   test_taler_exchange_wirewatch-postgres
@@ -139,9 +146,25 @@ endif
 TESTS = \
   $(check_PROGRAMS)
 
-test_auditor_api_SOURCES = \
+test_auditor_api_cs_SOURCES = \
   test_auditor_api.c
-test_auditor_api_LDADD = \
+test_auditor_api_cs_LDADD = \
+  $(top_builddir)/src/lib/libtalerauditor.la \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_auditor_api_rsa_SOURCES = \
+  test_auditor_api.c
+test_auditor_api_rsa_LDADD = \
   $(top_builddir)/src/lib/libtalerauditor.la \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
@@ -156,9 +179,21 @@ test_auditor_api_LDADD = \
   $(XLIB)
 
 
-test_auditor_api_version_SOURCES = \
+test_auditor_api_version_cs_SOURCES = \
   test_auditor_api_version.c
-test_auditor_api_version_LDADD = \
+test_auditor_api_version_cs_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerauditor.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_auditor_api_version_rsa_SOURCES = \
+  test_auditor_api_version.c
+test_auditor_api_version_rsa_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerauditor.la \
   $(LIBGCRYPT_LIBS) \
@@ -195,9 +230,9 @@ test_bank_api_with_pybank_LDADD = \
   $(top_builddir)/src/bank-lib/libtalerbank.la \
   $(XLIB)
 
-test_exchange_api_SOURCES = \
+test_exchange_api_cs_SOURCES = \
   test_exchange_api.c
-test_exchange_api_LDADD = \
+test_exchange_api_cs_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
@@ -210,18 +245,9 @@ test_exchange_api_LDADD = \
   -ljansson \
   $(XLIB)
 
-test_exchange_management_api_SOURCES = \
-  test_exchange_management_api.c
-test_exchange_management_api_LDADD = \
-  libtalertesting.la \
-  $(top_builddir)/src/lib/libtalerexchange.la \
-  $(top_builddir)/src/util/libtalerutil.la \
-  -lgnunetutil \
-  $(XLIB)
-
-test_exchange_api_revocation_SOURCES = \
-  test_exchange_api_revocation.c
-test_exchange_api_revocation_LDADD = \
+test_exchange_api_rsa_SOURCES = \
+  test_exchange_api.c
+test_exchange_api_rsa_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
@@ -234,9 +260,9 @@ test_exchange_api_revocation_LDADD = \
   -ljansson \
   $(XLIB)
 
-test_exchange_api_keys_cherry_picking_SOURCES = \
+test_exchange_api_keys_cherry_picking_cs_SOURCES = \
   test_exchange_api_keys_cherry_picking.c
-test_exchange_api_keys_cherry_picking_LDADD = \
+test_exchange_api_keys_cherry_picking_cs_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
@@ -248,9 +274,9 @@ test_exchange_api_keys_cherry_picking_LDADD = \
   -ljansson \
   $(XLIB)
 
-test_exchange_api_overlapping_keys_bug_SOURCES = \
-  test_exchange_api_overlapping_keys_bug.c
-test_exchange_api_overlapping_keys_bug_LDADD = \
+test_exchange_api_keys_cherry_picking_rsa_SOURCES = \
+  test_exchange_api_keys_cherry_picking.c
+test_exchange_api_keys_cherry_picking_rsa_LDADD = \
   libtalertesting.la \
   $(top_builddir)/src/lib/libtalerexchange.la \
   $(LIBGCRYPT_LIBS) \
@@ -261,6 +287,84 @@ test_exchange_api_overlapping_keys_bug_LDADD = \
   -lgnunetutil \
   -ljansson \
   $(XLIB)
+
+test_exchange_api_revocation_cs_SOURCES = \
+  test_exchange_api_revocation.c
+test_exchange_api_revocation_cs_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_exchange_api_revocation_rsa_SOURCES = \
+  test_exchange_api_revocation.c
+test_exchange_api_revocation_rsa_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+
+test_exchange_api_overlapping_keys_bug_cs_SOURCES = \
+  test_exchange_api_overlapping_keys_bug.c
+test_exchange_api_overlapping_keys_bug_cs_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_exchange_api_overlapping_keys_bug_rsa_SOURCES = \
+  test_exchange_api_overlapping_keys_bug.c
+test_exchange_api_overlapping_keys_bug_rsa_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(LIBGCRYPT_LIBS) \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_exchange_management_api_cs_SOURCES = \
+  test_exchange_management_api.c
+test_exchange_management_api_cs_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  $(XLIB)
+
+test_exchange_management_api_rsa_SOURCES = \
+  test_exchange_management_api.c
+test_exchange_management_api_rsa_LDADD = \
+  libtalertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunetutil \
+  $(XLIB)
+
 
 test_taler_exchange_aggregator_postgres_SOURCES = \
   test_taler_exchange_aggregator.c

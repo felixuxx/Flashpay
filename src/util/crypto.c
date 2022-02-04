@@ -245,19 +245,23 @@ TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
 }
 
 
-/**
- * @brief setup a random planchet
- * In Case of RSA planchet, the bks gets set
- * In Case of Clause Schnorr this will be set in future
- */
 void
-TALER_planchet_setup_random (struct TALER_PlanchetSecretsP *ps,
-                             const struct
-                             TALER_ExchangeWithdrawValues *alg_values)
+TALER_planchet_setup_coin_priv (
+  struct TALER_CoinSpendPrivateKeyP *coin_priv)
 {
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
-                              &ps->coin_priv,
-                              sizeof (struct TALER_CoinSpendPrivateKeyP));
+                              coin_priv,
+                              sizeof (*coin_priv));
+  // FIXME-jeff/dold: Clamping?
+}
+
+
+void
+TALER_planchet_setup_random (
+  struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_ExchangeWithdrawValues *alg_values)
+{
+  TALER_planchet_setup_coin_priv (&ps->coin_priv);
   switch (alg_values->cipher)
   {
   case TALER_DENOMINATION_INVALID:

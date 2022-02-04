@@ -39,10 +39,9 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_auditor_api.conf"
+static char *config_file;
 
-#define CONFIG_FILE_EXPIRE_RESERVE_NOW \
-  "test_auditor_api_expire_reserve_now.conf"
+static char *config_file_expire_reserve_now;
 
 /**
  * Exchange configuration data.
@@ -61,7 +60,7 @@ static struct TALER_TESTING_BankConfiguration bc;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_wirewatch (label, config_file)
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with
@@ -71,8 +70,8 @@ static struct TALER_TESTING_BankConfiguration bc;
  */
 #define CMD_EXEC_AGGREGATOR(label) \
   TALER_TESTING_cmd_sleep (label "-sleep", 1), \
-  TALER_TESTING_cmd_exec_aggregator (label, CONFIG_FILE), \
-  TALER_TESTING_cmd_exec_transfer (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_aggregator (label, config_file), \
+  TALER_TESTING_cmd_exec_transfer (label, config_file)
 
 /**
  * Run wire transfer of funds from some user's account to the
@@ -92,7 +91,7 @@ static struct TALER_TESTING_BankConfiguration bc;
  * @param label label to use for the command.
  */
 #define CMD_RUN_AUDITOR(label) \
-  TALER_TESTING_cmd_exec_auditor (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_auditor (label, config_file)
 
 
 /**
@@ -406,7 +405,7 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
-                              CONFIG_FILE),
+                              config_file),
     TALER_TESTING_cmd_recoup ("recoup-1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
@@ -426,9 +425,9 @@ run (void *cls,
     CMD_TRANSFER_TO_EXCHANGE ("short-lived-reserve",
                               "EUR:5.01"),
     TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
-                                      CONFIG_FILE_EXPIRE_RESERVE_NOW),
+                                      config_file_expire_reserve_now),
     TALER_TESTING_cmd_exec_aggregator ("close-reserves",
-                                       CONFIG_FILE_EXPIRE_RESERVE_NOW),
+                                       config_file_expire_reserve_now),
     /**
      * Fill reserve with EUR:2.02, as withdraw fee is 1 ct per
      * config, then withdraw two coin, partially spend one, and
@@ -466,7 +465,7 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-2",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
-                              CONFIG_FILE),
+                              config_file),
     TALER_TESTING_cmd_recoup ("recoup-2",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
@@ -631,7 +630,7 @@ run (void *cls,
 
   struct TALER_TESTING_Command commands[] = {
     TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
-                                              CONFIG_FILE,
+                                              config_file,
                                               "EUR:0.01",
                                               "EUR:0.01"),
     TALER_TESTING_cmd_auditor_add ("add-auditor-OK",
@@ -642,11 +641,11 @@ run (void *cls,
                                 MHD_HTTP_NO_CONTENT,
                                 false),
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              CONFIG_FILE),
+                                              config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 2),
     TALER_TESTING_cmd_exec_auditor_offline ("auditor-offline",
-                                            CONFIG_FILE),
+                                            config_file),
     CMD_RUN_AUDITOR ("virgin-auditor"),
     TALER_TESTING_cmd_exchanges_with_url ("check-exchange",
                                           MHD_HTTP_OK,
@@ -682,25 +681,36 @@ int
 main (int argc,
       char *const *argv)
 {
+  const char *cipher;
+
   (void) argc;
-  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-auditor-api",
+  GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
+
   /* Check fakebank port is available and get configuration data. */
   if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+      TALER_TESTING_prepare_fakebank (config_file,
                                       "exchange-account-2",
                                       &bc))
     return 77;
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+  GNUNET_assert (NULL != cipher);
+  GNUNET_asprintf (&config_file,
+                   "test_auditor_api-%s.conf",
+                   cipher);
+  GNUNET_asprintf (&config_file_expire_reserve_now,
+                   "test_auditor_api_expire_reserve_now-%s.conf",
+                   cipher);
+
+  TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+  switch (TALER_TESTING_prepare_exchange (config_file,
                                           GNUNET_YES,
                                           &ec))
   {
@@ -717,7 +727,7 @@ main (int argc,
          */
         TALER_TESTING_auditor_setup (&run,
                                      NULL,
-                                     CONFIG_FILE))
+                                     config_file))
       return 1;
     break;
   default:

@@ -1461,7 +1461,6 @@ TALER_EXCHANGE_withdraw (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_PlanchetSecretsP *ps,
-  struct TALER_ExchangeWithdrawValues *alg_values,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls);
 
