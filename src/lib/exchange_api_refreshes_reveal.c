@@ -447,8 +447,7 @@ TALER_EXCHANGE_refreshes_reveal (
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (&md.rc,
-                                         sizeof (struct
-                                                 TALER_RefreshCommitmentP),
+                                         sizeof (md.rc),
                                          pub_str,
                                          sizeof (pub_str));
     *end = '\0';
