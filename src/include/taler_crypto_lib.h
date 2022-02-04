@@ -1005,9 +1005,9 @@ TALER_planchet_setup_coin_priv (
  * @param nonce withdraw nonce included in the request to generate R_0 and R_1
  */
 void
-TALER_cs_withdraw_nonce_derive (const struct
-                                TALER_CoinSpendPrivateKeyP *coin_priv,
-                                struct TALER_CsNonce *nonce);
+TALER_cs_withdraw_nonce_derive (
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  struct TALER_CsNonce *nonce);
 
 
 /**
@@ -1306,23 +1306,17 @@ TALER_payto_hash (const char *payto,
 GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
- * Header for serializations of coin-specific information about the
- * fresh coins we generate.  These are the secrets that arise during
- * planchet generation, which is the first stage of creating a new
- * coin.
+ * Master key material for the deriviation of
+ * private coins and blinding factors.
  */
 struct TALER_PlanchetSecretsP
 {
 
   /**
-   * Private key of the coin.
+   * Key material.
    */
-  struct TALER_CoinSpendPrivateKeyP coin_priv;
+  uint32_t key_data[8];
 
-  /**
-   * The blinding key. must be 32 byte
-   */
-  union TALER_DenominationBlindingKeyP blinding_key;
 };
 
 
@@ -1471,9 +1465,10 @@ GNUNET_NETWORK_STRUCT_END
  * @param[out] ps value to initialize
  */
 void
-TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
-                              uint32_t coin_num_salt,
-                              struct TALER_PlanchetSecretsP *ps);
+XXXTALER_planchet_setup_refresh (const struct
+                                 TALER_TransferSecretP *secret_seed,
+                                 uint32_t coin_num_salt,
+                                 struct TALER_PlanchetSecretsP *ps);
 
 
 /**
@@ -1484,8 +1479,8 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
  */
 void
 TALER_planchet_setup_random (
-  struct TALER_PlanchetSecretsP *ps,
-  const struct TALER_ExchangeWithdrawValues *alg_values);
+  struct TALER_PlanchetSecretsP *ps);
+
 
 /**
  * Create a blinding secret @a bs for @a cipher.
@@ -1494,9 +1489,11 @@ TALER_planchet_setup_random (
  * @param alg_values withdraw values containing cipher and additional CS values
  */
 void
-TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
-                                       const struct
-                                       TALER_ExchangeWithdrawValues *alg_values);
+XXXTALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
+                                          const struct
+                                          TALER_ExchangeWithdrawValues *
+                                          alg_values);
+
 
 /**
  * Prepare a planchet for tipping.  Creates and blinds a coin.
@@ -1510,11 +1507,12 @@ TALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
-                        const struct TALER_ExchangeWithdrawValues *alg_values,
-                        struct TALER_PlanchetSecretsP *ps,
-                        struct TALER_CoinPubHash *c_hash,
-                        struct TALER_PlanchetDetail *pd);
+XXXTALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
+                           const struct
+                           TALER_ExchangeWithdrawValues *alg_values,
+                           struct TALER_PlanchetSecretsP *ps,
+                           struct TALER_CoinPubHash *c_hash,
+                           struct TALER_PlanchetDetail *pd);
 
 
 /**
@@ -1539,13 +1537,14 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet);
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
-                        const struct
-                        TALER_BlindedDenominationSignature *blind_sig,
-                        const struct TALER_PlanchetSecretsP *ps,
-                        const struct TALER_CoinPubHash *c_hash,
-                        const struct TALER_ExchangeWithdrawValues *alg_values,
-                        struct TALER_FreshCoin *coin);
+XXXTALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
+                           const struct
+                           TALER_BlindedDenominationSignature *blind_sig,
+                           const struct TALER_PlanchetSecretsP *ps,
+                           const struct TALER_CoinPubHash *c_hash,
+                           const struct
+                           TALER_ExchangeWithdrawValues *alg_values,
+                           struct TALER_FreshCoin *coin);
 
 
 /* ****************** Refresh crypto primitives ************* */
