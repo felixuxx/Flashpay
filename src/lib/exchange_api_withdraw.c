@@ -220,31 +220,12 @@ withdraw_cs_stage_two_callback (void *cls,
 }
 
 
-/**
- * Withdraw a coin from the exchange using a /reserve/withdraw request.  Note
- * that to ensure that no money is lost in case of hardware failures,
- * the caller must have committed (most of) the arguments to disk
- * before calling, and be ready to repeat the request with the same
- * arguments in case of failures.
- *
- * @param exchange the exchange handle; the exchange must be ready to operate
- * @param pk kind of coin to create
- * @param reserve_priv private key of the reserve to withdraw from
- * @param ps secrets of the planchet
- *        caller must have committed this value to disk before the call (with @a pk)
- * @param res_cb the callback to call when the final result for this request is available
- * @param res_cb_cls closure for the above callback
- * @return handle for the operation on success, NULL on error, i.e.
- *         if the inputs are invalid (i.e. denomination key not with this exchange).
- *         In this case, the callback is not called.
- */
 struct TALER_EXCHANGE_WithdrawHandle *
 TALER_EXCHANGE_withdraw (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
   struct TALER_PlanchetSecretsP *ps,
-  struct TALER_ExchangeWithdrawValues *alg_values,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls)
 {
@@ -256,7 +237,6 @@ TALER_EXCHANGE_withdraw (
   wh->cb_cls = res_cb_cls;
   wh->reserve_priv = reserve_priv;
   wh->ps = *ps;
-  wh->alg_values = *alg_values,
   wh->pk = *pk;
   wh->csrh = NULL;
 

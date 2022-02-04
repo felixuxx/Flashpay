@@ -73,11 +73,6 @@ struct WithdrawState
   struct TALER_Amount amount;
 
   /**
-   * Type of denomination that we should withdraw
-   */
-  enum TALER_DenominationCipher cipher;
-
-  /**
    * If @e amount is NULL, this specifies the denomination key to
    * use.  Otherwise, this will be set (by the interpreter) to the
    * denomination PK matching @e amount.
@@ -119,11 +114,6 @@ struct WithdrawState
    * Private key material of the coin, set by the interpreter.
    */
   struct TALER_PlanchetSecretsP ps;
-
-  /**
-   * Withdraw Values used for planchet creation
-   */
-  struct TALER_ExchangeWithdrawValues alg_values;
 
   /**
    * Reserve history entry that corresponds to this operation.
@@ -396,10 +386,9 @@ withdraw_run (void *cls,
   ws->reserve_payto_uri
     = TALER_payto_from_reserve (ws->exchange_url,
                                 &ws->reserve_pub);
-  ws->alg_values.cipher = ws->cipher;
   if (NULL == ws->reuse_coin_key_ref)
   {
-    TALER_planchet_setup_random (&ws->ps, &ws->alg_values);
+    TALER_planchet_setup_coin_priv (&ws->ps.coin_priv);
   }
   else
   {
@@ -420,14 +409,13 @@ withdraw_run (void *cls,
                    TALER_TESTING_get_trait_coin_priv (cref,
                                                       index,
                                                       &coin_priv));
-    TALER_planchet_setup_random (&ws->ps, &ws->alg_values);
+    TALER_planchet_setup_coin_priv (&ws->ps.coin_priv);
     ws->ps.coin_priv = *coin_priv;
   }
   if (NULL == ws->pk)
   {
     dpk = TALER_TESTING_find_pk (TALER_EXCHANGE_get_keys (is->exchange),
-                                 &ws->amount,
-                                 ws->cipher);
+                                 &ws->amount);
     if (NULL == dpk)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
@@ -455,7 +443,6 @@ withdraw_run (void *cls,
                                      ws->pk,
                                      rp,
                                      &ws->ps,
-                                     &ws->alg_values,
                                      &reserve_withdraw_cb,
                                      ws);
   if (NULL == ws->wsh)
@@ -570,8 +557,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
                                    const char *amount,
                                    unsigned int expected_response_code)
 {
-  // TODO: ATM this is hardcoded to RSA denominations
-  // (use TALER_TESTING_cmd_withdraw_cs_amount for Clause Schnorr)
   struct WithdrawState *ws;
 
   ws = GNUNET_new (struct WithdrawState);
@@ -587,43 +572,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
     GNUNET_assert (0);
   }
   ws->expected_response_code = expected_response_code;
-  ws->cipher = TALER_DENOMINATION_RSA;
-  {
-    struct TALER_TESTING_Command cmd = {
-      .cls = ws,
-      .label = label,
-      .run = &withdraw_run,
-      .cleanup = &withdraw_cleanup,
-      .traits = &withdraw_traits
-    };
-
-    return cmd;
-  }
-}
-
-
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_cs_amount (const char *label,
-                                      const char *reserve_reference,
-                                      const char *amount,
-                                      unsigned int expected_response_code)
-{
-  struct WithdrawState *ws;
-
-  ws = GNUNET_new (struct WithdrawState);
-  ws->reserve_reference = reserve_reference;
-  if (GNUNET_OK !=
-      TALER_string_to_amount (amount,
-                              &ws->amount))
-  {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Failed to parse amount `%s' at %s\n",
-                amount,
-                label);
-    GNUNET_assert (0);
-  }
-  ws->expected_response_code = expected_response_code;
-  ws->cipher = TALER_DENOMINATION_CS;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ws,
@@ -661,37 +609,12 @@ TALER_TESTING_cmd_withdraw_amount_reuse_key (
   const char *coin_ref,
   unsigned int expected_response_code)
 {
-  // TODO: ATM this is hardcoded to RSA denominations
-  // (use TALER_TESTING_cmd_withdraw_cs_amount for Clause Schnorr)
   struct TALER_TESTING_Command cmd;
 
   cmd = TALER_TESTING_cmd_withdraw_amount (label,
                                            reserve_reference,
                                            amount,
                                            expected_response_code);
-  {
-    struct WithdrawState *ws = cmd.cls;
-
-    ws->reuse_coin_key_ref = coin_ref;
-  }
-  return cmd;
-}
-
-
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_cs_amount_reuse_key (
-  const char *label,
-  const char *reserve_reference,
-  const char *amount,
-  const char *coin_ref,
-  unsigned int expected_response_code)
-{
-  struct TALER_TESTING_Command cmd;
-
-  cmd = TALER_TESTING_cmd_withdraw_cs_amount (label,
-                                              reserve_reference,
-                                              amount,
-                                              expected_response_code);
   {
     struct WithdrawState *ws = cmd.cls;
 
@@ -733,7 +656,6 @@ TALER_TESTING_cmd_withdraw_denomination (
   ws->reserve_reference = reserve_reference;
   ws->pk = TALER_EXCHANGE_copy_denomination_key (dk);
   ws->expected_response_code = expected_response_code;
-  ws->cipher = dk->key.cipher;
   {
     struct TALER_TESTING_Command cmd = {
       .cls = ws,

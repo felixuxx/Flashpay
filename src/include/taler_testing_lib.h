@@ -66,13 +66,11 @@ TALER_TESTING_make_wire_details (const char *payto);
  *
  * @param keys array of keys to search
  * @param amount coin value to look for
- * @param cipher denomination cipher
  * @return NULL if no matching key was found
  */
 const struct TALER_EXCHANGE_DenomPublicKey *
 TALER_TESTING_find_pk (const struct TALER_EXCHANGE_Keys *keys,
-                       const struct TALER_Amount *amount,
-                       const enum TALER_DenominationCipher cipher);
+                       const struct TALER_Amount *amount);
 
 
 /**
@@ -1291,24 +1289,6 @@ TALER_TESTING_cmd_withdraw_amount (const char *label,
 
 
 /**
- * Create a withdraw command using a CS denomination, letting the caller specify
- * the desired amount as string.
- *
- * @param label command label.
- * @param reserve_reference command providing us with a reserve to withdraw from
- * @param amount how much we withdraw.
- * @param expected_response_code which HTTP response code
- *        we expect from the exchange.
- * @return the withdraw command to be executed by the interpreter.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_cs_amount (const char *label,
-                                      const char *reserve_reference,
-                                      const char *amount,
-                                      unsigned int expected_response_code);
-
-
-/**
  * Create a withdraw command, letting the caller specify
  * the desired amount as string and also re-using an existing
  * coin private key in the process (violating the specification,
@@ -1325,30 +1305,6 @@ TALER_TESTING_cmd_withdraw_cs_amount (const char *label,
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_withdraw_amount_reuse_key (
-  const char *label,
-  const char *reserve_reference,
-  const char *amount,
-  const char *coin_ref,
-  unsigned int expected_response_code);
-
-
-/**
- * Create a CS withdraw command, letting the caller specify
- * the desired amount as string and also re-using an existing
- * coin private key in the process (violating the specification,
- * which will result in an error when spending the coin!).
- *
- * @param label command label.
- * @param reserve_reference command providing us with a reserve to withdraw from
- * @param amount how much we withdraw.
- * @param coin_ref reference to (withdraw/reveal) command of a coin
- *        from which we should re-use the private key
- * @param expected_response_code which HTTP response code
- *        we expect from the exchange.
- * @return the withdraw command to be executed by the interpreter.
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_withdraw_cs_amount_reuse_key (
   const char *label,
   const char *reserve_reference,
   const char *amount,
