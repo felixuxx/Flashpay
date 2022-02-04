@@ -535,6 +535,7 @@ handle_link_data_cb (void *cls,
   }
 }
 
+
 /**
  * Callback that should never be called.
  */
@@ -1479,7 +1480,7 @@ run (void *cls)
       // There is no difference between CS and RSA, just one should be used
       alg_values.cipher = TALER_DENOMINATION_RSA;
       RND_BLK (&coin_pub);
-      
+
       TALER_planchet_blinding_secret_create (&ps,
                                              &alg_values);
       GNUNET_assert (GNUNET_OK ==
@@ -1494,9 +1495,9 @@ run (void *cls)
                                                       &cbc.denom_pub_hash,
                                                       &cbc.h_coin_envelope));
       GNUNET_assert (GNUNET_OK ==
-                    TALER_denom_sign_blinded (&cbc.sig,
-                                              &dkp->priv,
-                                              &pd.blinded_planchet));
+                     TALER_denom_sign_blinded (&cbc.sig,
+                                               &dkp->priv,
+                                               &pd.blinded_planchet));
       TALER_blinded_planchet_free (&pd.blinded_planchet);
     }
   }
@@ -1751,8 +1752,10 @@ run (void *cls)
                                   ccoin->coin_ev_size);
 
       blinded_planchet.cipher = TALER_DENOMINATION_RSA;
-      blinded_planchet.details.rsa_blinded_planchet.blinded_msg =ccoin->coin_ev;
-      blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size =ccoin->coin_ev_size;
+      blinded_planchet.details.rsa_blinded_planchet.blinded_msg =
+        ccoin->coin_ev;
+      blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size =
+        ccoin->coin_ev_size;
 
       TALER_denom_pub_hash (&new_dkp[cnt]->pub,
                             &ccoin->h_denom_pub);
