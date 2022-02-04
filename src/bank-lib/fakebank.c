@@ -1386,19 +1386,19 @@ handle_admin_add_incoming (struct TALER_FAKEBANK_Handle *h,
                                 &json);
   switch (pr)
   {
-    case GNUNET_JSON_PR_OUT_OF_MEMORY:
-      GNUNET_break (0);
-      return MHD_NO;
-    case GNUNET_JSON_PR_CONTINUE:
-      return MHD_YES;
-    case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
-      GNUNET_break (0);
-      return MHD_NO;
-    case GNUNET_JSON_PR_JSON_INVALID:
-      GNUNET_break (0);
-      return MHD_NO;
-    case GNUNET_JSON_PR_SUCCESS:
-      break;
+  case GNUNET_JSON_PR_OUT_OF_MEMORY:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_CONTINUE:
+    return MHD_YES;
+  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_JSON_INVALID:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_SUCCESS:
+    break;
   }
   {
     const char *debit_account;
@@ -1510,19 +1510,19 @@ handle_transfer (struct TALER_FAKEBANK_Handle *h,
                                 &json);
   switch (pr)
   {
-    case GNUNET_JSON_PR_OUT_OF_MEMORY:
-      GNUNET_break (0);
-      return MHD_NO;
-    case GNUNET_JSON_PR_CONTINUE:
-      return MHD_YES;
-    case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
-      GNUNET_break (0);
-      return MHD_NO;
-    case GNUNET_JSON_PR_JSON_INVALID:
-      GNUNET_break (0);
-      return MHD_NO;
-    case GNUNET_JSON_PR_SUCCESS:
-      break;
+  case GNUNET_JSON_PR_OUT_OF_MEMORY:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_CONTINUE:
+    return MHD_YES;
+  case GNUNET_JSON_PR_REQUEST_TOO_LARGE:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_JSON_INVALID:
+    GNUNET_break (0);
+    return MHD_NO;
+  case GNUNET_JSON_PR_SUCCESS:
+    break;
   }
   {
     struct GNUNET_HashCode uuid;

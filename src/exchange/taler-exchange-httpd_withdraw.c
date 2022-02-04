@@ -98,13 +98,10 @@ struct WithdrawContext
   /**
    * Blinded planchet.
    */
-  //FIXME:
+  struct TALER_BlindedPlanchet blinded_planchet;
 
   /**
-   * Number of bytes in @e blinded_msg.
-   */
-  size_t blinded_msg_len;
-  struct TALER_BlindedPlanchet blinded_planchet;
+   * Set to the resulting signed coin data to be returned to the client.
    */
   struct TALER_EXCHANGEDB_CollectableBlindcoin collectable;
 
@@ -322,12 +319,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 {
   struct WithdrawContext wc;
   struct GNUNET_JSON_Specification spec[] = {
-    //FIXME:
-    GNUNET_JSON_spec_varsize ("coin_ev",
-                              &wc.blinded_msg,
-                              &wc.blinded_msg_len),
-    // field "coin_ev" will be parsed later due to different parsing depending
-    // on denomination cipher, see coin_ev_..._spec
     GNUNET_JSON_spec_fixed_auto ("reserve_sig",
                                  &wc.collectable.reserve_sig),
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
@@ -447,24 +438,6 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
       GNUNET_JSON_parse_free (spec);
       return mret;
     }
-  }
-//FIXME:
-  if (0 >
-      TALER_amount_add (&wc.collectable.amount_with_fee,
-                        &dk->meta.value,
-                        &dk->meta.fee_withdraw))
-  {
-    GNUNET_JSON_parse_free (spec);
-    return TALER_MHD_reply_with_error (rc->connection,
-                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                       TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
-                                       NULL);
-  // parse coin_ev field, must be done after dk lookup to know denom cipher
-  {
-    enum GNUNET_GenericReturnValue res;
-    wc.blinded_planchet.cipher = dk->denom_pub.cipher;
-    switch (wc.blinded_planchet.cipher)
-
     if (dk->denom_pub.cipher != wc.blinded_planchet.cipher)
     {
       /* denomination cipher and blinded planchet cipher not the same */
@@ -476,20 +449,16 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     }
   }
 
+  if (0 >
+      TALER_amount_add (&wc.collectable.amount_with_fee,
+                        &dk->meta.value,
+                        &dk->meta.fee_withdraw))
   {
-    if (0 >
-        TALER_amount_add (&wc.collectable.amount_with_fee,
-                          &dk->meta.value,
-                          &dk->meta.fee_withdraw))
-    {
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_INTERNAL_SERVER_ERROR,
-                                         TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
-                                         NULL);
-    }
-    TALER_amount_hton (&wc.wsrd.amount_with_fee,
-                       &wc.collectable.amount_with_fee);
+    GNUNET_JSON_parse_free (spec);
+    return TALER_MHD_reply_with_error (rc->connection,
+                                       MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                       TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
+                                       NULL);
   }
   TALER_amount_hton (&wc.wsrd.amount_with_fee,
                      &wc.collectable.amount_with_fee);

@@ -531,7 +531,7 @@ handle_link_data_cb (void *cls,
         break;
       }
     }
-    //FIXME:
+    // FIXME:
     GNUNET_assert (GNUNET_NO != found);
   }
 }
@@ -1690,7 +1690,7 @@ run (void *cls)
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_AgeHash age_hash;
     struct TALER_AgeHash *p_ah[2] = {NULL, &age_hash};
-    //FIXME:
+    // FIXME:
     /* Call TALER_denom_blind()/TALER_denom_sign_blinded() twice, once without
      * age_hash, once with age_hash */
     RND_BLK (&age_hash);

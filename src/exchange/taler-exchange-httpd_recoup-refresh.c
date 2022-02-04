@@ -241,18 +241,17 @@ verify_and_execute_recoup_refresh (
   }
 
   {
-    void *coin_ev;
-    size_t coin_ev_size;
     struct TALER_CoinPubHash c_hash;
+    struct TALER_BlindedPlanchet blinded_planchet;
 
     if (GNUNET_OK !=
         TALER_denom_blind (&dk->denom_pub,
                            coin_bks,
                            NULL, /* FIXME-Oec: TALER_AgeHash * */
                            &coin->coin_pub,
+                           NULL, /* FIXME: Implement CS */
                            &c_hash,
-                           &coin_ev,
-                           &coin_ev_size))
+                           &blinded_planchet))
     {
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (
@@ -261,10 +260,10 @@ verify_and_execute_recoup_refresh (
         TALER_EC_EXCHANGE_RECOUP_REFRESH_BLINDING_FAILED,
         NULL);
     }
-    TALER_coin_ev_hash (coin_ev,
-                        coin_ev_size,
+    TALER_coin_ev_hash (&blinded_planchet,
+                        &coin->denom_pub_hash,
                         &h_blind);
-    GNUNET_free (coin_ev);
+    TALER_blinded_planchet_free (&blinded_planchet);
   }
 
   pc.coin_sig = coin_sig;

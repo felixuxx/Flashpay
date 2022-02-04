@@ -94,7 +94,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
         &denom_pub_hash,
-        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_EXPIRED,
         "CSR");
     }
@@ -105,7 +104,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
         &denom_pub_hash,
-        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_VALIDITY_IN_FUTURE,
         "CSR");
     }
@@ -115,7 +113,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
       return TEH_RESPONSE_reply_expired_denom_pub_hash (
         rc->connection,
         &denom_pub_hash,
-        GNUNET_TIME_timestamp_get (),
         TALER_EC_EXCHANGE_GENERIC_DENOMINATION_REVOKED,
         "CSR");
     }

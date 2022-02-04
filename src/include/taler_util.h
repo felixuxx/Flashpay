@@ -444,7 +444,7 @@ TALER_yna_to_string (enum TALER_EXCHANGE_YesNoAll yna);
  * @param c the character to search for
  * @return char* the first occurence of `c` in `s`
  */
-char * strchrnul (const char *s, int c);
+char *strchrnul (const char *s, int c);
 
 #endif
 

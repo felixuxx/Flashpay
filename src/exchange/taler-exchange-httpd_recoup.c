@@ -243,9 +243,6 @@ verify_and_execute_recoup (
   }
 
   {
-    //FIXME:
-    void *coin_ev;
-    size_t coin_ev_size;
     struct TALER_CoinPubHash c_hash;
     struct TALER_BlindedPlanchet blinded_planchet;
 
@@ -254,7 +251,7 @@ verify_and_execute_recoup (
                            coin_bks,
                            NULL, /* FIXME-Oec: TALER_AgeHash * */
                            &coin->coin_pub,
-                           NULL, /* in RSA Case not needed*/
+                           NULL, /* FIXME: handle CS */
                            &c_hash,
                            &blinded_planchet))
     {
