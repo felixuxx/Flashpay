@@ -531,230 +531,9 @@ handle_link_data_cb (void *cls,
         break;
       }
     }
-    // FIXME:
     GNUNET_assert (GNUNET_NO != found);
   }
 }
-
-
-/**
- * Function to test melting of coins as part of a refresh session
- *
- * @return #GNUNET_OK if everything went well; #GNUNET_SYSERR if not
- */
-static enum GNUNET_GenericReturnValue
-test_melting (void)
-{
-  struct TALER_EXCHANGEDB_Refresh refresh_session;
-  struct TALER_EXCHANGEDB_Melt ret_refresh_session;
-  struct DenomKeyPair *dkp;
-  struct TALER_DenominationPublicKey *new_denom_pubs;
-  enum GNUNET_GenericReturnValue ret;
-  enum GNUNET_DB_QueryStatus qs;
-  struct GNUNET_TIME_Timestamp now;
-
-  ret = GNUNET_SYSERR;
-  RND_BLK (&refresh_session);
-  dkp = NULL;
-  new_dkp = NULL;
-  new_denom_pubs = NULL;
-  /* create and test a refresh session */
-  refresh_session.noreveal_index = MELT_NOREVEAL_INDEX;
-  /* create a denomination (value: 1; fraction: 100) */
-  now = GNUNET_TIME_timestamp_get ();
-  dkp = create_denom_key_pair (512,
-                               now,
-                               &value,
-                               &fee_withdraw,
-                               &fee_deposit,
-                               &fee_refresh,
-                               &fee_refund);
-  GNUNET_assert (NULL != dkp);
-  /* initialize refresh session melt data */
-  {
-    struct TALER_CoinPubHash c_hash;
-    struct TALER_PlanchetDetail pd;
-    struct TALER_BlindedDenominationSignature bds;
-    struct TALER_PlanchetSecretsP ps;
-    struct TALER_ExchangeWithdrawValues alg_values;
-
-    RND_BLK (&refresh_session.coin.coin_pub);
-    alg_values.cipher = TALER_DENOMINATION_RSA;
-    TALER_planchet_blinding_secret_create (&ps,
-                                           &alg_values);
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_blind (&dkp->pub,
-                                      &ps.blinding_key,
-                                      NULL, /* FIXME-Oec */
-                                      &refresh_session.coin.coin_pub,
-                                      &alg_values,
-                                      &c_hash,
-                                      &pd.blinded_planchet));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_sign_blinded (&bds,
-                                             &dkp->priv,
-                                             &pd.blinded_planchet));
-    TALER_blinded_planchet_free (&pd.blinded_planchet);
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_sig_unblind (&refresh_session.coin.denom_sig,
-                                            &bds,
-                                            &ps.blinding_key,
-                                            &dkp->pub));
-    TALER_blinded_denom_sig_free (&bds);
-    TALER_denom_pub_hash (&dkp->pub,
-                          &refresh_session.coin.denom_pub_hash);
-    refresh_session.amount_with_fee = amount_with_fee;
-  }
-
-  /* test insert_melt & get_melt */
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->get_melt (plugin->cls,
-                            &refresh_session.rc,
-                            &ret_refresh_session));
-  FAILIF (TALER_EXCHANGEDB_CKS_ADDED !=
-          plugin->ensure_coin_known (plugin->cls,
-                                     &refresh_session.coin));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_melt (plugin->cls,
-                               &refresh_session));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->get_melt (plugin->cls,
-                            &refresh_session.rc,
-                            &ret_refresh_session));
-  FAILIF (refresh_session.noreveal_index !=
-          ret_refresh_session.session.noreveal_index);
-  FAILIF (0 !=
-          TALER_amount_cmp (&refresh_session.amount_with_fee,
-                            &ret_refresh_session.session.amount_with_fee));
-  FAILIF (0 !=
-          TALER_amount_cmp (&fee_refresh,
-                            &ret_refresh_session.melt_fee));
-  FAILIF (0 !=
-          GNUNET_memcmp (&refresh_session.rc,
-                         &ret_refresh_session.session.rc));
-  FAILIF (0 != GNUNET_memcmp (&refresh_session.coin_sig,
-                              &ret_refresh_session.session.coin_sig));
-  FAILIF (0 != memcmp (&refresh_session.coin.coin_pub,
-                       &ret_refresh_session.session.coin.coin_pub,
-                       sizeof (refresh_session.coin.coin_pub)));
-  FAILIF (0 !=
-          GNUNET_memcmp (&refresh_session.coin.denom_pub_hash,
-                         &ret_refresh_session.session.coin.denom_pub_hash));
-
-  /* test 'select_refreshes_above_serial_id' */
-  auditor_row_cnt = 0;
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->select_refreshes_above_serial_id (plugin->cls,
-                                                    0,
-                                                    &audit_refresh_session_cb,
-                                                    NULL));
-  FAILIF (1 != auditor_row_cnt);
-
-  new_dkp = GNUNET_new_array (MELT_NEW_COINS,
-                              struct DenomKeyPair *);
-  new_denom_pubs = GNUNET_new_array (MELT_NEW_COINS,
-                                     struct TALER_DenominationPublicKey);
-  revealed_coins
-    = GNUNET_new_array (MELT_NEW_COINS,
-                        struct TALER_EXCHANGEDB_RefreshRevealedCoin);
-  for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
-  {
-    struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
-    struct GNUNET_TIME_Timestamp now;
-    struct TALER_BlindedPlanchet blinded_planchet;
-    blinded_planchet.cipher = TALER_DENOMINATION_RSA;
-
-    now = GNUNET_TIME_timestamp_get ();
-    new_dkp[cnt] = create_denom_key_pair (RSA_KEY_SIZE,
-                                          now,
-                                          &value,
-                                          &fee_withdraw,
-                                          &fee_deposit,
-                                          &fee_refresh,
-                                          &fee_refund);
-    GNUNET_assert (NULL != new_dkp[cnt]);
-    new_denom_pubs[cnt] = new_dkp[cnt]->pub;
-    ccoin = &revealed_coins[cnt];
-    ccoin->coin_ev_size = (size_t) GNUNET_CRYPTO_random_u64 (
-      GNUNET_CRYPTO_QUALITY_WEAK,
-      (RSA_KEY_SIZE / 8) - 1);
-    ccoin->coin_ev = GNUNET_malloc (ccoin->coin_ev_size);
-    GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                ccoin->coin_ev,
-                                ccoin->coin_ev_size);
-    ccoin->denom_pub = new_dkp[cnt]->pub;
-
-    blinded_planchet.details.rsa_blinded_planchet.blinded_msg = ccoin->coin_ev;
-    blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size =
-      ccoin->coin_ev_size;
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_sign_blinded (&ccoin->coin_sig,
-                                             &new_dkp[cnt]->priv,
-                                             &blinded_planchet));
-  }
-  RND_BLK (&tprivs);
-  RND_BLK (&tpub);
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_NO_RESULTS !=
-          plugin->get_refresh_reveal (plugin->cls,
-                                      &refresh_session.rc,
-                                      &never_called_cb,
-                                      NULL));
-  FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
-          plugin->insert_refresh_reveal (plugin->cls,
-                                         &refresh_session.rc,
-                                         MELT_NEW_COINS,
-                                         revealed_coins,
-                                         TALER_CNC_KAPPA - 1,
-                                         tprivs,
-                                         &tpub));
-  FAILIF (0 >=
-          plugin->get_refresh_reveal (plugin->cls,
-                                      &refresh_session.rc,
-                                      &check_refresh_reveal_cb,
-                                      NULL));
-  qs = plugin->get_link_data (plugin->cls,
-                              &refresh_session.coin.coin_pub,
-                              &handle_link_data_cb,
-                              NULL);
-  FAILIF (0 >= qs);
-  {
-    /* Just to test fetching a coin with melt history */
-    struct TALER_EXCHANGEDB_TransactionList *tl;
-    enum GNUNET_DB_QueryStatus qs;
-
-    qs = plugin->get_coin_transactions (plugin->cls,
-                                        &refresh_session.coin.coin_pub,
-                                        GNUNET_YES,
-                                        &tl);
-    FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT != qs);
-    plugin->free_coin_transaction_list (plugin->cls,
-                                        tl);
-  }
-
-
-  ret = GNUNET_OK;
-drop:
-  if (NULL != revealed_coins)
-  {
-    for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
-    {
-      TALER_blinded_denom_sig_free (&revealed_coins[cnt].coin_sig);
-      GNUNET_free (revealed_coins[cnt].coin_ev);
-    }
-    GNUNET_free (revealed_coins);
-    revealed_coins = NULL;
-  }
-  destroy_denom_key_pair (dkp);
-  TALER_denom_sig_free (&refresh_session.coin.denom_sig);
-  GNUNET_free (new_denom_pubs);
-  for (unsigned int cnt = 0;
-       (NULL != new_dkp) && (cnt < MELT_NEW_COINS) && (NULL != new_dkp[cnt]);
-       cnt++)
-    destroy_denom_key_pair (new_dkp[cnt]);
-  GNUNET_free (new_dkp);
-  return ret;
-}
-
 
 /**
  * Callback that should never be called.
@@ -1696,49 +1475,30 @@ run (void *cls)
     RND_BLK (&age_hash);
     for (size_t i = 0; i < sizeof(p_ah) / sizeof(p_ah[0]); i++)
     {
+      struct TALER_ExchangeWithdrawValues alg_values;
+      // There is no difference between CS and RSA, just one should be used
+      alg_values.cipher = TALER_DENOMINATION_RSA;
       RND_BLK (&coin_pub);
-      TALER_blinding_secret_create (&bks);
+      
+      TALER_planchet_blinding_secret_create (&ps,
+                                             &alg_values);
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_blind (&dkp->pub,
-                                        &bks,
+                                        &ps.blinding_key,
                                         p_ah[i],
                                         &coin_pub,
+                                        &alg_values,
                                         &c_hash,
-                                        &pd.coin_ev,
-                                        &pd.coin_ev_size));
-      TALER_coin_ev_hash (pd.coin_ev,
-                          pd.coin_ev_size,
-                          &cbc.h_coin_envelope);
+                                        &pd.blinded_planchet));
+      GNUNET_assert (GNUNET_OK == TALER_coin_ev_hash (&pd.blinded_planchet,
+                                                      &cbc.denom_pub_hash,
+                                                      &cbc.h_coin_envelope));
       GNUNET_assert (GNUNET_OK ==
-                     TALER_denom_sign_blinded (&cbc.sig,
-                                               &dkp->priv,
-                                               pd.coin_ev,
-                                               pd.coin_ev_size));
-      GNUNET_free (pd.coin_ev);
+                    TALER_denom_sign_blinded (&cbc.sig,
+                                              &dkp->priv,
+                                              &pd.blinded_planchet));
+      TALER_blinded_planchet_free (&pd.blinded_planchet);
     }
-    struct TALER_ExchangeWithdrawValues alg_values;
-
-    RND_BLK (&coin_pub);
-    alg_values.cipher = TALER_DENOMINATION_RSA;
-    TALER_planchet_blinding_secret_create (&ps,
-                                           &alg_values);
-
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_blind (&dkp->pub,
-                                      &ps.blinding_key,
-                                      NULL, /* FIXME-Oec */
-                                      &coin_pub,
-                                      &alg_values,
-                                      &c_hash,
-                                      &pd.blinded_planchet));
-    GNUNET_assert (GNUNET_OK == TALER_coin_ev_hash (&pd.blinded_planchet,
-                                                    &cbc.denom_pub_hash,
-                                                    &cbc.h_coin_envelope));
-    GNUNET_assert (GNUNET_OK ==
-                   TALER_denom_sign_blinded (&cbc.sig,
-                                             &dkp->priv,
-                                             &pd.blinded_planchet));
-    TALER_blinded_planchet_free (&pd.blinded_planchet);
   }
 
   cbc.reserve_pub = reserve_pub;
@@ -1968,6 +1728,8 @@ run (void *cls)
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
       struct GNUNET_TIME_Timestamp now;
+      struct TALER_BlindedPlanchet blinded_planchet;
+
 
       now = GNUNET_TIME_timestamp_get ();
       new_dkp[cnt] = create_denom_key_pair (RSA_KEY_SIZE,
@@ -1987,16 +1749,22 @@ run (void *cls)
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                   ccoin->coin_ev,
                                   ccoin->coin_ev_size);
-      GNUNET_CRYPTO_hash (ccoin->coin_ev,
-                          ccoin->coin_ev_size,
-                          &ccoin->coin_envelope_hash.hash);
+
+      blinded_planchet.cipher = TALER_DENOMINATION_RSA;
+      blinded_planchet.details.rsa_blinded_planchet.blinded_msg =ccoin->coin_ev;
+      blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size =ccoin->coin_ev_size;
+
       TALER_denom_pub_hash (&new_dkp[cnt]->pub,
                             &ccoin->h_denom_pub);
+      TALER_coin_ev_hash (&blinded_planchet,
+                          &ccoin->h_denom_pub,
+                          &ccoin->coin_envelope_hash);
+
+
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_sign_blinded (&ccoin->coin_sig,
                                                &new_dkp[cnt]->priv,
-                                               ccoin->coin_ev,
-                                               ccoin->coin_ev_size));
+                                               &blinded_planchet));
     }
     RND_BLK (&tprivs);
     RND_BLK (&tpub);
