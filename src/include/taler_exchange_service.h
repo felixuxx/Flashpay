@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2014-2021 Taler Systems SA
+   Copyright (C) 2014-2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -2186,7 +2186,7 @@ typedef void
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
- * @param ps secret internals of the original planchet
+ * @param ps secret internals of the original refresh-reveal operation
  * @param recoup_cb the callback to call when the final result for this request is available
  * @param recoup_cb_cls closure for @a recoup_cb
  * @return NULL
