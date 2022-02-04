@@ -323,6 +323,7 @@ TALER_EXCHANGE_refreshes_reveal (
   struct TALER_TransferPublicKeyP transfer_pub;
   char arg_str[sizeof (struct TALER_RefreshCommitmentP) * 2 + 32];
 
+  GNUNET_assert (num_coins == rd->fresh_pks_len);
   if (noreveal_index >= TALER_CNC_KAPPA)
   {
     /* We check this here, as it would be really bad to below just
@@ -339,9 +340,10 @@ TALER_EXCHANGE_refreshes_reveal (
     return NULL;
   }
   if (GNUNET_OK !=
-      TALER_EXCHANGE_get_melt_data (ps,
-                                    rd,
-                                    &md))
+      TALER_EXCHANGE_get_melt_data_ (ps,
+                                     rd,
+                                     alg_values,
+                                     &md))
   {
     GNUNET_break (0);
     return NULL;
@@ -457,8 +459,6 @@ TALER_EXCHANGE_refreshes_reveal (
   }
   /* finally, we can actually issue the request */
   rrh = GNUNET_new (struct TALER_EXCHANGE_RefreshesRevealHandle);
-  rrh->exchange_vals = GNUNET_new_array (struct TALER_ExchangeWithdrawValues,
-                                         md.num_fresh_coins);
   rrh->exchange = exchange;
   rrh->noreveal_index = noreveal_index;
   rrh->reveal_cb = reveal_cb;
@@ -511,9 +511,8 @@ TALER_EXCHANGE_refreshes_reveal_cancel (
   }
   GNUNET_free (rrh->url);
   TALER_curl_easy_post_finished (&rrh->ctx);
-  TALER_EXCHANGE_free_melt_data_ (rrh->md); /* does not free 'md' itself */
+  TALER_EXCHANGE_free_melt_data_ (&rrh->md);
   GNUNET_free (rrh->exchange_vals);
-  GNUNET_free (rrh->md);
   GNUNET_free (rrh);
 }
 
