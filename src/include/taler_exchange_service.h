@@ -1063,9 +1063,10 @@ struct TALER_EXCHANGE_CsRResponse
     struct
     {
       /**
-       * Signature over the coin.
+       * Values contributed by the exchange for the
+       * respective coin's withdraw operation.
        */
-      struct TALER_DenominationCsPublicR r_pubs;
+      const struct TALER_ExchangeWithdrawValues *alg_values;
     } success;
 
     /**
@@ -1093,11 +1094,28 @@ typedef void
 
 
 /**
+ * Information we pass per coin to a /csr request.
+ */
+struct TALER_EXCHANGE_NonceKey
+{
+  /**
+   * Which denomination key is the /csr request for?
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *pk;
+
+  /**
+   * What is the client nonce for the request?
+   */
+  struct TALER_CsNonce nonce;
+};
+
+
+/**
  * Get a CS R using a /csr request.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param pk denomination of coin the R's will be used for
- * @param nonce public nonce for CS R request
+ * @param nks_len length of the @a nks array
+ * @param nks array of denominations and nonces
  * @param res_cb the callback to call when the final result for this request is available
  * @param res_cb_cls closure for the above callback
  * @return handle for the operation on success, NULL on error, i.e.
@@ -1106,8 +1124,8 @@ typedef void
  */
 struct TALER_EXCHANGE_CsRHandle *
 TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
-                    const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                    const struct TALER_CsNonce *nonce,
+                    unsigned int nks_len,
+                    struct TALER_EXCHANGE_NonceKey *nks,
                     TALER_EXCHANGE_CsRCallback res_cb,
                     void *res_cb_cls);
 

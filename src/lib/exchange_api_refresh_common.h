@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2020 Taler Systems SA
+  Copyright (C) 2015-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -103,6 +103,12 @@ struct MeltData
   struct TALER_DenominationPublicKey *fresh_pks;
 
   /**
+   * Array of @e num_fresh_coins with exchange contributions
+   * made during the refresh.
+   */
+  struct TALER_ExchangeWithdrawValues *exchange_vals;
+
+  /**
    * Arrays of @e num_fresh_coins with information about the fresh
    * coins to be created, for each cut-and-choose dimension.
    */
@@ -115,12 +121,14 @@ struct MeltData
  *
  * @param ps secret internals of the refresh-reveal operation
  * @param rd refresh data with the characteristics of the operation
+ * @param alg_values contributions from the exchange into the melt
  * @param[out] rd where to write the derived melt data
  */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_get_melt_data_ (
   const struct TALER_PlanchetSecretsP *ps,
   const struct struct TALER_EXCHANGE_RefreshData *rd,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   struct MeltData *md);
 
 
