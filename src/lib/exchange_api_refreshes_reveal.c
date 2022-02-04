@@ -73,7 +73,7 @@ struct TALER_EXCHANGE_RefreshesRevealHandle
   /**
    * Actual information about the melt operation.
    */
-  struct MeltData *md;
+  struct MeltData md;
 
   /**
    * The index selected by the exchange in cut-and-choose to not be revealed.
@@ -95,12 +95,14 @@ struct TALER_EXCHANGE_RefreshesRevealHandle
  *
  * @param rrh operation handle
  * @param json reply from the exchange
- * @param[out] sigs array of length `num_fresh_coins`, initialized to contain RSA signatures
+ * @param[out] sigs array of length `num_fresh_coins`, initialized to contain the coin private keys
+ * @param[out] sigs array of length `num_fresh_coins`, initialized to contain signatures
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
 refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                    const json_t *json,
+                   struct TALER_CoinSpendPrivateKeyP *coin_privs,
                    struct TALER_DenominationSignature *sigs)
 {
   json_t *jsona;
@@ -165,6 +167,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
 
     /* needed to verify the signature, and we didn't store it earlier,
        hence recomputing it here... */
+    coin_privs[i] = fc->coin_priv;
     GNUNET_CRYPTO_eddsa_key_get_public (&fc->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     /* FIXME-Oec: Age commitment hash. */
@@ -223,13 +226,15 @@ handle_refresh_reveal_finished (void *cls,
   case MHD_HTTP_OK:
     {
       struct TALER_DenominationSignature sigs[rrh->md->num_fresh_coins];
-      int ret;
+      struct TALER_CoinSpendPrivateKeyP coin_privs[rrh->md->num_fresh_coins];
+      enum GNUNET_GenericReturnValue ret;
 
       memset (sigs,
               0,
               sizeof (sigs));
       ret = refresh_reveal_ok (rrh,
                                j,
+                               coin_privs,
                                sigs);
       if (GNUNET_OK != ret)
       {
@@ -241,7 +246,7 @@ handle_refresh_reveal_finished (void *cls,
         rrh->reveal_cb (rrh->reveal_cb_cls,
                         &hr,
                         rrh->md->num_fresh_coins,
-                        rrh->md->fresh_coins[rrh->noreveal_index],
+                        coin_privs,
                         sigs);
         rrh->reveal_cb = NULL;
       }
@@ -298,7 +303,10 @@ handle_refresh_reveal_finished (void *cls,
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
-  const json_t *refresh_data,
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_EXCHANGE_RefreshData *rd,
+  unsigned int num_coins,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls)
@@ -311,10 +319,11 @@ TALER_EXCHANGE_refreshes_reveal (
   json_t *link_sigs;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
-  struct MeltData *md;
+  struct MeltData md;
   struct TALER_TransferPublicKeyP transfer_pub;
   char arg_str[sizeof (struct TALER_RefreshCommitmentP) * 2 + 32];
 
+  GNUNET_assert (num_coins == rd->fresh_pks_len);
   if (noreveal_index >= TALER_CNC_KAPPA)
   {
     /* We check this here, as it would be really bad to below just
@@ -330,9 +339,11 @@ TALER_EXCHANGE_refreshes_reveal (
     GNUNET_break (0);
     return NULL;
   }
-  md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data,
-                                              exchange->key_data.currency);
-  if (NULL == md)
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_get_melt_data_ (ps,
+                                     rd,
+                                     alg_values,
+                                     &md))
   {
     GNUNET_break (0);
     return NULL;
@@ -340,33 +351,31 @@ TALER_EXCHANGE_refreshes_reveal (
 
   /* now transfer_pub */
   GNUNET_CRYPTO_ecdhe_key_get_public (
-    &md->melted_coin.transfer_priv[noreveal_index].ecdhe_priv,
+    &md.melted_coin.transfer_priv[noreveal_index].ecdhe_priv,
     &transfer_pub.ecdhe_pub);
 
   /* now new_denoms */
   GNUNET_assert (NULL != (new_denoms_h = json_array ()));
   GNUNET_assert (NULL != (coin_evs = json_array ()));
   GNUNET_assert (NULL != (link_sigs = json_array ()));
-  for (unsigned int i = 0; i<md->num_fresh_coins; i++)
+  for (unsigned int i = 0; i<md.num_fresh_coins; i++)
   {
     struct TALER_DenominationHash denom_hash;
     struct TALER_ExchangeWithdrawValues alg_values;
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinPubHash c_hash;
 
-    TALER_denom_pub_hash (&md->fresh_pks[i],
+    TALER_denom_pub_hash (&md.fresh_pks[i],
                           &denom_hash);
     GNUNET_assert (0 ==
                    json_array_append_new (new_denoms_h,
                                           GNUNET_JSON_from_data_auto (
                                             &denom_hash)));
 
-    // TODO: implement cipher handling
-    alg_values.cipher = TALER_DENOMINATION_RSA;
     if (GNUNET_OK !=
-        TALER_planchet_prepare (&md->fresh_pks[i],
-                                &alg_values,
-                                &md->fresh_coins[noreveal_index][i],
+        TALER_planchet_prepare (&md.fresh_pks[i],
+                                &rrh->exchange_vals[i],
+                                &md.fresh_coins[noreveal_index][i],
                                 &c_hash,
                                 &pd))
     {
@@ -374,6 +383,7 @@ TALER_EXCHANGE_refreshes_reveal (
       GNUNET_break (0);
       json_decref (new_denoms_h);
       json_decref (coin_evs);
+      TALER_EXCHANGE_free_melt_data_ (&md);
       return NULL;
     }
     GNUNET_assert (0 ==
@@ -394,7 +404,7 @@ TALER_EXCHANGE_refreshes_reveal (
                               blinded_msg,
                               pd.blinded_planchet.details.rsa_blinded_planchet.
                               blinded_msg_size,
-                              &md->melted_coin.coin_priv,
+                              &md.melted_coin.coin_priv,
                               &link_sig);
       GNUNET_assert (0 ==
                      json_array_append_new (
@@ -417,7 +427,7 @@ TALER_EXCHANGE_refreshes_reveal (
     GNUNET_assert (0 ==
                    json_array_append_new (transfer_privs,
                                           GNUNET_JSON_from_data_auto (
-                                            &md->melted_coin.transfer_priv[j])));
+                                            &md.melted_coin.transfer_priv[j])));
   }
 
   /* build main JSON request */
@@ -436,9 +446,8 @@ TALER_EXCHANGE_refreshes_reveal (
     char pub_str[sizeof (struct TALER_RefreshCommitmentP) * 2];
     char *end;
 
-    end = GNUNET_STRINGS_data_to_string (&md->rc,
-                                         sizeof (struct
-                                                 TALER_RefreshCommitmentP),
+    end = GNUNET_STRINGS_data_to_string (&md.rc,
+                                         sizeof (md.rc),
                                          pub_str,
                                          sizeof (pub_str));
     *end = '\0';
@@ -459,6 +468,7 @@ TALER_EXCHANGE_refreshes_reveal (
   if (NULL == rrh->url)
   {
     json_decref (reveal_obj);
+    TALER_EXCHANGE_free_melt_data_ (&md);
     GNUNET_free (rrh);
     return NULL;
   }
@@ -473,6 +483,7 @@ TALER_EXCHANGE_refreshes_reveal (
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (reveal_obj);
+    TALER_EXCHANGE_free_melt_data_ (&md);
     GNUNET_free (rrh->url);
     GNUNET_free (rrh);
     return NULL;
@@ -499,8 +510,8 @@ TALER_EXCHANGE_refreshes_reveal_cancel (
   }
   GNUNET_free (rrh->url);
   TALER_curl_easy_post_finished (&rrh->ctx);
-  TALER_EXCHANGE_free_melt_data_ (rrh->md); /* does not free 'md' itself */
-  GNUNET_free (rrh->md);
+  TALER_EXCHANGE_free_melt_data_ (&rrh->md);
+  GNUNET_free (rrh->exchange_vals);
   GNUNET_free (rrh);
 }
 

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2015-2021 Taler Systems SA
+  Copyright (C) 2015-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -73,7 +73,23 @@ struct TALER_EXCHANGE_MeltHandle
   /**
    * Actual information about the melt operation.
    */
-  struct MeltData *md;
+  struct MeltData md;
+
+  /**
+   * The secret the entire melt operation is seeded from.
+   */
+  const struct TALER_PlanchetSecretsP *ps;
+
+  /**
+   * Details about the characteristics of the requested melt operation.
+   */
+  const struct TALER_EXCHANGE_RefreshData *rd;
+
+  /**
+   * Array of `num_fresh_coins` contributory values of
+   * the exchange to the melt operation.
+   */
+  struct TALER_ExchangeWithdrawValues *alg_values;
 
   /**
    * Public key of the coin being melted.
@@ -106,9 +122,12 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
   struct TALER_ExchangeSignatureP exchange_sig;
   const struct TALER_EXCHANGE_Keys *key_state;
   struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed_auto ("exchange_sig", &exchange_sig),
-    GNUNET_JSON_spec_fixed_auto ("exchange_pub", exchange_pub),
-    GNUNET_JSON_spec_uint32 ("noreveal_index", noreveal_index),
+    GNUNET_JSON_spec_fixed_auto ("exchange_sig",
+                                 &exchange_sig),
+    GNUNET_JSON_spec_fixed_auto ("exchange_pub",
+                                 exchange_pub),
+    GNUNET_JSON_spec_uint32 ("noreveal_index",
+                             noreveal_index),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_RefreshMeltConfirmationPS confirm;
@@ -338,6 +357,12 @@ handle_melt_finished (void *cls,
     {
       mh->melt_cb (mh->melt_cb_cls,
                    &hr,
+                   (0 == hr.http_status)
+                   ? 0
+                   : mh->rd->fresh_pks_len,
+                   (0 == hr.http_status)
+                   ? NULL
+                   : mh->alg_values,
                    noreveal_index,
                    (0 == hr.http_status)
                    ? NULL
@@ -419,40 +444,37 @@ handle_melt_finished (void *cls,
   if (NULL != mh->melt_cb)
     mh->melt_cb (mh->melt_cb_cls,
                  &hr,
+                 0,
+                 NULL,
                  UINT32_MAX,
                  NULL);
   TALER_EXCHANGE_melt_cancel (mh);
 }
 
 
-struct TALER_EXCHANGE_MeltHandle *
-TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     const json_t *refresh_data,
-                     TALER_EXCHANGE_MeltCallback melt_cb,
-                     void *melt_cb_cls)
+static enum GNUNET_GenericReturnValue
+start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
   json_t *melt_obj;
-  struct TALER_EXCHANGE_MeltHandle *mh;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
-  struct MeltData *md;
   struct TALER_CoinSpendSignatureP confirm_sig;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
   struct TALER_DenominationHash h_denom_pub;
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
-  GNUNET_assert (GNUNET_YES ==
-                 TEAH_handle_is_ready (exchange));
-  md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data,
-                                              exchange->key_data.currency);
-  if (NULL == md)
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_get_melt_data_ (mh->ps,
+                                     mh->rd,
+                                     mh->alg_values,
+                                     &mh->md))
   {
     GNUNET_break (0);
-    return NULL;
+    return GNUNET_SYSERR;
   }
-  TALER_denom_pub_hash (&md->melted_coin.pub_key,
+  TALER_denom_pub_hash (&mh->md.melted_coin.pub_key,
                         &h_denom_pub);
   TALER_wallet_melt_sign (&md->melted_coin.melt_amount_with_fee,
                           &md->melted_coin.fee_melt,
@@ -489,29 +511,19 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                      pub_str);
   }
 
-  key_state = TALER_EXCHANGE_get_keys (exchange);
+  ctx = TEAH_handle_to_context (mh->exchange);
+  key_state = TALER_EXCHANGE_get_keys (mh->exchange);
   dki = TALER_EXCHANGE_get_denomination_key (key_state,
-                                             &md->melted_coin.pub_key);
+                                             &mh->md.melted_coin.pub_key);
 
   /* and now we can at last begin the actual request handling */
-  mh = GNUNET_new (struct TALER_EXCHANGE_MeltHandle);
-  mh->exchange = exchange;
-  mh->coin_pub = coin_pub;
-  mh->dki = *dki;
-  memset (&mh->dki.key,
-          0,
-          sizeof (mh->dki.key)); /* lifetime not warranted, so better
-                                    not copy the pointers */
-  mh->melt_cb = melt_cb;
-  mh->melt_cb_cls = melt_cb_cls;
-  mh->md = md;
-  mh->url = TEAH_path_to_url (exchange,
+
+  mh->url = TEAH_path_to_url (mh->exchange,
                               arg_str);
   if (NULL == mh->url)
   {
     json_decref (melt_obj);
-    GNUNET_free (mh);
-    return NULL;
+    return GNUNET_SYSERR;
   }
   eh = TALER_EXCHANGE_curl_easy_get_ (mh->url);
   if ( (NULL == eh) ||
@@ -524,17 +536,154 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     if (NULL != eh)
       curl_easy_cleanup (eh);
     json_decref (melt_obj);
-    GNUNET_free (mh->url);
-    GNUNET_free (mh);
-    return NULL;
+    return GNUNET_SYSERR;
   }
   json_decref (melt_obj);
-  ctx = TEAH_handle_to_context (exchange);
   mh->job = GNUNET_CURL_job_add2 (ctx,
                                   eh,
                                   mh->ctx.headers,
                                   &handle_melt_finished,
                                   mh);
+  return GNUNET_OK;
+}
+
+
+static void
+fail_mh (struct TALER_EXCHANGE_MeltHandle *mh)
+{
+  // FIXME: do return more than NULLs if
+  // the /csr failed!
+  mh->melt_cb (mh->melt_cb_cls,
+               NULL,
+               0,
+               NULL,
+               UINT32_MAX,
+               NULL);
+  TALER_EXCHANGE_melt_cancel (mh);
+}
+
+
+/**
+ * Callbacks of this type are used to serve the result of submitting a
+ * CS R request to a exchange.
+ *
+ * @param cls closure with our `struct TALER_EXCHANGE_MeltHandle *`
+ * @param csrr response details
+ */
+static void
+csr_cb (void *cls,
+        const struct TALER_EXCHANGE_CsRResponse *csrr)
+{
+  struct TALER_EXCHANGE_MeltHandle *mh = cls;
+  unsigned int nks_off = 0;
+
+  for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
+  {
+    const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk = &rd->fresh_pks[i];
+    struct TALER_ExchangeWithdrawValues *wv = &mh->alg_values[i];
+
+    switch (fresh_pk->cipher)
+    {
+    case TALER_DENOMINATION_INVALID:
+      GNUNET_break (0);
+      fail_mh (mh).
+      return;
+    case TALER_DENOMINATION_RSA:
+      GNUNET_assert (TALER_DENOMINATION_RSA == wv->cipher);
+      break;
+    case TALER_DENOMINATION_CS:
+      GNUNET_assert (TALER_DENOMINATION_CS == wv->cipher);
+      *wv = csrr->details.success.alg_values[nks_off];
+      nks_off++;
+      break;
+    }
+  }
+  if (GNUNET_OK !=
+      start_melt (mh))
+  {
+    GNUNET_break (0);
+    fail_mh (mh);
+    return;
+  }
+}
+
+
+struct TALER_EXCHANGE_MeltHandle *
+TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
+                     const struct TALER_PlanchetSecretsP *ps,
+                     const struct TALER_EXCHANGE_RefreshData *rd,
+                     TALER_EXCHANGE_MeltCallback melt_cb,
+                     void *melt_cb_cls)
+s
+{
+  const struct TALER_EXCHANGE_NonceKey *nks[GNUNET_NZL (rd->refresh_pks_len)];
+  unsigned int nks_off = 0;
+
+  if (0 == rd->refresh_pks_len)
+  {
+    GNUNET_break (0);
+    return NULL;
+  }
+  GNUNET_assert (GNUNET_YES ==
+                 TEAH_handle_is_ready (exchange));
+  mh = GNUNET_new (struct TALER_EXCHANGE_MeltHandle);
+  mh->exchange = exchange;
+  mh->rd = rd;
+  mh->ps = ps;
+  mh->melt_cb = melt_cb;
+  mh->melt_cb_cls = melt_cb_cls;
+  mh->alg_values = GNUNET_new_array (struct TALER_ExchangeWithdrawValues,
+                                     rd->fresh_pks_len);
+  for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
+  {
+    const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk = &rd->fresh_pks[i];
+    struct TALER_ExchangeWithdrawValues *wv = &mh->alg_values[i];
+
+    switch (fresh_pk->cipher)
+    {
+    case TALER_DENOMINATION_INVALID:
+      GNUNET_break (0);
+      GNUNET_free (mh->alg_values);
+      GNUNET_free (mh);
+      return NULL;
+    case TALER_DENOMINATION_RSA:
+      wv->cipher = TALER_DENOMINATION_RSA;
+      break;
+    case TALER_DENOMINATION_CS:
+      wv->cipher = TALER_DENOMINATION_CS;
+      nks[nks_off].pk = fresh_pk;
+      // derive nonce for refresh by index and ps;
+      // FIXME: include fresh_pk or not?
+      TALER_CRYPTO_XXX (ps,
+                        fresh_pk,
+                        i,
+                        &nks[nks_off].nonce);
+      nks_off++;
+      break;
+    }
+  }
+  if (0 != nks_off)
+  {
+    mh->csr = TALER_EXCHANGE_csr (exchange,
+                                  nks_off,
+                                  nks,
+                                  &csr_cb,
+                                  mh);
+    if (NULL == mh->csr)
+    {
+      GNUNET_break (0);
+      TALER_EXCHANGE_melt_cancel (mh->csr);
+      return NULL;
+    }
+    return mh;
+  }
+  if (GNUNET_OK !=
+      start_melt (mh))
+  {
+    GNUNET_break (0);
+    TALER_EXCHANGE_melt_cancel (mh->csr);
+    return NULL;
+  }
   return mh;
 }
 
@@ -547,8 +696,7 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh)
     GNUNET_CURL_job_cancel (mh->job);
     mh->job = NULL;
   }
-  TALER_EXCHANGE_free_melt_data_ (mh->md); /* does not free 'md' itself */
-  GNUNET_free (mh->md);
+  TALER_EXCHANGE_free_melt_data_ (&mh->md); /* does not free 'md' itself */
   GNUNET_free (mh->url);
   TALER_curl_easy_post_finished (&mh->ctx);
   GNUNET_free (mh);
