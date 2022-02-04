@@ -1384,6 +1384,11 @@ struct TALER_EXCHANGE_WithdrawResponse
     struct
     {
       /**
+       * Private key of the coin.
+       */
+      struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+      /**
        * Signature over the coin.
        */
       struct TALER_DenominationSignature sig;
@@ -1541,50 +1546,45 @@ TALER_EXCHANGE_withdraw2_cancel (struct TALER_EXCHANGE_Withdraw2Handle *wh);
 
 
 /**
- * Melt (partially spent) coins to obtain fresh coins that are
- * unlinkable to the original coin(s).  Note that melting more
- * than one coin in a single request will make those coins linkable,
- * so the safest operation only melts one coin at a time.
- *
- * This API is typically used by a wallet.  Note that to ensure that
- * no money is lost in case of hardware failures, is operation does
- * not actually initiate the request. Instead, it generates a buffer
- * which the caller must store before proceeding with the actual call
- * to #TALER_EXCHANGE_melt() that will generate the request.
- *
- * This function does verify that the given request data is internally
- * consistent.  However, the @a melts_sigs are NOT verified.
- *
- * Aside from some non-trivial cryptographic operations that might
- * take a bit of CPU time to complete, this function returns
- * its result immediately and does not start any asynchronous
- * processing.  This function is also thread-safe.
- *
- * @param melt_priv private keys of the coin to melt
- * @param melt_amount amount specifying how much
- *                     the coin will contribute to the melt (including fee)
- * @param melt_sig signatures affirming the
- *                   validity of the public keys corresponding to the
- *                   @a melt_priv private key
- * @param melt_pk denomination key information
- *                   record corresponding to the @a melt_sig
- *                   validity of the keys
- * @param fresh_pks_len length of the @a pks array
- * @param fresh_pks array of @a pks_len denominations of fresh coins to create
- * @return NULL
- *         if the inputs are invalid (i.e. denomination key not with this exchange).
- *         Otherwise, JSON data structure to store persistently
- *         before proceeding to #TALER_EXCHANGE_melt().
- *         Non-null results should be freed using GNUNET_free().
+ * Information needed to melt (partially spent) coins to obtain fresh coins
+ * that are unlinkable to the original coin(s).  Note that melting more than
+ * one coin in a single request will make those coins linkable, so we only melt one coin at a time.
  */
-json_t *
-TALER_EXCHANGE_refresh_prepare (
-  const struct TALER_CoinSpendPrivateKeyP *melt_priv,
-  const struct TALER_Amount *melt_amount,
-  const struct TALER_DenominationSignature *melt_sig,
-  const struct TALER_EXCHANGE_DenomPublicKey *melt_pk,
-  unsigned int fresh_pks_len,
-  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks);
+struct TALER_EXCHANGE_RefreshData
+{
+  /**
+   * private key of the coin to melt
+   */
+  struct TALER_CoinSpendPrivateKeyP melt_priv;
+
+  /**
+   * amount specifying how much the coin will contribute to the melt
+   * (including fee)
+   */
+  struct TALER_Amount melt_amount;
+
+  /**
+   * signatures affirming the validity of the public keys corresponding to the
+   * @e melt_priv private key
+   */
+  struct TALER_DenominationSignature melt_sig;
+
+  /**
+   * denomination key information record corresponding to the @e melt_sig
+   * validity of the keys
+   */
+  struct TALER_EXCHANGE_DenomPublicKey melt_pk;
+
+  /**
+   * array of @e pks_len denominations of fresh coins to create
+   */
+  const struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
+
+  /**
+   * length of the @e pks array
+   */
+  unsigned int fresh_pks_len;
+};
 
 
 /* ********************* /coins/$COIN_PUB/melt ***************************** */
@@ -1626,8 +1626,8 @@ typedef void
  * prior to calling this function.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param refresh_data the refresh data as returned from
- #TALER_EXCHANGE_refresh_prepare())
+ * @param ps the fresh secret that defines the refresh operation
+ * @param rd the refresh data specifying the characteristics of the operation
  * @param melt_cb the callback to call with the result
  * @param melt_cb_cls closure for @a melt_cb
  * @return a handle for this request; NULL if the argument was invalid.
@@ -1635,7 +1635,8 @@ typedef void
  */
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     const json_t *refresh_data,
+                     const struct TALER_PlanchetSecretsP *ps,
+                     const struct TALER_EXCHANGE_RefreshData *rd,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls);
 
@@ -1672,7 +1673,7 @@ typedef void
   void *cls,
   const struct TALER_EXCHANGE_HttpResponse *hr,
   unsigned int num_coins,
-  const struct TALER_PlanchetSecretsP *coin_privs,
+  const struct TALER_CoinSpendPrivateKeyP *coin_privs,
   const struct TALER_DenominationSignature *sigs);
 
 
@@ -1692,8 +1693,8 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  * prior to calling this function.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param refresh_data the refresh data as returned from
- #TALER_EXCHANGE_refresh_prepare())
+ * @param ps the fresh secret that defines the refresh operation
+ * @param rd the refresh data that characterizes the refresh operation
  * @param noreveal_index response from the exchange to the
  *        #TALER_EXCHANGE_melt() invocation
  * @param reveal_cb the callback to call with the final result of the
@@ -1705,7 +1706,8 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
-  const json_t *refresh_data,
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_EXCHANGE_RefreshData *rd,
   uint32_t noreveal_index,
   TALER_EXCHANGE_RefreshesRevealCallback reveal_cb,
   void *reveal_cb_cls);
