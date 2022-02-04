@@ -455,6 +455,25 @@ struct TALER_RsaPubHashP
   struct GNUNET_HashCode hash;
 };
 
+GNUNET_NETWORK_STRUCT_BEGIN
+
+/**
+ * Master key material for the deriviation of
+ * private coins and blinding factors.
+ */
+struct TALER_PlanchetSecretsP
+{
+
+  /**
+   * Key material.
+   */
+  uint32_t key_data[8];
+
+};
+
+
+GNUNET_NETWORK_STRUCT_END
+
 
 /**
  * Hash @a rsa.
@@ -990,11 +1009,14 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
 
 /**
  * Create private key for a Taler coin.
- *
+ * @param ps planchet secret to derive coin priv key
+ * @param alg_values includes algorithm specific values
  * @param[out] coin_priv private key to initialize
  */
 void
 TALER_planchet_setup_coin_priv (
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_CoinSpendPrivateKeyP *coin_priv);
 
 
@@ -1302,27 +1324,6 @@ void
 TALER_payto_hash (const char *payto,
                   struct TALER_PaytoHash *h_payto);
 
-
-GNUNET_NETWORK_STRUCT_BEGIN
-
-/**
- * Master key material for the deriviation of
- * private coins and blinding factors.
- */
-struct TALER_PlanchetSecretsP
-{
-
-  /**
-   * Key material.
-   */
-  uint32_t key_data[8];
-
-};
-
-
-GNUNET_NETWORK_STRUCT_END
-
-
 /**
  * Details about a planchet that the customer wants to obtain
  * a withdrawal authorization.  This is the information that
@@ -1465,10 +1466,10 @@ GNUNET_NETWORK_STRUCT_END
  * @param[out] ps value to initialize
  */
 void
-XXXTALER_planchet_setup_refresh (const struct
-                                 TALER_TransferSecretP *secret_seed,
-                                 uint32_t coin_num_salt,
-                                 struct TALER_PlanchetSecretsP *ps);
+TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
+                              uint32_t coin_num_salt,
+                              struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                              union TALER_DenominationBlindingKeyP *bks);
 
 
 /**
@@ -1485,21 +1486,25 @@ TALER_planchet_setup_random (
 /**
  * Create a blinding secret @a bs for @a cipher.
  *
- * @param[out] ps planchet with blinding secret to initialize
+ * @param ps secret to derive blindings from
  * @param alg_values withdraw values containing cipher and additional CS values
+ * @param bks blinding secrets
  */
 void
-XXXTALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
-                                          const struct
-                                          TALER_ExchangeWithdrawValues *
-                                          alg_values);
+TALER_planchet_blinding_secret_create (const struct TALER_PlanchetSecretsP *ps,
+
+                                       const struct
+                                       TALER_ExchangeWithdrawValues *alg_values,
+                                       union TALER_DenominationBlindingKeyP *bks);
 
 
 /**
  * Prepare a planchet for tipping.  Creates and blinds a coin.
  *
  * @param dk denomination key for the coin to be created
- * @param ps secret planchet internals (for #TALER_planchet_to_coin)
+ * @param alg_values algorithm specific values
+ * @param bks blinding secrets
+ * @param coin_priv coin private key
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
  *               other withdraw operations, pd->blinded_planchet.cipher will be set
@@ -1507,12 +1512,13 @@ XXXTALER_planchet_blinding_secret_create (struct TALER_PlanchetSecretsP *ps,
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-XXXTALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
-                           const struct
-                           TALER_ExchangeWithdrawValues *alg_values,
-                           struct TALER_PlanchetSecretsP *ps,
-                           struct TALER_CoinPubHash *c_hash,
-                           struct TALER_PlanchetDetail *pd);
+TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
+                        const struct TALER_ExchangeWithdrawValues *alg_values,
+                        const union TALER_DenominationBlindingKeyP *bks,
+                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                        struct TALER_CoinPubHash *c_hash,
+                        struct TALER_PlanchetDetail *pd
+                        );
 
 
 /**
@@ -1531,20 +1537,21 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet);
  *
  * @param dk denomination key, must match what was given to #TALER_planchet_prepare()
  * @param blind_sig blind signature from the exchange
- * @param ps secrets from #TALER_planchet_prepare()
+ * @param bks blinding key secret
+ * @param coin_priv private key of the coin
  * @param c_hash hash of the coin's public key for verification of the signature
  * @param[out] coin set to the details of the fresh coin
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-XXXTALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
-                           const struct
-                           TALER_BlindedDenominationSignature *blind_sig,
-                           const struct TALER_PlanchetSecretsP *ps,
-                           const struct TALER_CoinPubHash *c_hash,
-                           const struct
-                           TALER_ExchangeWithdrawValues *alg_values,
-                           struct TALER_FreshCoin *coin);
+TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
+                        const struct
+                        TALER_BlindedDenominationSignature *blind_sig,
+                        const union TALER_DenominationBlindingKeyP *bks,
+                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+                        const struct TALER_CoinPubHash *c_hash,
+                        const struct TALER_ExchangeWithdrawValues *alg_values,
+                        struct TALER_FreshCoin *coin);
 
 
 /* ****************** Refresh crypto primitives ************* */

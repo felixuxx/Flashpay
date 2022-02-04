@@ -242,9 +242,15 @@ TALER_EXCHANGE_withdraw (
 
   TALER_denom_pub_deep_copy (&wh->pk.key,
                              &pk->key);
+
   switch (pk->key.cipher)
   {
   case TALER_DENOMINATION_RSA:
+    struct TALER_CoinSpendPrivateKeyP priv;
+    alg_values.cipher = TALER_DENOMINATION_RSA;
+
+    TALER_planchet_setup_coin_priv (ps, &wh->alg_values, &priv);
+
     if (GNUNET_OK !=
         TALER_planchet_prepare (&pk->key,
                                 &wh->alg_values,
