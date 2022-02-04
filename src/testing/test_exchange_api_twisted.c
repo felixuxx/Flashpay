@@ -40,7 +40,7 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_exchange_api_twisted.conf"
+static char *config_file;
 
 /**
  * (real) Twister URL.  Used at startup time to check if it runs.
@@ -73,7 +73,7 @@ static struct TALER_TESTING_Command
 CMD_EXEC_WIREWATCH (const char *label)
 {
   return TALER_TESTING_cmd_exec_wirewatch (label,
-                                           CONFIG_FILE);
+                                           config_file);
 }
 
 
@@ -142,7 +142,7 @@ run (void *cls,
                             NULL),
     /* Trigger 409 Conflict.  */
     TALER_TESTING_cmd_flip_upload ("flip-upload",
-                                   CONFIG_FILE,
+                                   config_file,
                                    "transfer_privs.0"),
     TALER_TESTING_cmd_refresh_reveal ("refresh-(flipped-)reveal",
                                       "refresh-melt",
@@ -178,7 +178,7 @@ run (void *cls,
                               "USD:5",
                               "deposit-refund-1"),
     TALER_TESTING_cmd_flip_upload ("flip-upload",
-                                   CONFIG_FILE,
+                                   config_file,
                                    "merchant_sig"),
     TALER_TESTING_cmd_refund ("refund-bad-sig",
                               MHD_HTTP_FORBIDDEN,
@@ -217,7 +217,7 @@ run (void *cls,
    */
   struct TALER_TESTING_Command expired_keys[] = {
     TALER_TESTING_cmd_modify_header_dl ("modify-expiration",
-                                        CONFIG_FILE,
+                                        config_file,
                                         MHD_HTTP_HEADER_EXPIRES,
                                         "Wed, 19 Jan 586524 08:01:49 GMT"),
     TALER_TESTING_cmd_check_keys_pull_all_keys (
@@ -243,7 +243,7 @@ run (void *cls,
                                 MHD_HTTP_NO_CONTENT,
                                 false),
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              CONFIG_FILE),
+                                              config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
     TALER_TESTING_cmd_batch ("refresh-reveal-409-conflict",
@@ -283,26 +283,31 @@ int
 main (int argc,
       char *const *argv)
 {
+  const char *cipher;
   int ret;
 
   (void) argc;
-  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-twisted",
+  GNUNET_log_setup (argv[0],
                     "DEBUG",
                     NULL);
+  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+  GNUNET_assert (NULL != cipher);
+  GNUNET_asprintf (&config_file,
+                   "test_exchange_api_twisted-%s.conf",
+                   cipher);
   if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+      TALER_TESTING_prepare_fakebank (config_file,
                                       "exchange-account-2",
                                       &bc))
     return 77;
   if (NULL == (twister_url = TALER_TWISTER_prepare_twister
-                               (CONFIG_FILE)))
+                               (config_file)))
     return 77;
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+  TALER_TESTING_cleanup_files (config_file);
+  switch (TALER_TESTING_prepare_exchange (config_file,
                                           GNUNET_YES,
                                           &ec))
   {
@@ -312,11 +317,11 @@ main (int argc,
   case GNUNET_NO:
     return 77;
   case GNUNET_OK:
-    if (NULL == (twisterd = TALER_TWISTER_run_twister (CONFIG_FILE)))
+    if (NULL == (twisterd = TALER_TWISTER_run_twister (config_file)))
       return 77;
     ret = TALER_TESTING_setup_with_exchange (&run,
                                              NULL,
-                                             CONFIG_FILE);
+                                             config_file);
     purge_process (twisterd);
     GNUNET_free (twister_url);
 

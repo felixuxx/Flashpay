@@ -517,8 +517,8 @@ proceed_with_handler (struct TEH_RequestContext *rc,
                          sizeof (emsg),
                          "Got %u/%u segments for %s request ('%s')",
                          (NULL == args[i - 1])
-       ? i - 1
-       : i + ((NULL != fin) ? 1 : 0),
+                         ? i - 1
+                         : i + ((NULL != fin) ? 1 : 0),
                          rh->nargs,
                          rh->url,
                          url);
@@ -1950,8 +1950,8 @@ run (void *cls,
                           MHD_OPTION_CONNECTION_TIMEOUT,
                           connection_timeout,
                           (0 == allow_address_reuse)
-                    ? MHD_OPTION_END
-                    : MHD_OPTION_LISTENING_ADDRESS_REUSE,
+                          ? MHD_OPTION_END
+                          : MHD_OPTION_LISTENING_ADDRESS_REUSE,
                           (unsigned int) allow_address_reuse,
                           MHD_OPTION_END);
   if (NULL == mhd)

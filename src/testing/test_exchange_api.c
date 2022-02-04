@@ -38,10 +38,9 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_exchange_api.conf"
+static char *config_file;
 
-#define CONFIG_FILE_EXPIRE_RESERVE_NOW \
-  "test_exchange_api_expire_reserve_now.conf"
+static char *config_file_expire_reserve_now;
 
 
 /**
@@ -62,7 +61,7 @@ static struct TALER_TESTING_BankConfiguration bc;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_WIREWATCH(label) \
-  TALER_TESTING_cmd_exec_wirewatch (label, CONFIG_FILE)
+  TALER_TESTING_cmd_exec_wirewatch (label, config_file)
 
 /**
  * Execute the taler-exchange-aggregator, closer and transfer commands with
@@ -71,8 +70,8 @@ static struct TALER_TESTING_BankConfiguration bc;
  * @param label label to use for the command.
  */
 #define CMD_EXEC_AGGREGATOR(label) \
-  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", CONFIG_FILE), \
-  TALER_TESTING_cmd_exec_transfer (label "-transfer", CONFIG_FILE)
+  TALER_TESTING_cmd_exec_aggregator (label "-aggregator", config_file), \
+  TALER_TESTING_cmd_exec_transfer (label "-transfer", config_file)
 
 
 /**
@@ -679,7 +678,7 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-0-EUR:5",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-1",
-                              CONFIG_FILE),
+                              config_file),
     /* Recoup coin to reserve */
     TALER_TESTING_cmd_recoup ("recoup-1",
                               MHD_HTTP_OK,
@@ -779,14 +778,14 @@ run (void *cls,
                                                  bc.exchange_payto,
                                                  "short-lived-reserve"),
     TALER_TESTING_cmd_exec_wirewatch ("short-lived-aggregation",
-                                      CONFIG_FILE_EXPIRE_RESERVE_NOW),
+                                      config_file_expire_reserve_now),
     TALER_TESTING_cmd_exec_closer ("close-reserves",
-                                   CONFIG_FILE_EXPIRE_RESERVE_NOW,
+                                   config_file_expire_reserve_now,
                                    "EUR:5",
                                    "EUR:0.01",
                                    "short-lived-reserve"),
     TALER_TESTING_cmd_exec_transfer ("close-reserves-transfer",
-                                     CONFIG_FILE_EXPIRE_RESERVE_NOW),
+                                     config_file_expire_reserve_now),
 
     TALER_TESTING_cmd_status ("short-lived-status",
                               "short-lived-reserve",
@@ -836,7 +835,7 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-1-EUR:1",
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
-                              CONFIG_FILE),
+                              config_file),
     /* Check recoup is failing for the coin with the reused coin key */
     TALER_TESTING_cmd_recoup ("recoup-2x",
                               MHD_HTTP_CONFLICT,
@@ -1047,10 +1046,10 @@ run (void *cls,
                                   "EUR:20");
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 1]
       = TALER_TESTING_cmd_exec_wirewatch ("reserve-open-close-wirewatch",
-                                          CONFIG_FILE_EXPIRE_RESERVE_NOW);
+                                          config_file_expire_reserve_now);
     reserve_open_close[(i * RESERVE_OPEN_CLOSE_CHUNK) + 2]
       = TALER_TESTING_cmd_exec_closer ("reserve-open-close-aggregation",
-                                       CONFIG_FILE_EXPIRE_RESERVE_NOW,
+                                       config_file_expire_reserve_now,
                                        "EUR:19.99",
                                        "EUR:0.01",
                                        "reserve-open-close-key");
@@ -1074,9 +1073,9 @@ run (void *cls,
                                   MHD_HTTP_NO_CONTENT,
                                   false),
       TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                                CONFIG_FILE),
+                                                config_file),
       TALER_TESTING_cmd_exec_offline_sign_fees ("offline-sign-fees",
-                                                CONFIG_FILE,
+                                                config_file,
                                                 "EUR:0.01",
                                                 "EUR:0.01"),
       TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
@@ -1123,25 +1122,34 @@ int
 main (int argc,
       char *const *argv)
 {
+  const char *cipher;
+
   (void) argc;
-  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api",
+  GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
+  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+  GNUNET_assert (NULL != cipher);
+  GNUNET_asprintf (&config_file,
+                   "test_exchange_api-%s.conf",
+                   cipher);
+  GNUNET_asprintf (&config_file_expire_reserve_now,
+                   "test_exchange_api_expire_reserve_now-%s.conf",
+                   cipher);
   /* Check fakebank port is available and get config */
   if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+      TALER_TESTING_prepare_fakebank (config_file,
                                       "exchange-account-2",
                                       &bc))
     return 77;
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+  switch (TALER_TESTING_prepare_exchange (config_file,
                                           GNUNET_YES,
                                           &ec))
   {
@@ -1158,7 +1166,7 @@ main (int argc,
          */
         TALER_TESTING_setup_with_exchange (&run,
                                            NULL,
-                                           CONFIG_FILE))
+                                           config_file))
       return 1;
     break;
   default:

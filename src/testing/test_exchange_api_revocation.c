@@ -38,7 +38,7 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_exchange_api.conf"
+static char *config_file;
 
 /**
  * Exchange configuration data.
@@ -70,7 +70,7 @@ run (void *cls,
                                 MHD_HTTP_NO_CONTENT,
                                 false),
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              CONFIG_FILE),
+                                              config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
     /**
@@ -90,7 +90,7 @@ run (void *cls,
      * Run wire-watch to trigger the reserve creation.
      */
     TALER_TESTING_cmd_exec_wirewatch ("wirewatch-4",
-                                      CONFIG_FILE),
+                                      config_file),
     /* Withdraw a 5 EUR coin, at fee of 1 ct */
     TALER_TESTING_cmd_withdraw_amount ("withdraw-revocation-coin-1",
                                        "create-reserve-1",
@@ -144,12 +144,12 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-2-EUR:5",
                               MHD_HTTP_OK,
                               "refresh-melt-1",
-                              CONFIG_FILE),
+                              config_file),
     /* Also make fully spent coin invalid (should be same denom) */
     TALER_TESTING_cmd_revoke ("revoke-2-EUR:5",
                               MHD_HTTP_OK,
                               "withdraw-revocation-coin-2",
-                              CONFIG_FILE),
+                              config_file),
     /* Refund fully spent coin (which should fail) */
     TALER_TESTING_cmd_recoup ("recoup-fully-spent",
                               MHD_HTTP_CONFLICT,
@@ -211,12 +211,12 @@ run (void *cls,
     TALER_TESTING_cmd_revoke ("revoke-3-EUR:0.1",
                               MHD_HTTP_OK,
                               "refresh-reveal-2",
-                              CONFIG_FILE),
+                              config_file),
     /* Revoke also original coin denomination */
     TALER_TESTING_cmd_revoke ("revoke-4-EUR:5",
                               MHD_HTTP_OK,
                               "withdraw-revocation-coin-1",
-                              CONFIG_FILE),
+                              config_file),
     /* Refund coin EUR:0.1 to original coin, creating zombie! */
     TALER_TESTING_cmd_recoup_refresh ("recoup-2",
                                       MHD_HTTP_OK,
@@ -248,25 +248,31 @@ int
 main (int argc,
       char *const *argv)
 {
+  const char *cipher;
+
   (void) argc;
-  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-revocation",
+  GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
+  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+  GNUNET_assert (NULL != cipher);
+  GNUNET_asprintf (&config_file,
+                   "test_exchange_api-%s.conf",
+                   cipher);
   /* Check fakebank port is available and get config */
   if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+      TALER_TESTING_prepare_fakebank (config_file,
                                       "exchange-account-2",
                                       &bc))
     return 77;
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+  switch (TALER_TESTING_prepare_exchange (config_file,
                                           GNUNET_YES,
                                           &ec))
   {
@@ -283,7 +289,7 @@ main (int argc,
          */
         TALER_TESTING_setup_with_exchange (&run,
                                            NULL,
-                                           CONFIG_FILE))
+                                           config_file))
       return 1;
     break;
   default:
