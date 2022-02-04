@@ -111,15 +111,17 @@ struct MeltData
 
 
 /**
- * Deserialize melt data.
+ * Compute the melt data from the refresh data and secret.
  *
- * @param data json data to deserialize
- * @param currency expected currency for the coins
- * @return deserialized melt data, NULL on error
+ * @param ps secret internals of the refresh-reveal operation
+ * @param rd refresh data with the characteristics of the operation
+ * @param[out] rd where to write the derived melt data
  */
-struct MeltData *
-TALER_EXCHANGE_deserialize_melt_data_ (const json_t *data,
-                                       const char *currency);
+enum GNUNET_GenericReturnValue
+TALER_EXCHANGE_get_melt_data_ (
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct struct TALER_EXCHANGE_RefreshData *rd,
+  struct MeltData *md);
 
 
 /**

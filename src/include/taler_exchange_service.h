@@ -1392,6 +1392,12 @@ struct TALER_EXCHANGE_WithdrawResponse
        * Signature over the coin.
        */
       struct TALER_DenominationSignature sig;
+
+      /**
+       * Values contributed from the exchange during the
+       * withdraw protocol.
+       */
+      struct TALER_ExchangeWithdrawValues exchange_vals;
     } success;
 
     /**
@@ -1664,7 +1670,8 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh);
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param num_coins number of fresh coins created, length of the @a exchange_vals, @a sigs and @a coin_privs arrays, 0 if the operation failed
+ * @param exchange_vals array of contributions from the exchange on the refreshes
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
  * @param sigs array of signature over @a num_coins coins, NULL on error
  */
@@ -1674,6 +1681,7 @@ typedef void
   const struct TALER_EXCHANGE_HttpResponse *hr,
   unsigned int num_coins,
   const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+  const struct TALER_ExchangeWithdrawValues *exchange_vals,
   const struct TALER_DenominationSignature *sigs);
 
 
@@ -2126,6 +2134,7 @@ typedef void
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
+ * @param exchange_vals contribution from the exchange on the withdraw
  * @param ps secret internals of the original planchet
  * @param recoup_cb the callback to call when the final result for this request is available
  * @param recoup_cb_cls closure for @a recoup_cb
@@ -2137,6 +2146,7 @@ struct TALER_EXCHANGE_RecoupHandle *
 TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
                        const struct TALER_DenominationSignature *denom_sig,
+                       const struct TALER_ExchangeWithdrawValues *exchange_vals,
                        const struct TALER_PlanchetSecretsP *ps,
                        TALER_EXCHANGE_RecoupResultCallback recoup_cb,
                        void *recoup_cb_cls);
@@ -2186,6 +2196,7 @@ typedef void
  * @param exchange the exchange handle; the exchange must be ready to operate
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
+ * @param exchange_vals contribution from the exchange on the withdraw
  * @param ps secret internals of the original refresh-reveal operation
  * @param recoup_cb the callback to call when the final result for this request is available
  * @param recoup_cb_cls closure for @a recoup_cb
@@ -2198,6 +2209,7 @@ TALER_EXCHANGE_recoup_refresh (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_ExchangeWithdrawValues *exchange_vals,
   const struct TALER_PlanchetSecretsP *ps,
   TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
   void *recoup_cb_cls);

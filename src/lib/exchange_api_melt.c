@@ -427,7 +427,8 @@ handle_melt_finished (void *cls,
 
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     const json_t *refresh_data,
+                     const struct TALER_PlanchetSecretsP *ps,
+                     const struct TALER_EXCHANGE_RefreshData *rd,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls)
 {
@@ -445,9 +446,10 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
-  md = TALER_EXCHANGE_deserialize_melt_data_ (refresh_data,
-                                              exchange->key_data.currency);
-  if (NULL == md)
+  if (GNUNET_OK !=
+      TALER_EXCHANGE_get_melt_data (ps,
+                                    rd,
+                                    &md))
   {
     GNUNET_break (0);
     return NULL;
@@ -510,6 +512,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   if (NULL == mh->url)
   {
     json_decref (melt_obj);
+    TALER_EXCHANGE_free_melt_data_ (&md);
     GNUNET_free (mh);
     return NULL;
   }
@@ -523,6 +526,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_break (0);
     if (NULL != eh)
       curl_easy_cleanup (eh);
+    TALER_EXCHANGE_free_melt_data_ (&md);
     json_decref (melt_obj);
     GNUNET_free (mh->url);
     GNUNET_free (mh);
