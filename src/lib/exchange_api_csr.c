@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -93,7 +93,7 @@ csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
   unsigned int alen = json_array_size (arr);
   struct TALER_ExchangeWithdrawValues alg_values[GNUNET_NZL (alen)];
   struct TALER_EXCHANGE_CsRResponse csrr = {
-    .hr = hr,
+    .hr = *hr,
     .details.success.arg_values_len = alen,
     .details.success.alg_values = alg_values
   };
@@ -260,7 +260,7 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
 
     csr_obj = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_data_varsize ("nonce",
-                                     nk->nonce,
+                                     &nk->nonce,
                                      sizeof(struct TALER_CsNonce)),
       GNUNET_JSON_pack_data_varsize ("denom_pub_hash",
                                      &nk->pk->h_key,
@@ -284,8 +284,8 @@ TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
     json_t *req;
 
     req = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_data_json ("nks",
-                                  csr_arr));
+      GNUNET_JSON_pack_array_steal ("nks",
+                                    csr_arr));
     ctx = TEAH_handle_to_context (exchange);
     eh = TALER_EXCHANGE_curl_easy_get_ (csrh->url);
     if ( (NULL == eh) ||
