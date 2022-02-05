@@ -162,7 +162,7 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
   confirm.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT);
   confirm.purpose.size
     = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
-  confirm.rc = mh->md->rc;
+  confirm.rc = mh->md.rc;
   confirm.noreveal_index = htonl (*noreveal_index);
   if (GNUNET_OK !=
       GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT,
@@ -253,7 +253,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   }
 
   /* Find out which coin was deemed problematic by the exchange */
-  mc = &mh->md->melted_coin;
+  mc = &mh->md.melted_coin;
   /* verify coin history */
   memset (&h_denom_pub,
           0,
@@ -476,25 +476,25 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   }
   TALER_denom_pub_hash (&mh->md.melted_coin.pub_key,
                         &h_denom_pub);
-  TALER_wallet_melt_sign (&md->melted_coin.melt_amount_with_fee,
-                          &md->melted_coin.fee_melt,
-                          &md->rc,
+  TALER_wallet_melt_sign (&mh->md.melted_coin.melt_amount_with_fee,
+                          &mh->md.melted_coin.fee_melt,
+                          &mh->md.rc,
                           &h_denom_pub,
-                          &md->melted_coin.coin_priv,
+                          &mh->md.melted_coin.coin_priv,
                           &confirm_sig);
-  GNUNET_CRYPTO_eddsa_key_get_public (&md->melted_coin.coin_priv.eddsa_priv,
+  GNUNET_CRYPTO_eddsa_key_get_public (&mh->md.melted_coin.coin_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
   melt_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &h_denom_pub),
     TALER_JSON_pack_denom_sig ("denom_sig",
-                               &md->melted_coin.sig),
+                               &mh->md.melted_coin.sig),
     GNUNET_JSON_pack_data_auto ("confirm_sig",
                                 &confirm_sig),
     TALER_JSON_pack_amount ("value_with_fee",
-                            &md->melted_coin.melt_amount_with_fee),
+                            &mh->md.melted_coin.melt_amount_with_fee),
     GNUNET_JSON_pack_data_auto ("rc",
-                                &md->rc));
+                                &mh->md.rc));
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
     char *end;
@@ -577,16 +577,18 @@ csr_cb (void *cls,
   struct TALER_EXCHANGE_MeltHandle *mh = cls;
   unsigned int nks_off = 0;
 
-  for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
+  for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)
   {
-    const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk = &rd->fresh_pks[i];
+    const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk =
+      &mh->rd->fresh_pks[i];
     struct TALER_ExchangeWithdrawValues *wv = &mh->alg_values[i];
 
-    switch (fresh_pk->cipher)
+    switch (fresh_pk->key.cipher)
     {
     case TALER_DENOMINATION_INVALID:
       GNUNET_break (0);
-      fail_mh (mh).
+      // FIXME:
+      // fail_mh (mh).
       return;
     case TALER_DENOMINATION_RSA:
       GNUNET_assert (TALER_DENOMINATION_RSA == wv->cipher);
@@ -614,7 +616,6 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                      const struct TALER_EXCHANGE_RefreshData *rd,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls)
-s
 {
   const struct TALER_EXCHANGE_NonceKey *nks[GNUNET_NZL (rd->refresh_pks_len)];
   unsigned int nks_off = 0;

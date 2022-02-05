@@ -127,7 +127,7 @@ struct MeltData
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_get_melt_data_ (
   const struct TALER_PlanchetSecretsP *ps,
-  const struct struct TALER_EXCHANGE_RefreshData *rd,
+  const struct TALER_EXCHANGE_RefreshData *rd,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct MeltData *md);
 

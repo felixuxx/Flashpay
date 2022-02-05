@@ -94,6 +94,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_BlindedDenominationSignature bsig;
   struct TALER_DenominationPublicKey rpub;
   struct TALER_CoinSpendSignatureP link_sig;
+  union TALER_DenominationBlindingKeyP bks;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_denom_pub ("denom_pub",
                                &rpub),
@@ -104,7 +105,6 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
-  struct TALER_PlanchetSecretsP fc;
 
   /* parse reply */
   if (GNUNET_OK !=
@@ -120,19 +120,19 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                       &secret);
   TALER_planchet_setup_refresh (&secret,
                                 coin_num,
-                                &fc);
+                                coin_priv,
+                                &bks);
 
   /* extract coin and signature */
   if (GNUNET_OK !=
       TALER_denom_sig_unblind (sig,
                                &bsig,
-                               &fc.blinding_key,
+                               &bks,
                                &rpub))
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  *coin_priv = fc.coin_priv;
   /* verify link_sig */
   {
     struct TALER_ExchangeWithdrawValues alg_values;
@@ -148,7 +148,8 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     if (GNUNET_OK !=
         TALER_planchet_prepare (&rpub,
                                 &alg_values,
-                                &fc,
+                                &bks,
+                                coin_priv,
                                 &c_hash,
                                 &pd))
     {
