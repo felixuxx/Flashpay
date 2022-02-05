@@ -1028,7 +1028,7 @@ TALER_planchet_setup_coin_priv (
  */
 void
 TALER_cs_withdraw_nonce_derive (
-  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_PlanchetSecretsP *ps,
   struct TALER_CsNonce *nonce);
 
 

@@ -198,7 +198,7 @@ cs_blinding_seed_derive (const struct
 
 void
 TALER_cs_withdraw_nonce_derive (const struct
-                                TALER_CoinSpendPrivateKeyP *coin_priv,
+                                TALER_PlanchetSecretsP *ps,
                                 struct TALER_CsNonce *nonce)
 {
   GNUNET_assert (GNUNET_YES ==
@@ -208,8 +208,8 @@ TALER_cs_withdraw_nonce_derive (const struct
                                      GCRY_MD_SHA256,
                                      "n",
                                      strlen ("n"),
-                                     coin_priv,
-                                     sizeof(*coin_priv),
+                                     ps,
+                                     sizeof(*ps),
                                      NULL,
                                      0));
 }
@@ -239,16 +239,13 @@ TALER_planchet_blinding_secret_create (const struct TALER_PlanchetSecretsP *ps,
   case TALER_DENOMINATION_RSA:
     GNUNET_assert (GNUNET_YES ==
                    GNUNET_CRYPTO_hkdf (&bks->rsa_bks,
-                                       sizeof (struct
-                                               GNUNET_CRYPTO_RsaBlindingKeySecret),
+                                       sizeof (bks->rsa_bks),
                                        GCRY_MD_SHA512,
                                        GCRY_MD_SHA256,
                                        "bks",
                                        strlen ("bks"),
                                        ps,
                                        sizeof(*ps),
-                                       &alg_values->details, /* Could be null on RSA case*/
-                                       sizeof(alg_values->details),
                                        NULL,
                                        0));
     return;
@@ -271,19 +268,44 @@ TALER_planchet_setup_coin_priv (
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_CoinSpendPrivateKeyP *coin_priv)
 {
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_hkdf (coin_priv,
-                                     sizeof (*coin_priv),
-                                     GCRY_MD_SHA512,
-                                     GCRY_MD_SHA256,
-                                     "coin",
-                                     strlen ("coin"),
-                                     ps,
-                                     sizeof(*ps),
-                                     &alg_values->details, /* Could be null on RSA case*/
-                                     sizeof(alg_values->details),
-                                     NULL,
-                                     0));
+  switch (alg_values->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    {
+      GNUNET_assert (GNUNET_YES ==
+                     GNUNET_CRYPTO_hkdf (coin_priv,
+                                         sizeof (*coin_priv),
+                                         GCRY_MD_SHA512,
+                                         GCRY_MD_SHA256,
+                                         "coin",
+                                         strlen ("coin"),
+                                         ps,
+                                         sizeof(*ps),
+                                         NULL,
+                                         0));
+      break;
+    }
+  case TALER_DENOMINATION_CS:
+    {
+      GNUNET_assert (GNUNET_YES ==
+                     GNUNET_CRYPTO_hkdf (coin_priv,
+                                         sizeof (*coin_priv),
+                                         GCRY_MD_SHA512,
+                                         GCRY_MD_SHA256,
+                                         "coin",
+                                         strlen ("coin"),
+                                         ps,
+                                         sizeof(*ps),
+                                         &alg_values->details, /* Could be null on RSA case*/
+                                         sizeof(alg_values->details),
+                                         NULL,
+                                         0));
+      break;
+    }
+  default:
+    GNUNET_break (0);
+    return;
+  }
   coin_priv->eddsa_priv.d[0] &= 248;
   coin_priv->eddsa_priv.d[31] &= 127;
   coin_priv->eddsa_priv.d[31] |= 64;

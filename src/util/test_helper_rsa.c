@@ -270,10 +270,17 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   struct TALER_PlanchetSecretsP ps;
   struct TALER_ExchangeWithdrawValues alg_values;
   struct TALER_CoinPubHash c_hash;
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+  union TALER_DenominationBlindingKeyP bks;
+
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                              &ps,
+                              sizeof (ps));
 
   alg_values.cipher = TALER_DENOMINATION_RSA;
-  TALER_planchet_setup_random (&ps,
-                               &alg_values);
+  TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
+  TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
+
   for (unsigned int i = 0; i<MAX_KEYS; i++)
   {
     if (! keys[i].valid)
@@ -287,7 +294,8 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
       GNUNET_assert (GNUNET_YES ==
                      TALER_planchet_prepare (&keys[i].denom_pub,
                                              &alg_values,
-                                             &ps,
+                                             &bks,
+                                             &coin_priv,
                                              &c_hash,
                                              &pd));
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -332,7 +340,7 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
         if (GNUNET_OK !=
             TALER_denom_sig_unblind (&rs,
                                      &ds,
-                                     &ps.blinding_key,
+                                     &bks,
                                      &keys[i].denom_pub))
         {
           GNUNET_break (0);
@@ -429,11 +437,18 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   enum TALER_ErrorCode ec;
   struct GNUNET_TIME_Relative duration;
   struct TALER_PlanchetSecretsP ps;
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+  union TALER_DenominationBlindingKeyP bks;
   struct TALER_ExchangeWithdrawValues alg_values;
 
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                              &ps,
+                              sizeof (ps));
+
   alg_values.cipher = TALER_DENOMINATION_RSA;
-  TALER_planchet_setup_random (&ps,
-                               &alg_values);
+  TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
+  TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
+
   duration = GNUNET_TIME_UNIT_ZERO;
   TALER_CRYPTO_helper_rsa_poll (dh);
   for (unsigned int j = 0; j<NUM_SIGN_PERFS;)
@@ -461,7 +476,8 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
         GNUNET_assert (GNUNET_YES ==
                        TALER_planchet_prepare (&keys[i].denom_pub,
                                                &alg_values,
-                                               &ps,
+                                               &bks,
+                                               &coin_priv,
                                                &c_hash,
                                                &pd));
         /* use this key as long as it works */
