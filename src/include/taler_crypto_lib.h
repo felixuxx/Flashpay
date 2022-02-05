@@ -1558,6 +1558,12 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
 
 
 /**
+ * Maximum number of fresh coins we allow per refresh operation.
+ */
+#define TALER_MAX_FRESH_COINS 256
+
+
+/**
  * Given the coin and the transfer private keys, compute the
  * transfer secret.  (Technically, we only need one of the two
  * private keys, but the caller currently trivially only has
