@@ -63,7 +63,15 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   csr_requests_num = json_array_size (csr_requests);
-  // FIXME: check number of requests against an upper bound
+  if (TALER_MAX_FRESH_COINS <= csr_requests_num)
+  {
+    return TALER_MHD_reply_with_error (
+      rc->connection,
+      MHD_HTTP_BAD_REQUEST,
+      // FIXME: generalize error message
+      TALER_EC_EXCHANGE_REFRESHES_REVEAL_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
+      NULL);
+  }
   struct TALER_CsNonce nonces[GNUNET_NZL (csr_requests_num)];
   struct TALER_DenominationHash denom_pub_hashes[GNUNET_NZL (csr_requests_num)];
   for (unsigned int i = 0; i < csr_requests_num; i++)
@@ -86,7 +94,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
                                       csr_spec,
                                       i,
                                       -1);
-    GNUNET_JSON_parse_free (csr_spec);
     if (GNUNET_OK != res)
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
@@ -158,6 +165,7 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     }
 
     // derive r_pub
+    // FIXME: bundle all requests into one derivation request (TEH_keys_..., crypto helper, security module)
     ec = TEH_keys_denomination_cs_r_pub (denom_pub_hash,
                                          nonce,
                                          r_pub);

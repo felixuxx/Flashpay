@@ -32,12 +32,6 @@
 
 
 /**
- * Maximum number of fresh coins we allow per refresh operation.
- */
-#define MAX_FRESH_COINS 256
-
-
-/**
  * Send a response for "/refreshes/$RCH/reveal".
  *
  * @param connection the connection to send the response to
@@ -305,7 +299,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
                                         const json_t *coin_evs)
 {
   unsigned int num_fresh_coins = json_array_size (new_denoms_h_json);
-  /* We know num_fresh_coins is bounded by #MAX_FRESH_COINS, so this is safe */
+  /* We know num_fresh_coins is bounded by #TALER_MAX_FRESH_COINS, so this is safe */
   const struct TEH_DenominationKey *dks[num_fresh_coins];
   struct TALER_RefreshCoinData rcds[num_fresh_coins];
   struct TALER_EXCHANGEDB_RefreshRevealedCoin rrcs[num_fresh_coins];
@@ -610,7 +604,7 @@ handle_refreshes_reveal_json (struct MHD_Connection *connection,
   unsigned int num_tprivs = json_array_size (tp_json);
 
   GNUNET_assert (num_tprivs == TALER_CNC_KAPPA - 1); /* checked just earlier */
-  if ( (num_fresh_coins >= MAX_FRESH_COINS) ||
+  if ( (num_fresh_coins >= TALER_MAX_FRESH_COINS) ||
        (0 == num_fresh_coins) )
   {
     GNUNET_break_op (0);
