@@ -54,11 +54,6 @@ struct TALER_EXCHANGE_CsRHandle
   void *cb_cls;
 
   /**
-   * Denomination key we are withdrawing.
-   */
-  struct TALER_EXCHANGE_DenomPublicKey pk;
-
-  /**
    * The url for this request.
    */
   char *url;
@@ -85,34 +80,51 @@ struct TALER_EXCHANGE_CsRHandle
  * If everything checks out, we return the unblinded signature
  * to the application via the callback.
  *
- * @param wh operation handle
- * @param json reply from the exchange
+ * @param csrh operation handle
+ * @param arr reply from the exchange
+ * @param hr http response details
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
-csr_ok (const json_t *json,
-        struct TALER_EXCHANGE_CsRResponse *csrr)
+csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
+        json_t *arr,
+        struct TALER_EXCHANGE_HttpResponse *hr)
 {
-  struct GNUNET_JSON_Specification spec[] = {
-    GNUNET_JSON_spec_fixed ("r_pub_0",
-                            &csrr->details.success.r_pubs.r_pub[0],
-                            sizeof (struct GNUNET_CRYPTO_CsRPublic)),
-    GNUNET_JSON_spec_fixed ("r_pub_1",
-                            &csrr->details.success.r_pubs.r_pub[1],
-                            sizeof (struct GNUNET_CRYPTO_CsRPublic)),
-    GNUNET_JSON_spec_end ()
+  unsigned int alen = json_array_size (arr);
+  struct TALER_ExchangeWithdrawValues alg_values[GNUNET_NZL (alen)];
+  struct TALER_EXCHANGE_CsRResponse csrr = {
+    .hr = hr,
+    .details.success.alg_values_len = alen,
+    .details.success.alg_values = alg_values
   };
 
-  if (GNUNET_OK !=
-      GNUNET_JSON_parse (json,
-                         spec,
-                         NULL, NULL))
+  for (unsigned int i = 0; i<alen; i++)
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
-  }
+    json_t *av = json_array_get (arr,
+                                 i);
+    struct GNUNET_JSON_Specification spec[] = {
+      GNUNET_JSON_spec_fixed (
+        "r_pub_0",
+        &alg_values[i].r_pub.r_pub[0],
+        sizeof (struct GNUNET_CRYPTO_CsRPublic)),
+      GNUNET_JSON_spec_fixed (
+        "r_pub_1",
+        &alg_values[i].r_pub.r_pub[1],
+        sizeof (struct GNUNET_CRYPTO_CsRPublic)),
+      GNUNET_JSON_spec_end ()
+    };
 
-  GNUNET_JSON_parse_free (spec);
+    if (GNUNET_OK !=
+        GNUNET_JSON_parse (av,
+                           spec,
+                           NULL, NULL))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
+  }
+  csrh->cb (csrh->cb_cls,
+            &csrr);
   return GNUNET_OK;
 }
 
@@ -146,16 +158,26 @@ handle_csr_finished (void *cls,
     csrr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
-    if (GNUNET_OK !=
-        csr_ok (j,
-                &csrr))
     {
-      GNUNET_break_op (0);
-      csrr.hr.http_status = 0;
-      csrr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
-      break;
+      json_t *arr;
+
+      arr = json_object_get (j,
+                             "ewvs");
+      if ( (NULL == arr) ||
+           (0 == json_array_size (arr)) ||
+           (GNUNET_OK !=
+            csr_ok (csrh,
+                    arr,
+                    &hr)) )
+      {
+        GNUNET_break_op (0);
+        csrr.hr.http_status = 0;
+        csrr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
+      }
     }
-    break;
+    TALER_EXCHANGE_csr_cancel (csrh);
+    return;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
@@ -204,76 +226,89 @@ handle_csr_finished (void *cls,
 
 struct TALER_EXCHANGE_CsRHandle *
 TALER_EXCHANGE_csr (struct TALER_EXCHANGE_Handle *exchange,
-                    const struct TALER_EXCHANGE_DenomPublicKey *pk,
-                    const struct TALER_CsNonce *nonce,
+                    unsigned int nks_len,
+                    struct TALER_EXCHANGE_NonceKey *nks,
                     TALER_EXCHANGE_CsRCallback res_cb,
                     void *res_cb_cls)
 {
   struct TALER_EXCHANGE_CsRHandle *csrh;
+  json_t *csr_arr;
 
-  if (TALER_DENOMINATION_CS != pk->key.cipher)
+  if (0 == nks_len)
   {
     GNUNET_break (0);
     return NULL;
   }
+  for (unsigned int i = 0; i<nks_len; i++)
+    if (TALER_DENOMINATION_CS != nks[i].pk->key.cipher)
+    {
+      GNUNET_break (0);
+      return NULL;
+    }
 
   csrh = GNUNET_new (struct TALER_EXCHANGE_CsRHandle);
   csrh->exchange = exchange;
   csrh->cb = res_cb;
   csrh->cb_cls = res_cb_cls;
-  csrh->pk = *pk;
 
+  csr_arr = json_array ();
+  GNUNET_assert (NULL != csr_arr);
+  for (unsigned int i = 0; i<nks_len; i++)
   {
+    const struct TALER_EXCHANGE_NonceKey *nk = &nks[i];
     json_t *csr_obj;
 
-    csr_obj = GNUNET_JSON_PACK (GNUNET_JSON_pack_data_varsize ("nonce",
-                                                               nonce,
-                                                               sizeof(struct
-                                                                      TALER_CsNonce)),
-                                GNUNET_JSON_pack_data_varsize ("denom_pub_hash",
-                                                               &pk->h_key,
-                                                               sizeof(struct
-                                                                      TALER_DenominationHash)));
-    GNUNET_log (GNUNET_ERROR_TYPE_INFO,
-                "Attempting to request R with denomination public key %s\n",
-                TALER_B2S (&pk->key.details.cs_public_key));
-    csrh->url = TEAH_path_to_url (exchange,
-                                  "/csr");
-    if (NULL == csrh->url)
+    csr_obj = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_varsize ("nonce",
+                                     nk->nonce,
+                                     sizeof(struct TALER_CsNonce)),
+      GNUNET_JSON_pack_data_varsize ("denom_pub_hash",
+                                     &nk->pk->h_key,
+                                     sizeof(struct TALER_DenominationHash)));
+    GNUNET_assert (NULL != csr_obj);
+    GNUNET_assert (0 ==
+                   json_array_append_new (csr_arr,
+                                          csr_obj));
+  }
+  csrh->url = TEAH_path_to_url (exchange,
+                                "/csr");
+  if (NULL == csrh->url)
+  {
+    json_decref (csr_arr);
+    GNUNET_free (csrh);
+    return NULL;
+  }
+  {
+    CURL *eh;
+    struct GNUNET_CURL_Context *ctx;
+    json_t *req;
+
+    req = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_data_json ("nks",
+                                  csr_arr));
+    ctx = TEAH_handle_to_context (exchange);
+    eh = TALER_EXCHANGE_curl_easy_get_ (csrh->url);
+    if ( (NULL == eh) ||
+         (GNUNET_OK !=
+          TALER_curl_easy_post (&csrh->post_ctx,
+                                eh,
+                                req)) )
     {
-      json_decref (csr_obj);
+      GNUNET_break (0);
+      if (NULL != eh)
+        curl_easy_cleanup (eh);
+      json_decref (req);
+      GNUNET_free (csrh->url);
       GNUNET_free (csrh);
       return NULL;
     }
-    {
-      CURL *eh;
-      struct GNUNET_CURL_Context *ctx;
-
-      ctx = TEAH_handle_to_context (exchange);
-      eh = TALER_EXCHANGE_curl_easy_get_ (csrh->url);
-      if ( (NULL == eh) ||
-           (GNUNET_OK !=
-            TALER_curl_easy_post (&csrh->post_ctx,
-                                  eh,
-                                  csr_obj)) )
-      {
-        GNUNET_break (0);
-        if (NULL != eh)
-          curl_easy_cleanup (eh);
-        json_decref (csr_obj);
-        GNUNET_free (csrh->url);
-        GNUNET_free (csrh);
-        return NULL;
-      }
-      json_decref (csr_obj);
-      csrh->job = GNUNET_CURL_job_add2 (ctx,
-                                        eh,
-                                        csrh->post_ctx.headers,
-                                        &handle_csr_finished,
-                                        csrh);
-    }
+    json_decref (req);
+    csrh->job = GNUNET_CURL_job_add2 (ctx,
+                                      eh,
+                                      csrh->post_ctx.headers,
+                                      &handle_csr_finished,
+                                      csrh);
   }
-
   return csrh;
 }
 
