@@ -64,9 +64,19 @@ struct TALER_EXCHANGE_WithdrawHandle
   const struct TALER_ReservePrivateKeyP *reserve_priv;
 
   /**
-   * Secrets of the planchet.
+   * Seed of the planchet.
    */
   struct TALER_PlanchetSecretsP ps;
+
+  /**
+   *  blinding secret
+   */
+  union DenominationBlindingKeyP bks;
+
+  /**
+   *
+   */
+  struct TALER_CoinSpendPrivateKeyP priv;
 
   /**
    * Details of the planchet.
@@ -125,8 +135,8 @@ handle_reserve_withdraw_finished (
       if (GNUNET_OK !=
           TALER_planchet_to_coin (&wh->pk.key,
                                   blind_sig,
-                                  &wh->ps,
-                                  &wh->c_hash,
+                                  &wh->
+                                  & wh->c_hash,
                                   &wh->alg_values,
                                   &fc))
       {
@@ -246,15 +256,16 @@ TALER_EXCHANGE_withdraw (
   switch (pk->key.cipher)
   {
   case TALER_DENOMINATION_RSA:
-    struct TALER_CoinSpendPrivateKeyP priv;
-    alg_values.cipher = TALER_DENOMINATION_RSA;
+    wh->alg_values.cipher = TALER_DENOMINATION_RSA;
 
-    TALER_planchet_setup_coin_priv (ps, &wh->alg_values, &priv);
+    TALER_planchet_setup_coin_priv (ps, &wh->alg_values, &wh->priv);
+    TALER_planchet_blinding_secret_create (ps, &wh->alg_values, &wh->bks);
 
     if (GNUNET_OK !=
         TALER_planchet_prepare (&pk->key,
                                 &wh->alg_values,
-                                ps,
+                                &bks,
+                                &priv,
                                 &wh->c_hash,
                                 &wh->pd))
     {

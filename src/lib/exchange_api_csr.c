@@ -94,7 +94,7 @@ csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
   struct TALER_ExchangeWithdrawValues alg_values[GNUNET_NZL (alen)];
   struct TALER_EXCHANGE_CsRResponse csrr = {
     .hr = hr,
-    .details.success.alg_values_len = alen,
+    .details.success.arg_values_len = alen,
     .details.success.alg_values = alg_values
   };
 
@@ -105,11 +105,11 @@ csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
     struct GNUNET_JSON_Specification spec[] = {
       GNUNET_JSON_spec_fixed (
         "r_pub_0",
-        &alg_values[i].r_pub.r_pub[0],
+        &alg_values[i].details.cs_values.r_pub.r_pub[0],
         sizeof (struct GNUNET_CRYPTO_CsRPublic)),
       GNUNET_JSON_spec_fixed (
         "r_pub_1",
-        &alg_values[i].r_pub.r_pub[1],
+        &alg_values[i].details.cs_values.r_pub.r_pub[1],
         sizeof (struct GNUNET_CRYPTO_CsRPublic)),
       GNUNET_JSON_spec_end ()
     };

@@ -180,7 +180,8 @@ check_commitment (struct RevealContext *rctx,
         for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
         {
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
-          struct TALER_PlanchetSecretsP ps;
+          struct TALER_CoinSpendPrivateKeyP coin_priv;
+          union TALER_DenominationBlindingKeyP bks;
           struct TALER_ExchangeWithdrawValues alg_values;
           struct TALER_PlanchetDetail pd;
           struct TALER_CoinPubHash c_hash;
@@ -188,13 +189,15 @@ check_commitment (struct RevealContext *rctx,
           rcd->dk = &rctx->dks[j]->denom_pub;
           TALER_planchet_setup_refresh (&ts,
                                         j,
-                                        &ps);
+                                        &coin_priv,
+                                        &bks);
           // TODO: implement cipher handling
           alg_values.cipher = TALER_DENOMINATION_RSA;
           GNUNET_assert (GNUNET_OK ==
                          TALER_planchet_prepare (rcd->dk,
                                                  &alg_values,
-                                                 &ps,
+                                                 &bks,
+                                                 &coin_priv,
                                                  &c_hash,
                                                  &pd));
           rcd->coin_ev =
