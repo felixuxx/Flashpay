@@ -1021,14 +1021,29 @@ TALER_planchet_setup_coin_priv (
 
 
 /**
- * @brief Method to derive withdraw nonce
+ * @brief Method to derive withdraw /csr nonce
  *
- * @param coin_priv private key of the coin
- * @param nonce withdraw nonce included in the request to generate R_0 and R_1
+ * @param ps planchet secrets of the coin
+ * @param[out] nonce withdraw nonce included in the request to generate R_0 and R_1
  */
 void
 TALER_cs_withdraw_nonce_derive (
   const struct TALER_PlanchetSecretsP *ps,
+  struct TALER_CsNonce *nonce);
+
+
+/**
+ * @brief Method to derive /csr nonce
+ * to be used during refresh/melt operation.
+ *
+ * @param coin_priv private key of the coin
+ * @param idx index of the fresh coin
+ * @param[out] nonce set to nonce included in the request to generate R_0 and R_1
+ */
+void
+TALER_cs_refresh_nonce_derive (
+  const struct TALER_PlanchetSecretsP *ps,
+  uint32_t idx,
   struct TALER_CsNonce *nonce);
 
 

@@ -104,7 +104,7 @@ struct TALER_EXCHANGE_MeltHandle
   /**
    * @brief Public information about the coin's denomination key
    */
-  struct TALER_EXCHANGE_DenomPublicKey dki;
+  const struct TALER_EXCHANGE_DenomPublicKey *dki;
 };
 
 
@@ -206,8 +206,8 @@ verify_melt_signature_denom_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (&mh->dki,
-                                          mh->dki.value.currency,
+      TALER_EXCHANGE_verify_coin_history (mh->dki,
+                                          mh->dki->value.currency,
                                           &mh->coin_pub,
                                           history,
                                           &h_denom_pub,
@@ -216,7 +216,7 @@ verify_melt_signature_denom_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  if (0 != GNUNET_memcmp (&mh->dki.h_key,
+  if (0 != GNUNET_memcmp (&mh->dki->h_key,
                           &h_denom_pub))
     return GNUNET_OK; /* indeed, proof with different denomination key provided */
   /* invalid proof provided */
@@ -266,7 +266,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
   history = json_object_get (json,
                              "history");
   if (GNUNET_OK !=
-      TALER_EXCHANGE_verify_coin_history (&mh->dki,
+      TALER_EXCHANGE_verify_coin_history (mh->dki,
                                           mc->original_value.currency,
                                           &mh->coin_pub,
                                           history,
@@ -305,7 +305,7 @@ verify_melt_signature_spend_conflict (struct TALER_EXCHANGE_MeltHandle *mh,
     /* everything OK, valid proof of double-spending was provided */
     return GNUNET_OK;
   case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
-    if (0 != GNUNET_memcmp (&mh->dki.h_key,
+    if (0 != GNUNET_memcmp (&mh->dki->h_key,
                             &h_denom_pub))
       return GNUNET_OK; /* indeed, proof with different denomination key provided */
     /* invalid proof provided */
@@ -461,7 +461,6 @@ static enum GNUNET_GenericReturnValue
 start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
 {
   const struct TALER_EXCHANGE_Keys *key_state;
-  const struct TALER_EXCHANGE_DenomPublicKey *dki;
   json_t *melt_obj;
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
@@ -518,8 +517,8 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
 
   ctx = TEAH_handle_to_context (mh->exchange);
   key_state = TALER_EXCHANGE_get_keys (mh->exchange);
-  dki = TALER_EXCHANGE_get_denomination_key (key_state,
-                                             &mh->md.melted_coin.pub_key);
+  mh->dki = TALER_EXCHANGE_get_denomination_key (key_state,
+                                                 &mh->md.melted_coin.pub_key);
 
   /* and now we can at last begin the actual request handling */
 
@@ -659,12 +658,9 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     case TALER_DENOMINATION_CS:
       wv->cipher = TALER_DENOMINATION_CS;
       nks[nks_off].pk = fresh_pk;
-      // derive nonce for refresh by index and ps;
-      // FIXME: include fresh_pk or not?
-      TALER_CRYPTO_XXX (ps,
-                        fresh_pk,
-                        i,
-                        &nks[nks_off].nonce);
+      TALER_cs_refresh_nonce_derive (ps,
+                                     i,
+                                     &nks[nks_off].nonce);
       nks_off++;
       break;
     }

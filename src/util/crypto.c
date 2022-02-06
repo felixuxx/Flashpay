@@ -195,16 +195,36 @@ TALER_cs_withdraw_nonce_derive (const struct
                                 struct TALER_CsNonce *nonce)
 {
   GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_hkdf (nonce,
-                                     sizeof (*nonce),
-                                     GCRY_MD_SHA512,
-                                     GCRY_MD_SHA256,
-                                     "n",
-                                     strlen ("n"),
-                                     ps,
-                                     sizeof(*ps),
-                                     NULL,
-                                     0));
+                 GNUNET_CRYPTO_kdf (nonce,
+                                    sizeof (*nonce),
+                                    "n",
+                                    strlen ("n"),
+                                    ps,
+                                    sizeof(*ps),
+                                    NULL,
+                                    0));
+}
+
+
+void
+TALER_cs_refresh_nonce_derive (
+  const struct TALER_PlanchetSecretsP *ps,
+  uint32_t coin_num_salt,
+  struct TALER_CsNonce *nonce)
+{
+  uint32_t be_salt = htonl (coin_num_salt);
+
+  GNUNET_assert (GNUNET_YES ==
+                 GNUNET_CRYPTO_kdf (nonce,
+                                    sizeof (*nonce),
+                                    &be_salt,
+                                    sizeof (be_salt),
+                                    "refresh-n", // FIXME: value used in spec?
+                                    strlen ("refresh-n"),
+                                    ps,
+                                    sizeof(*ps),
+                                    NULL,
+                                    0));
 }
 
 
