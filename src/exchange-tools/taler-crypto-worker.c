@@ -178,6 +178,7 @@ run (void *cls,
                   "sent response\n");
       continue;
     }
+#if FIXME_FLORIAN
     if (0 == strcmp ("setup_refresh_planchet", op))
     {
       struct TALER_TransferSecretP transfer_secret;
@@ -222,6 +223,7 @@ run (void *cls,
                   "sent response\n");
       continue;
     }
+#endif
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "unsupported operation '%s'\n",
                 op);

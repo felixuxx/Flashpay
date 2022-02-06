@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2018 Taler Systems SA
+  (C) 2018-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -2482,6 +2482,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 #define TALER_TESTING_INDEXED_TRAITS(op)                               \
   op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
   op (denom_sig, const struct TALER_DenominationSignature)             \
+  op (planchet_secret, const struct TALER_PlanchetSecretsP)            \
+  op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)    \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
   op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \
   op (absolute_time, const struct GNUNET_TIME_Absolute)                \

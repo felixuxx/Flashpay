@@ -237,12 +237,12 @@ recoup_run (void *cls,
   struct RecoupState *ps = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
-  const union TALER_DenominationBlindingKeyP *blinding_key;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
-  struct TALER_PlanchetSecretsP planchet;
+  const struct TALER_PlanchetSecretsP *planchet;
   char *cref;
   unsigned int idx;
+  const struct TALER_ExchangeWithdrawValues *ewv;
 
   ps->is = is;
   if (GNUNET_OK !=
@@ -264,7 +264,6 @@ recoup_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                          idx,
@@ -274,18 +273,24 @@ recoup_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_blinding_key (coin_cmd,
-                                            idx,
-                                            &blinding_key))
+      TALER_TESTING_get_trait_exchange_wd_value (coin_cmd,
+                                                 idx,
+                                                 &ewv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  planchet.coin_priv = *coin_priv;
-  planchet.blinding_key = *blinding_key;
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_planchet_secret (coin_cmd,
+                                               idx,
+                                               &planchet))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   GNUNET_CRYPTO_eddsa_key_get_public (
     &coin_priv->eddsa_priv,
     &ps->reserve_history.details.recoup_details.coin_pub.eddsa_pub);
@@ -299,7 +304,6 @@ recoup_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_denom_sig (coin_cmd,
                                          idx,
@@ -309,15 +313,14 @@ recoup_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to recoup denomination '%s'\n",
               TALER_B2S (&denom_pub->h_key));
-
   ps->ph = TALER_EXCHANGE_recoup (is->exchange,
                                   denom_pub,
                                   coin_sig,
-                                  &planchet,
+                                  ewv,
+                                  planchet,
                                   &recoup_cb,
                                   ps);
   GNUNET_assert (NULL != ps->ph);

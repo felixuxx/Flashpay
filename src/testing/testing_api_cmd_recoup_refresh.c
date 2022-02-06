@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2018 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -231,10 +231,10 @@ recoup_refresh_run (void *cls,
   struct RecoupRefreshState *ps = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
-  const union TALER_DenominationBlindingKeyP *blinding_key;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
-  struct TALER_PlanchetSecretsP planchet;
+  const struct TALER_PlanchetSecretsP *planchet;
+  const struct TALER_ExchangeWithdrawValues *ewv;
   char *cref;
   unsigned int idx;
 
@@ -258,7 +258,6 @@ recoup_refresh_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                          idx,
@@ -268,18 +267,24 @@ recoup_refresh_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_blinding_key (coin_cmd,
-                                            idx,
-                                            &blinding_key))
+      TALER_TESTING_get_trait_exchange_wd_value (coin_cmd,
+                                                 idx,
+                                                 &ewv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-  planchet.coin_priv = *coin_priv;
-  planchet.blinding_key = *blinding_key;
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_planchet_secret (coin_cmd,
+                                               idx,
+                                               &planchet))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
 
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_denom_pub (coin_cmd,
@@ -308,8 +313,9 @@ recoup_refresh_run (void *cls,
   ps->ph = TALER_EXCHANGE_recoup_refresh (is->exchange,
                                           denom_pub,
                                           coin_sig,
-                                          &planchet,
-                                          recoup_refresh_cb,
+                                          ewv,
+                                          planchet,
+                                          &recoup_refresh_cb,
                                           ps);
   GNUNET_assert (NULL != ps->ph);
 }
