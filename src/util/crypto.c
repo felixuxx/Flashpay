@@ -149,19 +149,14 @@ TALER_link_recover_transfer_secret (
 void
 TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                               uint32_t coin_num_salt,
-                              struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                              union TALER_DenominationBlindingKeyP *bks)
+                              struct TALER_PlanchetSecretsP *ps)
+
 {
   uint32_t be_salt = htonl (coin_num_salt);
-  struct
-  {
-    struct TALER_CoinSpendPrivateKeyP coin_priv;
-    union TALER_DenominationBlindingKeyP bks;
-  } out;
 
   GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_kdf (&out,
-                                    sizeof (out),
+                 GNUNET_CRYPTO_kdf (ps,
+                                    sizeof (*ps),
                                     &be_salt,
                                     sizeof (be_salt),
                                     secret_seed,
@@ -169,8 +164,6 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                                     "taler-coin-derivation",
                                     strlen ("taler-coin-derivation"),
                                     NULL, 0));
-  *coin_priv = out.coin_priv;
-  *bks = out.bks;
 }
 
 
@@ -212,15 +205,6 @@ TALER_cs_withdraw_nonce_derive (const struct
                                      sizeof(*ps),
                                      NULL,
                                      0));
-}
-
-
-void
-TALER_cs_withdraw_nonce_generate (struct TALER_CsNonce *nonce)
-{
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
-                              nonce,
-                              sizeof (*nonce));
 }
 
 

@@ -71,10 +71,10 @@ struct TALER_EXCHANGE_WithdrawHandle
   /**
    *  blinding secret
    */
-  union DenominationBlindingKeyP bks;
+  union TALER_DenominationBlindingKeyP bks;
 
   /**
-   *
+   * Private key of the coin we are withdrawing.
    */
   struct TALER_CoinSpendPrivateKeyP priv;
 
@@ -135,8 +135,9 @@ handle_reserve_withdraw_finished (
       if (GNUNET_OK !=
           TALER_planchet_to_coin (&wh->pk.key,
                                   blind_sig,
-                                  &wh->
-                                  & wh->c_hash,
+                                  &wh->bks,
+                                  &wh->priv,
+                                  &wh->c_hash,
                                   &wh->alg_values,
                                   &fc))
       {
@@ -188,21 +189,33 @@ withdraw_cs_stage_two_callback (void *cls,
                                 const struct TALER_EXCHANGE_CsRResponse *csrr)
 {
   struct TALER_EXCHANGE_WithdrawHandle *wh = cls;
+  struct TALER_EXCHANGE_WithdrawResponse wr = {
+    .hr = csrr->hr
+  };
 
   wh->csrh = NULL;
-
   GNUNET_assert (TALER_DENOMINATION_CS == wh->pk.key.cipher);
-
   switch (csrr->hr.http_status)
   {
   case MHD_HTTP_OK:
-    wh->alg_values.details.cs_values.r_pub = csrr->details.success.r_pubs;
+    if (1 != csrr->details.success.alg_values_len)
+    {
+      GNUNET_break (0);
+      wr.hr.http_status = 0;
+      break;
+    }
+    wh->alg_values = csrr->details.success.alg_values[0];
+    TALER_planchet_setup_coin_priv (&wh->ps,
+                                    &wh->alg_values,
+                                    &wh->priv);
     TALER_planchet_blinding_secret_create (&wh->ps,
-                                           &wh->alg_values);
+                                           &wh->alg_values,
+                                           &wh->bks);
     if (GNUNET_OK !=
         TALER_planchet_prepare (&wh->pk.key,
                                 &wh->alg_values,
-                                &wh->ps,
+                                &wh->bks,
+                                &wh->priv,
                                 &wh->c_hash,
                                 &wh->pd))
     {
@@ -214,19 +227,13 @@ withdraw_cs_stage_two_callback (void *cls,
                                         wh->reserve_priv,
                                         &handle_reserve_withdraw_finished,
                                         wh);
-    break;
+    return;
   default:
-    {
-      // the CSR request went wrong -> serve response to the callback
-      struct TALER_EXCHANGE_WithdrawResponse wr = {
-        .hr = csrr->hr
-      };
-      wh->cb (wh->cb_cls,
-              &wr);
-      TALER_EXCHANGE_withdraw_cancel (wh);
-      break;
-    }
+    break;
   }
+  wh->cb (wh->cb_cls,
+          &wr);
+  TALER_EXCHANGE_withdraw_cancel (wh);
 }
 
 
@@ -235,7 +242,7 @@ TALER_EXCHANGE_withdraw (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetSecretsP *ps,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls)
 {
@@ -248,56 +255,55 @@ TALER_EXCHANGE_withdraw (
   wh->reserve_priv = reserve_priv;
   wh->ps = *ps;
   wh->pk = *pk;
-  wh->csrh = NULL;
-
   TALER_denom_pub_deep_copy (&wh->pk.key,
                              &pk->key);
 
   switch (pk->key.cipher)
   {
   case TALER_DENOMINATION_RSA:
-    wh->alg_values.cipher = TALER_DENOMINATION_RSA;
-
-    TALER_planchet_setup_coin_priv (ps, &wh->alg_values, &wh->priv);
-    TALER_planchet_blinding_secret_create (ps, &wh->alg_values, &wh->bks);
-
-    if (GNUNET_OK !=
-        TALER_planchet_prepare (&pk->key,
-                                &wh->alg_values,
-                                &bks,
-                                &priv,
-                                &wh->c_hash,
-                                &wh->pd))
     {
-      GNUNET_break (0);
-      GNUNET_free (wh);
-      return NULL;
+      wh->alg_values.cipher = TALER_DENOMINATION_RSA;
+      TALER_planchet_setup_coin_priv (ps,
+                                      &wh->alg_values,
+                                      &wh->priv);
+      TALER_planchet_blinding_secret_create (ps,
+                                             &wh->alg_values,
+                                             &wh->bks);
+      if (GNUNET_OK !=
+          TALER_planchet_prepare (&pk->key,
+                                  &wh->alg_values,
+                                  &wh->bks,
+                                  &wh->priv,
+                                  &wh->c_hash,
+                                  &wh->pd))
+      {
+        GNUNET_break (0);
+        GNUNET_free (wh);
+        return NULL;
+      }
+      wh->wh2 = TALER_EXCHANGE_withdraw2 (exchange,
+                                          &wh->pd,
+                                          wh->reserve_priv,
+                                          &handle_reserve_withdraw_finished,
+                                          wh);
+      break;
     }
-    wh->wh2 = TALER_EXCHANGE_withdraw2 (exchange,
-                                        &wh->pd,
-                                        wh->reserve_priv,
-                                        &handle_reserve_withdraw_finished,
-                                        wh);
-    break;
   case TALER_DENOMINATION_CS:
-    wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+    {
+      struct TALER_EXCHANGE_NonceKey nk = {
+        .pk = pk,
+      };
 
-    /**
-     * This part is a bit hacky..
-     * due to the reason that Withdraw tests use the same private key coin to sign,
-     * the same Withdraw nonce will be derived.
-     * In a normal withdrawal TALER_cs_withdraw_nonce_derive is used.
-     * As a hacky solution, we generate the nonce here randomly.
-     */
-    TALER_cs_withdraw_nonce_generate (&wh->pd.blinded_planchet.details.
-                                      cs_blinded_planchet.nonce);
-    wh->csrh = TALER_EXCHANGE_csr (exchange,
-                                   pk,
-                                   &wh->pd.blinded_planchet.details.
-                                   cs_blinded_planchet.nonce,
-                                   &withdraw_cs_stage_two_callback,
-                                   wh);
-    break;
+      wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+      TALER_cs_withdraw_nonce_derive (ps,
+                                      &nk.nonce);
+      wh->csrh = TALER_EXCHANGE_csr (exchange,
+                                     1, /* "array" length */
+                                     &nk,
+                                     &withdraw_cs_stage_two_callback,
+                                     wh);
+      break;
+    }
   default:
     GNUNET_break (0);
     GNUNET_free (wh);

@@ -1065,7 +1065,7 @@ struct TALER_EXCHANGE_CsRResponse
       /**
        * Length of the @e alg_values array.
        */
-      unsigned int arg_values_len;
+      unsigned int alg_values_len;
 
       /**
        * Values contributed by the exchange for the

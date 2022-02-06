@@ -105,6 +105,8 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
+  struct TALER_PlanchetSecretsP ps;
+  struct TALER_ExchangeWithdrawValues alg_values;
 
   /* parse reply */
   if (GNUNET_OK !=
@@ -120,9 +122,16 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                       &secret);
   TALER_planchet_setup_refresh (&secret,
                                 coin_num,
-                                coin_priv,
-                                &bks);
+                                &ps);
 
+  // TODO: implement cipher handling
+  alg_values.cipher = TALER_DENOMINATION_RSA;
+  TALER_planchet_setup_coin_priv (&ps,
+                                  &alg_values,
+                                  coin_priv);
+  TALER_planchet_blinding_secret_create (&ps,
+                                         &alg_values,
+                                         &bks);
   /* extract coin and signature */
   if (GNUNET_OK !=
       TALER_denom_sig_unblind (sig,

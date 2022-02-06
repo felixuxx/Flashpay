@@ -179,14 +179,20 @@ check_commitment (struct RevealContext *rctx,
           struct TALER_ExchangeWithdrawValues alg_values;
           struct TALER_PlanchetDetail pd;
           struct TALER_CoinPubHash c_hash;
+          struct TALER_PlanchetSecretsP ps;
 
           rcd->dk = &rctx->dks[j]->denom_pub;
           TALER_planchet_setup_refresh (&ts,
                                         j,
-                                        &coin_priv,
-                                        &bks);
+                                        &ps);
           // TODO: implement cipher handling
           alg_values.cipher = TALER_DENOMINATION_RSA;
+          TALER_planchet_setup_coin_priv (&ps,
+                                          &alg_values,
+                                          &coin_priv);
+          TALER_planchet_blinding_secret_create (&ps,
+                                                 &alg_values,
+                                                 &bks);
           GNUNET_assert (GNUNET_OK ==
                          TALER_planchet_prepare (rcd->dk,
                                                  &alg_values,

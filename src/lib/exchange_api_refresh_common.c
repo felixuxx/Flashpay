@@ -131,19 +131,25 @@ TALER_EXCHANGE_get_melt_data_ (
     {
       struct TALER_PlanchetSecretsP *fc = &md->fresh_coins[i][j];
       struct TALER_RefreshCoinData *rcd = &rce[i].new_coins[j];
-      struct TALER_ExchangeWithdrawValues alg_values;
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHash c_hash;
+      struct TALER_CoinSpendPrivateKeyP coin_priv;
+      union TALER_DenominationBlindingKeyP bks;
 
       TALER_planchet_setup_refresh (&trans_sec[i],
                                     j,
                                     fc);
-      // TODO: implement cipher handling
-      alg_values.cipher = TALER_DENOMINATION_RSA;
+      TALER_planchet_setup_coin_priv (fc,
+                                      &alg_values[j],
+                                      &coin_priv);
+      TALER_planchet_blinding_secret_create (fc,
+                                             &alg_values[j],
+                                             &bks);
       if (GNUNET_OK !=
           TALER_planchet_prepare (&md->fresh_pks[j],
-                                  &alg_values,
-                                  fc,
+                                  &alg_values[j],
+                                  &bks,
+                                  &coin_priv,
                                   &c_hash,
                                   &pd))
       {

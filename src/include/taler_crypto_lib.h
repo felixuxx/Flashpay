@@ -1033,14 +1033,6 @@ TALER_cs_withdraw_nonce_derive (
 
 
 /**
- * @brief Method to generate a random withdraw nonce used in refresh protocol
- *
- * @param nonce withdraw nonce included in the request to generate R_0 and R_1
- */
-void
-TALER_cs_withdraw_nonce_generate (struct TALER_CsNonce *nonce);
-
-/**
  * Initialize denomination public-private key pair.
  *
  * For #TALER_DENOMINATION_RSA, an additional "unsigned int"
@@ -1086,12 +1078,11 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
  * @param r_pub the resulting R_0 and R_1
  * @return enum GNUNET_GenericReturnValue
  */
-
 enum GNUNET_GenericReturnValue
-TALER_denom_cs_derive_r_public (const struct TALER_CsNonce *nonce,
-                                const struct
-                                TALER_DenominationPrivateKey *denom_priv,
-                                struct TALER_DenominationCsPublicR *r_pub);
+TALER_denom_cs_derive_r_public (
+  const struct TALER_CsNonce *nonce,
+  const struct TALER_DenominationPrivateKey *denom_priv,
+  struct TALER_DenominationCsPublicR *r_pub);
 
 
 /**
@@ -1457,9 +1448,10 @@ GNUNET_NETWORK_STRUCT_END
 
 
 /**
- * Setup information for a fresh coin, deriving the coin private key
- * and the blinding factor from the @a secret_seed with a KDF salted
- * by the @a coin_num_salt.
+ * Setup information for a fresh coin, deriving the coin planchet secrets from
+ * which we will later derive the private key and the blinding factor.  The
+ * planchet secrets derivation is based on the @a secret_seed with a KDF
+ * salted by the @a coin_num_salt.
  *
  * @param secret_seed seed to use for KDF to derive coin keys
  * @param coin_num_salt number of the coin to include in KDF
@@ -1468,8 +1460,7 @@ GNUNET_NETWORK_STRUCT_END
 void
 TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                               uint32_t coin_num_salt,
-                              struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                              union TALER_DenominationBlindingKeyP *bks);
+                              struct TALER_PlanchetSecretsP *ps);
 
 
 /**
@@ -1543,14 +1534,14 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet);
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
-TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
-                        const struct
-                        TALER_BlindedDenominationSignature *blind_sig,
-                        const union TALER_DenominationBlindingKeyP *bks,
-                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                        const struct TALER_CoinPubHash *c_hash,
-                        const struct TALER_ExchangeWithdrawValues *alg_values,
-                        struct TALER_FreshCoin *coin);
+TALER_planchet_to_coin (
+  const struct TALER_DenominationPublicKey *dk,
+  const struct TALER_BlindedDenominationSignature *blind_sig,
+  const union TALER_DenominationBlindingKeyP *bks,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_CoinPubHash *c_hash,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
+  struct TALER_FreshCoin *coin);
 
 
 /* ****************** Refresh crypto primitives ************* */
