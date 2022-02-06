@@ -286,6 +286,7 @@ TALER_EXCHANGE_recoup_refresh (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
+  const struct TALER_ExchangeWithdrawValues *exchange_vals,
   const struct TALER_PlanchetSecretsP *ps,
   TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
   void *recoup_cb_cls)

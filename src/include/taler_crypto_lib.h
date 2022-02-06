@@ -1491,11 +1491,10 @@ TALER_planchet_setup_random (
  * @param bks blinding secrets
  */
 void
-TALER_planchet_blinding_secret_create (const struct TALER_PlanchetSecretsP *ps,
-
-                                       const struct
-                                       TALER_ExchangeWithdrawValues *alg_values,
-                                       union TALER_DenominationBlindingKeyP *bks);
+TALER_planchet_blinding_secret_create (
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
+  union TALER_DenominationBlindingKeyP *bks);
 
 
 /**

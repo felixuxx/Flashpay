@@ -297,16 +297,25 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
   json_t *recoup_obj;
   CURL *eh;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+  union TALER_DenominationBlindingKeyP bks;
 
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
-  GNUNET_CRYPTO_eddsa_key_get_public (&ps->coin_priv.eddsa_priv,
+
+  TALER_planchet_setup_coin_priv (ps,
+                                  exchange_vals,
+                                  &coin_priv);
+  TALER_planchet_blinding_secret_create (ps,
+                                         exchange_vals,
+                                         &bks);
+  GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
   TALER_denom_pub_hash (&pk->key,
                         &h_denom_pub);
   TALER_wallet_recoup_sign (&h_denom_pub,
-                            &ps->blinding_key,
-                            &ps->coin_priv,
+                            &bks,
+                            &coin_priv,
                             &coin_sig);
   recoup_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
@@ -316,7 +325,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
     GNUNET_JSON_pack_data_auto ("coin_sig",
                                 &coin_sig),
     GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",
-                                &ps->blinding_key));
+                                &bks));
 
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];
