@@ -92,6 +92,11 @@ struct TALER_EXCHANGE_MeltHandle
   struct TALER_ExchangeWithdrawValues *alg_values;
 
   /**
+   * Handle for the preflight request, or NULL.
+   */
+  struct TALER_EXCHANGE_CsRHandle *csr;
+
+  /**
    * Public key of the coin being melted.
    */
   struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -617,10 +622,11 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls)
 {
-  const struct TALER_EXCHANGE_NonceKey *nks[GNUNET_NZL (rd->refresh_pks_len)];
+  struct TALER_EXCHANGE_NonceKey nks[GNUNET_NZL (rd->fresh_pks_len)];
   unsigned int nks_off = 0;
+  struct TALER_EXCHANGE_MeltHandle *mh;
 
-  if (0 == rd->refresh_pks_len)
+  if (0 == rd->fresh_pks_len)
   {
     GNUNET_break (0);
     return NULL;
@@ -633,14 +639,14 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->ps = ps;
   mh->melt_cb = melt_cb;
   mh->melt_cb_cls = melt_cb_cls;
-  mh->alg_values = GNUNET_new_array (struct TALER_ExchangeWithdrawValues,
-                                     rd->fresh_pks_len);
+  mh->alg_values = GNUNET_new_array (rd->fresh_pks_len,
+                                     struct TALER_ExchangeWithdrawValues);
   for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk = &rd->fresh_pks[i];
     struct TALER_ExchangeWithdrawValues *wv = &mh->alg_values[i];
 
-    switch (fresh_pk->cipher)
+    switch (fresh_pk->key.cipher)
     {
     case TALER_DENOMINATION_INVALID:
       GNUNET_break (0);
@@ -673,7 +679,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     if (NULL == mh->csr)
     {
       GNUNET_break (0);
-      TALER_EXCHANGE_melt_cancel (mh->csr);
+      TALER_EXCHANGE_melt_cancel (mh);
       return NULL;
     }
     return mh;
@@ -682,7 +688,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
       start_melt (mh))
   {
     GNUNET_break (0);
-    TALER_EXCHANGE_melt_cancel (mh->csr);
+    TALER_EXCHANGE_melt_cancel (mh);
     return NULL;
   }
   return mh;
@@ -696,6 +702,11 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh)
   {
     GNUNET_CURL_job_cancel (mh->job);
     mh->job = NULL;
+  }
+  if (NULL != mh->csr)
+  {
+    TALER_EXCHANGE_csr_cancel (mh->csr);
+    mh->csr = NULL;
   }
   TALER_EXCHANGE_free_melt_data_ (&mh->md); /* does not free 'md' itself */
   GNUNET_free (mh->url);
