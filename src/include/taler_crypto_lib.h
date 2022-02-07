@@ -1479,10 +1479,10 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
 
 
 /**
- * Setup information for a fresh coin.
+ * Setup information for fresh coins to be withdrawn
+ * or refreshed.
  *
  * @param[out] ps value to initialize
- * @oaram alg_values WitdrawValues containing cipher
  */
 void
 TALER_planchet_setup_random (

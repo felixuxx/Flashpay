@@ -92,6 +92,12 @@ struct TALER_EXCHANGE_MeltHandle
   struct TALER_ExchangeWithdrawValues *alg_values;
 
   /**
+   * Array of `num_fresh_coins` blinding secrets
+   * used for blinding the coins.
+   */
+  union TALER_DenominationBlindingKeyP *bks;
+
+  /**
    * Handle for the preflight request, or NULL.
    */
   struct TALER_EXCHANGE_CsRHandle *csr;
@@ -135,7 +141,6 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
                              noreveal_index),
     GNUNET_JSON_spec_end ()
   };
-  struct TALER_RefreshMeltConfirmationPS confirm;
 
   if (GNUNET_OK !=
       GNUNET_JSON_parse (json,
@@ -145,7 +150,6 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
   /* check that exchange signing key is permitted */
   key_state = TALER_EXCHANGE_get_keys (mh->exchange);
   if (GNUNET_OK !=
@@ -163,20 +167,24 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
     return GNUNET_SYSERR;
   }
 
-  /* verify signature by exchange */
-  confirm.purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT);
-  confirm.purpose.size
-    = htonl (sizeof (struct TALER_RefreshMeltConfirmationPS));
-  confirm.rc = mh->md.rc;
-  confirm.noreveal_index = htonl (*noreveal_index);
-  if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT,
-                                  &confirm,
-                                  &exchange_sig.eddsa_signature,
-                                  &exchange_pub->eddsa_pub))
+  /* verify signature by exchange -- FIXME: move to util! */
   {
-    GNUNET_break_op (0);
-    return GNUNET_SYSERR;
+    struct TALER_RefreshMeltConfirmationPS confirm = {
+      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT),
+      .purpose.size = htonl (sizeof (confirm)),
+      .rc = mh->md.rc,
+      .noreveal_index = htonl (*noreveal_index)
+    };
+
+    if (GNUNET_OK !=
+        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT,
+                                    &confirm,
+                                    &exchange_sig.eddsa_signature,
+                                    &exchange_pub->eddsa_pub))
+    {
+      GNUNET_break_op (0);
+      return GNUNET_SYSERR;
+    }
   }
   return GNUNET_OK;
 }
@@ -368,6 +376,9 @@ handle_melt_finished (void *cls,
                    (0 == hr.http_status)
                    ? NULL
                    : mh->alg_values,
+                   (0 == hr.http_status)
+                   ? NULL
+                   : mh->bks,
                    noreveal_index,
                    (0 == hr.http_status)
                    ? NULL
@@ -450,6 +461,7 @@ handle_melt_finished (void *cls,
     mh->melt_cb (mh->melt_cb_cls,
                  &hr,
                  0,
+                 NULL,
                  NULL,
                  UINT32_MAX,
                  NULL);
@@ -561,6 +573,7 @@ fail_mh (struct TALER_EXCHANGE_MeltHandle *mh)
                NULL,
                0,
                NULL,
+               NULL,
                UINT32_MAX,
                NULL);
   TALER_EXCHANGE_melt_cancel (mh);
@@ -591,8 +604,7 @@ csr_cb (void *cls,
     {
     case TALER_DENOMINATION_INVALID:
       GNUNET_break (0);
-      // FIXME:
-      // fail_mh (mh).
+      fail_mh (mh);
       return;
     case TALER_DENOMINATION_RSA:
       GNUNET_assert (TALER_DENOMINATION_RSA == wv->cipher);
@@ -640,6 +652,8 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->melt_cb_cls = melt_cb_cls;
   mh->alg_values = GNUNET_new_array (rd->fresh_pks_len,
                                      struct TALER_ExchangeWithdrawValues);
+  mh->bks = GNUNET_new_array (rd->fresh_pks_len,
+                              union TALER_DenominationBlindingKeyP);
   for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk = &rd->fresh_pks[i];
@@ -650,6 +664,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     case TALER_DENOMINATION_INVALID:
       GNUNET_break (0);
       GNUNET_free (mh->alg_values);
+      GNUNET_free (mh->bks);
       GNUNET_free (mh);
       return NULL;
     case TALER_DENOMINATION_RSA:
@@ -705,6 +720,8 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh)
     mh->csr = NULL;
   }
   TALER_EXCHANGE_free_melt_data_ (&mh->md); /* does not free 'md' itself */
+  GNUNET_free (mh->alg_values);
+  GNUNET_free (mh->bks);
   GNUNET_free (mh->url);
   TALER_curl_easy_post_finished (&mh->ctx);
   GNUNET_free (mh);

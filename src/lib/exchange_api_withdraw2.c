@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -152,7 +152,8 @@ reserve_withdraw_payment_required (
   json_t *history;
   size_t len;
   struct GNUNET_JSON_Specification spec[] = {
-    TALER_JSON_spec_amount_any ("balance", &balance),
+    TALER_JSON_spec_amount_any ("balance",
+                                &balance),
     GNUNET_JSON_spec_end ()
   };
 
@@ -182,9 +183,9 @@ reserve_withdraw_payment_required (
        not fit on the stack. Use "GNUNET_malloc_large" as a malicious
        exchange may theoretically try to crash us by giving a history
        that does not fit into our memory. */
-    rhistory = GNUNET_malloc_large (sizeof (struct
-                                            TALER_EXCHANGE_ReserveHistory)
-                                    * len);
+    rhistory = GNUNET_malloc_large (
+      sizeof (struct TALER_EXCHANGE_ReserveHistory)
+      * len);
     if (NULL == rhistory)
     {
       GNUNET_break (0);

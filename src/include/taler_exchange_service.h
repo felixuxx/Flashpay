@@ -1412,6 +1412,12 @@ struct TALER_EXCHANGE_WithdrawResponse
       struct TALER_CoinSpendPrivateKeyP coin_priv;
 
       /**
+       * Value used to blind the key for the signature.
+       * Needed for recoup operations.
+       */
+      union TALER_DenominationBlindingKeyP bks;
+
+      /**
        * Signature over the coin.
        */
       struct TALER_DenominationSignature sig;
@@ -1634,6 +1640,7 @@ struct TALER_EXCHANGE_MeltHandle;
  * @param hr HTTP response data
  * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, 0 if the operation failed
  * @param alg_values array @a num_coins of exchange values contributed to the refresh operation
+ * @param bks array of @a num_coins blinding keys used to blind the fresh coins
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT32_MAX on error
  * @param sign_key exchange key used to sign @a full_response, or NULL
@@ -1644,6 +1651,7 @@ typedef void
   const struct TALER_EXCHANGE_HttpResponse *hr,
   unsigned int num_coins,
   const struct TALER_ExchangeWithdrawValues *alg_values,
+  const union TALER_DenominationBlindingKeyP *bks,
   uint32_t noreveal_index,
   const struct TALER_ExchangePublicKeyP *sign_key);
 
