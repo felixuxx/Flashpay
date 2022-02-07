@@ -114,9 +114,10 @@ TALER_EXCHANGE_get_melt_data_ (
   /* build up coins */
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
   {
-    // FIXME: derive!
-    GNUNET_CRYPTO_ecdhe_key_create (
-      &md->melted_coin.transfer_priv[i].ecdhe_priv);
+    TALER_planchet_secret_to_transfer_priv (
+      ps,
+      i,
+      &md->melted_coin.transfer_priv[i]);
     GNUNET_CRYPTO_ecdhe_key_get_public (
       &md->melted_coin.transfer_priv[i].ecdhe_priv,
       &rce[i].transfer_pub.ecdhe_pub);

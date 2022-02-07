@@ -177,6 +177,27 @@ TALER_transfer_secret_to_planchet_secret (
 
 
 void
+TALER_planchet_secret_to_transfer_priv (
+  const struct TALER_PlanchetSecretsP *ps,
+  uint32_t cnc_num,
+  struct TALER_TransferPrivateKeyP *tpriv)
+{
+  uint32_t be_salt = htonl (cnc_num);
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_kdf (tpriv,
+                                    sizeof (*tpriv),
+                                    &be_salt,
+                                    sizeof (be_salt),
+                                    ps,
+                                    sizeof (*ps),
+                                    "taler-transfer-priv-derivation",
+                                    strlen ("taler-transfer-priv-derivation"),
+                                    NULL, 0));
+}
+
+
+void
 TALER_cs_withdraw_nonce_derive (
   const struct TALER_PlanchetSecretsP *ps,
   struct TALER_CsNonce *nonce)

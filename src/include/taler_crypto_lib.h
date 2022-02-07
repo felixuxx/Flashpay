@@ -1498,6 +1498,22 @@ TALER_transfer_secret_to_planchet_secret (
 
 
 /**
+ * Derive the @a coin_num transfer private key @a tpriv from a refresh from
+ * the @a ps seed of the refresh operation.  The transfer private key
+ * derivation is based on the @a ps with a KDF salted by the @a coin_num.
+ *
+ * @param ps seed to use for KDF to derive transfer keys
+ * @param cnc_num cut and choose number to include in KDF
+ * @param[out] tpriv value to initialize
+ */
+void
+TALER_planchet_secret_to_transfer_priv (
+  const struct TALER_PlanchetSecretsP *ps,
+  uint32_t cnc_num,
+  struct TALER_TransferPrivateKeyP *tpriv);
+
+
+/**
  * Setup information for fresh coins to be withdrawn
  * or refreshed.
  *

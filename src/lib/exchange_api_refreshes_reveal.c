@@ -408,15 +408,14 @@ TALER_EXCHANGE_refreshes_reveal (
       TALER_EXCHANGE_free_melt_data_ (&md);
       return NULL;
     }
-    GNUNET_assert (0 ==
-                   json_array_append_new (coin_evs,
-                                          GNUNET_JSON_from_data (
-                                            pd.blinded_planchet.details.
-                                            rsa_blinded_planchet.blinded_msg,
-                                            pd.
-                                            blinded_planchet.details.
-                                            rsa_blinded_planchet.
-                                            blinded_msg_size)));
+    GNUNET_assert (
+      0 ==
+      json_array_append_new (
+        coin_evs,
+        GNUNET_JSON_PACK (
+          TALER_JSON_pack_blinded_planchet (
+            NULL,
+            &pd.blinded_planchet))));
     {
       struct TALER_CoinSpendSignatureP link_sig;
 

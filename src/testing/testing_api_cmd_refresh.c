@@ -172,7 +172,7 @@ struct RefreshMeltState
    * exchange to pick any previous /rerfesh/melt operation from
    * the database.
    */
-  unsigned int double_melt;
+  bool double_melt;
 
   /**
    * How often should we retry on (transient) failures?
@@ -979,7 +979,7 @@ melt_cb (void *cls,
                 GNUNET_STRINGS_relative_time_to_string (rms->total_backoff,
                                                         GNUNET_YES));
   }
-  if (GNUNET_YES == rms->double_melt)
+  if (rms->double_melt)
   {
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->is->commands[rms->is->ip].label);
@@ -988,7 +988,7 @@ melt_cb (void *cls,
                                     &rms->refresh_data,
                                     &melt_cb,
                                     rms);
-    rms->double_melt = GNUNET_NO;
+    rms->double_melt = false;
     return;
   }
   TALER_TESTING_interpreter_next (rms->is);
@@ -1026,9 +1026,9 @@ melt_run (void *cls,
        num_fresh_coins++)
     ;
   rms->num_fresh_coins = num_fresh_coins;
-  rms->fresh_pks = GNUNET_new_array
-                     (num_fresh_coins,
-                     struct TALER_EXCHANGE_DenomPublicKey);
+  rms->fresh_pks = GNUNET_new_array (
+    num_fresh_coins,
+    struct TALER_EXCHANGE_DenomPublicKey);
   {
     struct TALER_Amount melt_amount;
     struct TALER_Amount fresh_amount;
@@ -1088,7 +1088,8 @@ melt_run (void *cls,
         GNUNET_break (0);
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Failed to parse amount `%s' at index %u\n",
-                    melt_fresh_amounts[i], i);
+                    melt_fresh_amounts[i],
+                    i);
         TALER_TESTING_interpreter_fail (rms->is);
         return;
       }
@@ -1154,7 +1155,8 @@ melt_cleanup (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Command %u (%s) did not complete\n",
-                rms->is->ip, rms->is->commands[rms->is->ip].label);
+                rms->is->ip,
+                rms->is->commands[rms->is->ip].label);
     TALER_EXCHANGE_melt_cancel (rms->rmh);
     rms->rmh = NULL;
   }
@@ -1167,8 +1169,8 @@ melt_cleanup (void *cls,
   {
     for (unsigned int i = 0; i < rms->num_fresh_coins; i++)
       TALER_denom_pub_free (&rms->fresh_pks[i].key);
+    GNUNET_free (rms->fresh_pks);
   }
-  GNUNET_free (rms->fresh_pks);
   GNUNET_free (rms->alg_values);
   GNUNET_free (rms->melt_fresh_amounts);
   GNUNET_free (rms);
@@ -1276,7 +1278,8 @@ TALER_TESTING_cmd_melt (const char *label,
   rms = GNUNET_new (struct RefreshMeltState);
   rms->coin_reference = coin_reference;
   rms->expected_response_code = expected_response_code;
-  va_start (ap, expected_response_code);
+  va_start (ap,
+            expected_response_code);
   GNUNET_assert (GNUNET_OK ==
                  parse_amounts (rms, ap));
   va_end (ap);
@@ -1306,8 +1309,9 @@ TALER_TESTING_cmd_melt_double (const char *label,
   rms = GNUNET_new (struct RefreshMeltState);
   rms->coin_reference = coin_reference;
   rms->expected_response_code = expected_response_code;
-  rms->double_melt = GNUNET_YES;
-  va_start (ap, expected_response_code);
+  rms->double_melt = true;
+  va_start (ap,
+            expected_response_code);
   GNUNET_assert (GNUNET_OK ==
                  parse_amounts (rms, ap));
   va_end (ap);
