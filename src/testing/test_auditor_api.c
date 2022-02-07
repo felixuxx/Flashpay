@@ -29,6 +29,7 @@
 #include "taler_auditor_service.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_testing_lib.h>
 #include <microhttpd.h>
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
