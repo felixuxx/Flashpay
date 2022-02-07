@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2017 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -116,7 +116,6 @@ TALER_link_derive_transfer_secret (
                  GNUNET_CRYPTO_ecdh_eddsa (&trans_priv->ecdhe_priv,
                                            &coin_pub.eddsa_pub,
                                            &ts->key));
-
 }
 
 
@@ -177,29 +176,6 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
 }
 
 
-// FIXME: bad name!
-void
-cs_blinding_seed_derive (
-  const struct TALER_PlanchetSecretsP *ps,
-  const struct GNUNET_CRYPTO_CsRPublic r_pub[2],
-  struct GNUNET_CRYPTO_CsNonce *blind_seed)
-{
-  GNUNET_assert (GNUNET_YES ==
-                 GNUNET_CRYPTO_hkdf (blind_seed,
-                                     sizeof (*blind_seed),
-                                     GCRY_MD_SHA512,
-                                     GCRY_MD_SHA256,
-                                     "bseed",
-                                     strlen ("bseed"),
-                                     ps,
-                                     sizeof(*ps),
-                                     r_pub,
-                                     sizeof(struct GNUNET_CRYPTO_CsRPublic) * 2,
-                                     NULL,
-                                     0));
-}
-
-
 void
 TALER_cs_withdraw_nonce_derive (
   const struct TALER_PlanchetSecretsP *ps,
@@ -252,24 +228,28 @@ TALER_planchet_blinding_secret_create (
     return;
   case TALER_DENOMINATION_RSA:
     GNUNET_assert (GNUNET_YES ==
-                   GNUNET_CRYPTO_hkdf (&bks->rsa_bks,
-                                       sizeof (bks->rsa_bks),
-                                       GCRY_MD_SHA512,
-                                       GCRY_MD_SHA256,
-                                       "bks",
-                                       strlen ("bks"),
-                                       ps,
-                                       sizeof(*ps),
-                                       NULL,
-                                       0));
+                   GNUNET_CRYPTO_kdf (&bks->rsa_bks,
+                                      sizeof (bks->rsa_bks),
+                                      "bks",
+                                      strlen ("bks"),
+                                      ps,
+                                      sizeof(*ps),
+                                      NULL,
+                                      0));
     return;
   case TALER_DENOMINATION_CS:
-    {
-      cs_blinding_seed_derive (ps,
-                               alg_values->details.cs_values.r_pub.r_pub,
-                               &bks->nonce);
-      return;
-    }
+    GNUNET_assert (GNUNET_YES ==
+                   GNUNET_CRYPTO_kdf (&bks->nonce,
+                                      sizeof (bks->nonce),
+                                      "bseed",
+                                      strlen ("bseed"),
+                                      ps,
+                                      sizeof(*ps),
+                                      &alg_values->details.cs_values,
+                                      sizeof(alg_values->details.cs_values),
+                                      NULL,
+                                      0));
+    return;
   default:
     GNUNET_break (0);
   }
@@ -285,37 +265,29 @@ TALER_planchet_setup_coin_priv (
   switch (alg_values->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    {
-      GNUNET_assert (GNUNET_YES ==
-                     GNUNET_CRYPTO_hkdf (coin_priv,
-                                         sizeof (*coin_priv),
-                                         GCRY_MD_SHA512,
-                                         GCRY_MD_SHA256,
-                                         "coin",
-                                         strlen ("coin"),
-                                         ps,
-                                         sizeof(*ps),
-                                         NULL,
-                                         0));
-      break;
-    }
+    GNUNET_assert (GNUNET_YES ==
+                   GNUNET_CRYPTO_kdf (coin_priv,
+                                      sizeof (*coin_priv),
+                                      "coin",
+                                      strlen ("coin"),
+                                      ps,
+                                      sizeof(*ps),
+                                      NULL,
+                                      0));
+    break;
   case TALER_DENOMINATION_CS:
-    {
-      GNUNET_assert (GNUNET_YES ==
-                     GNUNET_CRYPTO_hkdf (coin_priv,
-                                         sizeof (*coin_priv),
-                                         GCRY_MD_SHA512,
-                                         GCRY_MD_SHA256,
-                                         "coin",
-                                         strlen ("coin"),
-                                         ps,
-                                         sizeof(*ps),
-                                         &alg_values->details, /* Could be null on RSA case*/
-                                         sizeof(alg_values->details),
-                                         NULL,
-                                         0));
-      break;
-    }
+    GNUNET_assert (GNUNET_YES ==
+                   GNUNET_CRYPTO_kdf (coin_priv,
+                                      sizeof (*coin_priv),
+                                      "coin",
+                                      strlen ("coin"),
+                                      ps,
+                                      sizeof(*ps),
+                                      &alg_values->details,    /* Could be null on RSA case*/
+                                      sizeof(alg_values->details),
+                                      NULL,
+                                      0));
+    break;
   default:
     GNUNET_break (0);
     return;
@@ -400,7 +372,7 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet)
     GNUNET_free (blinded_planchet->details.rsa_blinded_planchet.blinded_msg);
     break;
   case TALER_DENOMINATION_CS:
-    // nothing to do for CS
+    /* nothing to do for CS */
     break;
   default:
     GNUNET_break (0);
@@ -565,47 +537,34 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
                     const struct TALER_DenominationHash *denom_hash,
                     struct TALER_BlindedCoinHash *bch)
 {
+  struct GNUNET_HashContext *hash_context;
+
+  hash_context = GNUNET_CRYPTO_hash_context_start ();
+  GNUNET_CRYPTO_hash_context_read (hash_context,
+                                   denom_hash,
+                                   sizeof(*denom_hash));
   switch (blinded_planchet->cipher)
   {
   case TALER_DENOMINATION_RSA:
-    {
-      struct GNUNET_HashContext *hash_context;
-      hash_context = GNUNET_CRYPTO_hash_context_start ();
-
-      // // FIXME: Include denom_pub into hash
-      // GNUNET_CRYPTO_hash_context_read (hash_context,
-      //                                  &denom_hash->hash,
-      //                                  sizeof(denom_hash->hash));
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       blinded_planchet->details.
-                                       rsa_blinded_planchet.blinded_msg,
-                                       blinded_planchet->details.
-                                       rsa_blinded_planchet.blinded_msg_size);
-      GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                         &bch->hash);
-      return GNUNET_OK;
-    }
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
+      blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size);
+    break;
   case TALER_DENOMINATION_CS:
-    {
-      struct GNUNET_HashContext *hash_context;
-      hash_context = GNUNET_CRYPTO_hash_context_start ();
-
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &denom_hash->hash,
-                                       sizeof(denom_hash->hash));
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       &blinded_planchet->details.
-                                       cs_blinded_planchet.nonce,
-                                       sizeof (blinded_planchet->details.
-                                               cs_blinded_planchet.nonce));
-      GNUNET_CRYPTO_hash_context_finish (hash_context,
-                                         &bch->hash);
-      return GNUNET_OK;
-    }
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      &blinded_planchet->details.cs_blinded_planchet.nonce,
+      sizeof (blinded_planchet->details.cs_blinded_planchet.nonce));
+    break;
   default:
     GNUNET_break (0);
+    GNUNET_CRYPTO_hash_context_abort (hash_context);
     return GNUNET_SYSERR;
   }
+  GNUNET_CRYPTO_hash_context_finish (hash_context,
+                                     &bch->hash);
+  return GNUNET_OK;
 }
 
 
@@ -632,11 +591,9 @@ TALER_coin_pub_hash (const struct TALER_CoinSpendPublicKeyP *coin_pub,
     GNUNET_memcpy (&data[0],
                    &coin_pub->eddsa_pub,
                    key_s);
-
     GNUNET_memcpy (&data[key_s],
                    age_commitment_hash,
                    age_s);
-
     GNUNET_CRYPTO_hash (&data,
                         key_s + age_s,
                         &coin_h->hash);
