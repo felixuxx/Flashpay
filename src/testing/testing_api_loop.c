@@ -691,7 +691,7 @@ main_wrapper_exchange_connect (void *cls)
  *
  * @param[in,out] is state to initialize
  */
-static int
+static enum GNUNET_GenericReturnValue
 load_keys (struct TALER_TESTING_Interpreter *is)
 {
   char *fn;
@@ -774,7 +774,7 @@ load_keys (struct TALER_TESTING_Interpreter *is)
  *
  * @param[in,out] is state to initialize
  */
-static int
+static enum GNUNET_GenericReturnValue
 load_urls (struct TALER_TESTING_Interpreter *is)
 {
   if (GNUNET_OK !=
@@ -804,7 +804,7 @@ load_urls (struct TALER_TESTING_Interpreter *is)
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TALER_TESTING_setup (TALER_TESTING_Main main_cb,
                      void *main_cb_cls,
                      const struct GNUNET_CONFIGURATION_Handle *cfg,
@@ -839,7 +839,8 @@ TALER_TESTING_setup (TALER_TESTING_Main main_cb,
   is.ctx = GNUNET_CURL_init
              (&GNUNET_CURL_gnunet_scheduler_reschedule,
              &is.rc);
-  GNUNET_CURL_enable_async_scope_header (is.ctx, "Taler-Correlation-Id");
+  GNUNET_CURL_enable_async_scope_header (is.ctx,
+                                         "Taler-Correlation-Id");
   GNUNET_assert (NULL != is.ctx);
   is.rc = GNUNET_CURL_gnunet_rc_create (is.ctx);
 

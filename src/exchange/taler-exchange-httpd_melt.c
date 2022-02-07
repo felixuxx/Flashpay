@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -183,6 +183,7 @@ melt_transaction (void *cls,
   }
   if (! balance_ok)
   {
+    GNUNET_break_op (0);
     TEH_plugin->rollback (TEH_plugin->cls);
     *mhd_ret
       = TEH_RESPONSE_reply_coin_insufficient_funds (
@@ -299,6 +300,9 @@ check_melt_valid (struct MHD_Connection *connection,
 
   rmc->coin_refresh_fee = dk->meta.fee_refresh;
   rmc->coin_value = dk->meta.value;
+  GNUNET_log (GNUNET_ERROR_TYPE_INFO,
+              "Melted coin's denomination is worth %s\n",
+              TALER_amount2s (&dk->meta.value));
   /* sanity-check that "total melt amount > melt fee" */
   if (0 <
       TALER_amount_cmp (&rmc->coin_refresh_fee,

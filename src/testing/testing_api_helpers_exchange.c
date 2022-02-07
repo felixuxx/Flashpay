@@ -765,6 +765,7 @@ TALER_TESTING_setup_with_exchange_cfg (
 #endif
                                        "taler-exchange-httpd",
                                        "taler-exchange-httpd",
+                                       "-L", "INFO",
                                        "-a", /* some tests may need timetravel */
                                        "-c", setup_ctx->config_filename,
 #if GNU_PARALLEL

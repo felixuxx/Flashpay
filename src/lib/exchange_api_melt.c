@@ -479,7 +479,6 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   struct TALER_CoinSpendSignatureP confirm_sig;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
   struct TALER_DenominationHash h_denom_pub;
-  struct TALER_CoinSpendPublicKeyP coin_pub;
 
   if (GNUNET_OK !=
       TALER_EXCHANGE_get_melt_data_ (mh->ps,
@@ -499,7 +498,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
                           &mh->md.melted_coin.coin_priv,
                           &confirm_sig);
   GNUNET_CRYPTO_eddsa_key_get_public (&mh->md.melted_coin.coin_priv.eddsa_priv,
-                                      &coin_pub.eddsa_pub);
+                                      &mh->coin_pub.eddsa_pub);
   melt_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("denom_pub_hash",
                                 &h_denom_pub),
@@ -516,7 +515,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
     char *end;
 
     end = GNUNET_STRINGS_data_to_string (
-      &coin_pub,
+      &mh->coin_pub,
       sizeof (struct TALER_CoinSpendPublicKeyP),
       pub_str,
       sizeof (pub_str));
