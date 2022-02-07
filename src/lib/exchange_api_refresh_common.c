@@ -161,10 +161,7 @@ TALER_EXCHANGE_get_melt_data_ (
         return GNUNET_SYSERR;
       }
       rcd->dk = &md->fresh_pks[j];
-      rcd->coin_ev =
-        pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg;
-      rcd->coin_ev_size =
-        pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size;
+      rcd->blinded_planchet = pd.blinded_planchet;
     }
   }
 
@@ -178,7 +175,7 @@ TALER_EXCHANGE_get_melt_data_ (
   for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
   {
     for (unsigned int j = 0; j < rd->fresh_pks_len; j++)
-      GNUNET_free (rce[i].new_coins[j].coin_ev);
+      TALER_blinded_planchet_free (&rce[i].new_coins[j].blinded_planchet);
     GNUNET_free (rce[i].new_coins);
   }
   return GNUNET_OK;
