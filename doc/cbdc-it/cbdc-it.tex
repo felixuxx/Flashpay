@@ -1,6 +1,7 @@
-\documentclass{article}
+\documentclass[a4paper]{article}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage[top=2cm,bottom=2cm]{geometry}
 \usepackage{url}
 \usepackage{amsmath}
 \usepackage{hyperref}
@@ -18,12 +19,10 @@
 \date{Questa versione: febbraio 2022 \\
       Prima versione:  maggio 2020}
 
+\setlength\parskip{5pt plus 1pt} % More space between paragraphs
 \addto\captionsitalian{\renewcommand{\figurename}{Diagramma}}
 \AtBeginDocument{\renewcommand{\harvardand}{\&}}
 \hyphenation{CBDC}
-\hyphenation{Allen}
-\hyphenation{Meiklejohn}
-\hyphenation{Nicolas}
 
 \begin{document}
 
@@ -132,7 +131,7 @@ Nel presente documento analizziamo la CBDC al dettaglio, ma senza
 affrontare la questione se una banca centrale \emph{debba o meno} emetterla.
 Ci concentriamo invece sul possibile design di una CBCD. L'interesse
 per la progettazione di CBDC è recentemente aumentato
-considerevolmente (si veda, ad esempio, ~\cite{Allen} e \cite{BoE}). Il design che
+considerevolmente~\cite[si veda, ad esempio,][]{Allen,BoE}. Il design che
 proponiamo differisce notevolmente da altre proposte. Il nostro sistema
 si basa sulla tecnologia eCash descritta da~\cite{Chaum1983} e \cite{Chaum1990},
 migliorandola. In particolare, proponiamo una CBDC basata su token, solo
@@ -306,7 +305,7 @@ l'oro), titoli e talvolta altre criptovalute. La capacità di un tale
 schema di stabilizzare il valore della moneta rispetto agli attivi
 sottostanti dipende in modo cruciale dai diritti legali acquisiti dai
 detentori della moneta. Se una \textit{stablecoin} è riscattabile ad un
-prezzo fisso (ad esempio, \\ 1 moneta = 1 USD o 1 moneta = 1 oncia d'oro),
+prezzo fisso (per es. 1 moneta = 1 USD \\ o 1 moneta = 1 oncia d'oro),
 la stabilità si può teoricamente ottenere.\footnote{Se possa stabilizzare
 il valore della \textit{stablecoin} anche rispetto ai beni e servizi
 scambiati dipende essenzialmente da quanto sia stabile il valore degli
@@ -351,7 +350,7 @@ controparte, ovvero al rischio di fallimento dell'emittente.
 
 Se una \textit{stablecoin} non è rimborsabile ad un prezzo fisso, la sua
 stabilità rispetto all'attivo sottostante non è garantita. Se la
-\textit{stablecoin} rappresenta \\ comunque una quota di proprietà
+\textit{stablecoin} rappresenta comunque una quota di proprietà
 dell'attivo sottostante, lo schema ricorda quello di un fondo comune di
 investimento chiuso o di un fondo indicizzato quotato (\textit{Exchange-Traded
 Fund} - ETF) e si applicano i relativi rischi. Il valore
@@ -373,7 +372,7 @@ centrale. Due modelli possibili che si trovano nella letteratura
 sull'argomento sono (a) CBDC basata su conti e (b) CBDC basata su
 token (o sul valore). Questi modelli corrispondono ai due tipi
 esistenti di moneta delle banche centrali e ai relativi sistemi di
-pagamento~\cite{Kahn2009}: riserve delle banche centrali
+pagamento~\cite[][]{Kahn2009}: riserve delle banche centrali
 (sistema basato su conti) e banconote (sistema basato su token). Un
 pagamento si verifica quando un'attivo monetario viene trasferito da un
 pagatore a un beneficiario. In un sistema basato su conti, il
@@ -461,7 +460,7 @@ sostengono che i trasferimenti di fondi dai depositi ai conti
 CBDC porterebbero alla sostituzione automatica del finanziamento
 mediante depositi con il finanziamento tramite la banca centrale, il
 che andrebbe ad esplicitare la garanzia finora implicita di prestatore
-di ultima istanza delle banche centrali. \\ \cite{Berentsen}
+di ultima istanza delle banche centrali. \cite{Berentsen}
 sostengono che la concorrenza delle banche centrali potrebbe persino
 avere un effetto disciplinare sulle banche commerciali e quindi
 aumentare la stabilità del sistema finanziario, dato che queste ultime
@@ -545,7 +544,7 @@ Tuttavia, il rilevamento delle frodi richiede la capacità di identificare
 i pagatori e tenere traccia dei clienti, il che non è compatibile con la
 privacy nelle transazioni.
 
-\section{Una CBDC basata su token progettata per \\ tutelare la privacy}
+\section{Una CBDC basata su token progettata per tutelare la privacy}
 \label{4.-una-cbdc-basata-su-token-progettata-per-tutelare-la-privacy}
 
 La CBDC qui proposta è di tipo «solo software», semplicemente
@@ -559,7 +558,8 @@ su GNU, si veda \url{https://www.gnu.org} e \cite{Stallman}. GNU Taler
 License} del Progetto GNU. Altri programmi del progetto GNU noti tra gli
 economisti sono \textit{R} e \textit{GNU Regression, Econometrics and
 Time-series Library} (GRETL). Per un'analisi dei vantaggi del FLOSS
-rispetto al software proprietario nel campo della ricerca, si veda~\cite{Baiocchi}, \cite{Yalta2008} e \cite{Yalta2010}.
+rispetto al software proprietario nel campo della ricerca, si 
+veda~\cite{Baiocchi}, \cite{Yalta2008} e \cite{Yalta2010}.
 Sulle licenze libere e open source, si veda~\cite{Lerner}.} Il software
 è considerato libero se la sua licenza concede agli utenti quattro libertà
 essenziali: la libertà di eseguire il programma come si desidera, la
@@ -848,7 +848,7 @@ riavvia finché non viene reso tutto il resto. Sia $(e,n)$ la
 chiave di valore per il resto da rendere.
 
 Per ottenere il resto, l'acquirente crea prima $\kappa$ chiavi di
-trasferimento private $t_{i}$ per
+trasferimento private $t_{i}$ per \\ 
 $i \in \left\{ 1,\ldots,\kappa \right\}$ e calcola le
 corrispondenti chiavi pubbliche $T_{i}$. Queste chiavi di
 trasferimento $\kappa$ sono semplicemente coppie di chiavi
@@ -875,7 +875,7 @@ un uso futuro con il protocollo di scambio di chiavi
 Sia $C_{i}$ la chiave pubblica corrispondente a $c_{i}$.
 Il cliente chiede quindi alla banca centrale di creare una firma cieca su
 $C_{i}$ per $i \in \{ 1,\ldots,\kappa\}$.\footnote{Se dovesse essere
-utilizzato il crittosistema RSA per le firme cieche, useremmo \\
+utilizzato il crittosistema RSA per le firme cieche, useremmo 
 $f \equiv \emph{FDH}_{n}(C_{i})$, dove
 $\emph{FDH}_{n}()$
 è l'hash del dominio completo sul dominio $n$.} In questa richiesta, il
@@ -942,7 +942,7 @@ Quindi il telefono (o il computer) del cliente ottiene la chiave di
 valore pubblica $(e, n)$ fornita dalla banca centrale per quel valore; (2)
 calcola quindi una coppia di chiavi per la moneta, con una chiave
 privata $c$ e una chiave pubblica $C$, e sceglie un fattore di accecamento
-$b$. La chiave pubblica della moneta viene quindi sottoposta a hash
+$b$. La chiave pubblica della moneta viene quindi sottoposta a hash \\
 ($\to$ $f$) e accecata ($\to$ $f'$). Quindi il dispositivo del cliente (3)
 invia $f'$ insieme all'autorizzazione a prelevare la moneta e ad
 addebitarla dal conto del cliente presso la banca commerciale tramite un
@@ -1093,7 +1093,7 @@ principale è rappresentato dall'archiviazione sicura per
 molti anni di 1–10 kilobyte per transazione. Gli esperimenti su un
 prototipo di GNU Taler che utilizzava i prezzi di \textit{Amazon Web Service}
 hanno stabilito che il costo del sistema (archiviazione, larghezza di
-banda e capacità di calcolo) su larga scala sarebbe inferiore a \\ 
+banda e capacità di calcolo) su larga scala sarebbe inferiore a 
 0,0001 USD per transazione~\cite[per i dettagli sui dati, si veda][]{Dold}.
 
 \section{Considerazioni normative e politiche}
@@ -1186,7 +1186,7 @@ rappresentare un problema significativo per la politica monetaria.
 
 Come segnalato in precedenza, la CBDC che si propone in questo documento
 si basa su eCash e GNU Taler.\footnote{L'implementazione di eCash
-da parte della società DigiCash negli anni novanta è documentata su
+da parte della società DigiCash negli anni novanta è documentata su \\
 \url{https://www.chaum.com/ecash}.} A partire dalla proposta originale
 e-Cash di Chaum, la ricerca si è concentrata su tre questioni principali.
 In primo luogo, nella proposta originale di Chaum le monete avevano un
@@ -1219,8 +1219,8 @@ criminalità online. Solo Taler offre sia una privacy costante per i
 clienti che la trasparenza del reddito, fornendo al contempo un sistema
 di resto efficiente, scambi atomici~\cite[vedi][]{Camenisch2007} e la
 possibilità di ripristinare i portafogli dal backup.
-
-Per quanto riguarda i sistemi di pagamento per le CBDC,~\cite{Danezis}
+                                                       
+Per quanto riguarda i sistemi di pagamento per le CBDC, \cite{Danezis}
 hanno progettato un \textit{ledger} scalabile per RSCoin. Si tratta
 fondamentalmente di un sistema RTGS che viene protetto utilizzando la
 stessa crittografia che si usa in Bitcoin. Come Taler, il design utilizza
