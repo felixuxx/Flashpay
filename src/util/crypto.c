@@ -147,6 +147,16 @@ TALER_link_recover_transfer_secret (
 
 
 void
+TALER_planchet_setup_random (
+  struct TALER_PlanchetSecretsP *ps)
+{
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                              ps,
+                              sizeof (*ps));
+}
+
+
+void
 TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
                               uint32_t coin_num_salt,
                               struct TALER_PlanchetSecretsP *ps)
@@ -167,11 +177,12 @@ TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
 }
 
 
+// FIXME: bad name!
 void
-cs_blinding_seed_derive (const struct
-                         TALER_PlanchetSecretsP *ps,
-                         const struct GNUNET_CRYPTO_CsRPublic r_pub[2],
-                         struct GNUNET_CRYPTO_CsNonce *blind_seed)
+cs_blinding_seed_derive (
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct GNUNET_CRYPTO_CsRPublic r_pub[2],
+  struct GNUNET_CRYPTO_CsNonce *blind_seed)
 {
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_hkdf (blind_seed,
@@ -190,9 +201,9 @@ cs_blinding_seed_derive (const struct
 
 
 void
-TALER_cs_withdraw_nonce_derive (const struct
-                                TALER_PlanchetSecretsP *ps,
-                                struct TALER_CsNonce *nonce)
+TALER_cs_withdraw_nonce_derive (
+  const struct TALER_PlanchetSecretsP *ps,
+  struct TALER_CsNonce *nonce)
 {
   GNUNET_assert (GNUNET_YES ==
                  GNUNET_CRYPTO_kdf (nonce,
@@ -229,11 +240,10 @@ TALER_cs_refresh_nonce_derive (
 
 
 void
-TALER_planchet_blinding_secret_create (const struct TALER_PlanchetSecretsP *ps,
-
-                                       const struct
-                                       TALER_ExchangeWithdrawValues *alg_values,
-                                       union TALER_DenominationBlindingKeyP *bks)
+TALER_planchet_blinding_secret_create (
+  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
+  union TALER_DenominationBlindingKeyP *bks)
 {
   switch (alg_values->cipher)
   {

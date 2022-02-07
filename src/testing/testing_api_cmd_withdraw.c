@@ -100,6 +100,22 @@ struct WithdrawState
   struct TALER_ReservePublicKeyP reserve_pub;
 
   /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Blinding key used during the operation.
+   */
+  union TALER_DenominationBlindingKeyP bks;
+
+  /**
+   * Values contributed from the exchange during the
+   * withdraw protocol.
+   */
+  struct TALER_ExchangeWithdrawValues exchange_vals;
+
+  /**
    * Interpreter state (during command).
    */
   struct TALER_TESTING_Interpreter *is;
@@ -263,6 +279,9 @@ reserve_withdraw_cb (void *cls,
   case MHD_HTTP_OK:
     TALER_denom_sig_deep_copy (&ws->sig,
                                &wr->details.success.sig);
+    ws->coin_priv = wr->details.success.coin_priv;
+    ws->bks = wr->details.success.bks;
+    ws->exchange_vals = wr->details.success.exchange_vals;
     if (0 != ws->total_backoff.rel_value_us)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -388,11 +407,11 @@ withdraw_run (void *cls,
                                 &ws->reserve_pub);
   if (NULL == ws->reuse_coin_key_ref)
   {
-    TALER_planchet_setup_coin_priv (&ws->ps.coin_priv);
+    TALER_planchet_setup_random (&ws->ps);
   }
   else
   {
-    const struct TALER_CoinSpendPrivateKeyP *coin_priv;
+    const struct TALER_PlanchetSecretsP *ps;
     const struct TALER_TESTING_Command *cref;
     char *cstr;
     unsigned int index;
@@ -406,11 +425,9 @@ withdraw_run (void *cls,
     GNUNET_assert (NULL != cref);
     GNUNET_free (cstr);
     GNUNET_assert (GNUNET_OK ==
-                   TALER_TESTING_get_trait_coin_priv (cref,
-                                                      index,
-                                                      &coin_priv));
-    TALER_planchet_setup_coin_priv (&ws->ps.coin_priv);
-    ws->ps.coin_priv = *coin_priv;
+                   TALER_TESTING_get_trait_planchet_secret (cref,
+                                                            &ps));
+    ws->ps = *ps;
   }
   if (NULL == ws->pk)
   {
@@ -513,9 +530,12 @@ withdraw_traits (void *cls,
     /* history entry MUST be first due to response code logic below! */
     TALER_TESTING_make_trait_reserve_history (&ws->reserve_history),
     TALER_TESTING_make_trait_coin_priv (0 /* only one coin */,
-                                        &ws->ps.coin_priv),
+                                        &ws->coin_priv),
+    TALER_TESTING_make_trait_planchet_secret (&ws->ps),
     TALER_TESTING_make_trait_blinding_key (0 /* only one coin */,
-                                           &ws->ps.blinding_key),
+                                           &ws->bks),
+    TALER_TESTING_make_trait_exchange_wd_value (0 /* only one coin */,
+                                                &ws->exchange_vals),
     TALER_TESTING_make_trait_denom_pub (0 /* only one coin */,
                                         ws->pk),
     TALER_TESTING_make_trait_denom_sig (0 /* only one coin */,

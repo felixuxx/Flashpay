@@ -284,7 +284,6 @@ recoup_run (void *cls,
   }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_planchet_secret (coin_cmd,
-                                               idx,
                                                &planchet))
   {
     GNUNET_break (0);

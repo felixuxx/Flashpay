@@ -277,9 +277,9 @@ recoup_refresh_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_planchet_secret (coin_cmd,
-                                               idx,
-                                               &planchet))
+      TALER_TESTING_get_trait_planchet_secrets (coin_cmd,
+                                                idx,
+                                                &planchet))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
