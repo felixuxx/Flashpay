@@ -381,7 +381,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
     struct GNUNET_JSON_Specification spec[] = {
-      TALER_JSON_spec_blinded_planchet ("bp",
+      TALER_JSON_spec_blinded_planchet (NULL,
                                         &rrc->blinded_planchet),
       GNUNET_JSON_spec_end ()
     };
