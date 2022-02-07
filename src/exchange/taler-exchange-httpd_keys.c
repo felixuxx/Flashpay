@@ -1,6 +1,6 @@
 /*
    This file is part of TALER
-   Copyright (C) 2020, 2021 Taler Systems SA
+   Copyright (C) 2020-2022 Taler Systems SA
 
    TALER is free software; you can redistribute it and/or modify it under the
    terms of the GNU Affero General Public License as published by the Free Software
@@ -704,7 +704,7 @@ check_esign_sm_pub (const struct TALER_SecurityModulePublicKeyP *sm_pub)
  * @param value the `struct HelperDenomination` to release
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 free_denom_cb (void *cls,
                const struct GNUNET_HashCode *h_denom_pub,
                void *value)
@@ -804,8 +804,7 @@ load_age_mask (const char*section_name)
   /* TODO: optimize by putting this into global? */
   if (TALER_extensions_is_enabled (age_ext))
     age_mask = *(struct TALER_AgeMask *) age_ext->config;
-
-  if (age_mask.mask == 0)
+  if (0 == age_mask.mask)
   {
     /* Age restriction support is not enabled.  Ignore the AGE_RESTRICTED field
      * for the particular denomination and simply return the null_mask
@@ -819,9 +818,11 @@ load_age_mask (const char*section_name)
                       "AGE_RESTRICTED")))
   {
     enum GNUNET_GenericReturnValue ret;
-    if (GNUNET_SYSERR == (ret = GNUNET_CONFIGURATION_get_value_yesno (TEH_cfg,
-                                                                      section_name,
-                                                                      "AGE_RESTRICTED")))
+
+    if (GNUNET_SYSERR ==
+        (ret = GNUNET_CONFIGURATION_get_value_yesno (TEH_cfg,
+                                                     section_name,
+                                                     "AGE_RESTRICTED")))
     {
       GNUNET_log_config_invalid (GNUNET_ERROR_TYPE_ERROR,
                                  section_name,
@@ -830,7 +831,6 @@ load_age_mask (const char*section_name)
       return null_mask;
     }
   }
-
   return age_mask;
 }
 
@@ -1130,7 +1130,7 @@ sync_key_helpers (struct HelperState *hs)
  * @param value a `struct TEH_DenominationKey` to free
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 clear_denomination_cb (void *cls,
                        const struct GNUNET_HashCode *h_denom_pub,
                        void *value)
@@ -1161,7 +1161,7 @@ clear_denomination_cb (void *cls,
  * @param value a `struct SigningKey` to free
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 clear_signkey_cb (void *cls,
                   const struct GNUNET_PeerIdentity *pid,
                   void *value)
@@ -1401,7 +1401,7 @@ struct GetAuditorSigsContext
  * @param value a `struct TEH_DenominationKey`
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 get_auditor_sigs (void *cls,
                   const struct GNUNET_HashCode *h_denom_pub,
                   void *value)
@@ -1534,7 +1534,7 @@ struct SignKeyCtx
  * @param value a `struct SigningKey`
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 add_sign_key_cb (void *cls,
                  const struct GNUNET_PeerIdentity *pid,
                  void *value)
@@ -1603,7 +1603,7 @@ struct DenomKeyCtx
  * @param value a `struct TEH_DenominationKey`
  * @return #GNUNET_OK (continue to iterate)
  */
-static int
+static enum GNUNET_GenericReturnValue
 add_denom_key_cb (void *cls,
                   const struct GNUNET_HashCode *h_denom_pub,
                   void *value)
