@@ -1495,9 +1495,9 @@ run (void *cls,
      const struct GNUNET_CONFIGURATION_Handle *cfg)
 {
   static struct TES_Callbacks cb = {
-    .dispatch = cs_work_dispatch,
-    .updater = cs_update_client_keys,
-    .init = cs_client_init
+    .dispatch = &cs_work_dispatch,
+    .updater = &cs_update_client_keys,
+    .init = &cs_client_init
   };
 
   (void) cls;
@@ -1564,6 +1564,7 @@ run (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "No CS denominations configured\n");
+    TES_wake_clients ();
     return;
   }
   /* start job to keep keys up-to-date; MUST be run before the #listen_task,

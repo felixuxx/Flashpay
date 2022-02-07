@@ -1542,6 +1542,7 @@ run (void *cls,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "No RSA denominations configured\n");
+    TES_wake_clients ();
     return;
   }
   /* start job to keep keys up-to-date; MUST be run before the #listen_task,

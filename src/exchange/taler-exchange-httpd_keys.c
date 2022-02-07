@@ -874,6 +874,7 @@ helper_rsa_cb (
               GNUNET_STRINGS_relative_time_to_string (validity_duration,
                                                       GNUNET_NO));
   key_generation++;
+  // FIXME: wait for sync?
   TEH_resume_keys_requests (false);
   hd = GNUNET_CONTAINER_multihashmap_get (hs->rsa_keys,
                                           &h_rsa->hash);
@@ -955,6 +956,7 @@ helper_cs_cb (
               GNUNET_STRINGS_relative_time_to_string (validity_duration,
                                                       GNUNET_NO));
   key_generation++;
+  // FIXME: wait for sync?
   TEH_resume_keys_requests (false);
   hd = GNUNET_CONTAINER_multihashmap_get (hs->cs_keys,
                                           &h_cs->hash);
