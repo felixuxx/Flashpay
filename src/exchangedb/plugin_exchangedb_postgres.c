@@ -7212,7 +7212,7 @@ postgres_lookup_transfer_by_deposit (
     GNUNET_PQ_query_param_end
   };
   char *payto_uri;
-  struct TALER_WireSalt wire_salt;
+  struct TALER_WireSaltP wire_salt;
   struct GNUNET_PQ_ResultSpec rs[] = {
     GNUNET_PQ_result_spec_auto_from_type ("wtid_raw",
                                           wtid),

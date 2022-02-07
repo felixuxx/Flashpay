@@ -64,7 +64,7 @@ TALER_exchange_wire_signature_make (
 
 void
 TALER_merchant_wire_signature_hash (const char *payto_uri,
-                                    const struct TALER_WireSalt *salt,
+                                    const struct TALER_WireSaltP *salt,
                                     struct TALER_MerchantWireHash *hc)
 {
   GNUNET_assert (GNUNET_YES ==
@@ -83,7 +83,7 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
 enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
   const char *payto_uri,
-  const struct TALER_WireSalt *salt,
+  const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPublicKeyP *merch_pub,
   const struct TALER_MerchantSignatureP *merch_sig)
 {
@@ -105,7 +105,7 @@ TALER_merchant_wire_signature_check (
 void
 TALER_merchant_wire_signature_make (
   const char *payto_uri,
-  const struct TALER_WireSalt *salt,
+  const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPrivateKeyP *merch_priv,
   struct TALER_MerchantSignatureP *merch_sig)
 {

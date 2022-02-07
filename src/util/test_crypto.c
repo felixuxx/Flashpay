@@ -68,9 +68,9 @@ test_high_level (void)
   GNUNET_assert (0 ==
                  GNUNET_memcmp (&secret,
                                 &secret2));
-  TALER_planchet_setup_refresh (&secret,
-                                0,
-                                &ps1);
+  TALER_transfer_secret_to_planchet_secret (&secret,
+                                            0,
+                                            &ps1);
   alg1.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_coin_priv (&ps1,
                                   &alg1,
@@ -79,9 +79,9 @@ test_high_level (void)
                                          &alg1,
                                          &bks1);
   alg2.cipher = TALER_DENOMINATION_RSA;
-  TALER_planchet_setup_refresh (&secret,
-                                1,
-                                &ps2);
+  TALER_transfer_secret_to_planchet_secret (&secret,
+                                            1,
+                                            &ps2);
   TALER_planchet_setup_coin_priv (&ps2,
                                   &alg2,
                                   &coin_priv2);
@@ -307,7 +307,7 @@ static int
 test_merchant_sigs (void)
 {
   const char *pt = "payto://x-taler-bank/localhost/Account";
-  struct TALER_WireSalt salt;
+  struct TALER_WireSaltP salt;
   struct TALER_MerchantPrivateKeyP priv;
   struct TALER_MerchantPublicKeyP pub;
   struct TALER_MerchantSignatureP sig;

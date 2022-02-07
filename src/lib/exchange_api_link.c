@@ -120,9 +120,9 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   TALER_link_recover_transfer_secret (trans_pub,
                                       &lh->coin_priv,
                                       &secret);
-  TALER_planchet_setup_refresh (&secret,
-                                coin_num,
-                                &ps);
+  TALER_transfer_secret_to_planchet_secret (&secret,
+                                            coin_num,
+                                            &ps);
 
   // TODO: implement cipher handling
   alg_values.cipher = TALER_DENOMINATION_RSA;

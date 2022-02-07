@@ -182,9 +182,9 @@ check_commitment (struct RevealContext *rctx,
           struct TALER_PlanchetSecretsP ps;
 
           rcd->dk = &rctx->dks[j]->denom_pub;
-          TALER_planchet_setup_refresh (&ts,
-                                        j,
-                                        &ps);
+          TALER_transfer_secret_to_planchet_secret (&ts,
+                                                    j,
+                                                    &ps);
           // TODO: implement cipher handling
           alg_values.cipher = TALER_DENOMINATION_RSA;
           TALER_planchet_setup_coin_priv (&ps,

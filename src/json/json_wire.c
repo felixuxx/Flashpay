@@ -29,7 +29,7 @@ TALER_JSON_merchant_wire_signature_hash (const json_t *wire_s,
                                          struct TALER_MerchantWireHash *hc)
 {
   const char *payto_uri;
-  struct TALER_WireSalt salt;
+  struct TALER_WireSaltP salt;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri",
                              &payto_uri),

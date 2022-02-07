@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -25,6 +25,12 @@
 #include <gnunet/gnunet_util_lib.h>
 #include "taler_error_codes.h"
 #include <gcrypt.h>
+
+
+/**
+ * Maximum number of fresh coins we allow per refresh operation.
+ */
+#define TALER_MAX_FRESH_COINS 256
 
 
 /* ****************** Coin crypto primitives ************* */
@@ -419,7 +425,7 @@ struct TALER_ClaimTokenP
  * Salt used to hash a merchant's payto:// URI to
  * compute the "h_wire" (say for deposit requests).
  */
-struct TALER_WireSalt
+struct TALER_WireSaltP
 {
   /**
    * Actual 128-bit salt value.
@@ -802,13 +808,13 @@ struct TALER_DenominationPrivateKey
 struct TALER_BlindedRsaPlanchet
 {
   /**
-   * blinded message to be signed
+   * Blinded message to be signed
    * Note: is malloc()'ed!
    */
   void *blinded_msg;
 
   /**
-   * size of the blinded message to be signed
+   * Size of the @e blinded_msg to be signed.
    */
   size_t blinded_msg_size;
 };
@@ -820,7 +826,7 @@ struct TALER_BlindedRsaPlanchet
 struct TALER_CsNonce
 {
   /**
-   * 32 bit nonce to include in withdrawals
+   * 32 bit nonce to include in withdrawals when using CS.
    */
   struct GNUNET_CRYPTO_CsNonce nonce;
 };
@@ -828,7 +834,6 @@ struct TALER_CsNonce
 
 /**
  * @brief CS Parameters to create blinded signature
- *
  */
 struct TALER_BlindedCsPlanchet
 {
@@ -843,9 +848,9 @@ struct TALER_BlindedCsPlanchet
   struct TALER_CsNonce nonce;
 };
 
+
 /**
  * @brief Type including Parameters to create blinded signature
- *
  */
 struct TALER_BlindedPlanchet
 {
@@ -872,10 +877,11 @@ struct TALER_BlindedPlanchet
   } details;
 };
 
+
 /**
  * Withdraw nonce for CS denominations
  */
-struct TALER_RefreshNonce
+struct TALER_RefreshNonceXXXDEADFIXME
 {
   /**
    * 32 bit nonce to include in withdrawals
@@ -883,19 +889,20 @@ struct TALER_RefreshNonce
   struct GNUNET_CRYPTO_CsNonce nonce;
 };
 
+
 /**
- * Public R for Cs denominations
+ * Pair of Public R values for Cs denominations
  */
-struct TALER_DenominationCsPublicR
+struct TALER_DenominationCSPublicRPairP
 {
   struct GNUNET_CRYPTO_CsRPublic r_pub[2];
 };
 
+
 /**
  * Secret r for Cs denominations
  */
-
-struct TALER_DenominationCsPrivateR
+struct TALER_DenominationCSPrivateRPairP
 {
   struct GNUNET_CRYPTO_CsRSecret r[2];
 };
@@ -969,8 +976,9 @@ struct TALER_ExchangeWithdrawCsValues
   /**
    * (non-blinded) r_pub
    */
-  struct TALER_DenominationCsPublicR r_pub;
+  struct TALER_DenominationCSPublicRPairP r_pub_pair;
 };
+
 
 /**
  * @brief Type of algorithm specific Values for withdrawal
@@ -1097,7 +1105,7 @@ enum GNUNET_GenericReturnValue
 TALER_denom_cs_derive_r_public (
   const struct TALER_CsNonce *nonce,
   const struct TALER_DenominationPrivateKey *denom_priv,
-  struct TALER_DenominationCsPublicR *r_pub);
+  struct TALER_DenominationCSPublicRPairP *r_pub);
 
 
 /**
@@ -1473,9 +1481,10 @@ GNUNET_NETWORK_STRUCT_END
  * @param[out] ps value to initialize
  */
 void
-TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
-                              uint32_t coin_num_salt,
-                              struct TALER_PlanchetSecretsP *ps);
+TALER_transfer_secret_to_planchet_secret (
+  const struct TALER_TransferSecretP *secret_seed,
+  uint32_t coin_num_salt,
+  struct TALER_PlanchetSecretsP *ps);
 
 
 /**
@@ -1490,11 +1499,12 @@ TALER_planchet_setup_random (
 
 
 /**
- * Create a blinding secret @a bs for @a cipher.
+ * Create a blinding secret @a bks given the client's @a ps and the alg_values
+ * from the exchange.
  *
  * @param ps secret to derive blindings from
  * @param alg_values withdraw values containing cipher and additional CS values
- * @param bks blinding secrets
+ * @param[out] bks blinding secrets
  */
 void
 TALER_planchet_blinding_secret_create (
@@ -1504,7 +1514,7 @@ TALER_planchet_blinding_secret_create (
 
 
 /**
- * Prepare a planchet for tipping.  Creates and blinds a coin.
+ * Prepare a planchet for withdrawal.  Creates and blinds a coin.
  *
  * @param dk denomination key for the coin to be created
  * @param alg_values algorithm specific values
@@ -1527,7 +1537,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 
 
 /**
- * Frees blinded message inside blinded planchet depending on blinded_planchet->cipher
+ * Frees blinded message inside blinded planchet depending on `blinded_planchet->cipher`.
  * Does not free the @a blinded_planchet itself!
  *
  * @param[in] blinded_planchet blinded planchet
@@ -1537,7 +1547,7 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet);
 
 
 /**
- * Frees blinded message inside planchet detail.
+ * Frees blinded message inside planchet detail @a pd.
  *
  * @param[in] pd planchet detail to free
  */
@@ -1554,6 +1564,7 @@ TALER_planchet_detail_free (struct TALER_PlanchetDetail *pd);
  * @param bks blinding key secret
  * @param coin_priv private key of the coin
  * @param c_hash hash of the coin's public key for verification of the signature
+ * @param alg_values values obtained from the exchange for the withdrawal
  * @param[out] coin set to the details of the fresh coin
  * @return #GNUNET_OK on success
  */
@@ -1566,15 +1577,6 @@ TALER_planchet_to_coin (
   const struct TALER_CoinPubHash *c_hash,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_FreshCoin *coin);
-
-
-/* ****************** Refresh crypto primitives ************* */
-
-
-/**
- * Maximum number of fresh coins we allow per refresh operation.
- */
-#define TALER_MAX_FRESH_COINS 256
 
 
 /**
@@ -1935,7 +1937,7 @@ TALER_CRYPTO_helper_cs_revoke (
  * @return R, the value inside the structure will be NULL on failure,
  *         see @a ec for details about the failure
  */
-struct TALER_DenominationCsPublicR
+struct TALER_DenominationCSPublicRPairP
 TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                  const struct TALER_CsPubHashP *h_cs,
                                  const struct TALER_CsNonce *nonce,
@@ -2982,7 +2984,7 @@ TALER_exchange_wire_signature_make (
  */
 void
 TALER_merchant_wire_signature_hash (const char *payto_uri,
-                                    const struct TALER_WireSalt *salt,
+                                    const struct TALER_WireSaltP *salt,
                                     struct TALER_MerchantWireHash *hc);
 
 
@@ -2998,7 +3000,7 @@ TALER_merchant_wire_signature_hash (const char *payto_uri,
 enum GNUNET_GenericReturnValue
 TALER_merchant_wire_signature_check (
   const char *payto_uri,
-  const struct TALER_WireSalt *salt,
+  const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPublicKeyP *merch_pub,
   const struct TALER_MerchantSignatureP *merch_sig);
 
@@ -3014,7 +3016,7 @@ TALER_merchant_wire_signature_check (
 void
 TALER_merchant_wire_signature_make (
   const char *payto_uri,
-  const struct TALER_WireSalt *salt,
+  const struct TALER_WireSaltP *salt,
   const struct TALER_MerchantPrivateKeyP *merch_priv,
   struct TALER_MerchantSignatureP *merch_sig);
 

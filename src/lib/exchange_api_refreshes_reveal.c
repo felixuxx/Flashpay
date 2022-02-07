@@ -384,9 +384,9 @@ TALER_EXCHANGE_refreshes_reveal (
                    json_array_append_new (new_denoms_h,
                                           GNUNET_JSON_from_data_auto (
                                             &denom_hash)));
-    TALER_planchet_setup_refresh (&ts,
-                                  i,
-                                  &ps);
+    TALER_transfer_secret_to_planchet_secret (&ts,
+                                              i,
+                                              &ps);
     TALER_planchet_setup_coin_priv (&ps,
                                     &alg_values[i],
                                     &coin_priv);

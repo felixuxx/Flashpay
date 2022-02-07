@@ -670,7 +670,7 @@ TALER_TESTING_prepare_fakebank (const char *config_filename,
 json_t *
 TALER_TESTING_make_wire_details (const char *payto)
 {
-  struct TALER_WireSalt salt;
+  struct TALER_WireSaltP salt;
 
   /* salt must be constant for aggregation tests! */
   memset (&salt,

@@ -1345,7 +1345,7 @@ run (void *cls)
   unsigned int cnt;
   enum GNUNET_DB_QueryStatus qs;
   struct GNUNET_TIME_Timestamp now;
-  struct TALER_WireSalt salt;
+  struct TALER_WireSaltP salt;
   struct TALER_CoinPubHash c_hash;
   uint64_t known_coin_id;
   uint64_t rrc_serial;

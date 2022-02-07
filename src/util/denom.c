@@ -86,7 +86,7 @@ enum GNUNET_GenericReturnValue
 TALER_denom_cs_derive_r_public (const struct TALER_CsNonce *nonce,
                                 const struct
                                 TALER_DenominationPrivateKey *denom_priv,
-                                struct TALER_DenominationCsPublicR *r_pub)
+                                struct TALER_DenominationCSPublicRPairP *r_pub)
 {
   if (denom_priv->cipher != TALER_DENOMINATION_CS)
   {
@@ -316,13 +316,14 @@ TALER_denom_priv_to_pub (const struct TALER_DenominationPrivateKey *denom_priv,
 
 
 enum GNUNET_GenericReturnValue
-TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
-                   const union TALER_DenominationBlindingKeyP *coin_bks,
-                   const struct TALER_AgeHash *age_commitment_hash,
-                   const struct TALER_CoinSpendPublicKeyP *coin_pub,
-                   const struct TALER_ExchangeWithdrawValues *alg_values,
-                   struct TALER_CoinPubHash *c_hash,
-                   struct TALER_BlindedPlanchet *blinded_planchet)
+TALER_denom_blind (
+  const struct TALER_DenominationPublicKey *dk,
+  const union TALER_DenominationBlindingKeyP *coin_bks,
+  const struct TALER_AgeHash *age_commitment_hash,
+  const struct TALER_CoinSpendPublicKeyP *coin_pub,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
+  struct TALER_CoinPubHash *c_hash,
+  struct TALER_BlindedPlanchet *blinded_planchet)
 {
   TALER_coin_pub_hash (coin_pub,
                        age_commitment_hash,
@@ -348,19 +349,20 @@ TALER_denom_blind (const struct TALER_DenominationPublicKey *dk,
   case TALER_DENOMINATION_CS:
     {
       blinded_planchet->cipher = dk->cipher;
-      struct TALER_DenominationCsPublicR blinded_r_pub;
+      struct TALER_DenominationCSPublicRPairP blinded_r_pub;
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
 
-      GNUNET_CRYPTO_cs_blinding_secrets_derive (&coin_bks->nonce, bs);
-
-      GNUNET_CRYPTO_cs_calc_blinded_c (bs,
-                                       alg_values->details.cs_values.r_pub.r_pub,
-                                       &dk->details.cs_public_key,
-                                       &c_hash->hash,
-                                       sizeof(struct GNUNET_HashCode),
-                                       blinded_planchet->details.
-                                       cs_blinded_planchet.c,
-                                       blinded_r_pub.r_pub);
+      GNUNET_CRYPTO_cs_blinding_secrets_derive (&coin_bks->nonce,
+                                                bs);
+      GNUNET_CRYPTO_cs_calc_blinded_c (
+        bs,
+        alg_values->details.cs_values.r_pub_pair.r_pub,
+        &dk->details.cs_public_key,
+        &c_hash->hash,
+        sizeof(struct GNUNET_HashCode),
+        blinded_planchet->details.
+        cs_blinded_planchet.c,
+        blinded_r_pub.r_pub);
       return GNUNET_OK;
     }
   default:

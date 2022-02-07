@@ -136,9 +136,9 @@ TALER_EXCHANGE_get_melt_data_ (
       struct TALER_CoinSpendPrivateKeyP coin_priv;
       union TALER_DenominationBlindingKeyP bks;
 
-      TALER_planchet_setup_refresh (&trans_sec[i],
-                                    j,
-                                    fc);
+      TALER_transfer_secret_to_planchet_secret (&trans_sec[i],
+                                                j,
+                                                fc);
       TALER_planchet_setup_coin_priv (fc,
                                       &alg_values[j],
                                       &coin_priv);

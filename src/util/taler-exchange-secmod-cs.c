@@ -553,8 +553,8 @@ handle_r_derive_request (struct TES_Client *client,
                          const struct TALER_CRYPTO_CsRDeriveRequest *rdr)
 {
   struct DenominationKey *dk;
-  struct TALER_DenominationCsPrivateR r_priv;
-  struct TALER_DenominationCsPublicR r_pub;
+  struct TALER_DenominationCSPrivateRPairP r_priv;
+  struct TALER_DenominationCSPublicRPairP r_pub;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
 
   GNUNET_assert (0 == pthread_mutex_lock (&keys_lock));

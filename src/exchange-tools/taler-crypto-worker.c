@@ -205,9 +205,9 @@ run (void *cls,
         global_ret = 1;
         return;
       }
-      TALER_planchet_setup_refresh (&transfer_secret,
-                                    coin_index,
-                                    &ps);
+      TALER_transfer_secret_to_planchet_secret (&transfer_secret,
+                                                coin_index,
+                                                &ps);
       GNUNET_CRYPTO_eddsa_key_get_public (&ps.coin_priv.eddsa_priv,
                                           &coin_pub.eddsa_pub);
 

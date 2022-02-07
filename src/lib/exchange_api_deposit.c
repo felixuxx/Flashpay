@@ -545,7 +545,7 @@ TALER_EXCHANGE_deposit (
   const struct TALER_Amount *amount,
   struct GNUNET_TIME_Timestamp wire_deadline,
   const char *merchant_payto_uri,
-  const struct TALER_WireSalt *wire_salt,
+  const struct TALER_WireSaltP *wire_salt,
   const struct TALER_PrivateContractHash *h_contract_terms,
   const json_t *extension_details,
   const struct TALER_CoinSpendPublicKeyP *coin_pub,

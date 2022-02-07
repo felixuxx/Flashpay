@@ -607,13 +607,13 @@ TALER_CRYPTO_helper_cs_revoke (
 }
 
 
-struct TALER_DenominationCsPublicR
+struct TALER_DenominationCSPublicRPairP
 TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                  const struct TALER_CsPubHashP *h_cs,
                                  const struct TALER_CsNonce *nonce,
                                  enum TALER_ErrorCode *ec)
 {
-  struct TALER_DenominationCsPublicR r_pub;
+  struct TALER_DenominationCSPublicRPairP r_pub;
 
   memset (&r_pub,
           0,

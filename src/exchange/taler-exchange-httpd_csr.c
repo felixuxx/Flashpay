@@ -98,12 +98,12 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
   }
 
-  struct TALER_DenominationCsPublicR r_pubs[GNUNET_NZL (csr_requests_num)];
+  struct TALER_DenominationCSPublicRPairP r_pubs[GNUNET_NZL (csr_requests_num)];
   for (unsigned int i = 0; i < csr_requests_num; i++)
   {
     const struct TALER_CsNonce *nonce = &nonces[i];
     const struct TALER_DenominationHash *denom_pub_hash = &denom_pub_hashes[i];
-    struct TALER_DenominationCsPublicR *r_pub = &r_pubs[i];
+    struct TALER_DenominationCSPublicRPairP *r_pub = &r_pubs[i];
 
     // check denomination referenced by denom_pub_hash
     {
@@ -182,7 +182,7 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
   csr_response = json_array ();
   for (unsigned int i = 0; i < csr_requests_num; i++)
   {
-    const struct TALER_DenominationCsPublicR *r_pub = &r_pubs[i];
+    const struct TALER_DenominationCSPublicRPairP *r_pub = &r_pubs[i];
     json_t *csr_obj;
 
     csr_obj = GNUNET_JSON_PACK (

@@ -228,7 +228,7 @@ struct Merchant
   /**
    * Salt used when computing @e h_wire.
    */
-  struct TALER_WireSalt wire_salt;
+  struct TALER_WireSaltP wire_salt;
 
   /**
    * Account information for the merchant.

@@ -293,7 +293,7 @@ deposit_run (void *cls,
   struct TALER_MerchantPublicKeyP merchant_pub;
   struct TALER_PrivateContractHash h_contract_terms;
   enum TALER_ErrorCode ec;
-  struct TALER_WireSalt wire_salt;
+  struct TALER_WireSaltP wire_salt;
   const char *payto_uri;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_string ("payto_uri",

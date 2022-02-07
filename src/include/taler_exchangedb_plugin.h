@@ -340,7 +340,7 @@ struct TALER_EXCHANGEDB_TableData
       struct TALER_MerchantPublicKeyP merchant_pub;
       struct TALER_PrivateContractHash h_contract_terms;
       struct TALER_CoinSpendSignatureP coin_sig;
-      struct TALER_WireSalt wire_salt;
+      struct TALER_WireSaltP wire_salt;
       uint64_t wire_target_serial_id;
       bool tiny;
       bool done;
@@ -1027,7 +1027,7 @@ struct TALER_EXCHANGEDB_Deposit
   /**
    * Salt used by the merchant to compute "h_wire".
    */
-  struct TALER_WireSalt wire_salt;
+  struct TALER_WireSaltP wire_salt;
 
   /**
    * Information about the receiver for executing the transaction.  URI in
@@ -1126,7 +1126,7 @@ struct TALER_EXCHANGEDB_DepositListEntry
   /**
    * Salt used to compute h_wire from the @e receiver_wire_account.
    */
-  struct TALER_WireSalt wire_salt;
+  struct TALER_WireSaltP wire_salt;
 
   /**
    * Time when this request was generated.  Used, for example, to

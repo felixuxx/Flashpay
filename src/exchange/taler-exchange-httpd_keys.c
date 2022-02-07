@@ -2461,7 +2461,7 @@ enum TALER_ErrorCode
 TEH_keys_denomination_cs_r_pub (const struct
                                 TALER_DenominationHash *h_denom_pub,
                                 const struct TALER_CsNonce *nonce,
-                                struct TALER_DenominationCsPublicR *r_pub)
+                                struct TALER_DenominationCSPublicRPairP *r_pub)
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;

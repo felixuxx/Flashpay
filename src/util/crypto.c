@@ -156,10 +156,10 @@ TALER_planchet_setup_random (
 
 
 void
-TALER_planchet_setup_refresh (const struct TALER_TransferSecretP *secret_seed,
-                              uint32_t coin_num_salt,
-                              struct TALER_PlanchetSecretsP *ps)
-
+TALER_transfer_secret_to_planchet_secret (
+  const struct TALER_TransferSecretP *secret_seed,
+  uint32_t coin_num_salt,
+  struct TALER_PlanchetSecretsP *ps)
 {
   uint32_t be_salt = htonl (coin_num_salt);
 
@@ -381,14 +381,14 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet)
 
 
 enum GNUNET_GenericReturnValue
-TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
-                        const struct
-                        TALER_BlindedDenominationSignature *blind_sig,
-                        const union TALER_DenominationBlindingKeyP *bks,
-                        const struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                        const struct TALER_CoinPubHash *c_hash,
-                        const struct TALER_ExchangeWithdrawValues *alg_values,
-                        struct TALER_FreshCoin *coin)
+TALER_planchet_to_coin (
+  const struct TALER_DenominationPublicKey *dk,
+  const struct TALER_BlindedDenominationSignature *blind_sig,
+  const union TALER_DenominationBlindingKeyP *bks,
+  const struct TALER_CoinSpendPrivateKeyP *coin_priv,
+  const struct TALER_CoinPubHash *c_hash,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
+  struct TALER_FreshCoin *coin)
 {
   struct TALER_DenominationSignature sig;
 
@@ -416,21 +416,20 @@ TALER_planchet_to_coin (const struct TALER_DenominationPublicKey *dk,
     {
       struct GNUNET_CRYPTO_CsC c[2];
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
-      struct TALER_DenominationCsPublicR r_pub_blind;
+      struct TALER_DenominationCSPublicRPairP r_pub_blind;
 
-      GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce, bs);
-
-      GNUNET_CRYPTO_cs_calc_blinded_c (bs,
-                                       alg_values->details.cs_values.r_pub.r_pub,
-                                       &dk->details.cs_public_key,
-                                       &c_hash->hash,
-                                       sizeof(struct GNUNET_HashCode),
-                                       c,
-                                       r_pub_blind.r_pub);
-
+      GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce,
+                                                bs);
+      GNUNET_CRYPTO_cs_calc_blinded_c (
+        bs,
+        alg_values->details.cs_values.r_pub_pair.r_pub,
+        &dk->details.cs_public_key,
+        &c_hash->hash,
+        sizeof(struct GNUNET_HashCode),
+        c,
+        r_pub_blind.r_pub);
       sig.details.cs_signature.r_point
         = r_pub_blind.r_pub[blind_sig->details.blinded_cs_answer.b];
-
       if (GNUNET_OK !=
           TALER_denom_sig_unblind (&sig,
                                    blind_sig,

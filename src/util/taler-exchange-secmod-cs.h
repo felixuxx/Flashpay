@@ -227,7 +227,7 @@ struct TALER_CRYPTO_RDeriveResponse
   /**
    * derived R
    */
-  struct TALER_DenominationCsPublicR r_pub;
+  struct TALER_DenominationCSPublicRPairP r_pub;
 };
 
 
