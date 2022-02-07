@@ -692,12 +692,6 @@ main (int argc,
                     "INFO",
                     NULL);
 
-  /* Check fakebank port is available and get configuration data. */
-  if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (config_file,
-                                      "exchange-account-2",
-                                      &bc))
-    return 77;
   cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
   GNUNET_assert (NULL != cipher);
   GNUNET_asprintf (&config_file,
@@ -706,7 +700,12 @@ main (int argc,
   GNUNET_asprintf (&config_file_expire_reserve_now,
                    "test_auditor_api_expire_reserve_now-%s.conf",
                    cipher);
-
+  /* Check fakebank port is available and get configuration data. */
+  if (GNUNET_OK !=
+      TALER_TESTING_prepare_fakebank (config_file,
+                                      "exchange-account-2",
+                                      &bc))
+    return 77;
   TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see

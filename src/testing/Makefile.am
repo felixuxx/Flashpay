@@ -497,9 +497,11 @@ EXTRA_DIST = \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange-offline/master.priv \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/offline-keys/master.priv \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
-  test_exchange_api.conf \
+  test_exchange_api-cs.conf \
+  test_exchange_api-rsa.conf \
   test_exchange_api_twisted.conf \
-  test_exchange_api_keys_cherry_picking.conf \
+  test_exchange_api_keys_cherry_picking-cs.conf \
+  test_exchange_api_keys_cherry_picking-rsa.conf \
   test_exchange_api_expire_reserve_now.conf \
   test_taler_exchange_httpd_home/.config/taler/account-1.json \
   test_taler_exchange_httpd_home/.local/share/taler/exchange-offline/master.priv \
