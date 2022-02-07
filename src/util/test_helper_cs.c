@@ -297,7 +297,7 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
                   "Requesting R derivation with key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
 
-      alg_values.details.cs_values.r_pub
+      alg_values.details.cs_values.r_pub_pair
         = TALER_CRYPTO_helper_cs_r_derive (dh,
                                            &keys[i].h_cs,
                                            &pd.blinded_planchet.
@@ -443,7 +443,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       TALER_cs_withdraw_nonce_derive (&ps,
                                       &pd.blinded_planchet.details.
                                       cs_blinded_planchet.nonce);
-      alg_values.details.cs_values.r_pub
+      alg_values.details.cs_values.r_pub_pair
         = TALER_CRYPTO_helper_cs_r_derive (dh,
                                            &keys[i].h_cs,
                                            &pd.blinded_planchet.
@@ -602,12 +602,13 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
                               sizeof (ps));
-
   alg_values.cipher = TALER_DENOMINATION_CS;
-
-  TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
-  TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
-
+  TALER_planchet_setup_coin_priv (&ps,
+                                  &alg_values,
+                                  &coin_priv);
+  TALER_planchet_blinding_secret_create (&ps,
+                                         &alg_values,
+                                         &bks);
   duration = GNUNET_TIME_UNIT_ZERO;
   TALER_CRYPTO_helper_cs_poll (dh);
   for (unsigned int j = 0; j<NUM_SIGN_PERFS;)
@@ -629,14 +630,13 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
       {
         struct TALER_CoinPubHash c_hash;
         struct TALER_PlanchetDetail pd;
+
         pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
-
-
         TALER_cs_withdraw_nonce_derive (&ps,
                                         &pd.blinded_planchet.details.
                                         cs_blinded_planchet.nonce);
 
-        alg_values.details.cs_values.r_pub
+        alg_values.details.cs_values.r_pub_pair
           = TALER_CRYPTO_helper_cs_r_derive (dh,
                                              &keys[i].h_cs,
                                              &pd.blinded_planchet.
