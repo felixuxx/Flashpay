@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2021 Taler Systems SA
+  Copyright (C) 2014, 2015, 2016, 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -429,6 +429,97 @@ TALER_PQ_query_param_blinded_denom_sig (
   struct GNUNET_PQ_QueryParam res = {
     .conv = &qconv_blinded_denom_sig,
     .data = denom_sig,
+    .num_params = 1
+  };
+
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
+ * @param data pointer to input argument
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_blinded_planchet (void *cls,
+                        const void *data,
+                        size_t data_len,
+                        void *param_values[],
+                        int param_lengths[],
+                        int param_formats[],
+                        unsigned int param_length,
+                        void *scratch[],
+                        unsigned int scratch_length)
+{
+  const struct TALER_BlindedPlanchet *bp = data;
+  size_t tlen;
+  size_t len;
+  uint32_t be[2];
+  char *buf;
+
+  (void) cls;
+  (void) data_len;
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (scratch_length > 0);
+  GNUNET_break (NULL == cls);
+  be[0] = htonl ((uint32_t) bp->cipher);
+  be[1] = htonl (0x0100); /* magic marker: blinded */
+  switch (bp->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    tlen = bp->details.rsa_blinded_planchet.blinded_msg_size;
+    break;
+  case TALER_DENOMINATION_CS:
+    tlen = sizeof (bp->details.cs_blinded_planchet);
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+  len = tlen + sizeof (be);
+  buf = GNUNET_malloc (len);
+  memcpy (buf,
+          &be,
+          sizeof (be));
+  switch (bp->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    memcpy (&buf[sizeof (be)],
+            bp->details.rsa_blinded_planchet.blinded_msg,
+            tlen);
+    break;
+  case TALER_DENOMINATION_CS:
+    memcpy (&buf[sizeof (be)],
+            &bp->details.cs_blinded_planchet,
+            tlen);
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+  scratch[0] = buf;
+  param_values[0] = (void *) buf;
+  param_lengths[0] = len;
+  param_formats[0] = 1;
+  return 1;
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_blinded_planchet (
+  const struct TALER_BlindedPlanchet *bp)
+{
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_blinded_planchet,
+    .data = bp,
     .num_params = 1
   };
 

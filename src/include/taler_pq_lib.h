@@ -78,6 +78,19 @@ TALER_PQ_query_param_denom_sig (
 
 
 /**
+ * Generate query parameter for a blinded planchet.
+ * Internally, various attributes of the blinded
+ * planchet will be serialized into on
+ * variable-size BLOB.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_blinded_planchet (
+  const struct TALER_BlindedPlanchet *bp);
+
+
+/**
  * Generate query parameter for a blinded denomination signature.  Internally,
  * the various attributes of the signature will be serialized into on
  * variable-size BLOB.
@@ -164,6 +177,19 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_blinded_denom_sig (
   const char *name,
   struct TALER_BlindedDenominationSignature *denom_sig);
+
+
+/**
+ * Blinded planchet expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] bp where to store the blinded planchet
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_blinded_planchet (
+  const char *name,
+  struct TALER_BlindedPlanchet *bp);
 
 
 /**

@@ -6094,8 +6094,7 @@ postgres_insert_refresh_reveal (
       GNUNET_PQ_query_param_uint32 (&i),
       GNUNET_PQ_query_param_auto_from_type (&rrc->orig_coin_link_sig),
       GNUNET_PQ_query_param_auto_from_type (&rrc->h_denom_pub),
-      GNUNET_PQ_query_param_fixed_size (rrc->coin_ev,
-                                        rrc->coin_ev_size),
+      TALER_PQ_query_param_blinded_planchet (&rrc->blinded_planchet),
       GNUNET_PQ_query_param_auto_from_type (&rrc->coin_envelope_hash),
       TALER_PQ_query_param_blinded_denom_sig (&rrc->coin_sig),
       GNUNET_PQ_query_param_end
@@ -6202,15 +6201,14 @@ add_revealed_coins (void *cls,
                                               &rrc->orig_coin_link_sig),
         GNUNET_PQ_result_spec_auto_from_type ("h_coin_ev",
                                               &rrc->coin_envelope_hash),
-        GNUNET_PQ_result_spec_variable_size ("coin_ev",
-                                             (void **) &rrc->coin_ev,
-                                             &rrc->coin_ev_size),
+        TALER_PQ_result_spec_blinded_planchet ("coin_ev",
+                                               &rrc->blinded_planchet),
         TALER_PQ_result_spec_blinded_denom_sig ("ev_sig",
                                                 &rrc->coin_sig),
         GNUNET_PQ_result_spec_end
       };
 
-      if (NULL != rrc->coin_ev)
+      if (TALER_DENOMINATION_INVALID != rrc->blinded_planchet.cipher)
       {
         /* duplicate offset, not allowed */
         GNUNET_break (0);
@@ -6293,10 +6291,9 @@ cleanup:
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &grctx.rrcs[i];
 
     TALER_blinded_denom_sig_free (&rrc->coin_sig);
-    GNUNET_free (rrc->coin_ev);
+    TALER_blinded_planchet_free (&rrc->blinded_planchet);
   }
   GNUNET_free (grctx.rrcs);
-
   return qs;
 }
 

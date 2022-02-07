@@ -433,10 +433,9 @@ check_refresh_reveal_cb (
       &revealed_coins[cnt];
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *bcoin = &rrcs[cnt];
 
-    GNUNET_assert (acoin->coin_ev_size == bcoin->coin_ev_size);
     GNUNET_assert (0 ==
-                   GNUNET_memcmp (acoin->coin_ev,
-                                  bcoin->coin_ev));
+                   TALER_blinded_planchet_cmp (&acoin->blinded_planchet,
+                                               &bcoin->blinded_planchet));
     GNUNET_assert (0 ==
                    GNUNET_memcmp (&acoin->h_denom_pub,
                                   &bcoin->h_denom_pub));
@@ -1735,8 +1734,8 @@ run (void *cls)
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *ccoin;
       struct GNUNET_TIME_Timestamp now;
-      struct TALER_BlindedPlanchet blinded_planchet;
-
+      struct TALER_BlindedRsaPlanchet *rp;
+      struct TALER_BlindedPlanchet *bp;
 
       now = GNUNET_TIME_timestamp_get ();
       new_dkp[cnt] = create_denom_key_pair (RSA_KEY_SIZE,
@@ -1749,31 +1748,25 @@ run (void *cls)
       GNUNET_assert (NULL != new_dkp[cnt]);
       new_denom_pubs[cnt] = new_dkp[cnt]->pub;
       ccoin = &revealed_coins[cnt];
-      ccoin->coin_ev_size = 1 + (size_t) GNUNET_CRYPTO_random_u64 (
+      bp = &ccoin->blinded_planchet;
+      bp->cipher = TALER_DENOMINATION_RSA;
+      rp = &bp->details.rsa_blinded_planchet;
+      rp->blinded_msg_size = 1 + (size_t) GNUNET_CRYPTO_random_u64 (
         GNUNET_CRYPTO_QUALITY_WEAK,
         (RSA_KEY_SIZE / 8) - 1);
-      ccoin->coin_ev = GNUNET_malloc (ccoin->coin_ev_size);
+      rp->blinded_msg = GNUNET_malloc (rp->blinded_msg_size);
       GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
-                                  ccoin->coin_ev,
-                                  ccoin->coin_ev_size);
-
-      blinded_planchet.cipher = TALER_DENOMINATION_RSA;
-      blinded_planchet.details.rsa_blinded_planchet.blinded_msg =
-        ccoin->coin_ev;
-      blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size =
-        ccoin->coin_ev_size;
-
+                                  rp->blinded_msg,
+                                  rp->blinded_msg_size);
       TALER_denom_pub_hash (&new_dkp[cnt]->pub,
                             &ccoin->h_denom_pub);
-      TALER_coin_ev_hash (&blinded_planchet,
+      TALER_coin_ev_hash (bp,
                           &ccoin->h_denom_pub,
                           &ccoin->coin_envelope_hash);
-
-
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_sign_blinded (&ccoin->coin_sig,
                                                &new_dkp[cnt]->priv,
-                                               &blinded_planchet));
+                                               bp));
     }
     RND_BLK (&tprivs);
     RND_BLK (&tpub);
@@ -1793,11 +1786,13 @@ run (void *cls)
     {
       struct TALER_BlindedCoinHash h_coin_ev;
       struct TALER_CoinSpendPublicKeyP ocp;
+      struct TALER_DenominationHash denom_hash;
 
-      GNUNET_CRYPTO_hash (revealed_coins[0].coin_ev,
-                          revealed_coins[0].coin_ev_size,
-                          &h_coin_ev.hash);
-
+      TALER_denom_pub_hash (&new_denom_pubs[0],
+                            &denom_hash);
+      TALER_coin_ev_hash (&revealed_coins[0].blinded_planchet,
+                          &denom_hash,
+                          &h_coin_ev);
       FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
               plugin->get_old_coin_by_h_blind (plugin->cls,
                                                &h_coin_ev,
@@ -2406,7 +2401,7 @@ drop:
     for (unsigned int cnt = 0; cnt < MELT_NEW_COINS; cnt++)
     {
       TALER_blinded_denom_sig_free (&revealed_coins[cnt].coin_sig);
-      GNUNET_free (revealed_coins[cnt].coin_ev);
+      TALER_blinded_planchet_free (&revealed_coins[cnt].blinded_planchet);
     }
     GNUNET_free (revealed_coins);
     revealed_coins = NULL;

@@ -461,7 +461,6 @@ struct TALER_RsaPubHashP
   struct GNUNET_HashCode hash;
 };
 
-GNUNET_NETWORK_STRUCT_BEGIN
 
 /**
  * Master key material for the deriviation of
@@ -477,29 +476,6 @@ struct TALER_PlanchetSecretsP
 
 };
 
-
-GNUNET_NETWORK_STRUCT_END
-
-
-/**
- * Hash @a rsa.
- *
- * @param rsa key to hash
- * @param[out] h_rsa where to write the result
- */
-void
-TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
-                    struct TALER_RsaPubHashP *h_rsa);
-
-/**
- * Hash @a cs.
- *
- * @param cs key to hash
- * @param[out] h_cs where to write the result
- */
-void
-TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
-                   struct TALER_CsPubHashP *h_cs);
 
 /**
  * Hash used to represent a denomination public key
@@ -630,6 +606,27 @@ struct TALER_ExtensionConfigHash
 
 
 GNUNET_NETWORK_STRUCT_END
+
+
+/**
+ * Hash @a rsa.
+ *
+ * @param rsa key to hash
+ * @param[out] h_rsa where to write the result
+ */
+void
+TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
+                    struct TALER_RsaPubHashP *h_rsa);
+
+/**
+ * Hash @a cs.
+ *
+ * @param cs key to hash
+ * @param[out] h_cs where to write the result
+ */
+void
+TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
+                   struct TALER_CsPubHashP *h_cs);
 
 
 /**
@@ -1256,6 +1253,19 @@ int
 TALER_blinded_denom_sig_cmp (
   const struct TALER_BlindedDenominationSignature *sig1,
   const struct TALER_BlindedDenominationSignature *sig2);
+
+
+/**
+ * Compare two blinded planchets.
+ *
+ * @param sig1 first blinded planchet
+ * @param sig2 second blinded planchet
+ * @return 0 if the keys are equal, otherwise -1 or 1
+ */
+int
+TALER_blinded_planchet_cmp (
+  const struct TALER_BlindedPlanchet *bp1,
+  const struct TALER_BlindedPlanchet *bp2);
 
 
 /**

@@ -1646,14 +1646,9 @@ struct TALER_EXCHANGEDB_RefreshRevealedCoin
   struct TALER_BlindedDenominationSignature coin_sig;
 
   /**
-   * Blinded message to be signed (in envelope), with @e coin_env_size bytes.
+   * Blinded message to be signed (in envelope).
    */
-  void *coin_ev;
-
-  /**
-   * Number of bytes in @e coin_ev.
-   */
-  size_t coin_ev_size;
+  struct TALER_BlindedPlanchet blinded_planchet;
 
 };
 

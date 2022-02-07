@@ -639,6 +639,35 @@ TALER_denom_sig_cmp (const struct TALER_DenominationSignature *sig1,
 
 
 int
+TALER_blinded_planchet_cmp (
+  const struct TALER_BlindedPlanchet *bp1,
+  const struct TALER_BlindedPlanchet *bp2)
+{
+  if (bp1->cipher != bp2->cipher)
+    return (bp1->cipher > bp2->cipher) ? 1 : -1;
+  switch (bp1->cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    return 0;
+  case TALER_DENOMINATION_RSA:
+    if (bp1->details.rsa_blinded_planchet.blinded_msg_size !=
+        bp2->details.rsa_blinded_planchet.blinded_msg_size)
+      return (bp1->details.rsa_blinded_planchet.blinded_msg_size >
+              bp2->details.rsa_blinded_planchet.blinded_msg_size) ? 1 : -1;
+    return memcmp (bp1->details.rsa_blinded_planchet.blinded_msg,
+                   bp2->details.rsa_blinded_planchet.blinded_msg,
+                   bp1->details.rsa_blinded_planchet.blinded_msg_size);
+  case TALER_DENOMINATION_CS:
+    return GNUNET_memcmp (&bp1->details.cs_blinded_planchet,
+                          &bp2->details.cs_blinded_planchet);
+  default:
+    GNUNET_assert (0);
+  }
+  return -2;
+}
+
+
+int
 TALER_blinded_denom_sig_cmp (
   const struct TALER_BlindedDenominationSignature *sig1,
   const struct TALER_BlindedDenominationSignature *sig2)
