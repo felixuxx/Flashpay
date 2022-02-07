@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 #include "taler_util.h"
 #include "taler_exchange_service.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_testing_lib.h>
 #include <microhttpd.h>
 #include "taler_testing_lib.h"
 
@@ -32,7 +33,7 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_exchange_api.conf"
+static char *config_file;
 
 
 /**
@@ -139,7 +140,7 @@ run (void *cls,
                                 MHD_HTTP_NO_CONTENT,
                                 false),
     TALER_TESTING_cmd_exec_offline_sign_keys ("download-future-keys",
-                                              CONFIG_FILE),
+                                              config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
     TALER_TESTING_cmd_end ()
@@ -156,25 +157,31 @@ int
 main (int argc,
       char *const *argv)
 {
+  const char *cipher;
+
   (void) argc;
-  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-management-api",
+  GNUNET_log_setup (argv[0],
                     "INFO",
                     NULL);
   /* Check fakebank port is available and get config */
+  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+  GNUNET_assert (NULL != cipher);
+  GNUNET_asprintf (&config_file,
+                   "test_exchange_api-%s.conf",
+                   cipher);
   if (GNUNET_OK !=
-      TALER_TESTING_prepare_fakebank (CONFIG_FILE,
+      TALER_TESTING_prepare_fakebank (config_file,
                                       "exchange-account-2",
                                       &bc))
     return 77;
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+  switch (TALER_TESTING_prepare_exchange (config_file,
                                           GNUNET_YES, /* reset DB? */
                                           &ec))
   {
@@ -191,7 +198,7 @@ main (int argc,
          */
         TALER_TESTING_setup_with_exchange (&run,
                                            NULL,
-                                           CONFIG_FILE))
+                                           config_file))
       return 1;
     break;
   default:

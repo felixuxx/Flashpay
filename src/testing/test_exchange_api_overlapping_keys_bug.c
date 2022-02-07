@@ -31,6 +31,7 @@
 #include "taler_exchange_service.h"
 #include "taler_json_lib.h"
 #include <gnunet/gnunet_util_lib.h>
+#include <gnunet/gnunet_testing_lib.h>
 #include <microhttpd.h>
 #include "taler_bank_service.h"
 #include "taler_fakebank_lib.h"
@@ -40,7 +41,7 @@
  * Configuration file we use.  One (big) configuration is used
  * for the various components for this test.
  */
-#define CONFIG_FILE "test_exchange_api_keys_cherry_picking.conf"
+static char *config_file;
 
 /**
  * Exchange configuration data.
@@ -67,7 +68,7 @@ run (void *cls,
                                 MHD_HTTP_NO_CONTENT,
                                 false),
     TALER_TESTING_cmd_exec_offline_sign_keys ("offline-sign-future-keys",
-                                              CONFIG_FILE),
+                                              config_file),
     TALER_TESTING_cmd_check_keys_pull_all_keys ("refetch /keys",
                                                 1),
     TALER_TESTING_cmd_check_keys ("first-download",
@@ -89,18 +90,25 @@ int
 main (int argc,
       char *const *argv)
 {
+  const char *cipher;
+
   (void) argc;
-  (void) argv;
   /* These environment variables get in the way... */
   unsetenv ("XDG_DATA_HOME");
   unsetenv ("XDG_CONFIG_HOME");
-  GNUNET_log_setup ("test-exchange-api-overlapping-keys-bug",
-                    "DEBUG", NULL);
-  TALER_TESTING_cleanup_files (CONFIG_FILE);
+  GNUNET_log_setup (argv[0],
+                    "DEBUG",
+                    NULL);
+  cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
+  GNUNET_assert (NULL != cipher);
+  GNUNET_asprintf (&config_file,
+                   "test_exchange_api_keys_cherry_picking-%s.conf",
+                   cipher);
+  TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see
    * if it's available. */
-  switch (TALER_TESTING_prepare_exchange (CONFIG_FILE,
+  switch (TALER_TESTING_prepare_exchange (config_file,
                                           GNUNET_YES,
                                           &ec))
   {
@@ -117,7 +125,7 @@ main (int argc,
          */
         TALER_TESTING_setup_with_exchange (&run,
                                            NULL,
-                                           CONFIG_FILE))
+                                           config_file))
       return 1;
     break;
   default:
