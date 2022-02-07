@@ -3117,14 +3117,8 @@ TEH_keys_management_get_keys_handler (const struct TEH_RequestHandler *rh,
       .signkeys = json_array ()
     };
 
-    if (GNUNET_is_zero (&denom_rsa_sm_pub))
-    {
-      return TALER_MHD_reply_with_error (connection,
-                                         MHD_HTTP_BAD_GATEWAY,
-                                         TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE,
-                                         NULL);
-    }
-    if (GNUNET_is_zero (&denom_cs_sm_pub))
+    if ( (GNUNET_is_zero (&denom_rsa_sm_pub)) &&
+         (GNUNET_is_zero (&denom_cs_sm_pub)) )
     {
       return TALER_MHD_reply_with_error (connection,
                                          MHD_HTTP_BAD_GATEWAY,
