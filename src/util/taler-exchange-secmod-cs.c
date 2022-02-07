@@ -1562,10 +1562,8 @@ run (void *cls,
   }
   if (NULL == denom_head)
   {
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "No denominations configured\n");
-    global_ret = EXIT_NOTCONFIGURED;
-    GNUNET_SCHEDULER_shutdown ();
+    GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
+                "No CS denominations configured\n");
     return;
   }
   /* start job to keep keys up-to-date; MUST be run before the #listen_task,
