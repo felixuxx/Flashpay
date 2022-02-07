@@ -691,4 +691,36 @@ TALER_blinded_denom_sig_cmp (
 }
 
 
+void
+TALER_blinded_planchet_hash (const struct TALER_BlindedPlanchet *bp,
+                             struct GNUNET_HashContext *hash_context)
+{
+  uint32_t cipher = htonl (bp->cipher);
+
+  GNUNET_CRYPTO_hash_context_read (hash_context,
+                                   &cipher,
+                                   sizeof (cipher));
+  switch (bp->cipher)
+  {
+  case TALER_DENOMINATION_INVALID:
+    break;
+  case TALER_DENOMINATION_RSA:
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      bp->details.rsa_blinded_planchet.blinded_msg,
+      bp->details.rsa_blinded_planchet.blinded_msg_size);
+    break;
+  case TALER_DENOMINATION_CS:
+    GNUNET_CRYPTO_hash_context_read (
+      hash_context,
+      &bp->details.cs_blinded_planchet,
+      sizeof (bp->details.cs_blinded_planchet));
+    break;
+  default:
+    GNUNET_assert (0);
+    break;
+  }
+}
+
+
 /* end of denom.c */

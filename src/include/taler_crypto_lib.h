@@ -1590,6 +1590,18 @@ TALER_planchet_to_coin (
 
 
 /**
+ * Add the hash of the @a bp (in some canonicalized form)
+ * to the @a hash_context.
+ *
+ * @param bp blinded planchet to hash
+ * @param[in,out] hash_context hash context to use
+ */
+void
+TALER_blinded_planchet_hash (const struct TALER_BlindedPlanchet *bp,
+                             struct GNUNET_HashContext *hash_context);
+
+
+/**
  * Given the coin and the transfer private keys, compute the
  * transfer secret.  (Technically, we only need one of the two
  * private keys, but the caller currently trivially only has
@@ -1649,14 +1661,9 @@ struct TALER_RefreshCoinData
   const struct TALER_DenominationPublicKey *dk;
 
   /**
-   * The envelope with the blinded coin.
+   * The blinded planchet (details depend on cipher).
    */
-  void *coin_ev;
-
-  /**
-   * Number of bytes in @a coin_ev
-   */
-  size_t coin_ev_size;
+  struct TALER_BlindedPlanchet blinded_planchet;
 
 };
 

@@ -200,10 +200,7 @@ check_commitment (struct RevealContext *rctx,
                                                  &coin_priv,
                                                  &c_hash,
                                                  &pd));
-          rcd->coin_ev =
-            pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg;
-          rcd->coin_ev_size =
-            pd.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size;
+          rcd->blinded_planchet = pd.blinded_planchet;
         }
       }
     }
@@ -225,7 +222,7 @@ check_commitment (struct RevealContext *rctx,
       {
         struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
 
-        GNUNET_free (rcd->coin_ev);
+        TALER_blinded_planchet_free (&rcd->blinded_planchet);
       }
       GNUNET_free (rce->new_coins);
     }
@@ -493,9 +490,18 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
     struct TALER_RefreshCoinData *rcd = &rcds[i];
 
-    rcd->coin_ev = rrc->coin_ev;
-    rcd->coin_ev_size = rrc->coin_ev_size;
+    rcd->blinded_planchet = rrc->blinded_planchet;
     rcd->dk = &dks[i]->denom_pub;
+    if (rcd->blinded_planchet.cipher != rcd->dk->cipher)
+    {
+      GNUNET_break_op (0);
+      ret = TALER_MHD_REPLY_JSON_PACK (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_JSON_pack_ec (
+          TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH));
+      goto cleanup;
+    }
   }
   rctx->dks = dks;
   rctx->rcds = rcds;
@@ -513,11 +519,13 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   {
     enum TALER_ErrorCode ec = TALER_EC_NONE;
     struct TEH_SignDetails sign_details;
+    const struct TALER_BlindedRsaPlanchet *rp;
 
     // FIXME: implement cipher handling
+    rp = &rcds[i].blinded_planchet.details.rsa_blinded_planchet;
     sign_details.cipher = TALER_DENOMINATION_RSA;
-    sign_details.details.rsa_message.msg = rcds[i].coin_ev;
-    sign_details.details.rsa_message.msg_size = rcds[i].coin_ev_size;
+    sign_details.details.rsa_message.msg = rp->blinded_msg;
+    sign_details.details.rsa_message.msg_size = rp->blinded_msg_size;
     rrcs[i].coin_sig
       = TEH_keys_denomination_sign (
           &rrcs[i].h_denom_pub,
@@ -542,8 +550,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     {
       struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
 
-      rrc->coin_ev = rcds[i].coin_ev;
-      rrc->coin_ev_size = rcds[i].coin_ev_size;
+      rrc->blinded_planchet = rcds[i].blinded_planchet;
     }
     qs = TEH_plugin->insert_refresh_reveal (TEH_plugin->cls,
                                             melt_serial_id,

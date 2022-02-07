@@ -519,9 +519,8 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
     {
       const struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
 
-      GNUNET_CRYPTO_hash_context_read (hash_context,
-                                       rcd->coin_ev,
-                                       rcd->coin_ev_size);
+      TALER_blinded_planchet_hash (&rcd->blinded_planchet,
+                                   hash_context);
     }
   }
 
