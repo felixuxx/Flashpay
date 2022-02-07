@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -1354,7 +1354,12 @@ run (void *cls)
   uint64_t reserve_out_serial_id;
   uint64_t melt_serial_id;
   struct TALER_PlanchetSecretsP ps;
-
+  union TALER_DenominationBlindingKeyP bks;
+  struct TALER_ExchangeWithdrawValues alg_values = {
+    /* RSA is simpler, and for the DB there is no real difference between
+       CS and RSA, just one should be used, so we use RSA */
+    .cipher = TALER_DENOMINATION_RSA
+  };
 
   memset (&deposit,
           0,
@@ -1416,7 +1421,6 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_string_to_amount (CURRENCY ":1.000010",
                                          &amount_with_fee));
-
   result = 4;
   now = GNUNET_TIME_timestamp_get ();
   FAILIF (GNUNET_DB_STATUS_SUCCESS_ONE_RESULT !=
@@ -1465,35 +1469,37 @@ run (void *cls)
   TALER_denom_pub_hash (&dkp->pub,
                         &cbc.denom_pub_hash);
   RND_BLK (&cbc.reserve_sig);
+  TALER_planchet_blinding_secret_create (&ps,
+                                         &alg_values,
+                                         &bks);
   {
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinSpendPublicKeyP coin_pub;
     struct TALER_AgeHash age_hash;
-    struct TALER_AgeHash *p_ah[2] = {NULL, &age_hash};
+    struct TALER_AgeHash *p_ah[2] = {
+      NULL,
+      &age_hash
+    };
+
     // FIXME:
     /* Call TALER_denom_blind()/TALER_denom_sign_blinded() twice, once without
      * age_hash, once with age_hash */
     RND_BLK (&age_hash);
     for (size_t i = 0; i < sizeof(p_ah) / sizeof(p_ah[0]); i++)
     {
-      struct TALER_ExchangeWithdrawValues alg_values;
-      // There is no difference between CS and RSA, just one should be used
-      alg_values.cipher = TALER_DENOMINATION_RSA;
       RND_BLK (&coin_pub);
-
-      TALER_planchet_blinding_secret_create (&ps,
-                                             &alg_values);
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_blind (&dkp->pub,
-                                        &ps.blinding_key,
+                                        &bks,
                                         p_ah[i],
                                         &coin_pub,
                                         &alg_values,
                                         &c_hash,
                                         &pd.blinded_planchet));
-      GNUNET_assert (GNUNET_OK == TALER_coin_ev_hash (&pd.blinded_planchet,
-                                                      &cbc.denom_pub_hash,
-                                                      &cbc.h_coin_envelope));
+      GNUNET_assert (GNUNET_OK ==
+                     TALER_coin_ev_hash (&pd.blinded_planchet,
+                                         &cbc.denom_pub_hash,
+                                         &cbc.h_coin_envelope));
       GNUNET_assert (GNUNET_OK ==
                      TALER_denom_sign_blinded (&cbc.sig,
                                                &dkp->priv,
@@ -1559,7 +1565,7 @@ run (void *cls)
     GNUNET_assert (GNUNET_OK ==
                    TALER_denom_sig_unblind (&ds,
                                             &cbc2.sig,
-                                            &ps.blinding_key,
+                                            &bks,
                                             &dkp->pub));
     FAILIF (GNUNET_OK !=
             TALER_denom_pub_verify (&dkp->pub,
@@ -1576,7 +1582,7 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sig_unblind (&deposit.coin.denom_sig,
                                           &cbc.sig,
-                                          &ps.blinding_key,
+                                          &bks,
                                           &dkp->pub));
   deadline = GNUNET_TIME_timestamp_get ();
   {
@@ -2165,7 +2171,7 @@ run (void *cls)
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sig_unblind (&deposit.coin.denom_sig,
                                           &cbc.sig,
-                                          &ps.blinding_key,
+                                          &bks,
                                           &dkp->pub));
   RND_BLK (&deposit.csig);
   RND_BLK (&deposit.merchant_pub);
