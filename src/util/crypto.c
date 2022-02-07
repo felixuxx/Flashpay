@@ -385,6 +385,13 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
 
 
 void
+TALER_planchet_detail_free (struct TALER_PlanchetDetail *pd)
+{
+  TALER_blinded_planchet_free (&pd->blinded_planchet);
+}
+
+
+void
 TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet)
 {
   switch (blinded_planchet->cipher)

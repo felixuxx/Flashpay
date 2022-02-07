@@ -1530,10 +1530,19 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
  * Frees blinded message inside blinded planchet depending on blinded_planchet->cipher
  * Does not free the @a blinded_planchet itself!
  *
- * @param blinded_planchet blnded planchet
+ * @param[in] blinded_planchet blinded planchet
  */
 void
 TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet);
+
+
+/**
+ * Frees blinded message inside planchet detail.
+ *
+ * @param[in] pd planchet detail to free
+ */
+void
+TALER_planchet_detail_free (struct TALER_PlanchetDetail *pd);
 
 
 /**

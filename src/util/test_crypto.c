@@ -82,12 +82,15 @@ test_high_level (void)
   TALER_planchet_setup_refresh (&secret,
                                 1,
                                 &ps2);
-  TALER_planchet_setup_coin_priv (&ps1,
+  TALER_planchet_setup_coin_priv (&ps2,
                                   &alg2,
                                   &coin_priv2);
   TALER_planchet_blinding_secret_create (&ps2,
                                          &alg2,
                                          &bks2);
+  GNUNET_assert (0 !=
+                 GNUNET_memcmp (&ps1,
+                                &ps2));
   GNUNET_assert (0 !=
                  GNUNET_memcmp (&coin_priv1,
                                 &coin_priv2));
@@ -138,10 +141,12 @@ test_planchets_rsa (void)
                                           TALER_DENOMINATION_RSA,
                                           1024));
   alg_values.cipher = TALER_DENOMINATION_RSA;
-
-  TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
-  TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);
-
+  TALER_planchet_setup_coin_priv (&ps,
+                                  &alg_values,
+                                  &coin_priv);
+  TALER_planchet_blinding_secret_create (&ps,
+                                         &alg_values,
+                                         &bks);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
                                          &alg_values,
@@ -153,6 +158,7 @@ test_planchets_rsa (void)
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
                                            &pd.blinded_planchet));
+  TALER_planchet_detail_free (&pd);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_to_coin (&dk_pub,
                                          &blind_sig,
@@ -200,16 +206,18 @@ test_planchets_cs (void)
 
   alg_values.cipher = TALER_DENOMINATION_CS;
 
-  TALER_cs_withdraw_nonce_derive (&ps,
-                                  &pd.blinded_planchet.details.
-                                  cs_blinded_planchet.nonce);
+  TALER_cs_withdraw_nonce_derive (
+    &ps,
+    &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_cs_derive_r_public (
                    &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
                    &dk_priv,
                    &alg_values.details.cs_values.r_pub));
 
-  TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
+  TALER_planchet_setup_coin_priv (&ps,
+                                  &alg_values,
+                                  &coin_priv);
   TALER_planchet_blinding_secret_create (&ps,
                                          &alg_values,
                                          &bks);
@@ -226,7 +234,7 @@ test_planchets_cs (void)
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
                                            &pd.blinded_planchet));
-
+  TALER_planchet_detail_free (&pd);
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_to_coin (&dk_pub,
                                          &blind_sig,
