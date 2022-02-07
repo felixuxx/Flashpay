@@ -42,6 +42,10 @@ test_high_level (void)
   union TALER_DenominationBlindingKeyP bks2;
   struct TALER_CoinSpendPrivateKeyP coin_priv1;
   struct TALER_CoinSpendPrivateKeyP coin_priv2;
+  struct TALER_PlanchetSecretsP ps1;
+  struct TALER_PlanchetSecretsP ps2;
+  struct TALER_ExchangeWithdrawValues alg1;
+  struct TALER_ExchangeWithdrawValues alg2;
 
   GNUNET_CRYPTO_eddsa_key_create (&coin_priv.eddsa_priv);
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv.eddsa_priv,
@@ -66,12 +70,24 @@ test_high_level (void)
                                 &secret2));
   TALER_planchet_setup_refresh (&secret,
                                 0,
-                                &coin_priv1,
-                                &bks1);
+                                &ps1);
+  alg1.cipher = TALER_DENOMINATION_RSA;
+  TALER_planchet_setup_coin_priv (&ps1,
+                                  &alg1,
+                                  &coin_priv1);
+  TALER_planchet_blinding_secret_create (&ps1,
+                                         &alg1,
+                                         &bks1);
+  alg2.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_refresh (&secret,
                                 1,
-                                &coin_priv2,
-                                &bks2);
+                                &ps2);
+  TALER_planchet_setup_coin_priv (&ps1,
+                                  &alg2,
+                                  &coin_priv2);
+  TALER_planchet_blinding_secret_create (&ps2,
+                                         &alg2,
+                                         &bks2);
   GNUNET_assert (0 !=
                  GNUNET_memcmp (&coin_priv1,
                                 &coin_priv2));
