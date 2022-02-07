@@ -5,6 +5,8 @@
 *.gcno
 *.gcda
 *.mo
+*.blg
+*.bbl
 .dirstamp
 m4/*.m4
 doc/coverage/
@@ -34,7 +36,8 @@ GRTAGS
 GTAGS
 *.swp
 src/include/taler_error_codes.h
-src/lib/test_exchange_api
+src/testing/test_exchange_api_rsa
+src/testing/test_exchange_api_cs
 doc/doxygen/doxygen_sqlite3.db
 src/auditor/taler-auditor-dbinit
 src/auditor/taler-auditor-sign
@@ -71,6 +74,9 @@ src/exchange-tools/taler-wire
 src/exchangedb/perf-exchangedb
 src/benchmark/taler-exchange-benchmark
 src/benchmark/auditor.in
+src/benchmark/exchange_benchmark_home/.local/share/taler/exchange-offline/
+src/benchmark/exchange_benchmark_home/.local/share/taler/exchange-secmod-eddsa/
+src/benchmark/exchange_benchmark_home/.local/share/taler/exchange-secmod-rsa/
 src/benchmark/exchange_benchmark_home/.local/share/taler/exchange/live-keys/*
 src/benchmark/exchange_benchmark_home/.local/share/taler/auditors/
 src/benchmark/exchange_benchmark_home/.local/share/taler/auditor/
@@ -110,9 +116,11 @@ doc/manual/manual.vr
 doc/prebuilt/*
 contrib/taler-exchange.tag
 doxygen-doc/
-src/testing/test_exchange_api_keys_cherry_picking
+src/testing/test_exchange_api_keys_cherry_picking_cs
+src/testing/test_exchange_api_keys_cherry_picking_rsa
 src/auditor/taler-auditor-sync
 src/auditor/taler-wire-auditor
+src/auditor/generate_auditordb_home/
 contrib/auditor-report.aux
 contrib/auditor-report.log
 contrib/auditor-report.tex
@@ -120,8 +128,10 @@ contrib/auditor-report.pdf
 src/bank-lib/taler-bank-transfer
 src/bank-lib/test_bank_api_twisted
 src/testing/test_exchange_api
-src/testing/test_auditor_api
-src/testing/test_exchange_api_overlapping_keys_bug
+src/testing/test_auditor_api_cs
+src/testing/test_auditor_api_rsa
+src/testing/test_exchange_api_overlapping_keys_bug_cs
+src/testing/test_exchange_api_overlapping_keys_bug_rsa
 src/testing/test_exchange_api_home/.local/share/taler/exchange/revocations/
 src/wire-plugins/test_wire_plugin_legacy_taler_bank
 uncrustify.cfg
