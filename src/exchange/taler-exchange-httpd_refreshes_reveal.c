@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019, 2021 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -384,9 +384,8 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   {
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_varsize (NULL,
-                                &rrc->coin_ev,
-                                &rrc->coin_ev_size),
+      TALER_JSON_spec_blinded_planchet (NULL,
+                                        &rrc->blinded_planchet),
       GNUNET_JSON_spec_end ()
     };
     enum GNUNET_GenericReturnValue res;
@@ -399,12 +398,12 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
     if (GNUNET_OK != res)
     {
       for (unsigned int j = 0; j<i; j++)
-        GNUNET_free (rrcs[j].coin_ev);
+        TALER_blinded_planchet_free (&rrcs[j].blinded_planchet);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
     }
-    GNUNET_CRYPTO_hash (rrc->coin_ev,
-                        rrc->coin_ev_size,
-                        &rrc->coin_envelope_hash.hash);
+    TALER_coin_ev_hash (&rrc->blinded_planchet,
+                        &rrcs[i].h_denom_pub,
+                        &rrc->coin_envelope_hash);
   }
 
   /* lookup old_coin_pub in database */
@@ -577,7 +576,7 @@ cleanup:
     struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrc = &rrcs[i];
 
     TALER_blinded_denom_sig_free (&rrc->coin_sig);
-    GNUNET_free (rrc->coin_ev);
+    TALER_blinded_planchet_free (&rrc->blinded_planchet);
   }
   return ret;
 }

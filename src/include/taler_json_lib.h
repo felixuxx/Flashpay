@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016, 2021 Taler Systems SA
+  Copyright (C) 2014, 2015, 2016, 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -252,7 +252,7 @@ TALER_JSON_spec_denom_pub (const char *field,
  * Generate line in parser specification for denomination signature.
  *
  * @param field name of the field
- * @param sig the signature to initialize
+ * @param[out] sig the signature to initialize
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
@@ -265,7 +265,7 @@ TALER_JSON_spec_denom_sig (const char *field,
  * blinded denomination signature.
  *
  * @param field name of the field
- * @param sig the blinded signature to initialize
+ * @param[out] sig the blinded signature to initialize
  * @return corresponding field spec
  */
 struct GNUNET_JSON_Specification
