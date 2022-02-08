@@ -39,6 +39,7 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
 {
   unsigned int csr_requests_num;
   json_t *csr_requests;
+  json_t *csr_response_ewvs;
   json_t *csr_response;
 
   struct GNUNET_JSON_Specification spec[] = {
@@ -58,13 +59,13 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     res = TALER_MHD_parse_json_data (rc->connection,
                                      root,
                                      spec);
-    GNUNET_JSON_parse_free (spec);
     if (GNUNET_OK != res)
       return (GNUNET_SYSERR == res) ? MHD_NO : MHD_YES;
   }
   csr_requests_num = json_array_size (csr_requests);
   if (TALER_MAX_FRESH_COINS <= csr_requests_num)
   {
+    GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (
       rc->connection,
       MHD_HTTP_BAD_REQUEST,
@@ -90,13 +91,17 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     enum GNUNET_GenericReturnValue res;
 
     res = TALER_MHD_parse_json_array (rc->connection,
-                                      root,
+                                      csr_requests,
                                       csr_spec,
                                       i,
                                       -1);
     if (GNUNET_OK != res)
+    {
+      GNUNET_JSON_parse_free (spec);
       return (GNUNET_NO == res) ? MHD_YES : MHD_NO;
+    }
   }
+  GNUNET_JSON_parse_free (spec);
 
   struct TALER_DenominationCSPublicRPairP r_pubs[GNUNET_NZL (csr_requests_num)];
   for (unsigned int i = 0; i < csr_requests_num; i++)
@@ -179,7 +184,7 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
   }
 
   // send response
-  csr_response = json_array ();
+  csr_response_ewvs = json_array ();
   for (unsigned int i = 0; i < csr_requests_num; i++)
   {
     const struct TALER_DenominationCSPublicRPairP *r_pub = &r_pubs[i];
@@ -194,9 +199,14 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
                                      sizeof(struct GNUNET_CRYPTO_CsRPublic)));
     GNUNET_assert (NULL != csr_obj);
     GNUNET_assert (0 ==
-                   json_array_append_new (csr_response,
+                   json_array_append_new (csr_response_ewvs,
                                           csr_obj));
   }
+  csr_response = GNUNET_JSON_PACK (
+    GNUNET_JSON_pack_array_steal ("ewvs",
+                                  csr_response_ewvs));
+  GNUNET_assert (NULL != csr_response);
+
   return TALER_MHD_reply_json (rc->connection,
                                csr_response,
                                MHD_HTTP_OK);
