@@ -503,7 +503,8 @@ EXTRA_DIST = \
   test_exchange_api_twisted.conf \
   test_exchange_api_keys_cherry_picking-cs.conf \
   test_exchange_api_keys_cherry_picking-rsa.conf \
-  test_exchange_api_expire_reserve_now.conf \
+  test_exchange_api_expire_reserve_now-cs.conf \
+  test_exchange_api_expire_reserve_now-rsa.conf \
   test_taler_exchange_httpd_home/.config/taler/account-1.json \
   test_taler_exchange_httpd_home/.local/share/taler/exchange-offline/master.priv \
   test_taler_exchange_httpd_home/.local/share/taler/exchange/offline-keys/master.priv \

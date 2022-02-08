@@ -250,10 +250,12 @@ handle_refresh_reveal_finished (void *cls,
       }
       else
       {
+        GNUNET_assert (rrh->noreveal_index < TALER_CNC_KAPPA);
         rrh->reveal_cb (rrh->reveal_cb_cls,
                         &hr,
                         rrh->md.num_fresh_coins,
                         coin_privs,
+                        rrh->md.fresh_coins[rrh->noreveal_index],
                         sigs);
         rrh->reveal_cb = NULL;
       }
@@ -301,6 +303,7 @@ handle_refresh_reveal_finished (void *cls,
     rrh->reveal_cb (rrh->reveal_cb_cls,
                     &hr,
                     0,
+                    NULL,
                     NULL,
                     NULL);
   TALER_EXCHANGE_refreshes_reveal_cancel (rrh);

@@ -1705,9 +1705,9 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh);
  *
  * @param cls closure
  * @param hr HTTP response data
- * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
- * @param exchange_vals array of contributions from the exchange on the refreshes
+ * @param num_coins number of fresh coins created, length of the @a sigs, @a psa and @a coin_privs arrays, 0 if the operation failed
  * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
+ * @param psa array of @a num_coins planchet secrets (derived from the transfer secret) for each of the coins
  * @param sigs array of signature over @a num_coins coins, NULL on error
  */
 typedef void
@@ -1716,6 +1716,7 @@ typedef void
   const struct TALER_EXCHANGE_HttpResponse *hr,
   unsigned int num_coins,
   const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+  const struct TALER_PlanchetSecretsP *psa,
   const struct TALER_DenominationSignature *sigs);
 
 

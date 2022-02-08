@@ -117,12 +117,12 @@ struct RefreshMeltState
   struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
 
   /**
-   * Array of @a num_fresh_coins of exchange values contributed to the refresh operation
+   * Array of @e num_fresh_coins of exchange values contributed to the refresh operation
    */
   struct TALER_ExchangeWithdrawValues *alg_values;
 
   /**
-   * Array of @a num_fresh_coins of blinding key secrets
+   * Array of @e num_fresh_coins of blinding key secrets
    * created during the melt operation.
    */
   union TALER_DenominationBlindingKeyP *bks;
@@ -213,6 +213,12 @@ struct RefreshRevealState
    * as it comes from the exchange.
    */
   struct TALER_TESTING_FreshCoinData *fresh_coins;
+
+  /**
+   * Array of @e num_fresh_coins planchet secrets derived
+   * from the transfer secret per fresh coin.
+   */
+  struct TALER_PlanchetSecretsP *psa;
 
   /**
    * Interpreter state.
@@ -346,6 +352,7 @@ do_reveal_retry (void *cls)
  *        failed.
  * @param coin_privs array of @a num_coins private keys for the
  *        coins that were created, NULL on error.
+ * @param psa array of @a num_coins planchet secrets (derived from the transfer secret) for each of the coins
  * @param sigs array of signature over @a num_coins coins,
  *        NULL on error.
  */
@@ -354,6 +361,7 @@ reveal_cb (void *cls,
            const struct TALER_EXCHANGE_HttpResponse *hr,
            unsigned int num_coins,
            const struct TALER_CoinSpendPrivateKeyP *coin_privs,
+           const struct TALER_PlanchetSecretsP *psa,
            const struct TALER_DenominationSignature *sigs)
 {
   struct RefreshRevealState *rrs = cls;
@@ -413,6 +421,9 @@ reveal_cb (void *cls,
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
+    rrs->psa = GNUNET_memdup (psa,
+                              num_coins
+                              * sizeof (struct TALER_PlanchetSecretsP));
     rrs->fresh_coins = GNUNET_new_array (num_coins,
                                          struct TALER_TESTING_FreshCoinData);
     for (unsigned int i = 0; i<num_coins; i++)
@@ -540,7 +551,7 @@ refresh_reveal_cleanup (void *cls,
     TALER_denom_sig_free (&rrs->fresh_coins[j].sig);
 
   GNUNET_free (rrs->fresh_coins);
-  rrs->fresh_coins = NULL;
+  GNUNET_free (rrs->psa);
   rrs->num_fresh_coins = 0;
   GNUNET_free (rrs);
 }
@@ -806,8 +817,10 @@ refresh_link_run (void *cls,
   }
 
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
-  if (GNUNET_OK != TALER_TESTING_get_trait_coin_priv
-        (coin_cmd, 0, &coin_priv))
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_coin_priv (coin_cmd,
+                                         0,
+                                         &coin_priv))
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (rls->is);
@@ -1216,9 +1229,10 @@ melt_traits (void *cls,
                                           &rms->fresh_pks[index]),
       TALER_TESTING_make_trait_coin_priv (0,
                                           rms->melt_priv),
-      // ????
       TALER_TESTING_make_trait_blinding_key (index,
                                              &rms->bks[index]),
+      TALER_TESTING_make_trait_exchange_wd_value (index,
+                                                  &rms->alg_values[index]),
       TALER_TESTING_trait_end ()
     };
 
@@ -1392,6 +1406,8 @@ refresh_reveal_traits (void *cls,
         &rrs->num_fresh_coins),
       TALER_TESTING_make_trait_fresh_coins (
         (const struct TALER_TESTING_FreshCoinData **) &rrs->fresh_coins),
+      TALER_TESTING_make_trait_planchet_secrets (index,
+                                                 &rrs->psa[index]),
       TALER_TESTING_trait_end ()
     };
 

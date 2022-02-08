@@ -111,6 +111,12 @@ struct TALER_EXCHANGE_MeltHandle
    * @brief Public information about the coin's denomination key
    */
   const struct TALER_EXCHANGE_DenomPublicKey *dki;
+
+  /**
+   * Gamma value chosen by the exchange during melt.
+   */
+  uint32_t noreveal_index;
+
 };
 
 
@@ -118,17 +124,15 @@ struct TALER_EXCHANGE_MeltHandle
  * Verify that the signature on the "200 OK" response
  * from the exchange is valid.
  *
- * @param mh melt handle
+ * @param[in,out] mh melt handle
  * @param json json reply with the signature
  * @param[out] exchange_pub public key of the exchange used for the signature
- * @param[out] noreveal_index set to the noreveal index selected by the exchange
  * @return #GNUNET_OK if the signature is valid, #GNUNET_SYSERR if not
  */
 static enum GNUNET_GenericReturnValue
 verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
                           const json_t *json,
-                          struct TALER_ExchangePublicKeyP *exchange_pub,
-                          uint32_t *noreveal_index)
+                          struct TALER_ExchangePublicKeyP *exchange_pub)
 {
   struct TALER_ExchangeSignatureP exchange_sig;
   const struct TALER_EXCHANGE_Keys *key_state;
@@ -138,7 +142,7 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
     GNUNET_JSON_spec_fixed_auto ("exchange_pub",
                                  exchange_pub),
     GNUNET_JSON_spec_uint32 ("noreveal_index",
-                             noreveal_index),
+                             &mh->noreveal_index),
     GNUNET_JSON_spec_end ()
   };
 
@@ -161,7 +165,7 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
   }
 
   /* check that noreveal index is in permitted range */
-  if (TALER_CNC_KAPPA <= *noreveal_index)
+  if (TALER_CNC_KAPPA <= mh->noreveal_index)
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
@@ -173,7 +177,7 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
       .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT),
       .purpose.size = htonl (sizeof (confirm)),
       .rc = mh->md.rc,
-      .noreveal_index = htonl (*noreveal_index)
+      .noreveal_index = htonl (mh->noreveal_index)
     };
 
     if (GNUNET_OK !=
@@ -341,7 +345,6 @@ handle_melt_finished (void *cls,
                       const void *response)
 {
   struct TALER_EXCHANGE_MeltHandle *mh = cls;
-  uint32_t noreveal_index = TALER_CNC_KAPPA; /* invalid value */
   struct TALER_ExchangePublicKeyP exchange_pub;
   const json_t *j = response;
   struct TALER_EXCHANGE_HttpResponse hr = {
@@ -359,8 +362,7 @@ handle_melt_finished (void *cls,
     if (GNUNET_OK !=
         verify_melt_signature_ok (mh,
                                   j,
-                                  &exchange_pub,
-                                  &noreveal_index))
+                                  &exchange_pub))
     {
       GNUNET_break_op (0);
       hr.http_status = 0;
@@ -379,7 +381,7 @@ handle_melt_finished (void *cls,
                    (0 == hr.http_status)
                    ? NULL
                    : mh->bks,
-                   noreveal_index,
+                   mh->noreveal_index,
                    (0 == hr.http_status)
                    ? NULL
                    : &exchange_pub);
@@ -469,6 +471,13 @@ handle_melt_finished (void *cls,
 }
 
 
+/**
+ * Start the actual melt operation, now that we have
+ * the exchange's input values.
+ *
+ * @param[in,out] mh melt operation to run
+ * @return #GNUNET_OK if we could start the operation
+ */
 static enum GNUNET_GenericReturnValue
 start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
 {
@@ -644,6 +653,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
   mh = GNUNET_new (struct TALER_EXCHANGE_MeltHandle);
+  mh->noreveal_index = TALER_CNC_KAPPA; /* invalid value */
   mh->exchange = exchange;
   mh->rd = rd;
   mh->ps = ps;

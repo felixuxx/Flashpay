@@ -230,6 +230,7 @@ recoup_refresh_run (void *cls,
 {
   struct RecoupRefreshState *ps = cls;
   const struct TALER_TESTING_Command *coin_cmd;
+  const struct TALER_TESTING_Command *melt_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
@@ -251,13 +252,21 @@ recoup_refresh_run (void *cls,
   coin_cmd = TALER_TESTING_interpreter_lookup_command (is,
                                                        cref);
   GNUNET_free (cref);
-
   if (NULL == coin_cmd)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
+  melt_cmd = TALER_TESTING_interpreter_lookup_command (is,
+                                                       ps->melt_reference);
+  if (NULL == melt_cmd)
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
+
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                          idx,
@@ -268,7 +277,7 @@ recoup_refresh_run (void *cls,
     return;
   }
   if (GNUNET_OK !=
-      TALER_TESTING_get_trait_exchange_wd_value (coin_cmd,
+      TALER_TESTING_get_trait_exchange_wd_value (melt_cmd,
                                                  idx,
                                                  &ewv))
   {
