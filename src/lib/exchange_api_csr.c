@@ -114,6 +114,7 @@ csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
       GNUNET_JSON_spec_end ()
     };
 
+    alg_values[i].cipher = TALER_DENOMINATION_CS;
     if (GNUNET_OK !=
         GNUNET_JSON_parse (av,
                            spec,
