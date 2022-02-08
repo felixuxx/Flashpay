@@ -122,6 +122,12 @@ struct RefreshMeltState
   struct TALER_ExchangeWithdrawValues *alg_values;
 
   /**
+   * Array of @a num_fresh_coins of blinding key secrets
+   * created during the melt operation.
+   */
+  union TALER_DenominationBlindingKeyP *bks;
+
+  /**
    * Entropy seed for the refresh-melt operation.
    */
   struct TALER_PlanchetSecretsP ps;
@@ -970,6 +976,11 @@ melt_cb (void *cls,
     memcpy (rms->alg_values,
             alg_values,
             num_coins * sizeof (struct TALER_ExchangeWithdrawValues));
+    rms->bks = GNUNET_new_array (num_coins,
+                                 union TALER_DenominationBlindingKeyP);
+    memcpy (rms->bks,
+            bks,
+            num_coins * sizeof (union TALER_DenominationBlindingKeyP));
   }
   if (0 != rms->total_backoff.rel_value_us)
   {
@@ -1055,7 +1066,6 @@ melt_run (void *cls,
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-
     if (GNUNET_OK !=
         TALER_TESTING_get_trait_denom_sig (coin_command,
                                            0,
@@ -1172,6 +1182,7 @@ melt_cleanup (void *cls,
     GNUNET_free (rms->fresh_pks);
   }
   GNUNET_free (rms->alg_values);
+  GNUNET_free (rms->bks);
   GNUNET_free (rms->melt_fresh_amounts);
   GNUNET_free (rms);
 }
@@ -1205,6 +1216,9 @@ melt_traits (void *cls,
                                           &rms->fresh_pks[index]),
       TALER_TESTING_make_trait_coin_priv (0,
                                           rms->melt_priv),
+      // ????
+      TALER_TESTING_make_trait_blinding_key (index,
+                                             &rms->bks[index]),
       TALER_TESTING_trait_end ()
     };
 

@@ -2270,16 +2270,14 @@ TALER_wallet_melt_verify (
  *
  * @param h_denom_pub hash of the denomiantion public key of the new coin
  * @param transfer_pub transfer public key
- * @param coin_ev coin envelope
- * @param coin_ev_size number of bytes in @a coin_ev
+ * @param bch blinded coin hash
  * @param old_coin_priv private key to sign with
  * @param[out] coin_sig resulting signature
  */
 void
 TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
                         const struct TALER_TransferPublicKeyP *transfer_pub,
-                        const void *coin_ev,
-                        size_t coin_ev_size,
+                        const struct TALER_BlindedCoinHash *bch,
                         const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
                         struct TALER_CoinSpendSignatureP *coin_sig);
 
@@ -2301,25 +2299,6 @@ TALER_wallet_link_verify (
   const struct TALER_BlindedCoinHash *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
-
-
-/**
- * Sign link data.
- *
- * @param h_denom_pub hash of the denomiantion public key of the new coin
- * @param transfer_pub transfer public key
- * @param coin_ev coin envelope
- * @param coin_ev_size number of bytes in @a coin_ev
- * @param old_coin_priv private key to sign with
- * @param[out] coin_sig resulting signature
- */
-void
-TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
-                        const struct TALER_TransferPublicKeyP *transfer_pub,
-                        const void *coin_ev,
-                        size_t coin_ev_size,
-                        const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
-                        struct TALER_CoinSpendSignatureP *coin_sig);
 
 
 /**

@@ -484,7 +484,8 @@ test_kyc_api_LDADD = \
 
 EXTRA_DIST = \
   test_auditor_api.conf \
-  test_auditor_api_expire_reserve_now.conf \
+  test_auditor_api_expire_reserve_now-cs.conf \
+  test_auditor_api_expire_reserve_now-rsa.conf \
   test_bank_api_fakebank.conf \
   test_bank_api_fakebank_twisted.conf \
   test_bank_api_pybank.conf \

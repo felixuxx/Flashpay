@@ -107,9 +107,7 @@ TALER_wallet_deposit_verify (
 void
 TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
                         const struct TALER_TransferPublicKeyP *transfer_pub,
-                        // FIXME: consider passing hash!
-                        const void *coin_ev,
-                        size_t coin_ev_size,
+                        const struct TALER_BlindedCoinHash *bch,
                         const struct TALER_CoinSpendPrivateKeyP *old_coin_priv,
                         struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -117,12 +115,10 @@ TALER_wallet_link_sign (const struct TALER_DenominationHash *h_denom_pub,
     .purpose.size = htonl (sizeof (ldp)),
     .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_COIN_LINK),
     .h_denom_pub = *h_denom_pub,
-    .transfer_pub = *transfer_pub
+    .transfer_pub = *transfer_pub,
+    .coin_envelope_hash = *bch
   };
 
-  GNUNET_CRYPTO_hash (coin_ev,
-                      coin_ev_size,
-                      &ldp.coin_envelope_hash.hash);
   GNUNET_CRYPTO_eddsa_sign (&old_coin_priv->eddsa_priv,
                             &ldp,
                             &coin_sig->eddsa_signature);

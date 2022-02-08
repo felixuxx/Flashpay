@@ -418,15 +418,17 @@ TALER_EXCHANGE_refreshes_reveal (
             &pd.blinded_planchet))));
     {
       struct TALER_CoinSpendSignatureP link_sig;
+      struct TALER_BlindedCoinHash bch;
 
-      TALER_wallet_link_sign (&denom_hash,
-                              &transfer_pub,
-                              pd.blinded_planchet.details.rsa_blinded_planchet.
-                              blinded_msg,
-                              pd.blinded_planchet.details.rsa_blinded_planchet.
-                              blinded_msg_size,
-                              &md.melted_coin.coin_priv,
-                              &link_sig);
+      TALER_coin_ev_hash (&pd.blinded_planchet,
+                          &denom_hash,
+                          &bch);
+      TALER_wallet_link_sign (
+        &denom_hash,
+        &transfer_pub,
+        &bch,
+        &md.melted_coin.coin_priv,
+        &link_sig);
       GNUNET_assert (0 ==
                      json_array_append_new (
                        link_sigs,
