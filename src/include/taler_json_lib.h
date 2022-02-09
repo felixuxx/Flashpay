@@ -133,6 +133,20 @@ TALER_JSON_pack_blinded_planchet (
 
 /**
  * Generate packer instruction for a JSON field of type
+ * exchange withdraw values (/csr).
+ *
+ * @param name name of the field to add to the object
+ * @param ewv values to transmit
+ * @return json pack specification
+ */
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_exchange_withdraw_values (
+  const char *name,
+  const struct TALER_ExchangeWithdrawValues *ewv);
+
+
+/**
+ * Generate packer instruction for a JSON field of type
  * amount.
  *
  * @param name name of the field to add to the object
@@ -272,6 +286,20 @@ struct GNUNET_JSON_Specification
 TALER_JSON_spec_blinded_denom_sig (
   const char *field,
   struct TALER_BlindedDenominationSignature *sig);
+
+
+/**
+ * Generate line in parser specification for
+ * exchange withdraw values (/csr).
+ *
+ * @param field name of the field
+ * @param[out] ewv the exchange withdraw values to initialize
+ * @return corresponding field spec
+ */
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_exchange_withdraw_values (
+  const char *field,
+  struct TALER_ExchangeWithdrawValues *ewv);
 
 
 /**

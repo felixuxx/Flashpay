@@ -41,7 +41,6 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
   json_t *csr_requests;
   json_t *csr_response_ewvs;
   json_t *csr_response;
-
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_json ("nks",
                            &csr_requests),
@@ -103,13 +102,15 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
   }
   GNUNET_JSON_parse_free (spec);
 
-  struct TALER_DenominationCSPublicRPairP r_pubs[GNUNET_NZL (csr_requests_num)];
+  struct TALER_ExchangeWithdrawValues ewvs[GNUNET_NZL (csr_requests_num)];
   for (unsigned int i = 0; i < csr_requests_num; i++)
   {
     const struct TALER_CsNonce *nonce = &nonces[i];
     const struct TALER_DenominationHash *denom_pub_hash = &denom_pub_hashes[i];
-    struct TALER_DenominationCSPublicRPairP *r_pub = &r_pubs[i];
+    struct TALER_DenominationCSPublicRPairP *r_pub
+      = &ewvs[i].details.cs_values.r_pub_pair;
 
+    ewvs[i].cipher = TALER_DENOMINATION_CS;
     // check denomination referenced by denom_pub_hash
     {
       struct TEH_KeyStateHandle *ksh;
@@ -187,16 +188,11 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
   csr_response_ewvs = json_array ();
   for (unsigned int i = 0; i < csr_requests_num; i++)
   {
-    const struct TALER_DenominationCSPublicRPairP *r_pub = &r_pubs[i];
     json_t *csr_obj;
 
     csr_obj = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_data_varsize ("r_pub_0",
-                                     &r_pub->r_pub[0],
-                                     sizeof(struct GNUNET_CRYPTO_CsRPublic)),
-      GNUNET_JSON_pack_data_varsize ("r_pub_1",
-                                     &r_pub->r_pub[1],
-                                     sizeof(struct GNUNET_CRYPTO_CsRPublic)));
+      TALER_JSON_pack_exchange_withdraw_values ("ewv",
+                                                &ewvs[i]));
     GNUNET_assert (NULL != csr_obj);
     GNUNET_assert (0 ==
                    json_array_append_new (csr_response_ewvs,

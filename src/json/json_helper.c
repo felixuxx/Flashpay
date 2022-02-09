@@ -691,6 +691,91 @@ TALER_JSON_spec_blinded_planchet (const char *field,
 
 
 /**
+ * Parse given JSON object to exchange withdraw values (/csr).
+ *
+ * @param cls closure, NULL
+ * @param root the json object representing data
+ * @param[out] spec where to write the data
+ * @return #GNUNET_OK upon successful parsing; #GNUNET_SYSERR upon error
+ */
+static enum GNUNET_GenericReturnValue
+parse_exchange_withdraw_values (void *cls,
+                                json_t *root,
+                                struct GNUNET_JSON_Specification *spec)
+{
+  struct TALER_ExchangeWithdrawValues *ewv = spec->ptr;
+  uint32_t cipher;
+  struct GNUNET_JSON_Specification dspec[] = {
+    GNUNET_JSON_spec_uint32 ("cipher",
+                             &cipher),
+    GNUNET_JSON_spec_end ()
+  };
+  const char *emsg;
+  unsigned int eline;
+
+  (void) cls;
+  if (GNUNET_OK !=
+      GNUNET_JSON_parse (root,
+                         dspec,
+                         &emsg,
+                         &eline))
+  {
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+  ewv->cipher = (enum TALER_DenominationCipher) cipher;
+  switch (cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    return GNUNET_OK;
+  case TALER_DENOMINATION_CS:
+    {
+      struct GNUNET_JSON_Specification ispec[] = {
+        GNUNET_JSON_spec_fixed (
+          "r_pub_0",
+          &ewv->details.cs_values.r_pub_pair.r_pub[0],
+          sizeof (struct GNUNET_CRYPTO_CsRPublic)),
+        GNUNET_JSON_spec_fixed (
+          "r_pub_1",
+          &ewv->details.cs_values.r_pub_pair.r_pub[1],
+          sizeof (struct GNUNET_CRYPTO_CsRPublic)),
+        GNUNET_JSON_spec_end ()
+      };
+
+      if (GNUNET_OK !=
+          GNUNET_JSON_parse (root,
+                             ispec,
+                             &emsg,
+                             &eline))
+      {
+        GNUNET_break_op (0);
+        return GNUNET_SYSERR;
+      }
+      return GNUNET_OK;
+    }
+  default:
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
+  }
+}
+
+
+struct GNUNET_JSON_Specification
+TALER_JSON_spec_exchange_withdraw_values (const char *field,
+                                          struct TALER_ExchangeWithdrawValues *
+                                          ewv)
+{
+  struct GNUNET_JSON_Specification ret = {
+    .parser = &parse_exchange_withdraw_values,
+    .field = field,
+    .ptr = ewv
+  };
+
+  return ret;
+}
+
+
+/**
  * Closure for #parse_i18n_string.
  */
 struct I18nContext

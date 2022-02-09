@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -112,6 +112,43 @@ TALER_JSON_pack_denom_sig (
                                   &sig->details.cs_signature.r_point),
       GNUNET_JSON_pack_data_auto ("cs_signature_s",
                                   &sig->details.cs_signature.s_scalar));
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+  return ps;
+}
+
+
+struct GNUNET_JSON_PackSpec
+TALER_JSON_pack_exchange_withdraw_values (
+  const char *name,
+  const struct TALER_ExchangeWithdrawValues *ewv)
+{
+  struct GNUNET_JSON_PackSpec ps = {
+    .field_name = name,
+  };
+
+  switch (ewv->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_RSA));
+    break;
+  case TALER_DENOMINATION_CS:
+    ps.object = GNUNET_JSON_PACK (
+      GNUNET_JSON_pack_uint64 ("cipher",
+                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_data_varsize (
+        "r_pub_0",
+        &ewv->details.cs_values.r_pub_pair.r_pub[0],
+        sizeof(struct GNUNET_CRYPTO_CsRPublic)),
+      GNUNET_JSON_pack_data_varsize (
+        "r_pub_1",
+        &ewv->details.cs_values.r_pub_pair.r_pub[1],
+        sizeof(struct GNUNET_CRYPTO_CsRPublic))
+      );
     break;
   default:
     GNUNET_assert (0);

@@ -103,18 +103,12 @@ csr_ok (struct TALER_EXCHANGE_CsRHandle *csrh,
     json_t *av = json_array_get (arr,
                                  i);
     struct GNUNET_JSON_Specification spec[] = {
-      GNUNET_JSON_spec_fixed (
-        "r_pub_0",
-        &alg_values[i].details.cs_values.r_pub_pair.r_pub[0],
-        sizeof (struct GNUNET_CRYPTO_CsRPublic)),
-      GNUNET_JSON_spec_fixed (
-        "r_pub_1",
-        &alg_values[i].details.cs_values.r_pub_pair.r_pub[1],
-        sizeof (struct GNUNET_CRYPTO_CsRPublic)),
+      TALER_JSON_spec_exchange_withdraw_values (
+        "ewv",
+        &alg_values[i]),
       GNUNET_JSON_spec_end ()
     };
 
-    alg_values[i].cipher = TALER_DENOMINATION_CS;
     if (GNUNET_OK !=
         GNUNET_JSON_parse (av,
                            spec,

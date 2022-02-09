@@ -165,6 +165,8 @@ recoup_transaction (void *cls,
  *
  * @param connection the MHD connection to handle
  * @param coin information about the coin
+ * @param exchange_vals values contributed by the exchange
+ *         during withdrawal
  * @param coin_bks blinding data of the coin (to be checked)
  * @param coin_sig signature of the coin
  * @return MHD result code
@@ -173,6 +175,7 @@ static MHD_RESULT
 verify_and_execute_recoup (
   struct MHD_Connection *connection,
   const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_ExchangeWithdrawValues *exchange_vals,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -242,6 +245,9 @@ verify_and_execute_recoup (
       NULL);
   }
 
+  /* re-compute client-side blinding so we can
+     (a bit later) check that this coin was indeed
+     signed by us. */
   {
     struct TALER_CoinPubHash c_hash;
     struct TALER_BlindedPlanchet blinded_planchet;
@@ -251,7 +257,7 @@ verify_and_execute_recoup (
                            coin_bks,
                            NULL, /* FIXME-Oec: TALER_AgeHash * */
                            &coin->coin_pub,
-                           NULL, /* FIXME: handle CS */
+                           exchange_vals,
                            &c_hash,
                            &blinded_planchet))
     {
@@ -262,9 +268,10 @@ verify_and_execute_recoup (
         TALER_EC_EXCHANGE_RECOUP_BLINDING_FAILED,
         NULL);
     }
-    if (GNUNET_OK != TALER_coin_ev_hash (&blinded_planchet,
-                                         &coin->denom_pub_hash,
-                                         &pc.h_blind))
+    if (GNUNET_OK !=
+        TALER_coin_ev_hash (&blinded_planchet,
+                            &coin->denom_pub_hash,
+                            &pc.h_blind))
     {
       GNUNET_break (0);
       return TALER_MHD_reply_with_error (connection,
@@ -365,11 +372,14 @@ TEH_handler_recoup (struct MHD_Connection *connection,
   struct TALER_CoinPublicInfo coin;
   union TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
+  struct TALER_ExchangeWithdrawValues exchange_vals;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &coin.denom_pub_hash),
     TALER_JSON_spec_denom_sig ("denom_sig",
                                &coin.denom_sig),
+    TALER_JSON_spec_exchange_withdraw_values ("ewv",
+                                              &exchange_vals),
     GNUNET_JSON_spec_fixed_auto ("coin_blind_key_secret",
                                  &coin_bks),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
@@ -393,6 +403,7 @@ TEH_handler_recoup (struct MHD_Connection *connection,
 
     res = verify_and_execute_recoup (connection,
                                      &coin,
+                                     &exchange_vals,
                                      &coin_bks,
                                      &coin_sig);
     GNUNET_JSON_parse_free (spec);
