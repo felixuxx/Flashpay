@@ -609,12 +609,13 @@ handle_r_derive_request (struct TES_Client *client,
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
 
   {
-    struct TALER_CRYPTO_RDeriveResponse rdr;
+    struct TALER_CRYPTO_RDeriveResponse rdr = {
+      .header.size = htons (sizeof (struct TALER_CRYPTO_RDeriveResponse)),
+      .header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE),
+      .r_pub = r_pub
+    };
     enum GNUNET_GenericReturnValue ret;
 
-    rdr.header.size = htons (sizeof (struct TALER_CRYPTO_RDeriveResponse));
-    rdr.header.type = htons (TALER_HELPER_CS_MT_RES_RDERIVE);
-    rdr.r_pub = r_pub;
     GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                 "Sending CS Derived R after %s\n",
                 GNUNET_TIME_relative2s (
