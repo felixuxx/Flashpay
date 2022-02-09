@@ -248,8 +248,11 @@ check_commitment (struct RevealContext *rctx,
                                            &ts);
         rce->new_coins = GNUNET_new_array (rctx->num_fresh_coins,
                                            struct TALER_RefreshCoinData);
+        aoff = 0;
         for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
         {
+          const struct TALER_DenominationPublicKey *dk =
+            &rctx->dks[j]->denom_pub;
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
           struct TALER_CoinSpendPrivateKeyP coin_priv;
           union TALER_DenominationBlindingKeyP bks;
@@ -275,6 +278,12 @@ check_commitment (struct RevealContext *rctx,
                                                  &coin_priv,
                                                  &c_hash,
                                                  &pd));
+          if (TALER_DENOMINATION_CS == dk->cipher)
+          {
+            pd.blinded_planchet.details.cs_blinded_planchet.nonce =
+              nonces[aoff];
+            aoff++;
+          }
           rcd->blinded_planchet = pd.blinded_planchet;
         }
       }
