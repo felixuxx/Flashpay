@@ -364,15 +364,15 @@ TALER_denom_blind (
       struct TALER_DenominationCSPublicRPairP blinded_r_pub;
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
 
-      blinded_planchet->cipher = dk->cipher;
+      blinded_planchet->cipher = TALER_DENOMINATION_CS;
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&coin_bks->nonce,
                                                 bs);
       GNUNET_CRYPTO_cs_calc_blinded_c (
         bs,
         alg_values->details.cs_values.r_pub_pair.r_pub,
         &dk->details.cs_public_key,
-        &c_hash->hash,
-        sizeof(struct GNUNET_HashCode),
+        c_hash,
+        sizeof(*c_hash),
         blinded_planchet->details.cs_blinded_planchet.c,
         blinded_r_pub.r_pub);
       return GNUNET_OK;

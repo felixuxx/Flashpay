@@ -602,6 +602,7 @@ csr_cb (void *cls,
   struct TALER_EXCHANGE_MeltHandle *mh = cls;
   unsigned int nks_off = 0;
 
+  mh->csr = NULL;
   for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk =

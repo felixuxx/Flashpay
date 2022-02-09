@@ -633,13 +633,14 @@ TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Requesting R\n");
   {
-    struct TALER_CRYPTO_CsRDeriveRequest rdr;
+    struct TALER_CRYPTO_CsRDeriveRequest rdr = {
+      .header.size = htons (sizeof (rdr)),
+      .header.type = htons (TALER_HELPER_CS_MT_REQ_RDERIVE),
+      .reserved = htonl (0),
+      .h_cs = *h_cs,
+      .nonce = *nonce
+    };
 
-    rdr.header.size = htons (sizeof (rdr));
-    rdr.header.type = htons (TALER_HELPER_CS_MT_REQ_RDERIVE);
-    rdr.reserved = htonl (0);
-    rdr.h_cs = *h_cs;
-    rdr.nonce = *nonce;
     if (GNUNET_OK !=
         TALER_crypto_helper_send_all (dh->sock,
                                       &rdr,

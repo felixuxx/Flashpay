@@ -214,6 +214,8 @@ withdraw_cs_stage_two_callback (void *cls,
     TALER_planchet_blinding_secret_create (&wh->ps,
                                            &wh->alg_values,
                                            &wh->bks);
+    /* This initializes the 2nd half of the
+       wh->pd.blinded_planchet! */
     if (GNUNET_OK !=
         TALER_planchet_prepare (&wh->pk.key,
                                 &wh->alg_values,
@@ -297,9 +299,13 @@ TALER_EXCHANGE_withdraw (
         .pk = pk,
       };
 
-      wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
       TALER_cs_withdraw_nonce_derive (ps,
                                       &nk.nonce);
+      /* Note that we only initialize the first half
+         of the blinded_planchet here; the other part
+         will be done after the /csr request! */
+      wh->pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
+      wh->pd.blinded_planchet.details.cs_blinded_planchet.nonce = nk.nonce;
       wh->csrh = TALER_EXCHANGE_csr (exchange,
                                      1, /* "array" length */
                                      &nk,
@@ -312,7 +318,6 @@ TALER_EXCHANGE_withdraw (
     GNUNET_free (wh);
     return NULL;
   }
-  TALER_blinded_planchet_free (&wh->pd.blinded_planchet);
   return wh;
 }
 
@@ -320,6 +325,7 @@ TALER_EXCHANGE_withdraw (
 void
 TALER_EXCHANGE_withdraw_cancel (struct TALER_EXCHANGE_WithdrawHandle *wh)
 {
+  TALER_blinded_planchet_free (&wh->pd.blinded_planchet);
   if (NULL != wh->csrh)
   {
     TALER_EXCHANGE_csr_cancel (wh->csrh);

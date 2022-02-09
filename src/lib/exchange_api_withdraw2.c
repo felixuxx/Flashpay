@@ -438,9 +438,10 @@ TALER_EXCHANGE_withdraw2 (
 
     TALER_amount_hton (&req.amount_with_fee,
                        &wh->requested_amount);
-    if (GNUNET_OK != TALER_coin_ev_hash (&pd->blinded_planchet,
-                                         &pd->denom_pub_hash,
-                                         &req.h_coin_envelope))
+    if (GNUNET_OK !=
+        TALER_coin_ev_hash (&pd->blinded_planchet,
+                            &pd->denom_pub_hash,
+                            &req.h_coin_envelope))
     {
       GNUNET_break (0);
       GNUNET_free (wh);
