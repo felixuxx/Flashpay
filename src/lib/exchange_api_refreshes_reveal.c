@@ -377,7 +377,7 @@ TALER_EXCHANGE_refreshes_reveal (
     struct TALER_DenominationHash denom_hash;
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinPubHash c_hash;
-    struct TALER_PlanchetSecretsP ps;
+    struct TALER_PlanchetSecretsP coin_ps;
     union TALER_DenominationBlindingKeyP bks;
     struct TALER_CoinSpendPrivateKeyP coin_priv;
 
@@ -389,13 +389,17 @@ TALER_EXCHANGE_refreshes_reveal (
                                             &denom_hash)));
     TALER_transfer_secret_to_planchet_secret (&ts,
                                               i,
-                                              &ps);
-    TALER_planchet_setup_coin_priv (&ps,
+                                              &coin_ps);
+    TALER_planchet_setup_coin_priv (&coin_ps,
                                     &alg_values[i],
                                     &coin_priv);
-    TALER_planchet_blinding_secret_create (&ps,
+    TALER_planchet_blinding_secret_create (&coin_ps,
                                            &alg_values[i],
                                            &bks);
+    TALER_cs_refresh_nonce_derive (
+      ps,
+      i,
+      &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
     if (GNUNET_OK !=
         TALER_planchet_prepare (&md.fresh_pks[i],
                                 &alg_values[i],
@@ -446,8 +450,7 @@ TALER_EXCHANGE_refreshes_reveal (
   {
     if (j == noreveal_index)
     {
-      /* This is crucial: exclude the transfer key for the
-   noreval index! */
+      /* This is crucial: exclude the transfer key for the noreval index! */
       continue;
     }
     GNUNET_assert (0 ==

@@ -103,6 +103,11 @@ struct RevealContext
   const struct TEH_DenominationKey **dks;
 
   /**
+   * Array of information about fresh coins being revealed.
+   */
+  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs;
+
+  /**
    * Envelopes to be signed.
    */
   struct TALER_RefreshCoinData *rcds;
@@ -136,6 +141,78 @@ check_commitment (struct RevealContext *rctx,
                   struct MHD_Connection *connection,
                   MHD_RESULT *mhd_ret)
 {
+  struct TALER_ExchangeWithdrawValues alg_values[rctx->num_fresh_coins];
+  struct TALER_CsNonce nonces[rctx->num_fresh_coins];
+  unsigned int aoff = 0;
+
+  for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
+  {
+    const struct TALER_DenominationPublicKey *dk = &rctx->dks[j]->denom_pub;
+
+    if (dk->cipher != rctx->rcds[j].blinded_planchet.cipher)
+    {
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_BAD_REQUEST,
+        TALER_EC_EXCHANGE_GENERIC_CIPHER_MISMATCH,
+        NULL);
+      return GNUNET_SYSERR;
+    }
+    switch (dk->cipher)
+    {
+    case TALER_DENOMINATION_INVALID:
+      GNUNET_break (0);
+      *mhd_ret = TALER_MHD_reply_with_error (
+        connection,
+        MHD_HTTP_INTERNAL_SERVER_ERROR,
+        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
+        NULL);
+      return GNUNET_SYSERR;
+    case TALER_DENOMINATION_RSA:
+      continue;
+    case TALER_DENOMINATION_CS:
+      nonces[aoff]
+        = rctx->rcds[j].blinded_planchet.details.cs_blinded_planchet.nonce;
+      aoff++;
+      break;
+    }
+  }
+
+  // OPTIMIZE: do this in batch later!
+  aoff = 0;
+  for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
+  {
+    const struct TALER_DenominationPublicKey *dk = &rctx->dks[j]->denom_pub;
+
+    alg_values[j].cipher = dk->cipher;
+    switch (dk->cipher)
+    {
+    case TALER_DENOMINATION_INVALID:
+      GNUNET_assert (0);
+      return GNUNET_SYSERR;
+    case TALER_DENOMINATION_RSA:
+      continue;
+    case TALER_DENOMINATION_CS:
+      {
+        enum TALER_ErrorCode ec;
+
+        ec = TEH_keys_denomination_cs_r_pub (
+          &rctx->rrcs[j].h_denom_pub,
+          &nonces[aoff],
+          &alg_values[j].details.cs_values.r_pub_pair);
+        if (TALER_EC_NONE != ec)
+        {
+          *mhd_ret = TALER_MHD_reply_with_error (connection,
+                                                 MHD_HTTP_INTERNAL_SERVER_ERROR,
+                                                 ec,
+                                                 NULL);
+          return GNUNET_SYSERR;
+        }
+        aoff++;
+      }
+    }
+  }
   /* Verify commitment */
   {
     /* Note that the contents of rcs[melt.session.noreveal_index]
@@ -176,7 +253,7 @@ check_commitment (struct RevealContext *rctx,
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
           struct TALER_CoinSpendPrivateKeyP coin_priv;
           union TALER_DenominationBlindingKeyP bks;
-          struct TALER_ExchangeWithdrawValues alg_values;
+          const struct TALER_ExchangeWithdrawValues *alg_value = &alg_values[j];
           struct TALER_PlanchetDetail pd;
           struct TALER_CoinPubHash c_hash;
           struct TALER_PlanchetSecretsP ps;
@@ -185,17 +262,15 @@ check_commitment (struct RevealContext *rctx,
           TALER_transfer_secret_to_planchet_secret (&ts,
                                                     j,
                                                     &ps);
-          // TODO: implement cipher handling
-          alg_values.cipher = TALER_DENOMINATION_RSA;
           TALER_planchet_setup_coin_priv (&ps,
-                                          &alg_values,
+                                          alg_value,
                                           &coin_priv);
           TALER_planchet_blinding_secret_create (&ps,
-                                                 &alg_values,
+                                                 alg_value,
                                                  &bks);
           GNUNET_assert (GNUNET_OK ==
                          TALER_planchet_prepare (rcd->dk,
-                                                 &alg_values,
+                                                 alg_value,
                                                  &bks,
                                                  &coin_priv,
                                                  &c_hash,
@@ -505,6 +580,7 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   }
   rctx->dks = dks;
   rctx->rcds = rcds;
+  rctx->rrcs = rrcs;
   if (GNUNET_OK !=
       check_commitment (rctx,
                         connection,
