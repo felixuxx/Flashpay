@@ -502,34 +502,10 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   /* Sign before transaction! */
   ec = TALER_EC_NONE;
-  {
-    struct TEH_SignDetails sign_details;
-    sign_details.cipher = wc.blinded_planchet.cipher;
-    switch (wc.blinded_planchet.cipher)
-    {
-    case TALER_DENOMINATION_RSA:
-      sign_details.details.rsa_message.msg =
-        wc.blinded_planchet.details.rsa_blinded_planchet.blinded_msg;
-      sign_details.details.rsa_message.msg_size =
-        wc.blinded_planchet.details.rsa_blinded_planchet.blinded_msg_size;
-      break;
-    case TALER_DENOMINATION_CS:
-      sign_details.details.cs_message =
-        wc.blinded_planchet.details.cs_blinded_planchet;
-      break;
-    default:
-      GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
-      return TALER_MHD_reply_with_error (rc->connection,
-                                         MHD_HTTP_FORBIDDEN,
-                                         TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
-                                         NULL);
-    }
-    wc.collectable.sig = TEH_keys_denomination_sign (
-      &wc.collectable.denom_pub_hash,
-      &sign_details,
-      &ec);
-  }
+  wc.collectable.sig = TEH_keys_denomination_sign (
+    &wc.collectable.denom_pub_hash,
+    &wc.blinded_planchet,
+    &ec);
   if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);

@@ -603,18 +603,11 @@ resolve_refreshes_reveal_denominations (struct MHD_Connection *connection,
   for (unsigned int i = 0; i<rctx->num_fresh_coins; i++)
   {
     enum TALER_ErrorCode ec = TALER_EC_NONE;
-    struct TEH_SignDetails sign_details;
-    const struct TALER_BlindedRsaPlanchet *rp;
 
-    // FIXME: implement cipher handling
-    rp = &rcds[i].blinded_planchet.details.rsa_blinded_planchet;
-    sign_details.cipher = TALER_DENOMINATION_RSA;
-    sign_details.details.rsa_message.msg = rp->blinded_msg;
-    sign_details.details.rsa_message.msg_size = rp->blinded_msg_size;
     rrcs[i].coin_sig
       = TEH_keys_denomination_sign (
           &rrcs[i].h_denom_pub,
-          &sign_details,
+          &rcds[i].blinded_planchet,
           &ec);
     if (TALER_EC_NONE != ec)
     {

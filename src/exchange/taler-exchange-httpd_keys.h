@@ -82,42 +82,6 @@ struct TEH_DenominationKey
 };
 
 
-struct TEH_SignDetails_RSA
-{
-  /**
-   * message to sign
-   */
-  const void *msg;
-
-  /**
-   * number of bytes in msg
-   */
-  size_t msg_size;
-};
-
-
-struct TEH_SignDetails
-{
-  /**
-   * Cipher type of the message
-   */
-  enum TALER_DenominationCipher cipher;
-
-  union
-  {
-    /**
-     * If we use #TALER_DENOMINATION_RSA in @a cipher.
-     */
-    struct TEH_SignDetails_RSA rsa_message;
-
-    /**
-     * If we use #TALER_DENOMINATION_CS in @a cipher.
-     */
-    struct TALER_BlindedCsPlanchet cs_message;
-  } details;
-};
-
-
 /**
  * Snapshot of the (coin and signing) keys (including private keys) of
  * the exchange.  There can be multiple instances of this struct, as it is
@@ -207,15 +171,14 @@ TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
  * @a h_denom_pub.
  *
  * @param h_denom_pub hash of the public key to use to sign
- * @param msg message to sign
- * @param msg_size number of bytes in @a msg
+ * @param bp blinded planchet to sign
  * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
  * @return signature, the value inside the structure will be NULL on failure,
  *         see @a ec for details about the failure
  */
 struct TALER_BlindedDenominationSignature
 TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
-                            const struct TEH_SignDetails *msg,
+                            const struct TALER_BlindedPlanchet *bp,
                             enum TALER_ErrorCode *ec);
 
 
