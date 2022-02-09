@@ -162,6 +162,8 @@ recoup_refresh_transaction (void *cls,
  *
  * @param connection the MHD connection to handle
  * @param coin information about the coin
+ * @param exchange_vals values contributed by the exchange
+ *         during refresh
  * @param coin_bks blinding data of the coin (to be checked)
  * @param coin_sig signature of the coin
  * @return MHD result code
@@ -170,6 +172,7 @@ static MHD_RESULT
 verify_and_execute_recoup_refresh (
   struct MHD_Connection *connection,
   const struct TALER_CoinPublicInfo *coin,
+  const struct TALER_ExchangeWithdrawValues *exchange_vals,
   const union TALER_DenominationBlindingKeyP *coin_bks,
   const struct TALER_CoinSpendSignatureP *coin_sig)
 {
@@ -249,7 +252,7 @@ verify_and_execute_recoup_refresh (
                            coin_bks,
                            NULL, /* FIXME-Oec: TALER_AgeHash * */
                            &coin->coin_pub,
-                           NULL, /* FIXME: Implement CS */
+                           exchange_vals,
                            &c_hash,
                            &blinded_planchet))
     {
@@ -356,11 +359,14 @@ TEH_handler_recoup_refresh (struct MHD_Connection *connection,
   struct TALER_CoinPublicInfo coin;
   union TALER_DenominationBlindingKeyP coin_bks;
   struct TALER_CoinSpendSignatureP coin_sig;
+  struct TALER_ExchangeWithdrawValues exchange_vals;
   struct GNUNET_JSON_Specification spec[] = {
     GNUNET_JSON_spec_fixed_auto ("denom_pub_hash",
                                  &coin.denom_pub_hash),
     TALER_JSON_spec_denom_sig ("denom_sig",
                                &coin.denom_sig),
+    TALER_JSON_spec_exchange_withdraw_values ("ewv",
+                                              &exchange_vals),
     GNUNET_JSON_spec_fixed_auto ("coin_blind_key_secret",
                                  &coin_bks),
     GNUNET_JSON_spec_fixed_auto ("coin_sig",
@@ -384,6 +390,7 @@ TEH_handler_recoup_refresh (struct MHD_Connection *connection,
 
     res = verify_and_execute_recoup_refresh (connection,
                                              &coin,
+                                             &exchange_vals,
                                              &coin_bks,
                                              &coin_sig);
     GNUNET_JSON_parse_free (spec);

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2017-2021 Taler Systems SA
+  Copyright (C) 2017-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -323,6 +323,9 @@ TALER_EXCHANGE_recoup_refresh (
                                 &h_denom_pub),
     TALER_JSON_pack_denom_sig ("denom_sig",
                                denom_sig),
+    // FIXME: add this to the spec!
+    TALER_JSON_pack_exchange_withdraw_values ("ewv",
+                                              exchange_vals),
     GNUNET_JSON_pack_data_auto ("coin_sig",
                                 &coin_sig),
     GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",
