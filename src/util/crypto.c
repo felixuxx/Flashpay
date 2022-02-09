@@ -476,6 +476,11 @@ TALER_refresh_get_commitment (struct TALER_RefreshCommitmentP *rc,
     {
       const struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
 
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "BCH %u/%u %s\n",
+                  i, j,
+                  TALER_B2S (
+                    &rcd->blinded_planchet.details.cs_blinded_planchet));
       TALER_blinded_planchet_hash (&rcd->blinded_planchet,
                                    hash_context);
     }
