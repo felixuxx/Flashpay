@@ -542,6 +542,8 @@ run (void *cls,
                    TALER_denom_sig_unblind (&denom_sig,
                                             &bds,
                                             &bks,
+                                            &c_hash,
+                                            &alg_values,
                                             &denom_pub));
     TALER_blinded_denom_sig_free (&bds);
     TALER_denom_pub_free (&denom_pub);

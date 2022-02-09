@@ -226,6 +226,8 @@ insert_deposit_run (void *cls,
                    TALER_denom_sig_unblind (&deposit.coin.denom_sig,
                                             &bds,
                                             &bks,
+                                            &c_hash,
+                                            &alg_values,
                                             &dpk));
     TALER_blinded_denom_sig_free (&bds);
   }

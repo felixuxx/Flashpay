@@ -107,6 +107,8 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetSecretsP ps;
   struct TALER_ExchangeWithdrawValues alg_values;
+  struct TALER_PlanchetDetail pd;
+  struct TALER_CoinPubHash c_hash;
 
   /* parse reply */
   if (GNUNET_OK !=
@@ -132,11 +134,25 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   TALER_planchet_blinding_secret_create (&ps,
                                          &alg_values,
                                          &bks);
+  if (GNUNET_OK !=
+      TALER_planchet_prepare (&rpub,
+                              &alg_values,
+                              &bks,
+                              coin_priv,
+                              &c_hash,
+                              &pd))
+  {
+    GNUNET_break (0);
+    GNUNET_JSON_parse_free (spec);
+    return GNUNET_SYSERR;
+  }
   /* extract coin and signature */
   if (GNUNET_OK !=
       TALER_denom_sig_unblind (sig,
                                &bsig,
                                &bks,
+                               &c_hash,
+                               &alg_values,
                                &rpub))
   {
     GNUNET_break_op (0);
@@ -144,28 +160,11 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   }
   /* verify link_sig */
   {
-    struct TALER_ExchangeWithdrawValues alg_values;
-    struct TALER_PlanchetDetail pd;
-    struct TALER_CoinPubHash c_hash;
     struct TALER_CoinSpendPublicKeyP old_coin_pub;
     struct TALER_BlindedCoinHash coin_envelope_hash;
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);
-    // TODO: implement cipher handling
-    alg_values.cipher = TALER_DENOMINATION_RSA;
-    if (GNUNET_OK !=
-        TALER_planchet_prepare (&rpub,
-                                &alg_values,
-                                &bks,
-                                coin_priv,
-                                &c_hash,
-                                &pd))
-    {
-      GNUNET_break (0);
-      GNUNET_JSON_parse_free (spec);
-      return GNUNET_SYSERR;
-    }
     TALER_coin_ev_hash (&pd.blinded_planchet,
                         &pd.denom_pub_hash,
                         &coin_envelope_hash);
