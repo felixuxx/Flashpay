@@ -198,8 +198,9 @@ TALER_denom_sig_unblind (
   case TALER_DENOMINATION_CS:
     {
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
-      GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce, bs);
 
+      GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce,
+                                                bs);
       GNUNET_CRYPTO_cs_unblind (&bdenom_sig->details.blinded_cs_answer.s_scalar,
                                 &bs[bdenom_sig->details.blinded_cs_answer.b],
                                 &denom_sig->details.cs_signature.s_scalar);
@@ -332,15 +333,13 @@ TALER_denom_blind (
   {
   case TALER_DENOMINATION_RSA:
     blinded_planchet->cipher = dk->cipher;
-
     if (GNUNET_YES !=
-        GNUNET_CRYPTO_rsa_blind (&c_hash->hash,
-                                 &coin_bks->rsa_bks,
-                                 dk->details.rsa_public_key,
-                                 &blinded_planchet->details.rsa_blinded_planchet
-                                 .blinded_msg,
-                                 &blinded_planchet->details.rsa_blinded_planchet
-                                 .blinded_msg_size))
+        GNUNET_CRYPTO_rsa_blind (
+          &c_hash->hash,
+          &coin_bks->rsa_bks,
+          dk->details.rsa_public_key,
+          &blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
+          &blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size))
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;
@@ -348,10 +347,10 @@ TALER_denom_blind (
     return GNUNET_OK;
   case TALER_DENOMINATION_CS:
     {
-      blinded_planchet->cipher = dk->cipher;
       struct TALER_DenominationCSPublicRPairP blinded_r_pub;
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
 
+      blinded_planchet->cipher = dk->cipher;
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&coin_bks->nonce,
                                                 bs);
       GNUNET_CRYPTO_cs_calc_blinded_c (
@@ -360,8 +359,7 @@ TALER_denom_blind (
         &dk->details.cs_public_key,
         &c_hash->hash,
         sizeof(struct GNUNET_HashCode),
-        blinded_planchet->details.
-        cs_blinded_planchet.c,
+        blinded_planchet->details.cs_blinded_planchet.c,
         blinded_r_pub.r_pub);
       return GNUNET_OK;
     }
