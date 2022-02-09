@@ -249,7 +249,7 @@ int
 main (int argc,
       char *const *argv)
 {
-  const char *cipher;
+  char *cipher;
 
   (void) argc;
   /* These environment variables get in the way... */
@@ -263,6 +263,7 @@ main (int argc,
   GNUNET_asprintf (&config_file,
                    "test_exchange_api-%s.conf",
                    cipher);
+  GNUNET_free (cipher);
   /* Check fakebank port is available and get config */
   if (GNUNET_OK !=
       TALER_TESTING_prepare_fakebank (config_file,

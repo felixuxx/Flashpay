@@ -682,7 +682,7 @@ int
 main (int argc,
       char *const *argv)
 {
-  const char *cipher;
+  char *cipher;
 
   (void) argc;
   /* These environment variables get in the way... */
@@ -700,6 +700,7 @@ main (int argc,
   GNUNET_asprintf (&config_file_expire_reserve_now,
                    "test_auditor_api_expire_reserve_now-%s.conf",
                    cipher);
+  GNUNET_free (cipher);
   /* Check fakebank port is available and get configuration data. */
   if (GNUNET_OK !=
       TALER_TESTING_prepare_fakebank (config_file,

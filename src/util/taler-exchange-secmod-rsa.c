@@ -41,7 +41,6 @@
 #include "secmod_common.h"
 #include <poll.h>
 
-#define TALER_CFG_CIPHER_LEN 3
 
 /**
  * Information we keep per denomination.
@@ -1361,14 +1360,12 @@ load_denominations (void *cls,
                                "CIPHER");
     return;
   }
-  if (strlen (cipher) > TALER_CFG_CIPHER_LEN)
-  {
-    return; /* Cipher length must be smaller than TALER_CFG_CIPHER_LEN */
-  }
   if (0 != strcmp (cipher, "RSA"))
   {
+    GNUNET_free (cipher);
     return; /* Ignore denominations of other types than CS */
   }
+  GNUNET_free (cipher);
   denom = GNUNET_new (struct Denomination);
   if (GNUNET_OK !=
       parse_denomination_cfg (ctx->cfg,

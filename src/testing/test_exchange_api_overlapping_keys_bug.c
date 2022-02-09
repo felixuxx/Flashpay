@@ -90,7 +90,7 @@ int
 main (int argc,
       char *const *argv)
 {
-  const char *cipher;
+  char *cipher;
 
   (void) argc;
   /* These environment variables get in the way... */
@@ -104,6 +104,7 @@ main (int argc,
   GNUNET_asprintf (&config_file,
                    "test_exchange_api_keys_cherry_picking-%s.conf",
                    cipher);
+  GNUNET_free (cipher);
   TALER_TESTING_cleanup_files (config_file);
   /* @helpers.  Run keyup, create tables, ... Note: it
    * fetches the port number from config in order to see

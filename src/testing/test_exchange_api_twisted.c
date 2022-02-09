@@ -284,7 +284,7 @@ int
 main (int argc,
       char *const *argv)
 {
-  const char *cipher;
+  char *cipher;
   int ret;
 
   (void) argc;
@@ -299,6 +299,7 @@ main (int argc,
   GNUNET_asprintf (&config_file,
                    "test_exchange_api_twisted-%s.conf",
                    cipher);
+  GNUNET_free (cipher);
   if (GNUNET_OK !=
       TALER_TESTING_prepare_fakebank (config_file,
                                       "exchange-account-2",
