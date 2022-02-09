@@ -247,6 +247,7 @@ handle_refresh_reveal_finished (void *cls,
       {
         hr.http_status = 0;
         hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        break;
       }
       else
       {
