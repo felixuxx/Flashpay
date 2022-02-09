@@ -1916,6 +1916,10 @@ create_krd (struct TEH_KeyStateHandle *ksh,
       r = json_object_update (keys, sig);
       GNUNET_assert (0 == r);
     }
+    else
+    {
+      json_decref (extensions);
+    }
 
     // Special case for age restrictions: if enabled, provide the lits of
     // age-restricted denominations.

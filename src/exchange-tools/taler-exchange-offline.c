@@ -2530,7 +2530,7 @@ do_download (char *const *args)
  *         #GNUNET_NO if we had nothing in store but now do
  *         #GNUNET_SYSERR if keys changed from what we remember or other error
  */
-static int
+static enum GNUNET_GenericReturnValue
 tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
 {
   char *fn;
@@ -2603,6 +2603,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
                                    "SECM_ESIGN_PUBKEY",
                                    "key malformed");
         GNUNET_free (key);
+        GNUNET_free (fn);
         return GNUNET_SYSERR;
       }
       GNUNET_free (key);
@@ -2612,6 +2613,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "ESIGN security module key does not match SECM_ESIGN_PUBKEY in configuration\n");
+        GNUNET_free (fn);
         return GNUNET_SYSERR;
       }
     }
@@ -2634,6 +2636,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
                                    "SECM_DENOM_PUBKEY",
                                    "key malformed");
         GNUNET_free (key);
+        GNUNET_free (fn);
         return GNUNET_SYSERR;
       }
       GNUNET_free (key);
@@ -2643,6 +2646,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "DENOM security module key does not match SECM_DENOM_PUBKEY in configuration\n");
+        GNUNET_free (fn);
         return GNUNET_SYSERR;
       }
     }
@@ -2665,6 +2669,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
                                    "SECM_DENOM_CS_PUBKEY",
                                    "key malformed");
         GNUNET_free (key);
+        GNUNET_free (fn);
         return GNUNET_SYSERR;
       }
       GNUNET_free (key);
@@ -2674,6 +2679,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
       {
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "DENOM security module key does not match SECM_DENOM_CS_PUBKEY in configuration\n");
+        GNUNET_free (fn);
         return GNUNET_SYSERR;
       }
     }
@@ -2700,6 +2706,7 @@ tofu_check (const struct TALER_SecurityModulePublicKeySetP *secmset)
     GNUNET_free (fn);
     return GNUNET_SYSERR;
   }
+  GNUNET_free (fn);
   return GNUNET_NO;
 }
 
