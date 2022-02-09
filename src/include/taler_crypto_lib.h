@@ -1146,10 +1146,12 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
  * Unblind blinded signature.
  *
  * @param[out] denom_sig where to write the unblinded signature
+ * @param dk denomination public key
  * @param bdenom_sig the blinded signature
  * @param bks blinding secret to use
- * @param denom_pub public key used for signing
+ * @param c_hash hash of the coin's public key for verification of the signature
  * @param alg_values algorithm specific values
+ * @param denom_pub public key used for signing
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1157,6 +1159,8 @@ TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
   const union TALER_DenominationBlindingKeyP *bks,
+  const struct TALER_CoinPubHash *c_hash,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   const struct TALER_DenominationPublicKey *denom_pub);
 
 

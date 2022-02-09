@@ -170,6 +170,8 @@ TALER_denom_sig_unblind (
   struct TALER_DenominationSignature *denom_sig,
   const struct TALER_BlindedDenominationSignature *bdenom_sig,
   const union TALER_DenominationBlindingKeyP *bks,
+  const struct TALER_CoinPubHash *c_hash,
+  const struct TALER_ExchangeWithdrawValues *alg_values,
   const struct TALER_DenominationPublicKey *denom_pub)
 {
   if (bdenom_sig->cipher != denom_pub->cipher)
@@ -198,9 +200,21 @@ TALER_denom_sig_unblind (
   case TALER_DENOMINATION_CS:
     {
       struct GNUNET_CRYPTO_CsBlindingSecret bs[2];
+      struct GNUNET_CRYPTO_CsC c[2];
+      struct TALER_DenominationCSPublicRPairP r_pub_blind;
 
       GNUNET_CRYPTO_cs_blinding_secrets_derive (&bks->nonce,
                                                 bs);
+      GNUNET_CRYPTO_cs_calc_blinded_c (
+        bs,
+        alg_values->details.cs_values.r_pub_pair.r_pub,
+        &denom_pub->details.cs_public_key,
+        &c_hash->hash,
+        sizeof(struct GNUNET_HashCode),
+        c,
+        r_pub_blind.r_pub);
+      denom_sig->details.cs_signature.r_point
+        = r_pub_blind.r_pub[bdenom_sig->details.blinded_cs_answer.b];
       GNUNET_CRYPTO_cs_unblind (&bdenom_sig->details.blinded_cs_answer.s_scalar,
                                 &bs[bdenom_sig->details.blinded_cs_answer.b],
                                 &denom_sig->details.cs_signature.s_scalar);

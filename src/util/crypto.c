@@ -398,6 +398,8 @@ TALER_planchet_to_coin (
       TALER_denom_sig_unblind (&coin->sig,
                                blind_sig,
                                bks,
+                               c_hash,
+                               alg_values,
                                dk))
   {
     GNUNET_break_op (0);

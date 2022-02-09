@@ -341,6 +341,8 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
             TALER_denom_sig_unblind (&rs,
                                      &ds,
                                      &bks,
+                                     &c_hash,
+                                     &alg_values,
                                      &keys[i].denom_pub))
         {
           GNUNET_break (0);
