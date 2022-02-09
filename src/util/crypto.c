@@ -411,57 +411,30 @@ TALER_planchet_to_coin (
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_FreshCoin *coin)
 {
-  struct TALER_DenominationSignature sig;
-
   if ( (dk->cipher != blind_sig->cipher) ||
        (dk->cipher != alg_values->cipher) )
   {
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
-  switch (dk->cipher)
+  if (GNUNET_OK !=
+      TALER_denom_sig_unblind (&coin->sig,
+                               blind_sig,
+                               bks,
+                               dk))
   {
-  case TALER_DENOMINATION_RSA:
-    if (GNUNET_OK !=
-        TALER_denom_sig_unblind (&sig,
-                                 blind_sig,
-                                 bks,
-                                 dk))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
-    break;
-  case TALER_DENOMINATION_CS:
-    {
-      if (GNUNET_OK !=
-          TALER_denom_sig_unblind (&sig,
-                                   blind_sig,
-                                   bks,
-                                   dk))
-      {
-        GNUNET_break_op (0);
-        return GNUNET_SYSERR;
-      }
-      break;
-    }
-  default:
-    GNUNET_break (0);
+    GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-
   if (GNUNET_OK !=
       TALER_denom_pub_verify (dk,
-                              &sig,
+                              &coin->sig,
                               c_hash))
   {
     GNUNET_break_op (0);
-    TALER_denom_sig_free (&sig);
+    TALER_denom_sig_free (&coin->sig);
     return GNUNET_SYSERR;
   }
-
-  coin->sig = sig;
   coin->coin_priv = *coin_priv;
   return GNUNET_OK;
 }
