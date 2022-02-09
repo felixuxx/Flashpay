@@ -380,7 +380,6 @@ TALER_denom_pub_verify (const struct TALER_DenominationPublicKey *denom_pub,
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
   switch (denom_pub->cipher)
   {
   case TALER_DENOMINATION_INVALID:

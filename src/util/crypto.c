@@ -367,6 +367,9 @@ TALER_blinded_planchet_free (struct TALER_BlindedPlanchet *blinded_planchet)
     GNUNET_free (blinded_planchet->details.rsa_blinded_planchet.blinded_msg);
     break;
   case TALER_DENOMINATION_CS:
+    memset (blinded_planchet,
+            0,
+            sizeof (*blinded_planchet));
     /* nothing to do for CS */
     break;
   default:

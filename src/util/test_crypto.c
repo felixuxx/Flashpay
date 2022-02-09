@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  (C) 2015, 2020, 2021 Taler Systems SA
+  (C) 2015, 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -198,14 +198,11 @@ test_planchets_cs (void)
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               &ps,
                               sizeof (ps));
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_priv_create (&dk_priv,
                                           &dk_pub,
                                           TALER_DENOMINATION_CS));
-
   alg_values.cipher = TALER_DENOMINATION_CS;
-
   TALER_cs_withdraw_nonce_derive (
     &ps,
     &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
@@ -214,14 +211,12 @@ test_planchets_cs (void)
                    &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
                    &dk_priv,
                    &alg_values.details.cs_values.r_pub_pair));
-
   TALER_planchet_setup_coin_priv (&ps,
                                   &alg_values,
                                   &coin_priv);
   TALER_planchet_blinding_secret_create (&ps,
                                          &alg_values,
                                          &bks);
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_planchet_prepare (&dk_pub,
                                          &alg_values,
@@ -229,7 +224,6 @@ test_planchets_cs (void)
                                          &coin_priv,
                                          &c_hash,
                                          &pd));
-
   GNUNET_assert (GNUNET_OK ==
                  TALER_denom_sign_blinded (&blind_sig,
                                            &dk_priv,
@@ -243,7 +237,6 @@ test_planchets_cs (void)
                                          &c_hash,
                                          &alg_values,
                                          &coin));
-
   TALER_blinded_denom_sig_free (&blind_sig);
   TALER_denom_sig_free (&coin.sig);
   TALER_denom_priv_free (&dk_priv);
