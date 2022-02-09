@@ -206,10 +206,9 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     GNUNET_JSON_pack_array_steal ("ewvs",
                                   csr_response_ewvs));
   GNUNET_assert (NULL != csr_response);
-
-  return TALER_MHD_reply_json (rc->connection,
-                               csr_response,
-                               MHD_HTTP_OK);
+  return TALER_MHD_reply_json_steal (rc->connection,
+                                     csr_response,
+                                     MHD_HTTP_OK);
 }
 
 
