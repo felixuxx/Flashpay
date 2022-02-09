@@ -331,46 +331,20 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
   struct TALER_CoinSpendPublicKeyP coin_pub;
 
   GNUNET_assert (alg_values->cipher == dk->cipher);
-
   GNUNET_CRYPTO_eddsa_key_get_public (&coin_priv->eddsa_priv,
                                       &coin_pub.eddsa_pub);
-
-  switch (dk->cipher)
+  if (GNUNET_OK !=
+      TALER_denom_blind (dk,
+                         bks,
+                         NULL, /* FIXME-Oec */
+                         &coin_pub,
+                         alg_values,
+                         c_hash,
+                         &pd->blinded_planchet))
   {
-  case TALER_DENOMINATION_RSA:
-    if (GNUNET_OK !=
-        TALER_denom_blind (dk,
-                           bks,
-                           NULL, /* FIXME-Oec */
-                           &coin_pub,
-                           alg_values,
-                           c_hash,
-                           &pd->blinded_planchet))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    break;
-  case TALER_DENOMINATION_CS:
-    if (GNUNET_OK !=
-        TALER_denom_blind (dk,
-                           bks,
-                           NULL, /* FIXME-Oec */
-                           &coin_pub,
-                           alg_values,
-                           c_hash,
-                           &pd->blinded_planchet))
-    {
-      GNUNET_break (0);
-      return GNUNET_SYSERR;
-    }
-    break;
-  default:
     GNUNET_break (0);
     return GNUNET_SYSERR;
   }
-
-  pd->blinded_planchet.cipher = dk->cipher;
   TALER_denom_pub_hash (dk,
                         &pd->denom_pub_hash);
   return GNUNET_OK;
