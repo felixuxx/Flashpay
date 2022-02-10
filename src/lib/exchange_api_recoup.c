@@ -329,6 +329,24 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                                 &coin_sig),
     GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",
                                 &bks));
+  if (TALER_DENOMINATION_CS == denom_sig->cipher)
+  {
+    struct TALER_CsNonce nonce;
+
+    // FIXME: add this to the spec!
+    /* NOTE: this is not elegant, and as per the note in TALER_coin_ev_hash()
+       it is not strictly clear that the nonce is needed. Best case would be
+       to find a way to include it more 'naturally' somehow, for example with
+       the variant union version of bks! */
+    TALER_cs_withdraw_nonce_derive (ps,
+                                    &nonce);
+    GNUNET_assert (
+      0 ==
+      json_object_set_new (recoup_obj,
+                           "cs-nonce",
+                           GNUNET_JSON_from_data_auto (
+                             &nonce)));
+  }
 
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];

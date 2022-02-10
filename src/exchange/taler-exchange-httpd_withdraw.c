@@ -471,9 +471,10 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
     = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
   wc.wsrd.h_denomination_pub
     = wc.collectable.denom_pub_hash;
-  if (GNUNET_OK != TALER_coin_ev_hash (&wc.blinded_planchet,
-                                       &wc.collectable.denom_pub_hash,
-                                       &wc.wsrd.h_coin_envelope))
+  if (GNUNET_OK !=
+      TALER_coin_ev_hash (&wc.blinded_planchet,
+                          &wc.collectable.denom_pub_hash,
+                          &wc.wsrd.h_coin_envelope))
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
@@ -502,6 +503,7 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
 
   /* Sign before transaction! */
   ec = TALER_EC_NONE;
+  // FIXME: swap arguments!
   wc.collectable.sig = TEH_keys_denomination_sign (
     &wc.collectable.denom_pub_hash,
     &wc.blinded_planchet,

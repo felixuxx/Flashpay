@@ -466,6 +466,9 @@ struct TALER_RsaPubHashP
  * Master key material for the deriviation of
  * private coins and blinding factors.
  */
+// FIXME: split this struct, we should have
+// a different one for the Melt/Refresh secrets
+// and the withdraw secrets!
 struct TALER_PlanchetSecretsP
 {
 
@@ -840,7 +843,10 @@ struct TALER_BlindedCsPlanchet
   struct GNUNET_CRYPTO_CsC c[2];
 
   /**
-   * Public Nonce
+   * Public nonce.
+   * FIXME: this nonce being here has created TONS
+   * of trouble. Likely split off from this data
+   * structure in the future!
    */
   struct TALER_CsNonce nonce;
 };
@@ -1108,14 +1114,21 @@ TALER_denom_cs_derive_r_public (
 /**
  * Blind coin for blind signing with @a dk using blinding secret @a coin_bks.
  *
+ * NOTE/FIXME: As a particular oddity, the @a blinded_planchet
+ * is only partially initialized by this function in the
+ * case of CS-denominations. Here, the 'nonce' must
+ * be initialized separately! This has been a MAJOR
+ * source of bugs, and points to a likely need for a
+ * reorganization of either that data structure or
+ * this function!
+ *
  * @param dk denomination public key to blind for
  * @param coin_bks blinding secret to use
  * @param age_commitment_hash hash of the age commitment to be used for the coin. NULL if no commitment is made.
  * @param coin_pub public key of the coin to blind
  * @param alg_values algorithm specific values to blind the planchet
  * @param[out] c_hash resulting hashed coin
- * @param[out] coin_ev blinded coin to submit
- * @param[out] coin_ev_size number of bytes in @a coin_ev
+ * @param[out] blinded_planchet planchet data to initialize
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue

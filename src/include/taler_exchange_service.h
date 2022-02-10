@@ -2236,7 +2236,9 @@ typedef void
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param exchange_vals contribution from the exchange on the withdraw
- * @param ps secret internals of the original refresh-reveal operation
+ * @param rps melt secret of the refreshing operation
+ * @param ps coin-specific secrets derived for this coin during the refreshing operation
+ * @param idx index of the fresh coin in the refresh operation that is now being recouped
  * @param recoup_cb the callback to call when the final result for this request is available
  * @param recoup_cb_cls closure for @a recoup_cb
  * @return NULL
@@ -2249,7 +2251,9 @@ TALER_EXCHANGE_recoup_refresh (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_ExchangeWithdrawValues *exchange_vals,
+  const struct TALER_PlanchetSecretsP *rps,
   const struct TALER_PlanchetSecretsP *ps,
+  unsigned int idx,
   TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
   void *recoup_cb_cls);
 

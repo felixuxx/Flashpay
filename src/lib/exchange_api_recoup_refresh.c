@@ -165,6 +165,19 @@ handle_recoup_refresh_finished (void *cls,
     hr.ec = TALER_JSON_get_error_code (j);
     hr.hint = TALER_JSON_get_error_hint (j);
     break;
+  case MHD_HTTP_FORBIDDEN:
+    /* Nothing really to verify, exchange says one of the signatures is
+       invalid; as we checked them, this should never happen, we
+       should pass the JSON reply to the application */
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    break;
+  case MHD_HTTP_NOT_FOUND:
+    /* Nothing really to verify, this should never
+       happen, we should pass the JSON reply to the application */
+    hr.ec = TALER_JSON_get_error_code (j);
+    hr.hint = TALER_JSON_get_error_hint (j);
+    break;
   case MHD_HTTP_CONFLICT:
     {
       /* Insufficient funds, proof attached */
@@ -238,19 +251,6 @@ handle_recoup_refresh_finished (void *cls,
       TALER_EXCHANGE_recoup_refresh_cancel (ph);
       return;
     }
-  case MHD_HTTP_FORBIDDEN:
-    /* Nothing really to verify, exchange says one of the signatures is
-       invalid; as we checked them, this should never happen, we
-       should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
-    break;
-  case MHD_HTTP_NOT_FOUND:
-    /* Nothing really to verify, this should never
-       happen, we should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
-    break;
   case MHD_HTTP_GONE:
     /* Kind of normal: the money was already sent to the merchant
        (it was too late for the refund). */
@@ -287,7 +287,9 @@ TALER_EXCHANGE_recoup_refresh (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_ExchangeWithdrawValues *exchange_vals,
+  const struct TALER_PlanchetSecretsP *rps,
   const struct TALER_PlanchetSecretsP *ps,
+  unsigned int idx,
   TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
   void *recoup_cb_cls)
 {
@@ -302,6 +304,7 @@ TALER_EXCHANGE_recoup_refresh (
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
 
+  GNUNET_assert (NULL != recoup_cb);
   GNUNET_assert (GNUNET_YES ==
                  TEAH_handle_is_ready (exchange));
   TALER_planchet_setup_coin_priv (ps,
@@ -330,6 +333,26 @@ TALER_EXCHANGE_recoup_refresh (
                                 &coin_sig),
     GNUNET_JSON_pack_data_auto ("coin_blind_key_secret",
                                 &bks));
+
+  if (TALER_DENOMINATION_CS == denom_sig->cipher)
+  {
+    struct TALER_CsNonce nonce;
+
+    // FIXME: add this to the spec!
+    /* NOTE: this is not elegant, and as per the note in TALER_coin_ev_hash()
+       it is not strictly clear that the nonce is needed. Best case would be
+       to find a way to include it more 'naturally' somehow, for example with
+       the variant union version of bks! */
+    TALER_cs_refresh_nonce_derive (rps,
+                                   idx,
+                                   &nonce);
+    GNUNET_assert (
+      0 ==
+      json_object_set_new (recoup_obj,
+                           "cs-nonce",
+                           GNUNET_JSON_from_data_auto (
+                             &nonce)));
+  }
 
   {
     char pub_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2];

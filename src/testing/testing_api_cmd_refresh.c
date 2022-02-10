@@ -1233,6 +1233,7 @@ melt_traits (void *cls,
                                              &rms->bks[index]),
       TALER_TESTING_make_trait_exchange_wd_value (index,
                                                   &rms->alg_values[index]),
+      TALER_TESTING_make_trait_refresh_secret (&rms->ps),
       TALER_TESTING_trait_end ()
     };
 

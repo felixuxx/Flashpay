@@ -428,9 +428,10 @@ TALER_EXCHANGE_withdraw2 (
                      "/reserves/%s/withdraw",
                      pub_str);
   }
+  // FIXME: move this to libtalerutil!
   {
     struct TALER_WithdrawRequestPS req = {
-      .purpose.size = htonl (sizeof (struct TALER_WithdrawRequestPS)),
+      .purpose.size = htonl (sizeof (req)),
       .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW),
       .reserve_pub = wh->reserve_pub,
       .h_denomination_pub = pd->denom_pub_hash

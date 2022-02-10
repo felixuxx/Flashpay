@@ -125,14 +125,14 @@ recoup_refresh_cb (void *cls,
                    const struct TALER_EXCHANGE_HttpResponse *hr,
                    const struct TALER_CoinSpendPublicKeyP *old_coin_pub)
 {
-  struct RecoupRefreshState *ps = cls;
-  struct TALER_TESTING_Interpreter *is = ps->is;
+  struct RecoupRefreshState *rrs = cls;
+  struct TALER_TESTING_Interpreter *is = rrs->is;
   struct TALER_TESTING_Command *cmd = &is->commands[is->ip];
   char *cref;
   unsigned int idx;
 
-  ps->ph = NULL;
-  if (ps->expected_response_code != hr->http_status)
+  rrs->ph = NULL;
+  if (rrs->expected_response_code != hr->http_status)
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d to command %s in %s:%u\n",
@@ -150,7 +150,7 @@ recoup_refresh_cb (void *cls,
   }
 
   if (GNUNET_OK !=
-      parse_coin_reference (ps->coin_reference,
+      parse_coin_reference (rrs->coin_reference,
                             &cref,
                             &idx))
   {
@@ -170,7 +170,7 @@ recoup_refresh_cb (void *cls,
       struct TALER_CoinSpendPublicKeyP oc;
 
       melt_cmd = TALER_TESTING_interpreter_lookup_command (is,
-                                                           ps->melt_reference);
+                                                           rrs->melt_reference);
       if (NULL == melt_cmd)
       {
         GNUNET_break (0);
@@ -185,7 +185,7 @@ recoup_refresh_cb (void *cls,
         GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                     "Coin %u not found in command %s\n",
                     0,
-                    ps->melt_reference);
+                    rrs->melt_reference);
         GNUNET_break (0);
         TALER_TESTING_interpreter_fail (is);
         return;
@@ -228,20 +228,21 @@ recoup_refresh_run (void *cls,
                     const struct TALER_TESTING_Command *cmd,
                     struct TALER_TESTING_Interpreter *is)
 {
-  struct RecoupRefreshState *ps = cls;
+  struct RecoupRefreshState *rrs = cls;
   const struct TALER_TESTING_Command *coin_cmd;
   const struct TALER_TESTING_Command *melt_cmd;
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
+  const struct TALER_PlanchetSecretsP *rplanchet;
   const struct TALER_PlanchetSecretsP *planchet;
   const struct TALER_ExchangeWithdrawValues *ewv;
   char *cref;
   unsigned int idx;
 
-  ps->is = is;
+  rrs->is = is;
   if (GNUNET_OK !=
-      parse_coin_reference (ps->coin_reference,
+      parse_coin_reference (rrs->coin_reference,
                             &cref,
                             &idx))
   {
@@ -259,14 +260,13 @@ recoup_refresh_run (void *cls,
     return;
   }
   melt_cmd = TALER_TESTING_interpreter_lookup_command (is,
-                                                       ps->melt_reference);
+                                                       rrs->melt_reference);
   if (NULL == melt_cmd)
   {
     GNUNET_break (0);
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_coin_priv (coin_cmd,
                                          idx,
@@ -294,7 +294,14 @@ recoup_refresh_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
+  if (GNUNET_OK !=
+      TALER_TESTING_get_trait_refresh_secret (melt_cmd,
+                                              &rplanchet))
+  {
+    GNUNET_break (0);
+    TALER_TESTING_interpreter_fail (is);
+    return;
+  }
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_denom_pub (coin_cmd,
                                          idx,
@@ -304,7 +311,6 @@ recoup_refresh_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   if (GNUNET_OK !=
       TALER_TESTING_get_trait_denom_sig (coin_cmd,
                                          idx,
@@ -314,19 +320,19 @@ recoup_refresh_run (void *cls,
     TALER_TESTING_interpreter_fail (is);
     return;
   }
-
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
               "Trying to recoup_refresh denomination '%s'\n",
               TALER_B2S (&denom_pub->h_key));
-
-  ps->ph = TALER_EXCHANGE_recoup_refresh (is->exchange,
-                                          denom_pub,
-                                          coin_sig,
-                                          ewv,
-                                          planchet,
-                                          &recoup_refresh_cb,
-                                          ps);
-  GNUNET_assert (NULL != ps->ph);
+  rrs->ph = TALER_EXCHANGE_recoup_refresh (is->exchange,
+                                           denom_pub,
+                                           coin_sig,
+                                           ewv,
+                                           rplanchet,
+                                           planchet,
+                                           idx,
+                                           &recoup_refresh_cb,
+                                           rrs);
+  GNUNET_assert (NULL != rrs->ph);
 }
 
 
@@ -341,13 +347,13 @@ static void
 recoup_refresh_cleanup (void *cls,
                         const struct TALER_TESTING_Command *cmd)
 {
-  struct RecoupRefreshState *ps = cls;
-  if (NULL != ps->ph)
+  struct RecoupRefreshState *rrs = cls;
+  if (NULL != rrs->ph)
   {
-    TALER_EXCHANGE_recoup_refresh_cancel (ps->ph);
-    ps->ph = NULL;
+    TALER_EXCHANGE_recoup_refresh_cancel (rrs->ph);
+    rrs->ph = NULL;
   }
-  GNUNET_free (ps);
+  GNUNET_free (rrs);
 }
 
 
@@ -358,15 +364,15 @@ TALER_TESTING_cmd_recoup_refresh (const char *label,
                                   const char *melt_reference,
                                   const char *amount)
 {
-  struct RecoupRefreshState *ps;
+  struct RecoupRefreshState *rrs;
 
-  ps = GNUNET_new (struct RecoupRefreshState);
-  ps->expected_response_code = expected_response_code;
-  ps->coin_reference = coin_reference;
-  ps->melt_reference = melt_reference;
+  rrs = GNUNET_new (struct RecoupRefreshState);
+  rrs->expected_response_code = expected_response_code;
+  rrs->coin_reference = coin_reference;
+  rrs->melt_reference = melt_reference;
   if (GNUNET_OK !=
       TALER_string_to_amount (amount,
-                              &ps->amount))
+                              &rrs->amount))
   {
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Failed to parse amount `%s' at %s\n",
@@ -376,7 +382,7 @@ TALER_TESTING_cmd_recoup_refresh (const char *label,
   }
   {
     struct TALER_TESTING_Command cmd = {
-      .cls = ps,
+      .cls = rrs,
       .label = label,
       .run = &recoup_refresh_run,
       .cleanup = &recoup_refresh_cleanup
