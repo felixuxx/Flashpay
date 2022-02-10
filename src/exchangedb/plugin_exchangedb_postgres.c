@@ -891,13 +891,14 @@ prepare_statements (struct PostgresClosure *pg)
       ",link_sig "
       ",denominations_serial "
       ",coin_ev"
+      ",ewv"
       ",h_coin_ev"
       ",ev_sig"
       ") SELECT $1, $2, $3, "
-      "         denominations_serial, $5, $6, $7"
+      "         denominations_serial, $5, $6, $7, $8"
       "    FROM denominations"
       "   WHERE denom_pub_hash=$4;",
-      7),
+      8),
     /* Obtain information about the coins created in a refresh
        operation, used in #postgres_get_refresh_reveal() */
     GNUNET_PQ_make_prepare (
@@ -908,6 +909,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",rrc.h_coin_ev"
       ",rrc.link_sig"
       ",rrc.coin_ev"
+      ",rrc.ewv"
       ",rrc.ev_sig"
       " FROM refresh_commitments"
       "    JOIN refresh_revealed_coins rrc"
@@ -1213,7 +1215,9 @@ prepare_statements (struct PostgresClosure *pg)
       " tp.transfer_pub"
       ",denoms.denom_pub"
       ",rrc.ev_sig"
+      ",rrc.ewv"
       ",rrc.link_sig"
+      ",rrc.freshcoin_index"
       " FROM refresh_commitments"
       "     JOIN refresh_revealed_coins rrc"
       "       USING (melt_serial_id)"
@@ -2241,6 +2245,7 @@ prepare_statements (struct PostgresClosure *pg)
       ",link_sig"
       ",coin_ev"
       ",ev_sig"
+      ",ewv"
       ",denominations_serial"
       ",melt_serial_id"
       " FROM refresh_revealed_coins"
@@ -2532,11 +2537,12 @@ prepare_statements (struct PostgresClosure *pg)
       ",coin_ev"
       ",h_coin_ev"
       ",ev_sig"
+      ",ewv"
       ",denominations_serial"
       ",melt_serial_id"
       ") VALUES "
-      "($1, $2, $3, $4, $5, $6, $7, $8);",
-      8),
+      "($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+      9),
     GNUNET_PQ_make_prepare (
       "insert_into_table_refresh_transfer_keys",
       "INSERT INTO refresh_transfer_keys"
@@ -6095,6 +6101,8 @@ postgres_insert_refresh_reveal (
       GNUNET_PQ_query_param_auto_from_type (&rrc->orig_coin_link_sig),
       GNUNET_PQ_query_param_auto_from_type (&rrc->h_denom_pub),
       TALER_PQ_query_param_blinded_planchet (&rrc->blinded_planchet),
+      // FIXME: needed? review link protocol!
+      TALER_PQ_query_param_exchange_withdraw_values (&rrc->exchange_vals),
       GNUNET_PQ_query_param_auto_from_type (&rrc->coin_envelope_hash),
       TALER_PQ_query_param_blinded_denom_sig (&rrc->coin_sig),
       GNUNET_PQ_query_param_end
@@ -6203,6 +6211,9 @@ add_revealed_coins (void *cls,
                                               &rrc->coin_envelope_hash),
         TALER_PQ_result_spec_blinded_planchet ("coin_ev",
                                                &rrc->blinded_planchet),
+        // FIXME: needed? review link protocol!
+        TALER_PQ_result_spec_exchange_withdraw_values ("ewv",
+                                                       &rrc->exchange_vals),
         TALER_PQ_result_spec_blinded_denom_sig ("ev_sig",
                                                 &rrc->coin_sig),
         GNUNET_PQ_result_spec_end
@@ -6384,6 +6395,11 @@ add_ldl (void *cls,
                                               &pos->orig_coin_link_sig),
         TALER_PQ_result_spec_blinded_denom_sig ("ev_sig",
                                                 &pos->ev_sig),
+        GNUNET_PQ_result_spec_uint32 ("freshcoin_index",
+                                      &pos->coin_refresh_offset),
+        // FIXME: needed? review link protocol!
+        TALER_PQ_result_spec_exchange_withdraw_values ("ewv",
+                                                       &pos->alg_values),
         TALER_PQ_result_spec_denom_pub ("denom_pub",
                                         &pos->denom_pub),
         GNUNET_PQ_result_spec_end

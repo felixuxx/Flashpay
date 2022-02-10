@@ -440,6 +440,8 @@ irbt_cb_table_refresh_revealed_coins (
     GNUNET_PQ_query_param_auto_from_type (&h_coin_ev),
     TALER_PQ_query_param_blinded_denom_sig (
       &td->details.refresh_revealed_coins.ev_sig),
+    TALER_PQ_query_param_exchange_withdraw_values (
+      &td->details.refresh_revealed_coins.ewv),
     GNUNET_PQ_query_param_uint64 (
       &td->details.refresh_revealed_coins.denominations_serial),
     GNUNET_PQ_query_param_uint64 (

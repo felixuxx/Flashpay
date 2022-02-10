@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014--2020 Taler Systems SA
+  Copyright (C) 2014--2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as
@@ -41,8 +41,11 @@
  */
 static char *config_file;
 
+/**
+ * Special configuration file to use when we want reserves
+ * to expire 'immediately'.
+ */
 static char *config_file_expire_reserve_now;
-
 
 /**
  * Exchange configuration data.
@@ -54,6 +57,14 @@ static struct TALER_TESTING_ExchangeConfiguration ec;
  */
 static struct TALER_TESTING_BankConfiguration bc;
 
+/**
+ * Some tests behave differently when using CS as we cannot
+ * re-use the coin private key for different denominations
+ * due to the derivation of it with the /csr values. Hence
+ * some tests behave differently in CS mode, hence this
+ * flag.
+ */
+static bool uses_cs;
 
 /**
  * Execute the taler-exchange-wirewatch command with
@@ -142,6 +153,11 @@ run (void *cls,
     /**
      * Withdraw EUR:1 using the SAME private coin key as for the previous coin
      * (in violation of the specification, to be detected on spending!).
+     * However, note that this does NOT work with 'CS', as for a different
+     * denomination we get different R0/R1 values from the exchange, and
+     * thus will generate a different coin private key as R0/R1 are hashed
+     * into the coin priv. So here, we fail to 'reuse' the key due to the
+     * cryptographic construction!
      */
     TALER_TESTING_cmd_withdraw_amount_reuse_key ("withdraw-coin-1x",
                                                  "create-reserve-1",
@@ -180,6 +196,13 @@ run (void *cls,
     TALER_TESTING_cmd_deposit_replay ("deposit-simple-replay",
                                       "deposit-simple",
                                       MHD_HTTP_OK),
+    /* This creates a conflict, as we have the same coin public key (reuse!),
+       but different denomination public keys (which is not allowed).
+       However, note that this does NOT work with 'CS', as for a different
+       denomination we get different R0/R1 values from the exchange, and
+       thus will generate a different coin private key as R0/R1 are hashed
+       into the coin priv. So here, we fail to 'reuse' the key due to the
+       cryptographic construction! */
     TALER_TESTING_cmd_deposit ("deposit-reused-coin-key-failure",
                                "withdraw-coin-1x",
                                0,
@@ -187,7 +210,9 @@ run (void *cls,
                                "{\"items\":[{\"name\":\"ice cream\",\"value\":1}]}",
                                GNUNET_TIME_UNIT_ZERO,
                                "EUR:1",
-                               MHD_HTTP_CONFLICT),
+                               uses_cs
+                               ? MHD_HTTP_OK
+                               : MHD_HTTP_CONFLICT),
     /**
      * Try to double spend using different wire details.
      */
@@ -230,7 +255,10 @@ run (void *cls,
   struct TALER_TESTING_Command refresh[] = {
     /**
      * Try to melt the coin that shared the private key with another
-     * coin (should fail). */
+     * coin (should fail). Note that in the CS-case, we fail also
+     * with MHD_HTTP_CONFLICT, but for a different reason: here it
+     * is not a denomination conflict, but a double-spending conflict.
+     */
     TALER_TESTING_cmd_melt ("refresh-melt-reused-coin-key-failure",
                             "withdraw-coin-1x",
                             MHD_HTTP_CONFLICT,
@@ -839,7 +867,9 @@ run (void *cls,
                               config_file),
     /* Check recoup is failing for the coin with the reused coin key */
     TALER_TESTING_cmd_recoup ("recoup-2x",
-                              MHD_HTTP_CONFLICT,
+                              uses_cs
+                              ? MHD_HTTP_OK
+                              : MHD_HTTP_CONFLICT,
                               "withdraw-coin-1x",
                               "EUR:1"),
     TALER_TESTING_cmd_recoup ("recoup-2",
@@ -988,6 +1018,7 @@ main (int argc,
                     NULL);
   cipher = GNUNET_TESTING_get_testname_from_underscore (argv[0]);
   GNUNET_assert (NULL != cipher);
+  uses_cs = (0 == strcmp (cipher, "cs"));
   GNUNET_asprintf (&config_file,
                    "test_exchange_api-%s.conf",
                    cipher);

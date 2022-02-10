@@ -277,6 +277,7 @@ TALER_planchet_blinding_secret_create (
 }
 
 
+// FIXME: move to denom.c?
 void
 TALER_planchet_setup_coin_priv (
   const struct TALER_PlanchetSecretsP *ps,

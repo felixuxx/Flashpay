@@ -377,6 +377,7 @@ CREATE TABLE IF NOT EXISTS refresh_revealed_coins
   ,coin_ev BYTEA NOT NULL -- UNIQUE
   ,h_coin_ev BYTEA NOT NULL CHECK(LENGTH(h_coin_ev)=64) -- UNIQUE
   ,ev_sig BYTEA NOT NULL
+  ,ewv BYTEA NOT NULL
   --  ,PRIMARY KEY (melt_serial_id, freshcoin_index) -- done per shard
   )
   PARTITION BY HASH (melt_serial_id);
@@ -390,6 +391,8 @@ COMMENT ON COLUMN refresh_revealed_coins.freshcoin_index
   IS 'index of the fresh coin being created (one melt operation may result in multiple fresh coins)';
 COMMENT ON COLUMN refresh_revealed_coins.coin_ev
   IS 'envelope of the new coin to be signed';
+COMMENT ON COLUMN refresh_revealed_coins.ewv
+  IS 'exchange contributed values in the creation of the fresh coin (see /csr)';
 COMMENT ON COLUMN refresh_revealed_coins.h_coin_ev
   IS 'hash of the envelope of the new coin to be signed (for lookups)';
 COMMENT ON COLUMN refresh_revealed_coins.ev_sig

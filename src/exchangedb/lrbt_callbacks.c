@@ -790,6 +790,9 @@ lrbt_cb_table_refresh_revealed_coins (void *cls,
       TALER_PQ_result_spec_blinded_denom_sig (
         "ev_sig",
         &td.details.refresh_revealed_coins.ev_sig),
+      TALER_PQ_result_spec_exchange_withdraw_values (
+        "ewv",
+        &td.details.refresh_revealed_coins.ewv),
       GNUNET_PQ_result_spec_uint64 (
         "denominations_serial",
         &td.details.refresh_revealed_coins.denominations_serial),

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014, 2015, 2016 Taler Systems SA
+  Copyright (C) 2014-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -103,6 +103,18 @@ TALER_PQ_query_param_blinded_denom_sig (
 
 
 /**
+ * Generate query parameter for the exchange's contribution during a
+ * withdraw. Internally, the various attributes of the @a alg_values will be
+ * serialized into on variable-size BLOB.
+ *
+ * @param x pointer to the query parameter to pass
+ */
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_exchange_withdraw_values (
+  const struct TALER_ExchangeWithdrawValues *alg_values);
+
+
+/**
  * Generate query parameter for a JSON object (stored as a string
  * in the DB).  Note that @a x must really be a JSON object or array,
  * passing just a value (string, integer) is not supported and will
@@ -177,6 +189,19 @@ struct GNUNET_PQ_ResultSpec
 TALER_PQ_result_spec_blinded_denom_sig (
   const char *name,
   struct TALER_BlindedDenominationSignature *denom_sig);
+
+
+/**
+ * Exchange withdraw values expected.
+ *
+ * @param name name of the field in the table
+ * @param[out] ewv where to store the exchange values
+ * @return array entry for the result specification to use
+ */
+struct GNUNET_PQ_ResultSpec
+TALER_PQ_result_spec_exchange_withdraw_values (
+  const char *name,
+  struct TALER_ExchangeWithdrawValues *ewv);
 
 
 /**

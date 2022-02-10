@@ -95,18 +95,25 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   struct TALER_DenominationPublicKey rpub;
   struct TALER_CoinSpendSignatureP link_sig;
   union TALER_DenominationBlindingKeyP bks;
+  struct TALER_ExchangeWithdrawValues alg_values;
+  uint32_t coin_idx;
   struct GNUNET_JSON_Specification spec[] = {
     TALER_JSON_spec_denom_pub ("denom_pub",
                                &rpub),
     TALER_JSON_spec_blinded_denom_sig ("ev_sig",
                                        &bsig),
+    // FIXME: add to spec!
+    TALER_JSON_spec_exchange_withdraw_values ("ewv",
+                                              &alg_values),
     GNUNET_JSON_spec_fixed_auto ("link_sig",
                                  &link_sig),
+    // FIXME: add to spec!
+    GNUNET_JSON_spec_uint32 ("coin_idx",
+                             &coin_idx),
     GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
   struct TALER_PlanchetSecretsP ps;
-  struct TALER_ExchangeWithdrawValues alg_values;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHash c_hash;
 
@@ -125,9 +132,6 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   TALER_transfer_secret_to_planchet_secret (&secret,
                                             coin_num,
                                             &ps);
-
-  // TODO: implement cipher handling
-  alg_values.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_coin_priv (&ps,
                                   &alg_values,
                                   coin_priv);
@@ -165,6 +169,20 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);
+    // FIXME-NEXT: this is probably the wrong 'ps'!
+    // However, the 'right' PS is not something the
+    // exchange could even give us. So probably we
+    // really need to change the derivation structure
+    // during refresh to derive the nonces differently
+    // and make /link possible!
+    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                "Link using PS(%u)=%s\n",
+                (unsigned int) coin_idx,
+                TALER_B2S (&ps));
+    TALER_cs_refresh_nonce_derive (
+      &ps,
+      coin_idx,
+      &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
     TALER_coin_ev_hash (&pd.blinded_planchet,
                         &pd.denom_pub_hash,
                         &coin_envelope_hash);

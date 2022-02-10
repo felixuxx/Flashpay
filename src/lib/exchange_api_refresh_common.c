@@ -150,6 +150,10 @@ TALER_EXCHANGE_get_melt_data_ (
          so this computation is redundant, and here additionally
          repeated KAPPA times. Could be avoided with slightly
          more bookkeeping in the future */
+      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
+                  "Refresh using PS(%u)=%s\n",
+                  j,
+                  TALER_B2S (&ps));
       TALER_cs_refresh_nonce_derive (
         ps,
         j,

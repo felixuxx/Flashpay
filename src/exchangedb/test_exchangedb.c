@@ -1565,6 +1565,8 @@ run (void *cls)
                    TALER_denom_sig_unblind (&ds,
                                             &cbc2.sig,
                                             &bks,
+                                            &c_hash,
+                                            &alg_values,
                                             &dkp->pub));
     FAILIF (GNUNET_OK !=
             TALER_denom_pub_verify (&dkp->pub,
@@ -1582,6 +1584,8 @@ run (void *cls)
                  TALER_denom_sig_unblind (&deposit.coin.denom_sig,
                                           &cbc.sig,
                                           &bks,
+                                          &c_hash,
+                                          &alg_values,
                                           &dkp->pub));
   deadline = GNUNET_TIME_timestamp_get ();
   {
@@ -1760,6 +1764,7 @@ run (void *cls)
                                   rp->blinded_msg_size);
       TALER_denom_pub_hash (&new_dkp[cnt]->pub,
                             &ccoin->h_denom_pub);
+      ccoin->exchange_vals = alg_values;
       TALER_coin_ev_hash (bp,
                           &ccoin->h_denom_pub,
                           &ccoin->coin_envelope_hash);
@@ -2167,6 +2172,8 @@ run (void *cls)
                  TALER_denom_sig_unblind (&deposit.coin.denom_sig,
                                           &cbc.sig,
                                           &bks,
+                                          &c_hash,
+                                          &alg_values,
                                           &dkp->pub));
   RND_BLK (&deposit.csig);
   RND_BLK (&deposit.merchant_pub);

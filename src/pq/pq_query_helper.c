@@ -531,6 +531,94 @@ TALER_PQ_query_param_blinded_planchet (
  * Function called to convert input argument into SQL parameters.
  *
  * @param cls closure
+ * @param data pointer to input argument
+ * @param data_len number of bytes in @a data (if applicable)
+ * @param[out] param_values SQL data to set
+ * @param[out] param_lengths SQL length data to set
+ * @param[out] param_formats SQL format data to set
+ * @param param_length number of entries available in the @a param_values, @a param_lengths and @a param_formats arrays
+ * @param[out] scratch buffer for dynamic allocations (to be done via #GNUNET_malloc()
+ * @param scratch_length number of entries left in @a scratch
+ * @return -1 on error, number of offsets used in @a scratch otherwise
+ */
+static int
+qconv_exchange_withdraw_values (void *cls,
+                                const void *data,
+                                size_t data_len,
+                                void *param_values[],
+                                int param_lengths[],
+                                int param_formats[],
+                                unsigned int param_length,
+                                void *scratch[],
+                                unsigned int scratch_length)
+{
+  const struct TALER_ExchangeWithdrawValues *alg_values = data;
+  size_t tlen;
+  size_t len;
+  uint32_t be[2];
+  char *buf;
+
+  (void) cls;
+  (void) data_len;
+  GNUNET_assert (1 == param_length);
+  GNUNET_assert (scratch_length > 0);
+  GNUNET_break (NULL == cls);
+  be[0] = htonl ((uint32_t) alg_values->cipher);
+  be[1] = htonl (0x010000); /* magic marker: EWV */
+  switch (alg_values->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    tlen = 0;
+    break;
+  case TALER_DENOMINATION_CS:
+    tlen = sizeof (struct TALER_ExchangeWithdrawCsValues);
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+  len = tlen + sizeof (be);
+  buf = GNUNET_malloc (len);
+  memcpy (buf,
+          &be,
+          sizeof (be));
+  switch (alg_values->cipher)
+  {
+  case TALER_DENOMINATION_RSA:
+    break;
+  case TALER_DENOMINATION_CS:
+    memcpy (&buf[sizeof (be)],
+            &alg_values->details.cs_values,
+            tlen);
+    break;
+  default:
+    GNUNET_assert (0);
+  }
+  scratch[0] = buf;
+  param_values[0] = (void *) buf;
+  param_lengths[0] = len;
+  param_formats[0] = 1;
+  return 1;
+}
+
+
+struct GNUNET_PQ_QueryParam
+TALER_PQ_query_param_exchange_withdraw_values (
+  const struct TALER_ExchangeWithdrawValues *alg_values)
+{
+  struct GNUNET_PQ_QueryParam res = {
+    .conv = &qconv_exchange_withdraw_values,
+    .data = alg_values,
+    .num_params = 1
+  };
+
+  return res;
+}
+
+
+/**
+ * Function called to convert input argument into SQL parameters.
+ *
+ * @param cls closure
  * @param data pointer to input argument, here a `json_t *`
  * @param data_len number of bytes in @a data (if applicable)
  * @param[out] param_values SQL data to set

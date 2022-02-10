@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2014-2019 Taler Systems SA
+  Copyright (C) 2014-2019, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -86,6 +86,10 @@ handle_link_data (void *cls,
                                  &pos->denom_pub),
       TALER_JSON_pack_blinded_denom_sig ("ev_sig",
                                          &pos->ev_sig),
+      GNUNET_JSON_pack_uint64 ("coin_idx",
+                               pos->coin_refresh_offset),
+      TALER_JSON_pack_exchange_withdraw_values ("ewv",
+                                                &pos->alg_values),
       GNUNET_JSON_pack_data_auto ("link_sig",
                                   &pos->orig_coin_link_sig));
     if ( (NULL == obj) ||

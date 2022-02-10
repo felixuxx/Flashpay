@@ -105,7 +105,10 @@ struct RevealContext
   /**
    * Array of information about fresh coins being revealed.
    */
-  const struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs;
+  /* FIXME: const would be nicer here, but we initalize
+     the 'alg_values' in the verification
+     routine; suboptimal to be fixed... */
+  struct TALER_EXCHANGEDB_RefreshRevealedCoin *rrcs;
 
   /**
    * Envelopes to be signed.
@@ -141,7 +144,6 @@ check_commitment (struct RevealContext *rctx,
                   struct MHD_Connection *connection,
                   MHD_RESULT *mhd_ret)
 {
-  struct TALER_ExchangeWithdrawValues alg_values[rctx->num_fresh_coins];
   struct TALER_CsNonce nonces[rctx->num_fresh_coins];
   unsigned int aoff = 0;
 
@@ -184,8 +186,10 @@ check_commitment (struct RevealContext *rctx,
   for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
   {
     const struct TALER_DenominationPublicKey *dk = &rctx->dks[j]->denom_pub;
+    struct TALER_ExchangeWithdrawValues *alg_values
+      = &rctx->rrcs[j].exchange_vals;
 
-    alg_values[j].cipher = dk->cipher;
+    alg_values->cipher = dk->cipher;
     switch (dk->cipher)
     {
     case TALER_DENOMINATION_INVALID:
@@ -200,7 +204,7 @@ check_commitment (struct RevealContext *rctx,
         ec = TEH_keys_denomination_cs_r_pub (
           &rctx->rrcs[j].h_denom_pub,
           &nonces[aoff],
-          &alg_values[j].details.cs_values.r_pub_pair);
+          &alg_values->details.cs_values.r_pub_pair);
         if (TALER_EC_NONE != ec)
         {
           *mhd_ret = TALER_MHD_reply_with_error (connection,
@@ -251,12 +255,13 @@ check_commitment (struct RevealContext *rctx,
         aoff = 0;
         for (unsigned int j = 0; j<rctx->num_fresh_coins; j++)
         {
-          const struct TALER_DenominationPublicKey *dk =
-            &rctx->dks[j]->denom_pub;
+          const struct TALER_DenominationPublicKey *dk
+            = &rctx->dks[j]->denom_pub;
           struct TALER_RefreshCoinData *rcd = &rce->new_coins[j];
           struct TALER_CoinSpendPrivateKeyP coin_priv;
           union TALER_DenominationBlindingKeyP bks;
-          const struct TALER_ExchangeWithdrawValues *alg_value = &alg_values[j];
+          const struct TALER_ExchangeWithdrawValues *alg_value
+            = &rctx->rrcs[j].exchange_vals;
           struct TALER_PlanchetDetail pd;
           struct TALER_CoinPubHash c_hash;
           struct TALER_PlanchetSecretsP ps;
