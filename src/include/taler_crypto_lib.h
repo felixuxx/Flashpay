@@ -1982,16 +1982,14 @@ TALER_CRYPTO_helper_cs_revoke (
  * @param dh helper to process connection
  * @param h_cs hash of the CS public key to revoke
  * @param nonce witdhraw nonce
- * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
- * @return R, the value inside the structure will be NULL on failure,
- *         see @a ec for details about the failure
+ * @param[out] crp set to the pair of R values
+ * @return set to the error code (or #TALER_EC_NONE on success)
  */
-// FIXME: swap rval and ec!
-struct TALER_DenominationCSPublicRPairP
+enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                  const struct TALER_CsPubHashP *h_cs,
                                  const struct TALER_CsNonce *nonce,
-                                 enum TALER_ErrorCode *ec);
+                                 struct TALER_DenominationCSPublicRPairP *crp);
 
 
 /**

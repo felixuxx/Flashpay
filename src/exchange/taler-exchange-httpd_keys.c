@@ -2473,7 +2473,6 @@ TEH_keys_denomination_cs_r_pub (const struct
 {
   struct TEH_KeyStateHandle *ksh;
   struct HelperDenomination *hd;
-  enum TALER_ErrorCode r_derive_ec;
 
   ksh = TEH_keys_get_state ();
   if (NULL == ksh)
@@ -2491,11 +2490,10 @@ TEH_keys_denomination_cs_r_pub (const struct
     return TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE;
   }
 
-  *r_pub = TALER_CRYPTO_helper_cs_r_derive (ksh->helpers->csdh,
-                                            &hd->h_details.h_cs,
-                                            nonce,
-                                            &r_derive_ec);
-  return r_derive_ec;
+  return TALER_CRYPTO_helper_cs_r_derive (ksh->helpers->csdh,
+                                          &hd->h_details.h_cs,
+                                          nonce,
+                                          r_pub);
 }
 
 

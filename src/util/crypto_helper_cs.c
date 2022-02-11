@@ -607,18 +607,17 @@ TALER_CRYPTO_helper_cs_revoke (
 }
 
 
-struct TALER_DenominationCSPublicRPairP
+enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                  const struct TALER_CsPubHashP *h_cs,
                                  const struct TALER_CsNonce *nonce,
-                                 enum TALER_ErrorCode *ec)
+                                 struct TALER_DenominationCSPublicRPairP *crp)
 {
-  struct TALER_DenominationCSPublicRPairP r_pub;
+  enum TALER_ErrorCode ec = TALER_EC_INVALID;
 
-  memset (&r_pub,
+  memset (crp,
           0,
-          sizeof (r_pub));
-
+          sizeof (*crp));
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting R derivation process\n");
   if (GNUNET_OK !=
@@ -626,8 +625,7 @@ TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to connect to helper\n");
-    *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
-    return r_pub;
+    return TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -649,8 +647,7 @@ TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                            "send");
       do_disconnect (dh);
-      *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
-      return r_pub;
+      return TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
     }
   }
 
@@ -663,7 +660,6 @@ TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
       = (const struct GNUNET_MessageHeader *) buf;
     bool finished = false;
 
-    *ec = TALER_EC_INVALID;
     while (1)
     {
       uint16_t msize;
@@ -683,20 +679,19 @@ TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
         {
           GNUNET_assert (finished);
           GNUNET_assert (0 == off);
-          return r_pub;
+          return ec;
         }
         GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                              "recv");
         do_disconnect (dh);
-        *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
-        break;
+        return TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
       }
       if (0 == ret)
       {
         GNUNET_break (0 == off);
         if (! finished)
-          *ec = TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
-        return r_pub;
+          return TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        return ec;
       }
       off += ret;
 more:
@@ -712,15 +707,13 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-          goto end;
+          return TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
         }
         if (finished)
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-          goto end;
+          return TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
         }
         {
           const struct TALER_CRYPTO_RDeriveResponse *rdr =
@@ -728,9 +721,9 @@ more:
 
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "Received R\n");
-          *ec = TALER_EC_NONE;
           finished = true;
-          r_pub = rdr->r_pub;
+          ec = TALER_EC_NONE;
+          *crp = rdr->r_pub;
           break;
         }
       case TALER_HELPER_CS_MT_RES_RDERIVE_FAILURE:
@@ -738,14 +731,13 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-          goto end;
+          return TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
         }
         {
           const struct TALER_CRYPTO_RDeriveFailure *rdf =
             (const struct TALER_CRYPTO_RDeriveFailure *) buf;
 
-          *ec = (enum TALER_ErrorCode) ntohl (rdf->ec);
+          ec = (enum TALER_ErrorCode) ntohl (rdf->ec);
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "R derivation failed!\n");
           finished = true;
@@ -760,8 +752,7 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-          goto end;
+          return TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
         }
         break; /* while(1) loop ensures we recvfrom() again */
       case TALER_HELPER_CS_MT_PURGE:
@@ -773,8 +764,7 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-          goto end;
+          return TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
         }
         break; /* while(1) loop ensures we recvfrom() again */
       case TALER_HELPER_CS_SYNCED:
@@ -788,8 +778,7 @@ more:
                     "Received unexpected message of type %u\n",
                     ntohs (hdr->type));
         do_disconnect (dh);
-        *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
-        goto end;
+        return TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
       }
       memmove (buf,
                &buf[msize],
@@ -797,8 +786,6 @@ more:
       off -= msize;
       goto more;
     } /* while(1) */
-end:
-    return r_pub;
   }
 }
 
