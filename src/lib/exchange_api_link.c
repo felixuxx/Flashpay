@@ -113,7 +113,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetMasterSecretP ps;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHash c_hash;
 
@@ -175,14 +175,15 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     // really need to change the derivation structure
     // during refresh to derive the nonces differently
     // and make /link possible!
-    GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                "Link using PS(%u)=%s\n",
-                (unsigned int) coin_idx,
-                TALER_B2S (&ps));
+    /* FIXME: we cannot get the 'rms' here, and
+       if the TALER_coin_ev_hash() includes that 'nonce',
+       we are screwed on/link. */
+#if FIXME_OMIT
     TALER_cs_refresh_nonce_derive (
       &ps,
       coin_idx,
       &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
+#endif
     TALER_coin_ev_hash (&pd.blinded_planchet,
                         &pd.denom_pub_hash,
                         &coin_envelope_hash);

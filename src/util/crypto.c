@@ -146,8 +146,8 @@ TALER_link_recover_transfer_secret (
 
 
 void
-TALER_planchet_setup_random (
-  struct TALER_PlanchetSecretsP *ps)
+TALER_planchet_master_setup_random (
+  struct TALER_PlanchetMasterSecretP *ps)
 {
   GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
                               ps,
@@ -156,10 +156,20 @@ TALER_planchet_setup_random (
 
 
 void
+TALER_refresh_master_setup_random (
+  struct TALER_RefreshMasterSecretP *rms)
+{
+  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
+                              rms,
+                              sizeof (*rms));
+}
+
+
+void
 TALER_transfer_secret_to_planchet_secret (
   const struct TALER_TransferSecretP *secret_seed,
   uint32_t coin_num_salt,
-  struct TALER_PlanchetSecretsP *ps)
+  struct TALER_PlanchetMasterSecretP *ps)
 {
   uint32_t be_salt = htonl (coin_num_salt);
 
@@ -178,7 +188,7 @@ TALER_transfer_secret_to_planchet_secret (
 
 void
 TALER_planchet_secret_to_transfer_priv (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   uint32_t cnc_num,
   struct TALER_TransferPrivateKeyP *tpriv)
 {
@@ -189,8 +199,8 @@ TALER_planchet_secret_to_transfer_priv (
                                     sizeof (*tpriv),
                                     &be_salt,
                                     sizeof (be_salt),
-                                    ps,
-                                    sizeof (*ps),
+                                    rms,
+                                    sizeof (*rms),
                                     "taler-transfer-priv-derivation",
                                     strlen ("taler-transfer-priv-derivation"),
                                     NULL, 0));
@@ -199,7 +209,7 @@ TALER_planchet_secret_to_transfer_priv (
 
 void
 TALER_cs_withdraw_nonce_derive (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetMasterSecretP *ps,
   struct TALER_CsNonce *nonce)
 {
   GNUNET_assert (GNUNET_YES ==
@@ -216,7 +226,7 @@ TALER_cs_withdraw_nonce_derive (
 
 void
 TALER_cs_refresh_nonce_derive (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   uint32_t coin_num_salt,
   struct TALER_CsNonce *nonce)
 {
@@ -229,8 +239,8 @@ TALER_cs_refresh_nonce_derive (
                                     sizeof (be_salt),
                                     "refresh-n", // FIXME: value used in spec?
                                     strlen ("refresh-n"),
-                                    ps,
-                                    sizeof(*ps),
+                                    rms,
+                                    sizeof(*rms),
                                     NULL,
                                     0));
 }
@@ -238,7 +248,7 @@ TALER_cs_refresh_nonce_derive (
 
 void
 TALER_planchet_blinding_secret_create (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetMasterSecretP *ps,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   union TALER_DenominationBlindingKeyP *bks)
 {
@@ -280,7 +290,7 @@ TALER_planchet_blinding_secret_create (
 // FIXME: move to denom.c?
 void
 TALER_planchet_setup_coin_priv (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetMasterSecretP *ps,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_CoinSpendPrivateKeyP *coin_priv)
 {
@@ -305,8 +315,8 @@ TALER_planchet_setup_coin_priv (
                                       strlen ("coin"),
                                       ps,
                                       sizeof(*ps),
-                                      &alg_values->details,    /* Could be null on RSA case*/
-                                      sizeof(alg_values->details),
+                                      &alg_values->details.cs_values,
+                                      sizeof(alg_values->details.cs_values),
                                       NULL,
                                       0));
     break;
@@ -512,11 +522,22 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
        nonce here; if we omit this, we could skip sending
        the nonce in the /recoup protocol. OTOH, there is
        certainly no further harm (beyond the extra
-       bytes send on /recoup) from including it. */
+       bytes send on /recoup) from including it.
+       ****
+       UPDATE: hashing 'nonce' here kills link, as
+       link does not HAVE the 'rms' to derive the nonce
+       from! (see FIXME_OMIT in exchange_api_link.c)
+       ***
+       => either figure elegant way to resolve this,
+       or omit hashing nonce and ALSO skip sending
+       nonce in /recoup!
+    */
+#if FIXME_OMIT
     GNUNET_CRYPTO_hash_context_read (
       hash_context,
       &blinded_planchet->details.cs_blinded_planchet.nonce,
       sizeof (blinded_planchet->details.cs_blinded_planchet.nonce));
+#endif
     GNUNET_CRYPTO_hash_context_read (
       hash_context,
       &blinded_planchet->details.cs_blinded_planchet.c[0],

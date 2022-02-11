@@ -42,8 +42,8 @@ test_high_level (void)
   union TALER_DenominationBlindingKeyP bks2;
   struct TALER_CoinSpendPrivateKeyP coin_priv1;
   struct TALER_CoinSpendPrivateKeyP coin_priv2;
-  struct TALER_PlanchetSecretsP ps1;
-  struct TALER_PlanchetSecretsP ps2;
+  struct TALER_PlanchetMasterSecretP ps1;
+  struct TALER_PlanchetMasterSecretP ps2;
   struct TALER_ExchangeWithdrawValues alg1;
   struct TALER_ExchangeWithdrawValues alg2;
 
@@ -110,7 +110,7 @@ test_high_level (void)
 static int
 test_planchets_rsa (void)
 {
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
   struct TALER_DenominationPrivateKey dk_priv;
@@ -184,7 +184,7 @@ test_planchets_rsa (void)
 static int
 test_planchets_cs (void)
 {
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
   struct TALER_DenominationPrivateKey dk_priv;

@@ -267,7 +267,7 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
   struct TALER_BlindedDenominationSignature ds;
   enum TALER_ErrorCode ec;
   bool success = false;
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetMasterSecretP ps;
   struct TALER_ExchangeWithdrawValues alg_values;
   struct TALER_CoinPubHash c_hash;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
@@ -438,15 +438,12 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
   struct TALER_BlindedDenominationSignature ds;
   enum TALER_ErrorCode ec;
   struct GNUNET_TIME_Relative duration;
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetMasterSecretP ps;
   struct TALER_CoinSpendPrivateKeyP coin_priv;
   union TALER_DenominationBlindingKeyP bks;
   struct TALER_ExchangeWithdrawValues alg_values;
 
-  GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_STRONG,
-                              &ps,
-                              sizeof (ps));
-
+  TALER_planchet_master_setup_random (&ps);
   alg_values.cipher = TALER_DENOMINATION_RSA;
   TALER_planchet_setup_coin_priv (&ps, &alg_values, &coin_priv);
   TALER_planchet_blinding_secret_create (&ps, &alg_values, &bks);

@@ -129,7 +129,7 @@ struct WithdrawState
   /**
    * Private key material of the coin, set by the interpreter.
    */
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetMasterSecretP ps;
 
   /**
    * Reserve history entry that corresponds to this operation.
@@ -407,11 +407,11 @@ withdraw_run (void *cls,
                                 &ws->reserve_pub);
   if (NULL == ws->reuse_coin_key_ref)
   {
-    TALER_planchet_setup_random (&ws->ps);
+    TALER_planchet_master_setup_random (&ws->ps);
   }
   else
   {
-    const struct TALER_PlanchetSecretsP *ps;
+    const struct TALER_PlanchetMasterSecretP *ps;
     const struct TALER_TESTING_Command *cref;
     char *cstr;
     unsigned int index;

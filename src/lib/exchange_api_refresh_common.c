@@ -44,7 +44,7 @@ TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
 
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_get_melt_data_ (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct MeltData *md)
@@ -115,7 +115,7 @@ TALER_EXCHANGE_get_melt_data_ (
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
   {
     TALER_planchet_secret_to_transfer_priv (
-      ps,
+      rms,
       i,
       &md->melted_coin.transfer_priv[i]);
     GNUNET_CRYPTO_ecdhe_key_get_public (
@@ -125,12 +125,12 @@ TALER_EXCHANGE_get_melt_data_ (
                                        &md->melted_coin.transfer_priv[i],
                                        &trans_sec[i]);
     md->fresh_coins[i] = GNUNET_new_array (rd->fresh_pks_len,
-                                           struct TALER_PlanchetSecretsP);
+                                           struct TALER_PlanchetMasterSecretP);
     rce[i].new_coins = GNUNET_new_array (rd->fresh_pks_len,
                                          struct TALER_RefreshCoinData);
     for (unsigned int j = 0; j<rd->fresh_pks_len; j++)
     {
-      struct TALER_PlanchetSecretsP *fc = &md->fresh_coins[i][j];
+      struct TALER_PlanchetMasterSecretP *fc = &md->fresh_coins[i][j];
       struct TALER_RefreshCoinData *rcd = &rce[i].new_coins[j];
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHash c_hash;
@@ -150,12 +150,8 @@ TALER_EXCHANGE_get_melt_data_ (
          so this computation is redundant, and here additionally
          repeated KAPPA times. Could be avoided with slightly
          more bookkeeping in the future */
-      GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
-                  "Refresh using PS(%u)=%s\n",
-                  j,
-                  TALER_B2S (&ps));
       TALER_cs_refresh_nonce_derive (
-        ps,
+        rms,
         j,
         &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
       if (GNUNET_OK !=

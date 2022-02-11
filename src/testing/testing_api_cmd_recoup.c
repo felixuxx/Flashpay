@@ -239,7 +239,7 @@ recoup_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
-  const struct TALER_PlanchetSecretsP *planchet;
+  const struct TALER_PlanchetMasterSecretP *planchet;
   char *cref;
   unsigned int idx;
   const struct TALER_ExchangeWithdrawValues *ewv;

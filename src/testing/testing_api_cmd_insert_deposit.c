@@ -201,7 +201,7 @@ insert_deposit_run (void *cls,
     struct TALER_CoinPubHash c_hash;
     struct TALER_PlanchetDetail pd;
     struct TALER_BlindedDenominationSignature bds;
-    struct TALER_PlanchetSecretsP ps;
+    struct TALER_PlanchetMasterSecretP ps;
     struct TALER_ExchangeWithdrawValues alg_values;
     union TALER_DenominationBlindingKeyP bks;
 

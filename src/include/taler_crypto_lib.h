@@ -464,12 +464,25 @@ struct TALER_RsaPubHashP
 
 /**
  * Master key material for the deriviation of
+ * private coins and blinding factors during
+ * withdraw or refresh.
+ */
+struct TALER_PlanchetMasterSecretP
+{
+
+  /**
+   * Key material.
+   */
+  uint32_t key_data[8];
+
+};
+
+
+/**
+ * Master key material for the deriviation of
  * private coins and blinding factors.
  */
-// FIXME: split this struct, we should have
-// a different one for the Melt/Refresh secrets
-// and the withdraw secrets!
-struct TALER_PlanchetSecretsP
+struct TALER_RefreshMasterSecretP
 {
 
   /**
@@ -1026,7 +1039,7 @@ TALER_denom_pub_free (struct TALER_DenominationPublicKey *denom_pub);
  */
 void
 TALER_planchet_setup_coin_priv (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetMasterSecretP *ps,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct TALER_CoinSpendPrivateKeyP *coin_priv);
 
@@ -1039,7 +1052,7 @@ TALER_planchet_setup_coin_priv (
  */
 void
 TALER_cs_withdraw_nonce_derive (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetMasterSecretP *ps,
   struct TALER_CsNonce *nonce);
 
 
@@ -1047,13 +1060,13 @@ TALER_cs_withdraw_nonce_derive (
  * @brief Method to derive /csr nonce
  * to be used during refresh/melt operation.
  *
- * @param coin_priv private key of the coin
+ * @param rms secret input for the refresh operation
  * @param idx index of the fresh coin
  * @param[out] nonce set to nonce included in the request to generate R_0 and R_1
  */
 void
 TALER_cs_refresh_nonce_derive (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   uint32_t idx,
   struct TALER_CsNonce *nonce);
 
@@ -1511,34 +1524,44 @@ void
 TALER_transfer_secret_to_planchet_secret (
   const struct TALER_TransferSecretP *secret_seed,
   uint32_t coin_num_salt,
-  struct TALER_PlanchetSecretsP *ps);
+  struct TALER_PlanchetMasterSecretP *ps);
 
 
 /**
  * Derive the @a coin_num transfer private key @a tpriv from a refresh from
- * the @a ps seed of the refresh operation.  The transfer private key
+ * the @a rms seed of the refresh operation.  The transfer private key
  * derivation is based on the @a ps with a KDF salted by the @a coin_num.
  *
- * @param ps seed to use for KDF to derive transfer keys
+ * @param rms seed to use for KDF to derive transfer keys
  * @param cnc_num cut and choose number to include in KDF
  * @param[out] tpriv value to initialize
  */
 void
 TALER_planchet_secret_to_transfer_priv (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   uint32_t cnc_num,
   struct TALER_TransferPrivateKeyP *tpriv);
 
 
 /**
- * Setup information for fresh coins to be withdrawn
- * or refreshed.
+ * Setup secret seed information for fresh coins to be
+ * withdrawn.
  *
  * @param[out] ps value to initialize
  */
 void
-TALER_planchet_setup_random (
-  struct TALER_PlanchetSecretsP *ps);
+TALER_planchet_master_setup_random (
+  struct TALER_PlanchetMasterSecretP *ps);
+
+
+/**
+ * Setup secret seed for fresh coins to be refreshed.
+ *
+ * @param[out] rms value to initialize
+ */
+void
+TALER_refresh_master_setup_random (
+  struct TALER_RefreshMasterSecretP *rms);
 
 
 /**
@@ -1551,7 +1574,7 @@ TALER_planchet_setup_random (
  */
 void
 TALER_planchet_blinding_secret_create (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetMasterSecretP *ps,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   union TALER_DenominationBlindingKeyP *bks);
 

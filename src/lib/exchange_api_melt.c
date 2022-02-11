@@ -78,7 +78,7 @@ struct TALER_EXCHANGE_MeltHandle
   /**
    * The secret the entire melt operation is seeded from.
    */
-  const struct TALER_PlanchetSecretsP *ps;
+  const struct TALER_RefreshMasterSecretP *rms;
 
   /**
    * Details about the characteristics of the requested melt operation.
@@ -490,7 +490,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   struct TALER_DenominationHash h_denom_pub;
 
   if (GNUNET_OK !=
-      TALER_EXCHANGE_get_melt_data_ (mh->ps,
+      TALER_EXCHANGE_get_melt_data_ (mh->rms,
                                      mh->rd,
                                      mh->alg_values,
                                      &mh->md))
@@ -637,7 +637,7 @@ csr_cb (void *cls,
 
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     const struct TALER_PlanchetSecretsP *ps,
+                     const struct TALER_RefreshMasterSecretP *rms,
                      const struct TALER_EXCHANGE_RefreshData *rd,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls)
@@ -657,7 +657,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->noreveal_index = TALER_CNC_KAPPA; /* invalid value */
   mh->exchange = exchange;
   mh->rd = rd;
-  mh->ps = ps;
+  mh->rms = rms; /* FIXME: deep copy might be safer... */
   mh->melt_cb = melt_cb;
   mh->melt_cb_cls = melt_cb_cls;
   mh->alg_values = GNUNET_new_array (rd->fresh_pks_len,
@@ -683,7 +683,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
     case TALER_DENOMINATION_CS:
       wv->cipher = TALER_DENOMINATION_CS;
       nks[nks_off].pk = fresh_pk;
-      TALER_cs_refresh_nonce_derive (ps,
+      TALER_cs_refresh_nonce_derive (rms,
                                      i,
                                      &nks[nks_off].nonce);
       nks_off++;

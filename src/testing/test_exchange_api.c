@@ -415,6 +415,16 @@ run (void *cls,
                                            "EUR:0.08",
                                            bc.exchange_payto,
                                            bc.user43_payto),
+    /* In case of CS, one transaction above succeeded that
+       failed for RSA, hence we need to check for an extra transfer here */
+    uses_cs
+    ? TALER_TESTING_cmd_check_bank_transfer ("check_bank_transfer-98c",
+                                             ec.exchange_url,
+                                             "EUR:0.98",
+                                             bc.exchange_payto,
+                                             bc.user42_payto)
+    : TALER_TESTING_cmd_sleep ("dummy",
+                               0),
     TALER_TESTING_cmd_check_bank_empty ("check_bank_empty"),
     TALER_TESTING_cmd_track_transaction ("deposit-wtid-ok",
                                          "deposit-simple",
@@ -865,11 +875,11 @@ run (void *cls,
                               MHD_HTTP_OK,
                               "recoup-withdraw-coin-2a",
                               config_file),
-    /* Check recoup is failing for the coin with the reused coin key */
+    /* Check recoup is failing for the coin with the reused coin key
+       (fails either because of denomination conflict (RSA) or
+       double-spending (CS))*/
     TALER_TESTING_cmd_recoup ("recoup-2x",
-                              uses_cs
-                              ? MHD_HTTP_OK
-                              : MHD_HTTP_CONFLICT,
+                              MHD_HTTP_CONFLICT,
                               "withdraw-coin-1x",
                               "EUR:1"),
     TALER_TESTING_cmd_recoup ("recoup-2",

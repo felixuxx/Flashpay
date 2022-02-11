@@ -141,7 +141,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
   }
   for (unsigned int i = 0; i<rrh->md.num_fresh_coins; i++)
   {
-    const struct TALER_PlanchetSecretsP *fc;
+    const struct TALER_PlanchetMasterSecretP *fc;
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
     struct TALER_BlindedDenominationSignature blind_sig;
@@ -316,7 +316,7 @@ handle_refresh_reveal_finished (void *cls,
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   unsigned int num_coins,
   const struct TALER_ExchangeWithdrawValues *alg_values,
@@ -354,7 +354,7 @@ TALER_EXCHANGE_refreshes_reveal (
     return NULL;
   }
   if (GNUNET_OK !=
-      TALER_EXCHANGE_get_melt_data_ (ps,
+      TALER_EXCHANGE_get_melt_data_ (rms,
                                      rd,
                                      alg_values,
                                      &md))
@@ -380,7 +380,7 @@ TALER_EXCHANGE_refreshes_reveal (
     struct TALER_DenominationHash denom_hash;
     struct TALER_PlanchetDetail pd;
     struct TALER_CoinPubHash c_hash;
-    struct TALER_PlanchetSecretsP coin_ps;
+    struct TALER_PlanchetMasterSecretP coin_ps;
     union TALER_DenominationBlindingKeyP bks;
     struct TALER_CoinSpendPrivateKeyP coin_priv;
 
@@ -400,7 +400,7 @@ TALER_EXCHANGE_refreshes_reveal (
                                            &alg_values[i],
                                            &bks);
     TALER_cs_refresh_nonce_derive (
-      ps,
+      rms,
       i,
       &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
     if (GNUNET_OK !=

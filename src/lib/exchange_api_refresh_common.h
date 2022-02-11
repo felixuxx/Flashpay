@@ -112,21 +112,21 @@ struct MeltData
    * Arrays of @e num_fresh_coins with information about the fresh
    * coins to be created, for each cut-and-choose dimension.
    */
-  struct TALER_PlanchetSecretsP *fresh_coins[TALER_CNC_KAPPA];
+  struct TALER_PlanchetMasterSecretP *fresh_coins[TALER_CNC_KAPPA];
 };
 
 
 /**
  * Compute the melt data from the refresh data and secret.
  *
- * @param ps secret internals of the refresh-reveal operation
+ * @param rms secret internals of the refresh-reveal operation
  * @param rd refresh data with the characteristics of the operation
  * @param alg_values contributions from the exchange into the melt
  * @param[out] rd where to write the derived melt data
  */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_get_melt_data_ (
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   const struct TALER_ExchangeWithdrawValues *alg_values,
   struct MeltData *md);

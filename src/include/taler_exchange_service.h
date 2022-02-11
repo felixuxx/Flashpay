@@ -1500,7 +1500,7 @@ TALER_EXCHANGE_withdraw (
   struct TALER_EXCHANGE_Handle *exchange,
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_ReservePrivateKeyP *reserve_priv,
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_PlanchetMasterSecretP *ps,
   TALER_EXCHANGE_WithdrawCallback res_cb,
   void *res_cb_cls);
 
@@ -1667,7 +1667,7 @@ typedef void
  * prior to calling this function.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param ps the fresh secret that defines the refresh operation
+ * @param rms the fresh secret that defines the refresh operation
  * @param rd the refresh data specifying the characteristics of the operation
  * @param melt_cb the callback to call with the result
  * @param melt_cb_cls closure for @a melt_cb
@@ -1676,7 +1676,7 @@ typedef void
  */
 struct TALER_EXCHANGE_MeltHandle *
 TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
-                     const struct TALER_PlanchetSecretsP *ps,
+                     const struct TALER_RefreshMasterSecretP *rms,
                      const struct TALER_EXCHANGE_RefreshData *rd,
                      TALER_EXCHANGE_MeltCallback melt_cb,
                      void *melt_cb_cls);
@@ -1716,7 +1716,7 @@ typedef void
   const struct TALER_EXCHANGE_HttpResponse *hr,
   unsigned int num_coins,
   const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-  const struct TALER_PlanchetSecretsP *psa,
+  const struct TALER_PlanchetMasterSecretP *psa,
   const struct TALER_DenominationSignature *sigs);
 
 
@@ -1736,7 +1736,7 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
  * prior to calling this function.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
- * @param ps the fresh secret that defines the refresh operation
+ * @param rms the fresh secret that defines the refresh operation
  * @param rd the refresh data that characterizes the refresh operation
  * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, must match value in @a rd
  * @param alg_values array @a num_coins of exchange values contributed to the refresh operation
@@ -1751,7 +1751,7 @@ struct TALER_EXCHANGE_RefreshesRevealHandle;
 struct TALER_EXCHANGE_RefreshesRevealHandle *
 TALER_EXCHANGE_refreshes_reveal (
   struct TALER_EXCHANGE_Handle *exchange,
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
   const struct TALER_EXCHANGE_RefreshData *rd,
   unsigned int num_coins,
   const struct TALER_ExchangeWithdrawValues *alg_values,
@@ -2186,7 +2186,7 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                        const struct TALER_EXCHANGE_DenomPublicKey *pk,
                        const struct TALER_DenominationSignature *denom_sig,
                        const struct TALER_ExchangeWithdrawValues *exchange_vals,
-                       const struct TALER_PlanchetSecretsP *ps,
+                       const struct TALER_PlanchetMasterSecretP *ps,
                        TALER_EXCHANGE_RecoupResultCallback recoup_cb,
                        void *recoup_cb_cls);
 
@@ -2236,7 +2236,7 @@ typedef void
  * @param pk kind of coin to pay back
  * @param denom_sig signature over the coin by the exchange using @a pk
  * @param exchange_vals contribution from the exchange on the withdraw
- * @param rps melt secret of the refreshing operation
+ * @param rms melt secret of the refreshing operation
  * @param ps coin-specific secrets derived for this coin during the refreshing operation
  * @param idx index of the fresh coin in the refresh operation that is now being recouped
  * @param recoup_cb the callback to call when the final result for this request is available
@@ -2251,8 +2251,8 @@ TALER_EXCHANGE_recoup_refresh (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_ExchangeWithdrawValues *exchange_vals,
-  const struct TALER_PlanchetSecretsP *rps,
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
+  const struct TALER_PlanchetMasterSecretP *ps,
   unsigned int idx,
   TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
   void *recoup_cb_cls);

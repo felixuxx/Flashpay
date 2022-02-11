@@ -2443,8 +2443,8 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 #define TALER_TESTING_SIMPLE_TRAITS(op) \
   op (bank_row, const uint64_t)                                    \
   op (reserve_priv, const struct TALER_ReservePrivateKeyP) \
-  op (planchet_secret, const struct TALER_PlanchetSecretsP) \
-  op (refresh_secret, const struct TALER_PlanchetSecretsP) \
+  op (planchet_secret, const struct TALER_PlanchetMasterSecretP) \
+  op (refresh_secret, const struct TALER_RefreshMasterSecretP) \
   op (reserve_pub, const struct TALER_ReservePublicKeyP)         \
   op (merchant_priv, const struct TALER_MerchantPrivateKeyP)       \
   op (merchant_pub, const struct TALER_MerchantPublicKeyP)         \
@@ -2484,7 +2484,7 @@ TALER_TESTING_get_trait (const struct TALER_TESTING_Trait *traits,
 #define TALER_TESTING_INDEXED_TRAITS(op)                               \
   op (denom_pub, const struct TALER_EXCHANGE_DenomPublicKey)           \
   op (denom_sig, const struct TALER_DenominationSignature)             \
-  op (planchet_secrets, const struct TALER_PlanchetSecretsP)           \
+  op (planchet_secrets, const struct TALER_PlanchetMasterSecretP)           \
   op (exchange_wd_value, const struct TALER_ExchangeWithdrawValues)    \
   op (coin_priv, const struct TALER_CoinSpendPrivateKeyP)              \
   op (coin_pub, const struct TALER_CoinSpendPublicKeyP)                \

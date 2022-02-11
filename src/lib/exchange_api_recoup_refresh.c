@@ -287,8 +287,8 @@ TALER_EXCHANGE_recoup_refresh (
   const struct TALER_EXCHANGE_DenomPublicKey *pk,
   const struct TALER_DenominationSignature *denom_sig,
   const struct TALER_ExchangeWithdrawValues *exchange_vals,
-  const struct TALER_PlanchetSecretsP *rps,
-  const struct TALER_PlanchetSecretsP *ps,
+  const struct TALER_RefreshMasterSecretP *rms,
+  const struct TALER_PlanchetMasterSecretP *ps,
   unsigned int idx,
   TALER_EXCHANGE_RecoupRefreshResultCallback recoup_cb,
   void *recoup_cb_cls)
@@ -343,7 +343,7 @@ TALER_EXCHANGE_recoup_refresh (
        it is not strictly clear that the nonce is needed. Best case would be
        to find a way to include it more 'naturally' somehow, for example with
        the variant union version of bks! */
-    TALER_cs_refresh_nonce_derive (rps,
+    TALER_cs_refresh_nonce_derive (rms,
                                    idx,
                                    &nonce);
     GNUNET_assert (

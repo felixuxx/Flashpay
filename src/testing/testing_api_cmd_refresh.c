@@ -130,7 +130,7 @@ struct RefreshMeltState
   /**
    * Entropy seed for the refresh-melt operation.
    */
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_RefreshMasterSecretP rms;
 
   /**
    * Private key of the dirty coin being melted.
@@ -218,7 +218,7 @@ struct RefreshRevealState
    * Array of @e num_fresh_coins planchet secrets derived
    * from the transfer secret per fresh coin.
    */
-  struct TALER_PlanchetSecretsP *psa;
+  struct TALER_PlanchetMasterSecretP *psa;
 
   /**
    * Interpreter state.
@@ -361,7 +361,7 @@ reveal_cb (void *cls,
            const struct TALER_EXCHANGE_HttpResponse *hr,
            unsigned int num_coins,
            const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-           const struct TALER_PlanchetSecretsP *psa,
+           const struct TALER_PlanchetMasterSecretP *psa,
            const struct TALER_DenominationSignature *sigs)
 {
   struct RefreshRevealState *rrs = cls;
@@ -423,7 +423,7 @@ reveal_cb (void *cls,
   case MHD_HTTP_OK:
     rrs->psa = GNUNET_memdup (psa,
                               num_coins
-                              * sizeof (struct TALER_PlanchetSecretsP));
+                              * sizeof (struct TALER_PlanchetMasterSecretP));
     rrs->fresh_coins = GNUNET_new_array (num_coins,
                                          struct TALER_TESTING_FreshCoinData);
     for (unsigned int i = 0; i<num_coins; i++)
@@ -501,7 +501,7 @@ refresh_reveal_run (void *cls,
   // FIXME: use trait for 'rms'!
   rms = melt_cmd->cls;
   rrs->rrh = TALER_EXCHANGE_refreshes_reveal (is->exchange,
-                                              &rms->ps,
+                                              &rms->rms,
                                               &rms->refresh_data,
                                               rms->num_fresh_coins,
                                               rms->alg_values,
@@ -1008,7 +1008,7 @@ melt_cb (void *cls,
     TALER_LOG_DEBUG ("Doubling the melt (%s)\n",
                      rms->is->commands[rms->is->ip].label);
     rms->rmh = TALER_EXCHANGE_melt (rms->is->exchange,
-                                    &rms->ps,
+                                    &rms->rms,
                                     &rms->refresh_data,
                                     &melt_cb,
                                     rms);
@@ -1044,7 +1044,7 @@ melt_run (void *cls,
     melt_fresh_amounts = default_melt_fresh_amounts;
   rms->is = is;
   rms->noreveal_index = UINT16_MAX;
-  TALER_planchet_setup_random (&rms->ps);
+  TALER_refresh_master_setup_random (&rms->rms);
   for (num_fresh_coins = 0;
        NULL != melt_fresh_amounts[num_fresh_coins];
        num_fresh_coins++)
@@ -1145,7 +1145,7 @@ melt_run (void *cls,
     rms->refresh_data.fresh_pks = rms->fresh_pks;
     rms->refresh_data.fresh_pks_len = num_fresh_coins;
     rms->rmh = TALER_EXCHANGE_melt (is->exchange,
-                                    &rms->ps,
+                                    &rms->rms,
                                     &rms->refresh_data,
                                     &melt_cb,
                                     rms);
@@ -1233,7 +1233,7 @@ melt_traits (void *cls,
                                              &rms->bks[index]),
       TALER_TESTING_make_trait_exchange_wd_value (index,
                                                   &rms->alg_values[index]),
-      TALER_TESTING_make_trait_refresh_secret (&rms->ps),
+      TALER_TESTING_make_trait_refresh_secret (&rms->rms),
       TALER_TESTING_trait_end ()
     };
 
