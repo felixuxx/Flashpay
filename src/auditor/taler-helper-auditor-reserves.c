@@ -508,12 +508,7 @@ handle_reserve_out (void *cls,
   struct GNUNET_TIME_Timestamp valid_start;
   struct GNUNET_TIME_Timestamp expire_withdraw;
   enum GNUNET_DB_QueryStatus qs;
-  struct TALER_WithdrawRequestPS wsrd = {
-    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW),
-    .purpose.size = htonl (sizeof (wsrd)),
-    .reserve_pub = *reserve_pub,
-    .h_coin_envelope = *h_blind_ev
-  };
+  struct TALER_DenominationHash h_denom_pub;
 
   /* should be monotonically increasing */
   GNUNET_assert (rowid >= ppr.last_reserve_out_serial_id);
@@ -523,7 +518,7 @@ handle_reserve_out (void *cls,
      initializes wsrd.h_denomination_pub! */
   qs = TALER_ARL_get_denomination_info (denom_pub,
                                         &issue,
-                                        &wsrd.h_denomination_pub);
+                                        &h_denom_pub);
   if (0 > qs)
   {
     GNUNET_break (GNUNET_DB_STATUS_SOFT_ERROR == qs);
@@ -569,17 +564,16 @@ handle_reserve_out (void *cls,
                         GNUNET_JSON_pack_data_auto ("reserve_pub",
                                                     reserve_pub),
                         GNUNET_JSON_pack_data_auto ("denompub_h",
-                                                    &wsrd.h_denomination_pub)));
+                                                    &h_denom_pub)));
   }
 
   /* check reserve_sig (first: setup remaining members of wsrd) */
-  TALER_amount_hton (&wsrd.amount_with_fee,
-                     amount_with_fee);
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
-                                  &wsrd,
-                                  &reserve_sig->eddsa_signature,
-                                  &reserve_pub->eddsa_pub))
+      TALER_wallet_withdraw_verify (&h_denom_pub,
+                                    amount_with_fee,
+                                    h_blind_ev,
+                                    reserve_pub,
+                                    reserve_sig))
   {
     TALER_ARL_report (report_bad_sig_losses,
                       GNUNET_JSON_PACK (

@@ -399,10 +399,11 @@ TALER_EXCHANGE_refreshes_reveal (
     TALER_planchet_blinding_secret_create (&coin_ps,
                                            &alg_values[i],
                                            &bks);
-    TALER_cs_refresh_nonce_derive (
-      rms,
-      i,
-      &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
+    if (TALER_DENOMINATION_CS == alg_values[i].cipher)
+      TALER_cs_refresh_nonce_derive (
+        rms,
+        i,
+        &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
     if (GNUNET_OK !=
         TALER_planchet_prepare (&md.fresh_pks[i],
                                 &alg_values[i],

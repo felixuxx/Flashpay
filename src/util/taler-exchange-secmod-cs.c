@@ -281,7 +281,6 @@ handle_sign_request (struct TES_Client *client,
 {
   struct DenominationKey *dk;
   struct GNUNET_CRYPTO_CsRSecret r[2];
-
   struct TALER_BlindedDenominationCsSignAnswer cs_answer;
   struct GNUNET_TIME_Absolute now = GNUNET_TIME_absolute_get ();
 
@@ -326,8 +325,9 @@ handle_sign_request (struct TES_Client *client,
   GNUNET_assert (dk->rc < UINT_MAX);
   dk->rc++;
   GNUNET_assert (0 == pthread_mutex_unlock (&keys_lock));
-
-  GNUNET_CRYPTO_cs_r_derive (&sr->planchet.nonce.nonce, &dk->denom_priv, r);
+  GNUNET_CRYPTO_cs_r_derive (&sr->planchet.nonce.nonce,
+                             &dk->denom_priv,
+                             r);
   cs_answer.b = GNUNET_CRYPTO_cs_sign_derive (&dk->denom_priv,
                                               r,
                                               sr->planchet.c,

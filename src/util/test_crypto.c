@@ -176,6 +176,38 @@ test_planchets_rsa (void)
 
 
 /**
+ * @brief Function for CS signatures to derive public R_0 and R_1
+ *
+ * @param nonce withdraw nonce from a client
+ * @param denom_priv denomination privkey as long-term secret
+ * @param r_pub the resulting R_0 and R_1
+ * @return enum GNUNET_GenericReturnValue
+ */
+static enum GNUNET_GenericReturnValue
+derive_r_public (
+  const struct TALER_CsNonce *nonce,
+  const struct TALER_DenominationPrivateKey *denom_priv,
+  struct TALER_DenominationCSPublicRPairP *r_pub)
+{
+  struct GNUNET_CRYPTO_CsRSecret r[2];
+
+  if (denom_priv->cipher != TALER_DENOMINATION_CS)
+  {
+    GNUNET_break (0);
+    return GNUNET_SYSERR;
+  }
+  GNUNET_CRYPTO_cs_r_derive (&nonce->nonce,
+                             &denom_priv->details.cs_private_key,
+                             r);
+  GNUNET_CRYPTO_cs_r_get_public (&r[0],
+                                 &r_pub->r_pub[0]);
+  GNUNET_CRYPTO_cs_r_get_public (&r[1],
+                                 &r_pub->r_pub[1]);
+  return GNUNET_OK;
+}
+
+
+/**
  * Test the basic planchet functionality of creating a fresh planchet with CS denomination
  * and extracting the respective signature.
  *
@@ -207,7 +239,7 @@ test_planchets_cs (void)
     &ps,
     &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
   GNUNET_assert (GNUNET_OK ==
-                 TALER_denom_cs_derive_r_public (
+                 derive_r_public (
                    &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
                    &dk_priv,
                    &alg_values.details.cs_values));

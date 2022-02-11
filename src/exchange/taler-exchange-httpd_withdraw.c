@@ -90,10 +90,21 @@ reply_withdraw_insufficient_funds (
  */
 struct WithdrawContext
 {
+
   /**
-   * Details about the withdrawal request.
+   * Hash of the (blinded) message to be signed by the Exchange.
    */
-  struct TALER_WithdrawRequestPS wsrd;
+  struct TALER_BlindedCoinHash h_coin_envelope;
+
+  /**
+   * Value of the coin being exchanged (matching the denomination key)
+   * plus the transaction fee.  We include this in what is being
+   * signed so that we can verify a reserve's remaining total balance
+   * without needing to access the respective denomination key
+   * information each time.
+   */
+  struct TALER_Amount amount_with_fee;
+
 
   /**
    * Blinded planchet.
@@ -143,8 +154,6 @@ withdraw_transaction (void *cls,
   uint64_t ruuid;
 
   now = GNUNET_TIME_timestamp_get ();
-  wc->collectable.reserve_pub = wc->wsrd.reserve_pub;
-  wc->collectable.h_coin_envelope = wc->wsrd.h_coin_envelope;
   qs = TEH_plugin->do_withdraw (TEH_plugin->cls,
                                 &wc->collectable,
                                 now,
@@ -173,7 +182,6 @@ withdraw_transaction (void *cls,
   {
     struct TALER_EXCHANGEDB_ReserveHistory *rh;
     struct TALER_Amount balance;
-    struct TALER_Amount requested_amount;
 
     TEH_plugin->rollback (TEH_plugin->cls);
     // FIXME: maybe start read-committed here?
@@ -192,7 +200,7 @@ withdraw_transaction (void *cls,
     /* The reserve does not have the required amount (actual
      * amount + withdraw fee) */
     qs = TEH_plugin->get_reserve_history (TEH_plugin->cls,
-                                          &wc->wsrd.reserve_pub,
+                                          &wc->collectable.reserve_pub,
                                           &balance,
                                           &rh);
     if (NULL == rh)
@@ -204,12 +212,11 @@ withdraw_transaction (void *cls,
                                                "reserve history");
       return GNUNET_DB_STATUS_HARD_ERROR;
     }
-    TALER_amount_ntoh (&requested_amount,
-                       &wc->wsrd.amount_with_fee);
-    *mhd_ret = reply_withdraw_insufficient_funds (connection,
-                                                  &balance,
-                                                  &requested_amount,
-                                                  rh);
+    *mhd_ret = reply_withdraw_insufficient_funds (
+      connection,
+      &balance,
+      &wc->collectable.amount_with_fee,
+      rh);
     TEH_plugin->free_reserve_history (TEH_plugin->cls,
                                       rh);
     return GNUNET_DB_STATUS_HARD_ERROR;
@@ -287,7 +294,7 @@ check_request_idempotent (struct TEH_RequestContext *rc,
   enum GNUNET_DB_QueryStatus qs;
 
   qs = TEH_plugin->get_withdraw_info (TEH_plugin->cls,
-                                      &wc->wsrd.h_coin_envelope,
+                                      &wc->collectable.h_coin_envelope,
                                       &wc->collectable);
   if (0 > qs)
   {
@@ -336,8 +343,8 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   if (GNUNET_OK !=
       GNUNET_STRINGS_string_to_data (args[0],
                                      strlen (args[0]),
-                                     &wc.wsrd.reserve_pub,
-                                     sizeof (wc.wsrd.reserve_pub)))
+                                     &wc.collectable.reserve_pub,
+                                     sizeof (wc.collectable.reserve_pub)))
   {
     GNUNET_break_op (0);
     return TALER_MHD_reply_with_error (rc->connection,
@@ -460,21 +467,11 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                        TALER_EC_EXCHANGE_WITHDRAW_AMOUNT_FEE_OVERFLOW,
                                        NULL);
   }
-  TALER_amount_hton (&wc.wsrd.amount_with_fee,
-                     &wc.collectable.amount_with_fee);
 
-  // FIXME: move this logic into libtalerutil!
-  /* verify signature! */
-  wc.wsrd.purpose.size
-    = htonl (sizeof (wc.wsrd));
-  wc.wsrd.purpose.purpose
-    = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
-  wc.wsrd.h_denomination_pub
-    = wc.collectable.denom_pub_hash;
   if (GNUNET_OK !=
       TALER_coin_ev_hash (&wc.blinded_planchet,
                           &wc.collectable.denom_pub_hash,
-                          &wc.wsrd.h_coin_envelope))
+                          &wc.collectable.h_coin_envelope))
   {
     GNUNET_break (0);
     GNUNET_JSON_parse_free (spec);
@@ -483,15 +480,15 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
                                        TALER_EC_GENERIC_INTERNAL_INVARIANT_FAILURE,
                                        NULL);
   }
+
   if (GNUNET_OK !=
-      GNUNET_CRYPTO_eddsa_verify (
-        TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
-        &wc.wsrd,
-        &wc.collectable.reserve_sig.eddsa_signature,
-        &wc.wsrd.reserve_pub.eddsa_pub))
+      TALER_wallet_withdraw_verify (&wc.collectable.denom_pub_hash,
+                                    &wc.collectable.amount_with_fee,
+                                    &wc.collectable.h_coin_envelope,
+                                    &wc.collectable.reserve_pub,
+                                    &wc.collectable.reserve_sig))
   {
-    TALER_LOG_WARNING (
-      "Client supplied invalid signature for withdraw request\n");
+    GNUNET_break_op (0);
     GNUNET_JSON_parse_free (spec);
     return TALER_MHD_reply_with_error (rc->connection,
                                        MHD_HTTP_FORBIDDEN,

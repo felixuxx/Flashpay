@@ -285,4 +285,52 @@ TALER_wallet_melt_verify (
 }
 
 
+void
+TALER_wallet_withdraw_sign (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_BlindedCoinHash *bch,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_WithdrawRequestPS req = {
+    .purpose.size = htonl (sizeof (req)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW),
+    .h_denomination_pub = *h_denom_pub,
+    .h_coin_envelope = *bch
+  };
+
+  TALER_amount_hton (&req.amount_with_fee,
+                     amount_with_fee);
+  GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
+                            &req,
+                            &reserve_sig->eddsa_signature);
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_wallet_withdraw_verify (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_BlindedCoinHash *bch,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct TALER_WithdrawRequestPS wsrd = {
+    .purpose.size = htonl (sizeof (wsrd)),
+    .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW),
+    .h_denomination_pub = *h_denom_pub,
+    .h_coin_envelope = *bch
+  };
+
+  TALER_amount_hton (&wsrd.amount_with_fee,
+                     amount_with_fee);
+  return GNUNET_CRYPTO_eddsa_verify (
+    TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
+    &wsrd,
+    &reserve_sig->eddsa_signature,
+    &reserve_pub->eddsa_pub);
+}
+
+
 /* end of wallet_signatures.c */

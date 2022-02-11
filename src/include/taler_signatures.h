@@ -440,13 +440,7 @@ struct TALER_WithdrawRequestPS
   struct GNUNET_CRYPTO_EccSignaturePurpose purpose;
 
   /**
-   * Reserve public key (which reserve to withdraw from).  This is
-   * the public key which must match the signature.
-   */
-  struct TALER_ReservePublicKeyP reserve_pub;
-
-  /**
-   * Value of the coin being exchangeed (matching the denomination key)
+   * Value of the coin being exchanged (matching the denomination key)
    * plus the transaction fee.  We include this in what is being
    * signed so that we can verify a reserve's remaining total balance
    * without needing to access the respective denomination key

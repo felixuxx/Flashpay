@@ -857,9 +857,6 @@ struct TALER_BlindedCsPlanchet
 
   /**
    * Public nonce.
-   * FIXME: this nonce being here has created TONS
-   * of trouble. Likely split off from this data
-   * structure in the future!
    */
   struct TALER_CsNonce nonce;
 };
@@ -1086,30 +1083,11 @@ TALER_denom_sig_free (struct TALER_DenominationSignature *denom_sig);
 
 
 /**
- * @brief Function for CS signatures to derive public R_0 and R_1
- *
- * @param nonce withdraw nonce from a client
- * @param denom_priv denomination privkey as long-term secret
- * @param r_pub the resulting R_0 and R_1
- * @return enum GNUNET_GenericReturnValue
- */
-enum GNUNET_GenericReturnValue
-TALER_denom_cs_derive_r_public (
-  const struct TALER_CsNonce *nonce,
-  const struct TALER_DenominationPrivateKey *denom_priv,
-  struct TALER_DenominationCSPublicRPairP *r_pub);
-
-
-/**
  * Blind coin for blind signing with @a dk using blinding secret @a coin_bks.
  *
- * NOTE/FIXME: As a particular oddity, the @a blinded_planchet
- * is only partially initialized by this function in the
- * case of CS-denominations. Here, the 'nonce' must
- * be initialized separately! This has been a MAJOR
- * source of bugs, and points to a likely need for a
- * reorganization of either that data structure or
- * this function!
+ * NOTE: As a particular oddity, the @a blinded_planchet is only partially
+ * initialized by this function in the case of CS-denominations. Here, the
+ * 'nonce' must be initialized separately!
  *
  * @param dk denomination public key to blind for
  * @param coin_bks blinding secret to use
@@ -1564,8 +1542,8 @@ TALER_planchet_blinding_secret_create (
  * @param coin_priv coin private key
  * @param[out] c_hash set to the hash of the public key of the coin (needed later)
  * @param[out] pd set to the planchet detail for TALER_MERCHANT_tip_pickup() and
- *               other withdraw operations, pd->blinded_planchet.cipher will be set
- *               to cipher from dk
+ *               other withdraw operations, `pd->blinded_planchet.cipher` will be set
+ *               to cipher from @a dk
  * @return #GNUNET_OK on success
  */
 enum GNUNET_GenericReturnValue
@@ -1574,8 +1552,7 @@ TALER_planchet_prepare (const struct TALER_DenominationPublicKey *dk,
                         const union TALER_DenominationBlindingKeyP *bks,
                         const struct TALER_CoinSpendPrivateKeyP *coin_priv,
                         struct TALER_CoinPubHash *c_hash,
-                        struct TALER_PlanchetDetail *pd
-                        );
+                        struct TALER_PlanchetDetail *pd);
 
 
 /**
@@ -2314,6 +2291,43 @@ TALER_wallet_link_verify (
   const struct TALER_BlindedCoinHash *h_coin_ev,
   const struct TALER_CoinSpendPublicKeyP *old_coin_pub,
   const struct TALER_CoinSpendSignatureP *coin_sig);
+
+
+/**
+ * Sign withdraw request.
+ *
+ * @param h_denom_pub hash of the denomiantion public key of the coin to withdraw
+ * @param amount_with_fee amount to debit the reserve for
+ * @param bch blinded coin hash
+ * @param reserve_priv private key to sign with
+ * @param[out] reserve_sig resulting signature
+ */
+void
+TALER_wallet_withdraw_sign (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_BlindedCoinHash *bch,
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
+
+/**
+ * Verify withdraw request.
+ *
+ * @param h_denom_pub hash of the denomiantion public key of the coin to withdraw
+ * @param amount_with_fee amount to debit the reserve for
+ * @param bch blinded coin hash
+ * @param reserve_pub public key of the reserve
+ * @param reserve_sig resulting signature
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_wallet_withdraw_verify (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_Amount *amount_with_fee,
+  const struct TALER_BlindedCoinHash *bch,
+  const struct TALER_ReservePublicKeyP *reserve_pub,
+  const struct TALER_ReserveSignatureP *reserve_sig);
 
 
 /**

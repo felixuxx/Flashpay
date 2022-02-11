@@ -380,6 +380,7 @@ TALER_EXCHANGE_withdraw2 (
   const struct TALER_EXCHANGE_DenomPublicKey *dk;
   struct TALER_ReserveSignatureP reserve_sig;
   char arg_str[sizeof (struct TALER_ReservePublicKeyP) * 2 + 32];
+  struct TALER_BlindedCoinHash bch;
 
   keys = TALER_EXCHANGE_get_keys (exchange);
   if (NULL == keys)
@@ -428,31 +429,22 @@ TALER_EXCHANGE_withdraw2 (
                      "/reserves/%s/withdraw",
                      pub_str);
   }
-  // FIXME: move this to libtalerutil!
-  {
-    struct TALER_WithdrawRequestPS req = {
-      .purpose.size = htonl (sizeof (req)),
-      .purpose.purpose = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW),
-      .reserve_pub = wh->reserve_pub,
-      .h_denomination_pub = pd->denom_pub_hash
-    };
 
-    TALER_amount_hton (&req.amount_with_fee,
-                       &wh->requested_amount);
-    if (GNUNET_OK !=
-        TALER_coin_ev_hash (&pd->blinded_planchet,
-                            &pd->denom_pub_hash,
-                            &req.h_coin_envelope))
-    {
-      GNUNET_break (0);
-      GNUNET_free (wh);
-      return NULL;
-    }
-    GNUNET_CRYPTO_eddsa_sign (&reserve_priv->eddsa_priv,
-                              &req,
-                              &reserve_sig.eddsa_signature);
+  if (GNUNET_OK !=
+      TALER_coin_ev_hash (&pd->blinded_planchet,
+                          &pd->denom_pub_hash,
+                          &bch))
+  {
+    GNUNET_break (0);
+    GNUNET_free (wh);
+    return NULL;
   }
 
+  TALER_wallet_withdraw_sign (&pd->denom_pub_hash,
+                              &wh->requested_amount,
+                              &bch,
+                              reserve_priv,
+                              &reserve_sig);
   {
     json_t *withdraw_obj = GNUNET_JSON_PACK (
       GNUNET_JSON_pack_data_auto ("denom_pub_hash",

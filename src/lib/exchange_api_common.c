@@ -124,7 +124,8 @@ TALER_EXCHANGE_parse_reserve_history (
                               "WITHDRAW"))
     {
       struct TALER_ReserveSignatureP sig;
-      struct TALER_WithdrawRequestPS withdraw_purpose;
+      struct TALER_DenominationHash h_denom_pub;
+      struct TALER_BlindedCoinHash bch;
       struct TALER_Amount withdraw_fee;
       struct GNUNET_JSON_Specification withdraw_spec[] = {
         GNUNET_JSON_spec_fixed_auto ("reserve_sig",
@@ -132,9 +133,9 @@ TALER_EXCHANGE_parse_reserve_history (
         TALER_JSON_spec_amount_any ("withdraw_fee",
                                     &withdraw_fee),
         GNUNET_JSON_spec_fixed_auto ("h_denom_pub",
-                                     &withdraw_purpose.h_denomination_pub),
+                                     &h_denom_pub),
         GNUNET_JSON_spec_fixed_auto ("h_coin_envelope",
-                                     &withdraw_purpose.h_coin_envelope),
+                                     &bch),
         GNUNET_JSON_spec_end ()
       };
 
@@ -147,19 +148,14 @@ TALER_EXCHANGE_parse_reserve_history (
         GNUNET_break_op (0);
         return GNUNET_SYSERR;
       }
-      withdraw_purpose.purpose.size
-        = htonl (sizeof (withdraw_purpose));
-      withdraw_purpose.purpose.purpose
-        = htonl (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW);
-      withdraw_purpose.reserve_pub = *reserve_pub;
-      TALER_amount_hton (&withdraw_purpose.amount_with_fee,
-                         &amount);
+
       /* Check that the signature is a valid withdraw request */
       if (GNUNET_OK !=
-          GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_WALLET_RESERVE_WITHDRAW,
-                                      &withdraw_purpose,
-                                      &sig.eddsa_signature,
-                                      &reserve_pub->eddsa_pub))
+          TALER_wallet_withdraw_verify (&h_denom_pub,
+                                        &amount,
+                                        &bch,
+                                        reserve_pub,
+                                        &sig))
       {
         GNUNET_break_op (0);
         GNUNET_JSON_parse_free (withdraw_spec);
@@ -172,8 +168,7 @@ TALER_EXCHANGE_parse_reserve_history (
 
         key_state = TALER_EXCHANGE_get_keys (exchange);
         dki = TALER_EXCHANGE_get_denomination_key_by_hash (key_state,
-                                                           &withdraw_purpose.
-                                                           h_denomination_pub);
+                                                           &h_denom_pub);
         if ( (GNUNET_YES !=
               TALER_amount_cmp_currency (&withdraw_fee,
                                          &dki->fee_withdraw)) ||
@@ -193,10 +188,10 @@ TALER_EXCHANGE_parse_reserve_history (
       /* Check check that the same withdraw transaction
          isn't listed twice by the exchange. We use the
          "uuid" array to remember the hashes of all
-         purposes, and compare the hashes to find
-         duplicates. *///
-      GNUNET_CRYPTO_hash (&withdraw_purpose,
-                          ntohl (withdraw_purpose.purpose.size),
+         signatures, and compare the hashes to find
+         duplicates. */
+      GNUNET_CRYPTO_hash (&sig,
+                          sizeof (sig),
                           &uuid[uuid_off]);
       for (unsigned int i = 0; i<uuid_off; i++)
       {
