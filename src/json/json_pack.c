@@ -142,11 +142,11 @@ TALER_JSON_pack_exchange_withdraw_values (
                                TALER_DENOMINATION_CS),
       GNUNET_JSON_pack_data_varsize (
         "r_pub_0",
-        &ewv->details.cs_values.r_pub_pair.r_pub[0],
+        &ewv->details.cs_values.r_pub[0],
         sizeof(struct GNUNET_CRYPTO_CsRPublic)),
       GNUNET_JSON_pack_data_varsize (
         "r_pub_1",
-        &ewv->details.cs_values.r_pub_pair.r_pub[1],
+        &ewv->details.cs_values.r_pub[1],
         sizeof(struct GNUNET_CRYPTO_CsRPublic))
       );
     break;

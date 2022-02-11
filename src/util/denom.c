@@ -207,7 +207,7 @@ TALER_denom_sig_unblind (
                                                 bs);
       GNUNET_CRYPTO_cs_calc_blinded_c (
         bs,
-        alg_values->details.cs_values.r_pub_pair.r_pub,
+        alg_values->details.cs_values.r_pub,
         &denom_pub->details.cs_public_key,
         &c_hash->hash,
         sizeof(struct GNUNET_HashCode),
@@ -369,7 +369,7 @@ TALER_denom_blind (
                                                 bs);
       GNUNET_CRYPTO_cs_calc_blinded_c (
         bs,
-        alg_values->details.cs_values.r_pub_pair.r_pub,
+        alg_values->details.cs_values.r_pub,
         &dk->details.cs_public_key,
         c_hash,
         sizeof(*c_hash),

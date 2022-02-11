@@ -930,7 +930,7 @@ extract_exchange_withdraw_values (void *cls,
     }
     return GNUNET_OK;
   case TALER_DENOMINATION_CS:
-    if (sizeof (struct TALER_ExchangeWithdrawCsValues) != len)
+    if (sizeof (struct TALER_DenominationCSPublicRPairP) != len)
     {
       GNUNET_break (0);
       return GNUNET_SYSERR;

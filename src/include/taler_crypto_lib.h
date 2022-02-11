@@ -895,18 +895,6 @@ struct TALER_BlindedPlanchet
 
 
 /**
- * Withdraw nonce for CS denominations
- */
-struct TALER_RefreshNonceXXXDEADFIXME
-{
-  /**
-   * 32 bit nonce to include in withdrawals
-   */
-  struct GNUNET_CRYPTO_CsNonce nonce;
-};
-
-
-/**
  * Pair of Public R values for Cs denominations
  */
 struct TALER_DenominationCSPublicRPairP
@@ -985,18 +973,6 @@ struct TALER_TrackTransferDetails
 
 
 /**
- * @brief Type of CS Values for withdrawal
- */
-struct TALER_ExchangeWithdrawCsValues
-{
-  /**
-   * (non-blinded) r_pub
-   */
-  struct TALER_DenominationCSPublicRPairP r_pub_pair;
-};
-
-
-/**
  * @brief Type of algorithm specific Values for withdrawal
  */
 struct TALER_ExchangeWithdrawValues
@@ -1015,7 +991,7 @@ struct TALER_ExchangeWithdrawValues
     /**
      * If we use #TALER_DENOMINATION_CS in @a cipher.
      */
-    struct TALER_ExchangeWithdrawCsValues cs_values;
+    struct TALER_DenominationCSPublicRPairP cs_values;
 
   } details;
 
@@ -2010,6 +1986,7 @@ TALER_CRYPTO_helper_cs_revoke (
  * @return R, the value inside the structure will be NULL on failure,
  *         see @a ec for details about the failure
  */
+// FIXME: swap rval and ec!
 struct TALER_DenominationCSPublicRPairP
 TALER_CRYPTO_helper_cs_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                  const struct TALER_CsPubHashP *h_cs,

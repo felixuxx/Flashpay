@@ -297,7 +297,7 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
                   "Requesting R derivation with key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
 
-      alg_values.details.cs_values.r_pub_pair
+      alg_values.details.cs_values
         = TALER_CRYPTO_helper_cs_r_derive (dh,
                                            &keys[i].h_cs,
                                            &pd.blinded_planchet.
@@ -440,7 +440,7 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       TALER_cs_withdraw_nonce_derive (&ps,
                                       &pd.blinded_planchet.details.
                                       cs_blinded_planchet.nonce);
-      alg_values.details.cs_values.r_pub_pair
+      alg_values.details.cs_values
         = TALER_CRYPTO_helper_cs_r_derive (dh,
                                            &keys[i].h_cs,
                                            &pd.blinded_planchet.
@@ -630,7 +630,7 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
                                         &pd.blinded_planchet.details.
                                         cs_blinded_planchet.nonce);
 
-        alg_values.details.cs_values.r_pub_pair
+        alg_values.details.cs_values
           = TALER_CRYPTO_helper_cs_r_derive (dh,
                                              &keys[i].h_cs,
                                              &pd.blinded_planchet.

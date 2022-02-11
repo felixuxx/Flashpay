@@ -571,7 +571,7 @@ qconv_exchange_withdraw_values (void *cls,
     tlen = 0;
     break;
   case TALER_DENOMINATION_CS:
-    tlen = sizeof (struct TALER_ExchangeWithdrawCsValues);
+    tlen = sizeof (struct TALER_DenominationCSPublicRPairP);
     break;
   default:
     GNUNET_assert (0);

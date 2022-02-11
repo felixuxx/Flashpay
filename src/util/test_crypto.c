@@ -210,7 +210,7 @@ test_planchets_cs (void)
                  TALER_denom_cs_derive_r_public (
                    &pd.blinded_planchet.details.cs_blinded_planchet.nonce,
                    &dk_priv,
-                   &alg_values.details.cs_values.r_pub_pair));
+                   &alg_values.details.cs_values));
   TALER_planchet_setup_coin_priv (&ps,
                                   &alg_values,
                                   &coin_priv);

@@ -204,7 +204,7 @@ check_commitment (struct RevealContext *rctx,
         ec = TEH_keys_denomination_cs_r_pub (
           &rctx->rrcs[j].h_denom_pub,
           &nonces[aoff],
-          &alg_values->details.cs_values.r_pub_pair);
+          &alg_values->details.cs_values);
         if (TALER_EC_NONE != ec)
         {
           *mhd_ret = TALER_MHD_reply_with_error (connection,

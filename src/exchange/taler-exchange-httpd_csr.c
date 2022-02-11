@@ -108,7 +108,7 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     const struct TALER_CsNonce *nonce = &nonces[i];
     const struct TALER_DenominationHash *denom_pub_hash = &denom_pub_hashes[i];
     struct TALER_DenominationCSPublicRPairP *r_pub
-      = &ewvs[i].details.cs_values.r_pub_pair;
+      = &ewvs[i].details.cs_values;
 
     ewvs[i].cipher = TALER_DENOMINATION_CS;
     // check denomination referenced by denom_pub_hash
