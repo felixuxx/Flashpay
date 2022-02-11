@@ -1387,6 +1387,36 @@ struct TALER_EXCHANGE_WithdrawHandle;
 
 
 /**
+ * All the details about a coin that are generated during withdrawal and that
+ * may be needed for future operations on the coin.
+ */
+struct TALER_EXCHANGE_PrivateCoinDetails
+{
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Value used to blind the key for the signature.
+   * Needed for recoup operations.
+   */
+  union TALER_DenominationBlindingKeyP bks;
+
+  /**
+   * Signature over the coin.
+   */
+  struct TALER_DenominationSignature sig;
+
+  /**
+   * Values contributed from the exchange during the
+   * withdraw protocol.
+   */
+  struct TALER_ExchangeWithdrawValues exchange_vals;
+};
+
+
+/**
  * Details about a response for a withdraw request.
  */
 struct TALER_EXCHANGE_WithdrawResponse
@@ -1404,30 +1434,7 @@ struct TALER_EXCHANGE_WithdrawResponse
     /**
      * Details if the status is #MHD_HTTP_OK.
      */
-    struct
-    {
-      /**
-       * Private key of the coin.
-       */
-      struct TALER_CoinSpendPrivateKeyP coin_priv;
-
-      /**
-       * Value used to blind the key for the signature.
-       * Needed for recoup operations.
-       */
-      union TALER_DenominationBlindingKeyP bks;
-
-      /**
-       * Signature over the coin.
-       */
-      struct TALER_DenominationSignature sig;
-
-      /**
-       * Values contributed from the exchange during the
-       * withdraw protocol.
-       */
-      struct TALER_ExchangeWithdrawValues exchange_vals;
-    } success;
+    struct TALER_EXCHANGE_PrivateCoinDetails success;
 
     /**
      * Details if the status is #MHD_HTTP_ACCEPTED.

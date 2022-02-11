@@ -234,8 +234,8 @@ recoup_refresh_run (void *cls,
   const struct TALER_CoinSpendPrivateKeyP *coin_priv;
   const struct TALER_EXCHANGE_DenomPublicKey *denom_pub;
   const struct TALER_DenominationSignature *coin_sig;
-  const struct TALER_PlanchetSecretsP *rplanchet;
-  const struct TALER_PlanchetSecretsP *planchet;
+  const struct TALER_RefreshMasterSecretP *rplanchet;
+  const struct TALER_PlanchetMasterSecretP *planchet;
   const struct TALER_ExchangeWithdrawValues *ewv;
   char *cref;
   unsigned int idx;
