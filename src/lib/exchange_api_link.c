@@ -169,21 +169,6 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
 
     GNUNET_CRYPTO_eddsa_key_get_public (&lh->coin_priv.eddsa_priv,
                                         &old_coin_pub.eddsa_pub);
-    // FIXME-NEXT: this is probably the wrong 'ps'!
-    // However, the 'right' PS is not something the
-    // exchange could even give us. So probably we
-    // really need to change the derivation structure
-    // during refresh to derive the nonces differently
-    // and make /link possible!
-    /* FIXME: we cannot get the 'rms' here, and
-       if the TALER_coin_ev_hash() includes that 'nonce',
-       we are screwed on/link. */
-#if FIXME_OMIT
-    TALER_cs_refresh_nonce_derive (
-      &ps,
-      coin_idx,
-      &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
-#endif
     TALER_coin_ev_hash (&pd.blinded_planchet,
                         &pd.denom_pub_hash,
                         &coin_envelope_hash);

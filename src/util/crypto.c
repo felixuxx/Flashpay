@@ -518,26 +518,8 @@ TALER_coin_ev_hash (const struct TALER_BlindedPlanchet *blinded_planchet,
       blinded_planchet->details.rsa_blinded_planchet.blinded_msg_size);
     break;
   case TALER_DENOMINATION_CS:
-    /* NOTE: it is not obvious that we need to hash the
-       nonce here; if we omit this, we could skip sending
-       the nonce in the /recoup protocol. OTOH, there is
-       certainly no further harm (beyond the extra
-       bytes send on /recoup) from including it.
-       ****
-       UPDATE: hashing 'nonce' here kills link, as
-       link does not HAVE the 'rms' to derive the nonce
-       from! (see FIXME_OMIT in exchange_api_link.c)
-       ***
-       => either figure elegant way to resolve this,
-       or omit hashing nonce and ALSO skip sending
-       nonce in /recoup!
-    */
-#if FIXME_OMIT
-    GNUNET_CRYPTO_hash_context_read (
-      hash_context,
-      &blinded_planchet->details.cs_blinded_planchet.nonce,
-      sizeof (blinded_planchet->details.cs_blinded_planchet.nonce));
-#endif
+    // FIXME: simplifies once 'nonce' is removed
+    // from TALER_BlindedCsPlanchet!
     GNUNET_CRYPTO_hash_context_read (
       hash_context,
       &blinded_planchet->details.cs_blinded_planchet.c[0],

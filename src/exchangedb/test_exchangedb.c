@@ -1352,7 +1352,7 @@ run (void *cls)
   struct TALER_DenominationPublicKey *new_denom_pubs = NULL;
   uint64_t reserve_out_serial_id;
   uint64_t melt_serial_id;
-  struct TALER_PlanchetSecretsP ps;
+  struct TALER_PlanchetMasterSecretP ps;
   union TALER_DenominationBlindingKeyP bks;
   struct TALER_ExchangeWithdrawValues alg_values = {
     /* RSA is simpler, and for the DB there is no real difference between
