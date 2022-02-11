@@ -136,7 +136,8 @@ check_PROGRAMS = \
   test_taler_exchange_wirewatch-postgres
 if HAVE_TWISTER
   check_PROGRAMS += \
-    test_exchange_api_twisted \
+    test_exchange_api_twisted_cs \
+    test_exchange_api_twisted_rsa \
     test_bank_api_with_fakebank_twisted \
     test_bank_api_with_pybank_twisted
 endif
@@ -413,9 +414,27 @@ test_taler_exchange_wirewatch_postgres_LDADD = \
   -lpthread \
   $(XLIB)
 
-test_exchange_api_twisted_SOURCES = \
+test_exchange_api_twisted_cs_SOURCES = \
   test_exchange_api_twisted.c
-test_exchange_api_twisted_LDADD = \
+test_exchange_api_twisted_cs_LDADD = \
+  $(LIBGCRYPT_LIBS) \
+  libtalertesting.la \
+  libtalertwistertesting.la \
+  $(top_builddir)/src/lib/libtalerexchange.la \
+  $(top_builddir)/src/bank-lib/libtalerfakebank.la \
+  $(top_builddir)/src/bank-lib/libtalerbank.la \
+  $(top_builddir)/src/json/libtalerjson.la \
+  $(top_builddir)/src/util/libtalerutil.la \
+  -lgnunettesting \
+  -lgnunetjson \
+  -lgnunetcurl \
+  -lgnunetutil \
+  -ljansson \
+  $(XLIB)
+
+test_exchange_api_twisted_rsa_SOURCES = \
+  test_exchange_api_twisted.c
+test_exchange_api_twisted_rsa_LDADD = \
   $(LIBGCRYPT_LIBS) \
   libtalertesting.la \
   libtalertwistertesting.la \
@@ -500,7 +519,8 @@ EXTRA_DIST = \
   test_exchange_api_keys_cherry_picking_home/.local/share/taler/exchange/wirefees/x-taler-bank.fee \
   test_exchange_api-cs.conf \
   test_exchange_api-rsa.conf \
-  test_exchange_api_twisted.conf \
+  test_exchange_api_twisted-cs.conf \
+  test_exchange_api_twisted-rsa.conf \
   test_exchange_api_keys_cherry_picking-cs.conf \
   test_exchange_api_keys_cherry_picking-rsa.conf \
   test_exchange_api_expire_reserve_now-cs.conf \
