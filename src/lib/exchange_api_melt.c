@@ -563,11 +563,16 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
 }
 
 
+/**
+ * The melt request @a mh failed, return an error to
+ * the application and cancel the operation.
+ *
+ * @param[in] mh melt request that failed
+ */
 static void
 fail_mh (struct TALER_EXCHANGE_MeltHandle *mh)
 {
-  // FIXME: do return more than NULLs if
-  // the /csr failed!
+  // FIXME: do return more than NULLs if the /csr failed!
   mh->melt_cb (mh->melt_cb_cls,
                NULL,
                0,
