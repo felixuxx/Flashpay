@@ -2331,6 +2331,23 @@ TALER_wallet_withdraw_verify (
 
 
 /**
+ * Verify exchange melt confirmation.
+ *
+ * @param rc refresh session this is about
+ * @param noreveal_index gamma value chosen by the exchange
+ * @param exchange_pub public signing key used
+ * @param exchange_sig signature to check
+ * @return #GNUNET_OK if the signature is valid
+ */
+enum GNUNET_GenericReturnValue
+TALER_exchange_melt_confirmation_verify (
+  const struct TALER_RefreshCommitmentP *rc,
+  uint32_t noreveal_index,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig);
+
+
+/**
  * Verify recoup signature.
  *
  * @param h_denom_pub hash of the denomiantion public key of the coin

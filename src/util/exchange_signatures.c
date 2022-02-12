@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -63,6 +63,28 @@ TALER_exchange_deposit_confirm_verify (
     return GNUNET_SYSERR;
   }
   return GNUNET_OK;
+}
+
+
+enum GNUNET_GenericReturnValue
+TALER_exchange_melt_confirmation_verify (
+  const struct TALER_RefreshCommitmentP *rc,
+  uint32_t noreveal_index,
+  const struct TALER_ExchangePublicKeyP *exchange_pub,
+  const struct TALER_ExchangeSignatureP *exchange_sig)
+{
+  struct TALER_RefreshMeltConfirmationPS confirm = {
+    .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT),
+    .purpose.size = htonl (sizeof (confirm)),
+    .rc = *rc,
+    .noreveal_index = htonl (noreveal_index)
+  };
+
+  return
+    GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT,
+                                &confirm,
+                                &exchange_sig->eddsa_signature,
+                                &exchange_pub->eddsa_pub);
 }
 
 

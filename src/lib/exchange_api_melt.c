@@ -78,7 +78,7 @@ struct TALER_EXCHANGE_MeltHandle
   /**
    * The secret the entire melt operation is seeded from.
    */
-  const struct TALER_RefreshMasterSecretP *rms;
+  struct TALER_RefreshMasterSecretP rms;
 
   /**
    * Details about the characteristics of the requested melt operation.
@@ -171,24 +171,15 @@ verify_melt_signature_ok (struct TALER_EXCHANGE_MeltHandle *mh,
     return GNUNET_SYSERR;
   }
 
-  /* verify signature by exchange -- FIXME: move to util! */
+  if (GNUNET_OK !=
+      TALER_exchange_melt_confirmation_verify (
+        &mh->md.rc,
+        mh->noreveal_index,
+        exchange_pub,
+        &exchange_sig))
   {
-    struct TALER_RefreshMeltConfirmationPS confirm = {
-      .purpose.purpose = htonl (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT),
-      .purpose.size = htonl (sizeof (confirm)),
-      .rc = mh->md.rc,
-      .noreveal_index = htonl (mh->noreveal_index)
-    };
-
-    if (GNUNET_OK !=
-        GNUNET_CRYPTO_eddsa_verify (TALER_SIGNATURE_EXCHANGE_CONFIRM_MELT,
-                                    &confirm,
-                                    &exchange_sig.eddsa_signature,
-                                    &exchange_pub->eddsa_pub))
-    {
-      GNUNET_break_op (0);
-      return GNUNET_SYSERR;
-    }
+    GNUNET_break_op (0);
+    return GNUNET_SYSERR;
   }
   return GNUNET_OK;
 }
@@ -490,7 +481,7 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   struct TALER_DenominationHash h_denom_pub;
 
   if (GNUNET_OK !=
-      TALER_EXCHANGE_get_melt_data_ (mh->rms,
+      TALER_EXCHANGE_get_melt_data_ (&mh->rms,
                                      mh->rd,
                                      mh->alg_values,
                                      &mh->md))
@@ -657,7 +648,7 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->noreveal_index = TALER_CNC_KAPPA; /* invalid value */
   mh->exchange = exchange;
   mh->rd = rd;
-  mh->rms = rms; /* FIXME: deep copy might be safer... */
+  mh->rms = *rms;
   mh->melt_cb = melt_cb;
   mh->melt_cb_cls = melt_cb_cls;
   mh->alg_values = GNUNET_new_array (rd->fresh_pks_len,
