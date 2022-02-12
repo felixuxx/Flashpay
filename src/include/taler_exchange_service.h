@@ -1702,6 +1702,60 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh);
 
 
 /**
+ * Information about a coin obtained via /refreshes/$RCH/reveal.
+ */
+struct TALER_EXCHANGE_RevealedCoinInfo
+{
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Master secret of this coin.
+   */
+  struct TALER_PlanchetMasterSecretP ps;
+
+  /**
+   * Signature affirming the validity of the coin.
+   */
+  struct TALER_DenominationSignature sig;
+
+};
+
+
+/**
+ * Result of a /refreshes/$RCH/reveal request.
+ */
+struct TALER_EXCHANGE_RevealResult
+{
+  /**
+   * HTTP status.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  union
+  {
+    struct
+    {
+      /**
+       * Array of @e num_coins values about the
+       * coins obtained via the refresh operation.
+       */
+      const struct TALER_EXCHANGE_RevealedCoinInfo *coins;
+
+      /**
+       * Number of coins returned.
+       */
+      unsigned int num_coins;
+    } success;
+
+  } details;
+
+};
+
+
+/**
  * Callbacks of this type are used to return the final result of
  * submitting a refresh request to a exchange.  If the operation was
  * successful, this function returns the signatures over the coins
@@ -1787,26 +1841,76 @@ struct TALER_EXCHANGE_LinkHandle;
 
 
 /**
+ * Information about a coin obtained via /link.
+ */
+struct TALER_EXCHANGE_LinkedCoinInfo
+{
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Master secret of this coin.
+   */
+  struct TALER_PlanchetMasterSecretP ps;
+
+  /**
+   * Signature affirming the validity of the coin.
+   */
+  struct TALER_DenominationSignature sig;
+
+  /**
+   * Denomination public key of the coin.
+   */
+  struct TALER_DenominationPublicKey pub;
+};
+
+
+/**
+ * Result of a /link request.
+ */
+struct TALER_EXCHANGE_LinkResult
+{
+  /**
+   * HTTP status.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  union
+  {
+    struct
+    {
+      /**
+       * Array of @e num_coins values about the
+       * coins obtained via linkage.
+       */
+      const struct TALER_EXCHANGE_LinkedCoinInfo *coins;
+
+      /**
+       * Number of coins returned.
+       */
+      unsigned int num_coins;
+    } success;
+
+  } details;
+
+};
+
+
+/**
  * Callbacks of this type are used to return the final result of submitting a
  * /coins/$COIN_PUB/link request to a exchange.  If the operation was
  * successful, this function returns the signatures over the coins that were
  * created when the original coin was melted.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param num_coins number of fresh coins created, length of the @a sigs and @a coin_privs arrays, 0 if the operation failed
- * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
- * @param sigs array of signature over @a num_coins coins, NULL on error
- * @param pubs array of public keys for the @a sigs, NULL on error
+ * @param lr result of the /link operation
  */
 typedef void
 (*TALER_EXCHANGE_LinkCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  unsigned int num_coins,
-  const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-  const struct TALER_DenominationSignature *sigs,
-  const struct TALER_DenominationPublicKey *pubs);
+  const struct TALER_EXCHANGE_LinkResult *lr);
 
 
 /**

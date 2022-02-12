@@ -77,9 +77,7 @@ struct TALER_EXCHANGE_LinkHandle
  * @param json json reply with the data for one coin
  * @param coin_num number of the coin
  * @param trans_pub our transfer public key
- * @param[out] coin_priv where to return private coin key
- * @param[out] sig where to return private coin signature
- * @param[out] pub where to return the public key for the coin
+ * @param[out] lci where to return coin details
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
  */
 static enum GNUNET_GenericReturnValue
@@ -87,9 +85,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                  const json_t *json,
                  uint32_t coin_num,
                  const struct TALER_TransferPublicKeyP *trans_pub,
-                 struct TALER_CoinSpendPrivateKeyP *coin_priv,
-                 struct TALER_DenominationSignature *sig,
-                 struct TALER_DenominationPublicKey *pub)
+                 struct TALER_EXCHANGE_LinkedCoinInfo *lci)
 {
   struct TALER_BlindedDenominationSignature bsig;
   struct TALER_DenominationPublicKey rpub;
@@ -111,7 +107,6 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_JSON_spec_end ()
   };
   struct TALER_TransferSecretP secret;
-  struct TALER_PlanchetMasterSecretP ps;
   struct TALER_PlanchetDetail pd;
   struct TALER_CoinPubHash c_hash;
 
@@ -129,18 +124,18 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                       &secret);
   TALER_transfer_secret_to_planchet_secret (&secret,
                                             coin_num,
-                                            &ps);
-  TALER_planchet_setup_coin_priv (&ps,
+                                            &lci->ps);
+  TALER_planchet_setup_coin_priv (&lci->ps,
                                   &alg_values,
-                                  coin_priv);
-  TALER_planchet_blinding_secret_create (&ps,
+                                  &lci->coin_priv);
+  TALER_planchet_blinding_secret_create (&lci->ps,
                                          &alg_values,
                                          &bks);
   if (GNUNET_OK !=
       TALER_planchet_prepare (&rpub,
                               &alg_values,
                               &bks,
-                              coin_priv,
+                              &lci->coin_priv,
                               &c_hash,
                               &pd))
   {
@@ -150,7 +145,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   }
   /* extract coin and signature */
   if (GNUNET_OK !=
-      TALER_denom_sig_unblind (sig,
+      TALER_denom_sig_unblind (&lci->sig,
                                &bsig,
                                &bks,
                                &c_hash,
@@ -186,7 +181,7 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
   }
 
   /* clean up */
-  TALER_denom_pub_deep_copy (pub,
+  TALER_denom_pub_deep_copy (&lci->pub,
                              &rpub);
   GNUNET_JSON_parse_free (spec);
   return GNUNET_OK;
@@ -208,9 +203,9 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
   unsigned int session;
   unsigned int num_coins;
   int ret;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = json,
-    .http_status = MHD_HTTP_OK
+  struct TALER_EXCHANGE_LinkResult lr = {
+    .hr.reply = json,
+    .hr.http_status = MHD_HTTP_OK
   };
 
   if (! json_is_array (json))
@@ -263,12 +258,9 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
   {
     unsigned int off_coin; /* index into 1d array */
     unsigned int i;
-    struct TALER_CoinSpendPrivateKeyP coin_privs[GNUNET_NZL (num_coins)];
-    struct TALER_DenominationSignature sigs[GNUNET_NZL (num_coins)];
-    struct TALER_DenominationPublicKey pubs[GNUNET_NZL (num_coins)];
+    struct TALER_EXCHANGE_LinkedCoinInfo lcis[GNUNET_NZL (num_coins)];
 
-    memset (sigs, 0, sizeof (sigs));
-    memset (pubs, 0, sizeof (pubs));
+    memset (lcis, 0, sizeof (lcis));
     off_coin = 0;
     for (session = 0; session<json_array_size (json); session++)
     {
@@ -301,6 +293,9 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
       /* decode all coins */
       for (i = 0; i<json_array_size (jsona); i++)
       {
+        struct TALER_EXCHANGE_LinkedCoinInfo *lci;
+
+        lci = &lcis[i + off_coin];
         GNUNET_assert (i + off_coin < num_coins);
         if (GNUNET_OK !=
             parse_link_coin (lh,
@@ -308,9 +303,7 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
                                              i),
                              i,
                              &trans_pub,
-                             &coin_privs[i + off_coin],
-                             &sigs[i + off_coin],
-                             &pubs[i + off_coin]))
+                             lci))
         {
           GNUNET_break_op (0);
           break;
@@ -330,12 +323,10 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
 
     if (off_coin == num_coins)
     {
+      lr.details.success.num_coins = num_coins;
+      lr.details.success.coins = lcis;
       lh->link_cb (lh->link_cb_cls,
-                   &hr,
-                   num_coins,
-                   coin_privs,
-                   sigs,
-                   pubs);
+                   &lr);
       lh->link_cb = NULL;
       ret = GNUNET_OK;
     }
@@ -349,8 +340,8 @@ parse_link_ok (struct TALER_EXCHANGE_LinkHandle *lh,
     GNUNET_assert (off_coin <= num_coins);
     for (i = 0; i<off_coin; i++)
     {
-      TALER_denom_sig_free (&sigs[i]);
-      TALER_denom_pub_free (&pubs[i]);
+      TALER_denom_sig_free (&lcis[i].sig);
+      TALER_denom_pub_free (&lcis[i].pub);
     }
   }
   return ret;
@@ -372,16 +363,16 @@ handle_link_finished (void *cls,
 {
   struct TALER_EXCHANGE_LinkHandle *lh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_LinkResult lr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   lh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    lr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
@@ -389,49 +380,45 @@ handle_link_finished (void *cls,
                        j))
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+      lr.hr.http_status = 0;
+      lr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
       break;
     }
     GNUNET_assert (NULL == lh->link_cb);
     TALER_EXCHANGE_link_cancel (lh);
     return;
   case MHD_HTTP_BAD_REQUEST:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    lr.hr.ec = TALER_JSON_get_error_code (j);
+    lr.hr.hint = TALER_JSON_get_error_hint (j);
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
     break;
   case MHD_HTTP_NOT_FOUND:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    lr.hr.ec = TALER_JSON_get_error_code (j);
+    lr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Nothing really to verify, exchange says this coin was not melted; we
        should pass the JSON reply to the application */
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    lr.hr.ec = TALER_JSON_get_error_code (j);
+    lr.hr.hint = TALER_JSON_get_error_hint (j);
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    lr.hr.ec = TALER_JSON_get_error_code (j);
+    lr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange link\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) lr.hr.ec);
     break;
   }
   if (NULL != lh->link_cb)
     lh->link_cb (lh->link_cb_cls,
-                 &hr,
-                 0,
-                 NULL,
-                 NULL,
-                 NULL);
+                 &lr);
   TALER_EXCHANGE_link_cancel (lh);
 }
 

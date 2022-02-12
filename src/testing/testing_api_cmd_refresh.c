@@ -608,13 +608,10 @@ do_link_retry (void *cls)
  */
 static void
 link_cb (void *cls,
-         const struct TALER_EXCHANGE_HttpResponse *hr,
-         unsigned int num_coins,
-         const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-         const struct TALER_DenominationSignature *sigs,
-         const struct TALER_DenominationPublicKey *pubs)
+         const struct TALER_EXCHANGE_LinkResult *lr)
 {
   struct RefreshLinkState *rls = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &lr->hr;
   const struct TALER_TESTING_Command *reveal_cmd;
   struct TALER_TESTING_Command *link_cmd = &rls->is->commands[rls->is->ip];
   unsigned int found;
@@ -683,11 +680,11 @@ link_cb (void *cls,
       TALER_TESTING_interpreter_fail (rls->is);
       return;
     }
-    if (num_coins != *num_fresh_coins)
+    if (lr->details.success.num_coins != *num_fresh_coins)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Unexpected number of fresh coins: %d vs %d in %s:%u\n",
-                  num_coins,
+                  lr->details.success.num_coins,
                   *num_fresh_coins,
                   __FILE__,
                   __LINE__);
@@ -695,11 +692,11 @@ link_cb (void *cls,
       return;
     }
     /* check that the coins match */
-    for (unsigned int i = 0; i<num_coins; i++)
-      for (unsigned int j = i + 1; j<num_coins; j++)
+    for (unsigned int i = 0; i<lr->details.success.num_coins; i++)
+      for (unsigned int j = i + 1; j<lr->details.success.num_coins; j++)
         if (0 ==
-            GNUNET_memcmp (&coin_privs[i],
-                           &coin_privs[j]))
+            GNUNET_memcmp (&lr->details.success.coins[i].coin_priv,
+                           &lr->details.success.coins[j].coin_priv))
           GNUNET_break (0);
     /* Note: coins might be legitimately permutated in here... */
     found = 0;
@@ -717,29 +714,38 @@ link_cb (void *cls,
         return;
       }
 
-      for (unsigned int i = 0; i<num_coins; i++)
-        for (unsigned int j = 0; j<num_coins; j++)
+      for (unsigned int i = 0; i<lr->details.success.num_coins; i++)
+      {
+        const struct TALER_EXCHANGE_LinkedCoinInfo *lci_i
+          = &lr->details.success.coins[i];
+
+        for (unsigned int j = 0; j<lr->details.success.num_coins; j++)
         {
+          const struct TALER_TESTING_FreshCoinData *fcj
+            = &(*fc)[j];
+
           if ( (0 ==
-                GNUNET_memcmp (&coin_privs[i],
-                               &(*fc)[j].coin_priv)) &&
+                GNUNET_memcmp (&fcj->coin_priv,
+                               &lci_i->coin_priv)) &&
                (0 ==
-                TALER_denom_sig_cmp (&(*fc)[i].sig,
-                                     &sigs[j])) &&
+                TALER_denom_sig_cmp (&fcj->sig,
+                                     &lci_i->sig)) &&
                (0 ==
-                TALER_denom_pub_cmp (&(*fc)[i].pk->key,
-                                     &pubs[j])) )
+                TALER_denom_pub_cmp (&fcj->pk->key,
+                                     &lci_i->pub)) )
           {
             found++;
             break;
           }
-        }
+        } /* for j*/
+      } /* for i */
     }
-    if (found != num_coins)
+    if (found != lr->details.success.num_coins)
     {
       GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                   "Only %u/%u coins match expectations\n",
-                  found, num_coins);
+                  found,
+                  lr->details.success.num_coins);
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rls->is);
       return;
