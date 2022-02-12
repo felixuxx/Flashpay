@@ -203,12 +203,6 @@ TALER_denom_sig_unblind (
 }
 
 
-/**
- * Hash @a rsa.
- *
- * @param rsa key to hash
- * @param[out] h_rsa where to write the result
- */
 void
 TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
                     struct TALER_RsaPubHashP *h_rsa)
@@ -219,12 +213,6 @@ TALER_rsa_pub_hash (const struct GNUNET_CRYPTO_RsaPublicKey *rsa,
 }
 
 
-/**
- * Hash @a cs. key
- *
- * @param cs key to hash
- * @param[out] h_cs where to write the result
- */
 void
 TALER_cs_pub_hash (const struct GNUNET_CRYPTO_CsPublicKey *cs,
                    struct TALER_CsPubHashP *h_cs)
@@ -497,13 +485,6 @@ TALER_blinded_denom_sig_free (
 }
 
 
-/**
- * Make a (deep) copy of the given @a denom_src to
- * @a denom_dst.
- *
- * @param[out] denom_dst target to copy to
- * @param denom_str public key to copy
- */
 void
 TALER_denom_pub_deep_copy (struct TALER_DenominationPublicKey *denom_dst,
                            const struct TALER_DenominationPublicKey *denom_src)
