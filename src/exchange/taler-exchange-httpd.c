@@ -188,7 +188,7 @@ static unsigned long long req_max;
 struct GNUNET_CURL_Context *TEH_curl_ctx;
 
 /**
- * Context for integrating #exchange_curl_ctx with the
+ * Context for integrating #TEH_curl_ctx with the
  * GNUnet event loop.
  */
 static struct GNUNET_CURL_RescheduleContext *exchange_curl_rc;

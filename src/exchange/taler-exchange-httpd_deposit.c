@@ -51,6 +51,7 @@
  * @param h_contract_terms hash of contract details
  * @param exchange_timestamp exchange's timestamp
  * @param refund_deadline until when this deposit be refunded
+ * @param wire_deadline until when will the exchange wire the funds
  * @param merchant merchant public key
  * @param amount_without_fee fraction of coin value to deposit, without the fee
  * @return MHD result code

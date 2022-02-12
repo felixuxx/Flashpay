@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/crypto_helper_denom.c
+ * @file util/crypto_helper_rsa.c
  * @brief utility functions for running out-of-process private key operations
  * @author Christian Grothoff
  */

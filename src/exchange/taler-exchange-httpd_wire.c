@@ -107,7 +107,7 @@ wire_update_event_cb (void *cls,
 }
 
 
-int
+enum GNUNET_GenericReturnValue
 TEH_wire_init ()
 {
   struct GNUNET_DB_EventHeaderP es = {
@@ -147,8 +147,7 @@ TEH_wire_done ()
 
 
 /**
- * Create standard JSON response format using
- * @param ec and @a detail
+ * Create standard JSON response format using @a ec and @a detail.
  *
  * @param ec error code to return
  * @param detail optional detail text to return, can be NULL

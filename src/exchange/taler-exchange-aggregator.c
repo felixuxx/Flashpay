@@ -199,7 +199,7 @@ static int test_mode;
  * Main work function that queries the DB and aggregates transactions
  * into larger wire transfers.
  *
- * @param cls NULL
+ * @param cls a `struct Shard *`
  */
 static void
 run_aggregation (void *cls);
@@ -679,12 +679,6 @@ release_shard (struct Shard *s)
 }
 
 
-/**
- * Main work function that queries the DB and aggregates transactions
- * into larger wire transfers.
- *
- * @param cls a `struct Shard *`
- */
 static void
 run_aggregation (void *cls)
 {

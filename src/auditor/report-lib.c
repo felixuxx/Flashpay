@@ -89,13 +89,6 @@ static struct GNUNET_SIGNAL_Context *sig_int;
 static struct GNUNET_SIGNAL_Context *sig_term;
 
 
-/**
- * Test if the audit should be aborted because the user
- * pressed CTRL-C.
- *
- * @return false to continue the audit, true to terminate
- *         cleanly as soon as possible
- */
 bool
 TALER_ARL_do_abort (void)
 {
@@ -103,12 +96,6 @@ TALER_ARL_do_abort (void)
 }
 
 
-/**
- * Add @a object to the report @a array.  Fail hard if this fails.
- *
- * @param array report array to append @a object to
- * @param object object to append, should be check that it is not NULL
- */
 void
 TALER_ARL_report (json_t *array,
                   json_t *object)
@@ -183,14 +170,6 @@ add_denomination (
 }
 
 
-/**
- * Obtain information about a @a denom_pub.
- *
- * @param dh hash of the denomination public key to look up
- * @param[out] issue set to detailed information about @a denom_pub, NULL if not found, must
- *                 NOT be freed by caller
- * @return transaction status code
- */
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info_by_hash (
   const struct TALER_DenominationHash *dh,
@@ -262,15 +241,6 @@ TALER_ARL_get_denomination_info_by_hash (
 }
 
 
-/**
- * Obtain information about a @a denom_pub.
- *
- * @param denom_pub key to look up
- * @param[out] issue set to detailed information about @a denom_pub, NULL if not found, must
- *                 NOT be freed by caller
- * @param[out] dh set to the hash of @a denom_pub, may be NULL
- * @return transaction status code
- */
 enum GNUNET_DB_QueryStatus
 TALER_ARL_get_denomination_info (
   const struct TALER_DenominationPublicKey *denom_pub,
@@ -298,7 +268,7 @@ TALER_ARL_get_denomination_info (
  *         #GNUNET_NO if we had an error on commit (retry may help)
  *         #GNUNET_SYSERR on hard errors
  */
-static int
+static enum GNUNET_GenericReturnValue
 transact (TALER_ARL_Analysis analysis,
           void *analysis_cls)
 {
@@ -369,14 +339,7 @@ transact (TALER_ARL_Analysis analysis,
 }
 
 
-/**
- * Initialize DB sessions and run the analysis.
- *
- * @param ana analysis to run
- * @param ana_cls closure for @a ana
- * @return #GNUNET_OK on success
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
                                   void *ana_cls)
 {
@@ -424,19 +387,6 @@ test_master_present (void *cls,
 }
 
 
-/**
- * Perform addition of amounts.  If the addition fails, logs
- * a detailed error and calls exit() to terminate the process (!).
- *
- * Do not call this function directly, use #TALER_ARL_amount_add().
- *
- * @param[out] sum where to store @a a1 + @a a2, set to "invalid" on overflow
- * @param a1 first amount to add
- * @param a2 second amount to add
- * @param filename where is the addition called
- * @param functionname name of the function where the addition is called
- * @param line line number of the addition
- */
 void
 TALER_ARL_amount_add_ (struct TALER_Amount *sum,
                        const struct TALER_Amount *a1,
@@ -485,19 +435,6 @@ TALER_ARL_amount_add_ (struct TALER_Amount *sum,
 }
 
 
-/**
- * Perform subtraction of amounts. If the subtraction fails, logs
- * a detailed error and calls exit() to terminate the process (!).
- *
- * Do not call this function directly, use #TALER_ARL_amount_subtract().
- *
- * @param[out] diff where to store (@a a1 - @a a2)
- * @param a1 amount to subtract from
- * @param a2 amount to subtract
- * @param filename where is the addition called
- * @param functionname name of the function where the addition is called
- * @param line line number of the addition
- */
 void
 TALER_ARL_amount_subtract_ (struct TALER_Amount *diff,
                             const struct TALER_Amount *a1,
@@ -546,24 +483,6 @@ TALER_ARL_amount_subtract_ (struct TALER_Amount *diff,
 }
 
 
-/**
- * Perform subtraction of amounts. Negative results should be signalled by the
- * return value (leaving @a diff set to 'invalid'). If the subtraction fails
- * for other reasons (currency mismatch, normalization failure), logs a
- * detailed error and calls exit() to terminate the process (!).
- *
- * Do not call this function directly, use #TALER_ARL_amount_subtract_neg().
- *
- * @param[out] diff where to store (@a a1 - @a a2)
- * @param a1 amount to subtract from
- * @param a2 amount to subtract
- * @param filename where is the addition called
- * @param functionname name of the function where the addition is called
- * @param line line number of the addition
- * @return #TALER_ARL_SR_INVALID_NEGATIVE if the result was negative (and @a diff is now invalid),
- *         #TALER_ARL_SR_ZERO if the result was zero,
- *         #TALER_ARL_SR_POSITIVE if the result is positive
- */
 enum TALER_ARL_SubtractionResult
 TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
                                 const struct TALER_Amount *a1,
@@ -622,13 +541,7 @@ handle_sigint (void)
 }
 
 
-/**
- * Setup global variables based on configuration.
- *
- * @param c configuration to use
- * @return #GNUNET_OK on success
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 {
   TALER_ARL_cfg = c;
@@ -822,11 +735,6 @@ TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c)
 }
 
 
-/**
- * Generate the report and close connectios to the database.
- *
- * @param report the report to output, may be NULL for no report
- */
 void
 TALER_ARL_done (json_t *report)
 {

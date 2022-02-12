@@ -608,7 +608,7 @@ TALER_JSON_extensions_config_hash (const json_t *config,
                                    struct TALER_ExtensionConfigHash *eh);
 
 /**
- * Parses a JSON object { "extension": "age_restriction", "mask": <uint32> }.
+ * Parses a JSON object `{ "extension": "age_restriction", "mask": uint32 }`.
  *
  * @param root is the json object
  * @param[out] mask on succes, will contain the age mask

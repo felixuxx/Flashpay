@@ -73,7 +73,7 @@ struct TALER_CRYPTO_CsKeyAvailableNotification
 
   /**
    * Signature affirming the announcement, of
-   * purpose #TALER_SIGNATURE_SM_DENOMINATION_KEY.
+   * purpose #TALER_SIGNATURE_SM_CS_DENOMINATION_KEY.
    */
   struct TALER_SecurityModuleSignatureP secm_sig;
 

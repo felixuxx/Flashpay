@@ -276,7 +276,7 @@ TALER_ARL_amount_subtract_neg_ (struct TALER_Amount *diff,
  * @param ana_cls closure for @a ana
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_ARL_setup_sessions_and_run (TALER_ARL_Analysis ana,
                                   void *ana_cls);
 
@@ -298,7 +298,7 @@ TALER_ARL_do_abort (void);
  * @param c configuration to use
  * @return #GNUNET_OK on success
  */
-int
+enum GNUNET_GenericReturnValue
 TALER_ARL_init (const struct GNUNET_CONFIGURATION_Handle *c);
 
 

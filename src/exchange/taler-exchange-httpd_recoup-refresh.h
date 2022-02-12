@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file taler-exchange-httpd_recoup_refresh.h
+ * @file taler-exchange-httpd_recoup-refresh.h
  * @brief Handle /recoup-refresh requests
  * @author Christian Grothoff
  */

@@ -232,7 +232,7 @@ static uint64_t key_gen;
 /**
  * Generate the announcement message for @a dk.
  *
- * @param[in,out] denomination key to generate the announcement for
+ * @param[in,out] dk denomination key to generate the announcement for
  */
 static void
 generate_response (struct DenominationKey *dk)

@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2020 Taler Systems SA
+  Copyright (C) 2020-2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU Affero General Public License as published by the Free Software
@@ -160,11 +160,12 @@ TEH_keys_denomination_by_hash (const struct TALER_DenominationHash *h_denom_pub,
  *         or NULL if @a h_denom_pub could not be found
  */
 struct TEH_DenominationKey *
-TEH_keys_denomination_by_hash2 (struct TEH_KeyStateHandle *ksh,
-                                const struct
-                                TALER_DenominationHash *h_denom_pub,
-                                struct MHD_Connection *conn,
-                                MHD_RESULT *mret);
+TEH_keys_denomination_by_hash2 (
+  struct TEH_KeyStateHandle *ksh,
+  const struct TALER_DenominationHash *h_denom_pub,
+  struct MHD_Connection *conn,
+  MHD_RESULT *mret);
+
 
 /**
  * Request to sign @a msg using the public key corresponding to
@@ -183,20 +184,19 @@ TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
 
 
 /**
- * Request to derive CS r_pub using the denomination corresponding to @a h_denom_pub
+ * Request to derive CS @a r_pub using the denomination corresponding to @a h_denom_pub
  * and @a nonce.
  *
  * @param h_denom_pub hash of the public key to use to derive r_pub
  * @param nonce withdraw/refresh nonce
- * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
- * @return r_pub, the value inside the structure will be NULL on failure,
- *         see @a ec for details about the failure
+ * @param[out] r_pub where to write the result
+ * @return #TALER_EC_NONE on success
  */
 enum TALER_ErrorCode
-TEH_keys_denomination_cs_r_pub (const struct
-                                TALER_DenominationHash *h_denom_pub,
-                                const struct TALER_CsNonce *nonce,
-                                struct TALER_DenominationCSPublicRPairP *r_pub);
+TEH_keys_denomination_cs_r_pub (
+  const struct TALER_DenominationHash *h_denom_pub,
+  const struct TALER_CsNonce *nonce,
+  struct TALER_DenominationCSPublicRPairP *r_pub);
 
 
 /**

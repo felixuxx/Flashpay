@@ -538,18 +538,6 @@ TEH_RESPONSE_reply_invalid_denom_cipher_for_operation (
 }
 
 
-/**
- * Send proof that a request is invalid to client because of
- * insufficient funds.  This function will create a message with all
- * of the operations affecting the coin that demonstrate that the coin
- * has insufficient value.
- *
- * @param connection connection to the client
- * @param ec error code to return
- * @param coin_pub public key of the coin
- * @param tl transaction list to use to build reply
- * @return MHD result code
- */
 MHD_RESULT
 TEH_RESPONSE_reply_coin_insufficient_funds (
   struct MHD_Connection *connection,

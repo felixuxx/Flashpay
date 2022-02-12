@@ -14,7 +14,7 @@
   TALER; see the file COPYING.  If not, see <http://www.gnu.org/licenses/>
 */
 /**
- * @file util/taler-crypto-worker.c
+ * @file exchange-tools/taler-crypto-worker.c
  * @brief Standalone process to perform various cryptographic operations.
  * @author Florian Dold
  */

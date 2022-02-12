@@ -36,7 +36,7 @@
  *
  * @param connection the connection to send the response to
  * @param num_freshcoins number of new coins for which we reveal data
- * @param sigs array of @a num_freshcoins signatures revealed
+ * @param rrcs array of @a num_freshcoins signatures revealed
  * @return a MHD result code
  */
 static MHD_RESULT

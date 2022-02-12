@@ -172,6 +172,30 @@
       <anchorfile>microhttpd.h</anchorfile>
       <arglist></arglist>
     </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_METHOD_GET</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_METHOD_POST</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_METHOD_PUT</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
+    <member kind="define">
+      <type>#define</type>
+      <name>MHD_HTTP_METHOD_DELETE</name>
+      <anchorfile>microhttpd.h</anchorfile>
+      <arglist></arglist>
+    </member>
     <member kind="typedef">
       <type>int</type>
       <name>MHD_AccessHandlerCallback</name>

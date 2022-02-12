@@ -1086,9 +1086,6 @@ struct RevealContext
  * @param cls closure with a `struct RevealContext *` in it
  * @param num_freshcoins size of the @a rrcs array
  * @param rrcs array of @a num_freshcoins information about coins to be created
- * @param num_tprivs number of entries in @a tprivs, should be #TALER_CNC_KAPPA - 1
- * @param tprivs array of @e num_tprivs transfer private keys
- * @param tp transfer public key information
  */
 static void
 reveal_data_cb (void *cls,

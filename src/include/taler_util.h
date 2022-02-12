@@ -329,7 +329,7 @@ TALER_payto_get_method (const char *payto_uri);
 
 /**
  * Construct a payto://-URI from a Taler @a reserve_pub at
- * a @exchange_base_url
+ * @a exchange_base_url
  *
  * @param exchange_base_url the URL of the exchange
  * @param reserve_pub public key of the reserve

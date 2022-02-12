@@ -3880,7 +3880,7 @@ postgres_select_kyc_status (void *cls,
  * Get the KYC status for a wallet. If the status is unknown,
  * inserts a new status record (hence INsertSELECT).
  *
- * @param cls the @e cls of this struct with the plugin-specific state
+ * @param pg the plugin-specific state
  * @param payto_uri the payto URI to check
  * @param oauth_username user ID to store
  * @param[out] kyc set to the KYC status of the wallet
@@ -4365,7 +4365,7 @@ postgres_get_withdraw_info (
  * @param now current time (rounded)
  * @param[out] found set to true if the reserve was found
  * @param[out] balance_ok set to true if the balance was sufficient
- * @param[out] kyc_ok set to true if the kyc status of the reserve is satisfied
+ * @param[out] kyc set to true if the kyc status of the reserve is satisfied
  * @param[out] ruuid set to the reserve's UUID (reserves table row)
  * @return query execution status
  */
@@ -4458,9 +4458,9 @@ postgres_do_withdraw_limit_check (
 
 
 /**
- * Compute the shard number of a given @a deposit
+ * Compute the shard number of a given @a merchant_pub.
  *
- * @param deposit deposit to compute shard for
+ * @param merchant_pub merchant public key to compute shard for
  * @return shard number
  */
 static uint64_t
@@ -4490,11 +4490,11 @@ compute_shard (const struct TALER_MerchantPublicKeyP *merchant_pub)
  * Perform deposit operation, checking for sufficient balance
  * of the coin and possibly persisting the deposit details.
  *
- * FIXME: parameters missing in description!
- *
  * @param cls the `struct PostgresClosure` with the plugin-specific state
  * @param deposit deposit operation details
  * @param known_coin_id row of the coin in the known_coins table
+ * @param h_payto hash of the merchant's bank account details
+ * @param extension_blocked true if an extension is blocking the wire transfer
  * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
  * @param[out] balance_ok set to true if the balance was sufficient
  * @param[out] in_conflict set to true if the deposit conflicted

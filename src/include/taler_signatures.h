@@ -1215,7 +1215,7 @@ struct TALER_MerchantWireDetailsPS
 
   /**
    * Salted hash over the account holder's payto:// URL and
-   * the salt, as done by #TALER_exchange_wire_signature_hash().
+   * the salt, as done by #TALER_merchant_wire_signature_hash().
    */
   struct TALER_MerchantWireHash h_wire_details GNUNET_PACKED;
 

@@ -2525,7 +2525,7 @@ do_download (char *const *args)
  * Check that the security module keys are the same as before.  If we had no
  * keys in store before, remember them (Trust On First Use).
  *
- * @param secm security module keys, must be an array of length 2
+ * @param secmset security module keys
  * @return #GNUNET_OK if keys match with what we have in store
  *         #GNUNET_NO if we had nothing in store but now do
  *         #GNUNET_SYSERR if keys changed from what we remember or other error
@@ -2803,13 +2803,12 @@ show_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
 /**
  * Output @a denomkeys for human consumption.
  *
- * @param secm_pub security module public key used to sign the denominations
- *                 element 0: RSA
- *                 element 1: CS
+ * @param secm_pub_rsa security module public key used to sign the RSA denominations
+ * @param secm_pub_cs security module public key used to sign the CS denominations
  * @param denomkeys keys to output
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 show_denomkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub_rsa,
                 const struct TALER_SecurityModulePublicKeyP *secm_pub_cs,
                 const json_t *denomkeys)
@@ -3163,7 +3162,7 @@ do_show (char *const *args)
  * @param[in,out] result array where to output the signatures
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
                const json_t *signkeys,
                json_t *result)
@@ -3257,9 +3256,8 @@ sign_signkeys (const struct TALER_SecurityModulePublicKeyP *secm_pub,
 /**
  * Sign @a denomkeys with offline key.
  *
- * @param secm_pub security module public key used to sign the denominations
- *                 element 0: RSA
- *                 element 1: CS
+ * @param secm_pub_rsa security module public key used to sign the RSA denominations
+ * @param secm_pub_cs security module public key used to sign the CS denominations
  * @param denomkeys keys to output
  * @param[in,out] result array where to output the signatures
  * @return #GNUNET_OK on success

@@ -1052,7 +1052,7 @@ TALER_cs_refresh_nonce_derive (
  * be passed.
  *
  * @param[out] denom_priv where to write the private key
- * @param[out] deonm_pub where to write the public key
+ * @param[out] denom_pub where to write the public key
  * @param cipher which type of cipher to use
  * @param ... RSA key size (eg. 2048/3072/4096)
  * @return #GNUNET_OK on success, #GNUNET_NO if parameters were invalid
@@ -2219,7 +2219,7 @@ TALER_wallet_deposit_verify (
 /**
  * Sign a melt request.
  *
- * @param amount the amount to be melted (with fee)
+ * @param amount_with_fee the amount to be melted (with fee)
  * @param melt_fee the melt fee we expect to pay
  * @param rc refresh session we are committed to
  * @param h_denom_pub hash of the coin denomination's public key
@@ -2239,7 +2239,7 @@ TALER_wallet_melt_sign (
 /**
  * Verify a melt request.
  *
- * @param amount the amount to be melted (with fee)
+ * @param amount_with_fee the amount to be melted (with fee)
  * @param melt_fee the melt fee we expect to pay
  * @param rc refresh session we are committed to
  * @param h_denom_pub hash of the coin denomination's public key
@@ -2369,7 +2369,6 @@ TALER_wallet_recoup_verify (
  *
  * @param h_denom_pub hash of the denomiantion public key of the coin
  * @param coin_bks blinding factor used when withdrawing the coin
- * @param requested_amount amount that is left to be recouped
  * @param coin_priv coin key of the coin to be recouped
  * @param coin_sig resulting signature
  */
@@ -2403,7 +2402,6 @@ TALER_wallet_recoup_refresh_verify (
  *
  * @param h_denom_pub hash of the denomiantion public key of the coin
  * @param coin_bks blinding factor used when withdrawing the coin
- * @param requested_amount amount that is left to be recouped
  * @param coin_priv coin key of the coin to be recouped
  * @param coin_sig resulting signature
  */

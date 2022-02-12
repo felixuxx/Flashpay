@@ -221,20 +221,6 @@ verify_and_execute_deposit_confirmation (
 }
 
 
-/**
- * Handle a "/deposit-confirmation" request.  Parses the JSON, and, if
- * successful, passes the JSON data to #verify_and_execute_deposit_confirmation()
- * to further check the details of the operation specified.  If
- * everything checks out, this will ultimately lead to the "/deposit-confirmation"
- * being stored in the database.
- *
- * @param rh context of the handler
- * @param connection the MHD connection to handle
- * @param[in,out] connection_cls the connection's closure (can be updated)
- * @param upload_data upload data
- * @param[in,out] upload_data_size number of bytes (left) in @a upload_data
- * @return MHD result code
-  */
 MHD_RESULT
 TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
                                   struct MHD_Connection *connection,
@@ -323,9 +309,6 @@ TAH_DEPOSIT_CONFIRMATION_handler (struct TAH_RequestHandler *rh,
 }
 
 
-/**
- * Initialize subsystem.
- */
 void
 TEAH_DEPOSIT_CONFIRMATION_init (void)
 {
@@ -335,9 +318,6 @@ TEAH_DEPOSIT_CONFIRMATION_init (void)
 }
 
 
-/**
- * Shut down subsystem.
- */
 void
 TEAH_DEPOSIT_CONFIRMATION_done (void)
 {

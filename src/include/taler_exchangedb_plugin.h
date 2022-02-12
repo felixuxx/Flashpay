@@ -2538,6 +2538,7 @@ struct TALER_EXCHANGEDB_Plugin
    * @param deposit deposit operation details
    * @param known_coin_id row of the coin in the known_coins table
    * @param h_payto hash of the merchant's payto URI
+   * @param extension_blocked true if an extension is blocking the wire transfer
    * @param[in,out] exchange_timestamp time to use for the deposit (possibly updated)
    * @param[out] balance_ok set to true if the balance was sufficient
    * @param[out] in_conflict set to true if the deposit conflicted
