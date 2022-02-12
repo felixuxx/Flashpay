@@ -279,7 +279,6 @@ test_r_derive (struct TALER_CRYPTO_CsDenominationHelper *dh)
 
     if (! keys[i].valid)
       continue;
-    // TODO: insert assertion into other checks
     GNUNET_assert (TALER_DENOMINATION_CS ==
                    keys[i].denom_pub.cipher);
     pd.blinded_planchet.cipher = TALER_DENOMINATION_CS;
