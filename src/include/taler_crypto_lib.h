@@ -2151,6 +2151,17 @@ TALER_exchange_deposit_confirm_verify (
 
 /* ********************* wallet signing ************************** */
 
+/**
+ * Sign a request by a wallet to perform a KYC check.
+ *
+ * @param reserve_priv key identifying the wallet/account
+ * @param reserve_sig resulting signature
+ */
+void
+TALER_wallet_account_setup_sign (
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig);
+
 
 /**
  * Sign a deposit permission.  Function for wallets.

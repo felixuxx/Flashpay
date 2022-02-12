@@ -1,6 +1,6 @@
 /*
   This file is part of TALER
-  Copyright (C) 2021 Taler Systems SA
+  Copyright (C) 2021, 2022 Taler Systems SA
 
   TALER is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -330,6 +330,23 @@ TALER_wallet_withdraw_verify (
     &wsrd,
     &reserve_sig->eddsa_signature,
     &reserve_pub->eddsa_pub);
+}
+
+
+void
+TALER_wallet_account_setup_sign (
+  const struct TALER_ReservePrivateKeyP *reserve_priv,
+  struct TALER_ReserveSignatureP *reserve_sig)
+{
+  struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
+    .size = htonl (sizeof (purpose)),
+    .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
+  };
+
+  GNUNET_assert (GNUNET_OK ==
+                 GNUNET_CRYPTO_eddsa_sign_ (&reserve_priv->eddsa_priv,
+                                            &purpose,
+                                            &reserve_sig->eddsa_signature));
 }
 
 

@@ -161,19 +161,11 @@ TALER_EXCHANGE_kyc_wallet (struct TALER_EXCHANGE_Handle *exchange,
   struct GNUNET_CURL_Context *ctx;
   struct TALER_ReservePublicKeyP reserve_pub;
   struct TALER_ReserveSignatureP reserve_sig;
-  struct GNUNET_CRYPTO_EccSignaturePurpose purpose = {
-    .size = htonl (sizeof (purpose)),
-    .purpose = htonl (TALER_SIGNATURE_WALLET_ACCOUNT_SETUP)
-  };
 
-  /* FIXME: move to util/wallet-signatures.c! */
   GNUNET_CRYPTO_eddsa_key_get_public (&reserve_priv->eddsa_priv,
                                       &reserve_pub.eddsa_pub);
-
-  GNUNET_assert (GNUNET_OK ==
-                 GNUNET_CRYPTO_eddsa_sign_ (&reserve_priv->eddsa_priv,
-                                            &purpose,
-                                            &reserve_sig.eddsa_signature));
+  TALER_wallet_account_setup_sign (reserve_priv,
+                                   &reserve_sig);
   req = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("reserve_pub",
                                 &reserve_pub),
