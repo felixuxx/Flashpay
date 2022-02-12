@@ -26,6 +26,25 @@
 #include "taler_json_lib.h"
 
 
+/**
+ * Convert string value to numeric cipher value.
+ *
+ * @param cipher_s input string
+ * @return numeric cipher value
+ */
+static enum TALER_DenominationCipher
+string_to_cipher (const char *cipher_s)
+{
+  if (0 == strcasecmp (cipher_s,
+                       "RSA"))
+    return TALER_DENOMINATION_RSA;
+  if (0 == strcasecmp (cipher_s,
+                       "CS"))
+    return TALER_DENOMINATION_CS;
+  return TALER_DENOMINATION_INVALID;
+}
+
+
 json_t *
 TALER_JSON_from_amount (const struct TALER_Amount *amount)
 {
@@ -229,9 +248,9 @@ parse_denom_pub (void *cls,
                  struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_DenominationPublicKey *denom_pub = spec->ptr;
-  uint32_t cipher;
+  const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_uint32 ("cipher",
+    GNUNET_JSON_spec_string ("cipher",
                              &cipher),
     GNUNET_JSON_spec_uint32 ("age_mask",
                              &denom_pub->age_mask.mask),
@@ -250,7 +269,7 @@ parse_denom_pub (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  denom_pub->cipher = (enum TALER_DenominationCipher) cipher;
+  denom_pub->cipher = string_to_cipher (cipher);
   switch (denom_pub->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -346,9 +365,9 @@ parse_denom_sig (void *cls,
                  struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_DenominationSignature *denom_sig = spec->ptr;
-  uint32_t cipher;
+  const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_uint32 ("cipher",
+    GNUNET_JSON_spec_string ("cipher",
                              &cipher),
     GNUNET_JSON_spec_end ()
   };
@@ -365,7 +384,7 @@ parse_denom_sig (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  denom_sig->cipher = (enum TALER_DenominationCipher) cipher;
+  denom_sig->cipher = string_to_cipher (cipher);
   switch (denom_sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -462,9 +481,9 @@ parse_blinded_denom_sig (void *cls,
                          struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_BlindedDenominationSignature *denom_sig = spec->ptr;
-  uint32_t cipher;
+  const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_uint32 ("cipher",
+    GNUNET_JSON_spec_string ("cipher",
                              &cipher),
     GNUNET_JSON_spec_end ()
   };
@@ -481,7 +500,7 @@ parse_blinded_denom_sig (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  denom_sig->cipher = (enum TALER_DenominationCipher) cipher;
+  denom_sig->cipher = string_to_cipher (cipher);
   switch (denom_sig->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -581,9 +600,9 @@ parse_blinded_planchet (void *cls,
                         struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_BlindedPlanchet *blinded_planchet = spec->ptr;
-  uint32_t cipher;
+  const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_uint32 ("cipher",
+    GNUNET_JSON_spec_string ("cipher",
                              &cipher),
     GNUNET_JSON_spec_end ()
   };
@@ -600,7 +619,7 @@ parse_blinded_planchet (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  blinded_planchet->cipher = (enum TALER_DenominationCipher) cipher;
+  blinded_planchet->cipher = string_to_cipher (cipher);
   switch (blinded_planchet->cipher)
   {
   case TALER_DENOMINATION_RSA:
@@ -704,9 +723,9 @@ parse_exchange_withdraw_values (void *cls,
                                 struct GNUNET_JSON_Specification *spec)
 {
   struct TALER_ExchangeWithdrawValues *ewv = spec->ptr;
-  uint32_t cipher;
+  const char *cipher;
   struct GNUNET_JSON_Specification dspec[] = {
-    GNUNET_JSON_spec_uint32 ("cipher",
+    GNUNET_JSON_spec_string ("cipher",
                              &cipher),
     GNUNET_JSON_spec_end ()
   };
@@ -723,8 +742,8 @@ parse_exchange_withdraw_values (void *cls,
     GNUNET_break_op (0);
     return GNUNET_SYSERR;
   }
-  ewv->cipher = (enum TALER_DenominationCipher) cipher;
-  switch (cipher)
+  ewv->cipher = string_to_cipher (cipher);
+  switch (ewv->cipher)
   {
   case TALER_DENOMINATION_RSA:
     return GNUNET_OK;

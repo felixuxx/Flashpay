@@ -61,8 +61,8 @@ TALER_JSON_pack_denom_pub (
   case TALER_DENOMINATION_RSA:
     ps.object
       = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_uint64 ("cipher",
-                                   TALER_DENOMINATION_RSA),
+          GNUNET_JSON_pack_string ("cipher",
+                                   "RSA"),
           GNUNET_JSON_pack_uint64 ("age_mask",
                                    pk->age_mask.mask),
           GNUNET_JSON_pack_rsa_public_key ("rsa_public_key",
@@ -71,8 +71,8 @@ TALER_JSON_pack_denom_pub (
   case TALER_DENOMINATION_CS:
     ps.object
       = GNUNET_JSON_PACK (
-          GNUNET_JSON_pack_uint64 ("cipher",
-                                   TALER_DENOMINATION_CS),
+          GNUNET_JSON_pack_string ("cipher",
+                                   "CS"),
           GNUNET_JSON_pack_uint64 ("age_mask",
                                    pk->age_mask.mask),
           GNUNET_JSON_pack_data_varsize ("cs_public_key",
@@ -99,15 +99,15 @@ TALER_JSON_pack_denom_sig (
   {
   case TALER_DENOMINATION_RSA:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_RSA),
+      GNUNET_JSON_pack_string ("cipher",
+                               "RSA"),
       GNUNET_JSON_pack_rsa_signature ("rsa_signature",
                                       sig->details.rsa_signature));
     break;
   case TALER_DENOMINATION_CS:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_string ("cipher",
+                               "CS"),
       GNUNET_JSON_pack_data_auto ("cs_signature_r",
                                   &sig->details.cs_signature.r_point),
       GNUNET_JSON_pack_data_auto ("cs_signature_s",
@@ -133,13 +133,13 @@ TALER_JSON_pack_exchange_withdraw_values (
   {
   case TALER_DENOMINATION_RSA:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_RSA));
+      GNUNET_JSON_pack_string ("cipher",
+                               "RSA"));
     break;
   case TALER_DENOMINATION_CS:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_string ("cipher",
+                               "CS"),
       GNUNET_JSON_pack_data_varsize (
         "r_pub_0",
         &ewv->details.cs_values.r_pub[0],
@@ -170,15 +170,15 @@ TALER_JSON_pack_blinded_denom_sig (
   {
   case TALER_DENOMINATION_RSA:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_RSA),
+      GNUNET_JSON_pack_string ("cipher",
+                               "RSA"),
       GNUNET_JSON_pack_rsa_signature ("blinded_rsa_signature",
                                       sig->details.blinded_rsa_signature));
     break;
   case TALER_DENOMINATION_CS:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_string ("cipher",
+                               "CS"),
       GNUNET_JSON_pack_uint64 ("b",
                                sig->details.blinded_cs_answer.b),
       GNUNET_JSON_pack_data_auto ("s",
@@ -204,8 +204,8 @@ TALER_JSON_pack_blinded_planchet (
   {
   case TALER_DENOMINATION_RSA:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_RSA),
+      GNUNET_JSON_pack_string ("cipher",
+                               "RSA"),
       GNUNET_JSON_pack_data_varsize (
         "rsa_blinded_planchet",
         blinded_planchet->details.rsa_blinded_planchet.blinded_msg,
@@ -213,8 +213,8 @@ TALER_JSON_pack_blinded_planchet (
     break;
   case TALER_DENOMINATION_CS:
     ps.object = GNUNET_JSON_PACK (
-      GNUNET_JSON_pack_uint64 ("cipher",
-                               TALER_DENOMINATION_CS),
+      GNUNET_JSON_pack_string ("cipher",
+                               "CS"),
       GNUNET_JSON_pack_data_auto (
         "cs_nonce",
         &blinded_planchet->details.cs_blinded_planchet.nonce),

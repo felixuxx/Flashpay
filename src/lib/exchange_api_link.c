@@ -102,12 +102,10 @@ parse_link_coin (const struct TALER_EXCHANGE_LinkHandle *lh,
                                &rpub),
     TALER_JSON_spec_blinded_denom_sig ("ev_sig",
                                        &bsig),
-    // FIXME: add to spec!
     TALER_JSON_spec_exchange_withdraw_values ("ewv",
                                               &alg_values),
     GNUNET_JSON_spec_fixed_auto ("link_sig",
                                  &link_sig),
-    // FIXME: add to spec!
     GNUNET_JSON_spec_uint32 ("coin_idx",
                              &coin_idx),
     GNUNET_JSON_spec_end ()

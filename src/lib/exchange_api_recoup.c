@@ -322,7 +322,6 @@ TALER_EXCHANGE_recoup (struct TALER_EXCHANGE_Handle *exchange,
                                 &h_denom_pub),
     TALER_JSON_pack_denom_sig ("denom_sig",
                                denom_sig),
-    // FIXME: add this to the spec!
     TALER_JSON_pack_exchange_withdraw_values ("ewv",
                                               exchange_vals),
     GNUNET_JSON_pack_data_auto ("coin_sig",
