@@ -206,7 +206,7 @@ handle_recoup_finished (void *cls,
              exchange is here. We should look at the key
              structure of ph->exchange, and find the smallest
              _currently withdrawable_ denomination and check
-             if the value remaining would suffice... *///
+             if the value remaining would suffice... */
           GNUNET_break_op (0);
           hr.http_status = 0;
           hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
