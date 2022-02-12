@@ -397,12 +397,10 @@ setup_key (struct DenominationKey *dk,
   struct GNUNET_CRYPTO_CsPublicKey pub;
 
   GNUNET_CRYPTO_cs_private_key_generate (&priv);
-  GNUNET_CRYPTO_cs_private_key_get_public (&priv, &pub);
-  // TODO: Add nullcheck?
-
+  GNUNET_CRYPTO_cs_private_key_get_public (&priv,
+                                           &pub);
   TALER_cs_pub_hash (&pub,
                      &dk->h_cs);
-
   GNUNET_asprintf (&dk->filename,
                    "%s/%s/%llu",
                    keydir,
@@ -1118,8 +1116,8 @@ parse_key (struct Denomination *denom,
     struct DenominationKey *dk;
     struct DenominationKey *before;
 
-    // TODO: Add check if pubkey is set?
-    GNUNET_CRYPTO_cs_private_key_get_public (priv, &pub);
+    GNUNET_CRYPTO_cs_private_key_get_public (priv,
+                                             &pub);
     dk = GNUNET_new (struct DenominationKey);
     dk->denom_priv = *priv;
     dk->denom = denom;
