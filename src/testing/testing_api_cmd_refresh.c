@@ -358,13 +358,10 @@ do_reveal_retry (void *cls)
  */
 static void
 reveal_cb (void *cls,
-           const struct TALER_EXCHANGE_HttpResponse *hr,
-           unsigned int num_coins,
-           const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-           const struct TALER_PlanchetMasterSecretP *psa,
-           const struct TALER_DenominationSignature *sigs)
+           const struct TALER_EXCHANGE_RevealResult *rr)
 {
   struct RefreshRevealState *rrs = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &rr->hr;
   const struct TALER_TESTING_Command *melt_cmd;
 
   rrs->rrh = NULL;
@@ -417,20 +414,22 @@ reveal_cb (void *cls,
     TALER_TESTING_interpreter_fail (rrs->is);
     return;
   }
-  rrs->num_fresh_coins = num_coins;
   switch (hr->http_status)
   {
   case MHD_HTTP_OK:
-    rrs->psa = GNUNET_memdup (psa,
-                              num_coins
-                              * sizeof (struct TALER_PlanchetMasterSecretP));
-    rrs->fresh_coins = GNUNET_new_array (num_coins,
+    rrs->num_fresh_coins = rr->details.success.num_coins;
+    rrs->psa = GNUNET_new_array (rrs->num_fresh_coins,
+                                 struct TALER_PlanchetMasterSecretP);
+    rrs->fresh_coins = GNUNET_new_array (rrs->num_fresh_coins,
                                          struct TALER_TESTING_FreshCoinData);
-    for (unsigned int i = 0; i<num_coins; i++)
+    for (unsigned int i = 0; i<rrs->num_fresh_coins; i++)
     {
+      const struct TALER_EXCHANGE_RevealedCoinInfo *coin
+        = &rr->details.success.coins[i];
       struct TALER_TESTING_FreshCoinData *fc = &rrs->fresh_coins[i];
       const union TALER_DenominationBlindingKeyP *bks;
 
+      rrs->psa[i] = coin->ps;
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_denom_pub (melt_cmd,
                                              i,
@@ -449,10 +448,10 @@ reveal_cb (void *cls,
         TALER_TESTING_interpreter_fail (rrs->is);
         return;
       }
-      fc->coin_priv = coin_privs[i];
+      fc->coin_priv = coin->coin_priv;
       fc->blinding_key = *bks;
       TALER_denom_sig_deep_copy (&fc->sig,
-                                 &sigs[i]);
+                                 &coin->sig);
     }
     if (0 != rrs->total_backoff.rel_value_us)
     {

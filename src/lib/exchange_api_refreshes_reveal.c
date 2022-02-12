@@ -99,15 +99,13 @@ struct TALER_EXCHANGE_RefreshesRevealHandle
  *
  * @param rrh operation handle
  * @param json reply from the exchange
- * @param[out] coin_privs array of length `num_fresh_coins`, initialized to contain the coin private keys
- * @param[out] sigs array of length `num_fresh_coins`, initialized to contain signatures
+ * @param[out] rcis array of length `num_fresh_coins`, initialized to contain the coin data
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */
 static enum GNUNET_GenericReturnValue
 refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
                    const json_t *json,
-                   struct TALER_CoinSpendPrivateKeyP *coin_privs,
-                   struct TALER_DenominationSignature *sigs)
+                   struct TALER_EXCHANGE_RevealedCoinInfo *rcis)
 {
   json_t *jsona;
   struct GNUNET_JSON_Specification outer_spec[] = {
@@ -140,7 +138,8 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
   }
   for (unsigned int i = 0; i<rrh->md.num_fresh_coins; i++)
   {
-    const struct TALER_PlanchetMasterSecretP *fc;
+    struct TALER_EXCHANGE_RevealedCoinInfo *rci =
+      &rcis[i];
     struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
     struct TALER_BlindedDenominationSignature blind_sig;
@@ -154,7 +153,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     struct TALER_FreshCoin coin;
     union TALER_DenominationBlindingKeyP bks;
 
-    fc = &rrh->md.fresh_coins[rrh->noreveal_index][i];
+    rci->ps = rrh->md.fresh_coins[rrh->noreveal_index][i];
     pk = &rrh->md.fresh_pks[i];
     jsonai = json_array_get (jsona, i);
     GNUNET_assert (NULL != jsonai);
@@ -169,15 +168,15 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
       return GNUNET_SYSERR;
     }
 
-    TALER_planchet_setup_coin_priv (fc,
+    TALER_planchet_setup_coin_priv (&rci->ps,
                                     &rrh->alg_values[i],
-                                    &coin_privs[i]);
-    TALER_planchet_blinding_secret_create (fc,
+                                    &rci->coin_priv);
+    TALER_planchet_blinding_secret_create (&rci->ps,
                                            &rrh->alg_values[i],
                                            &bks);
     /* needed to verify the signature, and we didn't store it earlier,
        hence recomputing it here... */
-    GNUNET_CRYPTO_eddsa_key_get_public (&coin_privs[i].eddsa_priv,
+    GNUNET_CRYPTO_eddsa_key_get_public (&rci->coin_priv.eddsa_priv,
                                         &coin_pub.eddsa_pub);
     /* FIXME-Oec: Age commitment hash. */
     TALER_coin_pub_hash (&coin_pub,
@@ -187,7 +186,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
         TALER_planchet_to_coin (pk,
                                 &blind_sig,
                                 &bks,
-                                &coin_privs[i],
+                                &rci->coin_priv,
                                 &coin_hash,
                                 &rrh->alg_values[i],
                                 &coin))
@@ -198,7 +197,7 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
       return GNUNET_SYSERR;
     }
     GNUNET_JSON_parse_free (spec);
-    sigs[i] = coin.sig;
+    rci->sig = coin.sig;
   }
   GNUNET_JSON_parse_free (outer_spec);
   return GNUNET_OK;
@@ -220,94 +219,86 @@ handle_refresh_reveal_finished (void *cls,
 {
   struct TALER_EXCHANGE_RefreshesRevealHandle *rrh = cls;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_RevealResult rr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   rrh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    rr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     {
-      struct TALER_DenominationSignature sigs[rrh->md.num_fresh_coins];
-      struct TALER_CoinSpendPrivateKeyP coin_privs[rrh->md.num_fresh_coins];
+      struct TALER_EXCHANGE_RevealedCoinInfo rcis[rrh->md.num_fresh_coins];
       enum GNUNET_GenericReturnValue ret;
 
-      memset (sigs,
+      memset (rcis,
               0,
-              sizeof (sigs));
+              sizeof (rcis));
       ret = refresh_reveal_ok (rrh,
                                j,
-                               coin_privs,
-                               sigs);
+                               rcis);
       if (GNUNET_OK != ret)
       {
-        hr.http_status = 0;
-        hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
+        rr.hr.http_status = 0;
+        rr.hr.ec = TALER_EC_GENERIC_REPLY_MALFORMED;
         break;
       }
       else
       {
         GNUNET_assert (rrh->noreveal_index < TALER_CNC_KAPPA);
+        rr.details.success.num_coins = rrh->md.num_fresh_coins;
+        rr.details.success.coins = rcis;
         rrh->reveal_cb (rrh->reveal_cb_cls,
-                        &hr,
-                        rrh->md.num_fresh_coins,
-                        coin_privs,
-                        rrh->md.fresh_coins[rrh->noreveal_index],
-                        sigs);
+                        &rr);
         rrh->reveal_cb = NULL;
       }
       for (unsigned int i = 0; i<rrh->md.num_fresh_coins; i++)
-        TALER_denom_sig_free (&sigs[i]);
+        TALER_denom_sig_free (&rcis[i].sig);
       TALER_EXCHANGE_refreshes_reveal_cancel (rrh);
       return;
     }
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
     /* Nothing really to verify, exchange says our reveal is inconsistent
        with our commitment, so either side is buggy; we
        should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_GONE:
     /* Server claims key expired or has been revoked */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
     GNUNET_break_op (0);
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    rr.hr.ec = TALER_JSON_get_error_code (j);
+    rr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange refreshes reveal\n",
                 (unsigned int) response_code,
-                (int) hr.ec);
+                (int) rr.hr.ec);
     break;
   }
   if (NULL != rrh->reveal_cb)
     rrh->reveal_cb (rrh->reveal_cb_cls,
-                    &hr,
-                    0,
-                    NULL,
-                    NULL,
-                    NULL);
+                    &rr);
   TALER_EXCHANGE_refreshes_reveal_cancel (rrh);
 }
 

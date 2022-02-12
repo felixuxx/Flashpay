@@ -1638,6 +1638,72 @@ struct TALER_EXCHANGE_MeltHandle;
 
 
 /**
+ * Information we obtain per coin during melting.
+ */
+struct TALER_EXCHANGE_MeltBlindingDetail
+{
+  /**
+   * Exchange values contributed to the refresh operation
+   */
+  struct TALER_ExchangeWithdrawValues alg_value;
+
+  /**
+   * Blinding keys used to blind the fresh coins
+   */
+  union TALER_DenominationBlindingKeyP bks;
+
+};
+
+
+/**
+ * Response returned to a /melt request.
+ */
+struct TALER_EXCHANGE_MeltResponse
+{
+  /**
+   * Full HTTP response details.
+   */
+  struct TALER_EXCHANGE_HttpResponse hr;
+
+  /**
+   * Parsed response details, variant depending on the
+   * @e hr.http_status.
+   */
+  union
+  {
+    /**
+     * Results for status #MHD_HTTP_SUCCESS.
+     */
+    struct
+    {
+
+      /**
+       * Length of the @a mbds array with the exchange values
+       * and blinding keys we are using.
+       */
+      unsigned int num_mbds;
+
+      /**
+       * Information returned per coin.
+       */
+      const struct TALER_EXCHANGE_MeltBlindingDetail *mbds;
+
+      /**
+       * Key used by the exchange to sign the response.
+       */
+      struct TALER_ExchangePublicKeyP sign_key;
+
+      /**
+       * Gamma value chosen by the exchange.
+       */
+      uint32_t noreveal_index;
+    } success;
+
+  } details;
+};
+
+
+/**
  * Callbacks of this type are used to notify the application about the result
  * of the /coins/$COIN_PUB/melt stage.  If successful, the @a noreveal_index
  * should be committed to disk prior to proceeding
@@ -1650,7 +1716,7 @@ struct TALER_EXCHANGE_MeltHandle;
  * @param bks array of @a num_coins blinding keys used to blind the fresh coins
  * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
  *                    UINT32_MAX on error
- * @param sign_key exchange key used to sign @a full_response, or NULL
+ * @param sign_key exchange key used to sign the response, or NULL
  */
 typedef void
 (*TALER_EXCHANGE_MeltCallback) (
@@ -1734,13 +1800,22 @@ struct TALER_EXCHANGE_RevealResult
    */
   struct TALER_EXCHANGE_HttpResponse hr;
 
+  /**
+   * Parsed response details, variant depending on the
+   * @e hr.http_status.
+   */
   union
   {
+    /**
+     * Results for status #MHD_HTTP_SUCCESS.
+     */
     struct
     {
       /**
-       * Array of @e num_coins values about the
-       * coins obtained via the refresh operation.
+       * Array of @e num_coins values about the coins obtained via the refresh
+       * operation.  The array give the coins in the same order (and should
+       * have the same length) in which the original melt request specified the
+       * respective denomination keys.
        */
       const struct TALER_EXCHANGE_RevealedCoinInfo *coins;
 
@@ -1759,25 +1834,15 @@ struct TALER_EXCHANGE_RevealResult
  * Callbacks of this type are used to return the final result of
  * submitting a refresh request to a exchange.  If the operation was
  * successful, this function returns the signatures over the coins
- * that were remelted.  The @a coin_privs and @a sigs arrays give the
- * coins in the same order (and should have the same length) in which
- * the original request specified the respective denomination keys.
+ * that were remelted.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param num_coins number of fresh coins created, length of the @a sigs, @a psa and @a coin_privs arrays, 0 if the operation failed
- * @param coin_privs array of @a num_coins private keys for the coins that were created, NULL on error
- * @param psa array of @a num_coins planchet secrets (derived from the transfer secret) for each of the coins
- * @param sigs array of signature over @a num_coins coins, NULL on error
+ * @param rr result of the reveal operation
  */
 typedef void
 (*TALER_EXCHANGE_RefreshesRevealCallback)(
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  unsigned int num_coins,
-  const struct TALER_CoinSpendPrivateKeyP *coin_privs,
-  const struct TALER_PlanchetMasterSecretP *psa,
-  const struct TALER_DenominationSignature *sigs);
+  const struct TALER_EXCHANGE_RevealResult *rr);
 
 
 /**
@@ -1877,8 +1942,15 @@ struct TALER_EXCHANGE_LinkResult
    */
   struct TALER_EXCHANGE_HttpResponse hr;
 
+  /**
+   * Parsed response details, variant depending on the
+   * @e hr.http_status.
+   */
   union
   {
+    /**
+     * Results for status #MHD_HTTP_SUCCESS.
+     */
     struct
     {
       /**
