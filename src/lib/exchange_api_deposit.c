@@ -461,6 +461,7 @@ handle_deposit_finished (void *cls,
  * @param amount the amount to be deposited
  * @param h_wire hash of the merchant’s account details
  * @param h_contract_terms hash of the contact of the merchant with the customer (further details are never disclosed to the exchange)
+ * @param ech hash over contract extensions
  * @param coin_pub coin’s public key
  * @param denom_sig exchange’s unblinded signature of the coin
  * @param denom_pub denomination key with which the coin is signed

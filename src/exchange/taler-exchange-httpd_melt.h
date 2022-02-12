@@ -30,10 +30,10 @@
 
 /**
  * Handle a "/coins/$COIN_PUB/melt" request.  Parses the request into the JSON
- * components and then hands things of to #check_for_denomination_key() to
+ * components and then hands things of to #check_melt_valid() to
  * validate the melted coins, the signature and execute the melt using
- * handle_melt().
-
+ * melt_transaction().
+ *
  * @param connection the MHD connection to handle
  * @param coin_pub public key of the coin
  * @param root uploaded JSON data

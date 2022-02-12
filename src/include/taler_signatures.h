@@ -164,7 +164,6 @@
  */
 #define TALER_SIGNATURE_EXCHANGE_AFFIRM_DENOM_UNKNOWN 1042
 
-
 /**
  * Signature where the Exchange confirms that it does not consider a denomination valid for the given operation
  * at this time.

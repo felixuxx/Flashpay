@@ -131,6 +131,7 @@ TALER_b2s (const void *buf,
 /**
  * Obtain denomination amount from configuration file.
  *
+ * @param cfg configuration to extract data from
  * @param section section of the configuration to access
  * @param option option of the configuration to access
  * @param[out] denom set to the amount found in configuration

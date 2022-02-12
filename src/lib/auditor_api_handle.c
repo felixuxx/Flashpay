@@ -365,12 +365,6 @@ version_completed_cb (void *cls,
 /* ********************* library internal API ********* */
 
 
-/**
- * Get the context of a auditor.
- *
- * @param h the auditor handle to query
- * @return ctx context to execute jobs in
- */
 struct GNUNET_CURL_Context *
 TALER_AUDITOR_handle_to_context_ (struct TALER_AUDITOR_Handle *h)
 {
@@ -378,13 +372,7 @@ TALER_AUDITOR_handle_to_context_ (struct TALER_AUDITOR_Handle *h)
 }
 
 
-/**
- * Check if the handle is ready to process requests.
- *
- * @param h the auditor handle to query
- * @return #GNUNET_YES if we are ready, #GNUNET_NO if not
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_AUDITOR_handle_is_ready_ (struct TALER_AUDITOR_Handle *h)
 {
   GNUNET_log (GNUNET_ERROR_TYPE_INFO,
@@ -396,13 +384,6 @@ TALER_AUDITOR_handle_is_ready_ (struct TALER_AUDITOR_Handle *h)
 }
 
 
-/**
- * Obtain the URL to use for an API request.
- *
- * @param h handle for the auditor
- * @param path Taler API path (i.e. "/deposit-confirmation")
- * @return the full URL to use with cURL
- */
 char *
 TALER_AUDITOR_path_to_url_ (struct TALER_AUDITOR_Handle *h,
                             const char *path)
@@ -417,21 +398,6 @@ TALER_AUDITOR_path_to_url_ (struct TALER_AUDITOR_Handle *h,
 /* ********************* public API ******************* */
 
 
-/**
- * Initialise a connection to the auditor. Will connect to the
- * auditor and obtain information about the auditor's master public
- * key and the auditor's auditor.  The respective information will
- * be passed to the @a version_cb once available, and all future
- * interactions with the auditor will be checked to be signed
- * (where appropriate) by the respective master key.
- *
- * @param ctx the context
- * @param url HTTP base URL for the auditor
- * @param version_cb function to call with the
- *        auditor's version information
- * @param version_cb_cls closure for @a version_cb
- * @return the auditor handle; NULL upon error
- */
 struct TALER_AUDITOR_Handle *
 TALER_AUDITOR_connect (struct GNUNET_CURL_Context *ctx,
                        const char *url,
@@ -515,11 +481,6 @@ request_version (void *cls)
 }
 
 
-/**
- * Disconnect from the auditor
- *
- * @param auditor the auditor handle
- */
 void
 TALER_AUDITOR_disconnect (struct TALER_AUDITOR_Handle *auditor)
 {

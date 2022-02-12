@@ -89,18 +89,17 @@ struct TALER_EXCHANGE_RefreshesRevealHandle
 
 
 /**
- * We got a 200 OK response for the /refreshes/$RCH/reveal operation.
- * Extract the coin signatures and return them to the caller.
- * The signatures we get from the exchange is for the blinded value.
- * Thus, we first must unblind them and then should verify their
- * validity.
+ * We got a 200 OK response for the /refreshes/$RCH/reveal operation.  Extract
+ * the coin signatures and return them to the caller.  The signatures we get
+ * from the exchange is for the blinded value.  Thus, we first must unblind
+ * them and then should verify their validity.
  *
  * If everything checks out, we return the unblinded signatures
  * to the application via the callback.
  *
  * @param rrh operation handle
  * @param json reply from the exchange
- * @param[out] sigs array of length `num_fresh_coins`, initialized to contain the coin private keys
+ * @param[out] coin_privs array of length `num_fresh_coins`, initialized to contain the coin private keys
  * @param[out] sigs array of length `num_fresh_coins`, initialized to contain signatures
  * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
  */

@@ -357,7 +357,7 @@ TALER_PQ_result_spec_json (const char *name,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row the row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
@@ -480,7 +480,7 @@ TALER_PQ_result_spec_denom_pub (const char *name,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row the row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
@@ -607,7 +607,7 @@ TALER_PQ_result_spec_denom_sig (const char *name,
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row the row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
@@ -735,7 +735,7 @@ TALER_PQ_result_spec_blinded_denom_sig (
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row the row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result
@@ -860,7 +860,7 @@ TALER_PQ_result_spec_blinded_planchet (
  *
  * @param cls closure
  * @param result where to extract data from
- * @param int row to extract data from
+ * @param row row to extract data from
  * @param fname name (or prefix) of the fields to extract from
  * @param[in,out] dst_size where to store size of result, may be NULL
  * @param[out] dst where to store the result

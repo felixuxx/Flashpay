@@ -2086,7 +2086,7 @@ TALER_CRYPTO_helper_esign_sign_ (
 
 
 /**
- * Ask the helper to revoke the public key @param exchange_pub .
+ * Ask the helper to revoke the public key @a exchange_pub .
  * Will cause the helper to tell all clients that the key is now unavailable,
  * and to create a replacement key.
  *

@@ -122,7 +122,7 @@ struct MeltData
  * @param rms secret internals of the refresh-reveal operation
  * @param rd refresh data with the characteristics of the operation
  * @param alg_values contributions from the exchange into the melt
- * @param[out] rd where to write the derived melt data
+ * @param[out] md where to write the derived melt data
  */
 enum GNUNET_GenericReturnValue
 TALER_EXCHANGE_get_melt_data_ (
@@ -136,7 +136,7 @@ TALER_EXCHANGE_get_melt_data_ (
  * Free all information associated with a melting session.  Note
  * that we allow the melting session to be only partially initialized,
  * as we use this function also when freeing melt data that was not
- * fully initialized (i.e. due to failures in #TALER_EXCHANGE_deserialize_melt_data_()).
+ * fully initialized.
  *
  * @param[in] md melting data to release, the pointer itself is NOT
  *           freed (as it is typically not allocated by itself)

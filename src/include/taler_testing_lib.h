@@ -998,10 +998,11 @@ TALER_TESTING_cmd_bank_debits (const char *label,
 /**
  * Create transfer command.
  *
- * @param label command label.
- * @param amount amount to transfer.
+ * @param label command label
+ * @param amount amount to transfer
  * @param auth authentication data to use
- * @param payto_credit_account which account receives money.
+ * @param payto_debit_account which account to withdraw money from
+ * @param payto_credit_account which account receives money
  * @param wtid wire transfer identifier to use
  * @param exchange_base_url exchange URL to use
  * @return the command.

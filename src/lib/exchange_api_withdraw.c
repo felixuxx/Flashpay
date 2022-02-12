@@ -185,7 +185,8 @@ handle_reserve_withdraw_finished (
 /**
  * Function called when stage 1 of CS withdraw is finished (request r_pub's)
  *
- * @param cls
+ * @param cls the `struct TALER_EXCHANGE_WithdrawHandle`
+ * @param csrr replies from the /csr request
  */
 static void
 withdraw_cs_stage_two_callback (void *cls,

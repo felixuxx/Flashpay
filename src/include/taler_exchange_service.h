@@ -2039,8 +2039,7 @@ struct TALER_EXCHANGE_GetDepositResponse
  * Function called with detailed wire transfer data.
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param dd details about the deposit (NULL on errors)
+ * @param dr details about the deposit response
  */
 typedef void
 (*TALER_EXCHANGE_DepositGetCallback)(
@@ -2319,7 +2318,7 @@ struct TALER_EXCHANGE_KycStatus
 
       /**
        * Signature of purpose
-       * #TALER_SIGNATURE_ACCOUNT_SETUP_SUCCESS affirming
+       * #TALER_SIGNATURE_EXCHANGE_ACCOUNT_SETUP_SUCCESS affirming
        * the successful KYC process.
        */
       struct TALER_ExchangeSignatureP exchange_sig;
