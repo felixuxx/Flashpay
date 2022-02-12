@@ -23,15 +23,6 @@
 #include "taler_util.h"
 
 
-/**
- * Obtain denomination amount from configuration file.
- *
- * @param cfg configuration to use
- * @param section section of the configuration to access
- * @param option option of the configuration to access
- * @param[out] denom set to the amount found in configuration
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on error
- */
 enum GNUNET_GenericReturnValue
 TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
                          const char *section,
@@ -67,14 +58,6 @@ TALER_config_get_amount (const struct GNUNET_CONFIGURATION_Handle *cfg,
 }
 
 
-/**
- * Load our currency from the @a cfg (in section [taler]
- * the option "CURRENCY").
- *
- * @param cfg configuration to use
- * @param[out] currency where to write the result
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on failure
- */
 enum GNUNET_GenericReturnValue
 TALER_config_get_currency (const struct GNUNET_CONFIGURATION_Handle *cfg,
                            char **currency)

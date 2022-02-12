@@ -3882,7 +3882,6 @@ postgres_select_kyc_status (void *cls,
  *
  * @param pg the plugin-specific state
  * @param payto_uri the payto URI to check
- * @param oauth_username user ID to store
  * @param[out] kyc set to the KYC status of the wallet
  * @return transaction status
  */
@@ -7194,11 +7193,10 @@ postgres_lookup_wire_transfer (
  * @param merchant_pub merchant public key
  * @param[out] pending set to true if the transaction is still pending
  * @param[out] wtid wire transfer identifier, only set if @a pending is false
- * @param[out] coin_contribution how much did the coin we asked about
- *        contribute to the total transfer value? (deposit value including fee)
- * @param[out] coin_fee how much did the exchange charge for the deposit fee
- * @param[out] execution_time when was the transaction done, or
+ * @param[out] exec_time when was the transaction done, or
  *         when we expect it to be done (if @a pending is false)
+ * @param[out] amount_with_fee set to the total deposited amount
+ * @param[out] deposit_fee set to how much the exchange did charge for the deposit
  * @param[out] kyc set to the kyc status of the receiver (if @a pending)
  * @return transaction status code
  */
@@ -9406,6 +9404,7 @@ postgres_get_reserve_by_h_blind (void *cls,
  * @param cls closure
  * @param h_blind_ev hash of the blinded coin
  * @param[out] old_coin_pub set to information about the old coin (on success only)
+ * @param[out] rrc_serial set to serial number of the entry in the database
  * @return transaction status code
  */
 static enum GNUNET_DB_QueryStatus

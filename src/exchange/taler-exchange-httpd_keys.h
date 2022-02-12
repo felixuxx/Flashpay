@@ -200,7 +200,7 @@ TEH_keys_denomination_cs_r_pub (
 
 
 /**
- * Revoke the public key associated with @param h_denom_pub .
+ * Revoke the public key associated with @a h_denom_pub.
  * This function should be called AFTER the database was
  * updated, as it also triggers #TEH_keys_update_states().
  *

@@ -1709,14 +1709,13 @@ TALER_TESTING_cmd_check_bank_empty (const char *label);
  *        provide a coin to be refunded.
  * @param refund_transaction_id transaction id to use
  *        in the request.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund_with_id (const char *label,
                                   unsigned int expected_response_code,
                                   const char *refund_amount,
-                                  const char *deposit_reference,
+                                  const char *coin_reference,
                                   uint64_t refund_transaction_id);
 
 
@@ -1728,14 +1727,13 @@ TALER_TESTING_cmd_refund_with_id (const char *label,
  * @param refund_amount the amount to ask a refund for.
  * @param coin_reference reference to a command that can
  *        provide a coin to be refunded.
- *
  * @return the command.
  */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_refund (const char *label,
                           unsigned int expected_response_code,
                           const char *refund_amount,
-                          const char *deposit_reference);
+                          const char *coin_reference);
 
 
 /**
@@ -2084,6 +2082,7 @@ TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
                                          const char *denom_ref,
                                          bool bad_sig);
 
+
 /**
  * Add statement about wire fees of the exchange. This is always
  * done for a few hours around the current time (for the test).
@@ -2206,26 +2205,6 @@ TALER_TESTING_cmd_revoke_sign_key (
   unsigned int expected_response_code,
   bool bad_sig,
   const char *signkey_ref);
-
-
-/**
- * Have the auditor affirm that it is auditing the given
- * denomination key and upload the auditor's signature to
- * the exchange.
- *
- * @param label command label.
- * @param expected_http_status expected HTTP status from exchange
- * @param denom_ref reference to a command that identifies
- *        a denomination key (i.e. because it was used to
- *        withdraw a coin).
- * @param bad_sig should we use a bogus signature?
- * @return the command
- */
-struct TALER_TESTING_Command
-TALER_TESTING_cmd_auditor_add_denom_sig (const char *label,
-                                         unsigned int expected_http_status,
-                                         const char *denom_ref,
-                                         bool bad_sig);
 
 
 /**

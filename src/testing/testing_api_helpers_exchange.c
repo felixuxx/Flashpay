@@ -371,17 +371,6 @@ fail:
 }
 
 
-/**
- * Prepare launching an exchange.  Checks that the configured
- * port is available, runs taler-exchange-dbinit.  Does NOT
- * launch the exchange process itself.
- *
- * @param config_filename configuration file to use
- * @param reset_db should we reset the database?
- * @param[out] ec will be set to the exchange configuration data
- * @return #GNUNET_OK on success, #GNUNET_NO if test should be
- *         skipped, #GNUNET_SYSERR on test failure
- */
 enum GNUNET_GenericReturnValue
 TALER_TESTING_prepare_exchange (const char *config_filename,
                                 int reset_db,

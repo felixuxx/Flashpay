@@ -235,7 +235,6 @@ TALER_TESTING_cmd_refund (const char *label,
   struct RefundState *rs;
 
   rs = GNUNET_new (struct RefundState);
-
   rs->expected_response_code = expected_response_code;
   rs->refund_amount = refund_amount;
   rs->coin_reference = coin_reference;

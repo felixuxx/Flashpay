@@ -58,7 +58,7 @@ TALER_PQ_query_param_amount (const struct TALER_Amount *x);
  * public key will be serialized into on variable-size
  * BLOB.
  *
- * @param x pointer to the query parameter to pass
+ * @param denom_pub pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_denom_pub (
@@ -70,7 +70,7 @@ TALER_PQ_query_param_denom_pub (
  * various attributes of the signature will be serialized into on
  * variable-size BLOB.
  *
- * @param x pointer to the query parameter to pass
+ * @param denom_sig pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_denom_sig (
@@ -83,7 +83,7 @@ TALER_PQ_query_param_denom_sig (
  * planchet will be serialized into on
  * variable-size BLOB.
  *
- * @param x pointer to the query parameter to pass
+ * @param bp pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_blinded_planchet (
@@ -95,7 +95,7 @@ TALER_PQ_query_param_blinded_planchet (
  * the various attributes of the signature will be serialized into on
  * variable-size BLOB.
  *
- * @param x pointer to the query parameter to pass
+ * @param denom_sig pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_blinded_denom_sig (
@@ -107,7 +107,7 @@ TALER_PQ_query_param_blinded_denom_sig (
  * withdraw. Internally, the various attributes of the @a alg_values will be
  * serialized into on variable-size BLOB.
  *
- * @param x pointer to the query parameter to pass
+ * @param alg_values pointer to the query parameter to pass
  */
 struct GNUNET_PQ_QueryParam
 TALER_PQ_query_param_exchange_withdraw_values (

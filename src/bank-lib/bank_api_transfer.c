@@ -65,18 +65,7 @@ struct WirePackP
 
 GNUNET_NETWORK_STRUCT_END
 
-/**
- * Prepare for execution of a wire transfer from the exchange to some
- * merchant.
- *
- * @param destination_account_payto_uri payto:// URL identifying where to send the money
- * @param amount amount to transfer, already rounded
- * @param exchange_base_url base URL of this exchange (included in subject
- *        to facilitate use of tracking API by merchant backend)
- * @param wtid wire transfer identifier to use
- * @param[out] buf set to transfer data to persist, NULL on error
- * @param[out] buf_size set to number of bytes in @a buf, 0 on error
- */
+
 void
 TALER_BANK_prepare_transfer (
   const char *destination_account_payto_uri,
@@ -247,17 +236,6 @@ handle_transfer_finished (void *cls,
 }
 
 
-/**
- * Execute a wire transfer.
- *
- * @param ctx curl context for our event loop
- * @param auth authentication data to authenticate with the bank
- * @param buf buffer with the prepared execution details
- * @param buf_size number of bytes in @a buf
- * @param cc function to call upon success
- * @param cc_cls closure for @a cc
- * @return NULL on error
- */
 struct TALER_BANK_TransferHandle *
 TALER_BANK_transfer (
   struct GNUNET_CURL_Context *ctx,
@@ -366,21 +344,6 @@ TALER_BANK_transfer (
 }
 
 
-/**
- * Abort execution of a wire transfer. For example, because we are shutting
- * down.  Note that if an execution is aborted, it may or may not still
- * succeed.
- *
- * The caller MUST run #TALER_BANK_transfer() again for the same request as
- * soon as possible, to ensure that the request either ultimately succeeds or
- * ultimately fails. Until this has been done, the transaction is in limbo
- * (i.e. may or may not have been committed).
- *
- * This function cannot be used on a request handle if a response is already
- * served for it.
- *
- * @param th the wire transfer request handle
- */
 void
 TALER_BANK_transfer_cancel (struct TALER_BANK_TransferHandle *th)
 {

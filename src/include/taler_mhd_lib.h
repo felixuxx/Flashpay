@@ -547,7 +547,7 @@ struct TALER_MHD_Legal;
 
 /**
  * Load set of legal documents as specified in @a cfg in section @a section
- * where the Etag is given under the @param tagoption and the directory under
+ * where the Etag is given under the @a tagoption and the directory under
  * the @a diroption.
  *
  * @param cfg configuration to use

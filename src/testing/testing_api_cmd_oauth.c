@@ -131,16 +131,17 @@ handle_post (void *cls,
  *
  * @param cls argument given together with the function
  *        pointer when the handler was registered with MHD
+ * @param connection the connection being handled
  * @param url the requested url
  * @param method the HTTP method used (#MHD_HTTP_METHOD_GET,
  *        #MHD_HTTP_METHOD_PUT, etc.)
  * @param version the HTTP version string (i.e.
- *        #MHD_HTTP_VERSION_1_1)
+ *        MHD_HTTP_VERSION_1_1)
  * @param upload_data the data being uploaded (excluding HEADERS,
  *        for a POST that fits into memory and that is encoded
  *        with a supported encoding, the POST data will NOT be
  *        given in upload_data and is instead available as
- *        part of #MHD_get_connection_values; very large POST
+ *        part of MHD_get_connection_values(); very large POST
  *        data *will* be made available incrementally in
  *        @a upload_data)
  * @param[in,out] upload_data_size set initially to the size of the
@@ -153,7 +154,7 @@ handle_post (void *cls,
  *        with plenty of upload data) this allows the application
  *        to easily associate some request-specific state.
  *        If necessary, this state can be cleaned up in the
- *        global #MHD_RequestCompletedCallback (which
+ *        global MHD_RequestCompletedCallback (which
  *        can be set with the #MHD_OPTION_NOTIFY_COMPLETED).
  *        Initially, `*con_cls` will be NULL.
  * @return #MHD_YES if the connection was handled successfully,

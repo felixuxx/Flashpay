@@ -144,7 +144,7 @@ postgres_create_tables (void *cls)
  * @param[in,out] pg the plugin-specific state
  * @return #GNUNET_OK on success
  */
-static int
+static enum GNUNET_GenericReturnValue
 setup_connection (struct PostgresClosure *pg)
 {
   struct GNUNET_PQ_PreparedStatement ps[] = {

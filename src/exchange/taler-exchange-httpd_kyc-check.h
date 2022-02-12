@@ -29,7 +29,7 @@
  * Handle a "/kyc-check" request.  Checks the KYC
  * status of the given account and returns it.
  *
- * @param connection request to handle
+ * @param rc details about the request to handle
  * @param args one argument with the payment_target_uuid
  * @return MHD result code
  */

@@ -1126,7 +1126,6 @@ TALER_denom_sign_blinded (struct TALER_BlindedDenominationSignature *denom_sig,
  * Unblind blinded signature.
  *
  * @param[out] denom_sig where to write the unblinded signature
- * @param dk denomination public key
  * @param bdenom_sig the blinded signature
  * @param bks blinding secret to use
  * @param c_hash hash of the coin's public key for verification of the signature
@@ -1242,8 +1241,8 @@ TALER_blinded_denom_sig_cmp (
 /**
  * Compare two blinded planchets.
  *
- * @param sig1 first blinded planchet
- * @param sig2 second blinded planchet
+ * @param bp1 first blinded planchet
+ * @param bp2 second blinded planchet
  * @return 0 if the keys are equal, otherwise -1 or 1
  */
 int
@@ -1299,7 +1298,7 @@ TALER_test_coin_valid (const struct TALER_CoinPublicInfo *coin_public_info,
  * Compute the hash of a blinded coin.
  *
  * @param blinded_planchet blinded planchet
- * @param denom_pub denomination publick key
+ * @param denom_hash hash of the denomination publick key
  * @param[out] bch where to write the hash
  * @return #GNUNET_OK when successful, #GNUNET_SYSERR if an internal error occured
  */
@@ -1806,7 +1805,7 @@ TALER_CRYPTO_helper_rsa_sign (
 
 
 /**
- * Ask the helper to revoke the public key associated with @param h_denom_pub .
+ * Ask the helper to revoke the public key associated with @a h_denom_pub.
  * Will cause the helper to tell all clients that the key is now unavailable,
  * and to create a replacement key.
  *
@@ -1926,7 +1925,7 @@ TALER_CRYPTO_helper_cs_sign (
 
 
 /**
- * Ask the helper to revoke the public key associated with @param h_cs .
+ * Ask the helper to revoke the public key associated with @a h_cs.
  * Will cause the helper to tell all clients that the key is now unavailable,
  * and to create a replacement key.
  *
@@ -1947,8 +1946,8 @@ TALER_CRYPTO_helper_cs_revoke (
 
 
 /**
- * Ask the helper to derive R using the @param nonce and denomination key
- * associated with @param h_cs.
+ * Ask the helper to derive R using the @a nonce and denomination key
+ * associated with @a h_cs.
  *
  * This operation will block until the R has been obtained.  Should
  * this process receive a signal (that is not ignored) while the operation is

@@ -259,7 +259,7 @@ TALER_AUDITOR_deposit_confirmation (
   const struct TALER_MerchantWireHash *h_wire,
   const struct TALER_ExtensionContractHash *h_extensions,
   const struct TALER_PrivateContractHash *h_contract_terms,
-  struct GNUNET_TIME_Timestamp timestamp,
+  struct GNUNET_TIME_Timestamp exchange_timestamp,
   struct GNUNET_TIME_Timestamp wire_deadline,
   struct GNUNET_TIME_Timestamp refund_deadline,
   const struct TALER_Amount *amount_without_fee,

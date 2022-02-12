@@ -258,19 +258,6 @@ handle_deposit_wtid_finished (void *cls,
 }
 
 
-/**
- * Obtain wire transfer details about an existing deposit operation.
- *
- * @param exchange the exchange to query
- * @param merchant_priv the merchant's private key
- * @param h_wire hash of merchant's wire transfer details
- * @param h_contract_terms hash of the proposal data from the contract
- *                        between merchant and customer
- * @param coin_pub public key of the coin
- * @param cb function to call with the result
- * @param cb_cls closure for @a cb
- * @return handle to abort request
- */
 struct TALER_EXCHANGE_DepositGetHandle *
 TALER_EXCHANGE_deposits_get (
   struct TALER_EXCHANGE_Handle *exchange,
@@ -387,12 +374,6 @@ TALER_EXCHANGE_deposits_get (
 }
 
 
-/**
- * Cancel /deposits/$WTID request.  This function cannot be used on a request
- * handle if a response is already served for it.
- *
- * @param dwh the wire deposits request handle
- */
 void
 TALER_EXCHANGE_deposits_get_cancel (struct TALER_EXCHANGE_DepositGetHandle *dwh)
 {

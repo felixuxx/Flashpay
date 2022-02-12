@@ -36,13 +36,7 @@
  */
 static struct GNUNET_DISK_PipeHandle *sigpipe;
 
-/**
- * Lookup command by label.
- *
- * @param is interpreter state to search
- * @param label label to look for
- * @return NULL if command was not found
- */
+
 const struct TALER_TESTING_Command *
 TALER_TESTING_interpreter_lookup_command (struct TALER_TESTING_Interpreter *is,
                                           const char *label)
@@ -229,11 +223,6 @@ TALER_TESTING_interpreter_get_current_label (struct
 }
 
 
-/**
- * Run the main interpreter loop that performs exchange operations.
- *
- * @param cls contains the `struct TALER_TESTING_Interpreter`
- */
 static void
 interpreter_run (void *cls)
 {

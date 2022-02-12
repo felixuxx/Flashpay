@@ -228,19 +228,6 @@ check_bank_transfer_traits (void *cls,
 }
 
 
-/**
- * Make a "bank check" CMD.  It checks whether a
- * particular wire transfer has been made or not.
- *
- * @param label the command label.
- * @param exchange_base_url base url of the exchange involved in
- *        the wire transfer.
- * @param amount the amount expected to be transferred.
- * @param debit_payto the account that gave money.
- * @param credit_payto the account that received money.
- *
- * @return the command
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_check_bank_transfer (const char *label,
                                        const char *exchange_base_url,
@@ -270,19 +257,9 @@ TALER_TESTING_cmd_check_bank_transfer (const char *label,
 }
 
 
-/**
- * Define a "bank check" CMD that takes the input
- * data from another CMD that offers it.
- *
- * @param label command label.
- * @param deposit_reference reference to a CMD that is
- *        able to provide the "check bank transfer" operation
- *        input data.
- * @return the command.
- */
 struct TALER_TESTING_Command
-TALER_TESTING_cmd_check_bank_transfer_with_ref
-  (const char *label,
+TALER_TESTING_cmd_check_bank_transfer_with_ref (
+  const char *label,
   const char *deposit_reference)
 {
   struct BankCheckState *bcs;

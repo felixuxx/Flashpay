@@ -229,7 +229,7 @@ static uint64_t key_gen;
 /**
  * Generate the announcement message for @a dk.
  *
- * @param[in,out] denomination key to generate the announcement for
+ * @param[in,out] dk denomination key to generate the announcement for
  */
 static void
 generate_response (struct DenominationKey *dk)
@@ -538,12 +538,12 @@ handle_revoke_request (struct TES_Client *client,
 
 
 /**
- * Handle @a client request @a sr to create signature. Create the
+ * Handle @a client request @a rdr to create signature. Create the
  * signature using the respective key and return the result to
  * the client.
  *
  * @param client the client making the request
- * @param sr the request details
+ * @param rdr the request details
  * @return #GNUNET_OK on success
  */
 static enum GNUNET_GenericReturnValue
@@ -1070,8 +1070,7 @@ update_denominations (void *cls)
  *
  * @param[out] denom denomination of the key
  * @param filename name of the file we are parsing, for logging
- * @param buf key material
- * @param buf_size number of bytes in @a buf
+ * @param priv key material
  */
 static void
 parse_key (struct Denomination *denom,

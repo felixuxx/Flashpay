@@ -22,17 +22,7 @@
 #include "taler_exchangedb_lib.h"
 
 
-/**
- * Calculate the total value of all transactions performed.
- * Stores @a off plus the cost of all transactions in @a tl
- * in @a ret.
- *
- * @param tl transaction list to process
- * @param off offset to use as the starting value
- * @param[out] ret where the resulting total is to be stored (may alias @a off)
- * @return #GNUNET_OK on success, #GNUNET_SYSERR on errors
- */
-int
+enum GNUNET_GenericReturnValue
 TALER_EXCHANGEDB_calculate_transaction_list_totals (
   struct TALER_EXCHANGEDB_TransactionList *tl,
   const struct TALER_Amount *off,

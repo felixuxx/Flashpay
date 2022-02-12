@@ -233,14 +233,6 @@ connect_with_state_cleanup (void *cls,
 }
 
 
-/**
- * Make a serialize-keys CMD.  It will ask for
- * keys serialization __and__ disconnect from the
- * exchange.
- *
- * @param label CMD label
- * @return the CMD.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_serialize_keys (const char *label)
 {
@@ -261,16 +253,6 @@ TALER_TESTING_cmd_serialize_keys (const char *label)
 }
 
 
-/**
- * Make a connect-with-state CMD.  This command
- * will use a serialized key state to reconnect
- * to the exchange.
- *
- * @param label command label
- * @param state_reference label of a CMD offering
- *        a serialized key state.
- * @return the CMD.
- */
 struct TALER_TESTING_Command
 TALER_TESTING_cmd_connect_with_state (const char *label,
                                       const char *state_reference)

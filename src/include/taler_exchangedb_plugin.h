@@ -1886,7 +1886,6 @@ typedef void
  * @param cls closure
  * @param rowid which row in the table is the information from (for diagnostics)
  * @param merchant_pub public key of the merchant (should be same for all callbacks with the same @e cls)
- * @param h_wire hash of wire transfer details of the merchant (should be same for all callbacks with the same @e cls)
  * @param account_payto_uri which account did the transfer go to?
  * @param exec_time execution time of the wire transfer (should be same for all callbacks with the same @e cls)
  * @param h_contract_terms which proposal was this payment about

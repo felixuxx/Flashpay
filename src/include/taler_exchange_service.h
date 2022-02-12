@@ -1669,8 +1669,7 @@ typedef void
  *
  * This API is typically used by a wallet.  Note that to ensure that
  * no money is lost in case of hardware failures, the provided
- * argument should have been constructed using
- * #TALER_EXCHANGE_refresh_prepare and committed to persistent storage
+ * argument @a rd should be committed to persistent storage
  * prior to calling this function.
  *
  * @param exchange the exchange handle; the exchange must be ready to operate
@@ -2414,7 +2413,7 @@ struct TALER_EXCHANGE_KycProofResponse
  * Function called with the result of a KYC check.
  *
  * @param cls closure
- * @param ks the account's KYC status details
+ * @param kpr the account's KYC status details
  */
 typedef void
 (*TALER_EXCHANGE_KycProofCallback)(
