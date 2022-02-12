@@ -499,12 +499,10 @@ TEH_handler_withdraw (struct TEH_RequestContext *rc,
   // TODO: if CS: check nonce for reuse
 
   /* Sign before transaction! */
-  ec = TALER_EC_NONE;
-  // FIXME: swap arguments!
-  wc.collectable.sig = TEH_keys_denomination_sign (
+  ec = TEH_keys_denomination_sign (
     &wc.collectable.denom_pub_hash,
     &wc.blinded_planchet,
-    &ec);
+    &wc.collectable.sig);
   if (TALER_EC_NONE != ec)
   {
     GNUNET_break (0);

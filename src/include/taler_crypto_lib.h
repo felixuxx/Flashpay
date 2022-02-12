@@ -1791,17 +1791,16 @@ TALER_CRYPTO_helper_rsa_poll (struct TALER_CRYPTO_RsaDenominationHelper *dh);
  * @param h_rsa hash of the RSA public key to use to sign
  * @param msg message to sign
  * @param msg_size number of bytes in @a msg
- * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
- * @return signature, the value inside the structure will be NULL on failure,
- *         see @a ec for details about the failure
+ * @param[out] bs set to the blind signature
+ * @return #TALER_EC_NONE on success
  */
-struct TALER_BlindedDenominationSignature
+enum TALER_ErrorCode
 TALER_CRYPTO_helper_rsa_sign (
   struct TALER_CRYPTO_RsaDenominationHelper *dh,
   const struct TALER_RsaPubHashP *h_rsa,
   const void *msg,
   size_t msg_size,
-  enum TALER_ErrorCode *ec);
+  struct TALER_BlindedDenominationSignature *bs);
 
 
 /**
@@ -1912,16 +1911,15 @@ TALER_CRYPTO_helper_cs_poll (struct TALER_CRYPTO_CsDenominationHelper *dh);
  * @param dh helper process connection
  * @param h_cs hash of the CS public key to use to sign
  * @param blinded_planchet blinded planchet containing c and nonce
- * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
- * @return signature, the value inside the structure will be NULL on failure,
- *         see @a ec for details about the failure
+ * @param[out] bs set to the blind signature
+ * @return #TALER_EC_NONE on success
  */
-struct TALER_BlindedDenominationSignature
+enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CsPubHashP *h_cs,
   const struct TALER_BlindedCsPlanchet *blinded_planchet,
-  enum TALER_ErrorCode *ec);
+  struct TALER_BlindedDenominationSignature *bs);
 
 
 /**

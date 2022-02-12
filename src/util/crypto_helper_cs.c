@@ -378,17 +378,16 @@ more:
 }
 
 
-struct TALER_BlindedDenominationSignature
+enum TALER_ErrorCode
 TALER_CRYPTO_helper_cs_sign (
   struct TALER_CRYPTO_CsDenominationHelper *dh,
   const struct TALER_CsPubHashP *h_cs,
   const struct TALER_BlindedCsPlanchet *blinded_planchet,
-  enum TALER_ErrorCode *ec)
+  struct TALER_BlindedDenominationSignature *bs)
 {
-  struct TALER_BlindedDenominationSignature ds = {
-    .cipher = TALER_DENOMINATION_INVALID
-  };
+  enum TALER_ErrorCode ec = TALER_EC_INVALID;
 
+  bs->cipher = TALER_DENOMINATION_INVALID;
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
               "Starting signature process\n");
   if (GNUNET_OK !=
@@ -396,8 +395,7 @@ TALER_CRYPTO_helper_cs_sign (
   {
     GNUNET_log (GNUNET_ERROR_TYPE_WARNING,
                 "Failed to connect to helper\n");
-    *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
-    return ds;
+    return TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
   }
 
   GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
@@ -420,8 +418,7 @@ TALER_CRYPTO_helper_cs_sign (
       GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                            "send");
       do_disconnect (dh);
-      *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
-      return ds;
+      return TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
     }
   }
 
@@ -434,7 +431,6 @@ TALER_CRYPTO_helper_cs_sign (
       = (const struct GNUNET_MessageHeader *) buf;
     bool finished = false;
 
-    *ec = TALER_EC_INVALID;
     while (1)
     {
       uint16_t msize;
@@ -454,20 +450,20 @@ TALER_CRYPTO_helper_cs_sign (
         {
           GNUNET_assert (finished);
           GNUNET_assert (0 == off);
-          return ds;
+          return ec;
         }
         GNUNET_log_strerror (GNUNET_ERROR_TYPE_WARNING,
                              "recv");
         do_disconnect (dh);
-        *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
+        ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_UNAVAILABLE;
         break;
       }
       if (0 == ret)
       {
         GNUNET_break (0 == off);
         if (! finished)
-          *ec = TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
-        return ds;
+          ec = TALER_EC_EXCHANGE_SIGNKEY_HELPER_BUG;
+        return ec;
       }
       off += ret;
 more:
@@ -483,26 +479,26 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
           goto end;
         }
         if (finished)
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
           goto end;
         }
         {
           const struct TALER_CRYPTO_SignResponse *sr =
             (const struct TALER_CRYPTO_SignResponse *) buf;
-          // TODO: add nullcheck
+
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "Received signature\n");
-          *ec = TALER_EC_NONE;
+          ec = TALER_EC_NONE;
           finished = true;
-          ds.cipher = TALER_DENOMINATION_CS;
-          ds.details.blinded_cs_answer = sr->cs_answer;
+          bs->cipher = TALER_DENOMINATION_CS;
+          bs->details.blinded_cs_answer = sr->cs_answer;
           break;
         }
       case TALER_HELPER_CS_MT_RES_SIGN_FAILURE:
@@ -510,14 +506,14 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
           goto end;
         }
         {
           const struct TALER_CRYPTO_SignFailure *sf =
             (const struct TALER_CRYPTO_SignFailure *) buf;
 
-          *ec = (enum TALER_ErrorCode) ntohl (sf->ec);
+          ec = (enum TALER_ErrorCode) ntohl (sf->ec);
           GNUNET_log (GNUNET_ERROR_TYPE_DEBUG,
                       "Signing failed!\n");
           finished = true;
@@ -532,7 +528,7 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
           goto end;
         }
         break; /* while(1) loop ensures we recvfrom() again */
@@ -545,7 +541,7 @@ more:
         {
           GNUNET_break_op (0);
           do_disconnect (dh);
-          *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+          ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
           goto end;
         }
         break; /* while(1) loop ensures we recvfrom() again */
@@ -560,7 +556,7 @@ more:
                     "Received unexpected message of type %u\n",
                     ntohs (hdr->type));
         do_disconnect (dh);
-        *ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
+        ec = TALER_EC_EXCHANGE_DENOMINATION_HELPER_BUG;
         goto end;
       }
       memmove (buf,
@@ -571,8 +567,8 @@ more:
     } /* while(1) */
 end:
     if (finished)
-      TALER_blinded_denom_sig_free (&ds);
-    return ds;
+      TALER_blinded_denom_sig_free (bs);
+    return ec;
   }
 }
 

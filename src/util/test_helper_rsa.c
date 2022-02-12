@@ -304,13 +304,13 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
                    int) pd.blinded_planchet.details.rsa_blinded_planchet.
                   blinded_msg_size,
                   GNUNET_h2s (&keys[i].h_rsa.hash));
-      ds = TALER_CRYPTO_helper_rsa_sign (dh,
+      ec = TALER_CRYPTO_helper_rsa_sign (dh,
                                          &keys[i].h_rsa,
                                          pd.blinded_planchet.details.
                                          rsa_blinded_planchet.blinded_msg,
                                          pd.blinded_planchet.details.
                                          rsa_blinded_planchet.blinded_msg_size,
-                                         &ec);
+                                         &ds);
       TALER_blinded_planchet_free (&pd.blinded_planchet);
     }
     switch (ec)
@@ -405,11 +405,11 @@ test_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh)
     GNUNET_CRYPTO_random_block (GNUNET_CRYPTO_QUALITY_WEAK,
                                 &rnd,
                                 sizeof (rnd));
-    ds = TALER_CRYPTO_helper_rsa_sign (dh,
+    ec = TALER_CRYPTO_helper_rsa_sign (dh,
                                        &rnd,
                                        "Hello",
                                        strlen ("Hello"),
-                                       &ec);
+                                       &ds);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
       if (TALER_EC_NONE == ec)
@@ -485,14 +485,14 @@ perf_signing (struct TALER_CRYPTO_RsaDenominationHelper *dh,
           struct GNUNET_TIME_Absolute start = GNUNET_TIME_absolute_get ();
           struct GNUNET_TIME_Relative delay;
 
-          ds = TALER_CRYPTO_helper_rsa_sign (dh,
+          ec = TALER_CRYPTO_helper_rsa_sign (dh,
                                              &keys[i].h_rsa,
                                              pd.blinded_planchet.details.
                                              rsa_blinded_planchet.blinded_msg,
                                              pd.blinded_planchet.details.
                                              rsa_blinded_planchet.
                                              blinded_msg_size,
-                                             &ec);
+                                             &ds);
           if (TALER_EC_NONE != ec)
             break;
           delay = GNUNET_TIME_absolute_get_duration (start);

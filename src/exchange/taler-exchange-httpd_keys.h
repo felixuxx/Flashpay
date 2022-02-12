@@ -173,14 +173,13 @@ TEH_keys_denomination_by_hash2 (
  *
  * @param h_denom_pub hash of the public key to use to sign
  * @param bp blinded planchet to sign
- * @param[out] ec set to the error code (or #TALER_EC_NONE on success)
- * @return signature, the value inside the structure will be NULL on failure,
- *         see @a ec for details about the failure
+ * @param[out] bs set to the blind signature on success
+ * @return #TALER_EC_NONE on success
  */
-struct TALER_BlindedDenominationSignature
+enum TALER_ErrorCode
 TEH_keys_denomination_sign (const struct TALER_DenominationHash *h_denom_pub,
                             const struct TALER_BlindedPlanchet *bp,
-                            enum TALER_ErrorCode *ec);
+                            struct TALER_BlindedDenominationSignature *bs);
 
 
 /**

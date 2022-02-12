@@ -456,11 +456,11 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
       GNUNET_log (GNUNET_ERROR_TYPE_INFO,
                   "Requesting signature with key %s\n",
                   GNUNET_h2s (&keys[i].h_cs.hash));
-      ds = TALER_CRYPTO_helper_cs_sign (dh,
+      ec = TALER_CRYPTO_helper_cs_sign (dh,
                                         &keys[i].h_cs,
                                         &pd.blinded_planchet.details.
                                         cs_blinded_planchet,
-                                        &ec);
+                                        &ds);
     }
     switch (ec)
     {
@@ -552,11 +552,11 @@ test_signing (struct TALER_CRYPTO_CsDenominationHelper *dh)
                                            &c_hash,
                                            &pd));
 
-    ds = TALER_CRYPTO_helper_cs_sign (dh,
+    ec = TALER_CRYPTO_helper_cs_sign (dh,
                                       &rnd,
                                       &pd.blinded_planchet.details.
                                       cs_blinded_planchet,
-                                      &ec);
+                                      &ds);
     if (TALER_EC_EXCHANGE_GENERIC_DENOMINATION_KEY_UNKNOWN != ec)
     {
       if (TALER_EC_NONE == ec)
@@ -645,11 +645,11 @@ perf_signing (struct TALER_CRYPTO_CsDenominationHelper *dh,
           struct GNUNET_TIME_Absolute start = GNUNET_TIME_absolute_get ();
           struct GNUNET_TIME_Relative delay;
 
-          ds = TALER_CRYPTO_helper_cs_sign (dh,
+          ec = TALER_CRYPTO_helper_cs_sign (dh,
                                             &keys[i].h_cs,
                                             &pd.blinded_planchet.details.
                                             cs_blinded_planchet,
-                                            &ec);
+                                            &ds);
           if (TALER_EC_NONE != ec)
             break;
           delay = GNUNET_TIME_absolute_get_duration (start);
