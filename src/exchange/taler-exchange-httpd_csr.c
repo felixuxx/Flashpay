@@ -68,8 +68,7 @@ TEH_handler_csr (struct TEH_RequestContext *rc,
     return TALER_MHD_reply_with_error (
       rc->connection,
       MHD_HTTP_BAD_REQUEST,
-      // FIXME: generalize error message
-      TALER_EC_EXCHANGE_REFRESHES_REVEAL_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
+      TALER_EC_EXCHANGE_GENERIC_NEW_DENOMS_ARRAY_SIZE_EXCESSIVE,
       NULL);
   }
   struct TALER_CsNonce nonces[GNUNET_NZL (csr_requests_num)];

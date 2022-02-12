@@ -1480,7 +1480,6 @@ run (void *cls)
       &age_hash
     };
 
-    // FIXME:
     /* Call TALER_denom_blind()/TALER_denom_sign_blinded() twice, once without
      * age_hash, once with age_hash */
     RND_BLK (&age_hash);
