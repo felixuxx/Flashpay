@@ -146,14 +146,15 @@ TALER_EXCHANGE_get_melt_data_ (
       TALER_planchet_blinding_secret_create (fc,
                                              &alg_values[j],
                                              &bks);
-      /* Note: we already did this for the /csr request,
+      /* FIXME: we already did this for the /csr request,
          so this computation is redundant, and here additionally
          repeated KAPPA times. Could be avoided with slightly
          more bookkeeping in the future */
-      TALER_cs_refresh_nonce_derive (
-        rms,
-        j,
-        &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
+      if (TALER_DENOMINATION_CS == alg_values[j].cipher)
+        TALER_cs_refresh_nonce_derive (
+          rms,
+          j,
+          &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
       if (GNUNET_OK !=
           TALER_planchet_prepare (&md->fresh_pks[j],
                                   &alg_values[j],

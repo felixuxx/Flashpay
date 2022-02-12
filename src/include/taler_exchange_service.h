@@ -1650,6 +1650,7 @@ struct TALER_EXCHANGE_MeltBlindingDetail
   /**
    * Blinding keys used to blind the fresh coins
    */
+  /* FIXME: uninitialized! */
   union TALER_DenominationBlindingKeyP bks;
 
 };
@@ -1678,12 +1679,6 @@ struct TALER_EXCHANGE_MeltResponse
     {
 
       /**
-       * Length of the @a mbds array with the exchange values
-       * and blinding keys we are using.
-       */
-      unsigned int num_mbds;
-
-      /**
        * Information returned per coin.
        */
       const struct TALER_EXCHANGE_MeltBlindingDetail *mbds;
@@ -1692,6 +1687,12 @@ struct TALER_EXCHANGE_MeltResponse
        * Key used by the exchange to sign the response.
        */
       struct TALER_ExchangePublicKeyP sign_key;
+
+      /**
+       * Length of the @a mbds array with the exchange values
+       * and blinding keys we are using.
+       */
+      unsigned int num_mbds;
 
       /**
        * Gamma value chosen by the exchange.
@@ -1710,23 +1711,12 @@ struct TALER_EXCHANGE_MeltResponse
  * #TALER_EXCHANGE_refreshes_reveal().
  *
  * @param cls closure
- * @param hr HTTP response data
- * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, 0 if the operation failed
- * @param alg_values array @a num_coins of exchange values contributed to the refresh operation
- * @param bks array of @a num_coins blinding keys used to blind the fresh coins
- * @param noreveal_index choice by the exchange in the cut-and-choose protocol,
- *                    UINT32_MAX on error
- * @param sign_key exchange key used to sign the response, or NULL
+ * @param mr response details
  */
 typedef void
 (*TALER_EXCHANGE_MeltCallback) (
   void *cls,
-  const struct TALER_EXCHANGE_HttpResponse *hr,
-  unsigned int num_coins,
-  const struct TALER_ExchangeWithdrawValues *alg_values,
-  const union TALER_DenominationBlindingKeyP *bks,
-  uint32_t noreveal_index,
-  const struct TALER_ExchangePublicKeyP *sign_key);
+  const struct TALER_EXCHANGE_MeltResponse *mr);
 
 
 /**

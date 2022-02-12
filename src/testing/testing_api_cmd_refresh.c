@@ -117,15 +117,10 @@ struct RefreshMeltState
   struct TALER_EXCHANGE_DenomPublicKey *fresh_pks;
 
   /**
-   * Array of @e num_fresh_coins of exchange values contributed to the refresh operation
+   * Array of @e num_fresh_coins of results from
+   * the melt operation.
    */
-  struct TALER_ExchangeWithdrawValues *alg_values;
-
-  /**
-   * Array of @e num_fresh_coins of blinding key secrets
-   * created during the melt operation.
-   */
-  union TALER_DenominationBlindingKeyP *bks;
+  struct TALER_EXCHANGE_MeltBlindingDetail *mbds;
 
   /**
    * Entropy seed for the refresh-melt operation.
@@ -499,15 +494,20 @@ refresh_reveal_run (void *cls,
   }
   // FIXME: use trait for 'rms'!
   rms = melt_cmd->cls;
-  rrs->rrh = TALER_EXCHANGE_refreshes_reveal (is->exchange,
-                                              &rms->rms,
-                                              &rms->refresh_data,
-                                              rms->num_fresh_coins,
-                                              rms->alg_values,
-                                              rms->noreveal_index,
-                                              &reveal_cb,
-                                              rrs);
+  {
+    struct TALER_ExchangeWithdrawValues alg_values[rms->num_fresh_coins];
 
+    for (unsigned int i = 0; i<rms->num_fresh_coins; i++)
+      alg_values[i] = rms->mbds[i].alg_value;
+    rrs->rrh = TALER_EXCHANGE_refreshes_reveal (is->exchange,
+                                                &rms->rms,
+                                                &rms->refresh_data,
+                                                rms->num_fresh_coins,
+                                                alg_values,
+                                                rms->noreveal_index,
+                                                &reveal_cb,
+                                                rrs);
+  }
   if (NULL == rrs->rrh)
   {
     GNUNET_break (0);
@@ -917,26 +917,15 @@ do_melt_retry (void *cls)
  * CMD was set to do so.
  *
  * @param cls closure.
- * @param hr HTTP response details
- * @param num_coins number of fresh coins to be created, length of the @a exchange_vals array, 0 if the operation failed
- * @param alg_values array @a num_coins of exchange values contributed to the refresh operation
- * @param bks array of @a num_coins blinding keys used to blind the fresh coins
- * @param noreveal_index choice by the exchange in the
- *        cut-and-choose protocol, UINT16_MAX on error.
- * @param exchange_pub public key the exchange used for signing.
+ * @param mr melt response details
  */
 static void
 melt_cb (void *cls,
-         const struct TALER_EXCHANGE_HttpResponse *hr,
-         unsigned int num_coins,
-         const struct TALER_ExchangeWithdrawValues *alg_values,
-         const union TALER_DenominationBlindingKeyP *bks,
-         uint32_t noreveal_index,
-         const struct TALER_ExchangePublicKeyP *exchange_pub)
+         const struct TALER_EXCHANGE_MeltResponse *mr)
 {
   struct RefreshMeltState *rms = cls;
+  const struct TALER_EXCHANGE_HttpResponse *hr = &mr->hr;
 
-  (void) exchange_pub;
   rms->rmh = NULL;
   if (rms->expected_response_code != hr->http_status)
   {
@@ -981,24 +970,18 @@ melt_cb (void *cls,
   }
   if (MHD_HTTP_OK == hr->http_status)
   {
-    rms->noreveal_index = noreveal_index;
-    if (num_coins != rms->num_fresh_coins)
+    rms->noreveal_index = mr->details.success.noreveal_index;
+    if (mr->details.success.num_mbds != rms->num_fresh_coins)
     {
       GNUNET_break (0);
       TALER_TESTING_interpreter_fail (rms->is);
       return;
     }
-    GNUNET_free (rms->alg_values);
-    rms->alg_values = GNUNET_new_array (num_coins,
-                                        struct TALER_ExchangeWithdrawValues);
-    memcpy (rms->alg_values,
-            alg_values,
-            num_coins * sizeof (struct TALER_ExchangeWithdrawValues));
-    rms->bks = GNUNET_new_array (num_coins,
-                                 union TALER_DenominationBlindingKeyP);
-    memcpy (rms->bks,
-            bks,
-            num_coins * sizeof (union TALER_DenominationBlindingKeyP));
+    GNUNET_free (rms->mbds);
+    rms->mbds = GNUNET_memdup (mr->details.success.mbds,
+                               mr->details.success.num_mbds
+                               * sizeof (struct
+                                         TALER_EXCHANGE_MeltBlindingDetail));
   }
   if (0 != rms->total_backoff.rel_value_us)
   {
@@ -1199,8 +1182,7 @@ melt_cleanup (void *cls,
       TALER_denom_pub_free (&rms->fresh_pks[i].key);
     GNUNET_free (rms->fresh_pks);
   }
-  GNUNET_free (rms->alg_values);
-  GNUNET_free (rms->bks);
+  GNUNET_free (rms->mbds);
   GNUNET_free (rms->melt_fresh_amounts);
   GNUNET_free (rms);
 }
@@ -1235,9 +1217,9 @@ melt_traits (void *cls,
       TALER_TESTING_make_trait_coin_priv (0,
                                           rms->melt_priv),
       TALER_TESTING_make_trait_blinding_key (index,
-                                             &rms->bks[index]),
+                                             &rms->mbds[index].bks),
       TALER_TESTING_make_trait_exchange_wd_value (index,
-                                                  &rms->alg_values[index]),
+                                                  &rms->mbds[index].alg_value),
       TALER_TESTING_make_trait_refresh_secret (&rms->rms),
       TALER_TESTING_trait_end ()
     };

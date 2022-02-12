@@ -103,12 +103,6 @@ struct MeltData
   struct TALER_DenominationPublicKey *fresh_pks;
 
   /**
-   * Array of @e num_fresh_coins with exchange contributions
-   * made during the refresh.
-   */
-  struct TALER_ExchangeWithdrawValues *exchange_vals;
-
-  /**
    * Arrays of @e num_fresh_coins with information about the fresh
    * coins to be created, for each cut-and-choose dimension.
    */

@@ -86,16 +86,10 @@ struct TALER_EXCHANGE_MeltHandle
   const struct TALER_EXCHANGE_RefreshData *rd;
 
   /**
-   * Array of `num_fresh_coins` contributory values of
-   * the exchange to the melt operation.
+   * Array of `num_fresh_coins` per-coin values
+   * returned from melt operation.
    */
-  struct TALER_ExchangeWithdrawValues *alg_values;
-
-  /**
-   * Array of `num_fresh_coins` blinding secrets
-   * used for blinding the coins.
-   */
-  union TALER_DenominationBlindingKeyP *bks;
+  struct TALER_EXCHANGE_MeltBlindingDetail *mbds;
 
   /**
    * Handle for the preflight request, or NULL.
@@ -336,58 +330,45 @@ handle_melt_finished (void *cls,
                       const void *response)
 {
   struct TALER_EXCHANGE_MeltHandle *mh = cls;
-  struct TALER_ExchangePublicKeyP exchange_pub;
   const json_t *j = response;
-  struct TALER_EXCHANGE_HttpResponse hr = {
-    .reply = j,
-    .http_status = (unsigned int) response_code
+  struct TALER_EXCHANGE_MeltResponse mr = {
+    .hr.reply = j,
+    .hr.http_status = (unsigned int) response_code
   };
 
   mh->job = NULL;
   switch (response_code)
   {
   case 0:
-    hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
+    mr.hr.ec = TALER_EC_GENERIC_INVALID_RESPONSE;
     break;
   case MHD_HTTP_OK:
     if (GNUNET_OK !=
         verify_melt_signature_ok (mh,
                                   j,
-                                  &exchange_pub))
+                                  &mr.details.success.sign_key))
     {
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+      mr.hr.http_status = 0;
+      mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+      break;
     }
-    if (NULL != mh->melt_cb)
-    {
-      mh->melt_cb (mh->melt_cb_cls,
-                   &hr,
-                   (0 == hr.http_status)
-                   ? 0
-                   : mh->rd->fresh_pks_len,
-                   (0 == hr.http_status)
-                   ? NULL
-                   : mh->alg_values,
-                   (0 == hr.http_status)
-                   ? NULL
-                   : mh->bks,
-                   mh->noreveal_index,
-                   (0 == hr.http_status)
-                   ? NULL
-                   : &exchange_pub);
-      mh->melt_cb = NULL;
-    }
+    mr.details.success.noreveal_index = mh->noreveal_index;
+    mr.details.success.num_mbds = mh->rd->fresh_pks_len;
+    mr.details.success.mbds = mh->mbds;
+    mh->melt_cb (mh->melt_cb_cls,
+                 &mr);
+    mh->melt_cb = NULL;
     break;
   case MHD_HTTP_BAD_REQUEST:
     /* This should never happen, either us or the exchange is buggy
        (or API version conflict); just pass JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    mr.hr.ec = TALER_JSON_get_error_code (j);
+    mr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_CONFLICT:
-    hr.ec = TALER_JSON_get_error_code (j);
-    switch (hr.ec)
+    mr.hr.ec = TALER_JSON_get_error_code (j);
+    switch (mr.hr.ec)
     {
     case TALER_EC_EXCHANGE_GENERIC_INSUFFICIENT_FUNDS:
       /* Double spending; check signatures on transaction history */
@@ -396,9 +377,9 @@ handle_melt_finished (void *cls,
                                                 j))
       {
         GNUNET_break_op (0);
-        hr.http_status = 0;
-        hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
-        hr.hint = TALER_JSON_get_error_hint (j);
+        mr.hr.http_status = 0;
+        mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+        mr.hr.hint = TALER_JSON_get_error_hint (j);
       }
       break;
     case TALER_EC_EXCHANGE_GENERIC_COIN_CONFLICTING_DENOMINATION_KEY:
@@ -407,16 +388,16 @@ handle_melt_finished (void *cls,
                                                 j))
       {
         GNUNET_break_op (0);
-        hr.http_status = 0;
-        hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
-        hr.hint = TALER_JSON_get_error_hint (j);
+        mr.hr.http_status = 0;
+        mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+        mr.hr.hint = TALER_JSON_get_error_hint (j);
       }
       break;
     default:
       GNUNET_break_op (0);
-      hr.http_status = 0;
-      hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
-      hr.hint = TALER_JSON_get_error_hint (j);
+      mr.hr.http_status = 0;
+      mr.hr.ec = TALER_EC_EXCHANGE_MELT_INVALID_SIGNATURE_BY_EXCHANGE;
+      mr.hr.hint = TALER_JSON_get_error_hint (j);
       break;
     }
     break;
@@ -424,40 +405,35 @@ handle_melt_finished (void *cls,
     /* Nothing really to verify, exchange says one of the signatures is
        invalid; assuming we checked them, this should never happen, we
        should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    mr.hr.ec = TALER_JSON_get_error_code (j);
+    mr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_NOT_FOUND:
     /* Nothing really to verify, this should never
        happen, we should pass the JSON reply to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    mr.hr.ec = TALER_JSON_get_error_code (j);
+    mr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   case MHD_HTTP_INTERNAL_SERVER_ERROR:
     /* Server had an internal issue; we should retry, but this API
        leaves this to the application */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    mr.hr.ec = TALER_JSON_get_error_code (j);
+    mr.hr.hint = TALER_JSON_get_error_hint (j);
     break;
   default:
     /* unexpected response code */
-    hr.ec = TALER_JSON_get_error_code (j);
-    hr.hint = TALER_JSON_get_error_hint (j);
+    mr.hr.ec = TALER_JSON_get_error_code (j);
+    mr.hr.hint = TALER_JSON_get_error_hint (j);
     GNUNET_log (GNUNET_ERROR_TYPE_ERROR,
                 "Unexpected response code %u/%d for exchange melt\n",
                 (unsigned int) response_code,
-                hr.ec);
+                mr.hr.ec);
     GNUNET_break_op (0);
     break;
   }
   if (NULL != mh->melt_cb)
     mh->melt_cb (mh->melt_cb_cls,
-                 &hr,
-                 0,
-                 NULL,
-                 NULL,
-                 UINT32_MAX,
-                 NULL);
+                 &mr);
   TALER_EXCHANGE_melt_cancel (mh);
 }
 
@@ -479,11 +455,16 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
   struct TALER_CoinSpendSignatureP confirm_sig;
   char arg_str[sizeof (struct TALER_CoinSpendPublicKeyP) * 2 + 32];
   struct TALER_DenominationHash h_denom_pub;
+  struct TALER_ExchangeWithdrawValues alg_values[mh->rd->fresh_pks_len];
 
+  for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)
+    alg_values[i] = mh->mbds[i].alg_value;
+  /* FIXME: get_melt_data computes the 'bks' which
+     we should return, but leave uninitialized => refactor logic! */
   if (GNUNET_OK !=
       TALER_EXCHANGE_get_melt_data_ (&mh->rms,
                                      mh->rd,
-                                     mh->alg_values,
+                                     alg_values,
                                      &mh->md))
   {
     GNUNET_break (0);
@@ -574,11 +555,6 @@ fail_mh (struct TALER_EXCHANGE_MeltHandle *mh)
 {
   // FIXME: do return more than NULLs if the /csr failed!
   mh->melt_cb (mh->melt_cb_cls,
-               NULL,
-               0,
-               NULL,
-               NULL,
-               UINT32_MAX,
                NULL);
   TALER_EXCHANGE_melt_cancel (mh);
 }
@@ -603,7 +579,7 @@ csr_cb (void *cls,
   {
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk =
       &mh->rd->fresh_pks[i];
-    struct TALER_ExchangeWithdrawValues *wv = &mh->alg_values[i];
+    struct TALER_ExchangeWithdrawValues *wv = &mh->mbds[i].alg_value;
 
     switch (fresh_pk->key.cipher)
     {
@@ -656,21 +632,18 @@ TALER_EXCHANGE_melt (struct TALER_EXCHANGE_Handle *exchange,
   mh->rms = *rms;
   mh->melt_cb = melt_cb;
   mh->melt_cb_cls = melt_cb_cls;
-  mh->alg_values = GNUNET_new_array (rd->fresh_pks_len,
-                                     struct TALER_ExchangeWithdrawValues);
-  mh->bks = GNUNET_new_array (rd->fresh_pks_len,
-                              union TALER_DenominationBlindingKeyP);
+  mh->mbds = GNUNET_new_array (rd->fresh_pks_len,
+                               struct TALER_EXCHANGE_MeltBlindingDetail);
   for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk = &rd->fresh_pks[i];
-    struct TALER_ExchangeWithdrawValues *wv = &mh->alg_values[i];
+    struct TALER_ExchangeWithdrawValues *wv = &mh->mbds[i].alg_value;
 
     switch (fresh_pk->key.cipher)
     {
     case TALER_DENOMINATION_INVALID:
       GNUNET_break (0);
-      GNUNET_free (mh->alg_values);
-      GNUNET_free (mh->bks);
+      GNUNET_free (mh->mbds);
       GNUNET_free (mh);
       return NULL;
     case TALER_DENOMINATION_RSA:
@@ -726,8 +699,7 @@ TALER_EXCHANGE_melt_cancel (struct TALER_EXCHANGE_MeltHandle *mh)
     mh->csr = NULL;
   }
   TALER_EXCHANGE_free_melt_data_ (&mh->md); /* does not free 'md' itself */
-  GNUNET_free (mh->alg_values);
-  GNUNET_free (mh->bks);
+  GNUNET_free (mh->mbds);
   GNUNET_free (mh->url);
   TALER_curl_easy_post_finished (&mh->ctx);
   GNUNET_free (mh);
