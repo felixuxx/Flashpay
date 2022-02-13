@@ -53,11 +53,6 @@ struct MeltedCoin
   struct TALER_Amount original_value;
 
   /**
-   * Transfer private keys for each cut-and-choose dimension.
-   */
-  struct TALER_TransferPrivateKeyP transfer_priv[TALER_CNC_KAPPA];
-
-  /**
    * Timestamp indicating when coins of this denomination become invalid.
    */
   struct GNUNET_TIME_Timestamp expire_deposit;
@@ -76,6 +71,37 @@ struct MeltedCoin
 
 
 /**
+ * Data we keep for each fresh coin created in the
+ * melt process.
+ */
+struct FreshCoinData
+{
+  /**
+   * Denomination public key of the coin.
+   */
+  struct TALER_DenominationPublicKey fresh_pk;
+
+  /**
+   * Array of planchet secrets for the coins, depending
+   * on the cut-and-choose.
+   */
+  struct TALER_PlanchetMasterSecretP ps[TALER_CNC_KAPPA];
+
+  /**
+   * Private key of the coin.
+   */
+  struct TALER_CoinSpendPrivateKeyP coin_priv;
+
+  /**
+   * Blinding key secrets for the coins, depending on the
+   * cut-and-choose.
+   */
+  union TALER_DenominationBlindingKeyP bks[TALER_CNC_KAPPA];
+
+};
+
+
+/**
  * Melt data in non-serialized format for convenient processing.
  */
 struct MeltData
@@ -87,26 +113,47 @@ struct MeltData
   struct TALER_RefreshCommitmentP rc;
 
   /**
-   * Number of coins we are creating
-   */
-  uint16_t num_fresh_coins;
-
-  /**
    * Information about the melted coin.
    */
   struct MeltedCoin melted_coin;
 
   /**
-   * Array of @e num_fresh_coins denomination keys for the coins to be
-   * freshly exchangeed.
+   * Array of length @e num_fresh_coins with information
+   * about each fresh coin.
    */
-  struct TALER_DenominationPublicKey *fresh_pks;
+  struct FreshCoinData *fcds;
 
   /**
-   * Arrays of @e num_fresh_coins with information about the fresh
-   * coins to be created, for each cut-and-choose dimension.
+   * Transfer secrets, one per cut and choose.
    */
-  struct TALER_PlanchetMasterSecretP *fresh_coins[TALER_CNC_KAPPA];
+  struct TALER_TransferSecretP trans_sec[TALER_CNC_KAPPA];
+
+  /**
+   * Transfer private keys for each cut-and-choose dimension.
+   */
+  struct TALER_TransferPrivateKeyP transfer_priv[TALER_CNC_KAPPA];
+
+  /**
+   * Transfer public key of this commitment.
+   */
+  struct TALER_TransferPublicKeyP transfer_pub[TALER_CNC_KAPPA];
+
+  /**
+   * Transfer secrets, one per cut and choose.
+   */
+  struct TALER_RefreshCommitmentEntry rce[TALER_CNC_KAPPA];
+
+  /**
+   * Blinded planchets and denominations of the fresh coins, depending on the cut-and-choose.  Array of length
+   * @e num_fresh_coins.
+   */
+  struct TALER_RefreshCoinData *rcd[TALER_CNC_KAPPA];
+
+  /**
+   * Number of coins we are creating
+   */
+  uint16_t num_fresh_coins;
+
 };
 
 

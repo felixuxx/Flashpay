@@ -422,9 +422,9 @@ reveal_cb (void *cls,
       const struct TALER_EXCHANGE_RevealedCoinInfo *coin
         = &rr->details.success.coins[i];
       struct TALER_TESTING_FreshCoinData *fc = &rrs->fresh_coins[i];
-      const union TALER_DenominationBlindingKeyP *bks;
 
       rrs->psa[i] = coin->ps;
+      fc->blinding_key = coin->bks;
       if (GNUNET_OK !=
           TALER_TESTING_get_trait_denom_pub (melt_cmd,
                                              i,
@@ -434,17 +434,8 @@ reveal_cb (void *cls,
         TALER_TESTING_interpreter_fail (rrs->is);
         return;
       }
-      if (GNUNET_OK !=
-          TALER_TESTING_get_trait_blinding_key (melt_cmd,
-                                                i,
-                                                &bks))
-      {
-        GNUNET_break (0);
-        TALER_TESTING_interpreter_fail (rrs->is);
-        return;
-      }
       fc->coin_priv = coin->coin_priv;
-      fc->blinding_key = *bks;
+
       TALER_denom_sig_deep_copy (&fc->sig,
                                  &coin->sig);
     }
@@ -1216,8 +1207,6 @@ melt_traits (void *cls,
                                           &rms->fresh_pks[index]),
       TALER_TESTING_make_trait_coin_priv (0,
                                           rms->melt_priv),
-      TALER_TESTING_make_trait_blinding_key (index,
-                                             &rms->mbds[index].bks),
       TALER_TESTING_make_trait_exchange_wd_value (index,
                                                   &rms->mbds[index].alg_value),
       TALER_TESTING_make_trait_refresh_secret (&rms->rms),

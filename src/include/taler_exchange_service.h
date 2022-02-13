@@ -1647,12 +1647,6 @@ struct TALER_EXCHANGE_MeltBlindingDetail
    */
   struct TALER_ExchangeWithdrawValues alg_value;
 
-  /**
-   * Blinding keys used to blind the fresh coins
-   */
-  /* FIXME: uninitialized! */
-  union TALER_DenominationBlindingKeyP bks;
-
 };
 
 
@@ -1771,6 +1765,11 @@ struct TALER_EXCHANGE_RevealedCoinInfo
    * Master secret of this coin.
    */
   struct TALER_PlanchetMasterSecretP ps;
+
+  /**
+   * Blinding keys used to blind the fresh coin.
+   */
+  union TALER_DenominationBlindingKeyP bks;
 
   /**
    * Signature affirming the validity of the coin.

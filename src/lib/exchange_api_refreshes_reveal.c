@@ -140,7 +140,8 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
   {
     struct TALER_EXCHANGE_RevealedCoinInfo *rci =
       &rcis[i];
-    struct TALER_DenominationPublicKey *pk;
+    const struct FreshCoinData *fcd = &rrh->md.fcds[i];
+    const struct TALER_DenominationPublicKey *pk;
     json_t *jsonai;
     struct TALER_BlindedDenominationSignature blind_sig;
     struct TALER_CoinSpendPublicKeyP coin_pub;
@@ -153,8 +154,9 @@ refresh_reveal_ok (struct TALER_EXCHANGE_RefreshesRevealHandle *rrh,
     struct TALER_FreshCoin coin;
     union TALER_DenominationBlindingKeyP bks;
 
-    rci->ps = rrh->md.fresh_coins[rrh->noreveal_index][i];
-    pk = &rrh->md.fresh_pks[i];
+    rci->ps = fcd->ps[rrh->noreveal_index];
+    rci->bks = fcd->bks[rrh->noreveal_index];
+    pk = &fcd->fresh_pk;
     jsonai = json_array_get (jsona, i);
     GNUNET_assert (NULL != jsonai);
 
@@ -323,9 +325,7 @@ TALER_EXCHANGE_refreshes_reveal (
   CURL *eh;
   struct GNUNET_CURL_Context *ctx;
   struct MeltData md;
-  struct TALER_TransferPublicKeyP transfer_pub;
   char arg_str[sizeof (struct TALER_RefreshCommitmentP) * 2 + 32];
-  struct TALER_TransferSecretP ts;
 
   GNUNET_assert (num_coins == rd->fresh_pks_len);
   if (noreveal_index >= TALER_CNC_KAPPA)
@@ -353,80 +353,38 @@ TALER_EXCHANGE_refreshes_reveal (
     return NULL;
   }
 
-  /* now transfer_pub */
-  GNUNET_CRYPTO_ecdhe_key_get_public (
-    &md.melted_coin.transfer_priv[noreveal_index].ecdhe_priv,
-    &transfer_pub.ecdhe_pub);
-  TALER_link_recover_transfer_secret (&transfer_pub,
-                                      &rd->melt_priv,
-                                      &ts);
-
   /* now new_denoms */
   GNUNET_assert (NULL != (new_denoms_h = json_array ()));
   GNUNET_assert (NULL != (coin_evs = json_array ()));
   GNUNET_assert (NULL != (link_sigs = json_array ()));
   for (unsigned int i = 0; i<md.num_fresh_coins; i++)
   {
+    const struct TALER_RefreshCoinData *rcd = &md.rcd[noreveal_index][i];
     struct TALER_DenominationHash denom_hash;
-    struct TALER_PlanchetDetail pd;
-    struct TALER_CoinPubHash c_hash;
-    struct TALER_PlanchetMasterSecretP coin_ps;
-    union TALER_DenominationBlindingKeyP bks;
-    struct TALER_CoinSpendPrivateKeyP coin_priv;
 
-    TALER_denom_pub_hash (&md.fresh_pks[i],
+    TALER_denom_pub_hash (&md.fcds[i].fresh_pk,
                           &denom_hash);
     GNUNET_assert (0 ==
                    json_array_append_new (new_denoms_h,
                                           GNUNET_JSON_from_data_auto (
                                             &denom_hash)));
-    TALER_transfer_secret_to_planchet_secret (&ts,
-                                              i,
-                                              &coin_ps);
-    TALER_planchet_setup_coin_priv (&coin_ps,
-                                    &alg_values[i],
-                                    &coin_priv);
-    TALER_planchet_blinding_secret_create (&coin_ps,
-                                           &alg_values[i],
-                                           &bks);
-    if (TALER_DENOMINATION_CS == alg_values[i].cipher)
-      TALER_cs_refresh_nonce_derive (
-        rms,
-        i,
-        &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
-    if (GNUNET_OK !=
-        TALER_planchet_prepare (&md.fresh_pks[i],
-                                &alg_values[i],
-                                &bks,
-                                &coin_priv,
-                                &c_hash,
-                                &pd))
-    {
-      /* This should have been noticed during the preparation stage. */
-      GNUNET_break (0);
-      json_decref (new_denoms_h);
-      json_decref (coin_evs);
-      TALER_EXCHANGE_free_melt_data_ (&md);
-      return NULL;
-    }
-    GNUNET_assert (
-      0 ==
-      json_array_append_new (
-        coin_evs,
-        GNUNET_JSON_PACK (
-          TALER_JSON_pack_blinded_planchet (
-            NULL,
-            &pd.blinded_planchet))));
+    GNUNET_assert (0 ==
+                   json_array_append_new (
+                     coin_evs,
+                     GNUNET_JSON_PACK (
+                       TALER_JSON_pack_blinded_planchet (
+                         NULL,
+                         &rcd->blinded_planchet))));
     {
       struct TALER_CoinSpendSignatureP link_sig;
       struct TALER_BlindedCoinHash bch;
 
-      TALER_coin_ev_hash (&pd.blinded_planchet,
+      TALER_coin_ev_hash (&rcd->blinded_planchet,
                           &denom_hash,
                           &bch);
       TALER_wallet_link_sign (
         &denom_hash,
-        &transfer_pub,
+        &md.transfer_pub[noreveal_index],
         &bch,
         &md.melted_coin.coin_priv,
         &link_sig);
@@ -435,7 +393,6 @@ TALER_EXCHANGE_refreshes_reveal (
                        link_sigs,
                        GNUNET_JSON_from_data_auto (&link_sig)));
     }
-    TALER_blinded_planchet_free (&pd.blinded_planchet);
   }
 
   /* build array of transfer private keys */
@@ -450,13 +407,13 @@ TALER_EXCHANGE_refreshes_reveal (
     GNUNET_assert (0 ==
                    json_array_append_new (transfer_privs,
                                           GNUNET_JSON_from_data_auto (
-                                            &md.melted_coin.transfer_priv[j])));
+                                            &md.transfer_priv[j])));
   }
 
   /* build main JSON request */
   reveal_obj = GNUNET_JSON_PACK (
     GNUNET_JSON_pack_data_auto ("transfer_pub",
-                                &transfer_pub),
+                                &md.transfer_pub[noreveal_index]),
     GNUNET_JSON_pack_array_steal ("transfer_privs",
                                   transfer_privs),
     GNUNET_JSON_pack_array_steal ("link_sigs",

@@ -26,16 +26,28 @@
 void
 TALER_EXCHANGE_free_melt_data_ (struct MeltData *md)
 {
+  for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
+  {
+    struct TALER_RefreshCoinData *rcds = md->rcd[i];
+
+    if (NULL == rcds)
+      continue;
+    for (unsigned int j = 0; j < md->num_fresh_coins; j++)
+      TALER_blinded_planchet_free (&rcds[j].blinded_planchet);
+    GNUNET_free (rcds);
+  }
   TALER_denom_pub_free (&md->melted_coin.pub_key);
   TALER_denom_sig_free (&md->melted_coin.sig);
-  if (NULL != md->fresh_pks)
+  if (NULL != md->fcds)
   {
-    for (unsigned int i = 0; i<md->num_fresh_coins; i++)
-      TALER_denom_pub_free (&md->fresh_pks[i]);
-    GNUNET_free (md->fresh_pks);
+    for (unsigned int j = 0; j<md->num_fresh_coins; j++)
+    {
+      struct FreshCoinData *fcd = &md->fcds[j];
+
+      TALER_denom_pub_free (&fcd->fresh_pk);
+    }
+    GNUNET_free (md->fcds);
   }
-  for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
-    GNUNET_free (md->fresh_coins[i]);
   /* Finally, clean up a bit... */
   GNUNET_CRYPTO_zero_keys (md,
                            sizeof (struct MeltData));
@@ -51,8 +63,7 @@ TALER_EXCHANGE_get_melt_data_ (
 {
   struct TALER_Amount total;
   struct TALER_CoinSpendPublicKeyP coin_pub;
-  struct TALER_TransferSecretP trans_sec[TALER_CNC_KAPPA];
-  struct TALER_RefreshCommitmentEntry rce[TALER_CNC_KAPPA];
+  struct TALER_CsNonce nonces[rd->fresh_pks_len];
 
   GNUNET_CRYPTO_eddsa_key_get_public (&rd->melt_priv.eddsa_priv,
                                       &coin_pub.eddsa_pub);
@@ -73,29 +84,42 @@ TALER_EXCHANGE_get_melt_data_ (
                              &rd->melt_pk.key);
   TALER_denom_sig_deep_copy (&md->melted_coin.sig,
                              &rd->melt_sig);
-  md->fresh_pks = GNUNET_new_array (rd->fresh_pks_len,
-                                    struct TALER_DenominationPublicKey);
-  for (unsigned int i = 0; i<rd->fresh_pks_len; i++)
+  md->fcds = GNUNET_new_array (md->num_fresh_coins,
+                               struct FreshCoinData);
+  for (unsigned int j = 0; j<rd->fresh_pks_len; j++)
   {
-    TALER_denom_pub_deep_copy (&md->fresh_pks[i],
-                               &rd->fresh_pks[i].key);
-    if ( (0 >
-          TALER_amount_add (&total,
-                            &total,
-                            &rd->fresh_pks[i].value)) ||
-         (0 >
-          TALER_amount_add (&total,
-                            &total,
-                            &rd->fresh_pks[i].fee_withdraw)) )
+    struct FreshCoinData *fcd = &md->fcds[j];
+
+    if (alg_values[j].cipher != rd->fresh_pks[j].key.cipher)
     {
       GNUNET_break (0);
       TALER_EXCHANGE_free_melt_data_ (md);
-      memset (md,
-              0,
-              sizeof (*md));
+      return GNUNET_SYSERR;
+    }
+    if (TALER_DENOMINATION_CS == alg_values[j].cipher)
+    {
+      TALER_cs_refresh_nonce_derive (
+        rms,
+        j,
+        &nonces[j]);
+    }
+    TALER_denom_pub_deep_copy (&fcd->fresh_pk,
+                               &rd->fresh_pks[j].key);
+    if ( (0 >
+          TALER_amount_add (&total,
+                            &total,
+                            &rd->fresh_pks[j].value)) ||
+         (0 >
+          TALER_amount_add (&total,
+                            &total,
+                            &rd->fresh_pks[j].fee_withdraw)) )
+    {
+      GNUNET_break (0);
+      TALER_EXCHANGE_free_melt_data_ (md);
       return GNUNET_SYSERR;
     }
   }
+
   /* verify that melt_amount is above total cost */
   if (1 ==
       TALER_amount_cmp (&total,
@@ -105,88 +129,79 @@ TALER_EXCHANGE_get_melt_data_ (
        @a melt_amount. This is not OK. */
     GNUNET_break (0);
     TALER_EXCHANGE_free_melt_data_ (md);
-    memset (md,
-            0,
-            sizeof (*md));
     return GNUNET_SYSERR;
   }
 
   /* build up coins */
   for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
   {
+    struct TALER_TransferSecretP trans_sec;
+
     TALER_planchet_secret_to_transfer_priv (
       rms,
       i,
-      &md->melted_coin.transfer_priv[i]);
+      &md->transfer_priv[i]);
     GNUNET_CRYPTO_ecdhe_key_get_public (
-      &md->melted_coin.transfer_priv[i].ecdhe_priv,
-      &rce[i].transfer_pub.ecdhe_pub);
+      &md->transfer_priv[i].ecdhe_priv,
+      &md->transfer_pub[i].ecdhe_pub);
     TALER_link_derive_transfer_secret (&rd->melt_priv,
-                                       &md->melted_coin.transfer_priv[i],
-                                       &trans_sec[i]);
-    md->fresh_coins[i] = GNUNET_new_array (rd->fresh_pks_len,
-                                           struct TALER_PlanchetMasterSecretP);
-    rce[i].new_coins = GNUNET_new_array (rd->fresh_pks_len,
-                                         struct TALER_RefreshCoinData);
+                                       &md->transfer_priv[i],
+                                       &trans_sec);
+    md->rcd[i] = GNUNET_new_array (rd->fresh_pks_len,
+                                   struct TALER_RefreshCoinData);
     for (unsigned int j = 0; j<rd->fresh_pks_len; j++)
     {
-      struct TALER_PlanchetMasterSecretP *fc = &md->fresh_coins[i][j];
-      struct TALER_RefreshCoinData *rcd = &rce[i].new_coins[j];
+      struct FreshCoinData *fcd = &md->fcds[j];
+      struct TALER_CoinSpendPrivateKeyP *coin_priv = &fcd->coin_priv;
+      struct TALER_PlanchetMasterSecretP *ps = &fcd->ps[i];
+      struct TALER_RefreshCoinData *rcd = &md->rcd[i][j];
+      union TALER_DenominationBlindingKeyP *bks = &fcd->bks[i];
       struct TALER_PlanchetDetail pd;
       struct TALER_CoinPubHash c_hash;
-      struct TALER_CoinSpendPrivateKeyP coin_priv;
-      union TALER_DenominationBlindingKeyP bks;
 
-      TALER_transfer_secret_to_planchet_secret (&trans_sec[i],
+      TALER_transfer_secret_to_planchet_secret (&trans_sec,
                                                 j,
-                                                fc);
-      TALER_planchet_setup_coin_priv (fc,
+                                                ps);
+      TALER_planchet_setup_coin_priv (ps,
                                       &alg_values[j],
-                                      &coin_priv);
-      TALER_planchet_blinding_secret_create (fc,
+                                      coin_priv);
+      TALER_planchet_blinding_secret_create (ps,
                                              &alg_values[j],
-                                             &bks);
-      /* FIXME: we already did this for the /csr request,
-         so this computation is redundant, and here additionally
-         repeated KAPPA times. Could be avoided with slightly
-         more bookkeeping in the future */
+                                             bks);
       if (TALER_DENOMINATION_CS == alg_values[j].cipher)
-        TALER_cs_refresh_nonce_derive (
-          rms,
-          j,
-          &pd.blinded_planchet.details.cs_blinded_planchet.nonce);
+        pd.blinded_planchet.details.cs_blinded_planchet.nonce = nonces[j];
       if (GNUNET_OK !=
-          TALER_planchet_prepare (&md->fresh_pks[j],
+          TALER_planchet_prepare (&fcd->fresh_pk,
                                   &alg_values[j],
-                                  &bks,
-                                  &coin_priv,
+                                  bks,
+                                  coin_priv,
                                   &c_hash,
                                   &pd))
       {
         GNUNET_break_op (0);
         TALER_EXCHANGE_free_melt_data_ (md);
-        memset (md,
-                0,
-                sizeof (*md));
         return GNUNET_SYSERR;
       }
-      rcd->dk = &md->fresh_pks[j];
       rcd->blinded_planchet = pd.blinded_planchet;
+      rcd->dk = &fcd->fresh_pk;
     }
   }
 
-  /* Compute refresh commitment */
-  TALER_refresh_get_commitment (&md->rc,
-                                TALER_CNC_KAPPA,
-                                rd->fresh_pks_len,
-                                rce,
-                                &coin_pub,
-                                &rd->melt_amount);
-  for (unsigned int i = 0; i < TALER_CNC_KAPPA; i++)
+  /* Finally, compute refresh commitment */
   {
-    for (unsigned int j = 0; j < rd->fresh_pks_len; j++)
-      TALER_blinded_planchet_free (&rce[i].new_coins[j].blinded_planchet);
-    GNUNET_free (rce[i].new_coins);
+    struct TALER_RefreshCommitmentEntry rce[TALER_CNC_KAPPA];
+
+    for (unsigned int i = 0; i<TALER_CNC_KAPPA; i++)
+    {
+      rce[i].transfer_pub = md->transfer_pub[i];
+      rce[i].new_coins = md->rcd[i];
+    }
+    TALER_refresh_get_commitment (&md->rc,
+                                  TALER_CNC_KAPPA,
+                                  rd->fresh_pks_len,
+                                  rce,
+                                  &coin_pub,
+                                  &rd->melt_amount);
   }
   return GNUNET_OK;
 }

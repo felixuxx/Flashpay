@@ -459,8 +459,6 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
 
   for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)
     alg_values[i] = mh->mbds[i].alg_value;
-  /* FIXME: get_melt_data computes the 'bks' which
-     we should return, but leave uninitialized => refactor logic! */
   if (GNUNET_OK !=
       TALER_EXCHANGE_get_melt_data_ (&mh->rms,
                                      mh->rd,
@@ -551,11 +549,15 @@ start_melt (struct TALER_EXCHANGE_MeltHandle *mh)
  * @param[in] mh melt request that failed
  */
 static void
-fail_mh (struct TALER_EXCHANGE_MeltHandle *mh)
+fail_mh (struct TALER_EXCHANGE_MeltHandle *mh,
+         enum TALER_ErrorCode ec)
 {
-  // FIXME: do return more than NULLs if the /csr failed!
+  struct TALER_EXCHANGE_MeltResponse mr = {
+    .hr.ec = ec
+  };
+
   mh->melt_cb (mh->melt_cb_cls,
-               NULL);
+               &mr);
   TALER_EXCHANGE_melt_cancel (mh);
 }
 
@@ -575,6 +577,18 @@ csr_cb (void *cls,
   unsigned int nks_off = 0;
 
   mh->csr = NULL;
+  if (MHD_HTTP_OK != csrr->hr.http_status)
+  {
+    struct TALER_EXCHANGE_MeltResponse mr = {
+      .hr = csrr->hr
+    };
+
+    mr.hr.hint = "/csr failed";
+    mh->melt_cb (mh->melt_cb_cls,
+                 &mr);
+    TALER_EXCHANGE_melt_cancel (mh);
+    return;
+  }
   for (unsigned int i = 0; i<mh->rd->fresh_pks_len; i++)
   {
     const struct TALER_EXCHANGE_DenomPublicKey *fresh_pk =
@@ -585,7 +599,8 @@ csr_cb (void *cls,
     {
     case TALER_DENOMINATION_INVALID:
       GNUNET_break (0);
-      fail_mh (mh);
+      fail_mh (mh,
+               TALER_EC_GENERIC_CLIENT_INTERNAL_ERROR);
       return;
     case TALER_DENOMINATION_RSA:
       GNUNET_assert (TALER_DENOMINATION_RSA == wv->cipher);
@@ -601,7 +616,8 @@ csr_cb (void *cls,
       start_melt (mh))
   {
     GNUNET_break (0);
-    fail_mh (mh);
+    fail_mh (mh,
+             TALER_EC_GENERIC_CLIENT_INTERNAL_ERROR);
     return;
   }
 }
